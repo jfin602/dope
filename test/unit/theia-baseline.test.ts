@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 const root = new URL('../../', import.meta.url).pathname;
-const paths = ['package.json', 'apps/browser/package.json', 'apps/electron/package.json', 'packages/theia-extension/package.json'];
+const paths = ['package.json', 'apps/browser/package.json', 'apps/electron/package.json', 'packages/theia-extension/package.json', 'packages/contracts/package.json'];
 const manifests = paths.map(path => ({ path, value: JSON.parse(readFileSync(join(root, path), 'utf8')) }));
 
 test('every directly controlled Theia package stays on the Phase 0 baseline', () => {
@@ -15,7 +15,7 @@ test('every directly controlled Theia package stays on the Phase 0 baseline', ()
       }
     }
   }
-  assert.equal(manifests[0].value.version, '0.0.1');
+  for (const { path, value } of manifests) assert.equal(value.version, '0.0.2', path);
   assert.equal(existsSync(join(root, 'package-lock.json')), false);
 });
 
@@ -27,11 +27,13 @@ test('both applications carry the required IDE composition', () => {
   ];
   for (const { path, value } of manifests.slice(1, 3)) {
     for (const name of required) assert.equal(value.dependencies[`@theia/${name}`], '1.75.0', `${path}: ${name}`);
-    assert.equal(value.dependencies['@dope/theia-extension'], '0.0.1');
+    assert.equal(value.dependencies['@dope/theia-extension'], '0.0.2');
+    assert.equal(value.theia.frontend.config.applicationName, 'Dope');
   }
   assert.equal(manifests[1].value.theia.target, 'browser');
   assert.equal(manifests[2].value.theia.target, 'electron');
   assert.equal(manifests[2].value.dependencies['@theia/electron'], '1.75.0');
   assert.equal(manifests[2].value.devDependencies.electron, '42.8.1');
+  assert.equal(manifests[3].value.dependencies['@dope/contracts'], '0.0.2');
   assert.match(manifests[0].value.theiaPlugins['vscode-builtin-extensions'], /\/1\.108\.2\//);
 });

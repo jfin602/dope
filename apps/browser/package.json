@@ -1,6 +1,6 @@
 {
   "name": "@dope/browser",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "Dope browser qualification application",
   "scripts": {
@@ -8,9 +8,9 @@
     "start": "theia start --plugins=local-dir:../../plugins",
     "watch": "theia build --watch --mode development"
   },
-  "theia": { "target": "browser" },
+  "theia": { "target": "browser", "frontend": { "config": { "applicationName": "Dope" } } },
   "dependencies": {
-    "@dope/theia-extension": "0.0.1",
+    "@dope/theia-extension": "0.0.2",
     "@theia/core": "1.75.0",
     "@theia/debug": "1.75.0",
     "@theia/editor": "1.75.0",

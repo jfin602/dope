@@ -1,15 +1,15 @@
 {
   "name": "dope",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "packageManager": "yarn@1.22.22",
   "engines": {
     "node": ">=24 <25"
   },
-  "workspaces": ["apps/browser", "apps/electron", "packages/theia-extension"],
+  "workspaces": ["apps/browser", "apps/electron", "packages/contracts", "packages/theia-extension"],
   "scripts": {
-    "build:extension": "corepack yarn workspace @dope/theia-extension build",
+    "build:extension": "corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/theia-extension build",
     "build:browser": "corepack yarn build:extension && corepack yarn workspace @dope/browser build",
     "build:electron": "corepack yarn build:extension && corepack yarn workspace @dope/electron build",
     "start:browser": "npm run download:plugins && corepack yarn workspace @dope/browser start",
@@ -18,10 +18,10 @@
     "test": "npm run test:runner && npm run test:baseline && npm run test:product",
     "test:runner": "node --test test/unit/codex-phase-prompt-grammar.test.ts test/unit/codex-phase-runner.test.ts",
     "test:baseline": "node --test test/unit/theia-baseline.test.ts",
-    "test:product": "node -e \"console.log('No product/domain unit tests exist in P1')\"",
+    "test:product": "node --test test/unit/workspace-mode.test.ts",
     "codex:phase": "node scripts/codex-phase.mjs",
     "codex:phase:validate": "node scripts/validate-codex-phase.mjs",
-    "typecheck": "tsc -p packages/theia-extension --noEmit",
+    "typecheck": "corepack yarn workspace @dope/contracts build && tsc -p packages/theia-extension --noEmit",
     "check": "npm run typecheck && npm test && npm run build:browser && npm run build:electron"
   },
   "theiaPluginsDir": "plugins",
