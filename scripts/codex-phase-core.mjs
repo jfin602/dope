@@ -1,9 +1,6 @@
 import { clearScreenDown, cursorTo, moveCursor } from 'node:readline';
 
 export const MODEL_CONFIGS = Object.freeze({
-  'GPT-6 Sol Medium': Object.freeze({ model: 'gpt-6-sol', reasoning: 'medium' }),
-  'GPT-6 Sol High': Object.freeze({ model: 'gpt-6-sol', reasoning: 'high' }),
-  'GPT-6 Sol XHigh': Object.freeze({ model: 'gpt-6-sol', reasoning: 'xhigh' }),
   'Luna Medium': Object.freeze({ model: 'gpt-5.6-luna', reasoning: 'medium' }),
   'Luna High': Object.freeze({ model: 'gpt-5.6-luna', reasoning: 'high' }),
   'Terra Medium': Object.freeze({
@@ -16,6 +13,9 @@ export const MODEL_CONFIGS = Object.freeze({
   'Sol Medium': Object.freeze({ model: 'gpt-5.6-sol', reasoning: 'medium' }),
   'Sol High': Object.freeze({ model: 'gpt-5.6-sol', reasoning: 'high' }),
   'Sol Ultra': Object.freeze({ model: 'gpt-5.6-sol', reasoning: 'ultra' }),
+  'GPT-6 Sol Medium': Object.freeze({ model: 'gpt-6-sol', reasoning: 'medium' }),
+  'GPT-6 Sol High': Object.freeze({ model: 'gpt-6-sol', reasoning: 'high' }),
+  'GPT-6 Sol XHigh': Object.freeze({ model: 'gpt-6-sol', reasoning: 'xhigh' }),
 });
 
 const VALID_CONCRETE_CONFIGS = Object.freeze({
