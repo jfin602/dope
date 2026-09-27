@@ -4,7 +4,7 @@ Status: APPROVED DIRECTION / REQUIRES EXECUTION EVIDENCE
 
 ## Decision
 
-Use Eclipse Theia as Dope's initial IDE substrate, but treat that decision as provisional until a bounded Foundation Spike 0 deliberately stress-tests the IDE capabilities, customization seams, persistence boundary, packaging, and upgradeability that matter to Dope.
+Use Eclipse Theia as Dope's initial IDE substrate, but treat that decision as provisional until a bounded Foundation Spike 0 stress-tests the IDE capabilities, customization seams, persistence boundary, and Linux packaging that matter to Dope.
 
 Initial spike baseline:
 - Theia 1.75.0
@@ -15,9 +15,9 @@ Initial spike baseline:
 
 ## Why Theia
 
-Theia is designed as a framework for building custom IDE products and already supplies large amounts of commodity IDE infrastructure: Monaco, workspaces/filesystem, terminal, SCM/Git, debugging, search, commands/preferences/keybindings, LSP/TextMate, VS Code extension compatibility, Open VSX, frontend/backend separation, dependency injection/service replacement, custom React widgets/workbench extension, and Electron.
+Theia is designed as a framework for building custom IDE products and already supplies the commodity IDE infrastructure Dope needs: Monaco, workspaces/filesystem, terminal, SCM/Git, debugging, search, commands/preferences/keybindings, LSP/TextMate, VS Code extension compatibility, Open VSX, frontend/backend separation, dependency injection/service replacement, custom widgets/workbench extension, and Electron.
 
-Rebuilding these capabilities would distract from Dope's actual product thesis.
+Rebuilding these capabilities would distract from Dope's product thesis.
 
 ## Product boundary
 
@@ -37,16 +37,14 @@ It must prove:
 - Dope-owned custom views
 - typed frontend/backend seams
 - minimal Dope-owned persistence and restart restoration
-- Linux packaging
-- bounded framework upgrade repair
+- extension/tooling compatibility
+- viable Linux packaging/launch
 
-It does not need to prove the future model/agent runtime.
+It does not need to prove the future model/agent runtime or a synthetic framework upgrade.
 
 ## Theia AI decision
 
 Theia AI remains eligible for selective reuse behind a Dope adapter in later phases.
-
-Potential reusable infrastructure may include model registry/providers, OpenAI-compatible/local-provider plumbing, tools, context variables, MCP, prompt services, confirmations, structured output, and session plumbing.
 
 Theia AI agent/chat abstractions do not become Dope's domain model.
 
@@ -75,9 +73,9 @@ Private/internal API dependency is architectural debt and may block qualificatio
 
 Dope owns WorkspaceMode.
 
-Theia Perspectives may implement a mode adapter if sufficiently stable.
+Theia Perspectives/layout services may implement a mode adapter if sufficiently stable.
 
-Product state must not depend on Perspectives.
+Product state must not depend on framework layout identifiers.
 
 ## Authority decision
 
@@ -89,9 +87,9 @@ That rule remains authoritative, but its execution path is not part of Foundatio
 
 ## Upgradeability decision
 
-Upgradeability is tested immediately.
+Upgradeability is preserved as a design requirement, not tested through a synthetic Phase 0 version bump.
 
-The spike is incomplete until one Theia upgrade has been performed and fixes classified.
+The first natural Theia upgrade must be treated as a qualification event with explicit repair/coupling evidence. Broad private-shell repair, domain rewrites, or a framework fork remain failure signals at that time.
 
 ## Rejection conditions
 
@@ -100,7 +98,6 @@ Reconsider Theia if the spike shows:
 - product/domain objects tied to Theia internals
 - canonical Dope state requiring Theia-owned schemas
 - an early framework fork
-- unbounded upgrade repair
 - unreliable persistence/restart restoration
 - unworkable Linux packaging
 - extension/tooling incompatibility severe enough to undermine a serious IDE

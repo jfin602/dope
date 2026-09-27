@@ -11,9 +11,9 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 ## Current state
 
-Dope is a fresh repository at package version 0.0.0.
+Foundation Spike 0 is in progress at package version 0.0.3.
 
-No product implementation has been qualified yet.
+P1-P3 are committed and the runner is stopped at the P4 GUI qualification gate. No product phase has been qualified yet.
 
 The current engineering gate is:
 
@@ -202,7 +202,7 @@ Do not start broad product implementation.
 
 The Foundation Spike 0 prompt stack now exists under `docs/tasks/p0`.
 
-Validate and execute it through the normal phase runner, honoring the P4, P5, and P7 browser/GUI handoff gates.
+Continue the shortened stack from P4. P4 is the only required browser/GUI handoff; after its `0.0.4` commit, the normal runner owns P5 and P6 can close the spike.
 
 Phase 0 should prove only:
 - serious IDE basics
@@ -213,6 +213,5 @@ Phase 0 should prove only:
 - customization/rebinding
 - extension/tooling compatibility
 - Linux packaging
-- one Theia upgrade
 
-The spike must qualify or reject Theia before Product Phase 1 begins.
+The spike must qualify or reject Theia before Product Phase 1 begins. If it qualifies, run the required post-spike `/docs-review`, then activate Phase 1 with package baseline `0.1.0` before writing/running the `p1` stack.

@@ -162,7 +162,6 @@ The current spike qualifies Theia across:
 - restart restoration
 - deep customization/rebinding
 - Linux packaging
-- one framework-version upgrade
 
 Actual model integration, Agent Mind execution, tool calling, and editor-agent mutation are intentionally deferred.
 

@@ -52,7 +52,6 @@ Purpose:
 - prove minimal Dope-owned persistence and restart restoration
 - stress customization and service rebinding
 - prove Linux packaging
-- perform a framework-version upgrade
 
 The spike does not need to prove model integration, Agent Mind execution, tool calling, autonomous mutation, or the future shared coding loop.
 
@@ -65,7 +64,7 @@ Authority:
 
 Package family: 0.0.x
 
-No product phase may assume Theia qualified until this gate closes.
+No product phase may assume Theia qualified until this gate closes. Upgradeability remains a design requirement and will be qualified on the first natural Theia upgrade rather than through synthetic Phase 0 work.
 
 ## Product Phase 1 — IDE Alive
 

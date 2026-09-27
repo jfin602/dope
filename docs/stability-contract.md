@@ -29,7 +29,6 @@ Its required stability concerns are:
 - framework customization/coupling
 - extension/tooling compatibility
 - Linux packaging
-- one real Theia upgrade
 
 Agent State, Agent Runtime, model/provider execution, tool authority, AI mutation, scoped delegation, and ambient intelligence are not Foundation Spike 0 qualification requirements.
 
@@ -238,15 +237,17 @@ Do not infer compatibility from API claims alone.
 
 Desktop packaging evidence uses the produced package, not only the development server.
 
-At minimum verify launch, repository open, persistence restoration, required IDE basics, and the qualified custom Dope surfaces.
+For Foundation Spike 0, require a real Linux artifact plus native launch/process evidence outside the dev server, correct packaged resources/branding, and the strongest practical programmatic renderer smoke. P4 carries the direct GUI/IDE qualification for shared workbench behavior.
 
-## Upgrade qualification
+If the execution environment cannot directly inspect the native Linux Electron window, preserve that native visual portion as an explicit Evidence Gap rather than fabricating a pass. Phase 1 IDE Alive will perform deeper day-to-day native dogfooding.
 
-Foundation Spike 0 requires an actual Theia version upgrade.
+## Framework upgrade qualification
 
-Record baseline version, target version, dependency/config changes, source fixes, CSS/layout fixes, extension regressions, test/visual evidence, and private API coupling.
+A framework upgrade is qualified when a real upgrade is undertaken; Foundation Spike 0 does not perform a synthetic upgrade solely for evidence.
 
-"Builds after upgrade" alone is insufficient.
+For each real Theia upgrade, record baseline and target versions, dependency/config changes, source fixes, CSS/layout fixes, extension regressions, package/runtime evidence, and private API coupling.
+
+A successful build alone is not sufficient if the upgrade changes material IDE behavior.
 
 ## Visual/manual evidence
 

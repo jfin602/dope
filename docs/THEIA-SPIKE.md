@@ -4,11 +4,9 @@ Status: CURRENT ENGINEERING GATE
 
 ## Purpose
 
-Before major product development, try to break the Theia thesis.
+Before major product development, prove or reject the Theia substrate with the smallest useful feasibility test.
 
 The spike is not a product phase and is not a demo whose goal is to prove the decision correct.
-
-It is a bounded feasibility and upgradeability test for the IDE substrate.
 
 Initial pin:
 - Eclipse Theia 1.75.0
@@ -16,18 +14,16 @@ Initial pin:
 - Electron desktop target
 - Linux packaging target
 
-The upgrade experiment moves to the next stable release available when the test is executed.
-
 ## Success condition
 
-The substrate qualifies only if Dope can build a serious, materially customized desktop IDE on top of Theia while keeping Dope-owned product state independent from Theia internals and surviving a framework upgrade with bounded repair.
+The substrate qualifies if Dope can build a serious, materially customized IDE on Theia while keeping Dope-owned product state independent from Theia internals, using bounded/supported customization seams, and producing a viable Linux desktop package.
 
-The spike does not need to prove Dope's future AI runtime.
+The spike does not need to prove Dope's future AI runtime or perform a synthetic framework upgrade.
 
 ## IDE basics
 
 Prove:
-- branded Electron application
+- branded application
 - open a real repository
 - Monaco editing
 - TypeScript language features
@@ -36,7 +32,7 @@ Prove:
 - Git/SCM
 - integrated terminal
 - debugging
-- install/use at least one Open VSX extension
+- install/use Open VSX extensions
 
 ## Custom Dope UI
 
@@ -57,7 +53,7 @@ Prove:
 - Node backend service
 - typed frontend/backend request/response
 - at least one backend-originated state/event update reaching the frontend
-- cancellation/cleanup for any long-lived transport used by the spike
+- cleanup for any long-lived transport used by the spike
 - restart-safe service lifecycle
 
 Transport/framework choices must remain replaceable.
@@ -87,7 +83,7 @@ Exercise non-trivial customization:
 
 Record whether each change uses a supported contribution point, custom service/widget, supported rebinding, shell-level API, or private/internal API.
 
-Private/internal dependency is a risk and must be justified or removed.
+Broad private/internal dependence is a blocker unless explicitly accepted.
 
 ## Workspace mode experiment
 
@@ -95,9 +91,9 @@ Define Dope WorkspaceMode independently.
 
 Adapt at least BUILD and PLAN.
 
-If Theia Perspectives are used, keep them behind an adapter.
+If Theia Perspectives or layout services are used, keep them behind an adapter.
 
-Canonical product state must not depend on Perspectives.
+Canonical product state must not depend on framework layout identifiers.
 
 ## Extension/tooling matrix
 
@@ -114,30 +110,23 @@ Qualify:
 
 ## Packaging
 
-Produce a Linux desktop build that launches outside the dev server, opens a repository, restores custom state, and provides qualified editor/terminal/SCM basics plus the custom Dope surfaces.
+Produce a real Linux desktop artifact and prove it launches outside the development server with correct Dope packaging/resources.
 
-## Upgrade test
+P4 provides the direct GUI/workbench qualification. P5 provides native package/build/launch evidence. Native Electron visual interaction that cannot be observed programmatically may remain an explicit Evidence Gap rather than blocking the spike by itself.
 
-1. Complete the spike on Theia 1.75.0.
-2. Record exact dependency pin and candidate commit.
-3. Upgrade to the next stable Theia release available at execution.
-4. Record every source/config/dependency/CSS fix.
-5. Re-run the qualification matrix.
-6. Classify fixes by cause.
+## Upgradeability
 
-Desired result:
-- bounded compilation/config/CSS repairs
-- no Dope product-domain rewrite
-- no persistence-domain rewrite
-- no broad shell surgery
+Upgradeability remains important but is not a Foundation Spike 0 execution gate.
+
+Keep framework coupling isolated and documented. The first natural Theia upgrade should be treated as its own qualification event with repair/coupling evidence.
 
 ## AI scope
 
 Actual model integration is intentionally deferred.
 
-Foundation Spike 0 does not need to qualify:
+Foundation Spike 0 does not qualify:
 - a local model
-- OpenAI/Codex integration
+- OpenAI/Codex runtime integration
 - AgentWorkingState streaming
 - Agent Mind runtime behavior
 - tool calling
@@ -146,9 +135,7 @@ Foundation Spike 0 does not need to qualify:
 - editor-agent mutation flows
 - scoped delegation
 
-Theia AI remains eligible for later selective reuse behind a Dope adapter. Phase 0 should only prove that the substrate does not force Dope's future AI/product model into Theia-owned state.
-
-Provider/model independence is governed by ADR 0004.
+Theia AI remains eligible for later selective reuse behind a Dope adapter.
 
 ## Hard failure signals
 
@@ -159,15 +146,14 @@ Foundation Spike 0 is Not Green if unresolved:
 - broad private shell APIs are required
 - an early framework fork is required
 - restart restoration is unreliable
-- Linux packaging is not viable
+- Linux packaging cannot produce/launch a real desktop artifact
 - extension/tooling incompatibility undermines a serious IDE
-- upgrade requires extensive architectural rewrites
 
 ## Evidence states
 
 Each capability is Green, Not Green, or Evidence Gap.
 
-Evidence Gap is not a pass.
+Evidence Gap is not a pass, but a bounded non-substrate gap may be owner-accepted without being relabeled Green.
 
 Manual visual checks must record what was actually observed.
 
@@ -184,6 +170,5 @@ Do not build production Project Mind, production Planning, Agent Mind, final per
 5. Can BUILD and PLAN surfaces be expressed without framework-owned canonical state?
 6. Did restart restoration work?
 7. Did commodity IDE functionality remain strong?
-8. Did packaging work?
-9. Did the upgrade test remain bounded?
-10. What architecture changes are required before Product Phase 1?
+8. Can the application be packaged and launched as a real Linux desktop product?
+9. What architecture changes are required before Product Phase 1?

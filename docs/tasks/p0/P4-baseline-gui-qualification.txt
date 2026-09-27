@@ -1,4 +1,4 @@
-TASK: Phase 0 / P4 — Baseline Theia 1.75 GUI and tooling qualification
+TASK: Phase 0 / P4 — Foundation IDE GUI and tooling qualification
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
@@ -9,17 +9,17 @@ VERSIONING
 
 GOAL
 
-Qualify the exact committed P3 candidate on Theia 1.75.0 through real GUI/workbench paths.
+Qualify the exact committed P3 candidate through the real shared Theia workbench once. This is the single mandatory GUI/browser evidence gate for Foundation Spike 0.
 
-This is a browser/GUI evidence gate. Do not expand Phase 0 scope.
+Do not expand Phase 0 scope.
 
 PREFLIGHT
 
-Read all Phase 0 authority, P1-P3 source/tests, `docs/tasks/p0/customization-coupling-ledger.md`, and the assessment/implementation plan.
+Read all Phase 0 authority, P1-P3 source/tests, `docs/tasks/p0/customization-coupling-ledger.md`, and the current assessment/implementation plan.
 
 Require the deterministic P3 matrix Green enough to justify GUI qualification.
 
-Use a controlled real fixture repository/workspace with known TypeScript/JavaScript, JSON and Markdown files plus a small debuggable Node program.
+Use a controlled real fixture repository/workspace with TypeScript/JavaScript, JSON, Markdown and a small debuggable Node program.
 
 GUI MATRIX
 
@@ -44,7 +44,7 @@ Prove actual VS Code/Open VSX compatibility:
 - Prettier installs/loads and performs one observable function;
 - one additional non-AI extension installs/loads and performs one observable function.
 
-Record exact extension IDs and versions plus whether each is bundled or runtime-installed.
+Record exact extension IDs/versions and whether each is bundled or runtime-installed.
 
 DOPE SURFACES
 
@@ -63,28 +63,27 @@ PERSISTENCE / RESTART
 Through the spike UI:
 1. create or update a Note;
 2. record its stable ID/content;
-3. restart the relevant running application path;
+3. restart the running qualification application;
 4. reopen the same workspace;
 5. verify the same canonical Note reconstructs.
 
-Browser-target evidence proves shared frontend behavior only. Do not label Electron-only behavior Green unless Electron was actually exercised.
+This gate qualifies shared workbench behavior. Do not claim native Electron-window evidence unless actually observed.
 
 BOUNDED REPAIR
 
-A Phase 0 GUI defect may receive the smallest bounded repair with regression coverage.
+A Phase 0 GUI defect may receive the smallest bounded repair with permanent regression coverage where practical.
 
 Do not add AI or production Project Mind/Planning behavior.
 
 EVIDENCE
 
-Create `docs/tasks/p0/P4-baseline-gui-evidence.md` containing:
+Create `docs/tasks/p0/P4-gui-evidence.md` containing:
 - exact candidate SHA/version/Theia version;
 - environment;
 - commodity IDE matrix;
 - extension IDs/versions/results;
 - custom surface/layout/rebind results;
 - persistence/restart result;
-- browser versus Electron evidence distinction;
 - repairs;
 - automated rerun;
 - Green / Not Green / Evidence Gap truth.
@@ -93,7 +92,7 @@ Set `package.json` version to `0.0.4`.
 
 VALIDATION
 
-After any repair, rerun affected focused tests and the broad deterministic matrix including builds, typecheck, runner tests, version coherence, no-package-lock check and `git diff --check`.
+After any repair, rerun affected focused tests and the broad deterministic matrix including builds, typecheck, runner tests, Theia-version coherence, no-package-lock check and `git diff --check`.
 
 GIT / MANUAL HANDOFF
 
@@ -107,4 +106,4 @@ After successful completion:
 
 FINAL RESPONSE
 
-Report exact candidate, GUI matrix, extension matrix, custom Dope surface result, persistence/restart result, repairs, automated validation, evidence gaps, and whether P5 is unblocked.
+Report exact candidate, GUI matrix, extension matrix, custom Dope surface result, persistence/restart result, repairs, automated validation, Evidence Gaps, and whether P5 is unblocked.

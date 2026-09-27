@@ -216,7 +216,6 @@ Foundation Spike 0 proves:
 - restart restoration
 - customization/rebinding
 - Linux packaging
-- upgradeability
 
 It does not need to prove:
 - model integration
@@ -307,9 +306,9 @@ Deep shell coupling should be isolated behind Dope adapters.
 
 ## Upgradeability
 
-Foundation Spike 0 builds on pinned Theia 1.75.0, then upgrades to the next stable release available for the test and records every required fix.
+Upgradeability remains an architectural design requirement, not a Foundation Spike 0 execution gate.
 
-If a routine upgrade requires architectural rewrites because Dope depends on internal shell behavior, the spike is Not Green until coupling is removed or explicitly accepted.
+Dope should continue to isolate framework coupling, prefer supported extension/rebinding seams, and avoid private shell internals. When a real Theia upgrade is undertaken, treat that upgrade as a qualification event: record required dependency/config/source/CSS repairs, rerun the affected IDE/package evidence, and reject broad product-domain rewrites or framework forks unless explicitly accepted.
 
 ## Extension compatibility
 

@@ -42,7 +42,6 @@ For Foundation Spike 0, review and implementation scope is limited to:
 - restart restoration
 - extension/tooling compatibility
 - Linux packaging
-- Theia upgradeability
 
 Foundation Spike 0 must not add actual model integration, Agent Mind runtime behavior, tool execution, authority execution, editor-agent mutation, scoped delegation, or ambient intelligence unless the approved Phase 0 authority is explicitly changed first.
 
@@ -78,7 +77,7 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 - Architecture models should derive from observable reality where possible and label inference or proposal state separately.
 - Prefer standard framework extension points over shell internals; isolate unavoidable deep Theia coupling.
 - Forking Theia is a last resort and a failed-spike signal unless explicitly accepted.
-- Preserve upgradeability as a tested property.
+- Preserve upgradeability as a design property; qualify it when a real framework upgrade is undertaken rather than forcing synthetic upgrade work into an unrelated phase.
 
 ## Review standard
 
