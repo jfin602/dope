@@ -1,6 +1,6 @@
 {
   "name": "dope",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "type": "module",
   "packageManager": "yarn@1.22.22",
@@ -12,6 +12,7 @@
     "build:extension": "corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/theia-extension build",
     "build:browser": "corepack yarn build:extension && corepack yarn workspace @dope/browser build",
     "build:electron": "corepack yarn build:extension && corepack yarn workspace @dope/electron build",
+    "package:linux": "(test -f plugins/vscode.javascript/extension/package.json || npm run download:plugins) && npm run build:electron && corepack yarn workspace @dope/electron package:linux",
     "start:browser": "npm run download:plugins && corepack yarn workspace @dope/browser start",
     "start:electron": "npm run download:plugins && corepack yarn workspace @dope/electron start",
     "download:plugins": "theia download:plugins",
