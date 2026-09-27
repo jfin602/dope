@@ -24,9 +24,11 @@ Initial spike pin:
 - desktop target: Electron;
 - Node baseline for the spike: Node 24 major;
 - Linux desktop packaging is required;
-- Theia AI is optional infrastructure behind a Dope adapter, not a product model.
+- Theia AI is optional future infrastructure behind a Dope adapter, not a product model.
 
 The spike exists to try to break the Theia thesis before Dope becomes deeply coupled to it.
+
+Foundation Spike 0 qualifies the IDE substrate only. It must not grow model integration, Agent Mind execution, tool execution, AI mutation, scoped delegation, or ambient intelligence merely to exercise future architecture.
 
 Historical planning source:
 - docs/foundation-context.md
@@ -45,6 +47,7 @@ Current authority:
 - docs/roadmap/mvp-roadmap.md
 - docs/planning/foundation-spike-0/decision-record.md
 - docs/planning/foundation-spike-0/qualification-plan.md
+- docs/decisions/0004-model-provider-independence.md
 
 ## Product premise
 
@@ -58,9 +61,23 @@ Dope should feel like an exoskeleton for programming, not a replacement programm
 
 The fundamental interaction unit is the development session, not the prompt.
 
+## Initial roadmap
+
+The initial sequence is intentionally small:
+
+Foundation Spike 0 — qualify Theia
+-> Phase 1 — IDE Alive
+-> Phase 2 — Project Mind
+-> Phase 3 — Planning
+-> Phase 4 — AI Presence
+-> Phase 5 — Scoped Delegation
+-> Phase 6 — Development Sessions
+
+Do not pull later-phase concepts forward merely because they already exist in the long-term product model.
+
 ## Product shape
 
-BUILD includes editor, terminal, debugger, tests, source control, runtime, agent execution, and code review.
+BUILD includes editor, terminal, debugger, tests, source control, runtime, agent execution when delegated, and code review.
 
 THINK includes notes, ideas, questions, research, decisions, plans, architecture, and exploration.
 
@@ -76,58 +93,64 @@ Theia is the initial IDE/workbench substrate.
 
 The product architecture is not "Theia IDE + plugins."
 
-Conceptual layers:
+Current/early layers:
 
 Dope desktop / Theia workbench
 -> Dope presentation adapters and widgets
 -> Application / orchestration
--> Project Intelligence + Agent Runtime
--> Model / tool / execution / persistence adapters
+-> Project Intelligence / Planning
+-> Persistence adapters
 
-Project Intelligence and Agent Runtime are presentation-independent.
+Later AI layers:
 
-Theia AI may be used selectively behind an adapter. Theia AI agent/chat abstractions do not define Dope's product domain.
+Agent Runtime
+-> Model Runtime / Tool Runtime / Authority
+-> provider and execution adapters
 
-## Core product state
+Project Intelligence, Planning, and later Agent Runtime remain presentation-independent.
 
-The project brain owns durable project artifacts such as:
+Theia AI may be used selectively behind an adapter when AI Presence is implemented. Theia AI agent/chat abstractions do not define Dope's product domain.
+
+## Project Mind
+
+Project Mind is the developer-facing durable project memory.
+
+Project Intelligence is the internal domain/service boundary that implements it.
+
+Initial Project Mind scope begins with:
 - Note
 - Idea
 - Question
-- Research
 - Decision
-- Plan
-- Task
-- DeveloperSession
-- ArchitectureModel
-- ChangeSet
-- Validation
 
-Agent Mind is a structured projection containing at least:
-- objective
-- current step
-- plan
-- assumptions
-- decisions
-- questions
-- risks
-- uncertainties
-- working set
-- ownership
-- pending actions
-- validation state
+Later phases add Plans, Tasks, Agent Mind, DeveloperSession, ChangeSet, Validation, Research, and ArchitectureModel according to the roadmap.
 
-Chat is one interface for manipulating this state. Chat history is not the canonical state.
+Chat is one interface for manipulating project state. Chat history is not canonical product state.
+
+## Model and provider independence
+
+Dope is not married to any model, model family, provider, hosted service, local runtime, or provider-native chat/session format.
+
+First-class compatibility targets include:
+- OpenAI / ChatGPT / Codex
+- local models and local inference runtimes
+- future providers through replaceable capability-based adapters
+
+No provider owns Project Mind, Planning, Agent Mind, Sessions, Authority, Decisions, or Validation.
+
+The current GPT-6 Sol/Codex repository workflow is a development-tooling choice, not Dope's runtime architecture.
 
 ## Authority
 
-Models do not receive direct filesystem/process mutation authority.
+When mutation-capable AI is introduced, models do not receive direct filesystem/process mutation authority.
 
 AI -> ProposedAction -> Authority/Permission Layer -> ToolExecutor -> effect
 
 Observation and mutation permissions are distinct.
 
 Human, AI, and shared ownership may differ across portions of one task.
+
+This is a future product invariant, not a Foundation Spike 0 implementation requirement.
 
 ## Relationship to George
 
@@ -159,6 +182,17 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 Do not start broad product implementation.
 
-The next planning sequence should decompose Foundation Spike 0 into bounded prompts after the current documentation foundation is reviewed.
+The next planning sequence should decompose the narrowed Foundation Spike 0 into bounded prompts.
 
-The spike must qualify or reject Theia before the first real product phase begins.
+Phase 0 should prove only:
+- serious IDE basics
+- custom Dope UI/layout
+- typed frontend/backend seams
+- minimal Dope-owned persistence
+- restart restoration
+- customization/rebinding
+- extension/tooling compatibility
+- Linux packaging
+- one Theia upgrade
+
+The spike must qualify or reject Theia before Product Phase 1 begins.

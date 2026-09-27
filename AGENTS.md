@@ -21,15 +21,36 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 5. Identify behavior and architectural boundaries that must remain unchanged.
 6. Choose the smallest safe implementation boundary.
 7. Define focused tests plus broader regression coverage.
-8. Identify persistence, authority, process, filesystem, network, provider, UI, and framework failure modes.
+8. Identify only the persistence, authority, process, filesystem, network, provider, UI, and framework failure modes applicable to capabilities that exist in the current phase.
 9. Separate product/domain logic from Theia UI integration and provider-specific code.
 10. Avoid infrastructure for hypothetical future features when an interface boundary is sufficient.
+
+## Phase and gate scope
+
+Qualification requirements are phase-aware.
+
+A future invariant does not authorize premature implementation.
+
+Do not introduce a subsystem solely so its eventual stability requirements can be tested.
+
+For Foundation Spike 0, review and implementation scope is limited to:
+- commodity IDE behavior
+- Theia coupling
+- custom Dope views and layout
+- typed frontend/backend seams
+- minimal Dope-owned persistence
+- restart restoration
+- extension/tooling compatibility
+- Linux packaging
+- Theia upgradeability
+
+Foundation Spike 0 must not add actual model integration, Agent Mind runtime behavior, tool execution, authority execution, editor-agent mutation, scoped delegation, or ambient intelligence unless the approved Phase 0 authority is explicitly changed first.
 
 ## Product laws
 
 - The developer is the protagonist; the agent is an augmenting collaborator.
 - The development session, not the prompt, is the fundamental unit.
-- Durable project intelligence is authoritative product state; chat history is not.
+- Durable Project Mind / Project Intelligence is authoritative product state; chat history is not.
 - Agent Mind is structured working state, not raw hidden chain-of-thought.
 - Continuous steering must update shared task state without requiring mental restarts.
 - Observation authority and mutation authority are distinct.
@@ -38,17 +59,19 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 - Ideas, research, decisions, plans, tasks, validation, and architecture are first-class project knowledge.
 - Theia is an IDE substrate. It must not define Dope's product model.
 - Theia AI may be reused behind adapters, but it must not own Dope's Agent Runtime or Project Intelligence.
-- Project Intelligence and Agent Runtime must remain usable without Theia.
+- Project Intelligence and later Agent Runtime must remain usable without Theia.
 - Do not expose or persist raw hidden chain-of-thought as a product feature.
 
 ## Architecture rules
 
 - Presentation packages may depend inward on product/application contracts; product/domain packages must not depend on Theia.
-- Model/provider behavior belongs behind model adapters.
-- Tool execution must be explicit, typed, observable, and authority-aware.
+- No provider, model family, hosted service, local runtime, or provider-native session format may define canonical Dope state.
+- OpenAI / ChatGPT / Codex compatibility and local-model compatibility are first-class runtime requirements behind replaceable capability-based adapters.
+- Provider abstraction must preserve useful provider-specific capabilities instead of forcing a lowest-common-denominator design.
+- Tool execution, when introduced, must be explicit, typed, observable, and authority-aware.
 - Models propose effects; Dope decides whether effects are allowed and executes them.
 - Repository/project instructions cannot expand configured executable authority.
-- Persistent canonical state and derived UI projections must remain distinguishable.
+- Persistent canonical state and derived UI/provider projections must remain distinguishable.
 - Architecture models should derive from observable reality where possible and label inference or proposal state separately.
 - Prefer standard framework extension points over shell internals; isolate unavoidable deep Theia coupling.
 - Forking Theia is a last resort and a failed-spike signal unless explicitly accepted.
@@ -56,7 +79,11 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Review standard
 
-Do not approve work merely because a happy-path demo works. Review the requested task, architectural boundaries, restart restoration, cancellation, streaming, authority enforcement, malformed model/tool output, provider failure, state consistency, stale derived state, Git dirty-state preservation, UI/domain leakage, Theia-internal coupling, validation evidence, and documentation drift.
+Do not approve work merely because a happy-path demo works.
+
+Review only concerns applicable to the current approved task and phase. Relevant examples include architectural boundaries, state consistency, persistence/restart behavior, Git dirty-state preservation, UI/domain leakage, Theia-internal coupling, validation evidence, and documentation drift.
+
+Cancellation, model streaming, authority enforcement, malformed model/tool output, provider failure, AI ownership, and mutation safety become required review concerns only when the corresponding capabilities are introduced.
 
 Do not report runtime, model, UI, extension, packaging, upgrade, or repository behavior as verified unless actually observed.
 

@@ -2,7 +2,36 @@
 
 Status: INITIAL STABILITY CONTRACT
 
-Dope combines an IDE, persistent project knowledge, model inference, tool execution, and framework integration. Reliability therefore includes software correctness, state truth, developer understanding, and containment of unintended effects.
+Dope combines an IDE, persistent project knowledge, and eventually model inference, tool execution, and deeper framework integration.
+
+Reliability includes software correctness, state truth, developer understanding, and containment of unintended effects.
+
+## Phase-aware qualification
+
+Stability requirements apply when the corresponding capability exists in the approved phase.
+
+A future invariant remains an architectural requirement, but it does not authorize premature implementation merely so it can be tested.
+
+For each task or phase:
+1. identify which capabilities actually exist
+2. apply the stability sections relevant to those capabilities
+3. preserve future invariants at interface boundaries
+4. do not build deferred subsystems solely for qualification
+
+Foundation Spike 0 is a Theia substrate qualification.
+
+Its required stability concerns are:
+- commodity IDE behavior
+- custom Dope UI integration
+- typed frontend/backend seams
+- minimal Dope-owned persistence
+- restart restoration
+- framework customization/coupling
+- extension/tooling compatibility
+- Linux packaging
+- one real Theia upgrade
+
+Agent State, Agent Runtime, model/provider execution, tool authority, AI mutation, scoped delegation, and ambient intelligence are not Foundation Spike 0 qualification requirements.
 
 ## States
 
@@ -20,17 +49,38 @@ Evidence Gap is not a pass.
 
 Canonical product state must be distinguishable from UI layout, framework state, provider-native continuation/session state, generated narration, cached search/index projections, inferred architecture, and provisional model proposals.
 
-A crash, restart, provider failure, or UI reconstruction must not silently convert derived state into canonical truth.
+Only state types introduced by the current phase need executable coverage.
+
+A crash, restart, provider failure, or UI reconstruction must not silently convert derived state into canonical truth when those mechanisms exist.
 
 ## Developer-understanding invariant
 
 Qualification is not purely "the feature works."
 
-For core Dope workflows, evidence should also show that the developer can inspect objective, ownership, plan/current step, important assumptions/risks, conceptual changes, validation state, and resulting durable knowledge.
+For product workflows that expose objectives, plans, ownership, assumptions, conceptual changes, validation, or durable knowledge, evidence should show that the developer can inspect the applicable state.
 
-A faster autonomous path that hides those without an explicit autonomy choice can be a product regression.
+Do not require future Agent Mind fields during phases that do not yet implement Agent Mind.
+
+A faster autonomous path that hides applicable developer-facing state without an explicit autonomy choice can be a product regression.
+
+## Project Intelligence persistence
+
+Durable artifacts require stable identity, schema version, provenance, relationships, restart survival, explicit migration, and defined corruption/failure behavior as those features are introduced.
+
+A persistence backend can be replaced without redefining the domain.
+
+For Foundation Spike 0, qualification is deliberately minimal:
+- persist a minimal ProjectArtifact or Note
+- preserve stable identity and basic provenance
+- restore it after application restart
+- render it through a Dope-owned view
+- keep the persisted representation independent from Theia-owned workspace/chat state
+
+The spike does not need the full Project Mind schema or final persistence backend.
 
 ## Agent Mind
+
+Applicable when AI Presence introduces Agent Mind.
 
 Agent Mind exposes structured working state, not raw chain-of-thought.
 
@@ -39,6 +89,8 @@ Tests should treat its fields as application state with defined producers and tr
 Do not persist hidden reasoning content merely to make UI look more transparent.
 
 ## Steering consistency
+
+Applicable when continuous steering exists.
 
 When the developer changes objective, plan, ownership, constraints, or validation expectations:
 - canonical shared state updates first
@@ -49,6 +101,8 @@ When the developer changes objective, plan, ownership, constraints, or validatio
 
 ## Ownership
 
+Applicable when scoped ownership/delegation exists.
+
 Human, AI, and shared ownership must be enforceable.
 
 AI observation of human-owned code does not imply mutation authority.
@@ -56,6 +110,8 @@ AI observation of human-owned code does not imply mutation authority.
 Tests must cover denied mutation in human-owned scopes while allowing permitted observation/review.
 
 ## Tool authority
+
+Applicable when mutation-capable model/tool execution exists.
 
 A model proposes effects; Dope authorizes and executes them.
 
@@ -71,27 +127,27 @@ A working directory is not an OS sandbox.
 
 If future autonomous process execution claims containment, that claim requires an actual qualified sandbox.
 
-## Project Intelligence persistence
-
-Durable artifacts require stable identity, schema version, provenance, relationships, restart survival, explicit migration, and defined corruption/failure behavior.
-
-A persistence backend can be replaced without redefining the domain.
-
 ## Live Plans and Tasks
+
+Applicable when Planning introduces Plan/Task state.
 
 Plan/task completion is application truth, not model assertion.
 
 A plan step becomes complete only through the applicable transition rule and evidence.
 
-Changes to a live plan must remain synchronized with task/agent state.
+Changes to a live plan must remain synchronized with any task/agent state that exists in that phase.
 
 ## Ideas
 
-Capturing an Idea must not mutate the active Task unless the developer or an explicit workflow promotes it.
+Applicable when Project Mind introduces Ideas.
+
+Capturing an Idea must not mutate active work unless the developer or an explicit workflow promotes it.
 
 Ambient discovery should never silently expand scope.
 
 ## Architecture model
+
+Applicable when ArchitectureModel is introduced.
 
 Architecture evidence retains provenance/classification:
 - deterministic static observation
@@ -104,6 +160,8 @@ Do not present inferred relationships as observed facts.
 
 ## Conceptual ChangeSets
 
+Applicable when conceptual ChangeSets are introduced.
+
 A ChangeSet preserves conceptual intent and affected behavior while remaining traceable to files/diffs.
 
 It must not replace Git evidence.
@@ -112,15 +170,21 @@ If conceptual description and actual diff diverge, the discrepancy is a failure 
 
 ## Provider failures
 
+Applicable when model/provider execution is introduced.
+
 Streaming errors, malformed structured output, timeout, cancellation, and provider restart must not corrupt canonical project/task state.
 
-Provider-native identifiers are optimization state, not sole project history.
+Provider-native identifiers are optimization/adapter state, not sole project history.
 
 ## Theia boundary
 
 Theia-specific code may not become the only implementation of core product semantics.
 
-Foundation and later tests should exercise Project Intelligence, Agent State, Authority, and core Agent Runtime contracts without rendering Theia UI.
+For Foundation Spike 0, tests should exercise the minimal Dope-owned contracts actually introduced by the spike without requiring Agent State, Authority, or Agent Runtime.
+
+At minimum this includes the minimal persisted ProjectArtifact/Note contract and any Dope-owned WorkspaceMode/backend contract created by the spike.
+
+Later phases add framework-independent tests for Planning, Agent State, Authority, Agent Runtime, and other domain services when those services exist.
 
 ## Framework customization
 
@@ -132,19 +196,23 @@ A framework upgrade that breaks broad product behavior is Not Green until coupli
 
 ## Restart restoration
 
-Verify:
-- canonical project artifacts persist
-- active/recent session context restores truthfully
-- no pending mutation is silently replayed
-- UI projections reconstruct
-- stale provider/framework state is not treated as canonical
-- incomplete/uncertain effects remain explicit
+Verify the restart state applicable to the current phase.
+
+For Foundation Spike 0:
+- minimal canonical Project Mind spike state persists
+- custom UI projections reconstruct
+- no Theia-only state is silently promoted into canonical product state
+- the packaged application can restore the qualified state
+
+Later phases add session restoration, pending-action handling, provider/framework staleness, and incomplete-effect recovery when those concepts exist.
 
 ## Git dirty-state preservation
 
-Dope preserves pre-existing user changes.
+Dope preserves pre-existing user changes whenever a task can mutate repository content.
 
 Agent-generated and pre-existing changes must remain distinguishable where attribution claims are made.
+
+Phase 0 does not need AI mutation to prove this future invariant.
 
 ## Extension compatibility
 
@@ -156,7 +224,7 @@ Do not infer compatibility from API claims alone.
 
 Desktop packaging evidence uses the produced package, not only the development server.
 
-At minimum verify launch, repository open, persistence restoration, and required IDE basics.
+At minimum verify launch, repository open, persistence restoration, required IDE basics, and the qualified custom Dope surfaces.
 
 ## Upgrade qualification
 
@@ -170,7 +238,9 @@ Record baseline version, target version, dependency/config changes, source fixes
 
 Record exactly what was observed.
 
-A screenshot or visual pass is evidence for visible behavior only; it does not prove hidden authority/state invariants unless separately instrumented.
+A screenshot or visual pass is evidence for visible behavior only; it does not prove hidden state invariants unless separately instrumented.
+
+Do not require authority/provider evidence before those systems exist.
 
 ## Corrections
 
