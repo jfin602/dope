@@ -1,0 +1,146 @@
+TASK: Phase 0 / P8 — Foundation Spike 0 closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.0.8`.
+
+GOAL
+
+Perform evidence-only closeout for Foundation Spike 0 from the exact P7 candidate.
+
+Do not implement product behavior, repair defects, broaden Phase 0, or create Product Phase 1 prompts.
+
+SOURCE OF TRUTH
+
+Read:
+- `BOOT.md`;
+- `AGENTS.md`;
+- `docs/THEIA-SPIKE.md`;
+- `docs/ARCHITECTURE.md`;
+- `docs/stability-contract.md`;
+- `docs/planning/foundation-spike-0/decision-record.md`;
+- `docs/planning/foundation-spike-0/qualification-plan.md`;
+- `docs/tasks/p0/prompt-assessment.md`;
+- `docs/tasks/p0/implementation-plan.md`;
+- `docs/tasks/p0/customization-coupling-ledger.md`;
+- P4 baseline GUI evidence;
+- P5 Linux package evidence;
+- P6 upgrade repair ledger;
+- P7 upgraded qualification evidence;
+- exact reachable P1-P7 commits/source/tests.
+
+REQUIRED AUDIT
+
+Audit Gate A-G exactly:
+
+A. Bootstrap and commodity IDE:
+- branded app;
+- real repository;
+- explorer;
+- Monaco/editor;
+- TypeScript;
+- Git/SCM;
+- terminal;
+- debugger;
+- Open VSX.
+
+B. Dope UI surface:
+- Project Mind spike view;
+- Planning spike view;
+- BUILD/PLAN;
+- styling/branding;
+- unwanted UI customization;
+- no canonical widget/layout dependence.
+
+C. Typed backend + minimal persistence:
+- typed request/response;
+- backend-originated update;
+- cleanup;
+- stable ProjectArtifact/Note;
+- restart reconstruction;
+- no framework-chat canonical state.
+
+D. Customization stress:
+- layout;
+- hidden/replaced UI;
+- real service rebind/replacement;
+- coupling ledger;
+- no broad private/internal dependence.
+
+E. Extension/tooling:
+- TypeScript/JavaScript;
+- JSON;
+- Markdown;
+- Node debug;
+- Git;
+- terminal;
+- ESLint;
+- Prettier;
+- additional Open VSX extension.
+
+F. Linux packaging:
+- real artifact;
+- launch outside dev server;
+- repository open;
+- persistence restore;
+- IDE/custom surfaces.
+
+G. Upgrade:
+- exact 1.75 -> 1.76 transition;
+- repair ledger;
+- rerun evidence;
+- no domain rewrite;
+- no broad shell surgery.
+
+EVIDENCE RULES
+
+Preserve Green / Not Green / Evidence Gap truth.
+
+A build alone does not prove GUI behavior.
+
+Browser-target evidence does not prove Electron-only behavior.
+
+An owner-waivable Evidence Gap is not automatically Green.
+
+Hard substrate blockers cannot be relabeled Green.
+
+RE-RUN
+
+Run the current deterministic Phase 0 aggregate checks, runner tests, typecheck, browser build, Electron build, Theia-version coherence, package build/preview as appropriate, no-package-lock check and `git diff --check`.
+
+Do not perform source repair if anything fails; record Not Green.
+
+CLOSEOUT OUTPUT
+
+Create/update `docs/tasks/p0/closeout.md` with:
+- exact baseline and final SHA/version;
+- exact Theia versions;
+- Gate A-G table;
+- customization-coupling summary;
+- package summary;
+- upgrade repair summary;
+- remaining Evidence Gaps;
+- explicit substrate decision: Qualified / Not Qualified;
+- architecture amendments required before Product Phase 1.
+
+If Qualified:
+- mark `docs/tasks/p0/README.md` COMPLETE / GREEN;
+- update `docs/planning/foundation-spike-0/decision-record.md` with executed evidence;
+- update ADR 0001 from provisional to accepted if supported;
+- update `BOOT.md` to state Foundation Spike 0 qualified;
+- set the next required action to post-spike `/docs-review`;
+- do not approve or generate Product Phase 1 implementation automatically.
+
+If Not Qualified:
+- preserve exact blockers;
+- keep or update the Theia decision status truthfully;
+- leave Product Phase 1 blocked.
+
+Set `package.json` version to `0.0.8`.
+
+FINAL RESPONSE
+
+Report exact final candidate, Gate A-G disposition, substrate decision, package result, 1.75 -> 1.76 repair burden, private/internal coupling, remaining Evidence Gaps, docs updated, and the required next action.

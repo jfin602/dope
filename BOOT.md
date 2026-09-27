@@ -182,7 +182,9 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 Do not start broad product implementation.
 
-The next planning sequence should decompose the narrowed Foundation Spike 0 into bounded prompts.
+The Foundation Spike 0 prompt stack now exists under `docs/tasks/p0`.
+
+Validate and execute it through the normal phase runner, honoring the P4, P5, and P7 browser/GUI handoff gates.
 
 Phase 0 should prove only:
 - serious IDE basics

@@ -1,0 +1,87 @@
+TASK: Phase 0 / P6 — Theia 1.76 upgrade and bounded repair
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.0.6`.
+
+GOAL
+
+Perform the Foundation Spike upgrade experiment from the exact Theia 1.75 P5 candidate to the immediate stable successor, Theia 1.76.0, and measure the real coupling cost.
+
+Read all Phase 0 authority, P4/P5 evidence and the customization-coupling ledger before editing.
+
+UPGRADE
+
+Upgrade all directly controlled coherent Theia framework dependencies from exactly `1.75.0` to exactly `1.76.0`.
+
+Do not use `next`, canary, preview, or mixed minor versions.
+
+Keep the Dope-owned domain shape stable.
+
+Do not rewrite ProjectArtifact/Note/persistence semantics merely to make the framework upgrade easier.
+
+REPAIR BOUND
+
+Repair only issues caused by the 1.75 -> 1.76 framework transition.
+
+Allowed categories:
+- dependency/version alignment;
+- supported API rename/signature changes;
+- application configuration;
+- generated/esbuild configuration;
+- CSS/layout adaptation;
+- extension compatibility;
+- Electron/package configuration.
+
+Failure signals:
+- broad private-shell surgery;
+- framework fork;
+- Project Mind/domain rewrite;
+- persistence-domain rewrite;
+- product architecture change;
+- material new abstraction introduced only to survive the upgrade.
+
+If a failure signal is required, stop `Not Green / Planning needed`.
+
+UPGRADE LEDGER
+
+Create `docs/tasks/p0/P6-upgrade-repair-ledger.md`.
+
+For every repair record:
+- symptom;
+- cause;
+- affected files;
+- category;
+- public/supported API versus private/internal API;
+- repair size;
+- whether P2's coupling classification changed;
+- regression coverage.
+
+AUTOMATED REQUALIFICATION
+
+Rerun:
+- dependency/version coherence;
+- ProjectArtifact/Note persistence tests;
+- backend contract/event tests;
+- WorkspaceMode/customization tests;
+- runner tests;
+- typecheck;
+- browser build;
+- Electron build;
+- deterministic aggregate checks;
+- Linux package build or package-preview path sufficient to catch packaging regressions before P7;
+- no-`package-lock.json` check;
+- `git diff --check`.
+
+Update any automation that hard-coded 1.75 only where the Phase 0 contract now intentionally expects 1.76 after the upgrade.
+
+Do not rewrite P4/P5 historical evidence.
+
+Set `package.json` version to `0.0.6`.
+
+FINAL RESPONSE
+
+Report exact 1.75 source, exact 1.76 target, repair count/categories, any private/internal coupling, automated result, package/build result, remaining gaps, and whether P7 GUI qualification is unblocked.

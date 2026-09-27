@@ -1,0 +1,110 @@
+TASK: Phase 0 / P4 — Baseline Theia 1.75 GUI and tooling qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.0.4`.
+
+GOAL
+
+Qualify the exact committed P3 candidate on Theia 1.75.0 through real GUI/workbench paths.
+
+This is a browser/GUI evidence gate. Do not expand Phase 0 scope.
+
+PREFLIGHT
+
+Read all Phase 0 authority, P1-P3 source/tests, `docs/tasks/p0/customization-coupling-ledger.md`, and the assessment/implementation plan.
+
+Require the deterministic P3 matrix Green enough to justify GUI qualification.
+
+Use a controlled real fixture repository/workspace with known TypeScript/JavaScript, JSON and Markdown files plus a small debuggable Node program.
+
+GUI MATRIX
+
+Exercise and record:
+- repository/workspace open;
+- explorer navigation;
+- editor open/edit/save;
+- TypeScript/JavaScript language behavior;
+- JSON editing;
+- Markdown editing;
+- search;
+- Git/SCM detects a controlled dirty change and returns clean after restoration;
+- integrated terminal executes a harmless command;
+- Node debugger hits a real breakpoint;
+- Problems/markers visibly appear for a controlled problem and clear after repair.
+
+EXTENSION MATRIX
+
+Prove actual VS Code/Open VSX compatibility:
+- Open VSX access;
+- ESLint installs/loads and performs one observable function;
+- Prettier installs/loads and performs one observable function;
+- one additional non-AI extension installs/loads and performs one observable function.
+
+Record exact extension IDs and versions plus whether each is bundled or runtime-installed.
+
+DOPE SURFACES
+
+Verify:
+- Project Mind spike view;
+- Planning spike view;
+- BUILD mode;
+- PLAN mode;
+- meaningful layout difference;
+- Dope branding/styling;
+- selected hidden/replaced standard UI;
+- the P2 service rebind/replacement has its intended effect.
+
+PERSISTENCE / RESTART
+
+Through the spike UI:
+1. create or update a Note;
+2. record its stable ID/content;
+3. restart the relevant running application path;
+4. reopen the same workspace;
+5. verify the same canonical Note reconstructs.
+
+Browser-target evidence proves shared frontend behavior only. Do not label Electron-only behavior Green unless Electron was actually exercised.
+
+BOUNDED REPAIR
+
+A Phase 0 GUI defect may receive the smallest bounded repair with regression coverage.
+
+Do not add AI or production Project Mind/Planning behavior.
+
+EVIDENCE
+
+Create `docs/tasks/p0/P4-baseline-gui-evidence.md` containing:
+- exact candidate SHA/version/Theia version;
+- environment;
+- commodity IDE matrix;
+- extension IDs/versions/results;
+- custom surface/layout/rebind results;
+- persistence/restart result;
+- browser versus Electron evidence distinction;
+- repairs;
+- automated rerun;
+- Green / Not Green / Evidence Gap truth.
+
+Set `package.json` version to `0.0.4`.
+
+VALIDATION
+
+After any repair, rerun affected focused tests and the broad deterministic matrix including builds, typecheck, runner tests, version coherence, no-package-lock check and `git diff --check`.
+
+GIT / MANUAL HANDOFF
+
+This prompt runs outside the normal phase runner.
+
+After successful completion:
+- commit all prompt-owned changes once;
+- use exact commit subject `0.0.4`;
+- leave the repository clean;
+- do not create any additional prompt-owned commit.
+
+FINAL RESPONSE
+
+Report exact candidate, GUI matrix, extension matrix, custom Dope surface result, persistence/restart result, repairs, automated validation, evidence gaps, and whether P5 is unblocked.

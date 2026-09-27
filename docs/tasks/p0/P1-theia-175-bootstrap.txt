@@ -1,0 +1,95 @@
+TASK: Phase 0 / P1 — Theia 1.75 IDE application foundation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.0.1`.
+
+GOAL
+
+Bootstrap the smallest supported Eclipse Theia 1.75 application foundation that can honestly support the Foundation Spike.
+
+Read `BOOT.md`, `AGENTS.md`, the Phase 0 authority docs, `docs/tasks/p0/prompt-assessment.md`, and `docs/tasks/p0/implementation-plan.md` before editing.
+
+PREFLIGHT
+
+Require:
+- Node >=24 <25;
+- clean repository;
+- no root `package-lock.json`;
+- exact Phase 0 baseline scope.
+
+Inspect current official Theia 1.75 composition conventions before choosing scaffold details. Do not hand-build from obsolete webpack-era examples.
+
+IMPLEMENT
+
+Create a supported monorepo/application composition with:
+- an Electron application as Dope's actual desktop target;
+- a browser application strictly as a qualification/development surface;
+- a shared location for custom Dope Theia extension code;
+- only the domain/support packages needed by this prompt;
+- truthful root build/start/test scripts.
+
+Pin directly controlled `@theia/*` framework packages coherently to `1.75.0`.
+
+Use the Theia 1.75 esbuild application pipeline. Do not add webpack compatibility.
+
+Compose serious commodity IDE capability through supported Theia packages:
+- workspace/filesystem;
+- explorer/navigator;
+- editor;
+- search;
+- SCM/Git;
+- terminal;
+- markers/problems;
+- debugger;
+- preferences/keybindings;
+- VS Code extension/plugin support;
+- Open VSX marketplace support.
+
+Use supported TypeScript/JavaScript language functionality. Keep JSON and Markdown usable.
+
+Do not add Theia AI/model/provider packages solely because they exist.
+
+PACKAGE MANAGER
+
+Follow the supported Theia 1.75 workspace path. If the supported scaffold uses Yarn Classic/Corepack, adopt it cleanly and permit a Yarn lockfile.
+
+Hard invariant: do not create a root `package-lock.json`.
+
+Preserve `npm run codex:phase ...` and the existing runner tests.
+
+TEST / BUILD CONTRACT
+
+Add truthful commands for:
+- browser build;
+- Electron build;
+- product/domain unit tests that exist;
+- runner tests;
+- typecheck/check.
+
+Add a deterministic guard that fails if controlled Theia packages drift away from the intended coherent baseline.
+
+Do not claim GUI behavior Green in P1.
+
+SCOPE GUARD
+
+Do not implement Project Mind persistence, Planning behavior, Agent Mind, model/provider integration, tool execution, authority, or AI editor features.
+
+Set `package.json` version to `0.0.1`.
+
+REQUIRED PROOF
+
+Run:
+- runner regression tests;
+- new dependency/version guards;
+- TypeScript typecheck;
+- browser production build;
+- Electron production build;
+- applicable deterministic aggregate checks;
+- explicit no-`package-lock.json` check;
+- `git diff --check`.
+
+If supported Theia 1.75 composition materially contradicts the approved Phase 0 architecture, stop `Planning needed` rather than masking the issue.

@@ -1,0 +1,77 @@
+TASK: Phase 0 / P2 — Dope workbench surfaces and customization stress
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.0.2`.
+
+GOAL
+
+Prove that Dope can materially inhabit and reshape the Theia workbench without making Theia presentation state the product domain.
+
+Start from the exact P1 candidate and read all Phase 0 authority, assessment and implementation-plan docs.
+
+IMPLEMENT DOPE SURFACES
+
+Create minimal real custom Theia surfaces shared by the browser and Electron applications:
+- Project Mind spike view;
+- Planning spike view;
+- commands/actions to reveal them;
+- a Dope-owned `WorkspaceMode` contract with at least BUILD and PLAN;
+- a Theia adapter that applies layout/presentation changes for those modes.
+
+The spike views may use static/minimal data. Do not implement production Project Mind or Planning.
+
+CUSTOMIZATION
+
+Materially customize the workbench:
+- Dope application naming/branding;
+- default layout;
+- visible styling;
+- at least one unwanted standard UI element hidden/replaced where justified;
+- BUILD and PLAN visibly differ;
+- custom surfaces restore coherently when reopened.
+
+Exercise at least one genuine service rebind/replacement through a supported Theia mechanism. Select a service where rebinding has a visible or executable effect and does not require private shell surgery.
+
+Do not choose a meaningless rebind solely to check a box.
+
+COUPLING LEDGER
+
+Create `docs/tasks/p0/customization-coupling-ledger.md`.
+
+For each material customization record:
+- capability;
+- implementation seam/API;
+- classification: public contribution / custom widget-service / supported rebind / shell-level / private-internal;
+- files;
+- upgrade risk;
+- fallback/removal path.
+
+Private/internal APIs are not forbidden absolutely, but broad or load-bearing private coupling is Not Green unless explicitly accepted later.
+
+ARCHITECTURE GUARDS
+
+Keep `WorkspaceMode` and any product-facing contracts outside Theia-only schemas.
+
+No canonical state may depend on a widget instance, Perspective identifier, layout JSON, or Theia chat/session state.
+
+Do not add AI.
+
+Set `package.json` version to `0.0.2`.
+
+REQUIRED PROOF
+
+Run focused WorkspaceMode/customization contract tests plus:
+- browser build;
+- Electron build;
+- typecheck;
+- runner tests;
+- deterministic aggregate checks;
+- Theia-version coherence guard;
+- no-`package-lock.json` check;
+- `git diff --check`.
+
+Do not claim visual qualification yet; P4 owns direct GUI evidence.

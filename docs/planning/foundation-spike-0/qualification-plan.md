@@ -1,6 +1,6 @@
 # Foundation Spike 0 Qualification Plan
 
-Status: READY FOR PROMPT DECOMPOSITION
+Status: DECOMPOSED / READY FOR EXECUTION
 
 This plan defines evidence required to qualify Theia as Dope's initial IDE substrate.
 

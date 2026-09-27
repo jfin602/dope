@@ -1,0 +1,91 @@
+TASK: Phase 0 / P5 — Linux package and packaged desktop qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.0.5`.
+
+GOAL
+
+Prove that the exact P4 Theia 1.75 candidate can become a real Linux desktop product and run outside the development server.
+
+Read all Phase 0 authority, P4 evidence, current packaging configuration, and current official Theia desktop packaging guidance.
+
+PACKAGE
+
+Use the supported Electron/electron-builder-compatible path already established by the candidate.
+
+Produce a real Linux distributable from the current source.
+
+Expected primary result on Linux is an AppImage unless the supported tooling produces another justified native artifact.
+
+Brand package metadata as Dope rather than generic Theia.
+
+Do not configure publishing, auto-update deployment, signing infrastructure, telemetry, or cloud services.
+
+PACKAGE EVIDENCE
+
+Record:
+- exact source SHA/version/Theia version;
+- packaging command;
+- artifact path/name;
+- artifact type;
+- size;
+- SHA-256;
+- unpacked/preview path if generated;
+- packaging warnings/errors.
+
+PACKAGED APPLICATION
+
+Launch the produced application outside the dev server/source start command.
+
+Use a controlled real repository and verify:
+- application starts cleanly;
+- repository opens;
+- explorer/editor work;
+- terminal works;
+- Git/SCM shows controlled change;
+- Project Mind spike view renders;
+- Planning spike view renders;
+- BUILD/PLAN behavior remains present;
+- a previously persisted or newly created spike Note survives packaged-app restart for the same workspace;
+- obvious source-tree-only/dev-server dependencies are absent.
+
+If the environment cannot interact with native Electron directly, use the strongest honest native launch/process evidence available and record the visual interaction portion as Evidence Gap. Do not substitute browser-target behavior and call the Electron package Green.
+
+BOUNDED REPAIR
+
+Permit only the smallest packaging/runtime repair inside Phase 0 scope with permanent automated coverage where practical.
+
+EVIDENCE
+
+Create `docs/tasks/p0/P5-linux-package-evidence.md` with exact package and runtime results.
+
+Set `package.json` version to `0.0.5`.
+
+VALIDATION
+
+Rerun:
+- package build;
+- affected focused tests;
+- browser build;
+- Electron build;
+- typecheck;
+- runner tests;
+- deterministic aggregate checks;
+- no-`package-lock.json` check;
+- `git diff --check`.
+
+GIT / MANUAL HANDOFF
+
+After successful completion:
+- commit all prompt-owned changes once;
+- use exact commit subject `0.0.5`;
+- leave the repository clean;
+- do not create any additional prompt-owned commit.
+
+FINAL RESPONSE
+
+Report package artifact/hash/size, native launch method, packaged IDE/custom-surface/persistence results, repairs, automated validation, Evidence Gaps, and whether P6 is unblocked.
