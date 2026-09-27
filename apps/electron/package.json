@@ -1,6 +1,6 @@
 {
   "name": "@dope/electron",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "private": true,
   "description": "Dope desktop application",
   "main": "lib/backend/electron-main.js",
@@ -11,7 +11,7 @@
   },
   "theia": { "target": "electron", "frontend": { "config": { "applicationName": "Dope" } } },
   "dependencies": {
-    "@dope/theia-extension": "0.0.3",
+    "@dope/theia-extension": "0.0.4",
     "@theia/core": "1.75.0",
     "@theia/debug": "1.75.0",
     "@theia/editor": "1.75.0",
