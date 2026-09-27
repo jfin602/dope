@@ -61,6 +61,9 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 - Theia AI may be reused behind adapters, but it must not own Dope's Agent Runtime or Project Intelligence.
 - Project Intelligence and later Agent Runtime must remain usable without Theia.
 - Do not expose or persist raw hidden chain-of-thought as a product feature.
+- Dope should progressively become capable of developing Dope through the same ordinary product path used for other repositories.
+- There is no privileged self-development mode; targeting the Dope repository must not expand model, tool, or mutation authority.
+- Dope must remain repairable without a healthy Dope runtime through conventional source, Git, build, test, and recovery tooling.
 
 ## Architecture rules
 

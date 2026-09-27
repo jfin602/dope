@@ -272,6 +272,24 @@ Provider-native response IDs, conversation/session identifiers, context handles,
 
 Switching model/provider must not require rebuilding canonical project state from chat history.
 
+## Self-development and product-model neutrality
+
+The Dope repository is a canonical dogfood project, not a special product-domain case.
+
+A future "Dope Builds Dope" workflow should use ordinary artifacts and relationships:
+
+Idea / Question
+-> Decision
+-> Plan
+-> Task
+-> ChangeSet
+-> Validation
+-> DeveloperSession
+
+No ProjectArtifact, Plan, Task, Agent Mind, ProposedAction, ChangeSet, Validation, or Session receives extra authority merely because the target repository is Dope.
+
+The same model must remain useful for projects with different languages, frameworks, build systems, repository layouts, and development practices.
+
 ## Search model
 
 Project-wide search should eventually span code, notes, ideas, questions, research, decisions, plans, tasks, architecture, sessions, changesets, and validation/tests.
@@ -289,6 +307,8 @@ Persistence backend is an adapter decision.
 Foundation Spike 0 proves a minimal durable implementation without prematurely locking the long-term backend.
 
 The persistence representation must preserve stable IDs, schema version, provenance, relationships, timestamps, and a migration path.
+
+Canonical project knowledge must also have a documented recovery path that does not depend on a healthy Dope GUI. The exact mechanism may evolve, but irreplaceable project truth must not exist only in an opaque form that requires Dope itself to decode or repair.
 
 ## Derived versus canonical state
 

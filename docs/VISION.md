@@ -105,6 +105,31 @@ Future providers should be adoptable through replaceable capability-based adapte
 
 Provider abstraction should preserve useful provider-specific capabilities rather than forcing all models into the same lowest-common-denominator behavior.
 
+## Progressive self-development
+
+Dope should progressively become capable of supporting its own development lifecycle.
+
+That does not mean an unfinished Dope must build itself from the beginning, and it does not authorize pulling later AI capabilities into Foundation Spike 0.
+
+The intended progression is:
+
+external bootstrap
+-> Dope as editor
+-> Dope as project brain
+-> Dope as planner
+-> Dope as agent supervisor
+-> Dope develops Dope
+
+Self-development is a qualification strategy, not a privileged product mode.
+
+The Dope repository should pass through the same Project Mind, Planning, authority, provider, execution, validation, and session contracts as any other software project.
+
+A broken Dope must also never make Dope unrepairable.
+
+The repository, Git history, build/test commands, and durable project knowledge must retain a documented path for inspection, recovery, and repair with conventional external tooling.
+
+Dogfooding Dope on Dope is a strong necessary test of the product, but it is not proof of generality. Product contracts must remain suitable for projects with different languages, frameworks, architectures, and workflows.
+
 ## Local and hosted AI
 
 Local models are strategically important because Dope may eventually need many small, continuous interactions: observe edits, inspect selections, update a project model, run micro-analysis, compare implementations, support passive review, and maintain context.

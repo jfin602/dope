@@ -53,6 +53,20 @@ Only state types introduced by the current phase need executable coverage.
 
 A crash, restart, provider failure, or UI reconstruction must not silently convert derived state into canonical truth when those mechanisms exist.
 
+## Bootstrap independence and self-development recovery
+
+Self-development must never create a hidden privileged path or make the repository dependent on a healthy Dope runtime for repair.
+
+When the corresponding capabilities exist, qualification should verify:
+- the Dope repository remains inspectable and editable with conventional external tools;
+- Git history and ordinary build/test entry points remain usable outside Dope;
+- durable canonical project knowledge has a documented backup/export/recovery path independent of a healthy GUI path;
+- self-targeted agent work receives the same observation/mutation authority as equivalent work on another repository;
+- upgrade or migration failure leaves a recoverable fallback path;
+- self-development evidence is not generalized into compatibility claims for unrelated stacks without separate evidence.
+
+Foundation Spike 0 does not need to self-host. It only needs to preserve these architectural boundaries so later phases can qualify them without redesigning the foundation.
+
 ## Developer-understanding invariant
 
 Qualification is not purely "the feature works."

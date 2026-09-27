@@ -48,6 +48,7 @@ Current authority:
 - docs/planning/foundation-spike-0/decision-record.md
 - docs/planning/foundation-spike-0/qualification-plan.md
 - docs/decisions/0004-model-provider-independence.md
+- docs/decisions/0005-progressive-self-development.md
 
 ## Product premise
 
@@ -139,6 +140,23 @@ First-class compatibility targets include:
 No provider owns Project Mind, Planning, Agent Mind, Sessions, Authority, Decisions, or Validation.
 
 The current GPT-6 Sol/Codex repository workflow is a development-tooling choice, not Dope's runtime architecture.
+
+## Progressive self-development
+
+Dope should progressively become capable of developing its own repository:
+
+external bootstrap
+-> Dope as editor
+-> Dope as project brain
+-> Dope as planner
+-> Dope as agent supervisor
+-> Dope develops Dope
+
+This is a qualification overlay across the existing roadmap, not a new early phase.
+
+There is no privileged self-development mode. The Dope repository uses the same product, provider, authority, execution, validation, and session contracts as any other project.
+
+Dope must remain repairable without Dope through conventional source, Git, build, test, and recovery tooling.
 
 ## Authority
 

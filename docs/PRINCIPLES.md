@@ -88,9 +88,19 @@ Planning and note-taking are first-class.
 
 Dope should be the home of ideas, notes, questions, research, architecture exploration, decisions, plans, tasks, implementation, validation, and project history.
 
+## 12. Build Dope with Dope, repair Dope without Dope
+
+Dope should progressively become useful enough to understand, plan, build, validate, and eventually develop its own repository.
+
+Self-development must use the same product and authority paths as ordinary projects. There is no privileged "self mode."
+
+At the same time, Dope must remain repairable without Dope. Source, Git history, build/test workflows, and durable project knowledge must not become trapped behind a healthy Dope runtime.
+
+Dogfooding is a qualification strategy, not permission to specialize the product around Dope's own stack.
+
 ## Cross-cutting principles
 
-The eleven pillars above remain the product pillars.
+The twelve pillars above remain the product pillars.
 
 Cross-cutting architecture and execution laws:
 - Session over prompt.
@@ -99,6 +109,7 @@ Cross-cutting architecture and execution laws:
 - Model/provider independence: no provider, model family, hosted service, or local runtime owns Dope's product/intelligence model.
 - OpenAI/ChatGPT/Codex compatibility and local-model compatibility are first-class requirements.
 - Capability-based adapters should preserve provider-specific strengths rather than collapsing everything to a lowest common denominator.
+- Self-development without self-dependence: Dope may build Dope, but Dope must not require a healthy Dope runtime to repair Dope.
 - Mastery over spectacle.
 
 The target feeling is not "the AI did a lot."

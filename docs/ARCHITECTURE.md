@@ -338,6 +338,36 @@ AI
 
 Repository content, extensions, remote tools, MCP servers, and model output are untrusted relative to Dope's configured authority ceiling.
 
+## Self-development and bootstrap independence
+
+Dope should eventually be able to develop Dope, but self-development is an ordinary-project use case of the architecture rather than a separate execution mode.
+
+When the target repository is Dope:
+- Project Intelligence uses the same canonical product contracts;
+- Planning uses the same Plan/Task contracts;
+- model providers use the same capability adapters;
+- Agent Runtime uses the same execution path;
+- observation and mutation authority remain unchanged;
+- validation and ChangeSet evidence follow the same rules;
+- no hidden "self" capability may raise authority or bypass review.
+
+Bootstrap independence is a hard architectural constraint.
+
+A broken or partially upgraded Dope installation must not make the Dope repository unrepairable. Source and Git remain ordinary external artifacts. Build, test, migration, and recovery procedures must retain a path through conventional tooling. Durable Project Mind state must have a documented recovery/export strategy that does not require the healthy application path it is intended to describe.
+
+The self-development progression is deliberately phase-aware:
+
+external bootstrap
+-> Dope as editor
+-> Dope as project brain
+-> Dope as planner
+-> Dope as agent supervisor
+-> Dope develops Dope
+
+This progression is a qualification overlay. It does not authorize implementing later-phase AI, authority, or delegation systems during Foundation Spike 0.
+
+Dogfooding must not create stack-specific domain coupling. A design that works only because Dope is a TypeScript/Theia repository has not proven the general product contract.
+
 ## Relationship to George
 
 George code may be studied or selectively borrowed only where it fits this architecture.

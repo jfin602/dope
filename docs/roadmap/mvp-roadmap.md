@@ -19,6 +19,28 @@ Theia
 
 Each stage should make Dope more useful to the developer before the next layer of AI is added.
 
+## Progressive self-development qualification
+
+Dope should increasingly be developed inside Dope as the roadmap advances.
+
+This is a cross-phase qualification ladder, not an additional phase and not permission to pull later capabilities forward.
+
+| Roadmap stage | Self-development qualification |
+| --- | --- |
+| Foundation Spike 0 | External bootstrap. Qualify the substrate with existing external tools. Self-hosting is not required. |
+| Product Phase 1 — IDE Alive | Dope as editor. Open and work on the Dope repository comfortably inside Dope using ordinary IDE capabilities. |
+| Product Phase 2 — Project Mind | Dope understands Dope. Its own decisions, notes, questions, ideas, and durable project context are useful through Project Mind. |
+| Product Phase 3 — Planning | Dope plans Dope. A real Dope feature can move from thought/decision into a live Plan and Tasks without leaving Dope. |
+| Product Phase 4 — AI Presence | AI understands Dope through Dope-owned project state and provider-independent read-only assistance. |
+| Product Phase 5 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
+| Product Phase 6 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, planning, implementation, validation, review, and session closeout inside Dope. |
+
+Self-development never receives privileged authority.
+
+Dope must remain repairable with conventional external editor, terminal, Git, build, test, and recovery tooling even after the self-development milestone is reached.
+
+Dogfooding Dope on its own repository is a necessary product qualification, not proof that the product generalizes to every stack.
+
 ## Foundation Spike 0 — Theia substrate qualification
 
 Purpose:
