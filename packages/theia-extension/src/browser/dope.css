@@ -9,6 +9,9 @@
 .dope-spike-view h2 { font-size: 24px; font-weight: 600; margin: 10px 0 18px; }
 .dope-spike-view p { max-width: 36rem; line-height: 1.55; }
 .dope-spike-eyebrow { color: var(--theia-button-background); font-size: 11px; font-weight: 700; letter-spacing: .15em; }
+.dope-spike-view input, .dope-spike-view textarea { display: block; box-sizing: border-box; width: 100%; margin: 8px 0; color: inherit; background: var(--theia-input-background); border: 1px solid var(--theia-input-border); padding: 8px; }
+.dope-spike-view textarea { min-height: 100px; resize: vertical; }
+.dope-spike-view small { display: block; margin-top: 10px; overflow-wrap: anywhere; }
 
 body[data-dope-mode="build"] .dope-mode-status { border-left: 3px solid #39bfa0; }
 body[data-dope-mode="plan"] .dope-mode-status { border-left: 3px solid #a78bfa; }

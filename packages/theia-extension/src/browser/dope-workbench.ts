@@ -1,12 +1,16 @@
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { CommandContribution, CommandRegistry, MenuContribution, MenuModelRegistry } from '@theia/core/lib/common';
-import { AbstractViewContribution, ApplicationShell, FrontendApplication, FrontendApplicationContribution, StatusBar, StatusBarAlignment, ViewContainer, WidgetFactory, WidgetManager } from '@theia/core/lib/browser';
+import { AbstractViewContribution, ApplicationShell, FrontendApplication, FrontendApplicationContribution, StatusBar, StatusBarAlignment, ViewContainer, WidgetManager } from '@theia/core/lib/browser';
+import type { RpcServer } from '@theia/core/lib/common/messaging/proxy-factory';
 import { BaseWidget } from '@theia/core/lib/browser/widgets/widget';
 import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-service';
 import { CommonMenus } from '@theia/core/lib/browser/common-menus';
 import { NavigatorWidgetFactory } from '@theia/navigator/lib/browser/navigator-widget-factory';
 import { OpenEditorsWidget } from '@theia/navigator/lib/browser/open-editors-widget/navigator-open-editors-widget';
 import { WorkspaceMode, WorkspaceModeService, parseWorkspaceMode } from '@dope/contracts';
+import type { Note } from '@dope/contracts/lib/note';
+import type { NoteClient, NoteService } from '@dope/contracts/lib/note-service';
+import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import './dope.css';
 
 export const PROJECT_MIND_ID = 'dope-project-mind';
@@ -28,6 +32,67 @@ export class DopeSpikeWidget extends BaseWidget {
         const copy = document.createElement('p');
         copy.textContent = detail;
         this.node.append(eyebrow, title, copy);
+    }
+}
+
+export class ProjectMindWidget extends DopeSpikeWidget {
+    private readonly titleInput = document.createElement('input');
+    private readonly bodyInput = document.createElement('textarea');
+    private readonly state = document.createElement('p');
+    private readonly identity = document.createElement('small');
+    private workspaceUri: string | undefined;
+    private readonly rootsListener;
+    private readonly client: NoteClient = { notifyNoteChanged: (workspaceUri, note) => {
+        if (workspaceUri === this.workspaceUri) this.render(note);
+    } };
+
+    constructor(private readonly notes: NoteService & RpcServer<NoteClient>, private readonly workspaceService: WorkspaceService) {
+        super(PROJECT_MIND_ID, 'Project Mind', 'Project Mind', 'Spike Note in this workspace.');
+        this.titleInput.placeholder = 'Note title';
+        this.titleInput.setAttribute('aria-label', 'Spike Note title');
+        this.bodyInput.placeholder = 'Note body';
+        this.bodyInput.setAttribute('aria-label', 'Spike Note body');
+        const save = document.createElement('button');
+        save.textContent = 'Save spike Note';
+        save.onclick = () => void this.save();
+        this.node.append(this.titleInput, this.bodyInput, save, this.identity, this.state);
+        this.notes.setClient(this.client);
+        this.rootsListener = workspaceService.onWorkspaceChanged(() => void this.load());
+        void this.load();
+    }
+
+    private async load(): Promise<void> {
+        const roots = await this.workspaceService.roots;
+        this.workspaceUri = roots.length === 1 ? roots[0].resource.toString() : undefined;
+        this.render(undefined);
+        if (!this.workspaceUri) {
+            this.state.textContent = 'Open one local folder to use the spike Note.';
+            return;
+        }
+        const uri = this.workspaceUri;
+        try {
+            const note = await this.notes.read(uri);
+            if (this.workspaceUri === uri) this.render(note);
+        } catch (error) { if (this.workspaceUri === uri) this.state.textContent = String(error); }
+    }
+
+    private render(note: Note | undefined): void {
+        this.titleInput.value = note?.title ?? '';
+        this.bodyInput.value = note?.body ?? '';
+        this.identity.textContent = note ? `Note ID: ${note.id}` : '';
+        this.state.textContent = note ? 'Saved developer Note' : 'No spike Note yet.';
+    }
+
+    private async save(): Promise<void> {
+        if (!this.workspaceUri) return;
+        try { this.render(await this.notes.save(this.workspaceUri, { title: this.titleInput.value, body: this.bodyInput.value })); }
+        catch (error) { this.state.textContent = String(error); }
+    }
+
+    override dispose(): void {
+        this.rootsListener.dispose();
+        this.notes.setClient(undefined);
+        super.dispose();
     }
 }
 
@@ -140,8 +205,3 @@ export class DopeWorkbench implements FrontendApplicationContribution, CommandCo
         });
     }
 }
-
-export const spikeWidgetFactories: WidgetFactory[] = [
-    { id: PROJECT_MIND_ID, createWidget: () => new DopeSpikeWidget(PROJECT_MIND_ID, 'Project Mind', 'Project Mind', 'A place for durable project knowledge. Spike view; persistence arrives in P3.') },
-    { id: PLANNING_ID, createWidget: () => new DopeSpikeWidget(PLANNING_ID, 'Planning', 'Planning', 'A focused surface for decisions and plans. Spike view; live planning arrives later.') }
-];
