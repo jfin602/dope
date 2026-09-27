@@ -1,20 +1,36 @@
 {
   "name": "dope",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
+  "packageManager": "yarn@1.22.22",
   "engines": {
     "node": ">=24 <25"
   },
+  "workspaces": ["apps/browser", "apps/electron", "packages/theia-extension"],
   "scripts": {
-    "test": "npm run test:runner",
+    "build:extension": "corepack yarn workspace @dope/theia-extension build",
+    "build:browser": "corepack yarn build:extension && corepack yarn workspace @dope/browser build",
+    "build:electron": "corepack yarn build:extension && corepack yarn workspace @dope/electron build",
+    "start:browser": "npm run download:plugins && corepack yarn workspace @dope/browser start",
+    "start:electron": "npm run download:plugins && corepack yarn workspace @dope/electron start",
+    "download:plugins": "theia download:plugins",
+    "test": "npm run test:runner && npm run test:baseline && npm run test:product",
     "test:runner": "node --test test/unit/codex-phase-prompt-grammar.test.ts test/unit/codex-phase-runner.test.ts",
+    "test:baseline": "node --test test/unit/theia-baseline.test.ts",
+    "test:product": "node -e \"console.log('No product/domain unit tests exist in P1')\"",
     "codex:phase": "node scripts/codex-phase.mjs",
     "codex:phase:validate": "node scripts/validate-codex-phase.mjs",
-    "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm test"
+    "typecheck": "tsc -p packages/theia-extension --noEmit",
+    "check": "npm run typecheck && npm test && npm run build:browser && npm run build:electron"
   },
+  "theiaPluginsDir": "plugins",
+  "theiaPlugins": {
+    "vscode-builtin-extensions": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode-builtin-extensions-1.108.2.tar.gz"
+  },
+  "theiaPluginsExcludeIds": ["ms-vscode.js-debug-companion", "vscode.extension-editing", "vscode.microsoft-authentication"],
   "devDependencies": {
+    "@theia/cli": "1.75.0",
     "@types/node": "^24.0.0",
     "typescript": "5.9.3"
   }

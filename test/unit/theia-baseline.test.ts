@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import { readFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import test from 'node:test';
+
+const root = new URL('../../', import.meta.url).pathname;
+const paths = ['package.json', 'apps/browser/package.json', 'apps/electron/package.json', 'packages/theia-extension/package.json'];
+const manifests = paths.map(path => ({ path, value: JSON.parse(readFileSync(join(root, path), 'utf8')) }));
+
+test('every directly controlled Theia package stays on the Phase 0 baseline', () => {
+  for (const { path, value } of manifests) {
+    for (const section of ['dependencies', 'devDependencies']) {
+      for (const [name, version] of Object.entries(value[section] ?? {})) {
+        if (name.startsWith('@theia/')) assert.equal(version, '1.75.0', `${path}: ${name}`);
+      }
+    }
+  }
+  assert.equal(manifests[0].value.version, '0.0.1');
+  assert.equal(existsSync(join(root, 'package-lock.json')), false);
+});
+
+test('both applications carry the required IDE composition', () => {
+  const required = [
+    'core', 'debug', 'editor', 'file-search', 'filesystem', 'keymaps', 'markers',
+    'monaco', 'navigator', 'plugin-ext-vscode', 'preferences', 'process', 'scm',
+    'search-in-workspace', 'terminal', 'vsx-registry', 'workspace',
+  ];
+  for (const { path, value } of manifests.slice(1, 3)) {
+    for (const name of required) assert.equal(value.dependencies[`@theia/${name}`], '1.75.0', `${path}: ${name}`);
+    assert.equal(value.dependencies['@dope/theia-extension'], '0.0.1');
+  }
+  assert.equal(manifests[1].value.theia.target, 'browser');
+  assert.equal(manifests[2].value.theia.target, 'electron');
+  assert.equal(manifests[2].value.dependencies['@theia/electron'], '1.75.0');
+  assert.equal(manifests[2].value.devDependencies.electron, '42.8.1');
+  assert.match(manifests[0].value.theiaPlugins['vscode-builtin-extensions'], /\/1\.108\.2\//);
+});

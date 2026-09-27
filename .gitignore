@@ -11,3 +11,9 @@ artifacts/
 .codex*
 lib/
 gen/
+plugins/
+src-gen/
+apps/*/esbuild.mjs
+apps/*/gen-esbuild.*.mjs
+.browser_modules/
+.electron_modules/

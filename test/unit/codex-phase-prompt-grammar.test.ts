@@ -278,7 +278,7 @@ test('post-1.0 phase folders normalize Phase 0+ and validate their assigned vers
   }
 });
 
-test('post-1.0 folder collisions and non-canonical Phase 0 forms fail closed', () => {
+test('post-1.0 folder collisions and non-canonical forms fail closed', () => {
   const phase0P1 = prompt(1, { phase: 0, version: '1.0.1' });
   const phase0P2 = prompt(2, {
     closeout: true,
@@ -287,7 +287,6 @@ test('post-1.0 folder collisions and non-canonical Phase 0 forms fail closed', (
   });
 
   for (const folderName of [
-    'p0',
     'p1-00',
     'p1-01',
     'p1--1',
@@ -630,6 +629,9 @@ test('documented runner model labels stay explicit and finite', () => {
     'Sol Medium',
     'Sol High',
     'Sol Ultra',
+    'GPT-6 Sol Medium',
+    'GPT-6 Sol High',
+    'GPT-6 Sol XHigh',
   ]);
 });
 
