@@ -2,7 +2,9 @@
 
 Status: READY FOR PROMPT DECOMPOSITION
 
-This plan defines evidence required to qualify Theia. It is not yet the execution prompt stack.
+This plan defines evidence required to qualify Theia as Dope's initial IDE substrate.
+
+It does not qualify Dope's future AI runtime.
 
 ## Gate A — Bootstrap and commodity IDE
 
@@ -12,6 +14,7 @@ Evidence:
 - file explorer works
 - Monaco edits/saves
 - TypeScript language service works
+- search works
 - Git/SCM detects changes
 - terminal executes commands
 - debugger hits breakpoint
@@ -22,69 +25,27 @@ All required capabilities must be Green.
 ## Gate B — Dope UI surface
 
 Evidence:
-- Agent Mind custom panel renders structured Dope state
-- Planning central view renders Dope Plan state
-- Ideas view renders Dope Idea state
-- BUILD/PLAN workspace modes alter layout through Dope WorkspaceMode adapter
+- Project Mind custom view renders Dope-owned spike state
+- Planning custom view renders Dope-owned spike state
+- BUILD/PLAN workspace modes alter layout through a Dope-owned adapter or equivalent boundary
 - unwanted standard UI can be hidden/replaced where necessary
 - styling creates a materially distinct branded workbench
 
 No canonical product state may depend on widget instances or Theia-only schemas.
 
-## Gate C — Typed backend + streaming
+## Gate C — Typed backend and minimal persistence
 
 Evidence:
-- frontend calls typed Node backend service
-- backend streams AgentWorkingState updates
-- cancellation stops stream
-- reconnect/restart reconstructs state from Dope-owned persistence
+- frontend calls a typed Node backend service
+- backend-originated state/event update reaches the frontend
+- long-lived transport, if used, has cleanup/cancellation
+- a minimal ProjectArtifact or Note persists with stable identity
+- application restart reconstructs the persisted artifact
+- persisted state is readable without Theia chat/session state
 
-Transport/framework must be replaceable without changing AgentWorkingState.
+Transport and persistence implementation choices must remain replaceable.
 
-## Gate D — Local AI + authority
-
-Evidence:
-- local model connection
-- streaming
-- structured response
-- proposed tool call
-- ProposedAction created
-- approval required where configured
-- ToolExecutor executes only after authority
-- failure/cancel path leaves canonical state consistent
-
-Model/provider never directly owns mutation.
-
-## Gate E — Editor-agent integration
-
-Evidence:
-- active editor observed
-- selection observed
-- edits observed
-- working set updated
-- AI proposes change
-- diff displayed
-- reject leaves file unchanged
-- apply produces expected file change
-- authority/ownership enforced
-
-Observation and mutation must be proven separate.
-
-## Gate F — Project Intelligence persistence
-
-Sequence:
-1. create Note
-2. persist
-3. convert Note -> Task
-4. Agent Runtime consumes Task
-5. agent action updates Task
-6. restart application
-7. Note/Task/state survive
-8. state readable without framework chat history
-
-Project Intelligence remains Dope-owned and restart-safe.
-
-## Gate G — Customization stress
+## Gate D — Customization stress
 
 Evidence:
 - material default layout change
@@ -98,24 +59,34 @@ For every customization record whether it uses public contribution, public servi
 
 Broad private/internal coupling is Not Green.
 
-## Gate H — Extension/tooling matrix
+## Gate E — Extension/tooling matrix
 
-Test TypeScript/JavaScript, JSON, Markdown, Node debugging, Git, terminal, ESLint, Prettier, and one additional Open VSX extension.
+Test:
+- TypeScript/JavaScript
+- JSON
+- Markdown
+- Node debugging
+- Git
+- terminal
+- ESLint
+- Prettier
+- one additional Open VSX extension
 
 Blocking incompatibilities are Not Green; bounded gaps remain explicit.
 
-## Gate I — Linux packaging
+## Gate F — Linux packaging
 
 Evidence:
 - production desktop artifact built
 - launched outside dev mode
 - repository opened
-- state restored
-- key IDE and custom panels functional
+- persisted Dope state restored
+- key IDE functions work
+- custom Project Mind and Planning surfaces work
 
 Dev-server-only success is insufficient.
 
-## Gate J — Upgrade
+## Gate G — Upgrade
 
 Baseline: Theia 1.75.0.
 
@@ -125,28 +96,71 @@ Process:
 - upgrade dependencies/tooling
 - build
 - repair only what evidence requires
-- rerun A-I
+- rerun Gates A-F
 - classify every repair
 - compare coupling
 
-No product-domain rewrite and no broad private-shell repair.
+No Dope product-domain rewrite and no broad private-shell repair.
 
 ## Automated coverage
 
-At minimum add tests for ProjectArtifact persistence round trip, Note -> Task transition, AgentWorkingState transitions, ownership/authority denial, ProposedAction approval/rejection, editor observation without mutation, restart reconstruction, and runner regressions.
+At minimum add tests for:
+- minimal ProjectArtifact/Note persistence round trip
+- stable identity across restart reconstruction
+- typed backend contract behavior
+- any custom WorkspaceMode/domain adapter introduced by the spike
+- phase-runner regressions
+
+Do not add AgentWorkingState, tool-authority, provider, or editor-agent mutation tests merely to satisfy future architecture.
 
 ## Manual/browser evidence
 
-Expected for layout, custom panels, editor interactions, debugger, extension UX, diff/apply/reject UX, packaging, and upgrade visual regression.
+Expected for:
+- layout
+- custom panels/views
+- editor interaction
+- debugger
+- extension UX
+- packaging
+- restart restoration
+- upgrade visual regression
 
 Prompts requiring direct evidence use Browser required: yes.
 
+## AI deferral
+
+The following are explicitly outside this qualification plan:
+- local or hosted model connection
+- OpenAI/Codex runtime integration
+- Agent Mind execution
+- ProposedAction/tool execution
+- AI diff/apply/reject
+- scoped delegation
+- ambient intelligence
+
+The spike must preserve room for those features without implementing them.
+
 ## Closeout artifact
 
-Closeout records exact baseline/upgraded Theia versions, qualification matrix, customization-coupling ledger, extension matrix, packaging result, upgrade repair ledger, remaining gaps, explicit substrate decision, and required architecture amendments.
+Closeout records:
+- exact baseline/upgraded Theia versions
+- qualification matrix
+- customization-coupling ledger
+- extension matrix
+- persistence/restart result
+- packaging result
+- upgrade repair ledger
+- remaining gaps
+- explicit substrate decision
+- required architecture amendments
 
 ## Stop conditions
 
-Return Planning needed if Theia reality contradicts the approved domain boundary, an authority bypass appears unavoidable, the spike would require a framework fork, private API use becomes broad, or a target upgrade materially changes the substrate before baseline qualification.
+Return Planning needed if:
+- Theia reality contradicts the approved domain boundary
+- the spike would require a framework fork
+- private API use becomes broad
+- canonical Dope state must become Theia-owned
+- a target upgrade materially changes the substrate before baseline qualification
 
 Normal implementation defects inside the approved spike should be repaired and regression-tested rather than treated as planning stops.

@@ -4,9 +4,13 @@ Status: INITIAL ARCHITECTURE CONTRACT
 
 ## Objective
 
-Build a native-feeling GUI development environment while keeping product intelligence and agent/runtime logic independent from the GUI framework.
+Build a native-feeling GUI development environment while keeping Dope's differentiated product state independent from both the GUI framework and the model/provider ecosystem.
 
-GUI-first must not become GUI-coupled.
+Two foundational constraints:
+
+> GUI-first must not become GUI-coupled.
+
+> AI-native must not become provider-coupled.
 
 ## Top-level layering
 
@@ -18,33 +22,103 @@ Dope presentation adapters and widgets
   |
 Application / orchestration
   |
-Project Intelligence + Agent Runtime
+Project Intelligence / Planning / later Agent Runtime
   |
-Model / Tool / Authority / Persistence / Execution adapters
+Persistence / Model / Tool / Authority / Execution adapters
 
 Dependencies point inward.
 
-Product/domain packages must not import Theia.
+Product/domain packages must not import Theia or provider-native SDK/domain types.
 
 ## Theia boundary
 
-Theia supplies commodity IDE capabilities: Monaco, filesystem/workspaces, explorer, terminal, SCM/Git, debugger, search, commands, preferences, keybindings, LSP, TextMate grammars, VS Code extension compatibility, Open VSX, workbench/layout, and Electron desktop shell.
+Theia supplies commodity IDE capabilities:
+- Monaco
+- filesystem/workspaces
+- explorer
+- terminal
+- SCM/Git
+- debugger
+- search
+- commands
+- preferences/keybindings
+- LSP
+- TextMate grammars
+- VS Code extension compatibility
+- Open VSX
+- workbench/layout
+- Electron desktop shell
 
-Dope owns Project Brain, Agent Mind, DeveloperSession, ownership/delegation, steering, Ideas, Research, Decisions, live Plans, conceptual ChangeSets, Validation, living software model, project search semantics, and authority policy.
+Dope owns:
+- Project Mind / Project Intelligence
+- Plans and Tasks
+- Agent Mind
+- DeveloperSession
+- ownership/delegation
+- steering
+- Ideas/Questions/Decisions/Research
+- conceptual ChangeSets
+- Validation
+- living software model
+- project search semantics
+- authority policy
 
 Theia may render or host these concepts. It does not define them.
 
+## Model and provider boundary
+
+Dope must not depend architecturally on one model, model family, provider, API, hosted service, local runtime, or provider-native chat/session ontology.
+
+First-class compatibility requirements include:
+- OpenAI / ChatGPT / Codex capabilities and workflows
+- local models and local inference runtimes
+- future providers through replaceable adapters
+
+The durable boundary is Dope's Model Runtime and capability contract.
+
+Provider adapters translate provider-specific requests, streaming, tool formats, response identifiers, reasoning controls, context handles, and errors into Dope-owned contracts.
+
+Do not spread provider-name conditionals through product/domain code.
+
+## Capability-based model runtime
+
+Provider independence must not become lowest-common-denominator abstraction.
+
+The Model Runtime should expose durable common operations plus explicit capability discovery.
+
+Capabilities may include:
+- streaming
+- tool calling
+- parallel tool calls
+- structured output
+- vision
+- long-context support
+- reasoning controls
+- native code execution
+- provider-managed state
+- cancellation
+
+Dope chooses behavior based on capabilities.
+
+A provider may expose richer features without forcing every provider to emulate them.
+
+Canonical product state must remain valid when the active provider changes.
+
 ## Theia AI boundary
 
-Theia AI may be reused selectively through an adapter for qualified infrastructure such as model registry/provider plumbing, OpenAI-compatible provider support, local-provider integrations, model tools, context variables, MCP, prompt services, confirmation infrastructure, structured output, and session plumbing.
+Theia AI may be reused selectively through an adapter for qualified infrastructure such as model registry/provider plumbing, OpenAI-compatible provider support, local-provider integrations, model tools, context variables, MCP, prompt services, confirmation infrastructure, structured output, or session plumbing.
 
 Do not make Theia AI's agent/chat/session ontology Dope's product ontology.
 
-Dope Agent Runtime consumes Dope domain state and may call a TheiaAIAdapter.
+Theia AI is optional infrastructure.
 
-The adapter is replaceable.
+Actual reuse is qualified when AI Presence is implemented, not during Foundation Spike 0.
 
-## Target repository structure after qualification
+## Target repository structure
+
+Create boundaries when real code exists; do not create empty package ceremony.
+
+Likely shape:
 
 /
   apps/
@@ -52,82 +126,127 @@ The adapter is replaceable.
 
   packages/
     project-intelligence/
+    planning/
+    persistence/
+
     agent-state/
     agent-core/
     agent-runtime/
     model-runtime/
     tool-runtime/
     authority/
-    persistence/
 
     theia-shell/
-    theia-agent-mind/
+    theia-project-mind/
     theia-planning/
-    theia-research/
-    theia-ideas/
-    theia-decisions/
-    theia-architecture/
+    theia-agent-mind/
     theia-runtime/
 
   docs/
   scripts/
   test/
 
-The spike should not create every package merely to match this diagram. Create boundaries when code exists.
+Early phases should create only the packages they need.
 
 ## Core services
 
 ### Project Intelligence
 
-Owns ProjectArtifact identity/relationships, persistence contracts, query/search interfaces, provenance, schema versioning, and knowledge lifecycle.
+Owns ProjectArtifact identity/relationships, persistence contracts, provenance, schema versioning, and Project Mind query/navigation semantics.
 
-No Theia dependency.
+No Theia or provider dependency.
+
+### Planning
+
+Owns Plan, PlanStep, Task, status transitions, relationships to Project Mind, and planning history.
+
+No model is required.
+
+### Persistence
+
+Backend adapters implement durable state.
+
+Do not let the Foundation Spike backend dictate the domain model.
 
 ### Agent State
 
-Owns AgentWorkingState, objective/plan/current-step state, assumptions/questions/risks, ownership, pending actions, validation projection, and steering transitions.
+Introduced with AI Presence.
+
+Owns AgentWorkingState, objective/current-step state, assumptions/questions/risks, ownership projection, pending actions, validation projection, and steering transitions.
 
 No provider or UI dependency.
 
 ### Agent Runtime
 
-Consumes canonical task/session/project state, assembles bounded working context, requests model output, interprets structured proposals, coordinates tools through authority, updates working state, emits observable events, and preserves cancellation/recovery semantics.
+Introduced with AI Presence/Scoped Delegation.
+
+Consumes canonical task/session/project state, assembles bounded context, requests model output, interprets structured proposals, coordinates tools through authority, updates working state, emits observable events, and preserves cancellation/recovery semantics.
 
 No direct Theia dependency.
 
 ### Model Runtime
 
-Provider-independent model interface. Provider specifics remain behind adapters.
+Provider-independent model interface and capability discovery.
+
+Provider-specific behavior remains behind adapters.
 
 ### Authority
 
-Owns effect classification and permission decisions. A model cannot grant itself authority.
+Introduced before mutation delegation.
+
+Owns effect classification and permission decisions.
+
+A model cannot grant itself authority.
 
 Observation and mutation permissions are separate.
 
 ### Tool Runtime
 
-Typed tools execute only after authority permits them. Tool results are structured and observable.
+Typed tools execute only after authority permits them.
 
-### Persistence
+Tool results are structured and observable.
 
-Backend adapters implement durable state. Do not let a first spike backend dictate the domain model.
+## Foundation Spike 0 boundary
+
+Foundation Spike 0 proves:
+- Theia IDE fundamentals
+- custom Dope views/layouts
+- typed frontend/backend communication
+- minimal Dope-owned persistence
+- restart restoration
+- customization/rebinding
+- Linux packaging
+- upgradeability
+
+It does not need to prove:
+- model integration
+- AgentWorkingState streaming
+- tool calling
+- authority execution
+- editor-agent mutation
+- scoped delegation
+
+This keeps substrate qualification separate from product/AI implementation.
 
 ## Frontend/backend communication
 
 Theia frontend and backend communicate through typed service contracts.
 
-Foundation Spike 0 must prove a Node backend service, typed frontend/backend request/response, live structured AgentWorkingState streaming, cancellation/cleanup, and restart restoration.
+Foundation Spike 0 must prove a Node backend service, typed request/response, at least one backend-originated state/event update, lifecycle cleanup where required, and restart restoration of minimal Dope-owned state.
 
-The transport is infrastructure. Canonical state remains product-owned.
+The transport is infrastructure.
+
+Canonical state remains product-owned.
 
 ## Editor-agent integration
 
-Dope needs explicit observation seams for active editor, selection, document edits, and working set.
+This is a later AI phase concern.
+
+Dope eventually needs explicit observation seams for active editor, selection, document edits, and working set.
 
 Observation must not imply mutation permission.
 
-Mutation path:
+Future mutation path:
 
 Agent proposal
 -> ProposedAction
@@ -138,9 +257,23 @@ Agent proposal
 
 ## State authority matrix
 
-Canonical product state includes ProjectArtifact, DeveloperSession, accepted AgentWorkingState fields, Task/Plan ownership, ProposedAction lifecycle, and Validation evidence.
+Canonical product state includes, as phases introduce it:
+- ProjectArtifact
+- Plan / PlanStep / Task
+- accepted AgentWorkingState fields
+- ownership
+- ProposedAction lifecycle
+- DeveloperSession
+- Validation evidence
 
-Derived state includes UI layout, rendered panels, search indexes, recomputable architecture projections, provider-native response IDs, and framework chat/session state.
+Derived/non-canonical state includes:
+- UI layout
+- rendered panels
+- search indexes
+- recomputable architecture projections
+- provider-native response IDs
+- provider-native chat/session state
+- Theia AI session state
 
 Do not confuse derived convenience with canonical truth.
 
@@ -148,9 +281,11 @@ Do not confuse derived convenience with canonical truth.
 
 Dope defines a product-level WorkspaceMode abstraction.
 
-Likely modes:
+Initial useful modes:
 - BUILD
 - PLAN
+
+Later modes may include:
 - RESEARCH
 - ARCHITECTURE
 - DEBUG
@@ -187,13 +322,13 @@ Initial tooling matrix:
 - terminal
 - ESLint
 - Prettier
-- at least one Open VSX extension installed and used
+- at least one additional Open VSX extension installed and used
 
 Compatibility claims require real evidence.
 
 ## Security / authority boundary
 
-No model receives direct filesystem/process mutation authority.
+When mutation-capable AI is introduced, no model receives direct filesystem/process mutation authority.
 
 AI
 -> ProposedAction
@@ -207,4 +342,4 @@ Repository content, extensions, remote tools, MCP servers, and model output are 
 
 George code may be studied or selectively borrowed only where it fits this architecture.
 
-No George API, state schema, TUI assumption, or compatibility requirement is authoritative for Dope.
+No George API, state schema, TUI assumption, provider choice, or compatibility requirement is authoritative for Dope.

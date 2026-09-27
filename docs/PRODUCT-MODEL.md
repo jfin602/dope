@@ -4,13 +4,24 @@ Status: INITIAL DOMAIN CONTRACT
 
 This document defines product concepts independently from Theia, Theia AI, any model provider, and any specific persistence backend.
 
-## Project Brain
+The full vocabulary is intentionally broader than the initial implementation roadmap. A concept being defined here does not authorize building it early.
 
-Project Brain is the durable structured knowledge of one software project.
+## Project Mind
 
-It is not chat history, Theia workspace state, or provider-native memory.
+Project Mind is the developer-facing durable structured knowledge of one software project.
 
-The GUI renders it. Agents consume and update it under explicit rules. It persists independently.
+Project Intelligence is the internal domain/service boundary that implements Project Mind.
+
+Earlier foundation planning used the phrase Project Brain. Project Mind is the preferred product-facing term going forward.
+
+Project Mind is not:
+- chat history
+- Theia workspace state
+- Theia AI state
+- provider-native memory
+- a model's private context
+
+The GUI renders it. Future agents consume and update it under explicit rules. It persists independently.
 
 ## Base artifact
 
@@ -27,33 +38,80 @@ Minimum conceptual fields:
 - links/relationships
 - optional project/session/task scope
 
-Provenance must distinguish developer-authored, AI-proposed, AI-generated and developer-accepted, derived from repository/runtime evidence, and imported state.
+Provenance must distinguish:
+- developer-authored
+- AI-proposed
+- AI-generated and developer-accepted
+- derived from repository/runtime evidence
+- imported state
 
 Derived state must never silently become developer-authored truth.
 
-## First-class artifact types
+## Staged artifact introduction
+
+The initial roadmap deliberately introduces the model in layers.
+
+### Phase 2 — Project Mind core
+
+Initial first-class artifacts:
+- Note
+- Idea
+- Question
+- Decision
+
+These must be useful with no model configured.
+
+### Phase 3 — Planning
+
+Add:
+- Plan
+- PlanStep
+- Task
+
+Plans are live control structures, not static memos.
+
+### Phase 4-5 — AI collaboration and delegation
+
+Introduce or activate:
+- AgentWorkingState / Agent Mind
+- ownership and delegation
+- ProposedAction
+- ChangeSet
+- Validation integration
+
+### Phase 6 — Development Sessions
+
+Introduce durable DeveloperSession as the cross-time development unit.
+
+### Later expansion
+
+Defer until the product earns the complexity:
+- Research as a dedicated workflow/artifact
+- ArchitectureModel
+- advanced semantic project search
+- richer conceptual ChangeSet history
+
+## Core artifact semantics
 
 ### Note
 
-Durable developer or AI-assisted thought. A Note may preserve raw thought, structured hypothesis, reason, open question, and next investigation.
+Durable developer or AI-assisted thought.
+
+A Note may preserve raw thought, structured hypothesis, reason, open question, and next investigation.
 
 ### Idea
 
-A passive discovery that is useful but not active work.
+A useful observation that is not active work.
 
-An Idea does not automatically become work. It can be deleted, promoted to a Note, researched, converted into a Decision, attached to a Plan, or turned into a Task.
+An Idea does not automatically become work. It can later become a Note, Decision, Plan input, Task, or Research subject.
 
 ### Question
 
-A durable unresolved question linked to research, decisions, plans, code, architecture nodes, or sessions.
-
-### Research
-
-A structured investigation retaining question, alternatives, evidence, project constraints, unknowns, sources, conclusions, and limitations.
+A durable unresolved question linked to code, decisions, plans, tasks, notes, or later research.
 
 ### Decision
 
-Institutional memory for an architectural/product/engineering choice.
+Institutional memory for an architectural, product, or engineering choice.
 
 Minimum useful shape:
 - decision
@@ -65,46 +123,56 @@ Minimum useful shape:
 - revisit conditions
 - evidence/affected-artifact links
 
-Later agents should be able to detect conflict with an accepted Decision.
+Later AI should be able to detect conflict with an accepted Decision.
 
 ### Plan
 
-A live control structure, not a static memo.
+A live control structure.
 
 Plan steps may be pending, active, blocked, complete, skipped, or superseded.
 
-Changing an assumption or step should update shared execution state rather than requiring the agent to reconstruct the task from conversation.
+Changing a step or assumption updates canonical planning state.
 
 ### Task
 
-A bounded unit of executable work linking objective, plan, ownership, requirements, constraints, working set, proposed actions, validation, changesets, and completion state.
+A bounded unit of executable work linking objective, plan, ownership, requirements, constraints, working set, validation, and completion state.
+
+A Task does not require AI ownership.
 
 ### DeveloperSession
 
-The durable unit representing one development session.
+A durable representation of one development session.
 
-A session can span manual and AI work and should answer:
-- what were we trying to do;
-- what changed;
-- what did the developer do;
-- what did AI do;
-- what decisions were made;
-- what remains unresolved;
-- what validation exists;
-- what ideas were captured.
+It should answer:
+- what were we trying to do
+- what changed
+- what did the developer do
+- what did AI do
+- what decisions were made
+- what remains unresolved
+- what validation exists
+- what ideas were captured
 
 A session is not a raw transcript.
+
+### Research
+
+A structured investigation retaining question, alternatives, evidence, project constraints, unknowns, sources, conclusions, and limitations.
+
+Research remains part of the vision but is deferred beyond the initial Project Mind scope.
 
 ### ArchitectureModel
 
 A versioned/refreshable software model containing subsystems, modules, files, symbols, dependencies, runtime/data-flow edges, ownership, tests, active-task impact, and target-architecture overlays.
 
 Evidence classes remain distinguishable:
-- observed deterministic structure;
-- runtime observation;
-- inferred semantic relationship;
-- developer-authored target;
-- agent proposal.
+- observed deterministic structure
+- runtime observation
+- inferred semantic relationship
+- developer-authored target
+- agent proposal
+
+ArchitectureModel is deferred beyond the initial roadmap.
 
 ### ChangeSet
 
@@ -134,9 +202,9 @@ This is not mandatory linear flow. Artifacts can branch, merge, and link.
 
 ## Agent Mind
 
-Agent Mind is the structured visible working state of an active agent/session.
+Agent Mind is the structured visible working state of an active AI collaborator/session.
 
-AgentWorkingState contains at least:
+AgentWorkingState may contain:
 - objective
 - currentStep
 - plan[]
@@ -155,6 +223,8 @@ AgentWorkingState contains at least:
 This state is not raw chain-of-thought.
 
 It is product-facing execution state intended for inspection, steering, persistence, and UI rendering.
+
+Agent Mind is introduced when AI Presence becomes real; it is not required to make Project Mind or Planning useful.
 
 ## Ownership and delegation
 
@@ -192,7 +262,15 @@ Steering is a state transition, not merely another prompt.
 
 A steering action may change objective, edit plan steps, change ownership, add/remove constraints, accept/reject an assumption, stop delegation, preserve a tangent as an Idea, reclassify behavior as intentional, or alter validation expectations.
 
-Agent Runtime should consume updated canonical state.
+Future Agent Runtime consumes updated canonical state.
+
+## Provider independence
+
+No canonical Project Mind, Plan, Task, Agent Mind, Session, Decision, ChangeSet, or Validation object may require one provider's native schema.
+
+Provider-native response IDs, conversation/session identifiers, context handles, tool formats, and capability metadata are adapter state unless explicitly promoted through a Dope-owned contract.
+
+Switching model/provider must not require rebuilding canonical project state from chat history.
 
 ## Search model
 
@@ -200,13 +278,15 @@ Project-wide search should eventually span code, notes, ideas, questions, resear
 
 Semantic questions resolve against durable project state with provenance.
 
+Advanced semantic search is deferred beyond the initial roadmap.
+
 ## Persistence rules
 
 Canonical product artifacts survive application restart.
 
 Persistence backend is an adapter decision.
 
-Foundation Spike 0 should prove a minimal durable implementation without prematurely locking the long-term backend.
+Foundation Spike 0 proves a minimal durable implementation without prematurely locking the long-term backend.
 
 The persistence representation must preserve stable IDs, schema version, provenance, relationships, timestamps, and a migration path.
 
@@ -214,10 +294,26 @@ The persistence representation must preserve stable IDs, schema version, provena
 
 Never silently promote derived UI/framework/provider state into canonical project truth.
 
-Theia layout is presentation state. Theia AI chat session is framework state. Model narration is provisional. Architecture extraction is evidence with provenance, not infallible truth.
+Theia layout is presentation state.
+
+Theia AI or provider chat sessions are framework/provider state.
+
+Model narration is provisional.
+
+Architecture extraction is evidence with provenance, not infallible truth.
 
 ## Build + Think relationship
 
 BUILD and THINK objects link through the same model.
 
-A Task may link to a Decision. A ChangeSet may implement a Plan step. A Validation may qualify a ChangeSet. An Idea may be captured while debugging. A Research artifact may resolve a Question that updates a Decision. A Session ties these together without making transcript text the source of truth.
+A Task may link to a Decision.
+
+A future ChangeSet may implement a Plan step.
+
+A Validation may qualify work.
+
+An Idea may be captured while debugging.
+
+A future Research artifact may resolve a Question that updates a Decision.
+
+A Session eventually ties these together without making transcript text the source of truth.

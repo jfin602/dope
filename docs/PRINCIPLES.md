@@ -90,9 +90,15 @@ Dope should be the home of ideas, notes, questions, research, architecture explo
 
 ## Cross-cutting principles
 
+The eleven pillars above remain the product pillars.
+
+Cross-cutting architecture and execution laws:
 - Session over prompt.
 - Authority is explicit: models propose; Dope authorizes and executes.
 - Framework independence: Theia is a substrate.
+- Model/provider independence: no provider, model family, hosted service, or local runtime owns Dope's product/intelligence model.
+- OpenAI/ChatGPT/Codex compatibility and local-model compatibility are first-class requirements.
+- Capability-based adapters should preserve provider-specific strengths rather than collapsing everything to a lowest common denominator.
 - Mastery over spectacle.
 
 The target feeling is not "the AI did a lot."

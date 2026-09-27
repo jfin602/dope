@@ -8,7 +8,7 @@ Before major product development, try to break the Theia thesis.
 
 The spike is not a product phase and is not a demo whose goal is to prove the decision correct.
 
-It is a bounded feasibility and upgradeability test.
+It is a bounded feasibility and upgradeability test for the IDE substrate.
 
 Initial pin:
 - Eclipse Theia 1.75.0
@@ -20,7 +20,9 @@ The upgrade experiment moves to the next stable release available when the test 
 
 ## Success condition
 
-The substrate qualifies only if Dope can implement required product seams without unacceptable coupling to Theia internals and can survive a framework upgrade with bounded repair.
+The substrate qualifies only if Dope can build a serious, materially customized desktop IDE on top of Theia while keeping Dope-owned product state independent from Theia internals and surviving a framework upgrade with bounded repair.
+
+The spike does not need to prove Dope's future AI runtime.
 
 ## IDE basics
 
@@ -30,6 +32,7 @@ Prove:
 - Monaco editing
 - TypeScript language features
 - file explorer
+- search
 - Git/SCM
 - integrated terminal
 - debugging
@@ -38,68 +41,45 @@ Prove:
 ## Custom Dope UI
 
 Prove:
-- custom Agent Mind panel
-- custom Planning central view
-- custom Ideas view
-- switch between Code and planning-oriented layouts
+- custom Project Mind view using minimal spike data
+- custom Planning view using minimal spike data
+- BUILD/PLAN workspace modes or equivalent Dope-owned layout switching
 - hide/replace unwanted standard UI where needed
 - workbench styling can materially change product feel
 
-The widgets may use minimal spike data, but data contracts must be Dope-owned.
+Data contracts used by custom views must be Dope-owned.
 
-## Backend
+The spike is proving that differentiated product surfaces fit cleanly inside Theia, not implementing final Project Mind or Planning UX.
+
+## Backend and application seams
 
 Prove:
 - Node backend service
-- typed frontend/backend communication
-- streaming live structured AgentWorkingState
-- stream cancellation/cleanup
+- typed frontend/backend request/response
+- at least one backend-originated state/event update reaching the frontend
+- cancellation/cleanup for any long-lived transport used by the spike
 - restart-safe service lifecycle
 
-## Local AI
+Transport/framework choices must remain replaceable.
+
+## Minimal Project Mind persistence
 
 Prove:
-- local model through replaceable adapter
-- streamed model response
-- one tool call
-- authority/approval confirmation
-- structured output where useful
-- provider failure visible without corrupting project state
+- persist a minimal ProjectArtifact or Note
+- retain stable identity and basic provenance
+- restore it after application restart
+- render it through a Dope-owned custom view
+- keep the persisted representation independent from Theia workspace/chat state
 
-Theia AI may be tested as infrastructure, but the spike must preserve a Dope-owned adapter boundary.
+Use a deliberately minimal persistence backend.
 
-## Editor <-> Agent
-
-Prove:
-- observe active editor
-- observe selection
-- observe developer edits
-- update bounded working set
-- propose code change
-- display diff
-- apply or reject proposed change
-
-Observation must work without granting mutation.
-
-Apply/reject must flow through Dope authority state rather than direct model mutation.
-
-## Project Intelligence
-
-Prove:
-- persist a Note
-- convert Note -> Task
-- expose Task to Agent Runtime
-- agent action updates Task state
-- state survives restart
-- state is readable without Theia AI chat history
-
-Use a deliberately minimal persistence backend. The spike qualifies the boundary, not final storage technology.
+The spike qualifies ownership and restart boundaries, not the final persistence architecture.
 
 ## Customization stress test
 
 Exercise non-trivial customization:
 - materially change default layout
-- hide unwanted standard UI
+- hide unwanted UI
 - replace/rebind at least one Theia service
 - customize workbench styling
 - persist custom application state
@@ -115,17 +95,26 @@ Define Dope WorkspaceMode independently.
 
 Adapt at least BUILD and PLAN.
 
-If Theia Perspectives are used, keep them behind the adapter.
+If Theia Perspectives are used, keep them behind an adapter.
 
-Do not make canonical product state depend on Perspectives.
+Canonical product state must not depend on Perspectives.
 
 ## Extension/tooling matrix
 
-Qualify TypeScript/JavaScript, Node debugger, JSON, Markdown, Git, terminal, ESLint, Prettier, and one additional Open VSX extension.
+Qualify:
+- TypeScript/JavaScript
+- Node debugging
+- JSON
+- Markdown
+- Git
+- terminal
+- ESLint
+- Prettier
+- one additional Open VSX extension
 
 ## Packaging
 
-Produce a Linux desktop build that launches outside the dev server, opens a repository, restores custom state, and provides qualified editor/terminal/SCM basics.
+Produce a Linux desktop build that launches outside the dev server, opens a repository, restores custom state, and provides qualified editor/terminal/SCM basics plus the custom Dope surfaces.
 
 ## Upgrade test
 
@@ -133,27 +122,45 @@ Produce a Linux desktop build that launches outside the dev server, opens a repo
 2. Record exact dependency pin and candidate commit.
 3. Upgrade to the next stable Theia release available at execution.
 4. Record every source/config/dependency/CSS fix.
-5. Re-run qualification matrix.
+5. Re-run the qualification matrix.
 6. Classify fixes by cause.
 
 Desired result:
 - bounded compilation/config/CSS repairs
-- no product-domain rewrite
-- no Project Intelligence or Agent Runtime rewrite
+- no Dope product-domain rewrite
+- no persistence-domain rewrite
 - no broad shell surgery
+
+## AI scope
+
+Actual model integration is intentionally deferred.
+
+Foundation Spike 0 does not need to qualify:
+- a local model
+- OpenAI/Codex integration
+- AgentWorkingState streaming
+- Agent Mind runtime behavior
+- tool calling
+- ProposedAction execution
+- model-generated code changes
+- editor-agent mutation flows
+- scoped delegation
+
+Theia AI remains eligible for later selective reuse behind a Dope adapter. Phase 0 should only prove that the substrate does not force Dope's future AI/product model into Theia-owned state.
+
+Provider/model independence is governed by ADR 0004.
 
 ## Hard failure signals
 
 Foundation Spike 0 is Not Green if unresolved:
 - core IDE functions require rebuilding commodity infrastructure
-- custom product views cannot integrate cleanly
-- editor observation requires unsafe mutation coupling
-- Project Intelligence must adopt Theia AI/chat state as canonical
-- Agent Runtime must import Theia presentation types
-- authority cannot mediate model-proposed mutation
-- deep/private shell APIs are required broadly
+- custom Dope views cannot integrate cleanly
+- Dope-owned persisted state must adopt Theia-specific schemas as canonical
+- broad private shell APIs are required
+- an early framework fork is required
 - restart restoration is unreliable
 - Linux packaging is not viable
+- extension/tooling incompatibility undermines a serious IDE
 - upgrade requires extensive architectural rewrites
 
 ## Evidence states
@@ -166,17 +173,17 @@ Manual visual checks must record what was actually observed.
 
 ## Non-goals
 
-Do not build production-quality Agent Mind UX, final persistence architecture, full living architecture model, full ambient intelligence, full search, multi-agent scheduling, marketplace productization, or broad cloud sync.
+Do not build production Project Mind, production Planning, Agent Mind, final persistence architecture, model integration, full living architecture model, ambient intelligence, semantic search, multi-agent scheduling, marketplace productization, or cloud sync.
 
 ## Closeout questions
 
 1. Does Theia remain the selected substrate?
 2. Which customization techniques are approved?
 3. Which framework APIs are forbidden/high-risk?
-4. Did Theia AI earn reuse for any infrastructure?
-5. Can Project Intelligence and Agent Runtime remain presentation-independent?
-6. Did observation/mutation separation work?
-7. Did restart restoration work?
+4. Can Dope-owned domain and persistence state remain presentation-independent?
+5. Can BUILD and PLAN surfaces be expressed without framework-owned canonical state?
+6. Did restart restoration work?
+7. Did commodity IDE functionality remain strong?
 8. Did packaging work?
 9. Did the upgrade test remain bounded?
 10. What architecture changes are required before Product Phase 1?

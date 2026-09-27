@@ -4,7 +4,7 @@ Status: APPROVED DIRECTION / REQUIRES EXECUTION EVIDENCE
 
 ## Decision
 
-Use Eclipse Theia as Dope's initial IDE substrate, but treat that decision as provisional until a bounded Foundation Spike 0 deliberately stress-tests capabilities and coupling risks that matter to Dope.
+Use Eclipse Theia as Dope's initial IDE substrate, but treat that decision as provisional until a bounded Foundation Spike 0 deliberately stress-tests the IDE capabilities, customization seams, persistence boundary, packaging, and upgradeability that matter to Dope.
 
 Initial spike baseline:
 - Theia 1.75.0
@@ -15,27 +15,50 @@ Initial spike baseline:
 
 ## Why Theia
 
-Theia is designed as a framework for building custom IDE products and already supplies large amounts of commodity IDE infrastructure: Monaco, workspaces/filesystem, terminal, SCM/Git, debugging, search, commands/preferences/keybindings, LSP/TextMate, VS Code extension compatibility, Open VSX, frontend/backend split, dependency injection/service replacement, custom React widgets/workbench extension, Electron, and AI infrastructure.
+Theia is designed as a framework for building custom IDE products and already supplies large amounts of commodity IDE infrastructure: Monaco, workspaces/filesystem, terminal, SCM/Git, debugging, search, commands/preferences/keybindings, LSP/TextMate, VS Code extension compatibility, Open VSX, frontend/backend separation, dependency injection/service replacement, custom React widgets/workbench extension, and Electron.
 
-Rebuilding these features would distract from Dope's actual product thesis.
+Rebuilding these capabilities would distract from Dope's actual product thesis.
 
 ## Product boundary
 
 Theia is infrastructure, not the conceptual architecture of Dope.
 
-Dope owns Project Intelligence, Agent Mind, DeveloperSession, steering, ownership/delegation, Ideas/Research/Decisions/Plans/Tasks, ChangeSets/Validation, ArchitectureModel, and authority.
+Dope owns Project Mind / Project Intelligence, Plans, Tasks, Agent Mind, DeveloperSession, ownership/delegation, steering, ChangeSets, Validation, ArchitectureModel, and authority.
 
-These concepts remain valid if presentation framework changes.
+These concepts remain valid if the presentation framework changes.
+
+## Spike scope decision
+
+Foundation Spike 0 qualifies Theia, not the full Dope product.
+
+It must prove:
+- serious IDE basics
+- material Dope UI customization
+- Dope-owned custom views
+- typed frontend/backend seams
+- minimal Dope-owned persistence and restart restoration
+- Linux packaging
+- bounded framework upgrade repair
+
+It does not need to prove the future model/agent runtime.
 
 ## Theia AI decision
 
-Theia AI is eligible for selective reuse behind a Dope adapter.
+Theia AI remains eligible for selective reuse behind a Dope adapter in later phases.
 
-Potential reusable infrastructure includes model registry/providers, OpenAI-compatible/local provider plumbing, model tools, context variables, MCP, prompt services, confirmations, structured output, and session plumbing.
+Potential reusable infrastructure may include model registry/providers, OpenAI-compatible/local-provider plumbing, tools, context variables, MCP, prompt services, confirmations, structured output, and session plumbing.
 
 Theia AI agent/chat abstractions do not become Dope's domain model.
 
-The spike must earn each reused capability.
+Actual Theia AI/model qualification is deferred until AI Presence work.
+
+## Model/provider boundary
+
+Dope is not architecturally tied to Theia AI or any model provider.
+
+ADR 0004 governs provider/model independence.
+
+OpenAI/ChatGPT/Codex compatibility and local-model compatibility are first-class future requirements, but they are not prerequisites for qualifying the Theia substrate.
 
 ## Customization policy
 
@@ -58,13 +81,11 @@ Product state must not depend on Perspectives.
 
 ## Authority decision
 
-No model receives direct mutation authority.
+Observation and mutation authority remain separate architectural concerns.
 
-Observation and mutation are separate.
+No future model receives direct mutation authority.
 
-Mutation passes through ProposedAction -> Authority -> ToolExecutor.
-
-This remains true even if Theia AI offers its own tool-confirmation mechanism; Dope policy stays authoritative.
+That rule remains authoritative, but its execution path is not part of Foundation Spike 0 qualification.
 
 ## Upgradeability decision
 
@@ -74,8 +95,25 @@ The spike is incomplete until one Theia upgrade has been performed and fixes cla
 
 ## Rejection conditions
 
-Reconsider Theia if the spike shows broad private shell APIs, product/domain objects tied to Theia internals, Theia AI chat/session state becoming canonical Project Brain, an early framework fork, unbounded upgrade repair, unreliable editor-agent observation/diff/apply, unworkable packaging, or extension/tooling incompatibility severe enough to undermine a serious IDE.
+Reconsider Theia if the spike shows:
+- broad private shell API dependence
+- product/domain objects tied to Theia internals
+- canonical Dope state requiring Theia-owned schemas
+- an early framework fork
+- unbounded upgrade repair
+- unreliable persistence/restart restoration
+- unworkable Linux packaging
+- extension/tooling incompatibility severe enough to undermine a serious IDE
 
 ## Non-decision
 
-The spike does not yet lock final persistence backend, final local model, visual design, agent loop, final package decomposition, cloud/network architecture, or multi-agent execution.
+The spike does not lock:
+- final persistence backend
+- final model/provider set
+- local-model runtime
+- Theia AI reuse
+- visual design
+- agent loop
+- final package decomposition
+- cloud/network architecture
+- multi-agent execution

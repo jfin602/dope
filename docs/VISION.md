@@ -8,14 +8,14 @@ Planning baseline: 2026-09-27
 AI coding agents can dramatically increase software output while quietly removing the developer from the engineering loop that creates understanding and satisfaction.
 
 A typical autonomous loop can absorb nearly every cognitive stage:
-- reading and understanding the existing system;
-- choosing implementation details;
-- discovering constraints;
-- making architecture decisions;
-- writing the implementation;
-- producing tests;
-- debugging;
-- reporting a completed result.
+- reading and understanding the existing system
+- choosing implementation details
+- discovering constraints
+- making architecture decisions
+- writing the implementation
+- producing tests
+- debugging
+- reporting a completed result
 
 The developer may still approve high-level direction, but the software increasingly becomes something they commissioned rather than something they built.
 
@@ -34,6 +34,12 @@ It should increase what one developer can accomplish without requiring them to s
 The product must also preserve that understanding beyond the session.
 
 Plans, discoveries, architecture reasoning, decisions, research, ideas, validation, and implementation history should become durable project knowledge instead of disappearing into transient chat context.
+
+## Core mission
+
+Give developers dramatically more leverage with AI while preserving and actively increasing their understanding, authorship, skill, and control over the software they build.
+
+The environment should ensure that the understanding survives the session.
 
 ## What the product is
 
@@ -77,11 +83,37 @@ The project should become easier to understand over time because the environment
 
 The developer should not need an AI's private memory to understand their own project.
 
-## Local AI
+## Project Mind before AI dependence
 
-Local models are strategically important because Dope needs many small, continuous interactions: observe edits, inspect selections, update a project model, run micro-analysis, compare implementations, support passive review, and maintain context.
+Dope's early differentiated value should not require an LLM.
 
-That favors local inference for ambient intelligence and bounded helper roles, while stronger remote models may still be used for demanding delegated work.
+A real IDE, durable Project Mind, and live Planning should already improve the developer's ability to understand and direct a project.
+
+AI is then introduced into an environment with durable human-meaningful state instead of becoming the foundation that everything else depends on.
+
+## Model and provider independence
+
+Dope must remain poised to change with a fast-moving model ecosystem.
+
+No model, model family, LLM provider, hosted service, local runtime, or provider-native session format is foundational to the product.
+
+OpenAI/ChatGPT/Codex compatibility is a first-class requirement.
+
+Local-model compatibility is also a first-class requirement.
+
+Future providers should be adoptable through replaceable capability-based adapters without rewriting Project Mind, Planning, Agent Mind, authority, sessions, or other canonical product state.
+
+Provider abstraction should preserve useful provider-specific capabilities rather than forcing all models into the same lowest-common-denominator behavior.
+
+## Local and hosted AI
+
+Local models are strategically important because Dope may eventually need many small, continuous interactions: observe edits, inspect selections, update a project model, run micro-analysis, compare implementations, support passive review, and maintain context.
+
+Hosted frontier models are strategically important for demanding reasoning, implementation, research, vision, and other capabilities that may exceed local models.
+
+Dope should be able to combine these roles over time.
+
+The product architecture should assume model capabilities, economics, APIs, and market leaders will change.
 
 ## Brand feeling
 

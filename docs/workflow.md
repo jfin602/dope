@@ -38,7 +38,7 @@ Distills the accepted plan into the smallest precise execution brief.
 
 Do not copy planning analysis wholesale.
 
-## Model routing
+## Repository implementation model routing
 
 Forward-looking implementation-prompt baseline is GPT-6 Sol.
 
@@ -54,6 +54,12 @@ Do not use XHigh as the routine default.
 Historical/compatibility labels retained inside the ported runner keep their original meaning. New Dope prompts must not use them.
 
 The runner maps GPT-6 Sol labels to gpt-6-sol and requires Codex CLI >= 0.155.0.
+
+This section governs how the Dope repository is currently built.
+
+It is not a product-runtime architecture decision.
+
+Use of Codex/GPT-6 Sol in the development workflow must never be interpreted as requiring Dope itself to depend on OpenAI, Codex, one model family, or one provider. Product runtime provider independence is governed by ARCHITECTURE.md and ADR 0004.
 
 ## Planning philosophy
 
@@ -91,6 +97,8 @@ Package versions for p0 prompts are 0.0.<prompt-number>.
 The repository starts at 0.0.0.
 
 The final prompt in every phase stack is a closeout prompt.
+
+Foundation Spike 0 is a Theia substrate qualification. It does not need implementation prompts for actual model/provider integration merely because the repository runner itself uses Codex.
 
 ## Prompt metadata
 
@@ -144,6 +152,7 @@ Every substantial task should answer:
 4. What baseline is used?
 5. What durable project knowledge should be updated?
 6. Did UI/framework convenience accidentally become canonical product state?
+7. Did implementation convenience accidentally create provider/model coupling?
 
 ## Test-command truth
 
@@ -153,10 +162,14 @@ At bootstrap:
 - npm run typecheck checks the TypeScript test/bootstrap surface
 - npm run check composes typecheck plus runner tests
 
-Product prompts must add explicit commands for product behavior they introduce. Do not describe npm test as Theia, UI, provider, packaging, or integration qualification until it actually includes that coverage.
+Product prompts must add explicit commands for product behavior they introduce.
+
+Do not describe npm test as Theia, UI, provider, packaging, or integration qualification until it actually includes that coverage.
 
 ## Closeout truth
 
 A closeout audits evidence and decides whether the bounded gate qualifies.
 
-Foundation Spike 0 closeout decides whether Theia qualifies as the substrate. It does not owner-close future product phases.
+Foundation Spike 0 closeout decides whether Theia qualifies as the substrate.
+
+It does not owner-close future product phases or qualify future model/provider integration.
