@@ -28,6 +28,11 @@ Initial spike pin:
 
 The spike exists to try to break the Theia thesis before Dope becomes deeply coupled to it.
 
+Historical planning source:
+- docs/foundation-context.md
+
+If the historical source conflicts with a later current contract, the current contract wins and the conflict should be resolved explicitly.
+
 Current authority:
 - docs/VISION.md
 - docs/PRINCIPLES.md
