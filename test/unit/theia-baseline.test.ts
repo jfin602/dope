@@ -16,7 +16,7 @@ test('Theia stays on the qualified baseline and package versions stay coherent',
       }
     }
   }
-  for (const { path, value } of manifests) assert.equal(value.version, '0.1.5', path);
+  for (const { path, value } of manifests) assert.equal(value.version, '0.1.6', path);
   assert.equal(existsSync(join(root, 'package-lock.json')), false);
 });
 
@@ -28,7 +28,7 @@ test('both applications carry the required IDE composition', () => {
   ];
   for (const { path, value } of manifests.slice(1, 3)) {
     for (const name of required) assert.equal(value.dependencies[`@theia/${name}`], '1.75.0', `${path}: ${name}`);
-    assert.equal(value.dependencies['@dope/theia-extension'], '0.1.5');
+    assert.equal(value.dependencies['@dope/theia-extension'], '0.1.6');
     assert.equal(value.theia.frontend.config.applicationName, 'Dope');
     assert.equal(value.theia.frontend.config.defaultTheme, 'dark');
     assert.equal(value.theia.frontend.config.preferences['jestrunner.enableTestExplorer'], true);
@@ -54,7 +54,7 @@ test('both applications carry the required IDE composition', () => {
   assert.equal(manifests[2].value.main, 'scripts/packaged-main.cjs');
   assert.equal(manifests[2].value.build.extraResources[0].to, 'app/plugins');
   assert.match(manifests[0].value.scripts['package:linux'], /npm run download:plugins/);
-  assert.equal(manifests[3].value.dependencies['@dope/contracts'], '0.1.5');
+  assert.equal(manifests[3].value.dependencies['@dope/contracts'], '0.1.6');
   assert.match(manifests[0].value.theiaPlugins['vscode-builtin-extensions'], /\/1\.108\.2\//);
   assert.match(manifests[0].value.theiaPlugins['firsttris.vscode-jest-runner'], /\/0\.4\.149\/file\/firsttris\.vscode-jest-runner-0\.4\.149\.vsix$/);
   for (const id of ['ms-vscode.js-debug', 'vscode.typescript-language-features', 'vscode.javascript', 'vscode.json-language-features', 'vscode.git']) {

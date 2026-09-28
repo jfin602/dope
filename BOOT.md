@@ -15,6 +15,8 @@ Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af
 
 **Product Phase 1 — IDE Alive is the active engineering gate.**
 
+The September 28, 2026 P6 evidence-only closeout is **Not Qualified**. The owner-waived `0.1.5` handoff permits audit but does not turn incomplete P5 interactive evidence Green. See `docs/tasks/p1/closeout.md`; correct/requalify the P5 daily-use blockers before any Phase 1 completion claim. Phase 2 remains blocked.
+
 This activation establishes package baseline `0.1.0` before the `p1` execution stack. Phase 1 turns the qualified substrate into a desktop IDE comfortable enough to develop Dope inside Dope through ordinary development workflows.
 
 Phase 1 product posture:
@@ -206,20 +208,8 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Execute Product Phase 1 from `docs/tasks/p1`.
+P6 closed as **Not Qualified** on September 28, 2026 from owner-waived handoff `fca1ca672548cc65fc12ec4ea66f0a04ed9f2019` (`0.1.5`). Its closeout version and commit subject are `0.1.6`; the owner approved committing the reviewed closeout. See `docs/tasks/p1/closeout.md` for the A–G audit and deterministic rerun.
 
-Before implementation:
-- validate the stack with `npm run codex:phase:validate -- p1`;
-- begin from clean package baseline `0.1.0`;
-- keep Theia at 1.75.0 unless an explicitly approved real upgrade supersedes this plan.
-
-Normal execution:
-- P1-P4 are runner-owned implementation/qualification prompts;
-- P5 is the single direct interactive Theia GUI dogfooding gate; it may use the browser-hosted workbench or Electron, while P4 remains authoritative for Electron packaging/native launch;
-- P6 is evidence-only Phase 1 closeout.
-
-P5 remains Not Green. On September 28, 2026 the owner explicitly authorized P6 to proceed anyway; the exact `0.1.5` commit is an owner-waived handoff marker, not a qualification pass. The incomplete interactive checkpoint is `0ad3a75caf203857002481874aabe82d7d9e2f1c`. See the current waiver and retained gaps in `docs/tasks/p1/P5-native-dogfooding-evidence.md`.
-
-Next action: run evidence-only P6 with `npm run codex:phase -- p1 --closeout` from the clean owner-waived handoff. Preserve failures/gaps and determine Qualified / Not Qualified honestly. This permission does not qualify Phase 1 or approve Phase 2.
+Next action: correct and directly requalify the remaining P5 interactive GUI blockers on the real Dope repository, especially restoration and integrated test execution. Preserve the failed evidence. The P5 browser-hosted workbench is an approved direct-interaction surface, while P4 remains authoritative for Electron packaging/native launch. Do not mark Phase 1 complete or start Phase 2 until the gate passes; post-Phase-1 `/docs-review` follows qualification, not this waiver.
 
 Do not start Product Phase 2 implementation until Phase 1 is qualified and its closeout routes through the normal post-phase documentation review.
