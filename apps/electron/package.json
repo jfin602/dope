@@ -1,6 +1,6 @@
 {
   "name": "@dope/electron",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Dope software development environment",
   "author": "Dope Contributors",
@@ -18,7 +18,10 @@
     "frontend": {
       "config": {
         "applicationName": "Dope",
-        "defaultTheme": "dark"
+        "defaultTheme": "dark",
+        "preferences": {
+          "jestrunner.enableTestExplorer": true
+        }
       }
     }
   },
@@ -57,7 +60,7 @@
     }
   },
   "dependencies": {
-    "@dope/theia-extension": "0.1.1",
+    "@dope/theia-extension": "0.1.2",
     "@theia/core": "1.75.0",
     "@theia/debug": "1.75.0",
     "@theia/editor": "1.75.0",
@@ -73,6 +76,7 @@
     "@theia/process": "1.75.0",
     "@theia/scm": "1.75.0",
     "@theia/search-in-workspace": "1.75.0",
+    "@theia/test": "1.75.0",
     "@theia/terminal": "1.75.0",
     "@theia/vsx-registry": "1.75.0",
     "@theia/workspace": "1.75.0",

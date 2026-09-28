@@ -16,7 +16,7 @@ test('Theia stays on the qualified baseline and package versions stay coherent',
       }
     }
   }
-  for (const { path, value } of manifests) assert.equal(value.version, '0.1.1', path);
+  for (const { path, value } of manifests) assert.equal(value.version, '0.1.2', path);
   assert.equal(existsSync(join(root, 'package-lock.json')), false);
 });
 
@@ -24,13 +24,14 @@ test('both applications carry the required IDE composition', () => {
   const required = [
     'core', 'debug', 'editor', 'file-search', 'filesystem', 'keymaps', 'markers',
     'monaco', 'navigator', 'plugin-ext-vscode', 'preferences', 'process', 'scm',
-    'search-in-workspace', 'terminal', 'vsx-registry', 'workspace',
+    'search-in-workspace', 'test', 'terminal', 'vsx-registry', 'workspace',
   ];
   for (const { path, value } of manifests.slice(1, 3)) {
     for (const name of required) assert.equal(value.dependencies[`@theia/${name}`], '1.75.0', `${path}: ${name}`);
-    assert.equal(value.dependencies['@dope/theia-extension'], '0.1.1');
+    assert.equal(value.dependencies['@dope/theia-extension'], '0.1.2');
     assert.equal(value.theia.frontend.config.applicationName, 'Dope');
     assert.equal(value.theia.frontend.config.defaultTheme, 'dark');
+    assert.equal(value.theia.frontend.config.preferences['jestrunner.enableTestExplorer'], true);
   }
   assert.equal(manifests[1].value.theia.target, 'browser');
   assert.equal(manifests[2].value.theia.target, 'electron');
@@ -52,8 +53,14 @@ test('both applications carry the required IDE composition', () => {
   assert.equal(manifests[2].value.main, 'scripts/packaged-main.cjs');
   assert.equal(manifests[2].value.build.extraResources[0].to, 'app/plugins');
   assert.match(manifests[0].value.scripts['package:linux'], /npm run download:plugins/);
-  assert.equal(manifests[3].value.dependencies['@dope/contracts'], '0.1.1');
+  assert.equal(manifests[3].value.dependencies['@dope/contracts'], '0.1.2');
   assert.match(manifests[0].value.theiaPlugins['vscode-builtin-extensions'], /\/1\.108\.2\//);
+  assert.match(manifests[0].value.theiaPlugins['firsttris.vscode-jest-runner'], /\/0\.4\.134\/file\/firsttris\.vscode-jest-runner-0\.4\.134\.vsix$/);
+  for (const id of ['ms-vscode.js-debug', 'vscode.typescript-language-features', 'vscode.javascript', 'vscode.json-language-features', 'vscode.git']) {
+    assert.ok(!manifests[0].value.theiaPluginsExcludeIds.includes(id), `${id} must stay bundled`);
+  }
+  assert.match(manifests[0].value.scripts['package:linux'], /plugins\/firsttris\.vscode-jest-runner\/extension\/package\.json/);
+  assert.match(manifests[0].value.scripts['test:ide'], /node --test test\/fixtures\/ide-testing\/sample\.test\.js/);
 });
 
 test('packaged entrypoint passes bundled plugins before starting Theia', () => {

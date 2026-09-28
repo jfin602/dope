@@ -18,6 +18,8 @@ The active engineering gate is **Product Phase 1 — IDE Alive**, beginning from
 
 Dope prefers a dark default presentation while preserving persistent user theme choice.
 
+The Phase 1 IDE composition includes Theia's Test Explorer and a bundled Node.js/Jest/Vitest test provider. Test discovery is enabled by default; user settings can disable `jestrunner.enableTestExplorer`. Run the deterministic Node test fixture with `npm run test:ide`. Native GUI testing evidence belongs to P5.
+
 Read BOOT.md before substantial repository-aware work.
 
 ## Core docs

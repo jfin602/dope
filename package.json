@@ -1,6 +1,6 @@
 {
   "name": "dope",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "packageManager": "yarn@1.22.22",
@@ -17,14 +17,15 @@
     "build:extension": "corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/theia-extension build",
     "build:browser": "corepack yarn build:extension && corepack yarn workspace @dope/browser build",
     "build:electron": "corepack yarn build:extension && corepack yarn workspace @dope/electron build",
-    "package:linux": "(test -f plugins/vscode.javascript/extension/package.json || npm run download:plugins) && npm run build:electron && corepack yarn workspace @dope/electron package:linux",
+    "package:linux": "(test -f plugins/vscode.javascript/extension/package.json && test -f plugins/firsttris.vscode-jest-runner/extension/package.json || npm run download:plugins) && npm run build:electron && corepack yarn workspace @dope/electron package:linux",
     "start:browser": "npm run download:plugins && corepack yarn workspace @dope/browser start",
     "start:electron": "npm run download:plugins && corepack yarn workspace @dope/electron start",
     "download:plugins": "theia download:plugins",
-    "test": "npm run test:runner && npm run test:baseline && npm run test:product",
+    "test": "npm run test:runner && npm run test:baseline && npm run test:product && npm run test:ide",
     "test:runner": "node --test test/unit/codex-phase-prompt-grammar.test.ts test/unit/codex-phase-runner.test.ts",
     "test:baseline": "node --test test/unit/theia-baseline.test.ts",
     "test:product": "npm run build:extension && node --test test/unit/workspace-mode.test.ts test/unit/note-persistence.test.ts",
+    "test:ide": "node --test test/fixtures/ide-testing/sample.test.js",
     "codex:phase": "node scripts/codex-phase.mjs",
     "codex:phase:validate": "node scripts/validate-codex-phase.mjs",
     "typecheck": "corepack yarn workspace @dope/contracts build && tsc -p packages/theia-extension --noEmit",
@@ -32,7 +33,8 @@
   },
   "theiaPluginsDir": "plugins",
   "theiaPlugins": {
-    "vscode-builtin-extensions": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode-builtin-extensions-1.108.2.tar.gz"
+    "vscode-builtin-extensions": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode-builtin-extensions-1.108.2.tar.gz",
+    "firsttris.vscode-jest-runner": "https://open-vsx.org/api/firsttris/vscode-jest-runner/0.4.134/file/firsttris.vscode-jest-runner-0.4.134.vsix"
   },
   "theiaPluginsExcludeIds": [
     "ms-vscode.js-debug-companion",
