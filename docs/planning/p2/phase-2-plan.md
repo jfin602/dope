@@ -1,6 +1,6 @@
 # Product Phase 2 — Project Mind Plan
 
-Status: APPROVED / ACTIVATED BY OWNER SEQUENCING WAIVER — READY FOR EXECUTION
+Status: HISTORICAL — OWNER-CLOSED FOR SEQUENCING; P6 AUDIT REMAINS NOT QUALIFIED
 Date: September 28, 2026
 Execution folder: `p2`
 Preparation baseline: `dac6e57275134fc610d8c0c6e2620a90d7d58c2f`, package `0.1.6`
@@ -9,7 +9,7 @@ Theia `1.75.0`, Electron `42.8.1`, Node 24, Linux AppImage
 
 ## Approval and prerequisite
 
-The owner approved the Phase 2 documentation/stack and subsequently explicitly instructed "Proceed with Phase 2 despite Phase 1 being Not Qualified." The separate sequencing waiver is recorded in `activation.md`. Phase 1 remains Not Qualified with all restoration, Test Explorer and customization/extension gaps preserved; Phase 2 execution no longer waits for its qualification.
+The owner approved the Phase 2 documentation/stack and subsequently explicitly instructed "Proceed with Phase 2 despite Phase 1 being Not Qualified." The separate sequencing waiver is recorded in `activation.md`. Phase 1 remains Not Qualified with all restoration, Test Explorer and customization/extension gaps preserved. Phase 2 later reached a Not Qualified P6 audit; the owner then accepted the retained Phase 2 gaps for sequencing and authorized Phase 3 without relabeling the audit Green.
 
 The exact coherent activation source is `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781` (`0.2.0`), with the documentation-only execution authorization commit identified in `activation.md`. Root/all workspace versions, internal references and baseline assertions agree. P1 may proceed after the waiver commit is clean and reachable. Every prompt checks this recorded waiver and ordinary version/clean-tree prerequisites; it must not demand Phase 1 Green in addition to the authorized waiver. Preserve inherited failures; the waiver does not reduce any Phase 2 validation or exit requirement.
 

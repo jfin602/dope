@@ -1,9 +1,9 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current gate: Product Phase 2 — Project Mind (owner sequencing waiver; Phase 1 remains Not Qualified)
+Current gate: Product Phase 3 — Planning (owner-activated at package `0.3.0`)
 
-Phase 2 P6 `0.2.6` audit: **Not Qualified** under a separate P5 audit-only waiver. See `docs/tasks/p2/closeout.md`; correct/requalify the initial migration UI and dirty same-renderer workspace transition before Phase 3 approval.
+Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
 
@@ -116,9 +116,9 @@ This is the first self-development milestone: **Dope as editor**.
 
 ## Product Phase 2 — Project Mind
 
-Status: **ACTIVE ENGINEERING SCOPE — OWNER SEQUENCING WAIVER**
+Status: **OWNER-CLOSED FOR SEQUENCING — P6 AUDIT REMAINS NOT QUALIFIED**
 
-Execution folder: `p2`. Activation source `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, package `0.2.0`; prompt versions `0.2.1`–`0.2.6`. The owner explicitly authorized proceeding despite Phase 1 being Not Qualified. `docs/planning/p2/activation.md` records the satisfied sequencing prerequisite and preserved gaps. Authority: `docs/planning/p2/phase-2-plan.md`. The `0.2.6` closeout records Phase 2 as Not Qualified; route to bounded correction/requalification.
+Execution folder: `p2`. Activation source `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, package `0.2.0`; prompt versions `0.2.1`–`0.2.6`. The `0.2.6` closeout remains Not Qualified. On September 28, 2026 the owner explicitly accepted the unresolved evidence gaps for sequencing, closed Phase 2, and authorized Phase 3 from `0.3.0`. This is an owner waiver/phase disposition, not retroactive Green evidence. Historical authority remains `docs/planning/p2/phase-2-plan.md` and `docs/tasks/p2/closeout.md`.
 
 Purpose:
 Give the project durable memory that is useful to the developer before AI is required.
@@ -160,24 +160,33 @@ Using Dope should leave the project easier to understand when it is reopened, ev
 
 ## Product Phase 3 — Planning
 
+Status: **ACTIVE ENGINEERING SCOPE — OWNER ACTIVATED**
+
+Execution folder: `p3`. Activation baseline: package `0.3.0`; prompt versions `0.3.1`–`0.3.6`. Authority: `docs/planning/p3/phase-3-plan.md` and `docs/planning/p3/activation.md`.
+
 Purpose:
-Make planning and implementation part of one project state rather than separate markdown or chat workflows.
+Make planning and implementation part of one durable project state rather than separate markdown files or chat workflows.
 
 Initial scope:
-- Plan
-- PlanStep
-- Task
-- live step status
-- plan revision/history
-- links from plans/tasks to Project Mind artifacts
-- links from plans/tasks to files or symbols where practical
-- planning workspace and task detail
+- Plan with objective, context, status and human-visible revision;
+- ordered PlanStep records with live status and explicit blockers/reasons;
+- bounded Task records attached to a PlanStep;
+- append-only planning history for explicit accepted mutations, not keystroke/event sourcing;
+- links from Plans/Tasks to Project Mind artifacts and project-relative files;
+- a real Planning workspace plus Task detail;
+- bounded Project Mind -> Planning bridge actions, including creating a Plan from a Decision;
+- ordinary editor navigation from Task/Plan working-set links;
+- restart/reopen continuity, conflict protection and local-project isolation.
 
-Plans are live control structures, not static memos.
+Plans are live control structures, not static memos. BUILD/PLAN mode remains presentation state and must never silently mutate Plan, PlanStep or Task status.
+
+Phase 3 deliberately remains human-first. It has no model runtime, Codex/OpenAI product integration, local-model runtime, Agent Mind, ProposedAction, tool calling, AI ownership or mutation authority. ADR 0006 makes Codex/OpenAI the first reference provider when AI Presence begins in Phase 4; it does not pull AI into Phase 3.
+
+Planning uses the existing Project Mind `projectId` as the project identity. Phase 3 does not create a competing project identity allocator. If a local project has no canonical Project Mind identity yet, Planning must surface that prerequisite rather than silently creating unrelated identity state. Planning persists separately in readable `.dope/planning.json` and validates identity against Project Mind.
 
 Exit condition:
 
-A developer can move from thought -> decision -> plan -> task -> coding without leaving Dope or depending on an LLM.
+Using the real Dope repository with no model configured, a developer can move from genuine thought/Decision -> Plan -> ordered PlanSteps -> Tasks -> ordinary coding, revise and progress the plan explicitly, follow linked knowledge/files, restart/reopen and recover the same planning state/history, and demonstrate isolation in a second local project.
 
 This is the first major product milestone:
 

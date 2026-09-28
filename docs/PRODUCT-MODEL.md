@@ -88,7 +88,50 @@ Add:
 - PlanStep
 - Task
 
-Plans are live control structures, not static memos.
+Plans are live control structures, not static memos, and remain fully useful with no model configured.
+
+Phase 3 keeps Planning as a domain beside Project Intelligence rather than turning Plans/Tasks into ProjectArtifact variants. Planning may reference stable Project Mind artifact IDs and project-relative files. The referenced knowledge remains owned by Project Mind.
+
+Initial Plan fields:
+- stable UUID `id`
+- `title`
+- `objective`
+- `context`
+- `status`: `draft | active | completed | superseded`
+- ordered `steps`
+- human-visible positive integer `revision`
+- developer provenance and created/updated timestamps
+- links to Project Mind artifacts and project-relative files
+
+Initial PlanStep fields:
+- stable UUID `id`
+- `title`
+- `body`
+- `status`: `pending | active | blocked | complete | skipped | superseded`
+- optional visible `blockedReason`
+- created/updated timestamps
+- order is defined by the containing Plan's step array
+
+Initial Task fields:
+- stable UUID `id`
+- parent `planId` and `stepId`
+- `title`
+- `objective`
+- `requirements[]`
+- `constraints[]`
+- `status`: `pending | active | blocked | complete | cancelled`
+- Project Mind links
+- project-relative working-set file links
+- optional completion and developer-entered validation notes
+- created/updated timestamps
+
+Task completion does not imply a future Validation artifact exists or that tests passed. Phase 3 notes are human-entered planning context, not a substitute for Phase 5/6 validation provenance.
+
+Every explicit successful planning mutation increments the planning document revision. Mutations affecting a Plan, its steps or its tasks increment that Plan's human-visible revision and append a concise history entry with timestamp, developer actor, affected IDs and operation summary. History records accepted saves/status/reorder/structure changes; it is not keystroke logging or a general event-sourcing subsystem.
+
+Planning uses the stable Project Mind `projectId`. It does not allocate a competing identity. A project without canonical Project Mind identity must satisfy that prerequisite before Planning can create canonical state.
+
+No AI ownership, Agent Mind, model/provider state, ProposedAction or mutation authority is introduced in Phase 3.
 
 ### Phase 4-5 — AI collaboration and delegation
 
@@ -149,15 +192,33 @@ Later AI should be able to detect conflict with an accepted Decision.
 
 A live control structure.
 
-Plan steps may be pending, active, blocked, complete, skipped, or superseded.
+A Plan has explicit objective/context, status, ordered PlanSteps, a visible revision, links to supporting Project Mind knowledge/files and append-only mutation history. Plan edits are explicit saved mutations rather than hidden derivation from chat or editor state.
 
-Changing a step or assumption updates canonical planning state.
+Initial status transitions are intentionally small:
+- `draft -> active | superseded`
+- `active -> completed | superseded`
+- `completed -> active` only through explicit reopen
+- `superseded` is historical/terminal in Phase 3
+
+Changing a step, task, assumption-like plan text or order updates canonical Planning state. No step status automatically starts code execution.
+
+### PlanStep
+
+An ordered unit inside a Plan.
+
+Initial statuses are `pending`, `active`, `blocked`, `complete`, `skipped` and `superseded`. Blocking requires a visible reason. Reopening or unblocking is explicit. Multiple steps may be active when the developer chooses; Phase 3 does not impose a synthetic single-active-step scheduler.
+
+Tasks reference their parent Plan and PlanStep; the step does not duplicate task membership in a second canonical list.
 
 ### Task
 
-A bounded unit of executable work linking objective, plan, ownership, requirements, constraints, working set, validation, and completion state.
+A bounded developer-owned unit of executable work.
 
-A Task does not require AI ownership.
+A Task links objective, requirements, constraints, parent Plan/PlanStep, Project Mind context, project-relative working-set files, status, completion notes and developer-entered validation notes. It does not require AI ownership and has no AI owner field in Phase 3.
+
+Initial status transitions support explicit pending/active/blocked/complete/cancelled progression and deliberate reopen/restore actions. Task status never follows BUILD/PLAN presentation mode automatically.
+
+Opening a Task's file link uses the ordinary editor. Implementation remains ordinary coding until later AI phases add scoped delegation.
 
 ### DeveloperSession
 

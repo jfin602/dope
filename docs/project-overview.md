@@ -152,35 +152,24 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 2 — Project Mind** is the active implementation scope under the explicit owner sequencing waiver. Phase 1 remains Not Qualified, with historical scope/evidence retained below.
+**Product Phase 3 — Planning** is the active engineering scope from package baseline `0.3.0`.
 
-The `0.2.6` Phase 2 evidence-only closeout is **Not Qualified**. The P5 audit waiver allowed closeout from a partial `0.2.5` checkpoint; it did not clear the missing initial migration control or the unproved dirty same-renderer workspace switch. See `docs/tasks/p2/closeout.md`; route to bounded correction/requalification. Phase 3 remains blocked.
+Phase 2's `0.2.6` P6 audit remains **Not Qualified**. The owner explicitly accepted its remaining evidence gaps for sequencing and closed Phase 2 without relabeling the audit Green. The preserved gaps are recorded in `docs/tasks/p2/closeout.md`; Phase 1's historical Not Qualified result also remains unchanged.
 
-Foundation Spike 0 qualified Theia 1.75.0 at package `0.0.6`. Phase 1 begins from package baseline `0.1.0` and turns the qualified substrate into the actual desktop IDE.
+Foundation Spike 0 qualified Theia 1.75.0 at package `0.0.6`. Theia remains pinned to 1.75.0 and Electron to 42.8.1 unless a deliberate framework upgrade is separately approved.
 
-Phase 1 is limited to:
-- production-quality Electron shell and Linux packaging;
-- repository/workspace opening;
-- editor/language tooling;
-- Explorer and search;
-- terminal;
-- Git/SCM and diffs;
-- debugger and Problems;
-- test integration;
-- preferences and keybindings;
-- extension installation/use;
-- dark-first Dope branding and theme behavior with persistent user override;
-- startup/restart/workspace restoration;
-- direct interactive Theia dogfooding on the Dope repository, using browser-hosted workbench or Electron, alongside Electron package/native-launch evidence.
+Production Project Mind is the Phase 2 foundation. The Foundation Spike Planning widget is still only a placeholder and must now be replaced by the Phase 3 product surface.
 
-The P0 Project Mind Note and Planning surfaces remain spike artifacts. Production Project Mind begins in Phase 2 and production Planning begins in Phase 3.
+Model/provider integration, Agent Mind, tool execution, AI mutation, scoped delegation and durable development sessions remain deferred to their roadmap phases.
 
-Model/provider integration, Agent Mind, tool execution, AI mutation, scoped delegation, and durable development sessions remain deferred to their roadmap phases.
+## Active Phase 3 direction — live human-first Planning
 
-## Active Phase 2 direction — owner sequencing waiver
+Phase 3 adds Plan, PlanStep and Task as Dope-owned canonical planning state. Plans carry objective/context/status, ordered live steps and human-visible revision/history. Tasks are bounded units of work attached to plan steps, with requirements/constraints, project-relative working-set files, Project Mind links, status, completion notes and developer-entered validation notes.
 
-Phase 2 gives one local project durable, developer-managed Notes, Ideas, Questions and Decisions through Project Mind. It includes collections, stable identity, provenance, explicit lifecycle actions, relationships/file references, navigation, basic text search, safe editing, migration and reopen continuity. Project Intelligence owns these semantics independently of Theia and any provider.
+Planning remains useful with no model configured. Project Mind and Planning stay separate domain boundaries: Project Mind stores durable knowledge; Planning stores execution intent. Planning references Project Mind artifacts by stable ID instead of converting or duplicating them. Creating a Plan from a Decision creates a new Plan linked back to the Decision; it does not mutate the Decision into work.
 
-Project-local readable storage must remain inspectable and recoverable without a healthy GUI. Ideas do not become active work automatically. Plans/Tasks, AI, semantic search, Sessions and synchronization remain deferred.
+Planning persists in readable `.dope/planning.json` with its own optimistic document revision and mutation lock. It uses the existing Project Mind `projectId` and must reject mismatched identity. If Project Mind has no canonical identity yet, Planning surfaces the prerequisite rather than inventing a second identity. UI drafts, selection, filters, mode and layout remain presentation state.
 
-The owner approved Phase 2 documentation/planning and subsequently instructed "Proceed with Phase 2 despite Phase 1 being Not Qualified." The waiver and exact coherent `0.2.0` activation source `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781` are recorded in `docs/planning/p2/activation.md`. Phase 1 failures remain unchanged; Phase 2 validation/qualification is still required. See `docs/planning/p2/phase-2-plan.md`.
+BUILD/PLAN mode may foreground the appropriate work surface but is not canonical Plan/Task status. Task file links open the ordinary editor; coding, terminal, tests, SCM and debugger stay normal IDE workflows.
+
+ADR 0006 records Codex/OpenAI as the first reference AI implementation for Phase 4 so the future agent/runtime design is proven against a capable system before local-model limits are diagnosed. That is a bootstrap/qualification strategy only. Phase 3 contains no provider runtime code and preserves first-class future local-model compatibility.

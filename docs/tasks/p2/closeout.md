@@ -1,6 +1,6 @@
 # Product Phase 2 — Project Mind closeout
 
-Date: September 28, 2026. **Decision: Not Qualified.** This is an evidence-only audit of the owner-waived P5 checkpoint. Phase 3 remains blocked.
+Date: September 28, 2026. **Audit decision: Not Qualified.** This remains the evidence-only result for the owner-waived P5 checkpoint. A later owner disposition accepted the retained gaps for sequencing and authorized Phase 3; it does not change this audit result.
 
 ## Candidate and authority
 
@@ -36,3 +36,17 @@ The first `npm run check` reached Electron's native-module rebuild and failed be
 `npm run package:linux` passed with the same sysroot and prepared 91 plugins (`/tmp/dope-p2-p6-package.log`). Result: `dist/linux/Dope-0.2.6.AppImage`, executable x86-64 ELF/AppImage, mode **755**, **188,121,357 bytes**, SHA-256 **`649b037891ff9abcfca6e567e45b1324bb44855a4cb4646d6a492bd83fa5dfe0`**. Extracting that exact artifact showed `Dope.desktop` with `Name=Dope`, `Exec=AppRun %U`, icon `dope` and `X-AppImage-Version=0.2.6`; its icon hash matches the source (`d1e9254188cca1a69dda8c071e9d327bf2326216e3e4a0e56027316d3d3768fd`). Embedded `app.asar` identifies `@dope/electron` and its `@dope/theia-extension` dependency as `0.2.6`, with `scripts/packaged-main.cjs`, backend main and frontend bundle. The extracted frontend contains the migration control, supported unsaved-draft dialog and supersession detail; backend contains the Project Mind snapshot/revision path. External packaged resources contain 91 plugin directories, including the Jest runner. The inspected AppImage covers the final `0.2.6` manifest/source tree, which differs from P5 runtime source only by version changes and closeout documentation. It was **not** freshly plugin-downloaded or native-launched in P6. P4's normal native window close and P5's repaired `0.2.5` native readiness remain the exact observed native evidence; direct native visual Project Mind use remains unobserved.
 
 Root, both apps and all three package manifests, internal `@dope/*` references and baseline assertions agree on `0.2.6`; declared Theia packages remain `1.75.0` and Electron `42.8.1`. No root `package-lock.json`; `git diff --check` passed. No P6 product repair or Phase 3 prompt was made. The working tree remains uncommitted for the phase runner.
+
+
+## Subsequent owner disposition — Phase 2 close / Phase 3 sequencing
+
+After this P6 audit, the owner explicitly approved Phase 2 closeout for sequencing and set the next coherent baseline to `0.3.0`.
+
+This is an owner acceptance/waiver, not retroactive qualification. The A–G table above remains unchanged. The following evidence remains explicitly unresolved rather than Green:
+
+- initial empty legacy-project UI did not expose the expected **Migrate legacy Note** control;
+- dirty same-renderer workspace-switch behavior was not directly demonstrated;
+- the exact final `0.2.6` AppImage was built/inspected but not freshly native-launched or directly visually exercised for Project Mind;
+- inherited Phase 1 failures/gaps remain historical evidence where applicable.
+
+Phase 3 may proceed under `docs/planning/p3/activation.md`. Later Phase 3 work must not claim these gaps repaired unless it directly exercises the affected behavior and records new evidence.

@@ -1,6 +1,6 @@
 {
   "name": "@dope/electron",
-  "version": "0.2.6",
+  "version": "0.3.0",
   "private": true,
   "description": "Dope software development environment",
   "author": "Dope Contributors",
@@ -63,7 +63,7 @@
     }
   },
   "dependencies": {
-    "@dope/theia-extension": "0.2.6",
+    "@dope/theia-extension": "0.3.0",
     "@theia/core": "1.75.0",
     "@theia/debug": "1.75.0",
     "@theia/editor": "1.75.0",

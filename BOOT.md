@@ -13,23 +13,13 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Product Phase 2 — Project Mind is the active engineering scope, by explicit owner sequencing waiver.**
+**Product Phase 3 — Planning is the active engineering scope. Package baseline: `0.3.0`.**
 
-P6's `0.2.6` evidence-only audit is **Not Qualified**; see `docs/tasks/p2/closeout.md`. The exact `0.2.5` P5 handoff was an owner-waived partial checkpoint. Route next to bounded P5 correction/requalification of the missing initial migration control and unproved dirty same-renderer workspace switch. Phase 3 remains blocked.
+Phase 2's P6 `0.2.6` evidence-only audit remains **Not Qualified**. The owner subsequently explicitly closed Phase 2 for sequencing and authorized Phase 3 from a coherent `0.3.0` baseline. This owner disposition does not relabel the P6 audit Green or erase its evidence gaps. The retained Phase 2 gaps are the initially hidden legacy-migration entry, unproved dirty same-renderer workspace switch, lack of exact `0.2.6` native artifact launch/direct native visual Project Mind use, and inherited Phase 1 gaps where applicable. See `docs/tasks/p2/closeout.md` and `docs/planning/p3/activation.md`.
 
-The September 28, 2026 Phase 1 P6 closeout remains **Not Qualified** at `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). Its failed and incomplete P5 observations remain unchanged in `docs/tasks/p1/closeout.md`. The owner subsequently instructed "Proceed with Phase 2 despite Phase 1 being Not Qualified." This separate waiver authorizes sequencing, not Green evidence or a repair claim.
+The September 28, 2026 Phase 1 P6 closeout also remains **Not Qualified** at `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). Its historical failures are preserved. Neither the Phase 2 sequencing waiver nor the Phase 3 owner-close changes that evidence.
 
-The approved Phase 2 docs and p2 stack are now eligible for execution. Exact activation source/package baseline: `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, coherent `0.2.0`. See `docs/planning/p2/activation.md` for the explicit owner waiver and authorization-commit identity, plus `docs/planning/p2/phase-2-plan.md` and `docs/tasks/p2/README.md`. No P1 success marker exists yet.
-
-The historical Phase 1 activation established package baseline `0.1.0` before the `p1` execution stack. Phase 1 turns the qualified substrate into a desktop IDE comfortable enough to develop Dope inside Dope through ordinary development workflows.
-
-Inherited Phase 1 product posture:
-- Electron is the primary user-facing product shell;
-- the browser application remains a development and qualification surface;
-- Eclipse Theia remains pinned to 1.75.0 until a real upgrade is intentionally undertaken;
-- Dope is dark-first by default, while explicit user theme choice remains supported and persistent;
-- unfinished Project Mind and Planning spike surfaces must not be mistaken for Phase 2/3 product implementation;
-- no AI/model/provider, Agent Mind, tool-authority, mutation, or scoped-delegation implementation belongs in Phase 1.
+Phase 3 adds human-first live Planning on top of Project Mind. It must remain useful with no model configured. Production AI/provider integration, Agent Mind, tool calling, AI mutation, scoped delegation and durable Development Sessions remain deferred to their roadmap phases.
 
 The qualified substrate remains:
 
@@ -63,8 +53,11 @@ Current authority:
 - docs/planning/p1/phase-1-plan.md
 - docs/planning/p2/phase-2-plan.md
 - docs/planning/p2/activation.md
+- docs/planning/p3/phase-3-plan.md
+- docs/planning/p3/activation.md
 - docs/decisions/0004-model-provider-independence.md
 - docs/decisions/0005-progressive-self-development.md
+- docs/decisions/0006-codex-reference-ai-bootstrap.md
 
 ## Product premise
 
@@ -155,7 +148,7 @@ First-class compatibility targets include:
 
 No provider owns Project Mind, Planning, Agent Mind, Sessions, Authority, Decisions, or Validation.
 
-The current GPT-6 Sol/Codex repository workflow is a development-tooling choice, not Dope's runtime architecture.
+The current GPT-6 Sol/Codex repository workflow is a development-tooling choice, not Dope's runtime architecture. ADR 0006 separately records Codex/OpenAI as the first reference AI implementation for Phase 4 qualification; that bootstrap choice does not add provider runtime code to Phase 3 or weaken provider independence.
 
 ## Progressive self-development
 
@@ -214,8 +207,8 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-P6 closed as **Not Qualified** on September 28, 2026 from owner-waived handoff `fca1ca672548cc65fc12ec4ea66f0a04ed9f2019` (`0.1.5`). Its closeout version and commit subject are `0.1.6`; the owner approved committing the reviewed closeout. See `docs/tasks/p1/closeout.md` for the A–G audit and deterministic rerun.
+Execute the approved Phase 3 Planning stack from the coherent `0.3.0` activation baseline after validating `docs/tasks/p3`.
 
-Next action: bounded P5 correction/requalification from the `0.2.6` P6 closeout candidate. The initial migration control must be accessible, and the dirty same-renderer workspace transition needs direct evidence. Keep the existing P5 and Phase 1 failure records; Phase 3 remains blocked.
+Phase 3 must first establish provider-free Planning contracts and persistence, then the real Planning workspace, restart/package evidence, direct Dope-on-Dope planning dogfood, and evidence-only closeout. The exit path is developer-driven: thought/Decision -> Plan -> PlanStep -> Task -> ordinary coding -> explicit plan/task progress, with restart continuity and no LLM required.
 
-Historical activation source SHA: `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`; package baseline `0.2.0`; prompt targets `0.2.1` through `0.2.6`. The runner does not itself prove product qualification. The sequencing and audit waivers do not qualify Phase 2 or approve Phase 3.
+Do not repair or relabel the retained Phase 1/2 evidence gaps inside Phase 3 unless a Phase 3 change directly touches the same behavior and produces new evidence. Do not introduce Codex/OpenAI/local-model runtime integration early; ADR 0006 makes Codex the first Phase 4 reference provider, not a Phase 3 dependency.

@@ -118,7 +118,15 @@ The initial September 28, 2026 request approved Phase 2 documentation/planning. 
 
 Before execution, verify the recorded waiver, reachable activation source `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, coherent baseline/applicable predecessor version and clean intended tree. The documented qualification-or-waiver entry condition is satisfied; do not require Phase 1 Green as an additional prerequisite. Do not rely on version markers to prove qualification. P1 advances `0.2.0` to `0.2.1` only through successful implementation and checks.
 
-After activation, p2 P1-P4 are runner-owned; P5 is the manual interactive GUI handoff; P6 is evidence-only closeout. Versions are `0.2.1` through `0.2.6`. A successful manual P5 is committed exactly as `0.2.5` before resuming closeout; an incomplete GUI run remains a checkpoint, not a success marker. See `docs/tasks/p2/README.md` for the prerequisite and commands.
+After activation, p2 P1-P4 are runner-owned; P5 is the manual interactive GUI handoff; P6 is evidence-only closeout. Versions are `0.2.1` through `0.2.6`. A successful manual P5 is committed exactly as `0.2.5` before resuming closeout; an incomplete GUI run remains a checkpoint, not a success marker. The final P6 audit remained Not Qualified; the owner later accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green.
+
+## Phase 3 activation
+
+Product Phase 3 uses execution folder `p3` and coherent package baseline `0.3.0`. The owner explicitly closed Phase 2 for sequencing on September 28, 2026 while preserving its Not Qualified audit and evidence gaps. `docs/planning/p3/activation.md` records the Phase 3 authorization and activation source.
+
+P3 versions are `0.3.1` through `0.3.6`. P1-P4 are runner-owned, P5 is the direct interactive Planning dogfood handoff, and P6 is evidence-only closeout. P5 must use genuine Dope planning state and a second local project; automated/headless checks do not replace its GUI evidence. P6 must preserve inherited Phase 1/2 gaps and may not generate Phase 4 implementation prompts.
+
+The Phase 3 product runtime contains no AI provider. ADR 0006's Codex-first choice applies when Phase 4 AI Presence begins; it does not authorize OpenAI/Codex/local-model integration in p3.
 
 ## Prompt metadata
 
@@ -176,15 +184,17 @@ Every substantial task should answer:
 
 ## Test-command truth
 
-At bootstrap:
-- npm run test:runner exercises the ported phase-runner regression suite
-- npm test currently aliases runner tests only
-- npm run typecheck checks the TypeScript test/bootstrap surface
-- npm run check composes typecheck plus runner tests
+Current aggregate commands:
+- `npm run test:runner` exercises the phase-runner regression suite.
+- `npm run test:baseline` checks Theia/version/composition invariants.
+- `npm run test:product` builds the Dope extension packages and runs current Project Mind/product unit suites.
+- `npm run test:ide` runs the IDE discovery fixture.
+- `npm test` composes runner, baseline, product and IDE suites.
+- `npm run typecheck` builds current domain packages and typechecks the Theia extension.
+- `npm run check` composes typecheck, all current tests, browser build and Electron build.
+- `npm run test:restart` remains separate integrated restart/process evidence.
 
-Product prompts must add explicit commands for product behavior they introduce.
-
-Do not describe npm test as Theia, UI, provider, packaging, or integration qualification until it actually includes that coverage.
+Phase 3 prompts must add Planning suites to the real aggregate commands as capabilities land. Do not treat unit/build success as direct GUI or packaged-native qualification.
 
 ## Closeout truth
 

@@ -181,9 +181,9 @@ No Theia or provider dependency.
 
 ### Planning
 
-Owns Plan, PlanStep, Task, status transitions, relationships to Project Mind, and planning history.
+Owns Plan, PlanStep, Task, status transitions, ordering, relationships to Project Mind/files, document and per-Plan revisions, and planning history.
 
-No model is required.
+No model is required. Planning is canonical execution intent, not ProjectArtifact storage and not Theia workspace state.
 
 ### Persistence
 
@@ -202,6 +202,22 @@ Validate project attachment and subsequent handles on the backend; reject reques
 Use one exclusive filesystem mutation lock per project across backend processes and expected document revisions for stale edits. Hold the lock while reading, validating, changing and replacing the snapshot; reject contention/conflicts visibly. Preserve unsaved drafts. Do not automatically steal a lock after a timeout. Document recovery of an abandoned lock after all writers are stopped. External file edits require stopped writers.
 
 Migrate the spike Note explicitly, preserve its ID/content/provenance and original file, and do not invent historical timestamps. Failed migration/corrupt/unsupported data must remain untouched. Exact storage/migration/UI rules live in the Phase 2 plan; no database, service, collaboration or synchronization layer is needed for this scope.
+
+### Phase 3 implementation boundary
+
+Phase 3 is activated by the owner disposition in `docs/planning/p3/activation.md` from coherent package baseline `0.3.0`. Phase 2's P6 audit remains Not Qualified; its accepted gaps remain historical evidence and are not silently repaired or relabeled by Phase 3.
+
+Add one real `@dope/planning` package. `@dope/contracts` owns framework-independent Planning DTOs and typed service/event contracts. `@dope/planning` owns pure Plan/PlanStep/Task validation, transitions, ordering, queries, revision/history semantics and a separate Node `planning.json` storage adapter. Pure Planning modules import neither Theia/provider code nor Node filesystem code. Existing `@dope/theia-extension` owns RPC attachment and Planning presentation.
+
+Persist Planning separately at readable `.dope/planning.json` with its own schema version, document revision and exclusive `planning.lock`. Reuse the Phase 2 atomic-replace, stale-revision, path-containment and stopped-writer recovery discipline without creating a generic persistence framework. Do not merge Planning into `.dope/project-mind.json` and do not introduce a database.
+
+Planning uses the existing Project Mind `projectId` as the canonical project identity. The backend resolves/validates that identity through Project Mind before creating Planning state; a missing Project Mind identity is a visible prerequisite, not permission to allocate an unrelated Planning identity. If both stores exist and identities differ, fail closed and require inspection/recovery. This phase intentionally avoids a cross-store transaction: Planning owns references to Project Mind artifact IDs, and creating a Plan from a Decision writes Planning state only after validating the referenced artifact.
+
+Planning mutations use expected document revision plus a project-bound handle. Every successful mutation advances the document revision. Mutations scoped to a Plan also advance that Plan's visible revision and append a concise developer-authored history record. History is not raw UI input, chat history or generalized event sourcing.
+
+The real Planning UI should live in focused presentation/controller files rather than substantially growing `dope-workbench.ts`. Preserve the existing Project Mind draft/race lessons: dirty Planning drafts must survive navigation/workspace/event races, late responses must be generation/project guarded, and save status must reflect backend acknowledgement. BUILD/PLAN mode may foreground Planning or coding surfaces but remains presentation state.
+
+No model/provider SDK, Theia AI ontology, Codex/OpenAI runtime, local-model runtime, Agent Mind, ProposedAction, authority or tool execution belongs in Phase 3. ADR 0006 selects Codex/OpenAI only as the first Phase 4 reference integration.
 
 ### Agent State
 
