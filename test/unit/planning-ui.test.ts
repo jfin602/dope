@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 const require = createRequire(import.meta.url);
 const { PlanningController } = require('../../packages/theia-extension/lib/browser/planning-controller.js');
@@ -109,6 +111,19 @@ test('notifications preserve dirty text and pending saves; stale failure require
     controller.dispose();
 });
 
+test('optional task completion and validation notes remain editable when absent from stored tasks', async () => {
+    const peer = connection(), controller = new PlanningController(() => peer, () => {}), snapshot = fixture('first');
+    const attaching = controller.attach('file:///A'); peer.attachDeferred.resolve({ projectHandle: 'handle', snapshot }); await attaching;
+    const plan = snapshot.plans[0], step = plan.steps[0], task = snapshot.tasks[0];
+    controller.select(plan.id, step.id, task.id);
+    controller.edit('completionNotes', 'done');
+    controller.edit('validationNotes', 'checked');
+    assert.equal(controller.dirty, true);
+    assert.equal(controller.draft?.value.completionNotes, 'done');
+    assert.equal(controller.draft?.value.validationNotes, 'checked');
+    controller.dispose();
+});
+
 test('Decision bridge allows one pending request and new deliberate creations after acknowledgement', async () => {
     const peer = connection(), controller = new PlanningController(() => peer, () => {}), snapshot = fixture('first');
     const attaching = controller.attach('file:///A'); peer.attachDeferred.resolve({ projectHandle: 'handle', snapshot }); await attaching;
@@ -125,6 +140,17 @@ test('Decision bridge allows one pending request and new deliberate creations af
     peer.bridgeDeferred.resolve({ snapshot: { ...snapshot, revision: 3 }, entry: { planId: peer.calls[1][3] } });
     await again;
     controller.dispose();
+});
+
+test('Project Mind and Planning bridges reuse their live widgets instead of opening duplicate service channels', async () => {
+    const browser = resolve(import.meta.dirname, '../../packages/theia-extension/src/browser');
+    const mind = await readFile(resolve(browser, 'dope-workbench.ts'), 'utf8');
+    const planning = await readFile(resolve(browser, 'planning-widget.ts'), 'utf8');
+    assert.doesNotMatch(mind, /connectPlanning|PlanningConnection/);
+    assert.doesNotMatch(planning, /connectMind|ProjectMindService/);
+    assert.match(planning, /this\.mind = await this\.getMind\(\)/);
+    assert.doesNotMatch(planning, /window\.prompt/);
+    assert.match(planning, /SingleTextInputDialog\(\{ title: 'Why is this Step blocked\?', confirmButtonLabel: 'Block Step' \}\)/);
 });
 
 test('new Plan, Step and Task drafts create rather than overwrite the previous selection', async () => {

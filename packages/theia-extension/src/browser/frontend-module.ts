@@ -25,12 +25,13 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(WidgetFactory).toDynamicValue(context => ({ id: PROJECT_MIND_ID, createWidget: () => new ProjectMindWidget(
         () => context.container.get(ProjectMindService) as ProjectMindService & RpcServer<ProjectMindClient>,
         context.container.get(WorkspaceService), context.container.get(FileService), context.container.get(OpenerService),
-        () => context.container.get(PlanningService) as PlanningService & RpcServer<PlanningClient>,
+        id => context.container.get(PlanningView).relatedPlans(id),
+        id => context.container.get(PlanningView).createPlanFromDecision(id),
         id => context.container.get(PlanningView).showPlan(id)
     ) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: PLANNING_ID, createWidget: () => new PlanningWidget(
         () => context.container.get(PlanningService) as PlanningService & RpcServer<PlanningClient>,
-        () => context.container.get(ProjectMindService) as ProjectMindService & RpcServer<ProjectMindClient>,
+        async () => (await context.container.get(ProjectMindView).openView({ activate: false })).currentMind(),
         context.container.get(WorkspaceService), context.container.get(FileService), context.container.get(OpenerService),
         async id => { const widget = await context.container.get(ProjectMindView).openView({ activate: true }); await widget.openArtifact(id); }
     ) })).inSingletonScope();

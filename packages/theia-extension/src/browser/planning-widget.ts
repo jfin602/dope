@@ -6,7 +6,6 @@ import { OpenerService, open } from '@theia/core/lib/browser';
 import URI from '@theia/core/lib/common/uri';
 import type { PlanningArtifactLink, PlanningFileLink, PlanningLink, PlanningOperation, PlanStatus, StepStatus, TaskStatus } from '@dope/contracts/lib/planning';
 import type { ProjectMind } from '@dope/contracts/lib/project-mind';
-import type { ProjectMindService } from '@dope/contracts/lib/project-mind-service';
 import { PlanningConnection, PlanningController } from './planning-controller';
 import { openPlanningFile } from './planning-file-navigation';
 
@@ -27,7 +26,7 @@ export class PlanningWidget extends BaseWidget {
         if (!this.controller.canLeave) { event.preventDefault(); event.returnValue = ''; }
     };
 
-    constructor(connect: () => PlanningConnection, private readonly connectMind: () => ProjectMindService & { dispose(): void },
+    constructor(connect: () => PlanningConnection, private readonly getMind: () => Promise<ProjectMind | undefined>,
         private readonly workspaceService: WorkspaceService, private readonly files: FileService, private readonly opener: OpenerService,
         private readonly showArtifact: (id: string) => Promise<void>) {
         super();
@@ -79,15 +78,27 @@ export class PlanningWidget extends BaseWidget {
         this.mind = undefined;
         await this.controller.attach(workspace, true);
         if (request !== this.workspaceRequest || !workspace || !this.controller.attached) return;
-        const connection = this.connectMind();
         try {
-            const attached = await connection.attach(workspace);
-            if (request === this.workspaceRequest && !this.isDisposed && attached.snapshot?.projectId === this.controller.projectId) {
-                this.mind = attached.snapshot;
+            const mind = await this.getMind();
+            if (request === this.workspaceRequest && !this.isDisposed && mind?.projectId === this.controller.projectId) {
+                this.mind = mind;
                 this.render();
             }
         } catch { /* Planning is still usable if artifact display is unavailable. */ }
-        finally { connection.dispose(); }
+    }
+
+    async relatedPlans(artifactId: string) {
+        await this.loadPromise;
+        await this.load();
+        return this.controller.snapshot?.plans.filter(plan => plan.links.some(link => link.type === 'artifact' && link.id === artifactId)) ?? [];
+    }
+
+    async createPlanFromDecision(decisionId: string): Promise<void> {
+        await this.loadPromise;
+        await this.load();
+        try { this.mind = await this.getMind(); } catch { /* The bridge remains usable if artifact display is unavailable. */ }
+        const id = await this.controller.createFromDecision(decisionId);
+        if (id) { this.formKey = ''; this.controller.select(id); }
     }
 
     async openPlan(id: string): Promise<void> {
@@ -181,8 +192,7 @@ export class PlanningWidget extends BaseWidget {
         } else if (draft.kind === 'step') {
             const step = draft.value;
             if (controller.stepId) {
-                this.transitions(actions, ['pending', 'active', 'blocked', 'complete', 'skipped', 'superseded'] as const, step.status, status => ({ type: 'step.transition', planId: controller.planId!, stepId: step.id, status,
-                    ...(status === 'blocked' ? { blockedReason: this.blockReason() } : {}) }));
+                this.transitions(actions, ['pending', 'active', 'blocked', 'complete', 'skipped', 'superseded'] as const, step.status, status => ({ type: 'step.transition', planId: controller.planId!, stepId: step.id, status }));
                 if (step.blockedReason) { const reason = document.createElement('p'); reason.textContent = `Blocked: ${step.blockedReason}`; this.detail.append(reason); }
                 this.tasks();
             }
@@ -195,11 +205,6 @@ export class PlanningWidget extends BaseWidget {
         if (controller.planId) this.history();
     }
 
-    private blockReason(): string | undefined {
-        const reason = window.prompt('Why is this Step blocked?')?.trim();
-        return reason || undefined;
-    }
-
     private transitions<Status extends string>(container: HTMLElement, statuses: readonly Status[], current: Status, operation: (status: Status) => PlanningOperation): void {
         const allowed: Record<string, string[]> = {
             draft: ['active', 'superseded'], active: statuses.includes('cancelled' as Status) ? ['blocked', 'complete', 'cancelled'] : statuses.includes('pending' as Status) ? ['blocked', 'complete', 'skipped', 'superseded'] : ['completed', 'superseded'],
@@ -210,13 +215,21 @@ export class PlanningWidget extends BaseWidget {
         for (const status of statuses) {
             if (!allowed[current]?.includes(status)) continue;
             const button = this.button(status === 'pending' ? 'Reopen / unblock' : status === 'active' && current === 'blocked' ? 'Unblock / activate' : status, () => {
-                const action = operation(status);
-                if (action.type === 'step.transition' && action.status === 'blocked' && !action.blockedReason) return;
-                void this.controller.mutate(action);
+                void this.transition(operation(status));
             }, this.controller.pending || this.controller.dirty || this.controller.stale);
             button.dataset.mutation = '';
             container.append(button);
         }
+    }
+
+    private async transition(action: PlanningOperation): Promise<void> {
+        if (action.type === 'step.transition' && action.status === 'blocked') {
+            const value = await new SingleTextInputDialog({ title: 'Why is this Step blocked?', confirmButtonLabel: 'Block Step' }).open();
+            const blockedReason = value?.trim();
+            if (!blockedReason) return;
+            action = { ...action, blockedReason };
+        }
+        await this.controller.mutate(action);
     }
 
     private renderPlans(): void {

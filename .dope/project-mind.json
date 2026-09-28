@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "projectId": "6f429fd5-027d-4827-b9a9-17a81a67be75",
-  "revision": 33,
+  "revision": 35,
   "artifacts": [
     {
       "schemaVersion": 2,
@@ -166,6 +166,24 @@
       "consequences": "Would hide unusable restoration and draft behavior.",
       "alternatives": "Exercise all direct steps and preserve failures.",
       "revisitConditions": "No supported condition for skipping the gate without an explicit owner waiver."
+    },
+    {
+      "schemaVersion": 2,
+      "id": "67c7b62d-996a-4572-b20e-9e4f6758a578",
+      "title": "Use supported Theia dialog for Planning block reasons",
+      "createdAt": "2026-09-28T22:38:22.758Z",
+      "updatedAt": "2026-09-28T22:38:41.425Z",
+      "provenance": "developer",
+      "archivedAt": null,
+      "links": [],
+      "type": "decision",
+      "status": "accepted",
+      "decision": "Replace the Planning Step block reason browser prompt with the existing supported Theia text input dialog.",
+      "context": "Phase 3 direct browser dogfooding must block a Step with a visible reason, and the in-app browser does not support window.prompt.",
+      "rationale": "The shared Planning transition must work through the real Theia GUI without browser-native prompt support.",
+      "consequences": "Blocking remains explicit and reasoned; cancelling the dialog performs no canonical mutation.",
+      "alternatives": "Keep window.prompt and record P5 Not Green.",
+      "revisitConditions": "Revisit only if Theia provides a more specific validated multiline dialog."
     }
   ]
 }

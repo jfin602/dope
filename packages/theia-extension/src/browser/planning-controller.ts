@@ -111,7 +111,8 @@ export class PlanningController {
     }
 
     edit(field: string, value: string | string[] | object): void {
-        if (!this.draft || this.pending || !(field in this.draft.value)) return;
+        if (!this.draft || this.pending || !(field in this.draft.value) &&
+            !(this.draft.kind === 'task' && (field === 'completionNotes' || field === 'validationNotes'))) return;
         this.draft = { ...this.draft, value: { ...this.draft.value, [field]: value } } as PlanningDraft;
         this.dirty = true;
         ++this.draftVersion;

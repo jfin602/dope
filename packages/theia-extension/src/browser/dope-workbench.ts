@@ -7,6 +7,7 @@ import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-
 import { CommonMenus } from '@theia/core/lib/browser/common-menus';
 import { WorkspaceMode, WorkspaceModeService, parseWorkspaceMode } from '@dope/contracts';
 import type { Artifact, ArtifactLink, ArtifactStatus } from '@dope/contracts/lib/project-mind';
+import type { Plan } from '@dope/contracts/lib/planning';
 import { queryArtifacts } from '@dope/project-intelligence';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
@@ -15,7 +16,6 @@ import { OpenerService, open } from '@theia/core/lib/browser';
 import { ConfirmDialog, ConfirmSaveDialog, SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
 import URI from '@theia/core/lib/common/uri';
 import { MindConnection, ProjectMindController } from './project-mind-controller';
-import { PlanningConnection } from './planning-controller';
 import { PlanningWidget, PLANNING_ID } from './planning-widget';
 import './dope.css';
 
@@ -43,7 +43,8 @@ export class ProjectMindWidget extends BaseWidget {
 
     constructor(connect: () => MindConnection, private readonly workspaceService: WorkspaceService,
         private readonly files: FileService, private readonly opener: OpenerService,
-        private readonly connectPlanning: () => PlanningConnection, private readonly showPlan: (id: string) => Promise<void>) {
+        private readonly relatedPlans: (artifactId: string) => Promise<Plan[]>,
+        private readonly createPlan: (decisionId: string) => Promise<void>, private readonly showPlan: (id: string) => Promise<void>) {
         super();
         this.id = PROJECT_MIND_ID;
         this.title.label = this.title.caption = 'Project Mind';
@@ -77,6 +78,12 @@ export class ProjectMindWidget extends BaseWidget {
         this.rootsListener = workspaceService.onWorkspaceChanged(() => { this.loadPromise = this.load(); });
         window.addEventListener('beforeunload', this.beforeUnload);
         this.loadPromise = this.load();
+    }
+
+    async currentMind() {
+        await this.loadPromise;
+        await this.load();
+        return this.controller.snapshot;
     }
 
     private button(label: string, action: () => void, disabled = false): HTMLButtonElement {
@@ -239,16 +246,12 @@ export class ProjectMindWidget extends BaseWidget {
             related.textContent = 'Related Plans: loading…';
             section.append(related);
             const workspace = this.controller.workspace;
-            const connection = this.connectPlanning();
-            void connection.attach(workspace).then(attached => {
+            void this.relatedPlans(artifact.id).then(plans => {
                 if (this.isDisposed || request !== this.fileRequest || workspace !== this.controller.workspace || artifact.id !== this.controller.selectedId) return;
                 related.replaceChildren();
-                if (attached.prerequisite) { related.textContent = 'Planning needs Project Mind identity.'; return; }
-                const plans = attached.snapshot?.plans.filter(plan => plan.links.some(link => link.type === 'artifact' && link.id === artifact.id)) ?? [];
                 if (!plans.length) related.textContent = 'No related Plans.';
                 for (const plan of plans) related.append(this.button(`${plan.title} · ${plan.status}`, () => void this.showPlan(plan.id)));
-            }).catch(() => { if (request === this.fileRequest) related.textContent = 'Related Plans unavailable.'; })
-                .finally(() => connection.dispose());
+            }).catch(() => { if (request === this.fileRequest) related.textContent = 'Related Plans unavailable.'; });
             section.append(this.button('Create draft Plan from Decision', () => void this.createPlanFromDecision(artifact.id),
                 this.bridgePending || this.controller.pending || this.controller.dirty || this.controller.stale));
         }
@@ -300,18 +303,12 @@ export class ProjectMindWidget extends BaseWidget {
         const workspace = this.controller.workspace;
         const request = ++this.fileRequest;
         this.render();
-        const connection = this.connectPlanning();
         try {
-            const attached = await connection.attach(workspace);
+            await this.createPlan(decisionId);
             if (this.isDisposed || workspace !== this.controller.workspace || decisionId !== this.controller.selectedId) return;
-            if (attached.prerequisite) throw new Error('Project Mind identity is unavailable');
-            const result = await connection.createFromDecision(attached.projectHandle, attached.snapshot?.revision ?? 0, decisionId, crypto.randomUUID());
-            if (this.isDisposed || workspace !== this.controller.workspace || decisionId !== this.controller.selectedId) return;
-            await this.showPlan(result.entry.planId);
         } catch (error) {
             if (!this.isDisposed && workspace === this.controller.workspace) this.status.textContent = `${String(error)}. Inspect Planning before retrying.`;
         } finally {
-            connection.dispose();
             this.bridgePending = false;
             if (request === this.fileRequest && !this.isDisposed) { this.formKey = ''; this.render(); }
         }
@@ -374,6 +371,14 @@ export class PlanningView extends AbstractViewContribution<PlanningWidget> {
         menus.registerMenuAction(CommonMenus.VIEW_VIEWS, { commandId: 'dope.planning.open', label: 'Planning' });
     }
     async showPlan(id: string): Promise<void> { const widget = await this.openView({ activate: true }); await widget.openPlan(id); }
+    async relatedPlans(artifactId: string): Promise<Plan[]> {
+        const widget = await this.openView({ activate: false });
+        return widget.relatedPlans(artifactId);
+    }
+    async createPlanFromDecision(decisionId: string): Promise<void> {
+        const widget = await this.openView({ activate: true });
+        await widget.createPlanFromDecision(decisionId);
+    }
 }
 
 @injectable()
