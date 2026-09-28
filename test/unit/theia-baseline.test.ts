@@ -16,9 +16,9 @@ test('Theia stays on the qualified baseline and package versions stay coherent',
       }
     }
   }
-  for (const { path, value } of manifests) assert.equal(value.version, '0.3.1', path);
+  for (const { path, value } of manifests) assert.equal(value.version, '0.3.2', path);
   for (const { path, value } of manifests) for (const [name, version] of Object.entries(value.dependencies ?? {})) {
-    if (name.startsWith('@dope/')) assert.equal(version, '0.3.1', `${path}: ${name}`);
+    if (name.startsWith('@dope/')) assert.equal(version, '0.3.2', `${path}: ${name}`);
   }
   assert.equal(existsSync(join(root, 'package-lock.json')), false);
 });
@@ -31,7 +31,7 @@ test('both applications carry the required IDE composition', () => {
   ];
   for (const { path, value } of manifests.slice(1, 3)) {
     for (const name of required) assert.equal(value.dependencies[`@theia/${name}`], '1.75.0', `${path}: ${name}`);
-    assert.equal(value.dependencies['@dope/theia-extension'], '0.3.1');
+    assert.equal(value.dependencies['@dope/theia-extension'], '0.3.2');
     assert.equal(value.theia.frontend.config.applicationName, 'Dope');
     assert.equal(value.theia.frontend.config.defaultTheme, 'dark');
     assert.equal(value.theia.frontend.config.preferences['jestrunner.enableTestExplorer'], true);
@@ -57,11 +57,13 @@ test('both applications carry the required IDE composition', () => {
   assert.equal(manifests[2].value.main, 'scripts/packaged-main.cjs');
   assert.equal(manifests[2].value.build.extraResources[0].to, 'app/plugins');
   assert.match(manifests[0].value.scripts['package:linux'], /npm run download:plugins/);
-  assert.equal(manifests[3].value.dependencies['@dope/contracts'], '0.3.1');
-  assert.equal(manifests[3].value.dependencies['@dope/project-intelligence'], '0.3.1');
-  assert.equal(manifests[5].value.dependencies['@dope/contracts'], '0.3.1');
-  assert.equal(manifests[6].value.dependencies['@dope/contracts'], '0.3.1');
+  assert.equal(manifests[3].value.dependencies['@dope/contracts'], '0.3.2');
+  assert.equal(manifests[3].value.dependencies['@dope/project-intelligence'], '0.3.2');
+  assert.equal(manifests[3].value.dependencies['@dope/planning'], '0.3.2');
+  assert.equal(manifests[5].value.dependencies['@dope/contracts'], '0.3.2');
+  assert.equal(manifests[6].value.dependencies['@dope/contracts'], '0.3.2');
   assert.match(manifests[0].value.scripts['test:product'], /planning\.test\.ts/);
+  assert.match(manifests[0].value.scripts['test:product'], /planning-storage\.test\.ts/);
   assert.match(manifests[0].value.scripts['typecheck'], /@dope\/planning build/);
   assert.ok(manifests[0].value.workspaces.includes('packages/project-intelligence'));
   assert.match(manifests[0].value.scripts['build:extension'], /@dope\/project-intelligence build/);

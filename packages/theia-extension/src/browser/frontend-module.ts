@@ -6,6 +6,7 @@ import { bindViewContribution } from '@theia/core/lib/browser/shell/view-contrib
 import { WorkspaceModeService } from '@dope/contracts';
 import { NoteService, noteServicePath } from '@dope/contracts/lib/note-service';
 import { ProjectMindClient, ProjectMindService, projectMindServicePath } from '@dope/contracts/lib/project-mind-service';
+import { PlanningClient, PlanningService, planningServicePath } from '@dope/contracts/lib/planning-service';
 import type { RpcServer } from '@theia/core/lib/common/messaging/proxy-factory';
 import { ServiceConnectionProvider } from '@theia/core/lib/browser/messaging/service-connection-provider';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
@@ -19,6 +20,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bindViewContribution(bind, PlanningView);
     bind(NoteService).toDynamicValue(context => ServiceConnectionProvider.createProxy<NoteService>(context.container, noteServicePath)).inSingletonScope();
     bind(ProjectMindService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ProjectMindService & RpcServer<ProjectMindClient>>(context.container, projectMindServicePath));
+    bind(PlanningService).toDynamicValue(context => ServiceConnectionProvider.createProxy<PlanningService & RpcServer<PlanningClient>>(context.container, planningServicePath));
     bind(WidgetFactory).toDynamicValue(context => ({ id: PROJECT_MIND_ID, createWidget: () => new ProjectMindWidget(
         () => context.container.get(ProjectMindService) as ProjectMindService & RpcServer<ProjectMindClient>,
         context.container.get(WorkspaceService), context.container.get(FileService), context.container.get(OpenerService)

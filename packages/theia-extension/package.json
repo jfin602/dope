@@ -1,6 +1,6 @@
 {
   "name": "@dope/theia-extension",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Shared Dope Theia presentation extension",
   "main": "lib/browser/frontend-module.js",
@@ -18,8 +18,9 @@
     }
   ],
   "dependencies": {
-    "@dope/contracts": "0.3.1",
-    "@dope/project-intelligence": "0.3.1",
+    "@dope/contracts": "0.3.2",
+    "@dope/project-intelligence": "0.3.2",
+    "@dope/planning": "0.3.2",
     "@theia/core": "1.75.0",
     "@theia/filesystem": "1.75.0",
     "@theia/navigator": "1.75.0",
