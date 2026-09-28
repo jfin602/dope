@@ -1,8 +1,10 @@
 {
   "name": "@dope/contracts",
-  "version": "0.0.6",
+  "version": "0.1.0",
   "private": true,
   "main": "lib/workspace-mode.js",
   "types": "lib/workspace-mode.d.ts",
-  "scripts": { "build": "tsc -p ." }
+  "scripts": {
+    "build": "tsc -p ."
+  }
 }

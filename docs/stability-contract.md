@@ -18,19 +18,25 @@ For each task or phase:
 3. preserve future invariants at interface boundaries
 4. do not build deferred subsystems solely for qualification
 
-Foundation Spike 0 is a Theia substrate qualification.
+Foundation Spike 0 is a completed Theia substrate qualification. Its evidence remains authoritative for the bounded substrate claims recorded in `docs/tasks/p0/closeout.md`.
 
-Its required stability concerns are:
-- commodity IDE behavior
-- custom Dope UI integration
-- typed frontend/backend seams
-- minimal Dope-owned persistence
-- restart restoration
-- framework customization/coupling
-- extension/tooling compatibility
-- Linux packaging
+The active Phase 1 — IDE Alive stability concerns are:
+- native Electron startup and ordinary desktop interaction;
+- repository/workspace opening and restoration;
+- editor/language-service behavior;
+- Explorer/search;
+- terminal;
+- Git/SCM and diffs;
+- debugger and Problems;
+- test integration;
+- preferences/keybindings;
+- extension installation, function, and restart persistence;
+- dark-first default theme plus persistent explicit user theme override;
+- workbench layout/editor restoration;
+- fresh-environment Linux packaging and launch;
+- real dogfooding on the Dope repository without requiring another IDE for ordinary development.
 
-Agent State, Agent Runtime, model/provider execution, tool authority, AI mutation, scoped delegation, and ambient intelligence are not Foundation Spike 0 qualification requirements.
+Agent State, Agent Runtime, model/provider execution, tool authority, AI mutation, scoped delegation, production Project Mind, and production Planning are not Phase 1 qualification requirements.
 
 ## States
 
@@ -237,9 +243,9 @@ Do not infer compatibility from API claims alone.
 
 Desktop packaging evidence uses the produced package, not only the development server.
 
-For Foundation Spike 0, require a real Linux artifact plus native launch/process evidence outside the dev server, correct packaged resources/branding, and the strongest practical programmatic renderer smoke. P4 carries the direct GUI/IDE qualification for shared workbench behavior.
+Foundation Spike 0 required a real Linux artifact plus native launch/process evidence outside the dev server, correct packaged resources/branding, and the strongest practical programmatic renderer smoke.
 
-If the execution environment cannot directly inspect the native Linux Electron window, preserve that native visual portion as an explicit Evidence Gap rather than fabricating a pass. Phase 1 IDE Alive will perform deeper day-to-day native dogfooding.
+Product Phase 1 raises the bar: qualification requires a reproducible/fresh-environment package path, branded product metadata/icon, normal native launch suitable for daily use, and direct native Electron dogfooding. Programmatic renderer evidence may supplement but cannot replace the direct native interaction gate.
 
 ## Framework upgrade qualification
 
@@ -256,6 +262,30 @@ Record exactly what was observed.
 A screenshot or visual pass is evidence for visible behavior only; it does not prove hidden state invariants unless separately instrumented.
 
 Do not require authority/provider evidence before those systems exist.
+
+## Product Phase 1 — IDE Alive success
+
+Phase 1 qualifies only when the exact candidate can be used as an ordinary native development environment on the Dope repository.
+
+At minimum the direct dogfooding evidence must demonstrate:
+- open the Dope repository/workspace;
+- navigate and edit/save source;
+- language diagnostics/Problems;
+- workspace search;
+- integrated terminal command execution;
+- Git/SCM dirty and clean transitions plus diff inspection;
+- debugger breakpoint/locals;
+- test discovery/execution through the integrated test surface;
+- preferences and keybindings;
+- extension installation/use and restart persistence;
+- dark default presentation on first-run state;
+- explicit alternate theme selection persists and overrides the default;
+- restart restores the intended workspace/editor/workbench state;
+- package/native startup is free of unresolved fatal product blockers.
+
+The dogfooding pass must preserve the repository's pre-existing Git state and restore any controlled edits.
+
+A browser-only pass is insufficient for Phase 1 closeout.
 
 ## Corrections
 

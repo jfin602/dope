@@ -1,0 +1,63 @@
+TASK: Phase 1 / P5 — native Electron Dope-on-Dope dogfooding qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.1.5`.
+
+GOAL
+
+Qualify the exact committed P4 candidate through direct native Electron use on the real Dope repository.
+
+This is the single mandatory native/manual GUI gate. Do not substitute browser or CDP-only evidence.
+
+PREFLIGHT
+
+Read all Phase 1 authority/plans, P1-P4 source/evidence and P0 closeout. Require P4 validation Green enough to dogfood and record repository Git state before interaction.
+
+NATIVE DOGFOODING MATRIX
+
+In the native Electron window on the Dope repository directly exercise:
+- workspace open, Explorer navigation and multiple real files;
+- controlled reversible edit/save, language behavior, controlled Problems diagnostic and repair;
+- workspace search;
+- integrated terminal and at least one real test/validation command;
+- Git dirty state, diff inspection, restoration to exact preflight state;
+- Node debugger breakpoint and locals;
+- integrated test discovery/execution/result;
+- preferences UI and one harmless preference;
+- keybindings UI and one harmless temporary keybinding;
+- non-AI Open VSX extension install/use plus restart persistence;
+- clean-profile dark first-run/default;
+- explicit alternate/light compatible theme, restart, persistence overriding dark default, then desired final preference;
+- native restart with intended workspace/editor/workbench restoration.
+
+Confirm unfinished Project Mind/Planning spike surfaces do not dominate normal startup. Do not judge them as production Phase 2/3 features.
+
+BOUNDED REPAIR
+
+Small Phase 1 defects may receive bounded repair with permanent regression coverage and repeated failed native step. Do not pull later scope forward.
+
+EVIDENCE
+
+Create `docs/tasks/p1/P5-native-dogfooding-evidence.md` with exact candidate/version/Theia/Electron/environment, launch path, every matrix result, extension evidence, theme evidence, restart result, Git pre/post state, repairs, automated rerun and Green / Not Green / Evidence Gap truth.
+
+Set package versions coherently to `0.1.5`.
+
+VALIDATION
+
+After repair rerun focused tests plus `npm run check`, phase validation, no-root-lock check and `git diff --check`.
+
+GIT / MANUAL HANDOFF
+
+This prompt runs outside the normal phase runner. After success:
+- commit all prompt-owned changes once;
+- exact commit subject `0.1.5`;
+- leave repository clean;
+- no additional prompt-owned commit.
+
+FINAL RESPONSE
+
+Report exact candidate, native matrix, theme, tests/extensions/restart, Git preservation, repairs, automated validation, gaps and whether P6 is unblocked.

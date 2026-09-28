@@ -117,8 +117,8 @@ The spike does not lock:
 
 ## Executed qualification (2026-09-27)
 
-The original package `0.0.0` assessment baseline was `e90164da659b21a3d24e87b7ce3ff2a7f995cace`. P1-P5 are reachable through exact P5 SHA `6624e146683b6cbfe507325438f2edf19fe20d97` (`0.0.5`); P6 is uncommitted `0.0.6` pending the phase runner's commit. Theia remains `1.75.0`.
+The original package `0.0.0` assessment baseline was `e90164da659b21a3d24e87b7ce3ff2a7f995cace`. P1-P5 are reachable through exact P5 SHA `6624e146683b6cbfe507325438f2edf19fe20d97` (`0.0.5`); the runner-owned P6 closeout is `425b89d222e1542815af9e38aaa21a4e5a472cb7` (`0.0.6`). Theia remains `1.75.0`.
 
 Gates A-E are Green on P4 direct shared-workbench observation, Dope-owned persistence/restart and tests, and the customization ledger. Gate F is Green for real Linux artifact, package resources, process launch and packaged renderer; native Electron-window visual interaction remains an **Evidence Gap**, not Green. Other bounded gaps are cross-distribution AppImage behavior and fresh-checkout plugin download. No hard substrate blocker, broad private/internal coupling, or framework fork was observed. The full matrix, extension evidence, warnings and P6 reruns are in `docs/tasks/p0/closeout.md`.
 
-Decision: **Qualified** for the Foundation Spike 0 substrate only. Next required action is post-spike `/docs-review` for the architecture amendments and gaps in the closeout; an approved Phase 1 activation must set package baseline `0.1.0`. No Product Phase 1 prompt or implementation is approved here.
+Decision: **Qualified** for the Foundation Spike 0 substrate only. The required post-spike `/docs-review` was subsequently accepted and Product Phase 1 was activated from package baseline `0.1.0`. This decision record remains the historical substrate authority.

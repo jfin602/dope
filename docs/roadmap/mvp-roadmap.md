@@ -1,7 +1,7 @@
 # Dope Roadmap
 
-Status: INITIAL ROADMAP
-Current gate: Foundation Spike 0
+Status: ACTIVE ROADMAP
+Current gate: Product Phase 1 — IDE Alive
 
 This roadmap deliberately starts small.
 
@@ -43,6 +43,8 @@ Dogfooding Dope on its own repository is a necessary product qualification, not 
 
 ## Foundation Spike 0 — Theia substrate qualification
 
+Status: **QUALIFIED / OWNER-CLOSED** at package `0.0.6`, closeout commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`.
+
 Purpose:
 - prove or reject Theia as Dope's IDE/workbench substrate
 - prove domain/presentation boundaries
@@ -64,31 +66,49 @@ Authority:
 
 Package family: 0.0.x
 
-No product phase may assume Theia qualified until this gate closes. Upgradeability remains a design requirement and will be qualified on the first natural Theia upgrade rather than through synthetic Phase 0 work.
+The gate is closed: Theia 1.75.0 is the qualified initial substrate. Upgradeability remains a design requirement and will be qualified on the first natural Theia upgrade rather than through synthetic Phase 0 work.
 
 ## Product Phase 1 — IDE Alive
 
+Status: **ACTIVE ENGINEERING GATE**
+
 Purpose:
-Make Dope a serious development environment before differentiating it with project intelligence or AI.
+Make Dope a serious native development environment before differentiating it with production project intelligence or AI.
+
+Package family: `0.1.x`  
+Activation baseline: `0.1.0`
 
 Initial scope:
-- production Electron application
+- production Electron application as the primary user-facing shell
 - repository/workspace opening
 - editor and language tooling
-- explorer and search
+- Explorer and search
 - terminal
-- Git/SCM
+- Git/SCM and diff workflows
 - debugger
-- problems
-- test integration
+- Problems
+- test discovery/execution integration
 - preferences and keybindings
-- extension support
-- Dope branding and default workbench layout
-- reliable startup, restart, and workspace restoration
+- extension installation/use and restart persistence
+- Dope branding and sensible default workbench layout
+- dark-first default theme with persistent user-controlled theme override
+- reliable startup, restart, editor/workbench and workspace restoration
+- reproducible Linux AppImage packaging/launch
+- native day-to-day dogfooding using the Dope repository itself
+
+Presentation rule:
+
+Dope prefers dark mode. First-run/default presentation should be dark and Dope-owned surfaces should be designed/qualified dark-first. Developers remain free to select light mode or compatible custom themes; an explicit user choice persists and overrides the default.
+
+The browser application remains useful for development, debugging, and automated qualification, but it is not the product qualification surface for the Phase 1 exit gate.
+
+The existing Foundation Spike Project Mind Note and Planning views remain provisional spike artifacts. Phase 1 may make them non-intrusive, but must not turn them into production Phase 2/3 features.
 
 Exit condition:
 
-Dope should be comfortable enough that Dope can be developed inside Dope without immediately reaching for another IDE.
+A developer can open the Dope repository in the packaged Dope desktop application and perform a normal development loop—navigate, edit, search, run commands and tests, inspect diagnostics, use Git/diffs, debug, install/use extensions, restart, and resume—without needing another IDE for ordinary development work.
+
+This is the first self-development milestone: **Dope as editor**.
 
 ## Product Phase 2 — Project Mind
 

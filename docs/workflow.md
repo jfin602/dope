@@ -100,6 +100,18 @@ The final prompt in every phase stack is a closeout prompt.
 
 Foundation Spike 0 is a Theia substrate qualification. It does not need implementation prompts for actual model/provider integration merely because the repository runner itself uses Codex.
 
+## Phase 1
+
+Product Phase 1 uses execution folder `p1`.
+
+Its explicit activation baseline is package `0.1.0`. The phase runner therefore expects:
+- no completed prompts -> `0.1.0`;
+- P1 -> `0.1.1`;
+- P2 -> `0.1.2`;
+- and so on.
+
+Phase 1 qualifies Dope as a native Electron IDE. Browser builds/tests remain useful, but browser-only evidence cannot substitute for the direct native dogfooding gate.
+
 ## Prompt metadata
 
 Every prompt contains exactly one canonical model recommendation:

@@ -1,0 +1,48 @@
+TASK: Phase 1 / P4 — fresh-environment Linux package and normal launch
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.1.4`.
+
+GOAL
+
+Prove Phase 1 can produce a branded Linux artifact from a fresh-enough environment without silently depending on P0's pre-populated plugin cache.
+
+Read Phase 1 authority, P1-P3 implementation, package scripts/entrypoint and P0 package evidence.
+
+FRESH-ENVIRONMENT REQUIREMENT
+
+Exercise the real plugin/resource preparation path from a deliberately cleared or isolated relevant cache/resource state. Do not destroy unrelated user caches.
+
+Record what was isolated, whether network download was required, pinned plugin source/version, and whether packaging succeeds without an already-populated `plugins/` directory.
+
+PACKAGE
+
+Produce Linux AppImage with Dope name/desktop identity, custom icon, packaged plugins/resources and version `0.1.4`. No publishing/signing/telemetry/cloud/auto-update scope.
+
+Record artifact path/type, size, SHA-256, metadata, resources, plugin count and Linux prerequisites.
+
+NORMAL LAUNCH
+
+Launch outside source/dev server using the closest practical normal desktop invocation. Do not use `--no-sandbox`, `--disable-gpu` or remote-debugging flags for the primary normal-launch claim. A separate diagnostic smoke may use flags if clearly labeled.
+
+Prove process viability, packaged resources, no unresolved fatal startup error, and ability to target/open a real workspace path.
+
+Do not claim native visual usability; P5 owns it.
+
+Bounded packaging repairs require permanent regression coverage.
+
+Create `docs/tasks/p1/P4-linux-package-evidence.md`.
+
+Set package versions coherently to `0.1.4`.
+
+VALIDATION
+
+Run package build, focused tests, `npm run check`, phase validation, no-root-lock check and `git diff --check`.
+
+FINAL RESPONSE
+
+Report fresh-environment method, artifact/hash/size, icon/metadata, plugin/resources, normal launch, warnings/gaps and whether P5 is unblocked.

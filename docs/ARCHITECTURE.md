@@ -65,6 +65,29 @@ Dope owns:
 
 Theia may render or host these concepts. It does not define them.
 
+## Qualified substrate findings and Phase 1 product shell
+
+Foundation Spike 0 qualified Theia 1.75.0 as the initial substrate without a framework fork or broad private/internal coupling.
+
+Accepted presentation techniques, in preference order:
+1. standard Theia contribution points;
+2. custom Dope widgets/services;
+3. service rebinding/replacement;
+4. bounded shell-level customization where justified;
+5. source fork only as a last resort.
+
+The highest-risk qualified seams are shell-area behavior, navigator widget IDs, status-bar CSS, and the window-title service lifecycle. Keep these localized to Theia presentation adapters and do not spread them into product/domain packages.
+
+For Product Phase 1:
+- the Electron application is the primary user-facing Dope product shell;
+- the browser application remains a development, debugging, and qualification surface;
+- the default workbench prioritizes ordinary IDE work rather than unfinished Project Mind or Planning spike surfaces;
+- native Electron dogfooding is required before Phase 1 can qualify.
+
+Presentation preferences such as theme, keybindings, panel layout, and editor preferences may persist for the user, but they are not canonical project-domain state.
+
+Dope is dark-first: first-run/default presentation should use a dark theme and Dope-owned surfaces should be designed and qualified dark-first. Explicit user theme selection must remain supported, persist across restart, and override the default. Structural UI styling should prefer semantic theme tokens rather than assuming fixed dark colors.
+
 ## Model and provider boundary
 
 Dope must not depend architecturally on one model, model family, provider, API, hosted service, local runtime, or provider-native chat/session ontology.
@@ -208,7 +231,7 @@ Tool results are structured and observable.
 
 ## Foundation Spike 0 boundary
 
-Foundation Spike 0 proves:
+Foundation Spike 0 is qualified. Its executed evidence proved:
 - Theia IDE fundamentals
 - custom Dope views/layouts
 - typed frontend/backend communication
@@ -225,7 +248,7 @@ It does not need to prove:
 - editor-agent mutation
 - scoped delegation
 
-This keeps substrate qualification separate from product/AI implementation.
+That result keeps substrate qualification separate from product/AI implementation. Product Phase 1 consumes the qualified IDE substrate without promoting the spike Note, Planning view, or WorkspaceMode projection into later product-domain authority.
 
 ## Frontend/backend communication
 
@@ -267,6 +290,7 @@ Canonical product state includes, as phases introduce it:
 
 Derived/non-canonical state includes:
 - UI layout
+- user presentation preferences such as theme/keybindings
 - rendered panels
 - search indexes
 - recomputable architecture projections

@@ -152,17 +152,25 @@ Desired completion feeling:
 
 ## Current gate
 
-Foundation Spike 0 is the only approved implementation gate.
+**Product Phase 1 — IDE Alive** is the active implementation gate.
 
-The current spike qualifies Theia across:
-- IDE basics
-- custom Dope UI
-- typed frontend/backend seams
-- minimal Dope-owned persistence
-- restart restoration
-- deep customization/rebinding
-- Linux packaging
+Foundation Spike 0 qualified Theia 1.75.0 at package `0.0.6`. Phase 1 begins from package baseline `0.1.0` and turns the qualified substrate into the actual desktop IDE.
 
-Actual model integration, Agent Mind execution, tool calling, and editor-agent mutation are intentionally deferred.
+Phase 1 is limited to:
+- production-quality Electron shell and Linux packaging;
+- repository/workspace opening;
+- editor/language tooling;
+- Explorer and search;
+- terminal;
+- Git/SCM and diffs;
+- debugger and Problems;
+- test integration;
+- preferences and keybindings;
+- extension installation/use;
+- dark-first Dope branding and theme behavior with persistent user override;
+- startup/restart/workspace restoration;
+- real native dogfooding on the Dope repository.
 
-No later product phase is approved for implementation until the substrate gate closes and the post-spike docs review is accepted.
+The P0 Project Mind Note and Planning surfaces remain spike artifacts. Production Project Mind begins in Phase 2 and production Planning begins in Phase 3.
+
+Model/provider integration, Agent Mind, tool execution, AI mutation, scoped delegation, and durable development sessions remain deferred to their roadmap phases.

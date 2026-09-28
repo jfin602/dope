@@ -1,0 +1,54 @@
+TASK: Phase 1 / P1 — Electron product shell and dark-first default
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.1.1`.
+
+GOAL
+
+Turn the qualified P0 Electron substrate into the Phase 1 product shell without introducing later product domains.
+
+Read `BOOT.md`, `AGENTS.md`, Phase 1 authority/plans, the P0 closeout/coupling ledger, and current shell/theme source before editing.
+
+PREFLIGHT
+
+Require clean repository, package `0.1.0`, Node >=24 <25, no root `package-lock.json`, and directly controlled Theia packages exactly 1.75.0.
+
+PRODUCTIZE THE SHELL
+
+Implement:
+- dark first-run/default theme through supported Theia preference/theme mechanisms;
+- persistent explicit user theme choice that overrides the default;
+- Dope-owned surfaces readable under light/compatible custom themes;
+- semantic theme tokens for structural colors where available;
+- real Dope package/application branding including custom Linux icon;
+- ordinary-IDE-centered default workbench rather than auto-foregrounding unfinished later-phase spike surfaces.
+
+Keep P0 Project Mind/Planning spike surfaces available if harmless, but non-intrusive. Do not deepen them.
+
+STATE BOUNDARY
+
+Theme, layout and editor preferences are user presentation/preferences state, not ProjectArtifact/Note or future Project Intelligence state.
+
+TESTS
+
+Add deterministic coverage for branding metadata, default-theme policy where testable, changed shell/default logic and Theia/version coherence.
+
+Set package versions coherently to `0.1.1`.
+
+VALIDATION
+
+Run focused tests, `npm run check`, `npm run codex:phase:validate -- p1`, explicit no-root-lock check and `git diff --check`.
+
+Do not claim native visual qualification; P5 owns direct GUI evidence.
+
+SCOPE GUARD
+
+No production Project Mind/Planning, model/provider integration, Agent Mind, tools, authority, AI mutation, delegation or sessions.
+
+FINAL RESPONSE
+
+Report theme/default behavior, branding/icon, spike-surface treatment, tests/validation, coupling changes and evidence deferred to P5.

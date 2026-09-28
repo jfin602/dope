@@ -1,0 +1,58 @@
+TASK: Phase 1 / P6 — IDE Alive closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.1.6`.
+
+GOAL
+
+Perform evidence-only closeout for Product Phase 1 from the exact P5 candidate.
+
+Do not repair behavior, broaden scope, upgrade Theia or generate Phase 2 prompts.
+
+SOURCE OF TRUTH
+
+Read BOOT, AGENTS, roadmap, architecture, stability contract, Phase 1 planning/task docs, P4 package evidence, P5 native evidence and exact reachable P1-P5 commits/source/tests.
+
+REQUIRED AUDIT
+
+Audit:
+A. Native product shell — packaged Electron app, branding/icon, normal launch, dark default.
+B. Ordinary IDE — workspace, Explorer/editor/language, search, terminal, SCM/diffs, debugger, Problems, integrated tests.
+C. User customization — preferences, keybindings, explicit theme override and persistence.
+D. Extensions — marketplace/install/use, observable non-AI function, restart persistence.
+E. Restoration — workspace/editor/workbench resume and no project-domain promotion of UI state.
+F. Packaging — fresh plugin/resource preparation, AppImage, metadata/icon/resources, artifact identity.
+G. Dope-on-Dope — P5 direct native use on actual repo, controlled edits restored, Git state preserved, no another-IDE dependency for qualified loop.
+
+EVIDENCE RULES
+
+Preserve Green / Not Green / Evidence Gap truth. Browser or renderer-only evidence cannot satisfy native Phase 1. Hard daily-use blockers cannot be relabeled Green.
+
+RE-RUN
+
+Run current deterministic aggregate checks, runner tests, typecheck, browser/Electron builds, Theia coherence, package build/preview as appropriate, phase validation, no-root-lock check and `git diff --check`.
+
+Do not repair failures in closeout.
+
+CLOSEOUT OUTPUT
+
+Create/update `docs/tasks/p1/closeout.md` with exact activation baseline/final SHA/version, Theia/Electron baseline, A-G table, theme result, integrated tests, extensions, restart, package, dogfooding, remaining gaps and explicit Qualified / Not Qualified decision.
+
+If Qualified:
+- mark p1 README COMPLETE / GREEN;
+- update BOOT to state Phase 1 qualified;
+- next action post-Phase-1 `/docs-review`;
+- Phase 2 remains unapproved until that review;
+- do not create Phase 2 prompts.
+
+If Not Qualified, preserve blockers and leave Phase 2 blocked.
+
+Set package versions coherently to `0.1.6`.
+
+FINAL RESPONSE
+
+Report exact candidate, A-G disposition, decision, native dogfooding, package, theme, gaps, docs updated and next action.

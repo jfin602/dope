@@ -6,7 +6,7 @@ Phase: 0 — Theia substrate qualification
 Execution folder: `p0`  
 Original baseline package: `0.0.0`  
 Final P5 committed candidate: `6624e146683b6cbfe507325438f2edf19fe20d97` (`0.0.5`)
-P6 closeout package: `0.0.6` (runner-owned commit pending)
+Final P6 closeout: `425b89d222e1542815af9e38aaa21a4e5a472cb7` (`0.0.6`)
 
 ## Stack
 
@@ -15,7 +15,7 @@ P6 closeout package: `0.0.6` (runner-owned commit pending)
 - P3 / `0.0.3` — typed backend + minimal Project Mind persistence. **COMPLETED**
 - P4 / `0.0.4` — Foundation IDE GUI/tooling/extension/restart qualification. **COMPLETED**
 - P5 / `0.0.5` — Linux Electron package/build/launch smoke. **COMPLETED**
-- P6 / `0.0.6` — evidence-only Foundation Spike closeout. **COMPLETE; COMMIT RUNNER-OWNED**
+- P6 / `0.0.6` — evidence-only Foundation Spike closeout. **COMPLETED**
 
 P1-P5 use GPT-6 Sol High. P6 uses GPT-6 Sol Medium.
 
@@ -25,7 +25,7 @@ Validate grammar:
 
 `npm run codex:phase:validate -- p0`
 
-P1-P5 are in Git history. The phase runner owns the P6 implementation commit; see `closeout.md` for executed evidence and remaining gaps.
+P1-P6 are in Git history. See `closeout.md` for executed evidence and remaining gaps.
 
 ## Qualification target
 
@@ -41,4 +41,4 @@ The stack proves or rejects:
 
 It explicitly does not qualify AI or perform a synthetic Theia upgrade.
 
-Next required action: post-spike `/docs-review`, followed only after approval by Phase 1 activation at package baseline `0.1.0`. No Phase 1 implementation is approved by this closeout.
+Post-spike `/docs-review` was accepted. Product Phase 1 is activated from package baseline `0.1.0`; the Phase 0 folder remains historical evidence.

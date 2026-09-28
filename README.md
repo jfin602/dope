@@ -12,9 +12,11 @@ Dope is a fresh project. It is not George v2 and has no compatibility requiremen
 
 ## Current gate
 
-The repository begins at package version 0.0.0.
+Foundation Spike 0 qualified Eclipse Theia 1.75.0 as Dope's initial IDE substrate at package `0.0.6`.
 
-The current engineering gate is Foundation Spike 0: deliberately stress-test Eclipse Theia 1.75.0 as the IDE substrate before significant product implementation.
+The active engineering gate is **Product Phase 1 — IDE Alive**, beginning from package baseline `0.1.0`. Phase 1 makes the Electron application a dependable daily development environment and qualifies Dope by developing the Dope repository inside the native desktop application.
+
+Dope prefers a dark default presentation while preserving persistent user theme choice.
 
 Read BOOT.md before substantial repository-aware work.
 

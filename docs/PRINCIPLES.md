@@ -110,6 +110,7 @@ Cross-cutting architecture and execution laws:
 - OpenAI/ChatGPT/Codex compatibility and local-model compatibility are first-class requirements.
 - Capability-based adapters should preserve provider-specific strengths rather than collapsing everything to a lowest common denominator.
 - Self-development without self-dependence: Dope may build Dope, but Dope must not require a healthy Dope runtime to repair Dope.
+- Dark-first, user-controlled presentation: Dope should default to a dark visual experience and design Dope-owned surfaces dark-first, while preserving persistent user choice of light or compatible custom themes.
 - Mastery over spectacle.
 
 The target feeling is not "the AI did a lot."

@@ -1,13 +1,18 @@
 {
   "name": "dope",
-  "version": "0.0.6",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "packageManager": "yarn@1.22.22",
   "engines": {
     "node": ">=24 <25"
   },
-  "workspaces": ["apps/browser", "apps/electron", "packages/contracts", "packages/theia-extension"],
+  "workspaces": [
+    "apps/browser",
+    "apps/electron",
+    "packages/contracts",
+    "packages/theia-extension"
+  ],
   "scripts": {
     "build:extension": "corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/theia-extension build",
     "build:browser": "corepack yarn build:extension && corepack yarn workspace @dope/browser build",
@@ -29,7 +34,11 @@
   "theiaPlugins": {
     "vscode-builtin-extensions": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode-builtin-extensions-1.108.2.tar.gz"
   },
-  "theiaPluginsExcludeIds": ["ms-vscode.js-debug-companion", "vscode.extension-editing", "vscode.microsoft-authentication"],
+  "theiaPluginsExcludeIds": [
+    "ms-vscode.js-debug-companion",
+    "vscode.extension-editing",
+    "vscode.microsoft-authentication"
+  ],
   "devDependencies": {
     "@theia/cli": "1.75.0",
     "@types/node": "^24.0.0",

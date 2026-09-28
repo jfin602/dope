@@ -11,26 +11,31 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 ## Current state
 
-Foundation Spike 0 is qualified at package version 0.0.6 on Eclipse Theia 1.75.0. The P5 committed candidate is `6624e146683b6cbfe507325438f2edf19fe20d97`; the P6 commit is runner-owned. Native Electron-window visual interaction and other bounded gaps remain explicit in `docs/tasks/p0/closeout.md`.
+Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-P1-P5 are committed; P6 is evidence-only closeout. No product phase has been qualified yet.
+**Product Phase 1 — IDE Alive is the active engineering gate.**
 
-The next required action is post-spike `/docs-review`, then an explicitly approved Phase 1 activation establishing package baseline `0.1.0` before any `p1` stack. Do not generate or approve Product Phase 1 implementation automatically.
+This activation establishes package baseline `0.1.0` before the `p1` execution stack. Phase 1 turns the qualified substrate into a desktop IDE comfortable enough to develop Dope inside Dope through ordinary development workflows.
 
-The qualified substrate is:
+Phase 1 product posture:
+- Electron is the primary user-facing product shell;
+- the browser application remains a development and qualification surface;
+- Eclipse Theia remains pinned to 1.75.0 until a real upgrade is intentionally undertaken;
+- Dope is dark-first by default, while explicit user theme choice remains supported and persistent;
+- unfinished Project Mind and Planning spike surfaces must not be mistaken for Phase 2/3 product implementation;
+- no AI/model/provider, Agent Mind, tool-authority, mutation, or scoped-delegation implementation belongs in Phase 1.
+
+The qualified substrate remains:
 
 **Foundation Spike 0 — Theia substrate qualification**
 
-Initial spike pin:
+Qualified spike baseline:
 - Eclipse Theia 1.75.0;
 - desktop target: Electron;
-- Node baseline for the spike: Node 24 major;
-- Linux desktop packaging is required;
-- Theia AI is optional future infrastructure behind a Dope adapter, not a product model.
-
-The spike exists to try to break the Theia thesis before Dope becomes deeply coupled to it.
-
-Foundation Spike 0 qualifies the IDE substrate only. It must not grow model integration, Agent Mind execution, tool execution, AI mutation, scoped delegation, or ambient intelligence merely to exercise future architecture.
+- Node 24 major;
+- Linux AppImage packaging;
+- typed frontend/backend seams;
+- bounded presentation customization without broad private/internal coupling.
 
 Historical planning source:
 - docs/foundation-context.md
@@ -49,6 +54,7 @@ Current authority:
 - docs/roadmap/mvp-roadmap.md
 - docs/planning/foundation-spike-0/decision-record.md
 - docs/planning/foundation-spike-0/qualification-plan.md
+- docs/planning/p1/phase-1-plan.md
 - docs/decisions/0004-model-provider-independence.md
 - docs/decisions/0005-progressive-self-development.md
 
@@ -200,20 +206,18 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Do not start broad product implementation.
+Execute Product Phase 1 from `docs/tasks/p1`.
 
-The Foundation Spike 0 prompt stack now exists under `docs/tasks/p0`.
+Before implementation:
+- validate the stack with `npm run codex:phase:validate -- p1`;
+- begin from clean package baseline `0.1.0`;
+- keep Theia at 1.75.0 unless an explicitly approved real upgrade supersedes this plan.
 
-Continue the shortened stack from P4. P4 is the only required browser/GUI handoff; after its `0.0.4` commit, the normal runner owns P5 and P6 can close the spike.
+Normal execution:
+- P1-P4 are runner-owned implementation/qualification prompts;
+- P5 is the single direct native Electron dogfooding/manual GUI gate;
+- P6 is evidence-only Phase 1 closeout.
 
-Phase 0 should prove only:
-- serious IDE basics
-- custom Dope UI/layout
-- typed frontend/backend seams
-- minimal Dope-owned persistence
-- restart restoration
-- customization/rebinding
-- extension/tooling compatibility
-- Linux packaging
+Run `npm run codex:phase -- p1` until the P5 handoff. After successful P5 execution and its exact `0.1.5` commit, resume with `npm run codex:phase -- p1 --closeout`.
 
-The spike must qualify or reject Theia before Product Phase 1 begins. If it qualifies, run the required post-spike `/docs-review`, then activate Phase 1 with package baseline `0.1.0` before writing/running the `p1` stack.
+Do not start Product Phase 2 implementation until Phase 1 is qualified and its closeout routes through the normal post-phase documentation review.

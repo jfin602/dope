@@ -6,7 +6,7 @@ Status: **QUALIFIED — bounded Evidence Gaps retained** (2026-09-27)
 
 - Original assessment baseline: `e90164da659b21a3d24e87b7ce3ff2a7f995cace`, package `0.0.0`; the immediate pre-P1 baseline was `f1332f55b46e45c2cd6aa46b8f5b5702121436e4`, also `0.0.0`.
 - Reachable P1-P5 implementation/qualification commits: P1 `d2f7294637ee40bef4434d739e2069f20837d2fd`, P2 `43ca52f9666aae80a8770543f1846c43e5eb9f5b`, P3 `2e6efe76284611aa5c459a2b816daff8e4b9f93f`, P4 `7bd8a8c43f995eb6dd5f0d244204b0be13a31179`, P5 `6624e146683b6cbfe507325438f2edf19fe20d97`.
-- Exact P6 pre-task/final committed candidate: `6624e146683b6cbfe507325438f2edf19fe20d97`, package `0.0.5`. P6 changes are uncommitted package `0.0.6`; the phase runner alone assigns the final implementation SHA. No product implementation or Theia upgrade was made in P6.
+- Exact P6 pre-task candidate: `6624e146683b6cbfe507325438f2edf19fe20d97`, package `0.0.5`. The runner committed the evidence-only P6 closeout as `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`. No product implementation or Theia upgrade was made in P6.
 - Theia: **1.75.0** in directly controlled dependencies and the coherence guard; Node `v24.21.0` in this rerun. Electron `42.8.1`.
 - Substrate decision: **Qualified for Foundation Spike 0**, not a qualification of Product Phase 1 or any AI/authority runtime. No unresolved hard substrate blocker, framework fork, broad private/internal coupling, or Theia-owned canonical Note schema was found. The native-window visual gap below is not Green.
 
@@ -40,3 +40,7 @@ Status: **QUALIFIED — bounded Evidence Gaps retained** (2026-09-27)
 - **Evidence Gap:** AppImage behavior on another Linux distribution and fresh-checkout pinned plugin download; the rerun reused 90 downloaded built-ins. The default Electron icon is a branding-polish gap, not evidence of a startup blocker.
 - Required pre-Phase-1 architecture/documentation amendments through post-spike `/docs-review`: record the qualified 1.75.0 substrate and bounded shell/rebind/CSS coupling in current architecture authority; preserve the Dope-owned canonical Note/WorkspaceMode and presentation adapter boundary; carry native dogfooding, cross-distribution/fresh-checkout packaging and icon polish into appropriate future qualification without relabeling them Green. Keep upgradeability as a real-upgrade qualification, not a synthetic Phase 0 gate.
 - **Next required action: post-spike `/docs-review`.** Only an approved Phase 1 activation may establish package baseline `0.1.0` before a `p1` stack is written/run. This closeout does not approve or generate Product Phase 1 implementation.
+
+## Finalization note
+
+The runner-owned closeout commit is `425b89d222e1542815af9e38aaa21a4e5a472cb7` at package `0.0.6`. The subsequent owner-approved post-spike documentation review activated Product Phase 1 from package baseline `0.1.0`; the evidence classifications above are unchanged.
