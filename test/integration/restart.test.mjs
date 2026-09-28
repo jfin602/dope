@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
+import { pathToFileURL } from 'node:url';
+import { queryArtifacts } from '../../packages/project-intelligence/lib/index.js';
 
 const root = resolve(import.meta.dirname, '../..');
 const executable = join(root, 'node_modules/.bin/electron');
@@ -206,6 +209,166 @@ test('Electron restart preserves Theia state and runtime extension, with stale-s
             try { await close(instance); } catch { }
         }
         if (instance) try { process.kill(-instance.child.pid, 'SIGTERM'); } catch { }
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
+test('Project Mind survives process and profile restarts, isolates folders, and requires explicit recovery', { timeout: 300000 }, async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'dope-mind-restart-'));
+    const first = join(directory, 'first');
+    const second = join(directory, 'second');
+    const profile = join(directory, 'profile-one');
+    const otherProfile = join(directory, 'profile-two');
+    const port = await availablePort();
+    const legacyId = randomUUID();
+    const legacy = JSON.stringify({ id: legacyId, schemaVersion: 1, type: 'note', title: 'Legacy note', body: 'Retained source', provenance: 'developer' });
+    await mkdir(join(first, '.dope'), { recursive: true });
+    await mkdir(second);
+    await writeFile(join(first, '.dope', 'note.json'), legacy);
+    await writeFile(join(first, 'README.md'), 'Linked file\n');
+    let instance;
+    try {
+        instance = await launch(profile, port, first);
+        assert.equal(await evaluate(instance.page, `(() => { const button = [...document.querySelectorAll('button')].find(value => value.textContent.includes('Yes, I trust the authors')); if (!button) return false; button.click(); return true; })()`), true);
+        const created = await evaluate(instance.page, `(async () => {
+            const key = [...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'ProjectMindService');
+            const service = theia.container.get(key);
+            const { projectHandle, snapshot: empty } = await service.attach(${JSON.stringify(pathToFileURL(first).toString())});
+            if (empty !== undefined) throw Error('legacy Note imported without consent');
+            let snapshot = await service.migrate(projectHandle);
+            const initial = snapshot.artifacts[0];
+            const now = new Date().toISOString();
+            const base = (type, title) => ({ schemaVersion: 2, id: crypto.randomUUID(), title,
+                createdAt: now, updatedAt: now, provenance: 'developer', archivedAt: null, links: [], type });
+            const note = { ...base('note', 'New note'), status: 'active', body: 'Unique searchable content' };
+            const idea = { ...base('idea', 'Idea'), status: 'captured', body: 'Try a different approach' };
+            const question = { ...base('question', 'Question'), status: 'open', body: 'What changed?' };
+            const decision = { ...base('decision', 'Decision'), status: 'proposed', decision: 'Keep the contract',
+                context: 'Restart', rationale: 'Durable state', consequences: 'Traceable', alternatives: '', revisitConditions: '' };
+            for (const artifact of [note, idea, question, decision]) snapshot = await service.mutate({ projectHandle,
+                expectedRevision: snapshot.revision, operation: { type: 'create', artifact } });
+            for (const artifact of [note, idea, question, decision]) snapshot = await service.mutate({ projectHandle,
+                expectedRevision: snapshot.revision, operation: { type: 'replace', artifact: { ...artifact, title: artifact.title + ' saved', updatedAt: new Date().toISOString() } } });
+            for (const operation of [
+                { type: 'transition', artifactId: question.id, status: 'answered', answer: 'Persist the snapshot' },
+                { type: 'transition', artifactId: decision.id, status: 'accepted' },
+                { type: 'link', artifactId: note.id, link: { relation: 'answers', target: { type: 'artifact', id: question.id } } },
+                { type: 'link', artifactId: note.id, link: { relation: 'related', target: { type: 'file', path: 'README.md', line: 1 } } },
+                { type: 'archive', artifactId: idea.id, archived: true },
+                { type: 'archive', artifactId: idea.id, archived: false }
+            ]) snapshot = await service.mutate({ projectHandle, expectedRevision: snapshot.revision, operation });
+            let stale;
+            try { await service.mutate({ projectHandle, expectedRevision: 1, operation: { type: 'archive', artifactId: idea.id, archived: true } }); }
+            catch (error) { stale = String(error); }
+            return { snapshot, initial, ids: { note: note.id, idea: idea.id, question: question.id, decision: decision.id }, stale };
+        })()`);
+        assert.match(created.stale, /Stale Project Mind revision/);
+        assert.equal(created.snapshot.revision, 15);
+        assert.equal(created.snapshot.artifacts.length, 5);
+        assert.equal(created.initial.id, legacyId);
+        assert.equal(created.initial.createdAt, null);
+        assert.equal(created.initial.updatedAt, null);
+        assert.equal(created.initial.migration.sourcePath, '.dope/note.json');
+        assert.equal(await readFile(join(first, '.dope', 'note.json'), 'utf8'), legacy);
+        await close(instance);
+
+        instance = await launch(otherProfile, port, first);
+        const reopened = await evaluate(instance.page, `(async () => {
+            const service = theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'ProjectMindService'));
+            const { projectHandle, snapshot } = await service.attach(${JSON.stringify(pathToFileURL(first).toString())});
+            return { snapshot, read: await service.read(projectHandle) };
+        })()`);
+        assert.deepEqual(reopened.snapshot, created.snapshot);
+        assert.deepEqual(reopened.read, created.snapshot);
+        assert.deepEqual(queryArtifacts(reopened.read, { text: 'unique searchable' }).map(artifact => artifact.id), [created.ids.note]);
+        await close(instance);
+
+        instance = await launch(profile, port, first);
+        const search = await evaluate(instance.page, `(async () => {
+            await theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'CommandService')).executeCommand('dope.projectMind.open');
+            return document.querySelector('#dope-project-mind [role="status"]')?.textContent;
+        })()`);
+        assert.match(search, /Loading Project Mind|Saved/);
+        assert.equal(await until(() => evaluate(instance.page, `(() => {
+            const input = document.querySelector('#dope-project-mind input[aria-label="Search Project Mind"]');
+            if (!input) return false;
+            input.value = 'unique searchable'; input.dispatchEvent(new Event('input', { bubbles: true }));
+            return [...document.querySelectorAll('#dope-project-mind li button')].map(button => button.textContent).join('|');
+        })()`), 8000), 'New note saved · note · active');
+        await close(instance);
+
+        instance = await launch(otherProfile, port, second);
+        const isolated = await evaluate(instance.page, `(async () => {
+            const service = theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'ProjectMindService'));
+            const { projectHandle, snapshot: empty } = await service.attach(${JSON.stringify(pathToFileURL(second).toString())});
+            const now = new Date().toISOString();
+            const snapshot = await service.mutate({ projectHandle, expectedRevision: 0, operation: { type: 'create', artifact: {
+                schemaVersion: 2, id: crypto.randomUUID(), type: 'note', title: 'Second project', status: 'active', body: 'Separate',
+                createdAt: now, updatedAt: now, provenance: 'developer', archivedAt: null, links: [] } } });
+            let wrongHandle;
+            try { await service.read('not-this-connection'); } catch (error) { wrongHandle = String(error); }
+            return { empty, snapshot, wrongHandle };
+        })()`);
+        assert.equal(isolated.empty, undefined);
+        assert.equal(isolated.snapshot.revision, 1);
+        assert.notEqual(isolated.snapshot.projectId, created.snapshot.projectId);
+        assert.match(isolated.wrongHandle, /Invalid or detached Project Mind handle/);
+        await close(instance);
+
+        const file = join(first, '.dope', 'project-mind.json');
+        const committed = await readFile(file, 'utf8');
+        const lock = join(first, '.dope', 'project-mind.lock');
+        await writeFile(lock, '');
+        instance = await launch(otherProfile, port, first);
+        const locked = await evaluate(instance.page, `(async () => {
+            const service = theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'ProjectMindService'));
+            const { projectHandle, snapshot } = await service.attach(${JSON.stringify(pathToFileURL(first).toString())});
+            let error;
+            try { await service.mutate({ projectHandle, expectedRevision: snapshot.revision, operation:
+                { type: 'archive', artifactId: ${JSON.stringify(created.ids.idea)}, archived: true } }); }
+            catch (failure) { error = String(failure); }
+            return { snapshot, error };
+        })()`);
+        assert.deepEqual(locked.snapshot, created.snapshot);
+        assert.match(locked.error, /Project Mind locked/);
+        await close(instance);
+        assert.equal(await readFile(file, 'utf8'), committed);
+        await rm(lock);
+
+        for (const invalid of ['{', '{"schemaVersion":3,"projectId":"future","revision":12,"artifacts":[]}']) {
+            await writeFile(file, invalid);
+            instance = await launch(otherProfile, port, first);
+            const error = await evaluate(instance.page, `(async () => {
+                const service = theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'ProjectMindService'));
+                try { await service.attach(${JSON.stringify(pathToFileURL(first).toString())}); }
+                catch (failure) { return String(failure); }
+                return 'unexpected success';
+            })()`);
+            assert.match(error, /Corrupt or unsupported Project Mind/);
+            await close(instance);
+            assert.equal(await readFile(file, 'utf8'), invalid);
+        }
+        await writeFile(file, committed);
+        instance = await launch(otherProfile, port, first);
+        const recovered = await evaluate(instance.page, `(async () => {
+            const service = theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'ProjectMindService'));
+            const { projectHandle, snapshot } = await service.attach(${JSON.stringify(pathToFileURL(first).toString())});
+            return { snapshot, read: await service.read(projectHandle) };
+        })()`);
+        assert.deepEqual(recovered.snapshot, created.snapshot);
+        assert.deepEqual(recovered.read, created.snapshot);
+        assert.equal(recovered.snapshot.artifacts.find(item => item.id === created.ids.question).answer, 'Persist the snapshot');
+        assert.equal(recovered.snapshot.artifacts.find(item => item.id === created.ids.decision).status, 'accepted');
+        assert.equal(recovered.snapshot.artifacts.find(item => item.id === created.ids.idea).archivedAt, null);
+        assert.equal(recovered.snapshot.artifacts.find(item => item.id === created.ids.note).links.length, 2);
+        assert.equal((await readFile(join(second, '.dope', 'project-mind.json'), 'utf8')).includes(created.snapshot.projectId), false);
+        await close(instance);
+    } catch (error) {
+        throw new Error(`${error}\n${instance?.output ?? ''}`);
+    } finally {
+        if (instance?.child.exitCode === null && instance.child.signalCode === null) {
+            try { await close(instance); } catch { try { process.kill(-instance.child.pid, 'SIGTERM'); } catch { } }
+        }
         await rm(directory, { recursive: true, force: true });
     }
 });
