@@ -116,7 +116,7 @@ This is the first self-development milestone: **Dope as editor**.
 
 Status: **DOCUMENTATION/PLAN APPROVED; STACK PREPARED; EXECUTION BLOCKED**
 
-Execution folder: `p2`. Future activation baseline: `0.2.0`; prompt versions `0.2.1`–`0.2.6`. Current packages remain `0.1.6`. Require Phase 1 qualification or a separately recorded explicit owner sequencing waiver before activation/execution. Authority: `docs/planning/p2/phase-2-plan.md`.
+Execution folder: `p2`. Future activation baseline: `0.2.0`; prompt versions `0.2.1`–`0.2.6`. Preparation was at `0.1.6`; the current coherent `0.2.0` baseline repair and pending sequencing eligibility are recorded in `docs/planning/p2/activation.md`. Require Phase 1 qualification or a separately recorded explicit owner sequencing waiver before activation/execution. Authority: `docs/planning/p2/phase-2-plan.md`.
 
 Purpose:
 Give the project durable memory that is useful to the developer before AI is required.

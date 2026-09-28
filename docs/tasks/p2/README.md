@@ -2,14 +2,14 @@
 
 Status: APPROVED/PREPARED — EXECUTION BLOCKED
 Preparation: September 28, 2026, `dac6e57275134fc610d8c0c6e2620a90d7d58c2f`, package `0.1.6`
-Future activation baseline: `0.2.0`; activation SHA: not yet available
+Package baseline: `0.2.0`; baseline repair commit and pending sequencing eligibility: `docs/planning/p2/activation.md`
 Theia baseline: `1.75.0`
 
 ## Prerequisite
 
 The owner approved docs/assessment/plan/prompt writing. Phase 1 remains Not Qualified. Do not execute this stack until Phase 1 qualifies and findings are reconciled against the approved Phase 2 docs, or a separate explicit owner sequencing waiver is recorded. The existing P6 waiver only permitted the Phase 1 audit.
 
-After that decision, activate separately: record exact parent/activation SHA, set all workspace/root versions/internal references and baseline tests coherently to `0.2.0`, validate and commit from a clean tree. No package bump or activation occurred during preparation. The runner validates grammar/version markers, not product qualification; every prompt checks the documented gate.
+After that decision, activate separately: record exact parent/activation SHA, set all workspace/root versions/internal references and baseline tests coherently to `0.2.0`, validate and commit from a clean tree. No package bump or activation occurred during preparation. The later `0.2.0` baseline repair is recorded in `docs/planning/p2/activation.md` and does not grant sequencing eligibility. The runner validates grammar/version markers, not product qualification; every prompt checks the documented gate.
 
 ## Stack
 

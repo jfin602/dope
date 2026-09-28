@@ -181,4 +181,4 @@ Phase 2 gives one local project durable, developer-managed Notes, Ideas, Questio
 
 Project-local readable storage must remain inspectable and recoverable without a healthy GUI. Ideas do not become active work automatically. Plans/Tasks, AI, semantic search, Sessions and synchronization remain deferred.
 
-The owner approved the Phase 2 documentation and p2 planning/stack on September 28, 2026. Phase 1 closeout remains Not Qualified at `0.1.6`; Phase 2 execution is blocked pending qualification or a separate explicit sequencing waiver. Future activation baseline: `0.2.0`. See `docs/planning/p2/phase-2-plan.md`.
+The owner approved the Phase 2 documentation and p2 planning/stack on September 28, 2026. Phase 1 closeout remains Not Qualified at `0.1.6`; Phase 2 execution is blocked pending qualification or a separate explicit sequencing waiver. The current `0.2.0` package baseline repair is recorded in `docs/planning/p2/activation.md`; it does not waive the qualification prerequisite. See `docs/planning/p2/phase-2-plan.md`.

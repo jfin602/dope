@@ -2,7 +2,7 @@
 
 Status: APPROVED/PREPARED — EXECUTION BLOCKED
 Baseline: `dac6e57275134fc610d8c0c6e2620a90d7d58c2f`, package `0.1.6`
-Future activation: `0.2.0`, SHA not yet available
+Package baseline: `0.2.0`; baseline repair and pending sequencing eligibility: `docs/planning/p2/activation.md`
 Authority: `docs/planning/p2/phase-2-plan.md`
 
 ## Conclusion and dependencies

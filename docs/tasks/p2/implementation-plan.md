@@ -2,12 +2,12 @@
 
 Status: APPROVED/PREPARED — EXECUTION BLOCKED
 Source baseline: `dac6e57275134fc610d8c0c6e2620a90d7d58c2f`, package `0.1.6`
-Future activation baseline: `0.2.0`; exact activation SHA is recorded before execution
+Package baseline: `0.2.0`; baseline repair commit is recorded in `docs/planning/p2/activation.md`, with sequencing eligibility pending
 Authority: `docs/planning/p2/phase-2-plan.md`
 
 ## Prerequisite and execution boundary
 
-Check BOOT and the Phase 1 closeout before every prompt. Require documented Phase 1 qualification with reconciled findings, or a separate explicit owner sequencing waiver; the prior Phase 1 P6 audit waiver is insufficient. Then require the coherent, committed `0.2.0` activation, clean tree, Node 24, no root package-lock and Theia 1.75.0. Preparation remains at `0.1.6`. The runner owns P1-P4 commits; P5 is manual and P6 audits evidence only.
+Check BOOT and the Phase 1 closeout before every prompt. Require documented Phase 1 qualification with reconciled findings, or a separate explicit owner sequencing waiver; the prior Phase 1 P6 audit waiver is insufficient. Then require the coherent, committed `0.2.0` activation, clean tree, Node 24, no root package-lock and Theia 1.75.0. Preparation was at `0.1.6`; the later version repair aligns the owner-created `0.2.0` baseline without authorizing execution. The runner owns P1-P4 commits; P5 is manual and P6 audits evidence only.
 
 If source changes during Phase 1 correction, retrace the narrow affected flows before executing. Do not fold restoration repair into p2 while claiming it was independently qualified. A bounded defect found during actual p2 work can be repaired with permanent coverage and repeated affected evidence; architecture/scope changes return to planning.
 

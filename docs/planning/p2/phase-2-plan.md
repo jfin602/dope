@@ -4,14 +4,14 @@ Status: APPROVED DOCUMENTATION / PREPARED STACK — EXECUTION BLOCKED
 Date: September 28, 2026
 Execution folder: `p2`
 Preparation baseline: `dac6e57275134fc610d8c0c6e2620a90d7d58c2f`, package `0.1.6`
-Future activation baseline: `0.2.0`; activation SHA: not yet available
+Package baseline: `0.2.0`; baseline repair commit and pending sequencing eligibility: `docs/planning/p2/activation.md`
 Theia `1.75.0`, Electron `42.8.1`, Node 24, Linux AppImage
 
 ## Approval and prerequisite
 
 The owner approved the Phase 2 review with `/docs-apply + /prompt-ass + /prompt-plan + /prompt-write p2`. This approves the contracts and prepared stack, not execution, activation or a Phase 1 sequencing waiver. Phase 1 P6 remains Not Qualified. Its restoration failure, missing successful interactive Test Explorer replay and customization/extension persistence gaps remain in `docs/tasks/p1/closeout.md`.
 
-Before activation, record a qualified Phase 1 correction/requalification and reconcile its findings with this plan, or record a separate explicit owner waiver allowing Phase 2 sequencing while preserving Not Qualified truth. Do not silently repair or waive Phase 1 through this stack. Record the exact resulting parent SHA and activation SHA; set root/all workspace package versions, internal references and baseline assertions coherently to `0.2.0`; validate and commit the activation from a clean tree. The phase runner checks version history, not product qualification. Every prompt independently checks this documented prerequisite. The preparation task leaves all package versions at `0.1.6`.
+Before activation, record a qualified Phase 1 correction/requalification and reconcile its findings with this plan, or record a separate explicit owner waiver allowing Phase 2 sequencing while preserving Not Qualified truth. Do not silently repair or waive Phase 1 through this stack. Record the exact resulting parent SHA and activation SHA; set root/all workspace package versions, internal references and baseline assertions coherently to `0.2.0`; validate and commit the activation from a clean tree. The phase runner checks version history, not product qualification. Every prompt independently checks this documented prerequisite. The preparation task left all package versions at `0.1.6`. The subsequent owner-created root-only `0.2.0` baseline was repaired across workspaces/assertions; see `activation.md`. That version repair does not satisfy the sequencing prerequisite.
 
 ## Objective and exit
 
