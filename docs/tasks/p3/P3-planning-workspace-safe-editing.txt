@@ -1,0 +1,72 @@
+TASK: Phase 3 / P3 — Production Planning workspace and safe editing
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.3.3`.
+
+GOAL
+
+Replace the Foundation Spike Planning placeholder with the real human-first Planning workspace while preserving drafts, project identity and ordinary IDE behavior.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, all p3 authority/plans, P1-P2 source/tests/storage guide, current Project Mind controller/widget and WorkspaceMode implementation.
+
+Require reachable activation source `95815b04977a229abfdfdba628eb9dddc9e55203`, successful P1/P2 predecessors, clean intended Git state and coherent `0.3.2`. Preserve Phase 1/2 historical gaps; do not claim their repair unless this prompt directly exercises affected behavior.
+
+IMPLEMENT
+
+Replace the `DopeSpikeWidget` Planning factory with a production Planning controller/widget. Prefer focused `planning-controller.ts` and `planning-widget.ts` (or equivalent) rather than materially growing `dope-workbench.ts`.
+
+Provide:
+- Plan list/create/select;
+- explicit Plan title/objective/context edit/save;
+- draft/active/completed/superseded actions;
+- ordered Step create/edit/reorder;
+- Step pending/active/blocked/unblocked/complete/reopen/skip/supersede controls with visible block reason;
+- Tasks for the selected Step;
+- Task title/objective/requirements/constraints/status;
+- completion notes and developer-entered validation notes;
+- Plan document/per-Plan revision and readable history;
+- Project Mind artifact links and navigation;
+- project-relative working-set file links opening the ordinary editor, optionally at a line;
+- visible unavailable link state;
+- loading/empty/error/conflict/missing-Project-Mind-identity states;
+- keyboard labels/focus and semantic theme tokens for dark default/readable explicit light mode.
+
+PROJECT MIND BRIDGE
+
+On Decision detail, add a bounded explicit action to create a new draft Plan linked to that Decision and navigate to it. Seed only from visible developer-authored Decision fields. Validate the current Decision at the backend boundary. Prevent duplicate submission from one pending click, but do not silently deduplicate later intentional Plan creation.
+
+Show/navigate related Plans by querying Planning references. Do not change ProjectArtifact target types or write reverse Plan links into Project Mind.
+
+SAFE EDITING
+
+Prefer explicit Save.
+
+Protect dirty Plan/Step/Task drafts across selection, navigation, workspace changes, close, notifications and peer changes. Use generation/project/request guards for delayed attach/read/save/mutate/event responses.
+
+Save/Discard/Cancel where applicable. A stale conflict keeps copyable draft text and requires explicit reload/reconcile; never last-write-wins.
+
+PLAN mode may open/focus Planning. BUILD mode may return focus toward ordinary coding where practical. Neither mode changes Plan/Step/Task status, auto-saves/discards drafts or becomes canonical planning state.
+
+CHECKS
+
+Add permanent controller/presentation tests using delayed/fake services for dirty selection, dirty workspace switch, late response from old project, notifications while dirty/pending, stale save, Decision bridge duplicate-pending protection, file navigation and mode independence.
+
+Preserve existing Project Mind UI tests. Wire Planning UI tests into aggregate product checks.
+
+Set all versions/internal references/baseline assertions coherently to `0.3.3`. Run focused UI/controller + domain/storage checks, `npm run check`, current restart regression, phase validation, no-root-lock and `git diff --check`.
+
+Direct visual/manual qualification remains P5; do not claim it from unit/DOM tests. The runner owns staging/commit; do not commit.
+
+SCOPE
+
+No model/provider integration, Agent Mind, code generation/tool execution, AI ownership, autonomous status changes, Sessions, semantic search, remote/multi-root Planning or framework upgrade.
+
+FINAL RESPONSE
+
+Report Planning UX/bridge/mode behavior, draft/race protections, tests/checks and direct GUI evidence still required.

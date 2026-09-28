@@ -1,6 +1,6 @@
 # Product Phase 3 — Planning Activation
 
-Status: OWNER APPROVED — ACTIVATION BASELINE PREPARED
+Status: OWNER APPROVED — ACTIVE
 Date: September 28, 2026
 Package baseline: `0.3.0`
 
@@ -22,7 +22,7 @@ Phase 3 does not need to repair these before entry. If Phase 3 directly changes 
 
 ## Activation baseline
 
-The coherent source/package activation baseline is the documentation/version commit that establishes `0.3.0`, Phase 3 authority and ADR 0006. Its exact SHA will be recorded here after that commit is created.
+The exact coherent source/package activation baseline is `95815b04977a229abfdfdba628eb9dddc9e55203`, the commit that establishes `0.3.0`, Phase 3 authority and ADR 0006. The task-stack commit may be later; P1 must require this activation source to be reachable and the working baseline to remain coherent `0.3.0`.
 
 Root, both applications and existing internal packages must agree on `0.3.0`; internal `@dope/*` references and baseline assertions must match. Theia remains `1.75.0`, Electron `42.8.1`, Node 24 major.
 

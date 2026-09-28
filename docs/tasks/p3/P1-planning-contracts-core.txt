@@ -1,0 +1,59 @@
+TASK: Phase 3 / P1 — Planning contracts and independent core
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.3.1`.
+
+GOAL
+
+Implement the smallest provider-free Planning domain foundation from the approved Phase 3 plan.
+
+PREFLIGHT
+
+Read BOOT, AGENTS, PRODUCT-MODEL, ARCHITECTURE, workflow/stability authority, docs/planning/p3/activation.md, phase-3-plan.md and all p3 planning/task documents.
+
+Require reachable activation source `95815b04977a229abfdfdba628eb9dddc9e55203`, explicit owner Phase 3 authorization, clean intended Git state, coherent `0.3.0` baseline, Node 24, no root package-lock.json, Theia 1.75.0 and Electron 42.8.1. Phase 2 P6 remains Not Qualified; the recorded owner disposition is the sequencing prerequisite. Do not require Phase 2 Green or alter its historical evidence.
+
+IMPLEMENT
+
+Add framework-independent Planning DTOs/service contracts in `@dope/contracts` for Plan, PlanStep, Task, Planning document, typed operations, results/events and service transport.
+
+Add one real `@dope/planning` package. Its pure domain layer owns:
+- strict schema/value validation;
+- Plan create/edit and draft/active/completed/superseded transitions;
+- ordered Step create/edit/reorder and pending/active/blocked/complete/skipped/superseded transitions;
+- non-empty block reasons;
+- Task create/edit and pending/active/blocked/complete/cancelled transitions;
+- Task parent Plan/Step integrity;
+- Project Mind artifact and project-relative file link shapes;
+- deterministic queries;
+- document revision inputs/results;
+- positive per-Plan revision;
+- concise immutable developer history generated from successful typed operations.
+
+One explicit accepted save/mutation produces one history entry. Do not log keystrokes or build an event-sourcing framework. Tasks reference Plan/Step IDs; do not duplicate task membership in Steps.
+
+No Theia/provider imports or Node filesystem imports in the pure domain layer.
+
+Wire the new package into root workspaces/build/typecheck/product-test ordering and baseline coherence. Preserve existing Project Mind/IDE behavior and exact framework versions.
+
+CHECKS
+
+Add permanent focused Planning tests covering malformed/future schema, IDs, all legal/illegal transitions, block reason, task parent integrity, stable reorder, document/Plan revisions, history semantics, link validation and deterministic queries.
+
+Set root/all existing workspace versions plus the new Planning package and internal references coherently to `0.3.1`; update relevant baseline assertions.
+
+Run focused Planning tests, existing Project Mind/product suites, `npm run check`, `npm run codex:phase:validate -- p3`, explicit no-root-lock check and `git diff --check`.
+
+The runner owns staging/commit; do not commit.
+
+SCOPE
+
+No Planning persistence/backend/UI yet. No OpenAI/Codex/local-model product integration, Agent Mind, AI ownership/delegation, ProposedAction, authority/tools, Sessions, database/event store, remote/multi-root support or framework upgrade.
+
+FINAL RESPONSE
+
+Report the canonical Planning schema/transitions/history, new package boundaries, aggregate wiring, checks, preserved behavior and evidence deferred to P2-P5.

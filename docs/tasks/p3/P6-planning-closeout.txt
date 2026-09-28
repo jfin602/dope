@@ -1,0 +1,60 @@
+TASK: Phase 3 / P6 — Planning closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.3.6`.
+
+GOAL
+
+Perform evidence-only Phase 3 closeout from the exact successful/authorized P5 handoff. No product repairs and no Phase 4 implementation prompts.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, all Phase 3 authority/plans/storage guide, activation, exact reachable P1-P5 commits/source/tests, P4 package/restart evidence, P5 GUI evidence and inherited Phase 1/2 closeouts.
+
+Require the recorded Phase 3 activation and exact successful P5 handoff with Green applicable evidence. A version subject alone is not qualification. A separate explicit audit-only waiver may permit audit from a partial P5 checkpoint but must preserve all failed/missing evidence and cannot convert it to Green.
+
+AUDIT
+
+Assess Green / Not Green / Evidence Gap for:
+
+A. Planning domain — strict provider-free Plan/Step/Task contracts, lifecycle, order, parent integrity, document/per-Plan revision and honest typed history.
+
+B. Persistence/consistency — readable planning.json, existing Project Mind identity binding, lock/stale revision, failure preservation, corrupt/future/mismatch handling and external recovery.
+
+C. Cross-domain/project integrity — Project Mind artifact validation, file containment/unavailable targets, second-project isolation and no silent Project Mind mutation.
+
+D. Production UI — real Planning workspace/task detail, Decision bridge, explicit saves, dirty draft/race/conflict protection, keyboard/theme behavior and BUILD/PLAN mode independence.
+
+E. Restart/reopen — actual usable GUI continuity for Planning state/history after backend/workbench replacement, distinct from supplemental automated process tests.
+
+F. Package — exact final relevant AppImage/resources/native launch coverage and source/version/hash truth after any P5 repair.
+
+G. Dope-on-Dope — genuine Decision -> Plan -> Steps -> Tasks -> ordinary coding/progress workflow with no model configured and preserved Git state.
+
+Preserve inherited Phase 1/2 Not Qualified history and evidence gaps. Do not imply Phase 3 repairs an inherited gap unless direct recorded evidence actually does so.
+
+RERUN
+
+Set root/all workspace versions/internal references/baseline assertions coherently to `0.3.6`.
+
+Run focused Planning/domain/storage/UI tests, `npm run check`, current `npm run test:restart`, `npm run codex:phase:validate -- p3`, explicit no-root-lock/version/Theia coherence and `git diff --check`.
+
+Build/inspect the package as appropriate for the final candidate and record its identity. A new build does not itself repeat prior native/direct GUI evidence. Do not repair failures in closeout. Runner owns any resulting commit.
+
+OUTPUT
+
+Create `docs/tasks/p3/closeout.md` with activation/pre-task/final candidate identities, framework baseline, A-G table, exact source/package/GUI coverage, storage/recovery/conflict/isolation results, inherited gaps, residual gaps and Qualified/Not Qualified decision.
+
+If the final commit SHA does not yet exist, state exactly how it will be resolved after the runner commit; never invent it.
+
+If Qualified, mark the p3 README COMPLETE/GREEN and route authority consistently to post-Phase-3 `/docs-review`. Phase 4 AI Presence remains unapproved for execution until that review; do not generate Phase 4 prompts here.
+
+If Not Qualified, preserve blockers and route to bounded correction/requalification. Do not rewrite historical Phase 1/2 results.
+
+FINAL RESPONSE
+
+Report exact candidate/A-G decision, no-model Planning usefulness, persistence/recovery, restart/package/native result, gaps, docs updated and next action.

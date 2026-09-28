@@ -1,0 +1,61 @@
+TASK: Phase 3 / P4 — Planning restart, process and package qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.3.4`.
+
+GOAL
+
+Qualify the integrated Phase 3 candidate across process restart/reopen and produce the resulting Electron package/native-launch evidence before direct P5 dogfooding.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, p3 authority/plans/storage guide, exact P1-P3 source/tests/results, existing restart harness and prior package evidence.
+
+Require reachable activation source `95815b04977a229abfdfdba628eb9dddc9e55203`, successful P1-P3 predecessors, clean intended Git state and coherent `0.3.3`.
+
+RESTART / PROCESS EVIDENCE
+
+Extend the current integrated restart/process suite rather than inventing a parallel synthetic harness.
+
+Exercise through real typed frontend/backend/application surfaces as practical:
+- Project Mind identity prerequisite and Planning attachment;
+- create/read a Plan with multiple ordered Steps and Tasks;
+- Project Mind/file links;
+- reorder/status changes and per-Plan/history revision progression;
+- process replacement/reopen with same project/profile;
+- recovered usable Planning state after restart;
+- stale/peer writer rejection without overwrite;
+- second local project isolation;
+- mismatch/corrupt/future schema and abandoned-lock recovery paths where safely automatable.
+
+Preserve existing IDE/Project Mind restart coverage. Automated CDP/headless interaction is supplemental integrated evidence and does not satisfy P5 direct GUI qualification.
+
+PACKAGE
+
+Set coherent `0.3.4`, run focused checks, `npm run check`, current `npm run test:restart`, phase validation, no-root-lock and `git diff --check`.
+
+Build the exact Linux AppImage using the repository's documented environment. Record whether plugins/caches were reused or freshly obtained.
+
+Inspect and record executable mode, size, SHA-256, desktop metadata/icon, embedded package/internal versions, Planning frontend/backend/domain presence and plugin resources.
+
+Launch the exact resulting native artifact normally enough to establish process/window/workbench readiness and controlled close where the available environment permits. Do not substitute a different source build for the packaged artifact. Do not claim direct visual Planning editing unless actually observed.
+
+EVIDENCE
+
+Create `docs/tasks/p3/P4-planning-restart-package-evidence.md` with pre-task/source identities, exact commands/environment, matrix dispositions, failures/retries, package identity/resources/native launch and explicit remaining P5 evidence.
+
+A product repair requires a permanent regression guard and rerun of affected integrated/package evidence. Preserve earlier failures.
+
+The runner owns staging/commit; do not commit.
+
+SCOPE
+
+No manual P5 dogfood, provider/model runtime, AI/tool/delegation, Sessions or framework upgrade.
+
+FINAL RESPONSE
+
+Report exact `0.3.4` candidate, restart/process matrix, package/hash/native result, preserved regressions, gaps and P5 readiness.
