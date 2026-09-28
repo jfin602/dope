@@ -56,7 +56,7 @@ test('both applications carry the required IDE composition', () => {
   assert.match(manifests[0].value.scripts['package:linux'], /npm run download:plugins/);
   assert.equal(manifests[3].value.dependencies['@dope/contracts'], '0.1.5');
   assert.match(manifests[0].value.theiaPlugins['vscode-builtin-extensions'], /\/1\.108\.2\//);
-  assert.match(manifests[0].value.theiaPlugins['firsttris.vscode-jest-runner'], /\/0\.4\.134\/file\/firsttris\.vscode-jest-runner-0\.4\.134\.vsix$/);
+  assert.match(manifests[0].value.theiaPlugins['firsttris.vscode-jest-runner'], /\/0\.4\.149\/file\/firsttris\.vscode-jest-runner-0\.4\.149\.vsix$/);
   for (const id of ['ms-vscode.js-debug', 'vscode.typescript-language-features', 'vscode.javascript', 'vscode.json-language-features', 'vscode.git']) {
     assert.ok(!manifests[0].value.theiaPluginsExcludeIds.includes(id), `${id} must stay bundled`);
   }

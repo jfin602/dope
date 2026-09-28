@@ -35,7 +35,7 @@
   "theiaPluginsDir": "plugins",
   "theiaPlugins": {
     "vscode-builtin-extensions": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode-builtin-extensions-1.108.2.tar.gz",
-    "firsttris.vscode-jest-runner": "https://open-vsx.org/api/firsttris/vscode-jest-runner/0.4.134/file/firsttris.vscode-jest-runner-0.4.134.vsix"
+    "firsttris.vscode-jest-runner": "https://open-vsx.org/api/firsttris/vscode-jest-runner/0.4.149/file/firsttris.vscode-jest-runner-0.4.149.vsix"
   },
   "theiaPluginsExcludeIds": [
     "ms-vscode.js-debug-companion",

@@ -89,6 +89,8 @@ test('Electron restart preserves Theia state and runtime extension, with stale-s
     const workspace = join(directory, 'workspace');
     await mkdir(workspace);
     await writeFile(join(workspace, 'README.md'), 'A restorable editor\n');
+    await mkdir(join(workspace, 'tests with spaces'));
+    await writeFile(join(workspace, 'tests with spaces/sample.test.js'), await readFile(join(root, 'test/fixtures/ide-testing/sample.test.js')));
     const vsix = join(directory, 'uppercase.vsix');
     const zipped = spawnSync('zip', ['-q', '-r', vsix, 'extension', 'extension.vsixmanifest'], { cwd: join(root, 'test/fixtures/restart-extension') });
     assert.equal(zipped.status, 0, zipped.stderr.toString());
@@ -124,6 +126,35 @@ test('Electron restart preserves Theia state and runtime extension, with stale-s
         assert.match(first.editor ?? '', /README\.md/);
         assert.equal(first.mind, true);
         assert.equal(await until(() => evaluate(instance.page, `theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'CommandService')).executeCommand('dope-evidence.uppercase', 'restart')`), 12000), 'RESTART');
+        // Exercise the bundled provider, including filenames that need shell quoting only in a shell.
+        await until(() => evaluate(instance.page, `(() => {
+            const service = theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'TestService'));
+            const controller = service.getControllers().find(value => value.id === 'jestVitestTestController');
+            if (!controller) return false;
+            controller.resolveChildren();
+            return true;
+        })()`));
+        await until(() => evaluate(instance.page, `(() => {
+            const service = theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'TestService'));
+            const controller = service.getControllers().find(value => value.id === 'jestVitestTestController');
+            const visit = items => items.flatMap(item => {
+                if (item.canResolveChildren && !item.tests.length) item.resolveChildren();
+                return [item, ...visit(item.tests)];
+            });
+            const items = visit(controller.tests);
+            if (!items.some(item => item.label === 'IDE test discovery fixture')) return false;
+            service.runTests(1, [items.find(item => item.label === 'sample.test.js')]);
+            return true;
+        })()`));
+        const testResult = await until(() => evaluate(instance.page, `(() => {
+            const service = theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'TestService'));
+            const run = service.getControllers().find(value => value.id === 'jestVitestTestController').testRuns[0];
+            if (!run || run.isRunning) return false;
+            const visit = items => items.flatMap(item => [item, ...visit(item.tests)]);
+            const item = visit(run.items).find(item => item.label === 'IDE test discovery fixture');
+            return { state: run.getTestState(item)?.state, output: run.getOutput().map(value => value.output).join('') };
+        })()`));
+        assert.equal(testResult.state, 3, testResult.output);
         await close(instance);
         assert.match(await readFile(join(directory, 'config/settings.json'), 'utf8'), /"workbench.colorTheme": "light"/);
         assert.match(await readFile(join(directory, 'config/keymaps.json'), 'utf8'), /dope\.mode\.toggle/);
