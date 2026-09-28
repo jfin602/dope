@@ -116,7 +116,7 @@ test('Electron restart preserves Theia state and runtime extension, with stale-s
             await preference.set('editor.fontSize', 17, 1);
             await typed('setKeybinding').setKeybinding({ command: 'dope.mode.toggle', keybinding: 'ctrl+alt+shift+m' });
             const editorManager = typed('handleNewPreview');
-            await editorManager.open(typed('doGetDefaultWorkspaceUri').workspace.resource.resolve('README.md'));
+            await editorManager.open(typed('doGetDefaultWorkspaceUri').workspace.resource.resolve('README.md'), { preview: false });
             await named('CommandService').executeCommand('dope.projectMind.open');
             await container.getAll(entries.find(([key]) => key.description === 'FrontendApplicationContribution')[0]).find(value => value.applyMode).applyMode('PLAN');
             return { theme: preference.get('workbench.colorTheme'), activeTheme: typed('loadUserTheme').getCurrentTheme().id,
@@ -126,7 +126,7 @@ test('Electron restart preserves Theia state and runtime extension, with stale-s
         assert.equal(first.theme, 'light');
         assert.equal(first.activeTheme, 'light');
         assert.equal(first.mode, 'plan');
-        assert.match(first.editor ?? '', /README\.md/);
+        assert.equal(await until(() => evaluate(instance.page, `[...document.querySelectorAll('.lm-TabBar-tabLabel')].some(node => node.textContent === 'README.md')`)), true);
         assert.equal(first.mind, true);
         assert.equal(await until(() => evaluate(instance.page, `theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'CommandService')).executeCommand('dope-evidence.uppercase', 'restart')`), 12000), 'RESTART');
         // Exercise the bundled provider, including filenames that need shell quoting only in a shell.
@@ -180,7 +180,7 @@ test('Electron restart preserves Theia state and runtime extension, with stale-s
         assert.equal(restored.mode, 'plan');
         assert.equal(restored.mind, true);
         assert.equal(restored.binding, true);
-        assert.match(restored.editor ?? '', /README\.md/);
+        assert.equal(await until(() => evaluate(instance.page, `[...document.querySelectorAll('.lm-TabBar-tabLabel')].some(node => node.textContent === 'README.md')`)), true);
         assert.equal(await until(() => evaluate(instance.page, `theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'CommandService')).executeCommand('dope-evidence.uppercase', 'again')`), 12000), 'AGAIN');
 
         await evaluate(instance.page, `localStorage.setItem('dope.workspaceMode', 'stale-mode'); localStorage.setItem('theme', 'missing-theme');
@@ -419,6 +419,207 @@ test('Project Mind survives process and profile restarts, isolates folders, and 
     } finally {
         if (instance?.child.exitCode === null && instance.child.signalCode === null) {
             try { await close(instance); } catch { try { process.kill(-instance.child.pid, 'SIGTERM'); } catch { } }
+        }
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
+test('Planning survives process replacement, rejects peer writes, and requires explicit recovery', { timeout: 300000 }, async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'dope-planning-restart-'));
+    const first = join(directory, 'first');
+    const second = join(directory, 'second');
+    const profile = join(directory, 'profile');
+    const peerProfile = join(directory, 'peer-profile');
+    const port = await availablePort();
+    const peerPort = await availablePort();
+    await mkdir(first);
+    await mkdir(second);
+    await writeFile(join(first, 'README.md'), 'Planning working set\n');
+    let instance;
+    let peer;
+    const folder = JSON.stringify(pathToFileURL(first).toString());
+    const services = `name => theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === name))`;
+    try {
+        instance = await launch(profile, port, first);
+        const created = await evaluate(instance.page, `(async () => {
+            const service = (${services});
+            const planning = service('PlanningService');
+            const mind = service('ProjectMindService');
+            const before = await planning.attach(${folder});
+            let prerequisiteError;
+            try { await planning.mutate({ projectHandle: before.projectHandle, expectedRevision: 0,
+                operation: { type: 'plan.create', id: crypto.randomUUID(), title: 'No mind', objective: '', context: '', links: [] } }); }
+            catch (error) { prerequisiteError = String(error); }
+            const attachedMind = await mind.attach(${folder});
+            const decisionId = crypto.randomUUID();
+            const now = new Date().toISOString();
+            const mindSnapshot = await mind.mutate({ projectHandle: attachedMind.projectHandle, expectedRevision: 0, operation: {
+                type: 'create', artifact: { schemaVersion: 2, id: decisionId, type: 'decision', title: 'Ship Planning',
+                    status: 'proposed', decision: 'Keep explicit progress', context: 'Phase 3', rationale: 'Readable state',
+                    consequences: '', alternatives: '', revisitConditions: '', createdAt: now, updatedAt: now,
+                    provenance: 'developer', archivedAt: null, links: [] } } });
+            const attached = await planning.attach(${folder});
+            const planId = crypto.randomUUID();
+            let result = await planning.createFromDecision(attached.projectHandle, 0, decisionId, planId);
+            const steps = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+            const tasks = [crypto.randomUUID(), crypto.randomUUID()];
+            const operations = [
+                ...steps.map((id, index) => ({ type: 'step.create', planId, id, title: 'Step ' + index, body: 'Work' })),
+                { type: 'task.create', id: tasks[0], planId, stepId: steps[0], title: 'First task', objective: 'Implement', requirements: ['Explicit'], constraints: ['No AI'], links: [{ type: 'artifact', id: decisionId }], workingSet: [{ type: 'file', path: 'README.md', line: 1 }] },
+                { type: 'task.create', id: tasks[1], planId, stepId: steps[1], title: 'Second task', objective: 'Validate', requirements: [], constraints: [], links: [], workingSet: [{ type: 'file', path: 'missing.txt' }] },
+                { type: 'step.reorder', planId, stepId: steps[2], index: 0 },
+                { type: 'plan.transition', planId, status: 'active' },
+                { type: 'step.transition', planId, stepId: steps[0], status: 'blocked', blockedReason: 'Waiting' },
+                { type: 'step.transition', planId, stepId: steps[0], status: 'active' },
+                { type: 'task.transition', taskId: tasks[0], status: 'active' }
+            ];
+            for (const operation of operations) {
+                result = await planning.mutate({ projectHandle: attached.projectHandle, expectedRevision: result.snapshot.revision, operation });
+                if (result.entry.planRevision !== result.snapshot.plans[0].revision) throw Error('Plan revision diverged');
+            }
+            let stale;
+            try { await planning.mutate({ projectHandle: attached.projectHandle, expectedRevision: 0, operation: { type: 'task.transition', taskId: tasks[1], status: 'active' } }); }
+            catch (error) { stale = String(error); }
+            return { before, prerequisiteError, mindSnapshot, snapshot: result.snapshot,
+                read: await planning.read(attached.projectHandle), ids: { planId, decisionId, steps, tasks }, stale };
+        })()`);
+        assert.equal(created.before.snapshot, undefined);
+        assert.equal(created.before.prerequisite, 'project-mind');
+        assert.match(created.prerequisiteError, /Project Mind prerequisite/);
+        assert.equal(created.snapshot.projectId, created.mindSnapshot.projectId);
+        assert.deepEqual(created.read, created.snapshot);
+        assert.equal(created.snapshot.revision, 11);
+        assert.equal(created.snapshot.plans[0].revision, 11);
+        assert.deepEqual(created.snapshot.history.map(entry => entry.planRevision), Array.from({ length: 11 }, (_, index) => index + 1));
+        assert.deepEqual(created.snapshot.plans[0].steps.map(step => step.id), [created.ids.steps[2], created.ids.steps[0], created.ids.steps[1]]);
+        assert.equal(created.snapshot.tasks.length, 2);
+        assert.equal(created.snapshot.tasks[0].workingSet[0].path, 'README.md');
+        assert.equal(created.snapshot.tasks[1].workingSet[0].path, 'missing.txt');
+        assert.match(created.stale, /Stale Planning revision/);
+
+        await close(instance);
+        peer = await launch(peerProfile, peerPort, first);
+        const observed = await evaluate(peer.page, `(async () => {
+            const planning = (${services})('PlanningService');
+            const { projectHandle, snapshot } = await planning.attach(${folder});
+            return { projectHandle, snapshot };
+        })()`);
+        assert.deepEqual(observed.snapshot, created.snapshot);
+        await close(peer);
+        peer = undefined;
+        instance = await launch(profile, port, first);
+        const advanced = await evaluate(instance.page, `(async () => {
+            const planning = (${services})('PlanningService');
+            const { projectHandle, snapshot } = await planning.attach(${folder});
+            return (await planning.mutate({ projectHandle, expectedRevision: snapshot.revision, operation: {
+                type: 'task.transition', taskId: ${JSON.stringify(created.ids.tasks[1])}, status: 'active' } })).snapshot;
+        })()`);
+        await close(instance);
+        peer = await launch(peerProfile, peerPort, first);
+        const rejected = await evaluate(peer.page, `(async () => {
+            const planning = (${services})('PlanningService');
+            const { projectHandle } = await planning.attach(${folder});
+            let error;
+            try { await planning.mutate({ projectHandle, expectedRevision: ${observed.snapshot.revision}, operation: {
+                type: 'plan.transition', planId: ${JSON.stringify(created.ids.planId)}, status: 'completed' } }); }
+            catch (failure) { error = String(failure); }
+            return { error, snapshot: await planning.read(projectHandle) };
+        })()`);
+        assert.match(rejected.error, /Stale Planning revision/);
+        assert.deepEqual(rejected.snapshot, advanced);
+        await close(peer);
+        peer = undefined;
+        await close(instance);
+        instance = await launch(profile, port, first);
+        const reopened = await evaluate(instance.page, `(async () => {
+            const planning = (${services})('PlanningService');
+            const { projectHandle, snapshot } = await planning.attach(${folder});
+            const result = await planning.mutate({ projectHandle, expectedRevision: snapshot.revision, operation: {
+                type: 'step.transition', planId: ${JSON.stringify(created.ids.planId)}, stepId: ${JSON.stringify(created.ids.steps[0])}, status: 'complete' } });
+            return { snapshot, result, read: await planning.read(projectHandle) };
+        })()`);
+        assert.deepEqual(reopened.snapshot, advanced);
+        assert.deepEqual(reopened.read, reopened.result.snapshot);
+        assert.equal(reopened.result.snapshot.revision, 13);
+        assert.equal(reopened.result.entry.planRevision, 13);
+        await close(instance);
+
+        instance = await launch(peerProfile, peerPort, second);
+        const isolated = await evaluate(instance.page, `(async () => {
+            const service = (${services});
+            const mind = service('ProjectMindService');
+            const planning = service('PlanningService');
+            const uri = ${JSON.stringify(pathToFileURL(second).toString())};
+            const mindHandle = (await mind.attach(uri)).projectHandle;
+            const now = new Date().toISOString();
+            const mindSnapshot = await mind.mutate({ projectHandle: mindHandle, expectedRevision: 0, operation: { type: 'create', artifact: {
+                schemaVersion: 2, id: crypto.randomUUID(), type: 'note', title: 'Other project', status: 'active', body: '',
+                createdAt: now, updatedAt: now, provenance: 'developer', archivedAt: null, links: [] } } });
+            const { projectHandle, snapshot } = await planning.attach(uri);
+            const result = await planning.mutate({ projectHandle, expectedRevision: 0, operation: {
+                type: 'plan.create', id: crypto.randomUUID(), title: 'Other plan', objective: '', context: '', links: [] } });
+            return { mindSnapshot, snapshot, result, read: await planning.read(projectHandle) };
+        })()`);
+        assert.equal(isolated.snapshot, undefined);
+        assert.notEqual(isolated.result.snapshot.projectId, reopened.read.projectId);
+        assert.equal(isolated.result.snapshot.projectId, isolated.mindSnapshot.projectId);
+        assert.equal(isolated.read.revision, 1);
+        await close(instance);
+
+        const file = join(first, '.dope', 'planning.json');
+        const committed = await readFile(file, 'utf8');
+        const lock = join(first, '.dope', 'planning.lock');
+        await writeFile(lock, '');
+        instance = await launch(profile, port, first);
+        const locked = await evaluate(instance.page, `(async () => {
+            const planning = (${services})('PlanningService');
+            const { projectHandle, snapshot } = await planning.attach(${folder});
+            let error;
+            try { await planning.mutate({ projectHandle, expectedRevision: snapshot.revision, operation: {
+                type: 'plan.transition', planId: ${JSON.stringify(created.ids.planId)}, status: 'completed' } }); }
+            catch (failure) { error = String(failure); }
+            return { snapshot, error };
+        })()`);
+        assert.deepEqual(locked.snapshot, reopened.read);
+        assert.match(locked.error, /Planning locked/);
+        await close(instance);
+        assert.equal(await readFile(file, 'utf8'), committed);
+        await rm(lock);
+
+        for (const invalid of [
+            JSON.stringify({ ...reopened.read, projectId: randomUUID() }),
+            '{',
+            JSON.stringify({ ...reopened.read, schemaVersion: 2 })
+        ]) {
+            await writeFile(file, invalid);
+            instance = await launch(profile, port, first);
+            const error = await evaluate(instance.page, `(async () => {
+                try { await (${services})('PlanningService').attach(${folder}); }
+                catch (failure) { return String(failure); }
+                return 'unexpected success';
+            })()`);
+            assert.match(error, /Planning project identity mismatch|Corrupt or unsupported Planning/);
+            await close(instance);
+            assert.equal(await readFile(file, 'utf8'), invalid);
+        }
+        await writeFile(file, committed);
+        instance = await launch(profile, port, first);
+        const recovered = await evaluate(instance.page, `(async () => {
+            const planning = (${services})('PlanningService');
+            const { projectHandle, snapshot } = await planning.attach(${folder});
+            return { snapshot, read: await planning.read(projectHandle) };
+        })()`);
+        assert.deepEqual(recovered.snapshot, reopened.read);
+        assert.deepEqual(recovered.read, reopened.read);
+        assert.equal((await readFile(join(second, '.dope', 'planning.json'), 'utf8')).includes(created.ids.planId), false);
+        await close(instance);
+    } catch (error) {
+        throw new Error(`${error}\n${instance?.output ?? ''}\n${peer?.output ?? ''}`);
+    } finally {
+        for (const running of [instance, peer]) {
+            if (running?.child.exitCode === null && running.child.signalCode === null) {
+                try { await close(running); } catch { try { process.kill(-running.child.pid, 'SIGTERM'); } catch { } }
+            }
         }
         await rm(directory, { recursive: true, force: true });
     }
