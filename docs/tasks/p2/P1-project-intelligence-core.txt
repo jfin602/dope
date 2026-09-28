@@ -1,0 +1,38 @@
+TASK: Phase 2 / P1 — Project Intelligence contracts and core
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.2.1`.
+
+GOAL
+
+Implement the smallest framework-independent Project Mind artifact core from the approved Phase 2 plan.
+
+PREFLIGHT
+
+Read BOOT, AGENTS, product/architecture/stability authority and all p2 planning docs. Require recorded Phase 1 qualification with findings reconciled, or a separate explicit Phase 2 sequencing waiver; the Phase 1 P6 audit waiver is insufficient. Require exact committed activation recorded in p2 docs, clean Git, coherent 0.2.0 baseline (or target for an authorized rerun), Node 24, no root package-lock.json and Theia 1.75.0. Stop before changes if the prerequisite is absent.
+
+IMPLEMENT
+
+Follow phase-2-plan.md for schema 2 collection/project identity, Note/Idea/Question/Decision fields, developer provenance, unknown legacy dates, explicit statuses/archive, links and revision DTOs. Keep legacy Note schema/parser/service working for later migration.
+
+Reuse @dope/contracts for DTOs. Add one real @dope/project-intelligence package with pure validation, lifecycle/archive/link operations and deterministic basic text/filter queries. No Theia/provider imports or dependency on its eventual Node store. No empty package ceremony or generic repository framework. Preserve content as data, not executable HTML.
+
+Wire workspace/build ordering, baseline coherence and actual aggregate production tests for the real new package. Preserve ordinary IDE composition, theme policy, WorkspaceMode and bundled test-provider pin.
+
+CHECKS
+
+Add permanent focused checks for all four types, malformed input/unknown schema, type-specific transitions, answers/decision acceptance/supersession, archive identity/link preservation, invalid links and deterministic search/filter ordering. Exercise the real domain without Theia or provider setup.
+
+Set root/all workspace versions and internal references coherently to 0.2.1; update relevant baseline assertions. Run focused checks, npm run check, npm run codex:phase:validate -- p2, explicit no-root-lock and git diff --check. Do not claim UI/persistence qualification. The runner owns staging/commit; do not commit.
+
+SCOPE
+
+No storage/UI productization in this prompt, AI/providers, Plans/Tasks, Sessions, semantic search, authority/tools, synchronization or framework upgrade.
+
+FINAL RESPONSE
+
+Report artifact/lifecycle/query semantics, new real package/boundaries, preserved legacy behavior, checks and evidence deferred to P2-P5.

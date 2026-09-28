@@ -1,0 +1,36 @@
+TASK: Phase 2 / P4 — Project Mind restart and package qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.2.4`.
+
+GOAL
+
+Qualify integrated Project Mind persistence/reopen and the resulting Electron package before direct GUI dogfooding.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, p2 authority/plans/storage guide, exact P1-P3 source/tests, Phase 1 closeout and package/restart evidence. Require recorded sequencing prerequisite/activation; predecessor is 0.2.3 (target allowed for authorized rerun). Headless Phase 1 tests never erase the observed GUI restoration failure.
+
+QUALIFY
+
+Extend/reuse actual application restart integration to create/save/read all four types through typed frontend/backend operations, exercise lifecycle/links/search, stop/restart processes and recover project knowledge independent of UI profile. Include migrated Note identity, two projects with no leakage, stale client revision and documented abandoned-lock/corrupt/future-schema recovery. Preserve the existing theme/keybinding/extension/test-provider checks. Instrumented headless/CDP evidence is supplemental and must be labeled accordingly.
+
+Build the actual Linux AppImage containing the new Project Intelligence/backend/frontend code. Inspect metadata/icon/resources/plugin composition, record exact candidate/version and artifact SHA-256/size/mode, then perform normal native launch/readiness/close outside the development server without caller-supplied no-sandbox/disable-gpu/CDP flags. Record environment/cache/prepared-plugin use honestly; do not call a cached build fresh-download qualification. No native visual interaction claim is required here.
+
+Create docs/tasks/p2/P4-restart-package-evidence.md with commands/environment, exact source/Git state, integration observations, package identity/launch and Green/Not Green/Evidence Gap dispositions. A failed/stalled integrated restart cannot be relabeled Green from domain tests.
+
+REPAIR BOUNDARY
+
+Small in-scope defects may receive the smallest root-cause repair, a permanent regression guard and repeated affected integration/package evidence. Preserve earlier failure evidence. Do not repair/waive unrelated Phase 1 blockers or expand architecture/scope silently.
+
+VALIDATION
+
+Set versions/internal references/baseline assertions coherently to 0.2.4 before final artifact build. Run focused checks, npm run check, current restart/process integration, npm run package:linux, phase validation, no-root-lock and git diff --check. Runner owns commits.
+
+FINAL RESPONSE
+
+Report exact candidate/artifact, restart/migration/isolation/recovery results, native launch, repairs/guards, remaining gaps and readiness for P5 direct interaction.

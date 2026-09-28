@@ -1,0 +1,47 @@
+TASK: Phase 2 / P5 — Interactive Project Mind dogfooding qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.2.5`.
+
+GOAL
+
+Prove useful durable Project Mind through direct interaction with the real Theia GUI on Dope and a second local project, with no model configured.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, p2 authority/plans/storage guide, exact P1-P4 source/evidence and retained Phase 1 failures. Require documented sequencing prerequisite/activation and exact committed P4 candidate. Record Git/profile/knowledge preflight; preserve any unrelated edits. GUI may be browser-hosted Theia or Electron. P4 separately owns Electron package/native launch. Headless/CDP/DOM-query/screenshot-only assertions cannot replace direct clicking/typing/observing.
+
+INTERACTIVE MATRIX
+
+On the actual Dope repository:
+- open Project Mind on demand without disrupting ordinary IDE foreground;
+- create/edit/save multiple Notes, Ideas, Questions and Decisions using genuine developer-entered Dope context, with visible identity/provenance;
+- capture/park/restore an Idea without creating active work;
+- answer/reopen a Question; accept/reject a Decision and supersede one with a linked accepted replacement;
+- archive/unarchive and verify stable identity/content/links;
+- link artifacts and a real file, follow both, and show an unavailable file reference;
+- type/status/archive filter and text-search title/content, navigate a result;
+- protect an unsaved draft during navigation and project switching; demonstrate peer-change/stale-save conflict and explicit recovery without silent overwrite;
+- explicitly migrate a copied legacy Note fixture in an isolated local project, confirm preserved original/ID and no duplication on repeat;
+- operate controls by keyboard, inspect dark-first default and readable explicit light choice;
+- stop/restart the actual workbench/backend or Electron using the same project/profile, recover a usable GUI and retrieve the same saved knowledge/links/search results; a DOM-only refresh is insufficient;
+- open a second unrelated local folder, demonstrate isolation, then return to Dope and retrieve its knowledge;
+- with writers stopped, inspect/backup/recover readable state through the documented external route, then reopen it in the GUI.
+
+EVIDENCE AND REPAIR
+
+Create docs/tasks/p2/P5-project-mind-dogfooding-evidence.md with exact baseline/current/final SHA or checkpoint, versions/surface/launch, every matrix disposition, migration/recovery, intended knowledge changes, Git pre/post and repairs. Distinguish approved .dope knowledge writes from controlled source probes; restore the probes exactly and preserve unrelated state. Use an isolated profile for temporary customization.
+
+Bounded product repair requires a permanent guard and repeated failed GUI step. If code/package changes, rebuild/re-smoke the affected Electron package and record the new identity. Preserve inherited and newly observed failures. Any missing/failed required step means no success marker; record a truthful checkpoint and leave P6 blocked unless separately waived for audit.
+
+HANDOFF
+
+After Green applicable qualification, set all versions/internal references/baseline assertions to 0.2.5, rerun focused checks, npm run check, current restart integration, phase validation, no-root-lock and git diff --check. Record whether P4 artifact still covers final product source or rebuilt package evidence replaces it. Manual operator creates exactly one commit with subject 0.2.5 for the successful intended handoff and leaves a clean tree; runner-invoked agents do not commit. Do not reset user changes to force cleanliness. Partial checkpoints are not success markers.
+
+FINAL RESPONSE
+
+Report candidate, GUI surface and full matrix, knowledge usefulness, drafts/conflicts, restart/recovery/isolation, package coverage, Git preservation, gaps and P6 eligibility. Do not claim Phase 2 Qualified before closeout.

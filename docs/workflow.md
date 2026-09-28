@@ -110,7 +110,15 @@ Its explicit activation baseline is package `0.1.0`. The phase runner therefore 
 - P2 -> `0.1.2`;
 - and so on.
 
-Phase 1 qualifies Dope as a native Electron IDE. Browser builds/tests remain useful, but browser-only evidence cannot substitute for the direct native dogfooding gate.
+Phase 1 qualifies Dope as an Electron IDE through combined evidence: P4 proves packaging/native launch and P5 directly exercises the real Theia GUI on the Dope repository, using browser-hosted workbench or Electron. Headless/CDP-only evidence cannot substitute for P5 interaction.
+
+## Phase 2 preparation and activation
+
+The September 28, 2026 owner request approves Phase 2 documentation, assessment, planning and prompt writing. It does not authorize running p2 or waive the Not Qualified Phase 1 prerequisite. `docs/tasks/p2` is prepared, execution blocked. Grammar validation is safe now: `npm run codex:phase:validate -- p2`.
+
+Before execution, resolve Phase 1 qualification and reconcile its evidence with the approved Phase 2 docs, or record a separate explicit owner sequencing waiver with retained failures. Activation is a separate recorded change: exact parent/activation SHA, coherent `0.2.0` versions for root/all workspaces/internal dependencies/baseline tests, committed clean tree. Do not rely on runner version markers to prove qualification.
+
+After activation, p2 P1-P4 are runner-owned; P5 is the manual interactive GUI handoff; P6 is evidence-only closeout. Versions are `0.2.1` through `0.2.6`. A successful manual P5 is committed exactly as `0.2.5` before resuming closeout; an incomplete GUI run remains a checkpoint, not a success marker. See `docs/tasks/p2/README.md` for the prerequisite and commands.
 
 ## Prompt metadata
 

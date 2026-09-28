@@ -72,6 +72,8 @@ The gate is closed: Theia 1.75.0 is the qualified initial substrate. Upgradeabil
 
 Status: **ACTIVE ENGINEERING GATE**
 
+P6 closeout is **Not Qualified** at `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). Phase 2 docs/planning approval does not waive the remaining Phase 1 qualification gate.
+
 Purpose:
 Make Dope a serious native development environment before differentiating it with production project intelligence or AI.
 
@@ -112,6 +114,10 @@ This is the first self-development milestone: **Dope as editor**.
 
 ## Product Phase 2 — Project Mind
 
+Status: **DOCUMENTATION/PLAN APPROVED; STACK PREPARED; EXECUTION BLOCKED**
+
+Execution folder: `p2`. Future activation baseline: `0.2.0`; prompt versions `0.2.1`–`0.2.6`. Current packages remain `0.1.6`. Require Phase 1 qualification or a separately recorded explicit owner sequencing waiver before activation/execution. Authority: `docs/planning/p2/phase-2-plan.md`.
+
 Purpose:
 Give the project durable memory that is useful to the developer before AI is required.
 
@@ -130,13 +136,25 @@ Foundation scope:
 - basic artifact search
 - project reopen continuity
 
+Bounded product behavior:
+- create/read/edit/archive multiple artifacts in one local project;
+- explicit Question answering and Decision acceptance/supersession;
+- Ideas remain captured knowledge without automatic scope expansion;
+- visible artifact relationships and project-relative file references, including unavailable targets;
+- unsaved-draft preservation and visible save/conflict/error states;
+- readable project-local storage, explicit legacy Note migration and external recovery;
+- cross-process mutation exclusion, revision conflicts and project isolation;
+- dark-first, keyboard-accessible presentation with supported light override.
+
+Remote/multi-root Project Mind, Planning/Tasks, AI, semantic search, Sessions and synchronization remain deferred.
+
 Product naming:
 - Project Mind is the developer-facing concept.
 - Project Intelligence is the internal domain/service boundary that implements it.
 
 Exit condition:
 
-Using Dope should leave the project easier to understand when it is reopened, even with no model configured.
+Using Dope should leave the project easier to understand when it is reopened, even with no model configured. Direct GUI qualification must create/use all four artifact types, link/search them, restart/reopen and recover the same saved knowledge. Use actual Dope knowledge and a second local project to qualify isolation. Migration, corruption/conflicts, external recovery, framework independence, and the resulting Electron package also require evidence. Supplemental headless checks do not replace the interactive pass.
 
 ## Product Phase 3 — Planning
 

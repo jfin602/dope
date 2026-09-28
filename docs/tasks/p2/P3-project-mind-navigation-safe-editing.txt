@@ -1,0 +1,38 @@
+TASK: Phase 2 / P3 — Project Mind navigation and safe editing
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.2.3`.
+
+GOAL
+
+Replace the spike Note form with a useful developer-managed Project Mind while preserving unsaved work and normal IDE startup.
+
+PREFLIGHT
+
+Read BOOT/AGENTS and p2 authority/plans, exact P1/P2 contracts/store/transport and every current widget/event/save caller. Require documented sequencing prerequisite and activation; predecessor version is 0.2.2 (target allowed for authorized rerun). Do not infer Green Phase 1 from commits.
+
+IMPLEMENT
+
+Reuse the existing Theia Project Mind contribution/RPC and semantic theme styles. Provide list/detail editing for all four types, create/edit/explicit Save, Question answer/reopen, Decision accept/reject/supersede, reversible archive/unarchive, artifact/file links, type/status/archive filtering and deterministic basic text search. Display provenance/identity and unresolved file references. Expose explicit legacy migration and unsupported/empty/error states. Keep Ideas passive and Planning placeholder unchanged.
+
+Track draft, attached project, base revision, pending operation and request generation. Preserve dirty drafts against events, navigation/workspace switch and close; offer explicit save/discard/cancel where supported. Late reads/saves/events from an earlier project/generation cannot render into the current editor. Conflicts/errors preserve input with an explicit reload/reconcile path; do not indicate saved before committed acknowledgement. Dispose callbacks/subscriptions cleanly.
+
+Keep UI selection/search/layout/preferences noncanonical. Render authored content safely as text. Maintain keyboard labels/focus/operation, dark-first tokens and readable explicit light override. Do not auto-foreground Project Mind on ordinary IDE startup or convert BUILD/PLAN mode into artifact status.
+
+CHECKS
+
+Add the smallest permanent runnable checks using actual UI state/controller logic for delayed load/save across project switches, peer event during dirty edit, save conflict/failure, selection/close draft protection and disposal. Reuse installed tools; no new UI framework/test framework just for this work. Add practical frontend/backend smoke where possible and include production checks in aggregate commands. Visual interaction remains P5 evidence.
+
+Set all versions/internal references/baseline assertions coherently to 0.2.3. Run focused checks, npm run check, phase validation, no-root-lock and git diff --check. Runner owns commits.
+
+SCOPE
+
+No AI/embeddings, autoscope expansion, Plans/Tasks, Sessions, remote/sync collaboration or framework upgrade.
+
+FINAL RESPONSE
+
+Report UI/actions, draft/conflict/race protections, accessibility/theme approach, permanent checks and direct-GUI evidence deferred to P5.

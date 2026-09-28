@@ -97,6 +97,26 @@ For Foundation Spike 0, qualification is deliberately minimal:
 
 The spike does not need the full Project Mind schema or final persistence backend.
 
+## Product Phase 2 — Project Mind qualification
+
+Phase 2 documentation/plan is approved, execution blocked pending the activation prerequisite in BOOT. Qualification applies once the capability is implemented; future AI/Planning/Session concerns remain deferred.
+
+Require executable evidence for:
+- all four artifact types, validation, lifecycle actions, reversible archival, identity/provenance/timestamps and links;
+- explicit, idempotent spike Note migration preserving original bytes and IDs, with honest unknown timestamps and no duplicate imports;
+- empty/read-only projects without implicit writes, corrupt/unsupported state refusing mutation, and recoverable failed writes/migration;
+- expected-revision conflicts, cross-process write exclusion, abandoned-lock recovery and preserved drafts;
+- backend root/handle validation, separate local projects, traversal/symlink containment, and missing link targets;
+- framework-independent domain/query tests; basic search has deterministic results and is recomputable;
+- delayed save/load/event responses across workspace switches, close/dispose cleanup, and unsaved-draft protection;
+- real backend/application restart, project reopen, and storage continuity independent of UI layout/profile;
+- external inspection/backup/recovery with writers stopped;
+- browser/Electron builds and produced Electron package/resources/native-launch evidence for the resulting candidate.
+
+Directly exercise the real Theia GUI on the Dope repository: create and edit Notes/Ideas/Questions/Decisions, answer/accept/archive/link/filter/search, preserve unsaved work, restart/reopen, inspect recovered knowledge and verify a second local project cannot see or mutate it. Use actual developer-entered Dope context; no automatic ingestion or privileged self mode. Verify keyboard access, dark-first presentation and readable explicit light override. Headless/CDP instrumentation is supplemental. Preserve pre-existing Git state; record intended `.dope` knowledge changes separately from controlled source probes, which must be restored.
+
+Preserve all failed observations and Evidence Gaps. A stalled workbench is a qualification failure even if domain tests pass. A saved-state claim requires committed durable bytes, not a frontend notification. The Phase 2 exit decision must audit exact source/package/GUI candidates and remaining inherited gaps.
+
 ## Agent Mind
 
 Applicable when AI Presence introduces Agent Mind.

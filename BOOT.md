@@ -17,6 +17,8 @@ Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af
 
 The September 28, 2026 P6 evidence-only closeout is **Not Qualified**. The owner-waived `0.1.5` handoff permits audit but does not turn incomplete P5 interactive evidence Green. See `docs/tasks/p1/closeout.md`; correct/requalify the P5 daily-use blockers before any Phase 1 completion claim. Phase 2 remains blocked.
 
+The September 28 Phase 2 `/docs-review` proposal was approved through `/docs-apply + /prompt-ass + /prompt-plan + /prompt-write p2`. Phase 2 documentation and the `p2` stack are approved/prepared; this is not activation or a sequencing waiver. Current package version remains `0.1.6`, closeout commit `dac6e57275134fc610d8c0c6e2620a90d7d58c2f`. See `docs/planning/p2/phase-2-plan.md` and `docs/tasks/p2/README.md`.
+
 This activation establishes package baseline `0.1.0` before the `p1` execution stack. Phase 1 turns the qualified substrate into a desktop IDE comfortable enough to develop Dope inside Dope through ordinary development workflows.
 
 Phase 1 product posture:
@@ -57,6 +59,7 @@ Current authority:
 - docs/planning/foundation-spike-0/decision-record.md
 - docs/planning/foundation-spike-0/qualification-plan.md
 - docs/planning/p1/phase-1-plan.md
+- docs/planning/p2/phase-2-plan.md
 - docs/decisions/0004-model-provider-independence.md
 - docs/decisions/0005-progressive-self-development.md
 
@@ -210,6 +213,6 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 P6 closed as **Not Qualified** on September 28, 2026 from owner-waived handoff `fca1ca672548cc65fc12ec4ea66f0a04ed9f2019` (`0.1.5`). Its closeout version and commit subject are `0.1.6`; the owner approved committing the reviewed closeout. See `docs/tasks/p1/closeout.md` for the A–G audit and deterministic rerun.
 
-Next action: correct and directly requalify the remaining P5 interactive GUI blockers on the real Dope repository, especially restoration and integrated test execution. Preserve the failed evidence. The P5 browser-hosted workbench is an approved direct-interaction surface, while P4 remains authoritative for Electron packaging/native launch. Do not mark Phase 1 complete or start Phase 2 until the gate passes; post-Phase-1 `/docs-review` follows qualification, not this waiver.
+Next action: correct and directly requalify the remaining P5 interactive GUI blockers on the real Dope repository, especially restoration and integrated test execution. Preserve the failed evidence. The P5 browser-hosted workbench is an approved direct-interaction surface, while P4 remains authoritative for Electron packaging/native launch. The Phase 2 review and documentation are prepared in advance; they do not mark Phase 1 complete or waive its gate.
 
-Do not start Product Phase 2 implementation until Phase 1 is qualified and its closeout routes through the normal post-phase documentation review.
+Before `p2` execution, record Phase 1 qualification and reconcile any resulting changes against the approved Phase 2 review, or obtain a separate explicit owner sequencing waiver that preserves Not Qualified truth. Then record the exact activation SHA and set all workspace versions/internal references and baseline assertions coherently to `0.2.0`, commit the activation, and require a clean tree. The runner does not enforce product qualification; every p2 prompt must check the documented prerequisite. Phase 2 versions are `0.2.1` through `0.2.6`. No activation/version bump is performed by this documentation task.

@@ -1,0 +1,40 @@
+TASK: Phase 2 / P2 — Project Mind storage migration and backend
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.2.2`.
+
+GOAL
+
+Persist revision-aware artifact collections and expose safe typed backend operations without tying product semantics to Theia.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, approved Phase 2 authority/assessment/plan, exact P1 source/tests and legacy Note producers/consumers. Require the documented Phase 1 qualification or separate Phase 2 sequencing waiver and committed activation; package predecessor is 0.2.1 (target allowed for authorized rerun). Preserve Git state. No gate waiver is implied by a version marker.
+
+IMPLEMENT
+
+Use the approved Node adapter inside @dope/project-intelligence for .dope/project-mind.json. Missing read creates nothing. Implement validated snapshot/project identity, per-canonical-project exclusive filesystem mutation lock across processes, expected document revision, latest-snapshot read/validation under lock and durable atomic replacement. Reject stale edits/lock contention visibly. Release only an acquired lock; never auto-steal stale locks. Handle post-replacement uncertainty through re-read before retry.
+
+Expose one-local-folder attachment and connection-scoped project handles through existing typed RPC/contributions. Validate draft/status/link/revision at the backend, reject a different attached root/handle and enforce normalized storage/file-link containment including symlinks. Inspect installed supported Theia APIs; recent-workspace state is not active-root authorization. No protected-container access in production and no sandbox claim.
+
+Explicitly migrate a valid legacy Note only when no new store exists. Preserve original bytes, ID/content/developer provenance; retain unknown historical timestamps and record source/migration metadata. Repeat migration cannot duplicate/import over existing/corrupt state. Once new state exists, legacy data is retained history, never a competing writable source. Update old backend paths without silently changing legacy data.
+
+Create docs/project-mind-storage.md covering schema/location, linear snapshot ceiling, migration, Git implications, stopped-writer backup/external-edit/corruption/future-schema recovery and abandoned-lock handling. Keep recovery usable without a healthy GUI. No database/service/transaction framework.
+
+CHECKS
+
+Use permanent real-adapter checks for all-type round trip/reconstruction, repeat migration/unknown dates/source preservation, corrupt/future schema, failed write/rename, stale revisions, two independent backend processes, abandoned locks, two project roots/wrong handle, traversal/symlink rejection and event/disposal behavior. Preserve relevant legacy regression cases. Wire new suites into aggregate checks.
+
+Set all versions/internal references/baseline assertions coherently to 0.2.2. Run focused checks, practical backend integration, npm run check, phase validation, no-root-lock and git diff --check. The runner owns commits. No direct GUI or successful actual workbench restart claim.
+
+SCOPE
+
+No production Planning/AI/authority/runtime, remote/multi-root storage, collaboration/sync or framework upgrade. P3 owns production UI; P4-P5 own integrated/interactive qualification.
+
+FINAL RESPONSE
+
+Report schema/path, migration/recovery, lock/conflict/attachment policy, regression results and remaining integrated evidence.

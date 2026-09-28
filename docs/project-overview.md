@@ -169,8 +169,16 @@ Phase 1 is limited to:
 - extension installation/use;
 - dark-first Dope branding and theme behavior with persistent user override;
 - startup/restart/workspace restoration;
-- real native dogfooding on the Dope repository.
+- direct interactive Theia dogfooding on the Dope repository, using browser-hosted workbench or Electron, alongside Electron package/native-launch evidence.
 
 The P0 Project Mind Note and Planning surfaces remain spike artifacts. Production Project Mind begins in Phase 2 and production Planning begins in Phase 3.
 
 Model/provider integration, Agent Mind, tool execution, AI mutation, scoped delegation, and durable development sessions remain deferred to their roadmap phases.
+
+## Approved Phase 2 direction — awaiting activation
+
+Phase 2 gives one local project durable, developer-managed Notes, Ideas, Questions and Decisions through Project Mind. It includes collections, stable identity, provenance, explicit lifecycle actions, relationships/file references, navigation, basic text search, safe editing, migration and reopen continuity. Project Intelligence owns these semantics independently of Theia and any provider.
+
+Project-local readable storage must remain inspectable and recoverable without a healthy GUI. Ideas do not become active work automatically. Plans/Tasks, AI, semantic search, Sessions and synchronization remain deferred.
+
+The owner approved the Phase 2 documentation and p2 planning/stack on September 28, 2026. Phase 1 closeout remains Not Qualified at `0.1.6`; Phase 2 execution is blocked pending qualification or a separate explicit sequencing waiver. Future activation baseline: `0.2.0`. See `docs/planning/p2/phase-2-plan.md`.

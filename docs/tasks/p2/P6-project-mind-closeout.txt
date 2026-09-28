@@ -1,0 +1,43 @@
+TASK: Phase 2 / P6 — Project Mind closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.2.6`.
+
+GOAL
+
+Perform evidence-only Phase 2 closeout from the exact P5 handoff. No product repairs, framework upgrades or Phase 3 prompts.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, authority/p2 plans/storage guide, recorded activation, exact reachable P1-P5 commits/source/tests, P4 package/restart and P5 GUI evidence, and inherited Phase 1 closeout. Require the documented Phase 1 qualification or separate Phase 2 sequencing waiver, committed activation and successful exact-subject P5 handoff with Green applicable evidence. A version marker alone is not qualification. Any later explicit audit-only waiver permits audit without changing failed evidence and must be recorded separately.
+
+AUDIT
+
+Assess Green/Not Green/Evidence Gap for:
+A. Artifact/domain contracts, explicit lifecycle/archive, identity/provenance/links/search and no framework/provider dependency.
+B. Durable snapshot and legacy migration, honest unknown dates, original preservation and idempotency.
+C. Locks/revision conflicts, failure preservation, project/root/symlink isolation and external recovery.
+D. Production UI navigation/editing, dirty draft/race protection, keyboard operation and dark/light behavior.
+E. Actual restart/reopen continuity through usable GUI, distinct from supplemental headless integration.
+F. Resulting Electron artifact/resources/native launch with exact source/hash coverage after repairs.
+G. Dope-on-Dope usefulness, no model configured, second-project isolation and preserved Git state.
+
+Preserve inherited Phase 1 Not Qualified history/waivers, every observed failure and unobserved step. Audit residual accepted gaps explicitly. Hard product blockers cannot be relabeled Green or erased by automated checks.
+
+RERUN
+
+Set root/all workspace versions/internal references/baseline assertions coherently to 0.2.6. Run focused/aggregate npm run check, current restart/process integration, phase validation, no-root-lock, version/Theia coherence and git diff --check. Build/inspect package as appropriate for the final candidate and record new artifact identity; a build does not repeat prior fresh-plugin/native/GUI evidence. Do not repair failures in closeout. Runner owns any resulting commit.
+
+OUTPUT
+
+Create docs/tasks/p2/closeout.md with preparation/activation/pre-task/final candidate SHA/version, framework baseline, A-G table, exact source/package/GUI coverage, legacy migration/recovery, draft/conflict/isolation results, remaining gaps and Qualified/Not Qualified decision. If final SHA is not yet available, identify how to resolve the commit containing the record; never invent one.
+
+If Qualified, mark p2 README COMPLETE/GREEN and route BOOT/overview/roadmap consistently to post-Phase-2 /docs-review. Phase 3 remains unapproved; no prompt generation/activation. If Not Qualified, preserve blockers and route to bounded correction/requalification while leaving Phase 3 blocked. Do not rewrite Phase 1 historical results.
+
+FINAL RESPONSE
+
+Report exact candidate/A-G decision, usable Project Mind GUI/no-model result, migration/recovery, package/native result, gaps, docs updated and next action.

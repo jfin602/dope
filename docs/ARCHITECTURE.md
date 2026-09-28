@@ -82,7 +82,7 @@ For Product Phase 1:
 - the Electron application is the primary user-facing Dope product shell;
 - the browser application remains a development, debugging, and qualification surface;
 - the default workbench prioritizes ordinary IDE work rather than unfinished Project Mind or Planning spike surfaces;
-- native Electron dogfooding is required before Phase 1 can qualify.
+- direct interactive Theia dogfooding on the Dope repository is required, using browser-hosted workbench or Electron; P4 separately establishes packaged Electron/native-launch evidence. Headless/CDP-only work does not satisfy the interactive gate.
 
 Presentation preferences such as theme, keybindings, panel layout, and editor preferences may persist for the user, but they are not canonical project-domain state.
 
@@ -190,6 +190,18 @@ No model is required.
 Backend adapters implement durable state.
 
 Do not let the Foundation Spike backend dictate the domain model.
+
+### Phase 2 implementation boundary
+
+Phase 2 is approved/prepared but not activated. Reuse `@dope/contracts` for framework-independent artifact and transport DTOs. Introduce one real `@dope/project-intelligence` package for artifact operations, transitions and queries, with a separate Node storage module inside that package. Do not create standalone persistence or per-view packages. The domain modules import neither Theia/provider code nor the Node adapter; the adapter depends inward on domain/contracts. Existing `@dope/theia-extension` hosts typed RPC, root attachment and Project Mind presentation.
+
+Start with one local folder per Project Mind and a readable `.dope/project-mind.json` collection. Stable project identity lives in the document, not in an absolute path or Theia workspace/widget identifier. Explicitly reject unsupported multi-root/remote contexts. Only canonical project knowledge goes into this store; drafts, selection, layout, theme and search results are presentation state.
+
+Validate project attachment and subsequent handles on the backend; reject requests for a different attached project. Normalize local roots and enforce storage containment, including symlinks. This is local project isolation, not an OS sandbox or future tool-authority system.
+
+Use one exclusive filesystem mutation lock per project across backend processes and expected document revisions for stale edits. Hold the lock while reading, validating, changing and replacing the snapshot; reject contention/conflicts visibly. Preserve unsaved drafts. Do not automatically steal a lock after a timeout. Document recovery of an abandoned lock after all writers are stopped. External file edits require stopped writers.
+
+Migrate the spike Note explicitly, preserve its ID/content/provenance and original file, and do not invent historical timestamps. Failed migration/corrupt/unsupported data must remain untouched. Exact storage/migration/UI rules live in the Phase 2 plan; no database, service, collaboration or synchronization layer is needed for this scope.
 
 ### Agent State
 
