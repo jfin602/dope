@@ -1,6 +1,6 @@
 {
   "name": "dope",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "type": "module",
   "packageManager": "yarn@1.22.22",
@@ -26,6 +26,7 @@
     "test:baseline": "node --test test/unit/theia-baseline.test.ts",
     "test:product": "npm run build:extension && node --test test/unit/workspace-mode.test.ts test/unit/note-persistence.test.ts",
     "test:ide": "node --test test/fixtures/ide-testing/sample.test.js",
+    "test:restart": "node --test test/integration/restart.test.mjs",
     "codex:phase": "node scripts/codex-phase.mjs",
     "codex:phase:validate": "node scripts/validate-codex-phase.mjs",
     "typecheck": "corepack yarn workspace @dope/contracts build && tsc -p packages/theia-extension --noEmit",

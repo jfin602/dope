@@ -1,0 +1,11 @@
+{
+  "name": "uppercase",
+  "publisher": "dope-evidence",
+  "version": "1.0.0",
+  "engines": { "vscode": "^1.75.0" },
+  "main": "./main.js",
+  "activationEvents": ["onCommand:dope-evidence.uppercase"],
+  "contributes": {
+    "commands": [{ "command": "dope-evidence.uppercase", "title": "Uppercase Text" }]
+  }
+}
