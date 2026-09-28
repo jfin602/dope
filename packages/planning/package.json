@@ -1,9 +1,9 @@
 {
   "name": "@dope/planning",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": { "build": "tsc -p ." },
-  "dependencies": { "@dope/contracts": "0.3.2" }
+  "dependencies": { "@dope/contracts": "0.3.3" }
 }

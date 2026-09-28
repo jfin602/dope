@@ -1,6 +1,6 @@
 {
   "name": "dope",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "type": "module",
   "packageManager": "yarn@1.22.22",
@@ -26,7 +26,7 @@
     "test": "npm run test:runner && npm run test:baseline && npm run test:product && npm run test:ide",
     "test:runner": "node --test test/unit/codex-phase-prompt-grammar.test.ts test/unit/codex-phase-runner.test.ts",
     "test:baseline": "node --test test/unit/theia-baseline.test.ts",
-    "test:product": "npm run build:extension && node --test test/unit/workspace-mode.test.ts test/unit/note-persistence.test.ts test/unit/project-intelligence.test.ts test/unit/project-mind-storage.test.ts test/unit/project-mind-ui.test.ts test/unit/planning.test.ts test/unit/planning-storage.test.ts",
+    "test:product": "npm run build:extension && node --test test/unit/workspace-mode.test.ts test/unit/note-persistence.test.ts test/unit/project-intelligence.test.ts test/unit/project-mind-storage.test.ts test/unit/project-mind-ui.test.ts test/unit/planning.test.ts test/unit/planning-storage.test.ts test/unit/planning-ui.test.ts",
     "test:ide": "node --test test/fixtures/ide-testing/sample.test.js",
     "test:restart": "node --test test/integration/restart.test.mjs",
     "codex:phase": "node scripts/codex-phase.mjs",

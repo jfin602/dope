@@ -11,4 +11,5 @@ export interface PlanningService {
     attach(folderUri: string): Promise<{ projectHandle: string; snapshot: PlanningDocument | undefined; prerequisite?: 'project-mind' }>;
     read(projectHandle: string): Promise<PlanningDocument | undefined>;
     mutate(request: PlanningMutation): Promise<PlanningResult>;
+    createFromDecision(projectHandle: string, expectedRevision: number, decisionId: string, planId: string): Promise<PlanningResult>;
 }

@@ -50,13 +50,19 @@ export class PlanningBackend implements PlanningService {
         return snapshot;
     }
 
-    async mutate(request: PlanningMutation) {
+    async mutate(request: PlanningMutation) { return this.applyMutation(request); }
+
+    private async applyMutation(request: PlanningMutation, decisionSeed?: { id: string; title: string; decision: string; context: string }) {
         if (!request || typeof request !== 'object') throw new Error('Invalid Planning mutation');
         const root = this.active(request.projectHandle);
         if (!this.projectId) throw new Error('Project Mind prerequisite: create a Project Mind artifact and reattach Planning');
         return this.store.mutate(root, this.projectId, request.expectedRevision, request.operation, async (current, next) => {
             const mind = await this.mind.read(root);
             if (!mind || mind.projectId !== this.projectId) throw new Error('Project Mind identity changed; inspect both stores');
+            if (decisionSeed && !mind.artifacts.some(item => item.type === 'decision' && item.id === decisionSeed.id &&
+                item.title === decisionSeed.title && item.decision === decisionSeed.decision && item.context === decisionSeed.context)) {
+                throw new Error('Decision changed; reload before creating a Plan');
+            }
             const before = artifactLinks(current);
             for (const [owner, ids] of artifactLinks(next)) {
                 for (const id of ids) {
@@ -66,6 +72,18 @@ export class PlanningBackend implements PlanningService {
                 }
             }
         });
+    }
+
+    async createFromDecision(projectHandle: string, expectedRevision: number, decisionId: string, planId: string) {
+        const root = this.active(projectHandle);
+        const mind = await this.mind.read(root);
+        if (!mind || mind.projectId !== this.projectId) throw new Error('Project Mind identity changed; inspect both stores');
+        const decision = mind.artifacts.find(item => item.id === decisionId && item.type === 'decision');
+        if (!decision || decision.type !== 'decision') throw new Error('Decision no longer exists');
+        return this.applyMutation({ projectHandle, expectedRevision, operation: {
+            type: 'plan.create', id: planId, title: decision.title, objective: decision.decision,
+            context: decision.context, links: [{ type: 'artifact', id: decisionId }]
+        } }, { id: decisionId, title: decision.title, decision: decision.decision, context: decision.context });
     }
 
     dispose(): void { if (!this.disposed) { this.disposed = true; this.unlisten(); } }

@@ -12,7 +12,8 @@ import { ServiceConnectionProvider } from '@theia/core/lib/browser/messaging/ser
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { OpenerService } from '@theia/core/lib/browser';
-import { DopeWindowTitleService, DopeWorkbench, PlanningView, ProjectMindView, ProjectMindWidget, PLANNING_ID, PROJECT_MIND_ID, DopeSpikeWidget } from './dope-workbench';
+import { DopeWindowTitleService, DopeWorkbench, PlanningView, ProjectMindView, ProjectMindWidget, PLANNING_ID, PROJECT_MIND_ID } from './dope-workbench';
+import { PlanningWidget } from './planning-widget';
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(WorkspaceModeService).toConstantValue(new WorkspaceModeService());
@@ -23,9 +24,16 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(PlanningService).toDynamicValue(context => ServiceConnectionProvider.createProxy<PlanningService & RpcServer<PlanningClient>>(context.container, planningServicePath));
     bind(WidgetFactory).toDynamicValue(context => ({ id: PROJECT_MIND_ID, createWidget: () => new ProjectMindWidget(
         () => context.container.get(ProjectMindService) as ProjectMindService & RpcServer<ProjectMindClient>,
-        context.container.get(WorkspaceService), context.container.get(FileService), context.container.get(OpenerService)
+        context.container.get(WorkspaceService), context.container.get(FileService), context.container.get(OpenerService),
+        () => context.container.get(PlanningService) as PlanningService & RpcServer<PlanningClient>,
+        id => context.container.get(PlanningView).showPlan(id)
     ) })).inSingletonScope();
-    bind(WidgetFactory).toConstantValue({ id: PLANNING_ID, createWidget: () => new DopeSpikeWidget(PLANNING_ID, 'Planning', 'Planning', 'A focused surface for decisions and plans. Spike view; live planning arrives later.') });
+    bind(WidgetFactory).toDynamicValue(context => ({ id: PLANNING_ID, createWidget: () => new PlanningWidget(
+        () => context.container.get(PlanningService) as PlanningService & RpcServer<PlanningClient>,
+        () => context.container.get(ProjectMindService) as ProjectMindService & RpcServer<ProjectMindClient>,
+        context.container.get(WorkspaceService), context.container.get(FileService), context.container.get(OpenerService),
+        async id => { const widget = await context.container.get(ProjectMindView).openView({ activate: true }); await widget.openArtifact(id); }
+    ) })).inSingletonScope();
     bind(DopeWorkbench).toSelf().inSingletonScope();
     bind(FrontendApplicationContribution).toService(DopeWorkbench);
     bind(CommandContribution).toService(DopeWorkbench);

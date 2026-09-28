@@ -59,6 +59,51 @@ test('missing identity stays read-only; distinct roots retain separate canonical
     backend.dispose(); other.dispose();
 }));
 
+test('Decision bridge checks current Project Mind and creates separate intentional draft Plans', async () => folders(async (first) => {
+    const mind = new ProjectMindStore();
+    const decisionId = randomUUID();
+    const now = '2026-09-28T12:00:00.000Z';
+    const decision = { schemaVersion: 2, type: 'decision', id: decisionId, title: 'Visible title', decision: 'Visible decision', context: 'Visible context',
+        rationale: 'Not seeded', consequences: '', alternatives: '', revisitConditions: '', status: 'proposed', provenance: 'developer',
+        createdAt: now, updatedAt: now, archivedAt: null, links: [] };
+    await mind.mutate(first, 0, { type: 'create', artifact: decision } as never);
+    const backend = new PlanningBackend(new PlanningStore(), mind, { notifyPlanningChanged: () => {} });
+    const handle = (await backend.attach(pathToFileURL(first).toString())).projectHandle;
+    const firstPlan = await backend.createFromDecision(handle, 0, decisionId, randomUUID());
+    assert.equal(firstPlan.snapshot.plans[0].status, 'draft');
+    assert.equal(firstPlan.snapshot.plans[0].title, decision.title);
+    assert.equal(firstPlan.snapshot.plans[0].objective, decision.decision);
+    assert.equal(firstPlan.snapshot.plans[0].context, decision.context);
+    assert.deepEqual(firstPlan.snapshot.plans[0].links, [{ type: 'artifact', id: decisionId }]);
+    assert.equal(JSON.stringify(firstPlan.snapshot).includes(decision.rationale), false);
+    const secondPlan = await backend.createFromDecision(handle, 1, decisionId, randomUUID());
+    assert.equal(secondPlan.snapshot.plans.length, 2);
+    assert.notEqual(secondPlan.snapshot.plans[0].id, secondPlan.snapshot.plans[1].id);
+    await assert.rejects(backend.createFromDecision(handle, 2, randomUUID(), randomUUID()), /Decision no longer exists/);
+    assert.equal((await backend.read(handle))?.revision, 2);
+    backend.dispose();
+}));
+
+test('Decision edits during bridge creation reject the stale seed without writing Planning', async () => folders(async (first) => {
+    const mind = new ProjectMindStore();
+    const decisionId = randomUUID();
+    const now = '2026-09-28T12:00:00.000Z';
+    const decision = { schemaVersion: 2, type: 'decision', id: decisionId, title: 'Before', decision: 'Choice', context: 'Context', rationale: '',
+        consequences: '', alternatives: '', revisitConditions: '', status: 'proposed', provenance: 'developer', createdAt: now, updatedAt: now, archivedAt: null, links: [] };
+    await mind.mutate(first, 0, { type: 'create', artifact: decision } as never);
+    const store = new PlanningStore();
+    const original = store.mutate.bind(store);
+    store.mutate = (async (...args: Parameters<PlanningStore['mutate']>) => {
+        await mind.mutate(first, 1, { type: 'replace', artifact: { ...decision, title: 'After', updatedAt: new Date().toISOString() } } as never);
+        return original(...args);
+    }) as PlanningStore['mutate'];
+    const backend = new PlanningBackend(store, mind, { notifyPlanningChanged: () => {} });
+    const handle = (await backend.attach(pathToFileURL(first).toString())).projectHandle;
+    await assert.rejects(backend.createFromDecision(handle, 0, decisionId, randomUUID()), /Decision changed/);
+    assert.equal(await backend.read(handle), undefined);
+    backend.dispose();
+}));
+
 test('identity mismatch, corrupt and future schemas fail closed without changing either store', async () => folders(async (first) => {
     const { mind, snapshot } = await mindAt(first);
     const store = new PlanningStore();
