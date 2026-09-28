@@ -43,9 +43,9 @@ Target `0.1.3`: workspace/editor/workbench restoration, explicit theme preferenc
 
 Target `0.1.4`: qualify plugin/resource preparation from a fresh-enough state, branded AppImage/icon, resources, artifact identity and normal launch outside dev mode.
 
-## P5 — native Dope-on-Dope dogfooding
+## P5 — interactive Theia GUI Dope-on-Dope dogfooding
 
-Target `0.1.5`: direct native GUI gate on the actual Dope repository covering edit/search/terminal/SCM/debug/Problems/tests/preferences/keybindings/extensions/theme/restart. Record `P5-native-dogfooding-evidence.md`. Bounded repairs only; exact commit subject `0.1.5`.
+Target `0.1.5`: direct interactive GUI gate on the actual Dope repository covering edit/search/terminal/SCM/debug/Problems/tests/preferences/keybindings/extensions/theme/restart. The GUI may be the browser-hosted Theia workbench or Electron. P4 remains authoritative for Electron packaging/native process launch. Headless/CDP-only evidence is insufficient. Record `P5-native-dogfooding-evidence.md`. Bounded repairs only; if a P5 repair changes product code, rebuild/re-smoke the Electron package so P4-style package evidence covers the repaired candidate. Finish with an exact commit subject `0.1.5`.
 
 ## P6 — evidence-only closeout
 

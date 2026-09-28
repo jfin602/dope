@@ -33,7 +33,7 @@ Phase 1 must consume this evidence rather than replaying the spike.
 
 Electron is the primary user-facing product shell.
 
-The browser app remains useful for development, automated workbench checks, debugging and qualification where native behavior is not at issue. Browser-only success cannot qualify the Phase 1 exit condition.
+The browser app remains useful for development, automated workbench checks, debugging and direct interactive IDE qualification. P5 may qualify shared Theia workbench behavior through the browser-hosted GUI or Electron. P4 separately owns Electron/AppImage packaging, packaged-resource and native-process-launch evidence. Headless or CDP-only browser evidence cannot substitute for P5 interaction.
 
 ## Dark-first presentation
 
@@ -70,11 +70,11 @@ Phase 1 owns:
 - theme behavior;
 - reliable startup/restart/workspace/editor/layout restoration;
 - fresh-environment Linux packaging and launch;
-- one direct native dogfooding qualification on the Dope repository.
+- one direct interactive Theia GUI dogfooding qualification on the Dope repository, using either the browser-hosted workbench or Electron.
 
 ## Qualification target
 
-The exact packaged candidate must support this normal loop on `jfin602/dope`:
+The Phase 1 candidate must support this normal loop on `jfin602/dope` through direct interaction with the real Theia GUI. The interactive GUI may be browser-hosted or Electron; P4 separately proves the packaged Electron artifact and native launch:
 
 open repository -> navigate -> edit/save -> inspect diagnostics -> search -> run terminal command/tests -> inspect Git diff/status -> debug -> use integrated testing -> adjust preference/keybinding/theme -> install/use extension -> restart -> resume.
 
@@ -101,6 +101,6 @@ Cross-distribution Linux certification is not a Phase 1 blocker.
 
 ## Exit condition
 
-Phase 1 qualifies when a developer can use the packaged Dope desktop application for ordinary work on the Dope repository without immediately reaching for another IDE, and the direct native dogfooding evidence is Green with no unresolved product-blocking defect.
+Phase 1 qualifies when P4 establishes a viable packaged Electron product and native launch, and P5 establishes through direct interactive Theia GUI use that a developer can perform ordinary work on the Dope repository without immediately reaching for another IDE. P5 may use the browser-hosted workbench or Electron, with no unresolved product-blocking defect.
 
 After qualification, route through post-phase `/docs-review` before activating Product Phase 2.

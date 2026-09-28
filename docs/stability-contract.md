@@ -21,7 +21,7 @@ For each task or phase:
 Foundation Spike 0 is a completed Theia substrate qualification. Its evidence remains authoritative for the bounded substrate claims recorded in `docs/tasks/p0/closeout.md`.
 
 The active Phase 1 — IDE Alive stability concerns are:
-- native Electron startup and ordinary desktop interaction;
+- native Electron startup/package viability plus ordinary interactive Theia workbench behavior;
 - repository/workspace opening and restoration;
 - editor/language-service behavior;
 - Explorer/search;
@@ -245,7 +245,7 @@ Desktop packaging evidence uses the produced package, not only the development s
 
 Foundation Spike 0 required a real Linux artifact plus native launch/process evidence outside the dev server, correct packaged resources/branding, and the strongest practical programmatic renderer smoke.
 
-Product Phase 1 raises the bar: qualification requires a reproducible/fresh-environment package path, branded product metadata/icon, normal native launch suitable for daily use, and direct native Electron dogfooding. Programmatic renderer evidence may supplement but cannot replace the direct native interaction gate.
+Product Phase 1 separates package proof from IDE-interaction proof: P4 requires a reproducible/fresh-environment package path, branded product metadata/icon, packaged resources, and normal native Electron launch. P5 requires direct interaction with the real Theia GUI and may use either the browser-hosted workbench or Electron. Programmatic renderer/CDP evidence may supplement but cannot replace the P5 interactive GUI gate.
 
 ## Framework upgrade qualification
 
@@ -265,7 +265,7 @@ Do not require authority/provider evidence before those systems exist.
 
 ## Product Phase 1 — IDE Alive success
 
-Phase 1 qualifies only when the exact candidate can be used as an ordinary native development environment on the Dope repository.
+Phase 1 qualifies only when the candidate has both P4 Electron package/native-launch evidence and P5 direct interactive Theia GUI evidence on the Dope repository.
 
 At minimum the direct dogfooding evidence must demonstrate:
 - open the Dope repository/workspace;
@@ -281,11 +281,11 @@ At minimum the direct dogfooding evidence must demonstrate:
 - dark default presentation on first-run state;
 - explicit alternate theme selection persists and overrides the default;
 - restart restores the intended workspace/editor/workbench state;
-- package/native startup is free of unresolved fatal product blockers.
+- P4 package/native startup is free of unresolved fatal product blockers.
 
 The dogfooding pass must preserve the repository's pre-existing Git state and restore any controlled edits.
 
-A browser-only pass is insufficient for Phase 1 closeout.
+A browser-hosted P5 pass is sufficient when it directly exercises the real Theia workbench interactively. Headless, DOM-query-only, screenshot-only, or CDP-only evidence is insufficient. P4 remains required for Electron/AppImage packaging and native launch.
 
 ## Corrections
 

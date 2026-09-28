@@ -1,4 +1,4 @@
-TASK: Phase 1 / P5 — native Electron Dope-on-Dope dogfooding qualification
+TASK: Phase 1 / P5 — interactive Theia GUI Dope-on-Dope dogfooding qualification
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
@@ -9,55 +9,98 @@ VERSIONING
 
 GOAL
 
-Qualify the exact committed P4 candidate through direct native Electron use on the real Dope repository.
+Qualify the exact committed P4 candidate through direct interactive use of the real Theia GUI on the actual Dope repository.
 
-This is the single mandatory native/manual GUI gate. Do not substitute browser or CDP-only evidence.
+The GUI may be:
+- the browser-hosted Theia workbench; or
+- the native Electron window.
+
+P4 is authoritative for Electron/AppImage packaging, packaged resources, branding and normal native-process launch. P5 is authoritative for the interactive IDE workflow.
+
+Do not substitute CDP-only, DOM-query-only, screenshot-only or headless assertions for direct GUI interaction.
+
+OWNER-APPROVED QUALIFICATION AMENDMENT
+
+The original P5 wording required native Electron-window interaction. On September 28, 2026 the owner explicitly approved the real browser-hosted Theia GUI as an equivalent P5 interaction surface because P4 separately qualifies the Electron package and native launch.
+
+The earlier native-control Evidence Gap remains historical evidence; it does not block a new interactive browser-workbench pass.
 
 PREFLIGHT
 
-Read all Phase 1 authority/plans, P1-P4 source/evidence and P0 closeout. Require P4 validation Green enough to dogfood and record repository Git state before interaction.
+Read all Phase 1 authority/plans, P1-P4 source/evidence, P0 closeout and the existing incomplete P5 evidence.
 
-NATIVE DOGFOODING MATRIX
+Require:
+- P4 validation Green enough to dogfood;
+- the actual Dope repository/workspace;
+- current Git state recorded before interactive work;
+- a real interactive Theia GUI, not merely renderer instrumentation.
 
-In the native Electron window on the Dope repository directly exercise:
+INTERACTIVE DOGFOODING MATRIX
+
+In the real Theia GUI on the Dope repository directly exercise:
 - workspace open, Explorer navigation and multiple real files;
-- controlled reversible edit/save, language behavior, controlled Problems diagnostic and repair;
-- workspace search;
+- controlled reversible edit/save and language behavior;
+- controlled Problems diagnostic and repair;
+- workspace search and navigation to a real result;
 - integrated terminal and at least one real test/validation command;
-- Git dirty state, diff inspection, restoration to exact preflight state;
+- Git/SCM dirty state, diff inspection and restoration to exact preflight state;
 - Node debugger breakpoint and locals;
-- integrated test discovery/execution/result;
-- preferences UI and one harmless preference;
+- integrated test discovery/execution/result through the test UI;
+- preferences UI and one harmless preference change;
 - keybindings UI and one harmless temporary keybinding;
 - non-AI Open VSX extension install/use plus restart persistence;
 - clean-profile dark first-run/default;
-- explicit alternate/light compatible theme, restart, persistence overriding dark default, then desired final preference;
-- native restart with intended workspace/editor/workbench restoration.
+- explicit alternate/light compatible theme, restart/reload, persistence overriding dark default, then desired final preference;
+- restart/reopen with intended workspace/editor/workbench restoration.
+
+For browser-hosted qualification, "restart" means a real workbench/backend restart or equivalent full application restart that reconstructs state; a simple DOM refresh is insufficient when it would not exercise persistence.
 
 Confirm unfinished Project Mind/Planning spike surfaces do not dominate normal startup. Do not judge them as production Phase 2/3 features.
 
+ELECTRON/PACKAGE BOUNDARY
+
+Do not repeat P4 solely because P5 uses the browser GUI.
+
+However, if P5 makes a product-source repair that could affect Electron behavior or packaging, rebuild the Electron application/package as applicable and rerun the relevant P4-style normal-launch smoke so package/native evidence covers the repaired candidate.
+
 BOUNDED REPAIR
 
-Small Phase 1 defects may receive bounded repair with permanent regression coverage and repeated failed native step. Do not pull later scope forward.
+Small Phase 1 defects may receive the smallest bounded repair with permanent regression coverage. Repeat the failed interactive GUI step after repair. Do not pull later scope forward.
 
 EVIDENCE
 
-Create `docs/tasks/p1/P5-native-dogfooding-evidence.md` with exact candidate/version/Theia/Electron/environment, launch path, every matrix result, extension evidence, theme evidence, restart result, Git pre/post state, repairs, automated rerun and Green / Not Green / Evidence Gap truth.
+Update `docs/tasks/p1/P5-native-dogfooding-evidence.md` with:
+- exact P4 candidate SHA and current P5 checkpoint/final SHA;
+- version/Theia/Electron/environment;
+- qualification surface: browser-hosted Theia GUI or Electron;
+- launch/start path for the GUI used;
+- every matrix result;
+- extension ID/version/function;
+- theme evidence;
+- restart/restoration result;
+- Git pre/post state;
+- repairs;
+- automated rerun;
+- Green / Not Green / Evidence Gap truth.
 
-Set package versions coherently to `0.1.5`.
+Preserve the earlier failed native-only attempt as historical evidence rather than rewriting it as a pass.
+
+VERSION / GIT STATE
+
+The pushed `p5 unfinished` checkpoint contains the prepared coherent `0.1.5` versions and incomplete evidence. It is not the P5 success marker.
+
+After successful qualification:
+- ensure package/workspace versions remain coherently `0.1.5`;
+- create/update final P5 evidence;
+- create a commit with exact subject `0.1.5` for the successful handoff;
+- leave the repository clean.
+
+Do not treat the earlier `p5 unfinished` checkpoint as a successful P5 commit.
 
 VALIDATION
 
-After repair rerun focused tests plus `npm run check`, phase validation, no-root-lock check and `git diff --check`.
-
-GIT / MANUAL HANDOFF
-
-This prompt runs outside the normal phase runner. After success:
-- commit all prompt-owned changes once;
-- exact commit subject `0.1.5`;
-- leave repository clean;
-- no additional prompt-owned commit.
+After any repair and before final success, rerun focused tests plus `npm run check`, `npm run codex:phase:validate -- p1`, explicit no-root-`package-lock.json` check and `git diff --check`.
 
 FINAL RESPONSE
 
-Report exact candidate, native matrix, theme, tests/extensions/restart, Git preservation, repairs, automated validation, gaps and whether P6 is unblocked.
+Report exact candidate, qualification surface, full interactive matrix, theme, tests/extensions/restart, Git preservation, repairs, automated validation, remaining gaps and whether P6 is unblocked.

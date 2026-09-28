@@ -215,7 +215,7 @@ Before implementation:
 
 Normal execution:
 - P1-P4 are runner-owned implementation/qualification prompts;
-- P5 is the single direct native Electron dogfooding/manual GUI gate;
+- P5 is the single direct interactive Theia GUI dogfooding gate; it may use the browser-hosted workbench or Electron, while P4 remains authoritative for Electron packaging/native launch;
 - P6 is evidence-only Phase 1 closeout.
 
 Run `npm run codex:phase -- p1` until the P5 handoff. After successful P5 execution and its exact `0.1.5` commit, resume with `npm run codex:phase -- p1 --closeout`.

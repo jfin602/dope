@@ -94,19 +94,19 @@ Initial scope:
 - dark-first default theme with persistent user-controlled theme override
 - reliable startup, restart, editor/workbench and workspace restoration
 - reproducible Linux AppImage packaging/launch
-- native day-to-day dogfooding using the Dope repository itself
+- direct interactive Theia GUI dogfooding using the Dope repository itself (browser-hosted workbench or Electron)
 
 Presentation rule:
 
 Dope prefers dark mode. First-run/default presentation should be dark and Dope-owned surfaces should be designed/qualified dark-first. Developers remain free to select light mode or compatible custom themes; an explicit user choice persists and overrides the default.
 
-The browser application remains useful for development, debugging, and automated qualification, but it is not the product qualification surface for the Phase 1 exit gate.
+The browser application remains useful for development, debugging, automated qualification, and direct interactive P5 workbench qualification. P4 separately qualifies the packaged Electron artifact and native launch. Headless/CDP-only browser evidence is not sufficient.
 
 The existing Foundation Spike Project Mind Note and Planning views remain provisional spike artifacts. Phase 1 may make them non-intrusive, but must not turn them into production Phase 2/3 features.
 
 Exit condition:
 
-A developer can open the Dope repository in the packaged Dope desktop application and perform a normal development loop—navigate, edit, search, run commands and tests, inspect diagnostics, use Git/diffs, debug, install/use extensions, restart, and resume—without needing another IDE for ordinary development work.
+P4 proves the packaged Dope desktop application can be built and launched normally, and P5 proves through direct interaction with the real Theia GUI—browser-hosted or Electron—that a developer can perform the normal development loop on the Dope repository: navigate, edit, search, run commands and tests, inspect diagnostics, use Git/diffs, debug, install/use extensions, restart, and resume without another IDE.
 
 This is the first self-development milestone: **Dope as editor**.
 

@@ -15,22 +15,22 @@ Do not repair behavior, broaden scope, upgrade Theia or generate Phase 2 prompts
 
 SOURCE OF TRUTH
 
-Read BOOT, AGENTS, roadmap, architecture, stability contract, Phase 1 planning/task docs, P4 package evidence, P5 native evidence and exact reachable P1-P5 commits/source/tests.
+Read BOOT, AGENTS, roadmap, architecture, stability contract, Phase 1 planning/task docs, P4 package evidence, P5 interactive GUI evidence and exact reachable P1-P5 commits/source/tests.
 
 REQUIRED AUDIT
 
 Audit:
-A. Native product shell — packaged Electron app, branding/icon, normal launch, dark default.
+A. Product shell/package — packaged Electron app, branding/icon and normal native launch from P4; dark-default GUI behavior from direct P5 interaction.
 B. Ordinary IDE — workspace, Explorer/editor/language, search, terminal, SCM/diffs, debugger, Problems, integrated tests.
 C. User customization — preferences, keybindings, explicit theme override and persistence.
 D. Extensions — marketplace/install/use, observable non-AI function, restart persistence.
 E. Restoration — workspace/editor/workbench resume and no project-domain promotion of UI state.
 F. Packaging — fresh plugin/resource preparation, AppImage, metadata/icon/resources, artifact identity.
-G. Dope-on-Dope — P5 direct native use on actual repo, controlled edits restored, Git state preserved, no another-IDE dependency for qualified loop.
+G. Dope-on-Dope — P5 direct interactive use of the real Theia GUI on the actual repo (browser-hosted or Electron), controlled edits restored, Git state preserved, no another-IDE dependency for the qualified loop.
 
 EVIDENCE RULES
 
-Preserve Green / Not Green / Evidence Gap truth. Browser or renderer-only evidence cannot satisfy native Phase 1. Hard daily-use blockers cannot be relabeled Green.
+Preserve Green / Not Green / Evidence Gap truth. P5 may use the browser-hosted Theia GUI or Electron when the workbench is directly interacted with. Headless, screenshot-only, DOM-query-only or CDP-only evidence cannot satisfy P5. P4 remains mandatory for Electron packaging/native launch. Hard daily-use blockers cannot be relabeled Green.
 
 RE-RUN
 
@@ -55,4 +55,4 @@ Set package versions coherently to `0.1.6`.
 
 FINAL RESPONSE
 
-Report exact candidate, A-G disposition, decision, native dogfooding, package, theme, gaps, docs updated and next action.
+Report exact candidate, A-G disposition, decision, interactive GUI dogfooding surface/result, Electron package/native-launch result, theme, gaps, docs updated and next action.
