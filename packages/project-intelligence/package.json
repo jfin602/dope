@@ -1,0 +1,13 @@
+{
+  "name": "@dope/project-intelligence",
+  "version": "0.2.1",
+  "private": true,
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build": "tsc -p ."
+  },
+  "dependencies": {
+    "@dope/contracts": "0.2.1"
+  }
+}
