@@ -1,9 +1,11 @@
 # Product Phase 2 — Project Mind Task Stack
 
-Status: APPROVED / ACTIVATED BY OWNER SEQUENCING WAIVER — READY FOR EXECUTION
+Status: P6 AUDIT — NOT QUALIFIED (`0.2.6` candidate); bounded P5 correction/requalification required
 Preparation: September 28, 2026, `dac6e57275134fc610d8c0c6e2620a90d7d58c2f`, package `0.1.6`
 Activation source/package baseline: `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, `0.2.0`; owner waiver: `docs/planning/p2/activation.md`
 Theia baseline: `1.75.0`
+
+P5 handoff `9fa13e20b278396fb1c0ec21ab4ebf285f227c08` is an owner-waived audit checkpoint, not Green. See [closeout](closeout.md): the initial migration control failed to appear, and a dirty same-renderer workspace switch lacks direct evidence. Phase 3 remains blocked. Historical execution instructions below remain for traceability.
 
 ## Prerequisite
 

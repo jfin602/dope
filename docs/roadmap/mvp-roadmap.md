@@ -3,6 +3,8 @@
 Status: ACTIVE ROADMAP
 Current gate: Product Phase 2 — Project Mind (owner sequencing waiver; Phase 1 remains Not Qualified)
 
+Phase 2 P6 `0.2.6` audit: **Not Qualified** under a separate P5 audit-only waiver. See `docs/tasks/p2/closeout.md`; correct/requalify the initial migration UI and dirty same-renderer workspace transition before Phase 3 approval.
+
 This roadmap deliberately starts small.
 
 Dope's long-term vision is an integrated development environment spanning coding, project knowledge, planning, research, architecture, AI collaboration, validation, and durable development context. The initial roadmap does not attempt to build that whole vision at once.
@@ -116,7 +118,7 @@ This is the first self-development milestone: **Dope as editor**.
 
 Status: **ACTIVE ENGINEERING SCOPE — OWNER SEQUENCING WAIVER**
 
-Execution folder: `p2`. Activation source `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, package `0.2.0`; prompt versions `0.2.1`–`0.2.6`. The owner explicitly authorized proceeding despite Phase 1 being Not Qualified. `docs/planning/p2/activation.md` records the satisfied sequencing prerequisite and preserved gaps. Authority: `docs/planning/p2/phase-2-plan.md`. No Phase 2 implementation/qualification success is implied by activation.
+Execution folder: `p2`. Activation source `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, package `0.2.0`; prompt versions `0.2.1`–`0.2.6`. The owner explicitly authorized proceeding despite Phase 1 being Not Qualified. `docs/planning/p2/activation.md` records the satisfied sequencing prerequisite and preserved gaps. Authority: `docs/planning/p2/phase-2-plan.md`. The `0.2.6` closeout records Phase 2 as Not Qualified; route to bounded correction/requalification.
 
 Purpose:
 Give the project durable memory that is useful to the developer before AI is required.

@@ -154,6 +154,8 @@ Desired completion feeling:
 
 **Product Phase 2 — Project Mind** is the active implementation scope under the explicit owner sequencing waiver. Phase 1 remains Not Qualified, with historical scope/evidence retained below.
 
+The `0.2.6` Phase 2 evidence-only closeout is **Not Qualified**. The P5 audit waiver allowed closeout from a partial `0.2.5` checkpoint; it did not clear the missing initial migration control or the unproved dirty same-renderer workspace switch. See `docs/tasks/p2/closeout.md`; route to bounded correction/requalification. Phase 3 remains blocked.
+
 Foundation Spike 0 qualified Theia 1.75.0 at package `0.0.6`. Phase 1 begins from package baseline `0.1.0` and turns the qualified substrate into the actual desktop IDE.
 
 Phase 1 is limited to:

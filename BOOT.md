@@ -15,6 +15,8 @@ Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af
 
 **Product Phase 2 — Project Mind is the active engineering scope, by explicit owner sequencing waiver.**
 
+P6's `0.2.6` evidence-only audit is **Not Qualified**; see `docs/tasks/p2/closeout.md`. The exact `0.2.5` P5 handoff was an owner-waived partial checkpoint. Route next to bounded P5 correction/requalification of the missing initial migration control and unproved dirty same-renderer workspace switch. Phase 3 remains blocked.
+
 The September 28, 2026 Phase 1 P6 closeout remains **Not Qualified** at `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). Its failed and incomplete P5 observations remain unchanged in `docs/tasks/p1/closeout.md`. The owner subsequently instructed "Proceed with Phase 2 despite Phase 1 being Not Qualified." This separate waiver authorizes sequencing, not Green evidence or a repair claim.
 
 The approved Phase 2 docs and p2 stack are now eligible for execution. Exact activation source/package baseline: `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, coherent `0.2.0`. See `docs/planning/p2/activation.md` for the explicit owner waiver and authorization-commit identity, plus `docs/planning/p2/phase-2-plan.md` and `docs/tasks/p2/README.md`. No P1 success marker exists yet.
@@ -214,6 +216,6 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 P6 closed as **Not Qualified** on September 28, 2026 from owner-waived handoff `fca1ca672548cc65fc12ec4ea66f0a04ed9f2019` (`0.1.5`). Its closeout version and commit subject are `0.1.6`; the owner approved committing the reviewed closeout. See `docs/tasks/p1/closeout.md` for the A–G audit and deterministic rerun.
 
-Next action: retry `npm run codex:phase -- p2 --closeout` from the clean authorization commit at `0.2.0`. The owner sequencing prerequisite is satisfied by `docs/planning/p2/activation.md`; do not stop merely because the preserved Phase 1 record is Not Qualified. P1-P4 are runner-owned, P5 remains the direct-interactive GUI handoff, and P6 is evidence-only closeout. Phase 1 failure history and Phase 2 qualification requirements remain in force.
+Next action: bounded P5 correction/requalification from the `0.2.6` P6 closeout candidate. The initial migration control must be accessible, and the dirty same-renderer workspace transition needs direct evidence. Keep the existing P5 and Phase 1 failure records; Phase 3 remains blocked.
 
-Activation source SHA: `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`; package baseline `0.2.0`; prompt targets `0.2.1` through `0.2.6`. Verify the explicit waiver, reachable baseline and ordinary clean-tree/version prerequisites on execution. The runner does not itself prove product qualification. Do not advance versions without implementation or treat the waiver as Phase 2 qualification; Phase 3 remains unapproved.
+Historical activation source SHA: `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`; package baseline `0.2.0`; prompt targets `0.2.1` through `0.2.6`. The runner does not itself prove product qualification. The sequencing and audit waivers do not qualify Phase 2 or approve Phase 3.
