@@ -89,6 +89,6 @@ test('transport bindings and browser side keep filesystem access on Node', async
     assert.match(backend, /onDidCloseConnection/);
     assert.match(backend, /RpcConnectionHandler<ProjectMindClient>/);
     assert.match(frontend, /createProxy<ProjectMindService/);
-    assert.match(widget, /notifyNoteChanged/);
+    assert.match(widget, /ProjectMindController/);
     assert.doesNotMatch(frontend + widget, /node:fs|note-store|note-backend/);
 });
