@@ -1,6 +1,6 @@
 {
   "name": "@dope/contracts",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "main": "lib/workspace-mode.js",
   "types": "lib/workspace-mode.d.ts",
