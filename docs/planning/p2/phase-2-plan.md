@@ -1,17 +1,17 @@
 # Product Phase 2 — Project Mind Plan
 
-Status: APPROVED DOCUMENTATION / PREPARED STACK — EXECUTION BLOCKED
+Status: APPROVED / ACTIVATED BY OWNER SEQUENCING WAIVER — READY FOR EXECUTION
 Date: September 28, 2026
 Execution folder: `p2`
 Preparation baseline: `dac6e57275134fc610d8c0c6e2620a90d7d58c2f`, package `0.1.6`
-Package baseline: `0.2.0`; baseline repair commit and pending sequencing eligibility: `docs/planning/p2/activation.md`
+Activation source/package baseline: `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, `0.2.0`; owner waiver: `docs/planning/p2/activation.md`
 Theia `1.75.0`, Electron `42.8.1`, Node 24, Linux AppImage
 
 ## Approval and prerequisite
 
-The owner approved the Phase 2 review with `/docs-apply + /prompt-ass + /prompt-plan + /prompt-write p2`. This approves the contracts and prepared stack, not execution, activation or a Phase 1 sequencing waiver. Phase 1 P6 remains Not Qualified. Its restoration failure, missing successful interactive Test Explorer replay and customization/extension persistence gaps remain in `docs/tasks/p1/closeout.md`.
+The owner approved the Phase 2 documentation/stack and subsequently explicitly instructed "Proceed with Phase 2 despite Phase 1 being Not Qualified." The separate sequencing waiver is recorded in `activation.md`. Phase 1 remains Not Qualified with all restoration, Test Explorer and customization/extension gaps preserved; Phase 2 execution no longer waits for its qualification.
 
-Before activation, record a qualified Phase 1 correction/requalification and reconcile its findings with this plan, or record a separate explicit owner waiver allowing Phase 2 sequencing while preserving Not Qualified truth. Do not silently repair or waive Phase 1 through this stack. Record the exact resulting parent SHA and activation SHA; set root/all workspace package versions, internal references and baseline assertions coherently to `0.2.0`; validate and commit the activation from a clean tree. The phase runner checks version history, not product qualification. Every prompt independently checks this documented prerequisite. The preparation task left all package versions at `0.1.6`. The subsequent owner-created root-only `0.2.0` baseline was repaired across workspaces/assertions; see `activation.md`. That version repair does not satisfy the sequencing prerequisite.
+The exact coherent activation source is `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781` (`0.2.0`), with the documentation-only execution authorization commit identified in `activation.md`. Root/all workspace versions, internal references and baseline assertions agree. P1 may proceed after the waiver commit is clean and reachable. Every prompt checks this recorded waiver and ordinary version/clean-tree prerequisites; it must not demand Phase 1 Green in addition to the authorized waiver. Preserve inherited failures; the waiver does not reduce any Phase 2 validation or exit requirement.
 
 ## Objective and exit
 

@@ -13,6 +13,8 @@ Qualify integrated Project Mind persistence/reopen and the resulting Electron pa
 
 PREFLIGHT
 
+The separate September 28 owner sequencing waiver is recorded in docs/planning/p2/activation.md: proceed with Phase 2 despite Phase 1 being Not Qualified. It satisfies the qualification-or-waiver prerequisite. Read the exact activation source there; do not require Phase 1 Green in addition to this waiver. Preserve all Phase 1 failures and all Phase 2 validation/qualification gates.
+
 Read BOOT/AGENTS, p2 authority/plans/storage guide, exact P1-P3 source/tests, Phase 1 closeout and package/restart evidence. Require recorded sequencing prerequisite/activation; predecessor is 0.2.3 (target allowed for authorized rerun). Headless Phase 1 tests never erase the observed GUI restoration failure.
 
 QUALIFY

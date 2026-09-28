@@ -1,24 +1,31 @@
 # Phase 2 package baseline and sequencing record
 
 Date: September 28, 2026
-Status: BASELINE REPAIRED — EXECUTION BLOCKED PENDING SEQUENCING DECISION
+Status: OWNER-AUTHORIZED PHASE 2 ACTIVATION — READY FOR P1
 
 ## Exact candidates
 
 - Phase 1 closeout: `dac6e57275134fc610d8c0c6e2620a90d7d58c2f`, package `0.1.6`, **Not Qualified**.
 - Phase 2 preparation: `56bb0194df2cf4c4a40aaf6b5a8176f5c5efda22` (`docs: Created phase 2 docs/tasks`).
 - Owner-created root-only baseline: `7a65723fe215473bf33647ca1608b20eda59acda` (`docs: 0.2.0 baseline`). It changed only root package.json; workspace versions/internal references and baseline assertions were still `0.1.6`.
-- Coherent baseline repair: the commit containing this record, subject `fix: align phase 2 activation baseline`. Resolve its exact SHA with `git log -1 --format=%H --grep="^fix: align phase 2 activation baseline$"`. Verify the five manifests/internal references and baseline assertions are `0.2.0`. This is a package baseline, not an owner sequencing decision or implementation success marker.
+- Coherent activation source/package baseline: `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781` (`fix: align phase 2 activation baseline`), package `0.2.0` across root/all workspace manifests, internal references and baseline assertions. It was a baseline repair when created; the explicit owner decision below now authorizes Phase 2 execution from this exact source.
+- Sequencing authorization: the commit containing this updated decision, subject `docs: authorize phase 2 sequencing`. Resolve its exact SHA with `git log -1 --format=%H --grep="^docs: authorize phase 2 sequencing$"`. This documentation-only commit retains package `0.2.0` and is not a P1 success marker.
 
 ## Failed run preserved
 
-`.codex-runs/p2/2026-09-28T14-56-00-335Z/P1.final.txt` records P1 stopping without changes at pre-task HEAD `7a65723fe215473bf33647ca1608b20eda59acda`. The missing qualification/waiver, unavailable activation record and incoherent baseline were explicit stop conditions. The runner then reported expected `0.2.1`, found `0.2.0` because P1 did not execute. No P1 success commit exists and no later prompts started. Local run artifacts are ignored by Git; this record preserves the durable failure summary.
+The first stopped run, `.codex-runs/p2/2026-09-28T14-56-00-335Z/P1.final.txt`, made no changes from root-only baseline `7a65723fe215473bf33647ca1608b20eda59acda`: missing waiver/activation record and incoherent versions were explicit stop conditions. The second stopped run, `.codex-runs/p2/2026-09-28T15-03-43-207Z/P1.final.txt`, made no implementation changes from the coherent repaired baseline because sequencing authorization was still absent. Both runner postconditions reported expected `0.2.1`, found `0.2.0` because P1 did not execute. No P1 success commit or later execution is implied. Ignored local artifacts remain intact; this record preserves the durable failure summary.
 
 ## Sequencing eligibility
 
-Pending. No Phase 2 sequencing waiver has been received or recorded. The earlier Phase 1 waiver authorized its P6 audit only. The baseline repair does not mark Phase 1 Green, waive a prerequisite or authorize p2 execution.
+On September 28, 2026, after reviewing the repeated P1 preflight stop, the owner explicitly instructed:
 
-Before retrying P1, record either qualified Phase 1 correction/requalification with reconciled findings, or a separate explicit owner decision allowing Phase 2 to proceed despite the preserved Not Qualified closeout. Then update BOOT and the Phase 2 routing documents consistently, record the exact baseline repair SHA above and commit the decision from a clean intended tree. Keep package version `0.2.0` until P1 actually implements/validates `0.2.1`; never bump it merely to suppress the runner's failed postcondition.
+> Proceed with Phase 2 despite Phase 1 being Not Qualified.
+
+This is the separate Phase 2 sequencing waiver required by the approved plan. It authorizes activating and executing the prepared p2 stack from the coherent baseline above without waiting for Phase 1 requalification. The prior Phase 1 P6 audit waiver remains separate historical authority.
+
+Phase 1 remains **Not Qualified**. Preserve its GUI restoration failure, missing successful interactive Test Explorer replay, and remaining extension/customization/theme persistence gaps in the unchanged Phase 1 closeout. This waiver changes sequencing only: it does not make Phase 1 Green, assert a repair, waive Phase 2 tests/interactive/package gates, or authorize Phase 3. A stalled or defective workbench must still be reported truthfully and can prevent Phase 2 qualification.
+
+P1 preflight is now eligible after this authorization commit leaves a clean tree. BOOT and Phase 2 routing point to this decision. Keep package version `0.2.0` until P1 actually implements and validates `0.2.1`; never bump it merely to suppress the runner postcondition. Retry with `npm run codex:phase -- p2 --closeout`; the runner still stops at the P5 manual GUI handoff.
 
 ## Baseline validation
 

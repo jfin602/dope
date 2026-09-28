@@ -1,15 +1,15 @@
 # Product Phase 2 — Project Mind Task Stack
 
-Status: APPROVED/PREPARED — EXECUTION BLOCKED
+Status: APPROVED / ACTIVATED BY OWNER SEQUENCING WAIVER — READY FOR EXECUTION
 Preparation: September 28, 2026, `dac6e57275134fc610d8c0c6e2620a90d7d58c2f`, package `0.1.6`
-Package baseline: `0.2.0`; baseline repair commit and pending sequencing eligibility: `docs/planning/p2/activation.md`
+Activation source/package baseline: `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, `0.2.0`; owner waiver: `docs/planning/p2/activation.md`
 Theia baseline: `1.75.0`
 
 ## Prerequisite
 
-The owner approved docs/assessment/plan/prompt writing. Phase 1 remains Not Qualified. Do not execute this stack until Phase 1 qualifies and findings are reconciled against the approved Phase 2 docs, or a separate explicit owner sequencing waiver is recorded. The existing P6 waiver only permitted the Phase 1 audit.
+The owner explicitly authorized "Proceed with Phase 2 despite Phase 1 being Not Qualified." The separate sequencing waiver in `docs/planning/p2/activation.md` satisfies the p2 prerequisite. Phase 1 failures remain recorded and cannot be relabeled Green; Phase 2 qualification requirements remain unchanged.
 
-After that decision, activate separately: record exact parent/activation SHA, set all workspace/root versions/internal references and baseline tests coherently to `0.2.0`, validate and commit from a clean tree. No package bump or activation occurred during preparation. The later `0.2.0` baseline repair is recorded in `docs/planning/p2/activation.md` and does not grant sequencing eligibility. The runner validates grammar/version markers, not product qualification; every prompt checks the documented gate.
+Committed activation source: `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, coherent `0.2.0`. The authorization commit is identified in the activation record. Require a clean intended tree and normal baseline checks. No P1 success marker exists yet. The runner validates version/commit history, not qualification; prompt preflight reads the waiver instead of requiring Phase 1 Green.
 
 ## Stack
 
@@ -26,7 +26,7 @@ After that decision, activate separately: record exact parent/activation SHA, se
 
 Safe now: `npm run codex:phase:validate -- p2` (grammar only).
 
-After the prerequisite and committed activation: `npm run codex:phase -- p2`.
+Retry the authorized stack with closeout enabled: `npm run codex:phase -- p2 --closeout`. P1 starts from `0.2.0`; the runner still stops at P5 for direct GUI qualification.
 
 P1-P4 are runner-owned; implementation agents do not commit. The runner stops at P5 for manual GUI work. P5 may use direct interactive browser-hosted Theia or Electron. Headless/CDP/screenshot-only evidence is insufficient. Successful P5 gets the exact-subject `0.2.5` commit and a clean tree; failed/incomplete qualification stays a checkpoint, not a success marker. Resume P6 with `npm run codex:phase -- p2 --closeout` only after that success, unless a new explicit audit waiver is documented.
 

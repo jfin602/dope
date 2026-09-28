@@ -193,7 +193,7 @@ Do not let the Foundation Spike backend dictate the domain model.
 
 ### Phase 2 implementation boundary
 
-Phase 2 is approved/prepared but not activated. Reuse `@dope/contracts` for framework-independent artifact and transport DTOs. Introduce one real `@dope/project-intelligence` package for artifact operations, transitions and queries, with a separate Node storage module inside that package. Do not create standalone persistence or per-view packages. The domain modules import neither Theia/provider code nor the Node adapter; the adapter depends inward on domain/contracts. Existing `@dope/theia-extension` hosts typed RPC, root attachment and Project Mind presentation.
+Phase 2 is activated by the explicit owner sequencing waiver in `docs/planning/p2/activation.md`; Phase 1 remains Not Qualified. Reuse `@dope/contracts` for framework-independent artifact and transport DTOs. Introduce one real `@dope/project-intelligence` package for artifact operations, transitions and queries, with a separate Node storage module inside that package. Do not create standalone persistence or per-view packages. The domain modules import neither Theia/provider code nor the Node adapter; the adapter depends inward on domain/contracts. Existing `@dope/theia-extension` hosts typed RPC, root attachment and Project Mind presentation.
 
 Start with one local folder per Project Mind and a readable `.dope/project-mind.json` collection. Stable project identity lives in the document, not in an absolute path or Theia workspace/widget identifier. Explicitly reject unsupported multi-root/remote contexts. Only canonical project knowledge goes into this store; drafts, selection, layout, theme and search results are presentation state.
 

@@ -13,6 +13,8 @@ Persist revision-aware artifact collections and expose safe typed backend operat
 
 PREFLIGHT
 
+The separate September 28 owner sequencing waiver is recorded in docs/planning/p2/activation.md: proceed with Phase 2 despite Phase 1 being Not Qualified. It satisfies the qualification-or-waiver prerequisite. Read the exact activation source there; do not require Phase 1 Green in addition to this waiver. Preserve all Phase 1 failures and all Phase 2 validation/qualification gates.
+
 Read BOOT/AGENTS, approved Phase 2 authority/assessment/plan, exact P1 source/tests and legacy Note producers/consumers. Require the documented Phase 1 qualification or separate Phase 2 sequencing waiver and committed activation; package predecessor is 0.2.1 (target allowed for authorized rerun). Preserve Git state. No gate waiver is implied by a version marker.
 
 IMPLEMENT

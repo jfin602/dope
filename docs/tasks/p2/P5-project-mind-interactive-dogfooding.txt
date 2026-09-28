@@ -13,6 +13,8 @@ Prove useful durable Project Mind through direct interaction with the real Theia
 
 PREFLIGHT
 
+The separate September 28 owner sequencing waiver is recorded in docs/planning/p2/activation.md: proceed with Phase 2 despite Phase 1 being Not Qualified. It satisfies the qualification-or-waiver prerequisite. Read the exact activation source there; do not require Phase 1 Green in addition to this waiver. Preserve all Phase 1 failures and all Phase 2 validation/qualification gates.
+
 Read BOOT/AGENTS, p2 authority/plans/storage guide, exact P1-P4 source/evidence and retained Phase 1 failures. Require documented sequencing prerequisite/activation and exact committed P4 candidate. Record Git/profile/knowledge preflight; preserve any unrelated edits. GUI may be browser-hosted Theia or Electron. P4 separately owns Electron package/native launch. Headless/CDP/DOM-query/screenshot-only assertions cannot replace direct clicking/typing/observing.
 
 INTERACTIVE MATRIX

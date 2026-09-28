@@ -152,7 +152,7 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 1 — IDE Alive** is the active implementation gate.
+**Product Phase 2 — Project Mind** is the active implementation scope under the explicit owner sequencing waiver. Phase 1 remains Not Qualified, with historical scope/evidence retained below.
 
 Foundation Spike 0 qualified Theia 1.75.0 at package `0.0.6`. Phase 1 begins from package baseline `0.1.0` and turns the qualified substrate into the actual desktop IDE.
 
@@ -175,10 +175,10 @@ The P0 Project Mind Note and Planning surfaces remain spike artifacts. Productio
 
 Model/provider integration, Agent Mind, tool execution, AI mutation, scoped delegation, and durable development sessions remain deferred to their roadmap phases.
 
-## Approved Phase 2 direction — awaiting activation
+## Active Phase 2 direction — owner sequencing waiver
 
 Phase 2 gives one local project durable, developer-managed Notes, Ideas, Questions and Decisions through Project Mind. It includes collections, stable identity, provenance, explicit lifecycle actions, relationships/file references, navigation, basic text search, safe editing, migration and reopen continuity. Project Intelligence owns these semantics independently of Theia and any provider.
 
 Project-local readable storage must remain inspectable and recoverable without a healthy GUI. Ideas do not become active work automatically. Plans/Tasks, AI, semantic search, Sessions and synchronization remain deferred.
 
-The owner approved the Phase 2 documentation and p2 planning/stack on September 28, 2026. Phase 1 closeout remains Not Qualified at `0.1.6`; Phase 2 execution is blocked pending qualification or a separate explicit sequencing waiver. The current `0.2.0` package baseline repair is recorded in `docs/planning/p2/activation.md`; it does not waive the qualification prerequisite. See `docs/planning/p2/phase-2-plan.md`.
+The owner approved Phase 2 documentation/planning and subsequently instructed "Proceed with Phase 2 despite Phase 1 being Not Qualified." The waiver and exact coherent `0.2.0` activation source `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781` are recorded in `docs/planning/p2/activation.md`. Phase 1 failures remain unchanged; Phase 2 validation/qualification is still required. See `docs/planning/p2/phase-2-plan.md`.

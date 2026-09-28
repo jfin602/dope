@@ -13,15 +13,15 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Product Phase 1 — IDE Alive is the active engineering gate.**
+**Product Phase 2 — Project Mind is the active engineering scope, by explicit owner sequencing waiver.**
 
-The September 28, 2026 P6 evidence-only closeout is **Not Qualified**. The owner-waived `0.1.5` handoff permits audit but does not turn incomplete P5 interactive evidence Green. See `docs/tasks/p1/closeout.md`; correct/requalify the P5 daily-use blockers before any Phase 1 completion claim. Phase 2 remains blocked.
+The September 28, 2026 Phase 1 P6 closeout remains **Not Qualified** at `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). Its failed and incomplete P5 observations remain unchanged in `docs/tasks/p1/closeout.md`. The owner subsequently instructed "Proceed with Phase 2 despite Phase 1 being Not Qualified." This separate waiver authorizes sequencing, not Green evidence or a repair claim.
 
-The September 28 Phase 2 `/docs-review` proposal was approved through `/docs-apply + /prompt-ass + /prompt-plan + /prompt-write p2`. Phase 2 documentation and the `p2` stack are approved/prepared; this is not activation or a sequencing waiver. Phase 1 closeout remains `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). The subsequent `0.2.0` package baseline repair is recorded in `docs/planning/p2/activation.md`; sequencing eligibility is still pending. See `docs/planning/p2/phase-2-plan.md` and `docs/tasks/p2/README.md`.
+The approved Phase 2 docs and p2 stack are now eligible for execution. Exact activation source/package baseline: `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, coherent `0.2.0`. See `docs/planning/p2/activation.md` for the explicit owner waiver and authorization-commit identity, plus `docs/planning/p2/phase-2-plan.md` and `docs/tasks/p2/README.md`. No P1 success marker exists yet.
 
-This activation establishes package baseline `0.1.0` before the `p1` execution stack. Phase 1 turns the qualified substrate into a desktop IDE comfortable enough to develop Dope inside Dope through ordinary development workflows.
+The historical Phase 1 activation established package baseline `0.1.0` before the `p1` execution stack. Phase 1 turns the qualified substrate into a desktop IDE comfortable enough to develop Dope inside Dope through ordinary development workflows.
 
-Phase 1 product posture:
+Inherited Phase 1 product posture:
 - Electron is the primary user-facing product shell;
 - the browser application remains a development and qualification surface;
 - Eclipse Theia remains pinned to 1.75.0 until a real upgrade is intentionally undertaken;
@@ -60,6 +60,7 @@ Current authority:
 - docs/planning/foundation-spike-0/qualification-plan.md
 - docs/planning/p1/phase-1-plan.md
 - docs/planning/p2/phase-2-plan.md
+- docs/planning/p2/activation.md
 - docs/decisions/0004-model-provider-independence.md
 - docs/decisions/0005-progressive-self-development.md
 
@@ -213,6 +214,6 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 P6 closed as **Not Qualified** on September 28, 2026 from owner-waived handoff `fca1ca672548cc65fc12ec4ea66f0a04ed9f2019` (`0.1.5`). Its closeout version and commit subject are `0.1.6`; the owner approved committing the reviewed closeout. See `docs/tasks/p1/closeout.md` for the A–G audit and deterministic rerun.
 
-Next action: correct and directly requalify the remaining P5 interactive GUI blockers on the real Dope repository, especially restoration and integrated test execution. Preserve the failed evidence. The P5 browser-hosted workbench is an approved direct-interaction surface, while P4 remains authoritative for Electron packaging/native launch. The Phase 2 review and documentation are prepared in advance; they do not mark Phase 1 complete or waive its gate.
+Next action: retry `npm run codex:phase -- p2 --closeout` from the clean authorization commit at `0.2.0`. The owner sequencing prerequisite is satisfied by `docs/planning/p2/activation.md`; do not stop merely because the preserved Phase 1 record is Not Qualified. P1-P4 are runner-owned, P5 remains the direct-interactive GUI handoff, and P6 is evidence-only closeout. Phase 1 failure history and Phase 2 qualification requirements remain in force.
 
-Before `p2` execution, record Phase 1 qualification and reconcile any resulting changes against the approved Phase 2 review, or obtain a separate explicit owner sequencing waiver that preserves Not Qualified truth. Then record the exact activation SHA and set all workspace versions/internal references and baseline assertions coherently to `0.2.0`, commit the activation, and require a clean tree. The runner does not enforce product qualification; every p2 prompt must check the documented prerequisite. Phase 2 versions are `0.2.1` through `0.2.6`. The preparation task made no version bump. The later baseline repair aligns the owner-created `0.2.0` version without granting a sequencing waiver; see `docs/planning/p2/activation.md`.
+Activation source SHA: `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`; package baseline `0.2.0`; prompt targets `0.2.1` through `0.2.6`. Verify the explicit waiver, reachable baseline and ordinary clean-tree/version prerequisites on execution. The runner does not itself prove product qualification. Do not advance versions without implementation or treat the waiver as Phase 2 qualification; Phase 3 remains unapproved.

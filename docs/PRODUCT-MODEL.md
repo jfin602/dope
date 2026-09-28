@@ -61,7 +61,7 @@ Initial first-class artifacts:
 
 These must be useful with no model configured.
 
-Phase 2 documentation/plan is approved, with execution awaiting activation. The concrete scope and migration policy are in `docs/planning/p2/phase-2-plan.md`.
+Phase 2 is approved/activated by the explicit owner sequencing waiver in `docs/planning/p2/activation.md`, with Phase 1 Not Qualified truth preserved. The concrete scope and migration policy are in `docs/planning/p2/phase-2-plan.md`.
 
 Phase 2 artifacts have stable UUID identity, type, title, content, schema version, created/updated timestamps, provenance, status and links. The collection has stable project identity and a monotonically increasing document revision. Revision checking belongs to save consistency, not developer-session state. Archive/unarchive is reversible and preserves identity/links; no hard-delete UI is required.
 

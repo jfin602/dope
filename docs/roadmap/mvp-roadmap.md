@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current gate: Product Phase 1 — IDE Alive
+Current gate: Product Phase 2 — Project Mind (owner sequencing waiver; Phase 1 remains Not Qualified)
 
 This roadmap deliberately starts small.
 
@@ -70,9 +70,9 @@ The gate is closed: Theia 1.75.0 is the qualified initial substrate. Upgradeabil
 
 ## Product Phase 1 — IDE Alive
 
-Status: **ACTIVE ENGINEERING GATE**
+Status: **NOT QUALIFIED — OWNER AUTHORIZED PHASE 2 SEQUENCING**
 
-P6 closeout is **Not Qualified** at `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). Phase 2 docs/planning approval does not waive the remaining Phase 1 qualification gate.
+P6 closeout is **Not Qualified** at `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). The subsequent explicit owner sequencing waiver permits Phase 2 entry without changing this qualification result; see `docs/planning/p2/activation.md`.
 
 Purpose:
 Make Dope a serious native development environment before differentiating it with production project intelligence or AI.
@@ -114,9 +114,9 @@ This is the first self-development milestone: **Dope as editor**.
 
 ## Product Phase 2 — Project Mind
 
-Status: **DOCUMENTATION/PLAN APPROVED; STACK PREPARED; EXECUTION BLOCKED**
+Status: **ACTIVE ENGINEERING SCOPE — OWNER SEQUENCING WAIVER**
 
-Execution folder: `p2`. Future activation baseline: `0.2.0`; prompt versions `0.2.1`–`0.2.6`. Preparation was at `0.1.6`; the current coherent `0.2.0` baseline repair and pending sequencing eligibility are recorded in `docs/planning/p2/activation.md`. Require Phase 1 qualification or a separately recorded explicit owner sequencing waiver before activation/execution. Authority: `docs/planning/p2/phase-2-plan.md`.
+Execution folder: `p2`. Activation source `a7bf2cf4e5b6a7ce70dec8e5989ddee17dae4781`, package `0.2.0`; prompt versions `0.2.1`–`0.2.6`. The owner explicitly authorized proceeding despite Phase 1 being Not Qualified. `docs/planning/p2/activation.md` records the satisfied sequencing prerequisite and preserved gaps. Authority: `docs/planning/p2/phase-2-plan.md`. No Phase 2 implementation/qualification success is implied by activation.
 
 Purpose:
 Give the project durable memory that is useful to the developer before AI is required.

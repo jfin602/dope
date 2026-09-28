@@ -13,6 +13,8 @@ Replace the spike Note form with a useful developer-managed Project Mind while p
 
 PREFLIGHT
 
+The separate September 28 owner sequencing waiver is recorded in docs/planning/p2/activation.md: proceed with Phase 2 despite Phase 1 being Not Qualified. It satisfies the qualification-or-waiver prerequisite. Read the exact activation source there; do not require Phase 1 Green in addition to this waiver. Preserve all Phase 1 failures and all Phase 2 validation/qualification gates.
+
 Read BOOT/AGENTS and p2 authority/plans, exact P1/P2 contracts/store/transport and every current widget/event/save caller. Require documented sequencing prerequisite and activation; predecessor version is 0.2.2 (target allowed for authorized rerun). Do not infer Green Phase 1 from commits.
 
 IMPLEMENT

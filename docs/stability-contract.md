@@ -20,7 +20,7 @@ For each task or phase:
 
 Foundation Spike 0 is a completed Theia substrate qualification. Its evidence remains authoritative for the bounded substrate claims recorded in `docs/tasks/p0/closeout.md`.
 
-The active Phase 1 — IDE Alive stability concerns are:
+The retained Phase 1 — IDE Alive stability concerns are:
 - native Electron startup/package viability plus ordinary interactive Theia workbench behavior;
 - repository/workspace opening and restoration;
 - editor/language-service behavior;
@@ -99,7 +99,7 @@ The spike does not need the full Project Mind schema or final persistence backen
 
 ## Product Phase 2 — Project Mind qualification
 
-Phase 2 documentation/plan is approved, execution blocked pending the activation prerequisite in BOOT. Qualification applies once the capability is implemented; future AI/Planning/Session concerns remain deferred.
+Phase 2 is approved/activated by the explicit owner sequencing waiver recorded in BOOT and `docs/planning/p2/activation.md`. Phase 1 remains Not Qualified; the waiver permits sequencing only and does not waive Phase 2 qualification. Qualification applies once the capability is implemented; future AI/Planning/Session concerns remain deferred.
 
 Require executable evidence for:
 - all four artifact types, validation, lifecycle actions, reversible archival, identity/provenance/timestamps and links;

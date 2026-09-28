@@ -13,6 +13,8 @@ Implement the smallest framework-independent Project Mind artifact core from the
 
 PREFLIGHT
 
+The separate September 28 owner sequencing waiver is recorded in docs/planning/p2/activation.md: proceed with Phase 2 despite Phase 1 being Not Qualified. It satisfies the qualification-or-waiver prerequisite. Read the exact activation source there; do not require Phase 1 Green in addition to this waiver. Preserve all Phase 1 failures and all Phase 2 validation/qualification gates.
+
 Read BOOT, AGENTS, product/architecture/stability authority and all p2 planning docs. Require recorded Phase 1 qualification with findings reconciled, or a separate explicit Phase 2 sequencing waiver; the Phase 1 P6 audit waiver is insufficient. Require exact committed activation recorded in p2 docs, clean Git, coherent 0.2.0 baseline (or target for an authorized rerun), Node 24, no root package-lock.json and Theia 1.75.0. Stop before changes if the prerequisite is absent.
 
 IMPLEMENT
