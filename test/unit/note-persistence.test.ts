@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile, mkdir, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -59,6 +59,25 @@ test('typed backend requests and backend events reach clients, then stop after d
     peer.dispose();
 }));
 
+test('legacy Note cannot write once a Project Mind snapshot exists', async () => workspace(async (uri, file) => {
+    const store = new NoteStore();
+    const original = await store.save(uri, { title: 'legacy', body: 'unchanged' });
+    const bytes = await readFile(file, 'utf8');
+    const lock = join(file, '..', 'project-mind.lock');
+    await writeFile(lock, '');
+    await assert.rejects(store.save(uri, { title: 'racing', body: 'not written' }), /locked/);
+    assert.equal(await readFile(file, 'utf8'), bytes);
+    await rm(lock);
+    await writeFile(join(file, '..', 'project-mind.json'), '{');
+    await assert.rejects(store.save(uri, { title: 'new', body: 'not written' }), /read-only history/);
+    assert.equal(await readFile(file, 'utf8'), bytes);
+    assert.deepEqual(await store.read(uri), original);
+    await rm(join(file, '..', 'project-mind.json'));
+    await symlink(join(file, '..', 'missing'), join(file, '..', 'project-mind.json'));
+    await assert.rejects(store.save(uri, { title: 'new', body: 'not written' }), /read-only history/);
+    assert.equal(await readFile(file, 'utf8'), bytes);
+}));
+
 test('transport bindings and browser side keep filesystem access on Node', async () => {
     const root = new URL('../../', import.meta.url);
     const fs = await import('node:fs/promises');
@@ -68,6 +87,8 @@ test('transport bindings and browser side keep filesystem access on Node', async
     assert.match(frontend, /ServiceConnectionProvider\.createProxy<NoteService>/);
     assert.match(backend, /RpcConnectionHandler<NoteClient>/);
     assert.match(backend, /onDidCloseConnection/);
+    assert.match(backend, /RpcConnectionHandler<ProjectMindClient>/);
+    assert.match(frontend, /createProxy<ProjectMindService/);
     assert.match(widget, /notifyNoteChanged/);
     assert.doesNotMatch(frontend + widget, /node:fs|note-store|note-backend/);
 });
