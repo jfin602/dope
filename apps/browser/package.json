@@ -1,6 +1,6 @@
 {
   "name": "@dope/browser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Dope browser qualification application",
   "scripts": {
@@ -12,12 +12,13 @@
     "target": "browser",
     "frontend": {
       "config": {
-        "applicationName": "Dope"
+        "applicationName": "Dope",
+        "defaultTheme": "dark"
       }
     }
   },
   "dependencies": {
-    "@dope/theia-extension": "0.1.0",
+    "@dope/theia-extension": "0.1.1",
     "@theia/core": "1.75.0",
     "@theia/debug": "1.75.0",
     "@theia/editor": "1.75.0",

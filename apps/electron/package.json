@@ -1,8 +1,9 @@
 {
   "name": "@dope/electron",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
-  "description": "Dope desktop application",
+  "description": "Dope software development environment",
+  "author": "Dope Contributors",
   "productName": "Dope",
   "desktopName": "Dope",
   "main": "scripts/packaged-main.cjs",
@@ -16,7 +17,8 @@
     "target": "electron",
     "frontend": {
       "config": {
-        "applicationName": "Dope"
+        "applicationName": "Dope",
+        "defaultTheme": "dark"
       }
     }
   },
@@ -47,6 +49,7 @@
     ],
     "linux": {
       "category": "Development",
+      "icon": "build/icon.png",
       "syncDesktopName": true,
       "target": [
         "AppImage"
@@ -54,7 +57,7 @@
     }
   },
   "dependencies": {
-    "@dope/theia-extension": "0.1.0",
+    "@dope/theia-extension": "0.1.1",
     "@theia/core": "1.75.0",
     "@theia/debug": "1.75.0",
     "@theia/editor": "1.75.0",

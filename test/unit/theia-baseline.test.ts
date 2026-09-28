@@ -16,7 +16,7 @@ test('Theia stays on the qualified baseline and package versions stay coherent',
       }
     }
   }
-  for (const { path, value } of manifests) assert.equal(value.version, '0.1.0', path);
+  for (const { path, value } of manifests) assert.equal(value.version, '0.1.1', path);
   assert.equal(existsSync(join(root, 'package-lock.json')), false);
 });
 
@@ -28,20 +28,31 @@ test('both applications carry the required IDE composition', () => {
   ];
   for (const { path, value } of manifests.slice(1, 3)) {
     for (const name of required) assert.equal(value.dependencies[`@theia/${name}`], '1.75.0', `${path}: ${name}`);
-    assert.equal(value.dependencies['@dope/theia-extension'], '0.1.0');
+    assert.equal(value.dependencies['@dope/theia-extension'], '0.1.1');
     assert.equal(value.theia.frontend.config.applicationName, 'Dope');
+    assert.equal(value.theia.frontend.config.defaultTheme, 'dark');
   }
   assert.equal(manifests[1].value.theia.target, 'browser');
   assert.equal(manifests[2].value.theia.target, 'electron');
   assert.equal(manifests[2].value.dependencies['@theia/electron'], '1.75.0');
   assert.equal(manifests[2].value.devDependencies.electron, '42.8.1');
   assert.equal(manifests[2].value.productName, 'Dope');
+  assert.equal(manifests[2].value.author, 'Dope Contributors');
+  assert.equal(manifests[2].value.desktopName, 'Dope');
+  assert.equal(manifests[2].value.build.appId, 'dev.dope.desktop');
   assert.equal(manifests[2].value.build.executableName, 'dope');
+  const iconPath = manifests[2].value.build.linux.icon;
+  assert.equal(iconPath, 'build/icon.png');
+  const icon = readFileSync(join(root, 'apps/electron', iconPath));
+  assert.equal(icon.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  assert.equal(icon.readUInt32BE(16), 512);
+  assert.equal(icon.readUInt32BE(20), 512);
+  assert.ok(icon.length > 10_000);
   assert.deepEqual(manifests[2].value.build.linux.target, ['AppImage']);
   assert.equal(manifests[2].value.main, 'scripts/packaged-main.cjs');
   assert.equal(manifests[2].value.build.extraResources[0].to, 'app/plugins');
   assert.match(manifests[0].value.scripts['package:linux'], /npm run download:plugins/);
-  assert.equal(manifests[3].value.dependencies['@dope/contracts'], '0.1.0');
+  assert.equal(manifests[3].value.dependencies['@dope/contracts'], '0.1.1');
   assert.match(manifests[0].value.theiaPlugins['vscode-builtin-extensions'], /\/1\.108\.2\//);
 });
 

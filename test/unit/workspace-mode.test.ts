@@ -30,5 +30,9 @@ test('shared customization bindings and restore hook remain wired', () => {
   assert.match(module, /rebind\(WindowTitleService\)/);
   assert.match(workbench, /onDidInitializeLayout/);
   assert.match(workbench, /parseWorkspaceMode\(storedMode\)/);
-  assert.match(workbench, /explorer\.removeWidget\(openEditors\)/);
+  assert.doesNotMatch(workbench, /initializeLayout\(\)|projectMind\.openView|planning\.openView|collapsePanel|removeWidget\(openEditors\)/);
+  const css = readFileSync(join(root, 'packages/theia-extension/src/browser/dope.css'), 'utf8');
+  assert.match(css, /color: var\(--theia-input-foreground\)/);
+  assert.match(css, /color: var\(--theia-descriptionForeground\)/);
+  assert.doesNotMatch(css, /\.dope-spike-eyebrow \{ color: var\(--theia-button-background\)/);
 });

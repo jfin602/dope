@@ -1,12 +1,10 @@
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { CommandContribution, CommandRegistry, MenuContribution, MenuModelRegistry } from '@theia/core/lib/common';
-import { AbstractViewContribution, ApplicationShell, FrontendApplication, FrontendApplicationContribution, StatusBar, StatusBarAlignment, ViewContainer, WidgetManager } from '@theia/core/lib/browser';
+import { AbstractViewContribution, FrontendApplicationContribution, StatusBar, StatusBarAlignment } from '@theia/core/lib/browser';
 import type { RpcServer } from '@theia/core/lib/common/messaging/proxy-factory';
 import { BaseWidget } from '@theia/core/lib/browser/widgets/widget';
 import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-service';
 import { CommonMenus } from '@theia/core/lib/browser/common-menus';
-import { NavigatorWidgetFactory } from '@theia/navigator/lib/browser/navigator-widget-factory';
-import { OpenEditorsWidget } from '@theia/navigator/lib/browser/open-editors-widget/navigator-open-editors-widget';
 import { WorkspaceMode, WorkspaceModeService, parseWorkspaceMode } from '@dope/contracts';
 import type { Note } from '@dope/contracts/lib/note';
 import type { NoteClient, NoteService } from '@dope/contracts/lib/note-service';
@@ -146,11 +144,7 @@ export class DopeWindowTitleService extends WindowTitleService {
 @injectable()
 export class DopeWorkbench implements FrontendApplicationContribution, CommandContribution, MenuContribution {
     @inject(WorkspaceModeService) protected readonly workspaceMode!: WorkspaceModeService;
-    @inject(ProjectMindView) protected readonly projectMind!: ProjectMindView;
-    @inject(PlanningView) protected readonly planning!: PlanningView;
-    @inject(ApplicationShell) protected readonly shell!: ApplicationShell;
     @inject(StatusBar) protected readonly statusBar!: StatusBar;
-    @inject(WidgetManager) protected readonly widgets!: WidgetManager;
 
     registerCommands(commands: CommandRegistry): void {
         for (const mode of [WorkspaceMode.BUILD, WorkspaceMode.PLAN]) {
@@ -169,28 +163,13 @@ export class DopeWorkbench implements FrontendApplicationContribution, CommandCo
         }
     }
 
-    async initializeLayout(): Promise<void> {
-        await this.projectMind.openView({ reveal: true });
-    }
-
-    async onDidInitializeLayout(_app: FrontendApplication): Promise<void> {
-        // Open Editors duplicates the main editor tabs in this spike's compact explorer.
-        const explorer = await this.widgets.getOrCreateWidget<ViewContainer>(NavigatorWidgetFactory.ID);
-        const openEditors = this.widgets.tryGetWidget<OpenEditorsWidget>(OpenEditorsWidget.ID);
-        if (openEditors) explorer.removeWidget(openEditors);
+    async onDidInitializeLayout(): Promise<void> {
         let storedMode: string | null = null;
         try { storedMode = window.localStorage.getItem('dope.workspaceMode'); } catch { /* Storage may be disabled. */ }
         await this.applyMode(parseWorkspaceMode(storedMode));
     }
 
     async applyMode(mode: WorkspaceMode): Promise<void> {
-        if (mode === WorkspaceMode.PLAN) {
-            await this.planning.openView({ activate: true });
-            await this.shell.collapsePanel('right');
-        } else {
-            if (this.planning.tryGetWidget()?.isAttached) await this.planning.closeView();
-            await this.projectMind.openView({ reveal: true });
-        }
         this.workspaceMode.set(mode);
         try { window.localStorage.setItem('dope.workspaceMode', mode); } catch { /* Keep the mode usable without storage. */ }
         document.body.dataset.dopeMode = mode.toLowerCase();
