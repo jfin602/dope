@@ -104,3 +104,7 @@ Cross-distribution Linux certification is not a Phase 1 blocker.
 Phase 1 qualifies when P4 establishes a viable packaged Electron product and native launch, and P5 establishes through direct interactive Theia GUI use that a developer can perform ordinary work on the Dope repository without immediately reaching for another IDE. P5 may use the browser-hosted workbench or Electron, with no unresolved product-blocking defect.
 
 After qualification, route through post-phase `/docs-review` before activating Product Phase 2.
+
+## Owner-approved closeout handoff waiver — September 28, 2026
+
+The owner instructed "unblock p6 anyways" after the incomplete P5 GUI run. Evidence-only P6 may proceed from the `0.1.5` owner-waived handoff based on checkpoint `0ad3a75caf203857002481874aabe82d7d9e2f1c` without a Green P5 prerequisite. This changes audit sequencing only. The exit condition above remains unchanged: P5 failures and Evidence Gaps remain truthful, the waiver does not qualify Phase 1, and Phase 2 remains unapproved. See `docs/tasks/p1/P5-native-dogfooding-evidence.md` for the decision and outstanding work.

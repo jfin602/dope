@@ -49,7 +49,7 @@ Target `0.1.5`: direct interactive GUI gate on the actual Dope repository coveri
 
 ## P6 — evidence-only closeout
 
-Target `0.1.6`: audit the exact P5 candidate. No repair. If Qualified, create closeout, mark README Green and route BOOT to post-Phase-1 `/docs-review` without generating Phase 2 prompts.
+Target `0.1.6`: audit the exact P5 candidate. The September 28, 2026 owner waiver allows this audit to start despite Not Green P5, from the `0.1.5` owner-waived handoff based on `0ad3a75caf203857002481874aabe82d7d9e2f1c`. The marker is not qualification evidence; preserve current failures/gaps and leave Phase 2 blocked unless the actual qualification rules are satisfied. No repair. If Qualified, create closeout, mark README Green and route BOOT to post-Phase-1 `/docs-review` without generating Phase 2 prompts.
 
 ## Deferred
 

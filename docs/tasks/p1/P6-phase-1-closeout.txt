@@ -9,7 +9,11 @@ VERSIONING
 
 GOAL
 
-Perform evidence-only closeout for Product Phase 1 from the exact P5 candidate.
+Perform evidence-only closeout for Product Phase 1 from the exact P5 handoff candidate.
+
+OWNER-APPROVED HANDOFF WAIVER — SEPTEMBER 28, 2026
+
+The owner explicitly instructed "unblock p6 anyways" after the incomplete browser-GUI qualification. P6 is authorized to start from the exact-subject 0.1.5 owner-waived handoff commit, based on checkpoint 0ad3a75caf203857002481874aabe82d7d9e2f1c. This marker establishes audit eligibility, not Green P5 evidence. Read the waiver in P5-native-dogfooding-evidence.md. Preserve the restoration failure and all remaining interactive gaps. Do not infer Phase 1 qualification or Phase 2 approval from permission to execute P6.
 
 Do not repair behavior, broaden scope, upgrade Theia or generate Phase 2 prompts.
 

@@ -1,6 +1,6 @@
 # Product Phase 1 — IDE Alive Task Stack
 
-Status: READY FOR EXECUTION
+Status: P6 UNBLOCKED BY OWNER WAIVER; P5 NOT GREEN
 
 Phase: 1 — IDE Alive  
 Execution folder: `p1`  
@@ -24,7 +24,7 @@ Validate: `npm run codex:phase:validate -- p1`
 
 Run: `npm run codex:phase -- p1`
 
-The runner owns P1-P4 and stops at P5. After successful P5 execution, commit once with exact subject `0.1.5`, leave the repository clean, then resume with `npm run codex:phase -- p1 --closeout`.
+The runner owns P1-P4 and stops at P5. Normally a successful P5 produces the exact-subject `0.1.5` handoff. On September 28, 2026 the owner authorized P6 despite incomplete P5 qualification. The `0.1.5` marker now records that owner-waived handoff from checkpoint `0ad3a75caf203857002481874aabe82d7d9e2f1c`, not Green evidence. With the repository clean, resume with `npm run codex:phase -- p1 --closeout`. P6 must retain the current Not Green results and Evidence Gaps; Phase 2 remains blocked. See the decision in `P5-native-dogfooding-evidence.md`.
 
 ## Qualification target
 

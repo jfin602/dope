@@ -218,6 +218,8 @@ Normal execution:
 - P5 is the single direct interactive Theia GUI dogfooding gate; it may use the browser-hosted workbench or Electron, while P4 remains authoritative for Electron packaging/native launch;
 - P6 is evidence-only Phase 1 closeout.
 
-Run `npm run codex:phase -- p1` until the P5 handoff. After successful P5 execution and its exact `0.1.5` commit, resume with `npm run codex:phase -- p1 --closeout`.
+P5 remains Not Green. On September 28, 2026 the owner explicitly authorized P6 to proceed anyway; the exact `0.1.5` commit is an owner-waived handoff marker, not a qualification pass. The incomplete interactive checkpoint is `0ad3a75caf203857002481874aabe82d7d9e2f1c`. See the current waiver and retained gaps in `docs/tasks/p1/P5-native-dogfooding-evidence.md`.
+
+Next action: run evidence-only P6 with `npm run codex:phase -- p1 --closeout` from the clean owner-waived handoff. Preserve failures/gaps and determine Qualified / Not Qualified honestly. This permission does not qualify Phase 1 or approve Phase 2.
 
 Do not start Product Phase 2 implementation until Phase 1 is qualified and its closeout routes through the normal post-phase documentation review.

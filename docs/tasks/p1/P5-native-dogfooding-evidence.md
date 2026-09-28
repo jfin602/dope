@@ -1,13 +1,13 @@
 # P5 — Interactive Theia GUI Dope-on-Dope qualification
 
-Status: **Not Green — direct browser-GUI qualification executed partially; restart/restoration stalled and several required rows remain incomplete. P6 remains blocked.**
+Status: **Not Green — direct browser-GUI qualification executed partially; restart/restoration stalled and several required rows remain incomplete. P6 is unblocked by owner waiver; see the current decision below.**
 
-Date: September 28, 2026. This record preserves the incomplete native-only attempt and now carries the owner-approved browser-GUI amendment. The pushed `p5 unfinished` checkpoint is not a successful P5 handoff; an exact-subject `0.1.5` success commit is still required.
+Date: September 28, 2026. This record preserves the incomplete native-only attempt and now carries the owner-approved browser-GUI amendment. The pushed `p5 unfinished` checkpoint is not a successful P5 handoff. The later owner-approved P6 waiver permits an exact-subject `0.1.5` handoff marker without asserting P5 success.
 
 ## Candidate and preflight
 
 - Exact committed P4 candidate: `cdf4327ad291641ffaf4cc4d2ebf20a4a5496190`, commit subject `0.1.4`, branch `main`.
-- Exact committed P4 candidate remains `cdf4327ad291641ffaf4cc4d2ebf20a4a5496190`, package `0.1.4`. The pushed preparation checkpoint `85210381303327bcbb8452a6615c5ccb48cea9d6` (`p5 unfinished`) carries coherent `0.1.5` manifests/version assertions and this incomplete evidence. It is not the P5 success marker. The existing P4 AppImage remains `0.1.4`.
+- Exact committed P4 candidate remains `cdf4327ad291641ffaf4cc4d2ebf20a4a5496190`, package `0.1.4`. The pushed preparation checkpoint `85210381303327bcbb8452a6615c5ccb48cea9d6` (`p5 unfinished`) carries coherent `0.1.5` manifests/version assertions and this incomplete evidence. It is not the P5 success marker. The historical P4 AppImage is `0.1.4`.
 - Eclipse Theia: `1.75.0`; Electron: `42.8.1`; Node: `v24.21.0`. Host: Linux Mint 22.3 (Zena), Linux `7.0.0-31-generic`, x86-64, X11 (`DISPLAY=:0`), Cinnamon (`XDG_CURRENT_DESKTOP=X-Cinnamon`).
 - Artifact: `/home/jfin/dev/dope/dist/linux/Dope-0.1.4.AppImage`, 188,125,714 bytes, mode `755`. SHA-256 independently rechecked: `bf8ba3d101378e021a6247a0bb43a22c0c0b9dfca071ce3f6c51be067ced4c62`.
 - Intended workspace: `/home/jfin/dev/dope`, the real repository, not a fixture.
@@ -176,6 +176,14 @@ The provider repair passed focused baseline tests, the extended restart integrat
 
 Both controlled repository edits (workspace-mode.ts diagnostic and sample.test.js debugger local) were restored byte-for-byte; Git was empty before repair. No pre-existing user edits existed. Retained changes are only the existing provider pin, its baseline assertion, the permanent integration guard, and this evidence. Isolated GUI settings/keymap and installed extension remain under `/tmp/dope-p5-gui/config` for resumption; they do not change the user's ordinary profile. Temporary browser tab was closed on wrap-up. The qualification backend had already exited by wrap-up; the isolated package-smoke process was terminated. Profiles and logs were retained for diagnosis. This termination is not native normal-close qualification.
 
-The incomplete checkpoint created for this run is identified by the commit containing this updated evidence; its exact SHA is reported in the handoff and can be resolved with `git log -1 --format=%H -- docs/tasks/p1/P5-native-dogfooding-evidence.md`. It is **not** the exact-subject `0.1.5` success marker. Final success SHA: **none**.
+The incomplete interactive checkpoint is `0ad3a75caf203857002481874aabe82d7d9e2f1c` (`p5 unfinished: record interactive qualification and test runner repair`). It is not a success marker. The subsequent exact-subject `0.1.5` commit contains only the owner-waiver documentation and is the P6 handoff marker; resolve its SHA with `git log -1 --format=%H --grep="^0.1.5$"`. Final successful qualification SHA: **none**.
 
-Remaining work: resolve/retest actual restoration stall, repeat Test Explorer success through GUI, demonstrate extension function before/after real restart, verify and remove temporary keybinding, complete light-theme persistence/final dark preference and usable workspace/editor/workbench restoration, then rerun validation and create `0.1.5`. **P6 remains blocked.**
+Remaining work: resolve/retest actual restoration stall, repeat Test Explorer success through GUI, demonstrate extension function before/after real restart, verify and remove temporary keybinding, complete light-theme persistence/final dark preference and usable workspace/editor/workbench restoration, then rerun validation before any Green requalification claim. **P6 is unblocked by the owner waiver below; these gaps remain open.**
+
+## Owner-approved P6 handoff waiver — September 28, 2026
+
+After reviewing the incomplete interactive results, the owner explicitly instructed: "unblock p6 anyways". P6 may proceed from P5 checkpoint `0ad3a75caf203857002481874aabe82d7d9e2f1c` plus this documentation-only waiver. The exact-subject `0.1.5` commit is an **owner-waived handoff marker**, not a successful P5 qualification marker.
+
+This waives the requirement for a Green P5 before starting the evidence-only P6 audit. P5 remains **Not Green**: restart/layout restoration stalled, the repaired Test Explorer step lacks successful interactive replay, and extension function/persistence, keybinding persistence/removal, light-theme persistence and workbench restoration remain incomplete. Preserve every failed result and Evidence Gap in P6. The waiver does not make Phase 1 Qualified, authorize Phase 2, or authorize repairs inside P6. P6 must record its own Qualified / Not Qualified decision from the evidence; unresolved daily-use blockers remain Not Green.
+
+P6 is **unblocked by owner waiver**. Resume from a clean tree with `npm run codex:phase -- p1 --closeout`. The runner's completed-prefix marker establishes handoff eligibility only; it does not establish qualification.
