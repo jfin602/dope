@@ -11,11 +11,13 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 ## Current state
 
-Foundation Spike 0 is in progress at package version 0.0.3.
+Foundation Spike 0 is qualified at package version 0.0.6 on Eclipse Theia 1.75.0. The P5 committed candidate is `6624e146683b6cbfe507325438f2edf19fe20d97`; the P6 commit is runner-owned. Native Electron-window visual interaction and other bounded gaps remain explicit in `docs/tasks/p0/closeout.md`.
 
-P1-P3 are committed and the runner is stopped at the P4 GUI qualification gate. No product phase has been qualified yet.
+P1-P5 are committed; P6 is evidence-only closeout. No product phase has been qualified yet.
 
-The current engineering gate is:
+The next required action is post-spike `/docs-review`, then an explicitly approved Phase 1 activation establishing package baseline `0.1.0` before any `p1` stack. Do not generate or approve Product Phase 1 implementation automatically.
+
+The qualified substrate is:
 
 **Foundation Spike 0 — Theia substrate qualification**
 

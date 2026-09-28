@@ -1,6 +1,6 @@
 # Foundation Spike 0 — Theia Qualification
 
-Status: CURRENT ENGINEERING GATE
+Status: QUALIFIED — see `docs/tasks/p0/closeout.md` for evidence and bounded gaps
 
 ## Purpose
 

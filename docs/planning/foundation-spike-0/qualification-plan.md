@@ -1,6 +1,6 @@
 # Foundation Spike 0 Qualification Plan
 
-Status: IN EXECUTION — P1-P3 COMPLETE / P4 NEXT
+Status: EXECUTED — Foundation Spike 0 qualified; see `docs/tasks/p0/closeout.md`
 
 This plan defines evidence required to qualify Theia as Dope's initial IDE substrate.
 

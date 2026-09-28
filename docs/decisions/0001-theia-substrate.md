@@ -1,6 +1,6 @@
-# ADR 0001 — Eclipse Theia as provisional IDE substrate
+# ADR 0001 — Eclipse Theia as initial IDE substrate
 
-Status: Provisional Accepted
+Status: Accepted — Foundation Spike 0 qualified with bounded Evidence Gaps
 Date: 2026-09-27
 
 Decision:
@@ -11,6 +11,8 @@ Theia provides commodity IDE capabilities Dope needs while being designed for cu
 
 Constraint:
 Dope domain state remains independent from Theia and Theia AI.
+
+Evidence: `docs/tasks/p0/closeout.md` records Gates A-E Green, Linux artifact/launch/renderer Green, and native visual interaction as an Evidence Gap rather than Green; Theia remains 1.75.0.
 
 Revisit when:
 Foundation Spike 0 is Not Green, upgradeability is unacceptable, or core product seams require broad internal framework coupling.
