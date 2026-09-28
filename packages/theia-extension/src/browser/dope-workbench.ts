@@ -11,6 +11,7 @@ import { queryArtifacts } from '@dope/project-intelligence';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { OpenerService, open } from '@theia/core/lib/browser';
+import { ConfirmDialog, ConfirmSaveDialog, SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
 import URI from '@theia/core/lib/common/uri';
 import { MindConnection, ProjectMindController } from './project-mind-controller';
 import './dope.css';
@@ -102,9 +103,10 @@ export class ProjectMindWidget extends BaseWidget {
 
     private async leave(): Promise<boolean> {
         if (this.controller.canLeave) return true;
-        if (this.controller.pending) return window.confirm('A save is in progress. It may still commit. Leave this editor and inspect the old project before retrying?');
-        if (window.confirm('Save this Project Mind draft before leaving?')) return this.controller.save();
-        return window.confirm('Discard this unsaved draft? Cancel to keep editing.');
+        if (this.controller.pending) return !!await new ConfirmDialog({ title: 'Project Mind', msg: 'A save is in progress. It may still commit. Leave this editor and inspect the old project before retrying?' }).open();
+        const choice = await new ConfirmSaveDialog({ title: 'Unsaved Project Mind draft', msg: 'Save this draft before leaving?', save: 'Save', dontSave: 'Discard', cancel: 'Cancel' }).open();
+        if (choice === undefined) return false;
+        return choice ? this.controller.save() : this.controller.refresh(true);
     }
 
     private async load(): Promise<void> {
@@ -238,6 +240,10 @@ export class ProjectMindWidget extends BaseWidget {
         const heading = document.createElement('h4');
         heading.textContent = 'Links';
         section.append(heading);
+        for (const replacement of this.controller.snapshot?.artifacts.filter(item => item.links.some(link =>
+            link.relation === 'supersedes' && link.target.type === 'artifact' && link.target.id === artifact.id)) ?? []) {
+            section.append(this.button(`Superseded by · ${replacement.title || replacement.id}`, () => void this.navigate(replacement.id)));
+        }
         const request = ++this.fileRequest;
         for (const link of artifact.links) {
             const row = document.createElement('div');
@@ -271,18 +277,18 @@ export class ProjectMindWidget extends BaseWidget {
                 else this.status.textContent = 'Select a Question to link an answer.';
             }, this.controller.pending || this.controller.dirty || this.controller.stale));
         }
-        section.append(this.button('Link file…', () => {
-            const value = window.prompt('Project-relative file path (optional :line)');
+        section.append(this.button('Link file…', () => void (async () => {
+            const value = await new SingleTextInputDialog({ title: 'Project-relative file path (optional :line)', confirmButtonLabel: 'Link file' }).open();
             if (!value) return;
             const match = /^(.*?)(?::(\d+))?$/.exec(value.trim());
             const link: ArtifactLink = { relation: 'related', target: { type: 'file', path: match![1], ...(match![2] ? { line: Number(match![2]) } : {}) } };
             void this.controller.mutate({ type: 'link', artifactId: artifact.id, link });
-        }, this.controller.pending || this.controller.dirty || this.controller.stale));
+        })(), this.controller.pending || this.controller.dirty || this.controller.stale));
         this.editor.append(section);
     }
 
     private async discard(): Promise<void> {
-        if (!window.confirm('Discard this draft and reload committed Project Mind state?')) return;
+        if (!await new ConfirmDialog({ title: 'Reload Project Mind', msg: 'Discard this draft and reload committed Project Mind state?' }).open()) return;
         this.formKey = '';
         await this.controller.refresh(true);
     }

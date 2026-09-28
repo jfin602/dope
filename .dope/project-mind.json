@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 2,
+  "projectId": "6f429fd5-027d-4827-b9a9-17a81a67be75",
+  "revision": 33,
+  "artifacts": [
+    {
+      "schemaVersion": 2,
+      "id": "fa2c275b-9e62-4868-8874-67af838080b7",
+      "title": "P5 sequencing and evidence boundary",
+      "createdAt": "2026-09-28T17:01:33.766Z",
+      "updatedAt": "2026-09-28T17:22:16.177Z",
+      "provenance": "developer",
+      "archivedAt": null,
+      "links": [
+        {
+          "relation": "answers",
+          "target": {
+            "type": "artifact",
+            "id": "431c2e3a-d18e-48b9-95d3-405640f624a1"
+          }
+        },
+        {
+          "relation": "related",
+          "target": {
+            "type": "file",
+            "path": "docs/planning/p2/activation.md",
+            "line": 27
+          }
+        },
+        {
+          "relation": "related",
+          "target": {
+            "type": "file",
+            "path": "docs/tasks/p2/P5-unavailable-reference.md"
+          }
+        }
+      ],
+      "type": "note",
+      "status": "active",
+      "body": "The September 28 owner waiver activates Phase 2 while Phase 1 remains Not Qualified. Preserve restoration, Test Explorer and customization gaps. P5 must qualify useful Project Mind through direct GUI work without a model; P6 audits the evidence and does not authorize Phase 3. This record separates sequencing permission from qualification truth. Independent backend peer save confirms revisions coordinate separate processes."
+    },
+    {
+      "schemaVersion": 2,
+      "id": "58c39dbf-9d7f-4cf8-8e79-b890cb6bff18",
+      "title": "Stopped-writer recovery checklist",
+      "createdAt": "2026-09-28T17:01:50.413Z",
+      "updatedAt": "2026-09-28T17:56:04.070Z",
+      "provenance": "developer",
+      "archivedAt": null,
+      "links": [],
+      "type": "note",
+      "status": "active",
+      "body": "Stop every Dope writer before backing up the entire .dope directory. Preserve corrupt bytes and the legacy Note; inspect revision and UUIDs before restoring a known-good snapshot. A crashed writer lock needs explicit confirmation that its owner is gone, then removal of only that lock. Peer reminder: after a rename uncertainty, reread the committed revision before retrying. Draft reconciliation note: keep both the peer update and the local recovery reminder. Stale-save reminder: independent backend instances also compare expected revision. Project-switch reminder: a protected draft stays attached to Dope until resolved."
+    },
+    {
+      "schemaVersion": 2,
+      "id": "c8707179-983c-4467-9202-75222c69304c",
+      "title": "Measure snapshot size before changing storage",
+      "createdAt": "2026-09-28T17:02:22.376Z",
+      "updatedAt": "2026-09-28T17:02:42.354Z",
+      "provenance": "developer",
+      "archivedAt": null,
+      "links": [],
+      "type": "idea",
+      "status": "captured",
+      "body": "Readable full-snapshot persistence is enough for Phase 2. Park benchmarking ideas until measured project knowledge size makes linear validation/search/replacement costly; do not add a database or index now. Upgrade only after profiling representative collections."
+    },
+    {
+      "schemaVersion": 2,
+      "id": "da8aec24-981f-414b-9dbe-95f4d86f61eb",
+      "title": "Keep restoration diagnosis separate from Phase 3",
+      "createdAt": "2026-09-28T17:02:42.444Z",
+      "updatedAt": "2026-09-28T17:02:42.749Z",
+      "provenance": "developer",
+      "archivedAt": null,
+      "links": [],
+      "type": "idea",
+      "status": "captured",
+      "body": "Retain the Phase 1 restoration failure as evidence. Investigate ordinary editor layout reconstruction before planning a later product phase; capturing this Idea must not create a task or expand scope."
+    },
+    {
+      "schemaVersion": 2,
+      "id": "431c2e3a-d18e-48b9-95d3-405640f624a1",
+      "title": "Does the sequencing waiver qualify Phase 2?",
+      "createdAt": "2026-09-28T17:02:57.350Z",
+      "updatedAt": "2026-09-28T17:03:27.957Z",
+      "provenance": "developer",
+      "archivedAt": null,
+      "links": [],
+      "type": "question",
+      "status": "answered",
+      "body": "Clarify whether proceeding despite Phase 1 Not Qualified reduces the Phase 2 GUI/package gates. The activation source is docs/planning/p2/activation.md.",
+      "answer": "No. The waiver permits sequencing only. P5 direct GUI gates and P6 evidence audit remain mandatory; Phase 3 is unapproved."
+    },
+    {
+      "schemaVersion": 2,
+      "id": "021ebfa8-8304-4006-ac3d-0de29d8f23db",
+      "title": "What remains unproved after P4?",
+      "createdAt": "2026-09-28T17:03:28.145Z",
+      "updatedAt": "2026-09-28T17:03:28.454Z",
+      "provenance": "developer",
+      "archivedAt": null,
+      "links": [],
+      "type": "question",
+      "status": "open",
+      "body": "P4 instrumented restart tests cannot prove direct keyboard editing, draft navigation, peer conflicts or usable browser restoration. Keep the interactive result and exact package boundary in the P5 evidence."
+    },
+    {
+      "schemaVersion": 2,
+      "id": "73b160c6-0e35-4fa0-9e87-cf84d57b9aac",
+      "title": "Qualify P5 using browser and retain P4 package evidence",
+      "createdAt": "2026-09-28T17:03:35.415Z",
+      "updatedAt": "2026-09-28T17:04:49.673Z",
+      "provenance": "developer",
+      "archivedAt": null,
+      "links": [],
+      "type": "decision",
+      "status": "superseded",
+      "decision": "Use the approved browser-hosted Theia surface for direct P5 interaction.",
+      "context": "P4 separately proves the 0.2.4 AppImage native launch and contents; native app control is unavailable in this session.",
+      "rationale": "The approved P5 surface allows direct clicks and typing without replacing package proof.",
+      "consequences": "Browser observations do not establish native visual usability. Keep any observed browser crash as a separate unresolved observation.",
+      "alternatives": "Native GUI interaction would be another approved surface when available.",
+      "revisitConditions": "Revisit if product source changes or browser behavior blocks the required matrix."
+    },
+    {
+      "schemaVersion": 2,
+      "id": "8ea6a63a-1f0a-47ce-a60f-a73ca74af003",
+      "title": "Require all direct GUI gates before P6 handoff",
+      "createdAt": "2026-09-28T17:04:09.734Z",
+      "updatedAt": "2026-09-28T17:55:42.885Z",
+      "provenance": "developer",
+      "archivedAt": null,
+      "links": [
+        {
+          "relation": "supersedes",
+          "target": {
+            "type": "artifact",
+            "id": "73b160c6-0e35-4fa0-9e87-cf84d57b9aac"
+          }
+        }
+      ],
+      "type": "decision",
+      "status": "accepted",
+      "decision": "The browser surface is valid, but no P5 success marker is allowed until every required GUI step is Green.",
+      "context": "The browser connection was interrupted and recovered in a new tab. The owner identified the interruption as a connection issue; no product-code cause is established. P4 automated passes cannot replace the required direct GUI matrix.",
+      "rationale": "A usable application restart and recovery are part of the product promise, not a source-only claim.",
+      "consequences": "Partial evidence keeps P6 blocked unless the owner separately waives audit sequencing.",
+      "alternatives": "Treating build success as qualification would leave real workflow defects unexamined.",
+      "revisitConditions": "Revisit after complete GUI replay and exact final validation."
+    },
+    {
+      "schemaVersion": 2,
+      "id": "ca157b8a-2a72-4d3f-b92c-416627a1bbf4",
+      "title": "Use P4 automated passes as P5 proof",
+      "createdAt": "2026-09-28T17:05:11.404Z",
+      "updatedAt": "2026-09-28T17:05:18.356Z",
+      "provenance": "developer",
+      "archivedAt": null,
+      "links": [],
+      "type": "decision",
+      "status": "rejected",
+      "decision": "Skip direct GUI qualification because process tests passed.",
+      "context": "Rejected qualification shortcut captured for durable rationale.",
+      "rationale": "This conflicts with the approved interactive gate; reject the proposal.",
+      "consequences": "Would hide unusable restoration and draft behavior.",
+      "alternatives": "Exercise all direct steps and preserve failures.",
+      "revisitConditions": "No supported condition for skipping the gate without an explicit owner waiver."
+    }
+  ]
+}

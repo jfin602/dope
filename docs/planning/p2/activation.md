@@ -30,3 +30,11 @@ P1 preflight is now eligible after this authorization commit leaves a clean tree
 ## Baseline validation
 
 After version repair: `npm run test:baseline` passed 3/3; `npm run typecheck` passed; `npm run test:product` passed 6/6; p2 grammar validation passed; no root package-lock.json; `git diff --check` passed. Theia remains 1.75.0 and Electron 42.8.1. No product behavior, framework, provider pin, runner or historical qualification evidence was changed. Browser/Electron packaging and GUI qualification were not repeated for this version-only repair.
+
+## Separate P5 checkpoint / P6 audit-only waiver
+
+On September 28, 2026, during the interactive P5 task, the owner instructed: “advance version and commit so runner can complete closeout.” The operator reported that P5 remained a partial qualification checkpoint and asked whether to waive the P5 Green prerequisite for P6 audit. The owner explicitly selected:
+
+> Authorize P6 audit waiver; retain all failures
+
+This separate waiver permits evidence-only P6 audit from the owner-directed `0.2.5` checkpoint containing `docs/tasks/p2/P5-project-mind-dogfooding-evidence.md`. Resolve its exact SHA with `git log -1 --format=%H --grep='^0.2.5$'` and verify that record. The version advance and commit are explicitly authorized despite the partial matrix; they are not a P5 success marker. The missing initial migration control, unproved same-renderer dirty workspace transition, inherited Phase 1 failures and all recorded limitations remain intact. This does not make Phase 2 Qualified, waive validation, or authorize Phase 3. P6 must retain these failures in its evidence-only closeout and route any required repairs to separate bounded correction/requalification.

@@ -257,14 +257,18 @@ test('Project Mind survives process and profile restarts, isolates folders, and 
                 { type: 'archive', artifactId: idea.id, archived: true },
                 { type: 'archive', artifactId: idea.id, archived: false }
             ]) snapshot = await service.mutate({ projectHandle, expectedRevision: snapshot.revision, operation });
+            const replacement = { ...decision, id: crypto.randomUUID(), title: 'Replacement' };
+            snapshot = await service.mutate({ projectHandle, expectedRevision: snapshot.revision, operation: { type: 'create', artifact: replacement } });
+            snapshot = await service.mutate({ projectHandle, expectedRevision: snapshot.revision, operation: { type: 'transition', artifactId: replacement.id, status: 'accepted' } });
+            snapshot = await service.mutate({ projectHandle, expectedRevision: snapshot.revision, operation: { type: 'supersede', oldId: decision.id, replacementId: replacement.id } });
             let stale;
             try { await service.mutate({ projectHandle, expectedRevision: 1, operation: { type: 'archive', artifactId: idea.id, archived: true } }); }
             catch (error) { stale = String(error); }
             return { snapshot, initial, ids: { note: note.id, idea: idea.id, question: question.id, decision: decision.id }, stale };
         })()`);
         assert.match(created.stale, /Stale Project Mind revision/);
-        assert.equal(created.snapshot.revision, 15);
-        assert.equal(created.snapshot.artifacts.length, 5);
+        assert.equal(created.snapshot.revision, 18);
+        assert.equal(created.snapshot.artifacts.length, 6);
         assert.equal(created.initial.id, legacyId);
         assert.equal(created.initial.createdAt, null);
         assert.equal(created.initial.updatedAt, null);
@@ -295,6 +299,52 @@ test('Project Mind survives process and profile restarts, isolates folders, and 
             input.value = 'unique searchable'; input.dispatchEvent(new Event('input', { bubbles: true }));
             return [...document.querySelectorAll('#dope-project-mind li button')].map(button => button.textContent).join('|');
         })()`), 8000), 'New note saved · note · active');
+        // Browser-hosted shells may not implement native prompt/confirm. Exercise the real widget dialogs.
+        await evaluate(instance.page, `(() => {
+            window.prompt = window.confirm = () => { throw Error('Native dialogs unavailable'); };
+            document.querySelector('#dope-project-mind li button').click();
+        })()`);
+        assert.equal(await until(() => evaluate(instance.page, `!![...document.querySelectorAll('#dope-project-mind button')].find(button => button.textContent === 'Link file…')`), 8000), true);
+        await evaluate(instance.page, `[...document.querySelectorAll('#dope-project-mind button')].find(button => button.textContent === 'Link file…').click()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#theia-dialog-shell input') !== null`), 8000), true);
+        await evaluate(instance.page, `(() => {
+            const input = document.querySelector('#theia-dialog-shell input');
+            input.value = 'dialog-guard.txt'; input.dispatchEvent(new Event('input', { bubbles: true }));
+            [...document.querySelectorAll('#theia-dialog-shell button')].find(button => button.textContent === 'Link file').click();
+        })()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-project-mind')?.textContent.includes('dialog-guard.txt (unresolved file)')`), 8000), true);
+        await evaluate(instance.page, `(() => {
+            const link = [...document.querySelectorAll('#dope-project-mind button')].find(button => button.textContent.includes('dialog-guard.txt'));
+            link.parentElement.querySelectorAll('button')[1].click();
+        })()`);
+        assert.equal(await until(() => evaluate(instance.page, `!document.querySelector('#dope-project-mind')?.textContent.includes('dialog-guard.txt')`), 8000), true);
+        await evaluate(instance.page, `(() => {
+            const input = [...document.querySelectorAll('#dope-project-mind textarea')][0];
+            input.value = 'discard guard'; input.dispatchEvent(new Event('input', { bubbles: true }));
+            [...document.querySelectorAll('#dope-project-mind button')].find(button => button.textContent === 'New idea').click();
+        })()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#theia-dialog-shell')?.textContent.includes('Unsaved Project Mind draft')`), 8000), true);
+        await evaluate(instance.page, `(() => {
+            [...document.querySelectorAll('#theia-dialog-shell button')].find(button => button.textContent === 'Discard').click();
+        })()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-project-mind h3')?.textContent === 'IDEA · captured'`), 8000), true);
+        await evaluate(instance.page, `(() => {
+            [...document.querySelectorAll('#dope-project-mind button')].find(button => button.textContent === 'Discard / reload').click();
+        })()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#theia-dialog-shell')?.textContent.includes('Reload Project Mind')`), 8000), true);
+        await evaluate(instance.page, `(() => {
+            [...document.querySelectorAll('#theia-dialog-shell button')].find(button => button.textContent === 'OK').click();
+        })()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-project-mind [role="status"]')?.textContent.startsWith('Saved')`), 8000), true);
+        await evaluate(instance.page, `(() => {
+            const input = document.querySelector('#dope-project-mind input[aria-label="Search Project Mind"]');
+            input.value = 'Decision saved'; input.dispatchEvent(new Event('input', { bubbles: true }));
+            document.querySelector('#dope-project-mind li button').click();
+        })()`);
+        assert.equal(await until(() => evaluate(instance.page, `!![...document.querySelectorAll('#dope-project-mind button')].find(button => button.textContent === 'Superseded by · Replacement')`), 8000), true);
+        await evaluate(instance.page, `[...document.querySelectorAll('#dope-project-mind button')].find(button => button.textContent === 'Superseded by · Replacement').click()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-project-mind h3')?.textContent === 'DECISION · accepted'`), 8000), true);
+        created.snapshot = JSON.parse(await readFile(join(first, '.dope', 'project-mind.json'), 'utf8'));
         await close(instance);
 
         instance = await launch(otherProfile, port, second);
@@ -358,13 +408,14 @@ test('Project Mind survives process and profile restarts, isolates folders, and 
         assert.deepEqual(recovered.snapshot, created.snapshot);
         assert.deepEqual(recovered.read, created.snapshot);
         assert.equal(recovered.snapshot.artifacts.find(item => item.id === created.ids.question).answer, 'Persist the snapshot');
-        assert.equal(recovered.snapshot.artifacts.find(item => item.id === created.ids.decision).status, 'accepted');
+        assert.equal(recovered.snapshot.artifacts.find(item => item.id === created.ids.decision).status, 'superseded');
         assert.equal(recovered.snapshot.artifacts.find(item => item.id === created.ids.idea).archivedAt, null);
         assert.equal(recovered.snapshot.artifacts.find(item => item.id === created.ids.note).links.length, 2);
         assert.equal((await readFile(join(second, '.dope', 'project-mind.json'), 'utf8')).includes(created.snapshot.projectId), false);
         await close(instance);
     } catch (error) {
-        throw new Error(`${error}\n${instance?.output ?? ''}`);
+        const ui = instance ? await evaluate(instance.page, `document.querySelector('#dope-project-mind')?.textContent + '\\n' + document.querySelector('#theia-dialog-shell')?.textContent`).catch(() => '') : '';
+        throw new Error(`${error}\n${ui}\n${instance?.output ?? ''}`);
     } finally {
         if (instance?.child.exitCode === null && instance.child.signalCode === null) {
             try { await close(instance); } catch { try { process.kill(-instance.child.pid, 'SIGTERM'); } catch { } }
