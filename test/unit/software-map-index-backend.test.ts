@@ -182,6 +182,11 @@ test('typed backend rebinds a connection across roots, bounds queries, resolves 
 
     await assert.rejects(a.status(second.projectHandle), /Invalid/);
     await assert.rejects(a.analyze(second.projectHandle), /Invalid/);
+    await assert.rejects(a.analyze(first.projectHandle), /not initialized/);
+    await a.acceptExisting(first.projectHandle, (await a.initializationStatus(first.projectHandle)).declarationFingerprint);
+    await b.acceptManual(second.projectHandle, { schemaVersion: 1, systems: [{ id: 'unused', name: 'Unused', purpose: 'Test', subsystems: [
+      { id: 'unused-sub', name: 'Unused sub', purpose: 'Test', roots: ['unmatched'] },
+    ] }] }, (await b.initializationStatus(second.projectHandle)).declarationFingerprint);
     await a.analyze(first.projectHandle);
     await b.analyze(second.projectHandle);
     assert.ok(updates.length >= 2);

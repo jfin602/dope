@@ -1,4 +1,6 @@
 import type { AnalysisStatus, ArchitectureViolation, Evidence, GraphNode, GraphRelationship, RelationshipKind } from './contracts';
+import type { ArchitectureDeclaration } from './contracts';
+import type { ArchitectureEvidencePacket, ArchitectureProposal, ProposedArchitectureKind } from './synthesis';
 
 export const softwareMapServicePath = '/services/dope/software-map';
 export const SoftwareMapService = Symbol('SoftwareMapService');
@@ -26,8 +28,39 @@ export interface SoftwareMapSourceLocation {
     span?: Evidence['span'];
 }
 export interface SoftwareMapClient { notifySoftwareMapChanged(status: SoftwareMapStatus): void }
+export interface SoftwareMapInitializationStatus {
+    state: 'uninitialized' | 'analyzing' | 'review_required' | 'initialized';
+    declarationPresent: boolean;
+    /** Hash of the exact declaration bytes, or the absent-file sentinel. Supply it on manual acceptance. */
+    declarationFingerprint: string;
+}
+export interface ArchitectureReviewNode {
+    proposalKey: string;
+    kind: ProposedArchitectureKind;
+    id: string;
+    name: string;
+    purpose: string;
+    parentProposalKey: string | null;
+    roots: string[];
+}
+export interface ArchitectureReview {
+    reviewId: string;
+    packet: ArchitectureEvidencePacket;
+    proposal: ArchitectureProposal;
+    draft: ArchitectureReviewNode[];
+}
 export interface SoftwareMapService {
     attach(folderUri: string): Promise<{ projectHandle: string; status: SoftwareMapStatus }>;
+    configureSynthesis(projectHandle: string, options: { endpoint?: string; token?: string }): Promise<string[]>;
+    selectSynthesisModel(projectHandle: string, modelId: string): Promise<void>;
+    probeSynthesis(projectHandle: string): Promise<void>;
+    initializationStatus(projectHandle: string): Promise<SoftwareMapInitializationStatus>;
+    startInitialization(projectHandle: string): Promise<ArchitectureReview>;
+    review(projectHandle: string): Promise<ArchitectureReview | undefined>;
+    cancelInitialization(projectHandle: string): Promise<void>;
+    acceptReview(projectHandle: string, reviewId: string, draft: ArchitectureReviewNode[]): Promise<SoftwareMapStatus>;
+    acceptExisting(projectHandle: string, expectedFingerprint: string): Promise<SoftwareMapStatus>;
+    acceptManual(projectHandle: string, declaration: ArchitectureDeclaration, expectedFingerprint: string): Promise<SoftwareMapStatus>;
     analyze(projectHandle: string): Promise<SoftwareMapStatus>;
     status(projectHandle: string): Promise<SoftwareMapStatus>;
     hierarchy(request: SoftwareMapPageRequest & { parentId?: string; descendants?: boolean }): Promise<SoftwareMapPage<GraphNode>>;

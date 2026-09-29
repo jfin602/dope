@@ -461,7 +461,17 @@ test('Software Map rebuilds from source and declaration across process restart a
         const service = controller.connection;
         const projectHandle = controller.handle;
         const initial = await service.status(projectHandle);
-        const status = ${analyze} ? await service.analyze(projectHandle) : initial;
+        let status = initial;
+        if (${analyze}) {
+            const initialization = await service.initializationStatus(projectHandle);
+            if (initialization.state === 'uninitialized') {
+                status = initialization.declarationPresent
+                    ? await service.acceptExisting(projectHandle, initialization.declarationFingerprint)
+                    : await service.acceptManual(projectHandle, { schemaVersion: 1, systems: [{ id: 'manual', name: 'Manual', purpose: 'Test', subsystems: [
+                        { id: 'manual-sub', name: 'Manual sub', purpose: 'Test', roots: ['unmatched'] },
+                    ] }] }, initialization.declarationFingerprint);
+            } else status = await service.analyze(projectHandle);
+        }
         if (status.state !== 'ready') return { initial, status };
         const all = async fetch => { const items = []; for (let offset = 0;; offset += 200) {
             const page = await fetch(offset); if (page.generation !== status.publishedGeneration) throw Error('mixed generation');
@@ -526,6 +536,7 @@ test('Software Map rebuilds from source and declaration across process restart a
         assert.deepEqual(added.violations.map(item => item.targetSubsystemId), ['secret']);
         await close(instance);
         await writeFile(join(first, '.dope/architecture.json'), JSON.stringify(declaration('core')));
+        await rm(join(first, '.dope/smap.json')); // Explicitly recover after an external canonical edit.
         await writeFile(join(first, 'src/api/a.ts'), source("import { core } from '../core/c';\nimport { secret } from '../secret/s';"));
         instance = await launch(profile, port, first);
         await placement(instance.page);
@@ -538,7 +549,7 @@ test('Software Map rebuilds from source and declaration across process restart a
         assert.ok(restarted.evidence.some(item => item.path === 'src/api/a.ts'));
         assert.equal(restarted.location.path, 'src/api/a.ts');
         const isolated = await attach(instance.page, second, true);
-        assert.equal(isolated.status.declarationPresent, false);
+        assert.equal(isolated.status.declarationPresent, true);
         assert.deepEqual(isolated.violations, []);
         assert.ok(isolated.nodes.some(item => item.kind === 'code' && item.ownership?.state === 'unassigned'));
         assert.ok(!isolated.nodes.some(item => item.id === 'app'));

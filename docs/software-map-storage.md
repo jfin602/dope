@@ -24,7 +24,15 @@ The current schema-1 declaration remains valid until a correction implementation
 
 A missing `.dope/architecture.json` is valid, but absence of that file is not by itself the sMap initialization contract.
 
-The Software Map layer must distinguish an uninitialized project from analysis/review in progress and from an initialized sMap. The exact persistence representation is owned by the correction implementation, but it must not conflate a declaration file, a generated proposal, developer acceptance and disposable derived state.
+The project-local `.dope/smap.json` schema 1 marker records only accepted initialization:
+
+```json
+{"schemaVersion":1,"architectureFingerprint":"<sha256 of exact architecture.json bytes>"}
+```
+
+Missing marker means uninitialized, including when a valid `.dope/architecture.json` already exists. The fingerprint must match the present declaration before Dope reports initialized. An existing declaration can be explicitly accepted without rewriting its bytes. Manual or corrected declarations are strictly parsed before acceptance.
+
+The marker never stores provider endpoint, model, authentication, a decline, an evidence packet, a proposal or a review draft. `analyzing` and `review_required` are transient states scoped to the attached project connection; a restart or cancellation returns them to uninitialized. Ordinary Physical Map refresh requires an initialized marker.
 
 For an uninitialized project, opening the repository does not authorize analysis. Dope may offer **Analyze Project?**. If the developer declines, no sMap is built and no canonical or derived map state is written merely to record that decline. The sMap tab remains available with an **Analyze Project** action for later initialization.
 
@@ -62,5 +70,7 @@ A greenfield/manual path remains valid with no model configured: the developer m
 Attachment resolves a local `file:` folder to its canonical real path. Reading rejects symlinked or non-directory `.dope` entries and symlinked or non-file architecture entries. Declared ownership roots must be normalized project-relative paths with no traversal. Source navigation resolves a source path only within the attached canonical root.
 
 Malformed JSON, invalid schema, unsupported future versions and unsafe paths fail with diagnostics without rewriting the original bytes. Recover by editing or restoring the file with ordinary filesystem/Git tools, then reanalyzing.
+
+Acceptance checks the exact prior declaration fingerprint, stages replacement files in `.dope`, then installs the declaration followed by the marker. If the marker install fails, Dope restores the exact prior declaration bytes (or removes the newly created declaration). A malformed, unsafe or mismatched marker is never treated as initialized. Recover a mismatched pair by restoring the accepted declaration or removing the marker and explicitly accepting the intended declaration again. Marker and declaration entries must be regular files, and `.dope` must be a real directory; symlinks are rejected.
 
 No derived graph, ArchitectureEvidencePacket, ArchitectureProposal or architecture-discovery cache belongs in `.dope/project-mind.json`. If a future disk cache is introduced, it must be explicitly disposable, versioned and reject/rebuild stale, mismatched or incompatible entries.
