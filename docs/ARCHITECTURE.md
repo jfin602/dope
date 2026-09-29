@@ -103,6 +103,18 @@ This is a default product-layout contract, not canonical project state and not a
 
 The September 29, 2026 ADR 0008 decision lands while Phase 4 P5 is already exercising the pre-decision implementation. P5 may finish without mid-run churn. A bounded post-P5 Phase 4 correction must rename the live software-architecture package/symbol/UI vocabulary and move the inspector to the left-side sMap surface before P6 closeout. The correction must not implement the Phase 5 visual canvas.
 
+## sMap initialization contract
+
+Opening a project does not implicitly authorize Software Map construction.
+
+For a project whose sMap has never been initialized, Dope offers an explicit Analyze Project choice. Declining leaves the sMap uninitialized and does not create canonical architecture or derived map state. The sMap view remains available with an Analyze Project action so initialization can be started later.
+
+The Software Map application/domain layer distinguishes at least `uninitialized -> analyzing -> review_required -> initialized`. Initialization state is not equivalent to the existence of `.dope/architecture.json`.
+
+For an existing project, accepted initialization follows: deterministic evidence collection -> bounded LLM architecture proposal -> developer review/correction -> explicit acceptance -> canonical architecture. Before acceptance, generated structure is proposal state only.
+
+A greenfield project may instead initialize through developer-authored architecture before code exists. Cancellation or failure before acceptance returns to uninitialized unless a future resumable-draft contract is deliberately introduced.
+
 ## Model and provider boundary
 
 Dope must not depend architecturally on one model, model family, provider, API, hosted service, local runtime, or provider-native chat/session ontology.
@@ -150,7 +162,7 @@ Do not make Theia AI's agent/chat/session ontology Dope's product ontology.
 
 Theia AI is optional infrastructure.
 
-Actual reuse is qualified when AI Presence is implemented, not during Foundation Spike 0.
+General Theia AI reuse is qualified when AI Presence is implemented, not during Foundation Spike 0. ADR 0010 permits the narrower pre-Phase-6 architecture-synthesis capability required for initial sMap generation; that capability must still use Dope-owned contracts and replaceable provider adapters.
 
 ## Target repository structure
 
@@ -224,7 +236,11 @@ The discovery layer consumes deterministic repository, build/configuration, sema
 
 No single signal, especially folder layout, automatically defines architecture. Discovery output includes evidence/derivation sufficient to explain why a candidate exists.
 
-Discovery is provider-independent and must work with no AI model configured. AI may later suggest interpretations but those suggestions are a separate proposal class.
+ADR 0010 amends the initial discovery path for uninitialized brownfield projects. Deterministic analyzers remain the evidence authority, but initial System / Subsystem / Component synthesis is performed through a bounded provider-independent LLM architecture-synthesis capability over that evidence.
+
+The LLM output is a proposal class, never physical fact or canonical architecture. Every proposal must retain evidence/provenance sufficient for developer review. The developer may correct the proposal and explicitly accepts the canonical architecture.
+
+Manual/greenfield architecture remains available with no model configured. A developer may define canonical architecture before code exists, after which deterministic analysis realizes or reports drift against it.
 
 ### Code Analysis
 
