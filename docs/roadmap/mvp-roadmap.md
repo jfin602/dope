@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current gate: mandatory correction `c3-remove-planning-instruments` at unchanged `0.3.6`; Phase 4 cannot activate until the correction closes
+Current stage: Product Phase 4 — Physical Software Model, ACTIVE from coherent package baseline `0.4.0`; correction `c3-remove-planning-instruments` is complete
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -203,7 +203,7 @@ Live Planning
 
 ## Mandatory pre-Phase-4 correction — `c3-remove-planning-instruments`
 
-Status: **REQUIRED / NOT YET CLOSED**
+Status: **COMPLETE — GREEN / QUALIFIED FOR SEQUENCING at unchanged `0.3.6`** (`docs/tasks/c3-remove-planning-instruments/closeout.md`)
 
 Version semantics: correction stack at unchanged package version `0.3.6`. This is not Product Phase 4 and must not advance roadmap versioning.
 
@@ -232,12 +232,17 @@ At unchanged `0.3.6`, aggregate surviving checks/builds pass; Project Mind and o
 
 ## Product Phase 4 — Physical Software Model
 
+Status: **OWNER APPROVED — ACTIVE**
+
+Execution folder: `p4`. Activation baseline: package `0.4.0`; implementation prompts advance through `0.4.1`–`0.4.6`. Authority: `docs/planning/p4/phase-4-plan.md` and `docs/planning/p4/activation.md`.
+
 Purpose:
 Make current software architecture a deterministic, explorable part of the development environment before AI is asked to reason over it.
 
-Prerequisite:
+Prerequisite — satisfied:
 - `c3-remove-planning-instruments` closed Green/qualified enough for sequencing at unchanged `0.3.6`;
-- no live Phase 3 Planning subsystem remains.
+- no live Phase 3 Planning subsystem remains;
+- coherent Phase 4 package baseline is `0.4.0`.
 
 Initial scope:
 - clean implementation independent from any historical Phase 3 Planning contracts;
@@ -274,7 +279,6 @@ Initial scope:
 - graph-derived work decomposition, dependencies, acceptance criteria and validation targets
 - implementation targeting/working-set navigation from graph objects
 - post-implementation re-analysis and target-versus-physical reconciliation
-- deliberate replacement/removal of Phase 3 Planning domain/storage/RPC/UI/tests when the new system is qualified
 - no compatibility adapter or migration requirement for Phase 3 internal Planning state
 - no AI requirement
 

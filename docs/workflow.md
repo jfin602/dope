@@ -124,11 +124,17 @@ After activation, p2 P1-P4 are runner-owned; P5 is the manual interactive GUI ha
 
 Product Phase 3 uses execution folder `p3` and coherent package baseline `0.3.0`. The owner explicitly closed Phase 2 for sequencing on September 28, 2026 while preserving its Not Qualified audit and evidence gaps. `docs/planning/p3/activation.md` records the Phase 3 authorization and activation source.
 
-P3 versions are `0.3.1` through `0.3.6`. P1-P4 are runner-owned, P5 is the direct interactive Planning dogfood handoff, and P6 is evidence-only closeout. P5 must use genuine Dope planning state and a second local project; automated/headless checks do not replace its GUI evidence. P6 must preserve inherited Phase 1/2 gaps and may not generate Phase 4 implementation prompts.
+P3 versions are `0.3.1` through `0.3.6`. P1-P4 were runner-owned, P5 was the direct interactive Planning dogfood handoff, and P6 was evidence-only closeout. Phase 3's `0.3.6` applicable-scope audit remains Qualified in `docs/tasks/p3/closeout.md`, but its live Planning runtime was subsequently removed by completed correction `c3-remove-planning-instruments`. Historical Phase 1/2 Not Qualified evidence remains intact.
 
-The Phase 3 product runtime contains no AI provider. ADR 0006's Codex-first choice applies when Phase 4 AI Presence begins; it does not authorize OpenAI/Codex/local-model integration in p3.
+The Phase 3 product runtime contained no AI provider. ADR 0006 now applies to future Phase 6 AI Presence; it never authorized OpenAI/Codex/local-model integration in Phase 3.
 
-Phase 3's `0.3.6` applicable-scope audit is Qualified in `docs/tasks/p3/closeout.md`. The current route is post-Phase-3 `/docs-review` -> explicit owner approval -> `/docs-apply` as needed. Phase 4 AI Presence has no execution authorization or implementation prompts from this closeout; historical Phase 1/2 Not Qualified evidence remains intact.
+## Phase 4 activation
+
+Product Phase 4 uses execution folder `p4` and coherent package baseline `0.4.0`. The completed `c3-remove-planning-instruments` closeout is the entry gate; no additional Phase 3 compatibility work is required.
+
+P4 versions are `0.4.1` through `0.4.6`. P1-P4 are runner-owned implementation/integration prompts, P5 is the direct interactive "Dope maps Dope" GUI handoff, and P6 is evidence-only closeout. P5 must inspect the real Dope repository through the actual Theia GUI and trace representative physical relationships/violations to source evidence; automated/headless checks do not replace its direct interaction evidence.
+
+Phase 4 has no model/provider runtime and no target/planning graph. It must preserve the distinction between developer-authored architecture declarations/constraints (canonical project state) and extracted physical graph/index data (rebuildable derived state). Phase 5 introduces Visual Software Planning; Phase 6 introduces AI Presence.
 
 ## Prompt metadata
 
@@ -196,7 +202,7 @@ Current aggregate commands:
 - `npm run check` composes typecheck, all current tests, browser build and Electron build.
 - `npm run test:restart` remains separate integrated restart/process evidence.
 
-Phase 3 prompts must add Planning suites to the real aggregate commands as capabilities land. Do not treat unit/build success as direct GUI or packaged-native qualification.
+Phase 4 prompts must add software-model/code-analysis suites to the real aggregate commands as capabilities land. Do not treat unit/build success as direct GUI or packaged-native qualification.
 
 ## Closeout truth
 

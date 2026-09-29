@@ -27,9 +27,9 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-The mandatory current implementation gate is correction `c3-remove-planning-instruments` at unchanged `0.3.6`. Do not plan, prompt or implement Product Phase 4 source work until that correction closeout clears the gate.
+The current implementation phase is Product Phase 4 — Physical Software Model, activated from coherent package baseline `0.4.0`. Correction `c3-remove-planning-instruments` is complete and Green/qualified for sequencing; no live Phase 3 Planning subsystem remains.
 
-The correction removes the live Phase 3 Planning vertical slice, including its contracts/domain, persistence/RPC, UI/Project Mind bridges, PLAN mode, dedicated tests and repository Planning state. Historical Phase 3 docs/evidence remain.
+Phase 4 is limited to deterministic current-state software modeling: language-independent graph contracts, developer-authored architecture declarations/constraints, TypeScript/JavaScript-first analysis, rebuildable indexing, evidence/provenance, architecture-boundary validation, renderer-independent query APIs and bounded inspection/navigation UI. Do not introduce target/planning graphs, editable architecture design, AI/provider runtime, Agent Mind, authority/delegation or Phase 3 compatibility scaffolding.
 
 Qualification requirements are phase-aware.
 
@@ -86,7 +86,7 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 - Developer-authored System/Subsystem declarations and dependency constraints are architecture authority; extracted relationships validate against them.
 - Planning graphs reference physical identities and express target transformations rather than duplicating current architecture.
 - Pre-stability Dope prefers coherent replacement over internal compatibility scaffolding. Do not add adapters, dual writes, schema bridges or migrations for superseded internal product models unless a concrete user-data/external commitment justifies them.
-- Phase 3 Plan/PlanStep/Task, `.dope/planning.json`, Planning RPC/UI, PLAN mode and associated tests are historical implementation details and must be removed by `c3-remove-planning-instruments` before Phase 4 activation.
+- Phase 3 Plan/PlanStep/Task, `.dope/planning.json`, Planning RPC/UI, PLAN mode and associated tests are historical implementation details already removed by `c3-remove-planning-instruments`; Phase 4 must not reintroduce them or compatibility scaffolding.
 - Prefer standard framework extension points over shell internals; isolate unavoidable deep Theia coupling.
 - Forking Theia is a last resort and a failed-spike signal unless explicitly accepted.
 - Preserve upgradeability as a design property; qualify it when a real framework upgrade is undertaken rather than forcing synthetic upgrade work into an unrelated phase.
