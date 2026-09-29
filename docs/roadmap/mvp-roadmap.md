@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 4 — Physical Map, P6 QUALIFIED/GREEN at the uncommitted `0.4.6` candidate, pending runner commit; post-Phase-4 `/docs-review` precedes Phase 5 planning/activation
+Current stage: mandatory correction `c4-architecture-discovery` at unchanged `0.4.6` before Phase 5; Product Phase 4 is QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -17,6 +17,7 @@ Theia
 -> Planning Foundation
 -> remove Phase 3 Planning instruments
 -> Physical Map
+-> architecture discovery + developer-authority correction
 -> Visual Software Planning
 -> AI Presence
 -> Scoped Delegation
@@ -36,8 +37,9 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Product Phase 1 — IDE Alive | Dope as editor. Open and work on the Dope repository comfortably inside Dope using ordinary IDE capabilities. |
 | Product Phase 2 — Project Mind | Dope understands Dope. Its own decisions, notes, questions, ideas, and durable project context are useful through Project Mind. |
 | Product Phase 3 — Planning Foundation | Dope plans Dope. A real Dope feature can move from thought/decision into a live Plan and Tasks without leaving Dope. |
-| Product Phase 4 — Physical Map | Dope maps Dope. Its systems, subsystems, components and code relationships can be explored from evidence-backed current-state analysis. |
-| Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can branch from physical architecture into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
+| Product Phase 4 — Physical Map | Dope maps Dope. Its lower-level semantic relationships, declared boundaries and evidence-backed current-state graph can be explored. |
+| Correction c4 — Architecture Discovery | Dope discovers Dope at architecture scale. Deterministic evidence proposes Systems/Subsystems/Components, the developer confirms or corrects them, and implementation realization/drift is visible. |
+| Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 8 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
@@ -232,7 +234,7 @@ At unchanged `0.3.6`, aggregate surviving checks/builds pass; Project Mind and o
 
 ## Product Phase 4 — Physical Map
 
-Status: **P6 QUALIFIED/GREEN — `0.4.6` candidate; runner closeout commit pending** (`docs/tasks/p4/closeout.md`)
+Status: **QUALIFIED/GREEN — committed `0.4.6` at `fac88712bb55176d3d6d54fbe6034de8b0f801ff`** (`docs/tasks/p4/closeout.md`)
 
 Execution folder: `p4`. Activation baseline: package `0.4.0`; implementation prompts advance through `0.4.1`–`0.4.6`. Authority: `docs/planning/p4/phase-4-plan.md` and `docs/planning/p4/activation.md`.
 
@@ -271,7 +273,40 @@ Exit condition:
 
 Using the real Dope repository, the developer can inspect an evidence-backed current-state model organized by systems/subsystems/components, trace representative relationships back to source evidence, and detect representative subsystem-boundary violations without any model provider configured.
 
-Closeout disposition: P5 directly qualified the pre-ADR behavior; `c4-tweaks` Green/qualified at unchanged `0.4.5` supplied the mandatory naming/left-sidebar correction before P6. The P6 audit qualifies the approved Phase 4 scope at the uncommitted `0.4.6` candidate. After the runner commits it, route to `/docs-review` before Phase 5 planning or activation; the historical pre-closeout sequence above remains evidence of how this gate was reached.
+Closeout disposition: P5 directly qualified the pre-ADR behavior; `c4-tweaks` Green/qualified at unchanged `0.4.5` supplied the mandatory naming/left-sidebar correction before P6. P6 then qualified the approved Phase 4 scope and the runner committed it as `fac88712bb55176d3d6d54fbe6034de8b0f801ff`. Historical Phase 4 prompts/evidence remain truthful for that scope.
+
+## Mandatory post-Phase-4 correction — `c4-architecture-discovery`
+
+Status: **REQUIRED BEFORE PHASE 5 — docs authority locked; implementation stack pending**
+
+Version semantics: unchanged package version `0.4.6`. This correction does not reopen or relabel Phase 4 qualification and must not advance Phase 5 versioning.
+
+Purpose:
+Correct the architectural interpretation of the Physical Map before the visual map is built. Phase 4 successfully established the lower-level language-independent graph, TypeScript semantic analyzer, provenance, query/index and inspector substrate, but its System / Subsystem / Component levels are currently created from developer declarations rather than discovered from implementation evidence.
+
+Required behavior:
+- preserve the existing TypeScript/JavaScript semantic analyzer as the lower-level evidence engine;
+- add deterministic architecture discovery for candidate Systems, Subsystems and Components using repository/workspace/build topology, entrypoints, dependency structure, semantic relationships, framework registration and later runtime observations where available;
+- never equate a directory, package or dependency cluster with architecture solely because it exists;
+- retain evidence/derivation for every architecture candidate;
+- make developer-authored architecture canonical authority: detection proposes, the developer confirms or corrects;
+- support brownfield correction operations such as confirm, rename, reparent, merge, split, replace or ignore without silently rewriting architecture;
+- support greenfield canonical System / Subsystem / Component definition before implementation exists;
+- distinguish declared-only, detected-only, realized, drifted and unassigned implementation state;
+- preserve contrary physical evidence when it disagrees with canonical architecture and surface the difference as drift rather than silently redefining either side;
+- keep derived detection rebuildable/disposable and provider-independent;
+- keep Phase 5 visual canvas, Planning Map transformations and AI runtime out of this correction.
+
+Minimum qualification:
+- a project with no architecture declaration still yields evidence-backed architecture candidates;
+- a greenfield fixture with canonical architecture and little/no implementation remains valid and visibly declared-only;
+- the real Dope repository produces architecture-scale candidates without using its declaration to manufacture those candidates;
+- developer correction of at least one detected boundary establishes canonical architecture and subsequent analysis honors that identity while still reporting contradictory implementation evidence;
+- clean rebuild/reanalysis is deterministic for the same inputs and candidate evidence is explainable.
+
+Exit condition:
+
+At unchanged `0.4.6`, Dope can discover architecture at System / Subsystem / Component scale, a developer can establish or correct canonical architecture, and the Physical Map can explain how current implementation realizes or diverges from that authority. Only then may Product Phase 5 be planned/activated.
 
 ## Product Phase 5 — Visual Software Planning
 
@@ -281,7 +316,7 @@ Design the new planning/work system from the software graph outward and turn arc
 Initial scope:
 - multi-tab central workspace for code and planning artifacts
 - Physical Map diagrams as projections of the Software Map
-- semantic zoom from systems -> subsystems -> components -> code
+- semantic zoom from canonical/detected systems -> subsystems -> components -> packages/modules/services -> files/symbols -> syntax/semantic relationships
 - Planning Maps created from/referencing physical nodes
 - explicit planned add/modify/remove/move/split/merge/relationship changes
 - visible distinction between physical, planned, inferred and unknown state
