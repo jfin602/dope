@@ -1,0 +1,56 @@
+TASK: Correction 3 / P3 — Planning removal correction closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.3.6`.
+
+GOAL
+
+Perform an evidence-only closeout of `c3-remove-planning-instruments`. Do not repair behavior and do not implement Product Phase 4.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0007, roadmap correction gate, this correction's assessment/plan/README, exact P1-P2 commits/source/results, P2 clean-baseline evidence and historical Phase 3 closeout.
+
+Require the exact successful P2 handoff with browser/package evidence. A commit subject alone is not qualification evidence.
+
+AUDIT
+
+Assess Green / Not Green / Evidence Gap for:
+
+A. Domain removal — no live Plan/PlanStep/Task Planning contract modules or `@dope/planning` package/build wiring.
+
+B. Persistence/transport removal — no PlanningStore/PlanningBackend/service/RPC registration, no current production Planning file access, and no repository `.dope/planning.json`.
+
+C. Presentation removal — no Planning controller/widget/view/menu/commands, no Project Mind Planning bridges, no BUILD/PLAN mode or PLAN-specific presentation state.
+
+D. Clean build/package graph — aggregate source/build/package contains no ghost Planning dependency or compiled module; unchanged `0.3.6` is coherent.
+
+E. Preserved product — Project Mind and ordinary IDE/workbench behavior remain usable with relevant surviving restart/browser evidence.
+
+F. Regression guard — permanent negative guard covers current production/package surfaces while intentionally excluding historical Phase 3 docs/evidence.
+
+G. Historical/roadmap integrity — Phase 3 qualification/evidence remains preserved, no compatibility/migration machinery was introduced, and no Product Phase 4 implementation started.
+
+RERUN
+
+Rerun focused negative/baseline/Project Mind checks, `npm run check`, surviving `npm run test:restart`, `npm run codex:phase:validate -- c3-remove-planning-instruments`, explicit unchanged-version/internal-reference/no-root-lock audit and `git diff --check` as applicable.
+
+Use P2 package/browser evidence; do not claim a rerun you did not actually perform.
+
+OUTPUT
+
+Create `docs/tasks/c3-remove-planning-instruments/closeout.md` with exact candidate identities, A-G table, source/package/browser coverage, historical Phase 3 preservation, residual gaps and gate decision.
+
+Do not modify Phase 3 historical closeout except for routing already established by current authority.
+
+If Green/qualified enough for sequencing, mark this correction README complete and route to post-correction `/docs-review` for Product Phase 4 planning/activation. Do not create Phase 4 prompts here.
+
+If Not Green, preserve blockers and route to a bounded follow-up correction. Do not weaken the mandatory cleanup gate.
+
+FINAL RESPONSE
+
+Report exact candidate, A-G decision, proof that the live Planning subsystem is gone, preserved Project Mind/IDE behavior, package/browser evidence, unchanged version, gaps and next route.

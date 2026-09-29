@@ -1,0 +1,80 @@
+TASK: Correction 3 / P2 — Qualify clean pre-Phase-4 baseline
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.3.6`.
+
+GOAL
+
+Prove the P1 repository is a clean, usable pre-Phase-4 baseline with no ghost Phase 3 Planning instruments.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0007, roadmap correction gate, this correction's assessment/plan, exact P1 commit/source/result, Phase 3 closeout, current Project Mind source/tests and restart/package harnesses.
+
+Require successful exact P1 predecessor, clean intended Git state and package version exactly `0.3.6`.
+
+NEGATIVE GUARD
+
+Add a permanent focused guard for current production/package surfaces, expected as `test/unit/pre-phase4-clean-baseline.test.ts` or equivalent.
+
+It must fail if current code/build/package wiring reintroduces:
+- `packages/planning` workspace/build/typecheck wiring;
+- `@dope/planning` dependencies;
+- current Planning DTO/service modules;
+- PlanningService/PlanningClient/planningServicePath;
+- PlanningStore/PlanningBackend;
+- PlanningView/PlanningWidget/PLANNING_ID;
+- `WorkspaceMode.PLAN`, `dope.workspaceMode`, or `dope.mode.*`;
+- production `.dope/planning.json` access;
+- repository-tracked `.dope/planning.json`.
+
+Do not scan historical Phase 3 docs/evidence as though their terminology were a defect.
+
+INTEGRATED CHECKS
+
+Run the new guard plus focused surviving Project Mind/baseline suites, `npm run check`, surviving `npm run test:restart`, correction grammar validation, unchanged-version/internal-reference audit, no-root-lock and `git diff --check`.
+
+Build/package the exact correction candidate at unchanged `0.3.6`. Inspect package composition and record executable/hash/embedded metadata as appropriate. Prove no internal `@dope/planning` package/dependency or compiled Planning frontend/backend/domain modules are present.
+
+DIRECT BROWSER QUALIFICATION
+
+Use the actual browser-hosted Dope workbench on the real Dope repository. Directly click/type/observe enough to establish:
+- normal workbench/editor navigation still works;
+- Project Mind opens;
+- a representative Project Mind create/edit/save action works;
+- a Decision can be inspected without Planning bridge controls/errors;
+- no Planning view/menu/command is exposed;
+- no BUILD/PLAN switch or DOPE workspace-mode status element remains;
+- theme/presentation remains readable in dark and explicit light mode.
+
+Preserve Git state. If you create disposable Project Mind knowledge solely for the probe, restore it safely before final evidence unless it is intentionally retained.
+
+EVIDENCE
+
+Create `docs/tasks/c3-remove-planning-instruments/P2-clean-baseline-evidence.md` with:
+- exact baseline/P1/current source identities;
+- negative-guard matrix;
+- focused/aggregate/restart commands/results;
+- browser actions/observations;
+- package identity/composition;
+- failures/retries/repairs;
+- Git pre/post state;
+- remaining closeout evidence.
+
+Any product repair requires a permanent regression guard and fresh affected evidence.
+
+Version remains exactly `0.3.6`.
+
+The runner owns staging/commit for a runner-executed implementation prompt; do not create a version bump.
+
+SCOPE
+
+No Product Phase 4 implementation, visual software model, new planning ontology, AI/provider runtime or framework upgrade.
+
+FINAL RESPONSE
+
+Report exact candidate, negative-guard results, Project Mind/IDE/browser qualification, package proof, unchanged version, any repair and readiness for manual correction closeout.
