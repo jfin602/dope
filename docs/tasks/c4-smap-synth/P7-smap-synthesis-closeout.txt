@@ -1,0 +1,66 @@
+TASK: Correction 4 / P7 — sMap architecture synthesis closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Perform an evidence-only closeout of the `c4-smap-synth` execution stack for the authority-named `c4-architecture-discovery` correction.
+
+Do not repair product behavior, rerun the live model/browser matrix, or implement Phase 5.
+
+PREFLIGHT
+
+Read current authority, Phase 4 closeout, this correction assessment/plan/README, exact P1-P6 commits/results and P6 synthesis/browser/package evidence.
+
+Require the exact successful P6 handoff at unchanged `0.4.6`. Commit subjects alone are not qualification evidence.
+
+AUDIT
+
+Assess Green / Not Green / Evidence Gap:
+
+A. **Initialization authority** — uninitialized/analyzing/review_required/initialized states are explicit; first analysis requires consent; decline/cancel/failure do not establish canonical state.
+
+B. **Deterministic evidence** — ArchitectureEvidencePacket is reproducible/inspectable without AI, excludes declaration-as-physical-evidence, retains hard provenance and supports bounded refinement.
+
+C. **Provider boundary/reference** — Software Map contracts remain provider-independent; LM Studio + Qwen3-Coder-30B-A3B-Instruct is a backend/application reference adapter, not canonical project state; no general Phase 6 Model/Agent Runtime was pulled forward.
+
+D. **Readiness/data separation** — capability probe and warm-up use synthetic non-project input; real packet is sent only after warm success; controlled warm failure proves no packet submission.
+
+E. **Proposal integrity** — strict JSON/schema/hierarchy/confidence/evidence-ref validation rejects malformed/fabricated output; human-readable evidence remains explanation rather than hard evidence; proposal keys remain non-canonical.
+
+F. **Developer authority** — review/correction supports practical rename/reparent/add/remove/merge-split-equivalent workflows, invalid canonical drafts cannot be accepted, explicit acceptance/manual-existing path establishes canonical architecture.
+
+G. **Physical/restart/isolation/package** — accepted architecture reconciles into Physical Map, stale/root isolation guards remain, restart/reopen works, exact `0.4.6` package/browser evidence is coherent and preflight repository state was restored as required.
+
+H. **Boundary/history/version** — Phase 4 history remains truthful, version stayed `0.4.6`, no Phase 5 canvas/Planning Map work ontology/general AI/delegation/bundled runtime/framework upgrade was pulled forward.
+
+RERUN
+
+Rerun focused deterministic c4 tests, `npm run check`, `npm run test:restart`, `npm run codex:phase:validate -- c4-smap-synth`, unchanged-version/internal-reference/no-root-lock/Theia/Electron checks and `git diff --check` as applicable.
+
+Use P6 live model/browser/package evidence. Do not claim direct reruns you did not perform.
+
+Do not repair failures.
+
+OUTPUT
+
+Create `docs/tasks/c4-smap-synth/closeout.md` with:
+- exact candidate identities;
+- A-H disposition table;
+- test/source/live-model/browser/package evidence;
+- preserved history/scope;
+- residual gaps;
+- clear correction gate decision.
+
+If Green/qualified, update this correction README to COMPLETE/GREEN and state that the mandatory c4 architecture-discovery correction is cleared for a fresh Phase 5 `/docs-review`.
+
+If Not Green, preserve blockers and route to a bounded follow-up correction. Do not weaken ADR 0009/0010/0011.
+
+FINAL RESPONSE
+
+Report exact candidate, A-H decision, deterministic evidence/provider/warm-up/proposal/developer-authority proof, restart/package result, residual gaps and Phase 5 eligibility.
