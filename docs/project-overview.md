@@ -179,17 +179,17 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 3 — Planning** is the active engineering scope from package baseline `0.3.0`.
+**Product Phase 3 — Planning** is Qualified for its applicable scope at `0.3.6` (see `docs/tasks/p3/closeout.md`). The next gate is post-Phase-3 `/docs-review`; Phase 4 AI Presence requires separate owner approval.
 
 Phase 2's `0.2.6` P6 audit remains **Not Qualified**. The owner explicitly accepted its remaining evidence gaps for sequencing and closed Phase 2 without relabeling the audit Green. The preserved gaps are recorded in `docs/tasks/p2/closeout.md`; Phase 1's historical Not Qualified result also remains unchanged.
 
 Foundation Spike 0 qualified Theia 1.75.0 at package `0.0.6`. Theia remains pinned to 1.75.0 and Electron to 42.8.1 unless a deliberate framework upgrade is separately approved.
 
-Production Project Mind is the Phase 2 foundation. The Foundation Spike Planning widget is still only a placeholder and must now be replaced by the Phase 3 product surface.
+Production Project Mind is the Phase 2 foundation. The Foundation Spike Planning placeholder has been replaced by the Phase 3 product surface.
 
 Model/provider integration, Agent Mind, tool execution, AI mutation, scoped delegation and durable development sessions remain deferred to their roadmap phases.
 
-## Active Phase 3 direction — live human-first Planning
+## Phase 3 result — live human-first Planning
 
 Phase 3 adds Plan, PlanStep and Task as Dope-owned canonical planning state. Plans carry objective/context/status, ordered live steps and human-visible revision/history. Tasks are bounded units of work attached to plan steps, with requirements/constraints, project-relative working-set files, Project Mind links, status, completion notes and developer-entered validation notes.
 

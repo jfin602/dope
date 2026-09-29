@@ -128,6 +128,8 @@ P3 versions are `0.3.1` through `0.3.6`. P1-P4 are runner-owned, P5 is the direc
 
 The Phase 3 product runtime contains no AI provider. ADR 0006's Codex-first choice applies when Phase 4 AI Presence begins; it does not authorize OpenAI/Codex/local-model integration in p3.
 
+Phase 3's `0.3.6` applicable-scope audit is Qualified in `docs/tasks/p3/closeout.md`. The current route is post-Phase-3 `/docs-review` -> explicit owner approval -> `/docs-apply` as needed. Phase 4 AI Presence has no execution authorization or implementation prompts from this closeout; historical Phase 1/2 Not Qualified evidence remains intact.
+
 ## Prompt metadata
 
 Every prompt contains exactly one canonical model recommendation:

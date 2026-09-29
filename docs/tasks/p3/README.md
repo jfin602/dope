@@ -1,6 +1,6 @@
 # Product Phase 3 — Planning Task Stack
 
-Status: READY FOR EXECUTION
+Status: COMPLETE / GREEN — Qualified at `0.3.6` (see `closeout.md`)
 Activation source/package baseline: `95815b04977a229abfdfdba628eb9dddc9e55203`, `0.3.0`
 Theia baseline: `1.75.0`; Electron: `42.8.1`; Node: 24
 Authority: `docs/planning/p3/phase-3-plan.md`, `docs/planning/p3/activation.md`
@@ -50,3 +50,5 @@ A successful P5 is committed exactly as `0.3.5` with a clean intended tree befor
 - P6 creates `closeout.md`.
 
 The intended Phase 3 exit is developer-controlled Decision -> Plan -> Step -> Task -> ordinary coding -> explicit progress, surviving restart with useful history and no LLM.
+
+Phase 3 is closed for its applicable scope. Next route: post-Phase-3 `/docs-review`, followed by explicit owner approval before Phase 4 AI Presence execution. Historical Phase 1/2 Not Qualified audits remain unchanged.

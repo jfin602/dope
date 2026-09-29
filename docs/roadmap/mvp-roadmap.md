@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current gate: Product Phase 3 — Planning (owner-activated at package `0.3.0`)
+Current gate: post-Phase-3 `/docs-review` (Planning Qualified at `0.3.6`; Phase 4 not yet approved)
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -164,7 +164,7 @@ Using Dope should leave the project easier to understand when it is reopened, ev
 
 ## Product Phase 3 — Planning
 
-Status: **ACTIVE ENGINEERING SCOPE — OWNER ACTIVATED**
+Status: **QUALIFIED FOR APPLICABLE SCOPE — `0.3.6`** (`docs/tasks/p3/closeout.md`); next gate: `/docs-review`, not Phase 4 execution.
 
 Execution folder: `p3`. Activation baseline: package `0.3.0`; prompt versions `0.3.1`–`0.3.6`. Authority: `docs/planning/p3/phase-3-plan.md` and `docs/planning/p3/activation.md`.
 
