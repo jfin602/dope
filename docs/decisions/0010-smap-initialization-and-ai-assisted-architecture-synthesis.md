@@ -63,6 +63,70 @@ They collect and normalize facts such as:
 
 These facts may identify strong architecture signals, but they do not by themselves become developer-owned Systems, Subsystems or Components.
 
+The deterministic result is a Dope-owned **ArchitectureEvidencePacket**. The packet is valid and inspectable without AI. Every evidence item has a stable packet-local evidence identifier plus the source/provenance and normalized facts required for Dope to verify it independently.
+
+> **AI interprets evidence; it does not create evidence. The Architecture Evidence Packet is deterministic and independently verifiable without AI.**
+
+### Dope-owned synthesis contracts
+
+The synthesis boundary uses two separate provider-independent JSON contracts.
+
+**ArchitectureEvidencePacket** is produced by deterministic analyzers before any model request. It contains normalized, source-backed evidence and stable evidence identifiers. The model may consume the packet but cannot add to it, modify it or manufacture additional evidence identifiers.
+
+**ArchitectureProposal** is model-generated interpretation over one supplied packet. Its v1 response shape contains:
+- `schemaVersion`;
+- `summary`;
+- `needsMoreEvidence`;
+- `nodes[]`;
+- `unassignedEvidenceRefs[]`;
+- `openQuestions[]`;
+- `evidenceRequests[]`.
+
+Each proposed node contains:
+- `proposalKey` — temporary proposal identity only;
+- `kind` — `system`, `subsystem` or `component`;
+- `name`;
+- `purpose`;
+- `parentProposalKey` or null;
+- `confidence` — numeric, finite and constrained to `0.0 <= confidence <= 1.0`;
+- `rationale` — the architectural inference drawn from the evidence;
+- `evidenceRefs[]` — machine-verifiable references into the exact ArchitectureEvidencePacket supplied to the synthesizer;
+- `evidence[]` — human-readable explanations of the referenced evidence for developer-facing UI.
+
+The three explanatory layers are intentionally distinct:
+- `evidenceRefs` answer **show me the source-backed facts**;
+- `evidence` answers **what did Dope observe in human-readable terms**;
+- `rationale` answers **why do those observations support this architectural interpretation**.
+
+Human-readable `evidence` is model-generated explanation, not evidence authority. It may explain `evidenceRefs`, but it cannot substitute for them.
+
+`confidence` is a synthesis-confidence signal, not a calibrated probability and not an authority score. A high-confidence proposal remains a proposal until developer acceptance.
+
+`proposalKey` values are temporary proposal identities. They must never silently become durable canonical System / Subsystem / Component IDs. Dope establishes canonical identity only when the developer accepts or corrects the architecture.
+
+### Proposal validation
+
+A model response cannot enter `review_required` merely because it parses as JSON. Dope must validate at least:
+1. conformance to the Dope-owned structured-output schema;
+2. unique `proposalKey` values;
+3. valid node kinds;
+4. resolvable non-null `parentProposalKey` values;
+5. valid acyclic System -> Subsystem -> Component hierarchy;
+6. finite numeric confidence in the inclusive 0..1 range;
+7. every `evidenceRef` resolves against the exact input packet;
+8. no model-created evidence identifiers;
+9. human-readable `evidence` does not substitute for source-backed `evidenceRefs`;
+10. schema/reference-valid output remains non-canonical until explicit developer acceptance;
+11. temporary proposal identities remain distinct from canonical architecture identities.
+
+Invalid structured output fails visibly and does not establish review or canonical architecture state.
+
+### Bounded evidence refinement
+
+The proposal may set `needsMoreEvidence` and return bounded `evidenceRequests`, each identifying the requested evidence kind/targets and a reason.
+
+The model does not retrieve that evidence itself. Dope validates an allowed request, deterministic analyzers gather any additional facts, Dope creates an expanded/new evidence packet, and synthesis may run again. The correction must keep this refinement bounded rather than creating an open-ended agent/tool loop.
+
 ### LLM-assisted architecture synthesis
 
 For an existing project, the initial architecture proposal is synthesized by a bounded LLM capability over deterministic evidence.
@@ -84,8 +148,11 @@ The LLM may propose:
 - names and responsibilities;
 - containment;
 - likely relationships;
-- confidence/uncertainty;
-- evidence references supporting each proposal.
+- numeric confidence;
+- rationale;
+- machine-verifiable evidence references;
+- human-readable evidence explanations;
+- open questions and bounded requests for additional deterministic evidence.
 
 LLM output is a **proposal class**. It is neither deterministic physical fact nor canonical architecture.
 
@@ -141,8 +208,12 @@ The mandatory pre-Phase-5 correction remains named `c4-architecture-discovery` a
 ADR 0010 broadens that correction's governing scope. It must now add:
 - explicit uninitialized/analyzing/review-required/initialized sMap lifecycle;
 - opt-in first analysis and a reusable Analyze Project entry point from the sMap surface;
-- deterministic architecture evidence production;
+- deterministic, independently verifiable ArchitectureEvidencePacket production;
 - bounded provider-independent LLM architecture synthesis;
+- a strict Dope-owned ArchitectureProposal JSON schema with numeric confidence, rationale, `evidenceRefs` and human-readable `evidence`;
+- structured-output, hierarchy and evidence-reference validation before `review_required`;
+- temporary proposal identities that cannot silently become canonical IDs;
+- bounded model requests for additional deterministic evidence;
 - structured proposal provenance;
 - developer review/correction and explicit acceptance;
 - manual/greenfield initialization;
