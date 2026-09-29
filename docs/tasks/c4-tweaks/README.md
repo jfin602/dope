@@ -1,6 +1,6 @@
 # Correction 4 — sMap Terminology and Workbench Placement
 
-Status: READY AFTER P5 — BLOCKED UNTIL SUCCESSFUL `0.4.5` HANDOFF
+Status: COMPLETE / GREEN — P6 ELIGIBLE AFTER CLOSEOUT HANDOFF
 Correction folder: `c4-tweaks`
 Required unchanged version: `0.4.5`
 Prompt-authoring source: `1032a20e51a1258fcd1dc4a03ba8ba6c80a0435d`
@@ -71,4 +71,4 @@ The correction gate clears only when:
 - direct browser evidence covers the changed layout;
 - no Phase 5 visual-map or AI scope was pulled forward.
 
-If Green, return to Product Phase 4 P6 closeout.
+Green/qualified decision: `docs/tasks/c4-tweaks/closeout.md` at corrected P2 candidate `a4bf000da5d4989599e592dba1b0f955bb364e38`. After the runner commits this closeout, return to Product Phase 4 P6. P6 must use this exact correction closeout as its predecessor gate and retain P5 direct evidence for underlying Physical Map behavior; this correction does not close Phase 4.

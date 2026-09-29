@@ -1,6 +1,6 @@
 # Product Phase 4 — Physical Map Task Stack
 
-Status: ACTIVE — P5 THEN MANDATORY `c4-tweaks` GATE BEFORE P6
+Status: ACTIVE — `c4-tweaks` GREEN; P6 NEXT AFTER CORRECTION CLOSEOUT HANDOFF
 Activation source/package baseline: `93a2b3152066029d28dabf73e5672e0663599e22`, `0.4.0`
 Theia baseline: `1.75.0`; Electron: `42.8.1`; Node: 24
 Authority: `docs/planning/p4/phase-4-plan.md`, `docs/planning/p4/activation.md`, ADR 0007 as amended by ADR 0008
@@ -53,7 +53,7 @@ A successful P5 is committed exactly as `0.4.5` with a clean intended tree.
 
 Correction P2 is browser-required and correction P3 is manual evidence-only closeout. Only a Green/qualified correction closeout clears the gate to P6.
 
-After the correction is Green, resume Product Phase 4 P6 manually from the exact corrected `0.4.5` candidate. P6 advances coherently to `0.4.6` and performs evidence-only Phase 4 closeout.
+After the correction is Green, resume Product Phase 4 P6 manually from the exact corrected `0.4.5` candidate. P6 must use `docs/tasks/c4-tweaks/closeout.md` as its exact predecessor gate and retain `P5-physical-model-dogfooding-evidence.md` for underlying Physical Map behavior. The runner owns the correction closeout handoff first. P6 advances coherently to `0.4.6` and performs evidence-only Phase 4 closeout.
 
 ## Output records
 
