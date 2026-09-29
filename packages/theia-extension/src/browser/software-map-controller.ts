@@ -231,6 +231,7 @@ export class SoftwareMapController {
         } catch (error) {
             if (project === this.project && request === this.setupRequest) {
                 if (this.initialization) this.initialization = { ...this.initialization, state: 'uninitialized' };
+                this.setupReady = false;
                 this.error = String(error);
             }
         } finally {

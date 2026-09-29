@@ -177,6 +177,11 @@ test('setup/probe failures keep recovery controls usable and do not mark readine
   c.probeSynthesis = () => Promise.resolve();
   await controller.probe();
   assert.equal(controller.setupReady, true);
+  c.startInitialization = () => Promise.reject(new Error('warm-up failed'));
+  await controller.synthesize();
+  assert.match(controller.error, /warm-up failed/);
+  assert.equal(controller.setupReady, false);
+  assert.equal(controller.initialization.state, 'uninitialized');
   controller.dispose();
 });
 

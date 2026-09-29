@@ -1,7 +1,10 @@
-import { architectureProposalSchema, parseArchitectureProposalJson, validateArchitectureEvidencePacket } from '@dope/software-map';
+import { architectureProposalSchema, parseArchitectureProposal, validateArchitectureEvidencePacket } from '@dope/software-map';
 import type { ArchitectureEvidencePacket, ArchitectureProposal, ArchitectureSynthesisProvider } from '@dope/software-map';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 
 const DEFAULT_ENDPOINT = 'http://127.0.0.1:1234/v1';
+export const DEFAULT_SYNTHESIS_TIMEOUT_MS = 900_000;
 const readySchema = {
     type: 'object', additionalProperties: false, required: ['ready'],
     properties: { ready: { type: 'boolean', enum: [true] } },
@@ -24,6 +27,7 @@ export class LmStudioSynthesisProvider implements ArchitectureSynthesisProvider 
     readonly endpoint: string;
     private readonly token?: string;
     private readonly timeoutMs: number;
+    private readonly synthesisTimeoutMs: number;
     private models: string[] = [];
     private modelId?: string;
     private probed = false;
@@ -37,6 +41,7 @@ export class LmStudioSynthesisProvider implements ArchitectureSynthesisProvider 
         if (options.timeoutMs !== undefined && (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs < 1)) throw new Error('Invalid synthesis timeout');
         this.token = options.token;
         this.timeoutMs = options.timeoutMs ?? 120_000;
+        this.synthesisTimeoutMs = options.timeoutMs ?? DEFAULT_SYNTHESIS_TIMEOUT_MS;
     }
 
     get selectedModel(): string | undefined { return this.modelId; }
@@ -93,11 +98,40 @@ export class LmStudioSynthesisProvider implements ArchitectureSynthesisProvider 
         await this.ensureWarm(model);
         if (generation !== this.generation || model !== this.modelId || !this.probed) throw new Error('Synthesis connection changed before packet submission');
         try {
+            const priority = { topology: 0, framework: 1, entrypoint: 2, configuration: 3, dependency: 4, semantic: 5 };
+            const facts = [...packet.items].sort((a, b) => priority[a.kind] - priority[b.kind] || a.path.localeCompare(b.path) || a.id.localeCompare(b.id));
+            const paths = [...new Set(facts.flatMap(item => [item.path, ...('sourcePaths' in item ? item.sourcePaths ?? [] : []),
+                ...('workspaces' in item ? item.workspaces ?? [] : []), ...('targetPath' in item ? [item.targetPath] : [])]))].sort();
+            const pathIndex = new Map(paths.map((path, index) => [path, index]));
+            const refs = new Map(facts.map((item, index) => [`e${index + 1}`, item.id]));
+            // Keep the exact packet server-side; send every fact with short refs and a path dictionary to fit local context.
+            const compact = { fingerprint: packet.inputFingerprint, paths, items: facts.map((item, index) => {
+                const { id, sourceEvidenceIds, ...fact } = item;
+                const result: Record<string, unknown> = { ref: `e${index + 1}`, ...fact, path: pathIndex.get(item.path) };
+                delete result.relationshipIds;
+                delete result.producer;
+                delete result.producerVersion;
+                if ('targetPath' in item) result.targetPath = pathIndex.get(item.targetPath);
+                if ('sourcePaths' in item && item.sourcePaths) result.sourcePaths = item.sourcePaths.map(path => pathIndex.get(path));
+                if ('workspaces' in item && item.workspaces) result.workspaces = item.workspaces.map(path => pathIndex.get(path));
+                return result;
+            }) };
             const response = await this.chat(model, architectureProposalSchema, 'architecture_proposal',
-                'Propose Systems, Subsystems and Components from the supplied deterministic evidence. Use only packet item IDs for evidenceRefs. Return only the required JSON proposal. Do not invent physical facts or canonical IDs.',
-                JSON.stringify(packet));
+                'Propose a concise hierarchy from the deterministic facts: 1-2 Systems, 2-5 Subsystems, and 2-8 Components when evidence supports them. Every System has null parent; every Subsystem parents a System; every Component parents a Subsystem. A package or application variant is evidence, not automatically a System. Facts are ordered with topology and framework registrations first; each path number indexes paths. Give each node 1-4 directly relevant, distinct fact aliases (e1, e2, etc.) in evidenceRefs, including frontend/view and backend/RPC or DI facts where relevant. Do not use test fixtures or unrelated facts to support production boundaries. Limit unassignedEvidenceRefs to 10 representative facts. Keep rationale and evidence brief. Return only the required JSON proposal. Do not invent physical facts or canonical IDs.',
+                JSON.stringify(compact));
             if (generation !== this.generation || model !== this.modelId) throw new Error('Synthesis connection changed');
-            return parseArchitectureProposalJson(this.content(response), packet);
+            let value: unknown;
+            const content = this.content(response);
+            try { value = JSON.parse(content); } catch { throw new Error('Invalid architecture proposal: malformed JSON'); }
+            if (value && typeof value === 'object' && !Array.isArray(value)) {
+                const output = value as Record<string, unknown>;
+                const expand = (items: unknown) => Array.isArray(items) ? items.map(ref => typeof ref === 'string' ? refs.get(ref) ?? ref : ref) : items;
+                if (Array.isArray(output.nodes)) for (const node of output.nodes) {
+                    if (node && typeof node === 'object' && !Array.isArray(node)) node.evidenceRefs = expand(node.evidenceRefs);
+                }
+                output.unassignedEvidenceRefs = expand(output.unassignedEvidenceRefs);
+            }
+            return parseArchitectureProposal(value, packet);
         } catch (error) {
             this.invalidateWarmState();
             throw error;
@@ -142,8 +176,8 @@ export class LmStudioSynthesisProvider implements ArchitectureSynthesisProvider 
         return this.request('/chat/completions', {
             model, messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
             response_format: { type: 'json_schema', json_schema: { name, strict: true, schema } },
-            temperature: 0, max_tokens: name === 'readiness' ? 16 : 8192,
-        });
+            temperature: 0, max_tokens: name === 'readiness' ? 16 : 4096,
+        }, name === 'readiness' ? this.timeoutMs : this.synthesisTimeoutMs);
     }
 
     private content(response: unknown): string {
@@ -153,26 +187,35 @@ export class LmStudioSynthesisProvider implements ArchitectureSynthesisProvider 
         return choice.message.content;
     }
 
-    private async request(path: string, body?: object): Promise<unknown> {
-        let response: Response;
+    private async request(path: string, body?: object, timeoutMs = this.timeoutMs): Promise<unknown> {
+        let response: { status: number; text: string };
         try {
-            response = await fetch(`${this.endpoint}${path}`, {
-                method: body ? 'POST' : 'GET',
-                headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}) },
-                body: body ? JSON.stringify(body) : undefined,
-                signal: AbortSignal.timeout(this.timeoutMs),
+            const url = new URL(`${this.endpoint}${path}`);
+            response = await new Promise((resolve, reject) => {
+                const request = (url.protocol === 'https:' ? httpsRequest : httpRequest)(url, {
+                    method: body ? 'POST' : 'GET',
+                    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}) },
+                    signal: AbortSignal.timeout(timeoutMs),
+                }, incoming => {
+                    const chunks: Buffer[] = [];
+                    incoming.on('data', chunk => chunks.push(Buffer.from(chunk)));
+                    incoming.on('end', () => resolve({ status: incoming.statusCode ?? 0, text: Buffer.concat(chunks).toString() }));
+                    incoming.on('error', reject);
+                });
+                request.on('error', reject);
+                request.end(body ? JSON.stringify(body) : undefined);
             });
         } catch {
             this.invalidateWarmState();
             this.probed = false;
             throw new Error('Synthesis connection failed or timed out');
         }
-        if (!response.ok) {
+        if (response.status < 200 || response.status >= 300) {
             this.invalidateWarmState();
             this.probed = false;
             throw new Error(`Synthesis HTTP ${response.status}`);
         }
-        try { return await response.json(); } catch {
+        try { return JSON.parse(response.text); } catch {
             this.invalidateWarmState();
             this.probed = false;
             throw new Error('Invalid synthesis HTTP JSON');

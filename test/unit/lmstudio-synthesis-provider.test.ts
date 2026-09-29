@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import test from 'node:test';
 import type { ArchitectureEvidencePacket, ArchitectureProposal } from '../../packages/software-map/lib/index.js';
-import { LmStudioSynthesisProvider, normalizeSynthesisEndpoint, preferredSynthesisModel } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
+import { DEFAULT_SYNTHESIS_TIMEOUT_MS, LmStudioSynthesisProvider, normalizeSynthesisEndpoint, preferredSynthesisModel } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
 
 const modelId = 'publisher/Qwen3-Coder-30B-A3B-Instruct-GGUF';
 const secret = 'PROJECT_SECRET_FRAMEWORK_EVIDENCE';
@@ -38,7 +38,7 @@ const completion = (content: unknown) => ({ choices: [{ message: { content } }] 
 function normalReply(request: Request, response: ServerResponse) {
   if (request.path === '/v1/models') return json(response, { data: [{ id: 'another-model' }, { id: modelId }] });
   if (request.body.response_format.json_schema.name === 'readiness') return json(response, completion('{"ready":true}'));
-  return json(response, completion(JSON.stringify(proposal)));
+  return json(response, completion(JSON.stringify({ ...proposal, nodes: [{ ...proposal.nodes[0], evidenceRefs: ['e1'] }] })));
 }
 async function configured(endpoint: string, options: { token?: string; timeoutMs?: number } = {}) {
   const provider = new LmStudioSynthesisProvider({ endpoint, ...options });
@@ -48,7 +48,7 @@ async function configured(endpoint: string, options: { token?: string; timeoutMs
   return provider;
 }
 
-test('discovery -> synthetic probe -> synthetic warm -> exact framework packet; follow-up reuses warm state', async () => {
+test('discovery -> synthetic probe -> synthetic warm -> compact facts; refs resolve against exact packet', async () => {
   const server = await mockServer(normalReply);
   try {
     const provider = await configured(server.endpoint);
@@ -58,11 +58,49 @@ test('discovery -> synthetic probe -> synthetic warm -> exact framework packet; 
     assert.deepEqual(server.requests.map(r => r.path), ['/v1/models', '/v1/chat/completions', '/v1/chat/completions', '/v1/chat/completions', '/v1/chat/completions']);
     assert.deepEqual(server.requests.slice(1).map(r => r.body.response_format.json_schema.name), ['readiness', 'readiness', 'architecture_proposal', 'architecture_proposal']);
     assert.ok(server.requests.slice(1, 3).every(r => !JSON.stringify(r.body).includes(secret) && r.body.response_format.json_schema.strict));
-    assert.ok(server.requests.slice(3).every(r => r.body.messages[1].content === JSON.stringify(packet)));
+    assert.ok(server.requests.slice(3).every(r => {
+      const sent = JSON.parse(r.body.messages[1].content);
+      return sent.items.length === packet.items.length && sent.items[0].ref === 'e1' &&
+        sent.items[0].kind === 'framework' && sent.paths[sent.items[0].path] === packet.items[0].path &&
+        !r.body.messages[1].content.includes('physical:1');
+    }));
     assert.ok(server.requests.slice(1).every(r => r.body.model === modelId));
     assert.deepEqual(server.requests[3].body.response_format.json_schema.schema.required, [
       'schemaVersion', 'summary', 'needsMoreEvidence', 'nodes', 'unassignedEvidenceRefs', 'openQuestions', 'evidenceRequests',
     ]);
+  } finally { await server.close(); }
+});
+
+test('large source-backed packets retain every fact within a bounded local-model input', async () => {
+  assert.ok(DEFAULT_SYNTHESIS_TIMEOUT_MS >= 600_000, 'local synthesis must allow full-packet generation time');
+  const large: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'large', items: Array.from({ length: 426 }, (_, i) => ({
+    id: `fact-${i}-${'f'.repeat(64)}`, kind: 'framework' as const, path: `packages/p${i % 12}/src/backend.ts`,
+    sourceEvidenceIds: [`source-${i}-${'s'.repeat(64)}`], framework: 'theia', producer: 'theia-inversify',
+    producerVersion: '1', concept: 'rpc-handler', name: `Service${i}`,
+  })) };
+  const server = await mockServer(normalReply);
+  try {
+    const provider = await configured(server.endpoint);
+    const result = await provider.synthesize(large);
+    assert.equal(result.nodes[0].evidenceRefs[0], large.items[0].id);
+    const sent = server.requests[3].body.messages[1].content;
+    assert.equal(JSON.parse(sent).items.length, 426);
+    assert.ok(sent.length < 60000, `compact input was ${sent.length} bytes`);
+    assert.ok(JSON.stringify(large).length > 100000);
+  } finally { await server.close(); }
+});
+
+test('high-signal topology precedes lower-level facts without changing hard-reference validation', async () => {
+  const mixed: ArchitectureEvidencePacket = { ...packet, items: [packet.items[0],
+    { id: 'topology:1', kind: 'topology', path: 'package.json', sourceEvidenceIds: [], scope: 'workspace', name: 'Dope' }] };
+  const server = await mockServer(normalReply);
+  try {
+    const provider = await configured(server.endpoint);
+    const result = await provider.synthesize(mixed);
+    const sent = JSON.parse(server.requests[3].body.messages[1].content);
+    assert.equal(sent.items[0].kind, 'topology');
+    assert.equal(sent.items[1].kind, 'framework');
+    assert.equal(result.nodes[0].evidenceRefs[0], 'topology:1');
   } finally { await server.close(); }
 });
 
