@@ -217,28 +217,30 @@ The primary architecture hierarchy is System -> Subsystem -> Component -> Code. 
 
 Canonical architecture is developer-owned project state. It may be created before implementation and owns stable architectural identity, purpose, intended boundaries, contracts and constraints. The developer is the final source of truth for architecture and must be able to correct detected structure.
 
-Detected architecture is rebuildable derived state. Deterministic analysis proposes candidate Systems, Subsystems and Components from evidence; it does not silently mutate canonical architecture. When canonical structure and implementation disagree, the Software Map preserves the canonical decision and surfaces the disagreement as drift/detected-only/unassigned implementation rather than hiding either side.
+Architecture evidence and proposals are rebuildable derived state. Deterministic analysis produces source-backed architecture evidence and signals; it does not itself establish the initial System / Subsystem / Component proposal for an uninitialized brownfield project. Bounded architecture synthesis interprets that evidence into proposed boundaries. Neither deterministic evidence nor synthesized proposals silently mutate canonical architecture. When canonical structure and implementation disagree, the Software Map preserves the canonical decision and surfaces the disagreement as drift/detected-only/unassigned implementation rather than hiding either side.
 
 The Physical Map is the evidence-backed current implementation mapped against that canonical architecture. Visualization/layout is presentation state.
 
 Physical source relationships must come from deterministic analyzers or be labeled with a different evidence class. Runtime relationships come from recorded observations. Architecture discovery and inferred semantics remain explicitly derived. AI may explain, classify and propose architecture but cannot silently establish physical or canonical truth.
 
-Every derived architecture candidate and every physical relationship that affects architectural interpretation must be traceable to evidence.
+Every proposed architecture node and every physical relationship that affects architectural interpretation must be traceable to deterministic or recorded evidence.
 
 ### Architecture Discovery
 
 Owns architecture-scale interpretation above language/framework source facts.
 
-The discovery layer consumes deterministic repository, build/configuration, semantic, framework and later runtime evidence to propose:
-- System candidates from applications, deployable/runtime units, entrypoints, process boundaries, workspace topology and framework bootstraps;
-- Subsystem candidates from dependency cohesion/direction, package/workspace boundaries, public contracts/exports, entrypoints, framework registration and runtime boundaries;
-- Component candidates from finer cohesive implementation groups and explicit framework/service structure.
+Deterministic analyzers produce the ArchitectureEvidencePacket from repository, build/configuration, semantic, framework and later runtime inputs. Evidence may include:
+- application/deployable/runtime entrypoints, process boundaries, workspace topology and framework bootstraps;
+- dependency cohesion/direction, package/workspace boundaries, public contracts/exports, framework registration and runtime boundaries;
+- finer cohesive implementation groups and explicit framework/service structure.
 
-No single signal, especially folder layout, automatically defines architecture. Discovery output includes evidence/derivation sufficient to explain why a candidate exists.
+No single signal, especially folder layout, automatically defines architecture. Evidence remains inspectable without AI.
+
+The synthesis layer consumes that packet and returns a strict Dope-owned ArchitectureProposal. AI interprets evidence; it does not create evidence.
 
 ADR 0010 amends the initial discovery path for uninitialized brownfield projects. Deterministic analyzers remain the evidence authority, but initial System / Subsystem / Component synthesis is performed through a bounded provider-independent LLM architecture-synthesis capability over that evidence.
 
-The LLM output is a proposal class, never physical fact or canonical architecture. Every proposal must retain evidence/provenance sufficient for developer review. The developer may correct the proposal and explicitly accepts the canonical architecture.
+The LLM output is a proposal class, never physical fact or canonical architecture. Every proposal node uses a temporary `proposalKey`, numeric 0..1 `confidence`, architectural `rationale`, machine-verifiable `evidenceRefs` into the exact input packet, and human-readable `evidence` explanations for the UI. Dope validates schema, hierarchy and references before review. Human-readable evidence cannot substitute for evidenceRefs, and proposal keys cannot silently become canonical IDs. The developer may correct the proposal and explicitly accepts the canonical architecture.
 
 Manual/greenfield architecture remains available with no model configured. A developer may define canonical architecture before code exists, after which deterministic analysis realizes or reports drift against it.
 
