@@ -3,7 +3,7 @@
 Status: Accepted
 Date: 2026-09-29
 Amends: ADR 0009
-Complements: ADR 0004, ADR 0006, ADR 0008
+Complements: ADR 0004, ADR 0006, ADR 0008, ADR 0011
 
 ## Context
 
@@ -199,7 +199,7 @@ Correction `c4-architecture-discovery` may introduce only the provider-independe
 
 Provider-specific request/response formats stay behind adapters. The Software Map domain consumes and produces Dope-owned contracts.
 
-OpenAI/Codex may serve as the first reference implementation consistent with ADR 0006, but no provider becomes part of the sMap domain model.
+ADR 0011 defines LM Studio with Qwen3-Coder-30B-A3B-Instruct as the first reference implementation for this narrow sMap synthesis capability. This does not supersede ADR 0006, which separately keeps OpenAI/Codex as the first reference implementation for general Product Phase 6 AI Presence. No provider becomes part of the sMap domain model.
 
 ## Correction gate
 
