@@ -199,15 +199,32 @@ Historical qualification remains evidence of what worked at that version; it doe
 
 ### Software Map
 
-Owns the language-independent Physical Map: System, Subsystem, Component, CodeEntity, typed relationships, provenance/evidence and graph queries.
+Owns the language-independent architecture representation: canonical architecture, detected architecture, Physical Map realization, System, Subsystem, Component, CodeEntity, typed relationships, provenance/evidence and graph queries.
 
 The primary architecture hierarchy is System -> Subsystem -> Component -> Code. Subsystems are explicit modular architecture objects rather than aliases for directories.
 
-The extracted physical graph is rebuildable derived state. Developer-authored System/Subsystem declarations and architecture constraints are canonical project architecture state. Visualization/layout is presentation state.
+Canonical architecture is developer-owned project state. It may be created before implementation and owns stable architectural identity, purpose, intended boundaries, contracts and constraints. The developer is the final source of truth for architecture and must be able to correct detected structure.
 
-Physical source relationships must come from deterministic analyzers or be labeled with a different evidence class. Runtime relationships come from recorded observations. Inferred semantics and proposals remain distinguishable. AI may explain, classify and propose architecture but cannot silently establish physical truth.
+Detected architecture is rebuildable derived state. Deterministic analysis proposes candidate Systems, Subsystems and Components from evidence; it does not silently mutate canonical architecture. When canonical structure and implementation disagree, the Software Map preserves the canonical decision and surfaces the disagreement as drift/detected-only/unassigned implementation rather than hiding either side.
 
-Every physical relationship must be traceable to evidence.
+The Physical Map is the evidence-backed current implementation mapped against that canonical architecture. Visualization/layout is presentation state.
+
+Physical source relationships must come from deterministic analyzers or be labeled with a different evidence class. Runtime relationships come from recorded observations. Architecture discovery and inferred semantics remain explicitly derived. AI may explain, classify and propose architecture but cannot silently establish physical or canonical truth.
+
+Every derived architecture candidate and every physical relationship that affects architectural interpretation must be traceable to evidence.
+
+### Architecture Discovery
+
+Owns architecture-scale interpretation above language/framework source facts.
+
+The discovery layer consumes deterministic repository, build/configuration, semantic, framework and later runtime evidence to propose:
+- System candidates from applications, deployable/runtime units, entrypoints, process boundaries, workspace topology and framework bootstraps;
+- Subsystem candidates from dependency cohesion/direction, package/workspace boundaries, public contracts/exports, entrypoints, framework registration and runtime boundaries;
+- Component candidates from finer cohesive implementation groups and explicit framework/service structure.
+
+No single signal, especially folder layout, automatically defines architecture. Discovery output includes evidence/derivation sufficient to explain why a candidate exists.
+
+Discovery is provider-independent and must work with no AI model configured. AI may later suggest interpretations but those suggestions are a separate proposal class.
 
 ### Code Analysis
 
@@ -215,11 +232,11 @@ Owns repository/workspace discovery, analyzer orchestration, incremental indexin
 
 The normalized software graph is language-independent. Semantic analyzers are language-specific.
 
-Phase 4 is designed independently from `@dope/planning`, `.dope/planning.json`, the Phase 3 Planning RPC/UI and Plan/PlanStep/Task semantics. Do not add compatibility layers between them merely because Phase 3 shipped first.
+The existing TypeScript/JavaScript adapter remains the lower-level semantic evidence engine and should prefer TypeScript compiler/project/type-checker semantics where they provide authoritative symbol resolution. Architecture discovery sits above those facts; it does not replace them.
 
-The first planned implementation is TypeScript/JavaScript-first and should prefer the TypeScript compiler/project/type-checker semantics where they provide authoritative symbol resolution, with parser/framework extractors added behind adapters as required.
+Parser/framework extractors may be added behind adapters as required. Framework extractors may produce deterministic concepts such as routes, jobs, schemas, DI/service registration or frontend/backend boundaries when explicit recognition rules support them.
 
-Framework extractors may produce deterministic concepts such as routes, jobs or schemas when explicit recognition rules support them.
+Phase 4 and its architecture-discovery correction remain independent from `@dope/planning`, `.dope/planning.json`, the Phase 3 Planning RPC/UI and Plan/PlanStep/Task semantics. Do not add compatibility layers between them merely because Phase 3 shipped first.
 
 ### Project Intelligence
 
