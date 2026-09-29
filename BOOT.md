@@ -227,15 +227,18 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 Do not activate or author Product Phase 5 implementation work yet.
 
-Next, decompose and execute correction `c4-architecture-discovery` at unchanged package version `0.4.6`. Its governing contract is ADR 0009 plus the amended Product Model, Architecture, roadmap and storage authority.
+Next, decompose and execute correction `c4-architecture-discovery` at unchanged package version `0.4.6`. Its governing contract is ADR 0009 as amended by ADR 0010, plus the amended Product Model, Architecture, roadmap and storage authority.
 
 The correction must:
 - preserve the existing TypeScript/JavaScript semantic analyzer, evidence/provenance, index/query and sMap inspector substrate;
-- discover candidate Systems, Subsystems and Components from deterministic repository/semantic/framework evidence rather than requiring `.dope/architecture.json` to create those physical levels;
-- keep developer-authored architecture canonical and provide an explicit confirmation/correction path;
-- support canonical architecture before code exists;
-- distinguish declared-only, detected-only, realized, drifted and unassigned state;
+- detect an uninitialized sMap and require explicit Analyze Project consent before building the initial map;
+- leave the project uninitialized when analysis is declined and expose Analyze Project again from the sMap empty state;
+- produce deterministic repository/semantic/framework evidence first, then use a bounded provider-independent LLM architecture-synthesis capability to propose Systems, Subsystems and Components;
+- keep generated structure as proposal state until explicit developer review/correction and acceptance;
+- keep developer-authored architecture canonical and support manual/greenfield architecture before code exists without requiring a model;
+- distinguish uninitialized/analyzing/review-required/initialized lifecycle plus declared-only, proposed/detected-only, realized, drifted and unassigned realization states as applicable;
 - preserve contradictory physical evidence as drift rather than silently changing canonical architecture;
-- remain provider-independent and avoid Phase 5 visual Planning Map or AI runtime work.
+- retain proposal provenance to deterministic evidence;
+- avoid Phase 5 visual Planning Map work and keep general AI Presence, Agent Mind, tool execution, mutation and delegation out of this correction.
 
 After the correction closes Green, run a fresh `/docs-review` for Phase 5 activation/planning.
