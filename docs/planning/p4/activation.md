@@ -11,7 +11,7 @@ The owner approved Product Phase 4 after post-correction documentation review.
 
 Correction 3 is complete and Green/qualified for sequencing. Its closeout commit is `3f0a4bd6854e3d4ef5781b1c0150e5c213a2d52b`; the audited corrected product source is `d3dfeb209ab30c23951d894204a89698a6b44353`. The Phase 3 Planning runtime/domain/storage/UI/PLAN mode is gone. Historical Phase 3 evidence remains authoritative for what `0.3.6` qualified, but it is not a compatibility contract.
 
-The coherent `0.4.0` commit containing this activation and the Phase 4 plan is the Product Phase 4 activation source. The exact SHA is recorded in the p4 task stack created immediately after activation.
+The coherent `0.4.0` Product Phase 4 activation source is `93a2b3152066029d28dabf73e5672e0663599e22`. The p4 task stack must require this source to be reachable and preserve coherent `0.4.0` before P1 advances versioning.
 
 ## Activation baseline
 
