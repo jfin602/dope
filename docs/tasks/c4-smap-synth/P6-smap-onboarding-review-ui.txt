@@ -1,0 +1,103 @@
+TASK: Correction 4 / P6 — sMap Analyze Project onboarding and proposal review UI
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Implement the bounded sMap first-use UX: explicit Analyze Project consent, streamlined local LM Studio/model setup, proposal explanation/review/correction, manual/existing architecture paths and explicit acceptance.
+
+PREFLIGHT
+
+Read current authority, this correction assessment/plan and exact successful P1-P5 source/results. Inspect current SoftwareMapController/Widget/frontend wiring, Theia preference/application-state APIs and stale-workspace guards before editing.
+
+Require exact P5 predecessor, clean intended Git state and package `0.4.6`.
+
+FIRST-USE CONSENT
+
+For an uninitialized single local project:
+- automatically offer **Analyze Project?** without starting analysis;
+- **Not now** performs no backend analysis and no project write;
+- suppress repeated automatic nagging only as presentation/user-session state;
+- sMap uninitialized empty state always exposes **Analyze Project** to reopen the flow;
+- initialized projects expose ordinary Refresh instead.
+
+Do not start analysis merely because the widget/view/workspace attaches.
+
+LOCAL SETUP
+
+If synthesis is selected and no ready model choice exists:
+- probe the local LM Studio default;
+- discover models;
+- prefer/show the Qwen3-Coder-30B-A3B-Instruct reference family when available;
+- allow compatible model selection and manual endpoint entry;
+- persist endpoint/model as user/application preference using supported Theia mechanisms, not project files;
+- keep auth/session secret handling bounded and do not persist a token insecurely merely for convenience;
+- run/display the P4 structured-output capability probe before marking setup ready.
+
+Keep setup inside the Analyze Project flow rather than sending the user through an unrelated settings journey.
+
+REVIEW / EXPLANATION
+
+For `review_required` render the proposed System -> Subsystem -> Component hierarchy.
+
+For each proposal node expose:
+- name/purpose;
+- numeric confidence clearly labeled as confidence, not probability;
+- rationale;
+- human-readable `evidence`;
+- a separate hard-evidence/source section resolving `evidenceRefs`.
+
+Hard refs must remain navigable to deterministic evidence/source where available. Never visually present model prose as the hard evidence record.
+
+Show open questions and unassigned evidence honestly.
+
+CORRECTION CONTROLS
+
+Provide practical non-canvas controls sufficient to:
+- confirm/rename;
+- edit canonical ID and purpose;
+- reparent;
+- add/remove/replace;
+- move children between boundaries so merge/split workflows are achievable;
+- edit/confirm deterministic implementation-root suggestions.
+
+Block acceptance until the resulting canonical declaration passes backend/domain validation.
+
+Explicit Accept calls the P5 durable acceptance path. Cancel discards review without project writes.
+
+Do not implement drag/drop graph visualization or Phase 5 Planning Map.
+
+EXISTING / MANUAL PATH
+
+When a valid existing declaration is present but sMap is uninitialized, expose **Use existing architecture** as an explicit developer choice.
+
+Provide a bounded manual/greenfield hierarchy editor that can establish valid canonical architecture without a model.
+
+RACE / ACCESSIBILITY TESTS
+
+Extend focused controller/widget tests for:
+- attach causes no analysis;
+- decline and later Analyze Project;
+- provider/model preference is not project state;
+- stale workspace/provider/proposal responses cannot render into a new root;
+- setup/probe errors are recoverable;
+- proposal evidence prose versus hard refs;
+- correction draft validation;
+- cancel/accept state;
+- existing/manual path;
+- keyboard labels/focus and dark/light-compatible semantic styling for new controls.
+
+P7 owns direct browser observation.
+
+Run focused UI/backend tests, `npm run check`, restart, correction validation, unchanged-version/coherence guards and `git diff --check`.
+
+The runner owns staging/commit.
+
+FINAL RESPONSE
+
+Report first-use flow, setup persistence boundary, review/correction capabilities, evidence UX, manual/existing path, race/accessibility guards, checks and readiness for P7.
