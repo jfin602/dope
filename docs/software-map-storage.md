@@ -36,7 +36,11 @@ Until resumable review drafts are deliberately specified, failure or cancellatio
 
 Deterministic repository, semantic, framework and later runtime analyzers produce rebuildable evidence and architecture signals. For initial brownfield initialization, a bounded LLM synthesis step interprets that evidence into proposed System / Subsystem / Component structure.
 
-Those proposals are derived state. They must not be persisted as canonical truth merely because generation or caching makes it convenient. Proposal provenance must remain traceable to the deterministic evidence supplied or cited.
+The ArchitectureEvidencePacket and ArchitectureProposal are distinct derived artifacts. The evidence packet must be deterministically reproducible/inspectable without AI. The proposal may contain model interpretation, numeric confidence, rationale and human-readable evidence explanations, but every claimed source basis must resolve through `evidenceRefs` to the exact packet supplied to synthesis.
+
+Neither packet nor proposal becomes canonical truth merely because serialization or caching is convenient. If either is cached, the cache is disposable/versioned and must preserve packet/proposal association strongly enough to reject stale or mismatched evidence references.
+
+Human-readable `evidence` is explanation, not authority and not a substitute for source-backed `evidenceRefs`. Temporary proposal keys are not durable canonical architecture IDs.
 
 When proposed/detected structure and canonical architecture disagree, Dope preserves both:
 - canonical identity/intent remains developer-owned;
@@ -59,4 +63,4 @@ Attachment resolves a local `file:` folder to its canonical real path. Reading r
 
 Malformed JSON, invalid schema, unsupported future versions and unsafe paths fail with diagnostics without rewriting the original bytes. Recover by editing or restoring the file with ordinary filesystem/Git tools, then reanalyzing.
 
-No derived graph or architecture-discovery cache belongs in `.dope/project-mind.json`. If a future disk cache is introduced, it must be explicitly disposable, versioned and reject/rebuild stale or incompatible entries.
+No derived graph, ArchitectureEvidencePacket, ArchitectureProposal or architecture-discovery cache belongs in `.dope/project-mind.json`. If a future disk cache is introduced, it must be explicitly disposable, versioned and reject/rebuild stale, mismatched or incompatible entries.
