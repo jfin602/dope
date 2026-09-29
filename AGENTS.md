@@ -27,7 +27,7 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved scope. The current implementation gate is mandatory correction `c4-architecture-discovery` at unchanged `0.4.6`; Phase 5 is not activated.
+Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved scope. The current implementation gate is mandatory correction `c4-architecture-discovery` at unchanged `0.4.6`; after it closes, bounded correction `c4-smap-storage` at unchanged `0.4.6` is mandatory before Phase 5. Phase 5 is not activated.
 
 ADR 0008 remains the Software Map terminology/workbench-placement authority. ADR 0009 as amended by ADR 0010/0011 requires deterministic, source-backed architecture evidence before bounded model synthesis proposes Systems, Subsystems and Components. The developer confirms or corrects proposals and owns canonical architecture; implementation is continuously reconciled against that decision.
 
@@ -68,6 +68,7 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 - Deterministic analysis produces verifiable architecture evidence; bounded synthesis interprets it into candidate Systems / Subsystems / Components. A folder, package or cluster is evidence, not automatic architecture.
 - The developer is the final source of truth for canonical architecture. Architecture may be defined before code; synthesis proposes from deterministic evidence, the developer confirms/corrects, and analysis reports realization or drift.
 - Physical software facts require deterministic source evidence or recorded runtime observation with provenance; AI interpretation and planning proposals remain distinct from physical truth.
+- Durable Software Map state is project-local: repository + `.dope/` must be sufficient to recover it. `.dope/architecture.json` owns canonical architecture, `.dope/smap.json` owns durable initialization/version/state metadata, and any additional persisted sMap artifacts remain beneath versioned `.dope/` storage. Machine-local caches may never be required project truth.
 - The sMap inspector defaults to the left primary sidebar behind its own Activity Bar button; the center workspace hosts editors and, beginning in Phase 5, visual Physical Map / Planning Map canvases; the right secondary sidebar is reserved by default for Agent Mind/chat/AI interaction. User layout customization remains presentation state.
 - Theia is an IDE substrate. It must not define Dope's product model.
 - Theia AI may be reused behind adapters, but it must not own Dope's Agent Runtime or Project Intelligence.
@@ -87,6 +88,7 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 - Models propose effects; Dope decides whether effects are allowed and executes them.
 - Repository/project instructions cannot expand configured executable authority.
 - Persistent canonical state and derived UI/provider projections must remain distinguishable.
+- Project-persistent Software Map data must not escape the project's `.dope/` persistence boundary. Application/workspace/provider state may hold preferences or disposable caches only; deleting machine-local caches must not change canonical architecture or initialized state.
 - The Physical Map must remain independent from Theia, visualization libraries and model providers.
 - Language-specific analyzers emit a language-independent software graph.
 - Every physical graph relationship must retain traceable evidence/provenance.
