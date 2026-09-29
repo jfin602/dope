@@ -117,6 +117,21 @@ Provider/runtime readiness includes a synthetic structured-output capability pro
 
 A greenfield project may instead initialize through developer-authored architecture before code exists. Cancellation or failure before acceptance returns to uninitialized unless a future resumable-draft contract is deliberately introduced.
 
+## sMap persistence boundary
+
+Durable Software Map state is project-local.
+
+The repository's `.dope/` directory is the required persistence boundary:
+- `.dope/architecture.json` contains canonical developer-owned architecture;
+- `.dope/smap.json` contains durable sMap initialization/version/state metadata;
+- any future persisted sMap evidence, graph snapshot, fingerprint, proposal draft or index must remain beneath `.dope/` in an explicitly versioned Dope-owned format.
+
+Repository + `.dope/` must be sufficient to recover durable sMap state. Theia workspace storage, application preferences, provider sessions, LM Studio state, global Dope databases and machine-local caches may improve UX or performance but cannot be required to reconstruct project truth or determine initialization.
+
+Provider endpoint/model selection remains user/application state, not project state. External caches are allowed only when fully disposable and reconstructible from repository evidence plus project-local `.dope/`.
+
+The active `c4-smap-synth` P6-P8 prompts remain frozen while they execute. This persistence rule does not retroactively alter those prompts. A bounded post-c4 storage correction at unchanged `0.4.6` must reconcile the implementation to this boundary before Product Phase 5 activation.
+
 ## Model and provider boundary
 
 Dope must not depend architecturally on one model, model family, provider, API, hosted service, local runtime, or provider-native chat/session ontology.
