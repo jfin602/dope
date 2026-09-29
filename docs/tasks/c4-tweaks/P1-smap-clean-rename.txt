@@ -1,0 +1,107 @@
+TASK: Correction 4 / P1 — Canonical sMap clean rename
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.5`.
+
+GOAL
+
+Make a clean pre-stability rename of the live Phase 4 architecture feature from Software Model terminology to the ADR 0008 Software Map vocabulary without changing Physical Map behavior.
+
+PREFLIGHT
+
+Read BOOT, AGENTS, PRINCIPLES, PRODUCT-MODEL, ARCHITECTURE, workflow/stability authority, ADR 0007, ADR 0008, Phase 4 plan/activation, exact P4 source/evidence, exact successful P5 prompt/evidence/commit, and this correction's assessment/implementation plan.
+
+Require the exact successful P5 handoff committed as coherent `0.4.5`, P5 direct GUI evidence Green enough to enter this correction, ADR 0008/current authority reconciled into the branch, clean intended Git state, Node 24, no root package-lock.json, Theia 1.75.0 and Electron 42.8.1.
+
+Do not execute against an incomplete P5 checkpoint.
+
+INSPECT FIRST
+
+Trace the exact P5 implementation before editing:
+- root workspace/build/typecheck/test/package wiring;
+- architecture package/public exports;
+- Software Model service/client/path contracts;
+- backend coordinator/registration consumers;
+- Theia controller/widget/contribution/view IDs/commands;
+- CSS/icon classes;
+- unit/integration/restart tests;
+- package/native inspection expectations;
+- current storage/recovery docs.
+
+Use actual source as authority. The Phase 4 plans named expected paths but do not justify blind renames where implementation differs.
+
+CLEAN-BREAK RENAME
+
+Apply the ADR 0008 product vocabulary to current live architecture surfaces.
+
+Expected direction, adjusted to actual source:
+- `packages/software-model/` -> `packages/software-map/`;
+- `@dope/software-model` -> `@dope/software-map`;
+- architecture-feature `SoftwareModel*` / `PhysicalSoftwareModel*` contracts, service/client/path names and public exports -> SoftwareMap/PhysicalMap equivalents;
+- live Theia architecture-feature modules such as `software-model-controller.ts` / `software-model-widget.ts` -> software-map/sMap equivalents;
+- architecture-feature view/command/widget/service IDs still using `software-model` -> canonical software-map/sMap IDs;
+- root scripts/workspaces/project references/package dependencies/test names/baseline assertions/package-inspection expectations -> canonical names;
+- current nonhistorical storage/recovery guide filename/references -> Software Map naming if still legacy-named.
+
+Keep:
+- generic graph/node/edge/query terminology for the normalized graph substrate;
+- `@dope/code-analysis` and `@dope/code-analysis-typescript`;
+- `.dope/architecture.json`;
+- System/Subsystem/Component/CodeEntity identities;
+- Model Runtime/provider/local-model terminology;
+- generic domain-model terminology unrelated to the architecture product.
+
+Do not add compatibility aliases, duplicate package names, old command aliases, re-export shims or tombstone services merely to preserve the superseded prototype vocabulary.
+
+Do not cosmetically rewrite ADR 0007 historical text, Phase 4 P1-P5 prompts/evidence or earlier historical records.
+
+PRESERVE SEMANTICS
+
+The rename must not change:
+- declared architecture IDs;
+- derived CodeEntity/relationship identity algorithms;
+- graph dedupe/order semantics;
+- evidence/provenance;
+- dependency aggregation/rules;
+- analyzer behavior;
+- unassigned/unknown truth;
+- project/root isolation;
+- stale-generation guards;
+- Analyze/Refresh and source navigation.
+
+If a serialized identifier contains a legacy presentation/package name, classify it as canonical project state versus derived/presentation state before changing it. Do not invent user-data migration machinery without a concrete need.
+
+PERMANENT TERMINOLOGY GUARD
+
+Add a focused guard such as `test/unit/smap-terminology.test.ts`.
+
+It must positively require the current canonical package/path/export surface and fail if current production/build/package wiring reintroduces:
+- `packages/software-model`;
+- `@dope/software-model`;
+- live architecture-feature SoftwareModel/PhysicalSoftwareModel symbol families;
+- live architecture-feature `software-model` command/view/widget/service IDs;
+- stale root build/typecheck/test/dependency references.
+
+Exclude historical prompts/evidence and ADR 0007 preserved history. Do not flag legitimate AI/model-provider/Model Runtime language or generic graph implementation terms.
+
+CHECKS
+
+Run the terminology guard, focused renamed Software Map/declaration/analyzer/index/backend/UI suites, `npm run check`, current `npm run test:restart`, `npm run codex:phase:validate -- c4-tweaks`, explicit unchanged-version/internal-reference audit, no-root-lock/Theia/Electron coherence and `git diff --check`.
+
+Version remains exactly `0.4.5`.
+
+The runner owns staging/commit. Do not commit.
+
+SCOPE
+
+Do not move the inspector yet except where the clean view-ID rename is mechanically required. P2 owns placement and direct GUI requalification.
+
+No Phase 5 visual canvas, Planning Map editing, graph-layout library, AI Presence, Agent Mind, provider runtime, delegation, Sessions or Theia upgrade.
+
+FINAL RESPONSE
+
+Report exact P5 predecessor, concrete production/package/symbol/ID renames, terminology guard coverage, preserved graph/analyzer/query semantics, checks, unchanged-version proof and readiness for P2.

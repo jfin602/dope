@@ -1,0 +1,60 @@
+TASK: Correction 4 / P3 — sMap correction closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.5`.
+
+GOAL
+
+Perform an evidence-only closeout of `c4-tweaks`. Do not repair product behavior and do not implement Phase 5.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0008, current Phase 4 authority, exact successful P5 handoff/evidence, this correction assessment/plan/README, exact P1-P2 commits/results and P2 sMap layout/package evidence.
+
+Require the exact successful P2 handoff at unchanged `0.4.5`. A commit subject alone is not qualification evidence.
+
+AUDIT
+
+Assess Green / Not Green / Evidence Gap for:
+
+A. Canonical terminology — live architecture feature/package/symbol/UI surfaces use Software Map/sMap/Physical Map terminology; no live compatibility aliases, `@dope/software-model` package or ghost obsolete IDs remain.
+
+B. Behavior preservation — architecture declarations, deterministic graph/evidence/query semantics, analyzer behavior, dependency aggregation, violations, unassigned truth and source navigation remain intact.
+
+C. Workbench contract — dedicated sMap Activity Bar entry defaults to the left primary sidebar; center remains the editor/workspace; sMap does not own the right secondary sidebar by default; user rearrangement remains possible.
+
+D. Regression guards — permanent terminology and placement guards cover current production/package surfaces without treating legitimate AI model terminology or historical evidence as defects.
+
+E. Isolation/restart — project/generation guards, second-root isolation, restart/reopen and absence of a ghost legacy view remain supported by current evidence.
+
+F. Final package/browser — exact corrected `0.4.5` package contains canonical names and the changed GUI was directly qualified on the real Dope repository.
+
+G. History/phase boundary — P5 historical evidence remains intact, ADR 0008 is authoritative, version stayed `0.4.5`, and no Phase 5 visual canvas/Planning Map editing or AI Presence work was pulled forward.
+
+RERUN
+
+Rerun focused terminology/placement guards, focused Software Map/declaration/analyzer/index/backend/UI tests, `npm run check`, current `npm run test:restart`, `npm run codex:phase:validate -- c4-tweaks`, explicit unchanged-version/internal-reference/no-root-lock/Theia/Electron checks and `git diff --check` as applicable.
+
+Use P2 browser/package evidence. Do not claim direct GUI reruns you did not perform.
+
+Do not repair failures during closeout.
+
+OUTPUT
+
+Create `docs/tasks/c4-tweaks/closeout.md` with exact candidate identities, A-G table, source/package/browser coverage, P5 evidence preservation, residual gaps and a clear correction gate decision.
+
+If Green/qualified, mark this correction README COMPLETE/GREEN and route to Product Phase 4 P6 closeout. P6 must use this exact correction closeout as its predecessor gate while retaining P5 evidence for the underlying Physical Map behavior.
+
+If Not Green, preserve blockers and route to a bounded follow-up correction. Do not weaken ADR 0008 or bypass the gate.
+
+SCOPE
+
+No Phase 5 implementation, no new central map canvas, no Planning Map editing, no AI/provider runtime and no framework upgrade.
+
+FINAL RESPONSE
+
+Report exact candidate, A-G decision, canonical sMap rename proof, left-sidebar/browser/package evidence, preserved Physical Map behavior, unchanged version, gaps and P6 eligibility.

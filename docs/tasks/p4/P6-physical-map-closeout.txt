@@ -1,0 +1,78 @@
+TASK: Phase 4 / P6 — Physical Map closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.4.6`.
+
+GOAL
+
+Perform evidence-only Phase 4 closeout from the exact successful P5 handoff plus the exact successful `c4-tweaks` correction closeout. No product repairs and no Phase 5 implementation prompts.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0007 as amended by ADR 0008, all current Phase 4 authority/plans/storage guidance, exact reachable P1-P5 commits/source/tests, P4 restart/package evidence, P5 direct GUI evidence, exact `c4-tweaks` P1-P3 commits/results/closeout, corrected sMap package/browser evidence, completed c3 correction truth and inherited historical Phase 1/2/3 evidence.
+
+Require:
+- reachable activation source `93a2b3152066029d28dabf73e5672e0663599e22`;
+- exact successful P5 handoff with Green applicable direct evidence;
+- exact `c4-tweaks` closeout Green/qualified at unchanged `0.4.5`;
+- coherent corrected `0.4.5` source as the immediate Phase 4 closeout predecessor.
+
+A version subject alone is not qualification evidence. Do not bypass the correction gate.
+
+AUDIT
+
+Assess Green / Not Green / Evidence Gap for:
+
+A. Physical Map/declaration core — language-independent System/Subsystem/Component/CodeEntity contracts, strict architecture declarations, deterministic identity, unassigned truth and no Theia/provider/planning leakage.
+
+B. Analyzer — deterministic TypeScript/JavaScript discovery/resolution, representative imports/exports/references/inheritance, honest diagnostics and traceable source evidence.
+
+C. Index/reanalysis — bounded incremental invalidation, add/change/delete/config/declaration handling, newest-generation safety and proven incremental-vs-clean equivalence.
+
+D. Architecture validation — explicit ownership, dependency aggregation with originating evidence and correct Subsystem allowed/forbidden violations.
+
+E. Service/UI isolation and canonical sMap presentation — root/handle binding, deterministic renderer-independent queries, stale-project/generation protection, dedicated sMap Activity Bar entry, left primary-sidebar default, source navigation, keyboard/theme/error states and no live legacy Software Model/right-sidebar default.
+
+F. Restart/package — derived rebuild after process replacement, second-root isolation, Project Mind regression status, exact corrected final-relevant AppImage/resources/native-launch coverage, canonical `@dope/software-map` composition and no live `@dope/software-model` package.
+
+G. Dope-on-Dope — P5 direct GUI inspection of real Dope hierarchy/relationships/evidence, aggregate provenance, controlled violation appearance/removal and provider-free current-state understanding, plus c4 direct requalification of the changed sMap workbench placement.
+
+Preserve historical Phase 1/2 Not Qualified evidence, Phase 3 qualified historical scope, completed c3 correction truth, P1-P5 pre-ADR evidence terminology and c4 correction truth. Do not rewrite historical evidence to make terminology look current.
+
+RERUN
+
+Advance root/all workspace versions/internal references/baseline assertions coherently from corrected `0.4.5` to `0.4.6`.
+
+Run focused Software Map/declaration/analyzer/index/backend/UI tests, c4 terminology/placement guards, `npm run check`, current `npm run test:restart`, `npm run codex:phase:validate -- p4`, explicit no-root-lock/version/Theia/Electron coherence and `git diff --check`.
+
+Build/inspect the package as appropriate for the final `0.4.6` candidate and record exact source/package identity. A new build does not itself repeat P5 or c4 direct GUI evidence.
+
+Do not repair failures during closeout.
+
+OUTPUT
+
+Create `docs/tasks/p4/closeout.md` with:
+- activation/P5/c4/pre-task/final candidate identities;
+- architecture declaration identity;
+- A-G table;
+- exact Physical Map/analyzer/index/rule/service/UI evidence;
+- P5 direct matrix;
+- c4 terminology/layout correction evidence;
+- restart/package/native result;
+- retained historical evidence;
+- residual gaps;
+- Qualified / Not Qualified decision.
+
+If the final commit SHA does not yet exist, state exactly how the runner-owned closeout commit resolves it; never invent a SHA.
+
+If Qualified, mark the p4 README COMPLETE/GREEN and route consistently to post-Phase-4 `/docs-review` before Phase 5 planning/activation. Do not create Phase 5 prompts here.
+
+If Not Qualified, preserve blockers and route to bounded correction/requalification.
+
+FINAL RESPONSE
+
+Report exact candidate/A-G decision, deterministic Physical Map usefulness, analyzer/evidence quality, reanalysis/rule/sMap UI/restart/package results, c4 gate disposition, gaps, docs updated and next action.
