@@ -1,74 +1,64 @@
 # Correction 4 Prompt Assessment — sMap Architecture Synthesis
 
-Status: APPROVED / READY TO EXECUTE
+Status: IN PROGRESS — P1/P2 COMPLETE; FRAMEWORK GAP AMENDMENT APPROVED; P3 NEXT
 Correction authority name: `c4-architecture-discovery`
 Execution folder: `c4-smap-synth`
 Prompt-authoring source: `067828fdd6db0149765e67c547158f63d7e55743`
+Post-P2 amendment source: `99f16e871b403be96c35078ec94a3ebb5ccf3990`
 Required unchanged package version: `0.4.6`
 Authority: ADR 0009 as amended by ADR 0010; ADR 0011; BOOT; AGENTS subject to the later ADR amendments; ARCHITECTURE; PRODUCT-MODEL; software-map-storage; roadmap/workflow/stability authority
 
 ## Conclusion
 
-Use seven ordered prompts at unchanged `0.4.6`:
+The committed P1/P2 work remains accepted and unchanged. Insert one new prompt immediately after P2, then shift only the unexecuted prompts.
 
-1. provider-independent synthesis/lifecycle contracts and strict proposal validation;
-2. deterministic, AI-independent ArchitectureEvidencePacket generation and bounded refinement;
-3. local LM Studio/Qwen provider adapter, structured-output probe and warm-up gate;
-4. initialization orchestration, project-local initialization marker and safe canonical acceptance;
-5. Analyze Project onboarding, local-model setup and proposal review/correction UI;
-6. direct real-Dope LM Studio/Qwen dogfooding and package/restart qualification;
-7. evidence-only correction closeout.
+Use eight ordered prompts at unchanged `0.4.6`:
 
-This is the executable stack for the roadmap/ADR correction named `c4-architecture-discovery`. The user-selected folder name `c4-smap-synth` does not rename the governing correction.
+1. provider-independent synthesis/lifecycle contracts and strict proposal validation — **committed**;
+2. deterministic, AI-independent ArchitectureEvidencePacket generation and bounded refinement — **committed**;
+3. deterministic framework-extraction seam + first Theia/Inversify extractor — **next**;
+4. local LM Studio/Qwen provider adapter, structured-output probe and warm-up gate;
+5. initialization orchestration, project-local initialization marker and safe canonical acceptance;
+6. Analyze Project onboarding, local-model setup and proposal review/correction UI;
+7. direct real-Dope LM Studio/Qwen dogfooding and package/restart qualification;
+8. evidence-only correction closeout.
+
+This remains the executable stack for the roadmap/ADR correction named `c4-architecture-discovery`. The folder `c4-smap-synth` does not rename the governing correction.
 
 | Prompt | Boundary | Primary evidence | Routing |
 | --- | --- | --- | --- |
-| P1 | Software Map synthesis contracts, lifecycle types, JSON schema/parser/validator | invalid proposal rejection, evidence-ref integrity, temporary proposal identity, lifecycle contract | GPT-6 Sol High |
-| P2 | deterministic ArchitectureEvidencePacket + bounded deterministic evidence expansion | stable packet/fingerprint, package/workspace/entrypoint/dependency facts, no AI/declaration dependence | GPT-6 Sol High |
-| P3 | backend LM Studio-compatible synthesis adapter | model discovery, JSON-schema probe, warm state, no project evidence before warm success, mocked HTTP failures | GPT-6 Sol High |
-| P4 | initialization orchestration + durable acceptance/reconciliation | uninitialized/review/initialized transitions, no-write decline/cancel, safe canonical acceptance, stale/conflict/isolation guards | GPT-6 Sol High |
-| P5 | sMap onboarding/setup/review UI | Analyze Project yes/no, local connection/model selection, review/correction, evidence explanation + hard-source drill-down | GPT-6 Sol High |
-| P6 | real LM Studio/Qwen dogfood + direct browser/package/restart qualification | actual Dope evidence -> Qwen proposal -> validation -> correction/acceptance, controlled restoration, warm-up ordering | GPT-6 Sol High, browser required |
-| P7 | evidence-only closeout | exact candidate, A-H gate audit, no product repair | GPT-6 Sol High |
+| P1 | Software Map synthesis contracts/lifecycle/schema validation | committed `cc5fc120a804c42362f6afb78cfa2d10e5c20cb1` | GPT-6 Sol High |
+| P2 | deterministic ArchitectureEvidencePacket + bounded refinement | committed `99f16e871b403be96c35078ec94a3ebb5ccf3990`; 379 facts/~140 KB/~13 s; zero framework facts | GPT-6 Sol High |
+| P3 | framework extractor seam + Theia/Inversify extraction | non-zero real-Dope framework facts, hard provenance, false-positive guards, bounded framework refinement | GPT-6 Sol High |
+| P4 | backend LM Studio-compatible synthesis adapter | model discovery, JSON-schema probe, warm state, no project evidence before warm success | GPT-6 Sol High |
+| P5 | initialization orchestration + durable acceptance/reconciliation | no-write decline/cancel, safe canonical acceptance, stale/conflict/isolation guards | GPT-6 Sol High |
+| P6 | sMap onboarding/setup/review UI | Analyze Project, local model setup, review/correction, explanation + hard-source drill-down | GPT-6 Sol High |
+| P7 | real LM Studio/Qwen dogfood + direct browser/package/restart qualification | actual Dope evidence incl. framework facts -> Qwen proposal -> validation -> correction/acceptance | GPT-6 Sol High, browser required |
+| P8 | evidence-only closeout | exact candidate, A-H gate audit, no product repair | GPT-6 Sol High |
 
 ## Current implementation findings
 
-The qualified `0.4.6` source has a useful lower-level substrate but none of the new initialization/synthesis behavior yet.
+### P1/P2 committed state
 
-### Software Map domain
+P1 committed the provider-independent synthesis contract, strict `ArchitectureProposal` schema/parser, packet-reference validation, numeric confidence and the `framework` evidence kind.
 
-`packages/software-map/src/contracts.ts` owns:
-- `.dope/architecture.json` schema-1 declarations;
-- System / Subsystem / Component / CodeEntity graph types;
-- physical Evidence and relationships;
-- PhysicalMapSnapshot and query contracts.
+P2 committed deterministic packet production in `packages/code-analysis/src/node/architecture-evidence.ts` plus non-publishing `SoftwareMapIndex.collectEvidence()` / bounded refinement.
 
-`architecture.ts` strictly parses canonical declarations and applies explicit root ownership. It currently requires at least one declared System when a declaration file exists.
+The real Dope P2 run produced:
+- 379 ordered deterministic facts;
+- about 140 KB serialized JSON;
+- about 13 seconds collection time;
+- zero `framework` facts.
 
-`assembly.ts` currently manufactures architecture-level graph nodes only from canonical declarations, then assigns deterministic code nodes to those explicit roots.
+This is useful evidence, not a P2 rollback condition. P2 proved the packet mechanism, declaration independence, deterministic ordering/fingerprinting and no premature map publication.
 
-`service.ts` currently has only Physical Map analysis/query status:
-- `idle | analyzing | ready | failed`;
-- `analyze()`;
-- hierarchy/relationship/evidence/violation/source queries.
+### Framework gap discovered by P2
 
-There is no sMap initialization lifecycle, ArchitectureEvidencePacket, ArchitectureProposal, proposal validator, review state or synthesis provider contract.
+The packet contract already supports `kind: framework`, but the producer has no framework extractor and therefore cannot expose high-value deterministic Theia/Inversify semantics.
 
-### Deterministic analysis/index
+Before any LLM/provider prompt runs, P3 must add a generic deterministic framework-extractor seam and qualify Theia/Inversify extraction against the real Dope repository.
 
-`packages/code-analysis/src/node/architecture-file.ts` returns an empty schema-1 declaration when `.dope/architecture.json` is absent.
-
-`SoftwareMapIndex.analyze()` currently:
-1. reads the declaration;
-2. fingerprints source/config/declaration;
-3. invokes the TypeScript analyzer;
-4. immediately assembles/publishes a PhysicalMapSnapshot.
-
-That is incompatible with the new first-use rule if called during initialization: deterministic evidence collection for a proposal must not itself publish an sMap before developer acceptance.
-
-The TypeScript analyzer already emits stable code nodes, relationships, semantic evidence and configured project/source metadata. The evidence packet should reuse this qualified substrate rather than replacing it.
-
-The packet also needs architecture-scale deterministic facts absent from the current proposal layer: workspace/package topology, package manifests, entrypoint/config signals and normalized dependency neighborhoods. Those belong behind code-analysis, not in the LLM adapter.
+The framework layer must remain evidence only. It may expose registrations, DI/service wiring, RPC boundaries and view/workbench registrations with hard provenance; it may not create Systems/Subsystems/Components.
 
 ### Backend/UI
 
@@ -129,7 +119,7 @@ The implementation plan must treat two-file canonical acceptance as a failure-se
 
 The LLM proposal contract intentionally does not let the model invent canonical IDs or canonical ownership roots.
 
-P4/P5 should introduce a transient Dope-owned review draft derived from:
+P5/P6 should introduce a transient Dope-owned review draft derived from:
 - the validated ArchitectureProposal;
 - deterministic evidence referenced by the proposal;
 - deterministic root/path suggestions where evidence supports them;
@@ -165,7 +155,7 @@ All prompts must preserve:
 - **Folder inference:** package/path topology is evidence, not automatic System/Subsystem/Component truth.
 - **Overlarge packet:** deterministic evidence must be compacted/normalized without deleting the hard source trail.
 - **UI scope explosion:** c4 needs a practical review editor, not the Phase 5 visual canvas.
-- **Live-model qualification ambiguity:** unit tests use controlled mock servers; P6 separately proves the actual local Qwen path.
+- **Live-model qualification ambiguity:** unit tests use controlled mock servers; P7 separately proves the actual local Qwen path.
 
 ## Exit shape
 
