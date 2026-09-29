@@ -1,0 +1,71 @@
+TASK: Phase 4 / P6 — Physical Software Model closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.4.6`.
+
+GOAL
+
+Perform evidence-only Phase 4 closeout from the exact successful/authorized P5 handoff. No product repairs and no Phase 5 implementation prompts.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, all Phase 4 authority/plans/storage guidance, exact reachable P1-P5 commits/source/tests, P4 restart/package evidence, P5 direct GUI evidence, correction closeout and inherited historical Phase 1/2/3 evidence.
+
+Require reachable activation source `93a2b3152066029d28dabf73e5672e0663599e22` and the exact successful P5 handoff with Green applicable direct evidence. A version subject alone is not qualification. A separate explicit audit-only waiver may permit audit from a partial checkpoint but must preserve every failed/missing item and cannot relabel it Green.
+
+AUDIT
+
+Assess Green / Not Green / Evidence Gap for:
+
+A. Model/declaration core — language-independent System/Subsystem/Component/CodeEntity contracts, strict architecture declarations, deterministic identity, unassigned truth and no Theia/provider/planning leakage.
+
+B. Analyzer — deterministic TypeScript/JavaScript discovery/resolution, representative imports/exports/references/inheritance, honest diagnostics and traceable source evidence.
+
+C. Index/reanalysis — bounded incremental invalidation, add/change/delete/config/declaration handling, newest-generation safety and proven incremental-vs-clean equivalence.
+
+D. Architecture validation — explicit ownership, dependency aggregation with originating evidence and correct Subsystem allowed/forbidden violations.
+
+E. Service/UI isolation — root/handle binding, deterministic renderer-independent queries, stale-project/generation protection, inspector/source navigation, keyboard/theme/error states.
+
+F. Restart/package — derived rebuild after process replacement, second-root isolation, Project Mind regression status, exact final relevant AppImage/resources/native-launch coverage.
+
+G. Dope-on-Dope — direct GUI inspection of real Dope hierarchy/relationships/evidence, aggregate provenance, controlled violation appearance/removal and useful provider-free current-state understanding.
+
+Preserve historical Phase 1/2 Not Qualified evidence, Phase 3 qualified historical scope and completed correction truth. Do not claim Phase 4 repairs unrelated historical evidence gaps.
+
+RERUN
+
+Advance root/all workspace versions/internal references/baseline assertions coherently to `0.4.6`.
+
+Run focused software-model/declaration/analyzer/index/backend/UI tests, `npm run check`, current `npm run test:restart`, `npm run codex:phase:validate -- p4`, explicit no-root-lock/version/Theia coherence and `git diff --check`.
+
+Build/inspect the package as appropriate for the final candidate and record exact source/package identity. A new build does not itself repeat P5 direct GUI evidence.
+
+Do not repair failures during closeout.
+
+OUTPUT
+
+Create `docs/tasks/p4/closeout.md` with:
+- activation/pre-task/final candidate identities;
+- architecture declaration identity;
+- A-G table;
+- exact model/analyzer/index/rule/service/UI evidence;
+- direct P5 matrix;
+- restart/package/native result;
+- retained historical evidence;
+- residual gaps;
+- Qualified / Not Qualified decision.
+
+If the final commit SHA does not yet exist, state exactly how the runner-owned closeout commit resolves it; never invent a SHA.
+
+If Qualified, mark the p4 README COMPLETE/GREEN and route consistently to post-Phase-4 `/docs-review` before Phase 5 planning/activation. Do not create Phase 5 prompts here.
+
+If Not Qualified, preserve blockers and route to bounded correction/requalification.
+
+FINAL RESPONSE
+
+Report exact candidate/A-G decision, deterministic model usefulness, analyzer/evidence quality, reanalysis/rule/UI/restart/package results, gaps, docs updated and next action.
