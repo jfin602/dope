@@ -2,9 +2,10 @@ import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { assemblePhysicalMap } from '@dope/software-map';
-import type { SoftwareMapStatus, PhysicalMapSnapshot } from '@dope/software-map';
+import type { SoftwareMapStatus, PhysicalMapSnapshot, ArchitectureEvidencePacket, ArchitectureEvidenceRequest } from '@dope/software-map';
 import type { CodeAnalysisResult } from '../index';
 import { readArchitecture } from './architecture-file';
+import { collectArchitectureEvidence, refineArchitectureEvidence } from './architecture-evidence';
 
 const skipped = new Set(['node_modules', '.git', '.dope', '.theia', 'plugins', 'dist', 'build', 'out', 'coverage', 'generated', 'vendor']);
 const source = /\.(?:[cm]?[jt]s|[jt]sx)$/i;
@@ -61,6 +62,12 @@ export class SoftwareMapIndex {
     }
     status(root: string): SoftwareMapStatus { return structuredClone(this.entries.get(root)?.status ?? idle()); }
     snapshot(root: string): PhysicalMapSnapshot | undefined { return this.entries.get(root)?.snapshot; }
+
+    /** Initialization can collect evidence without changing index state or publishing a snapshot. */
+    collectEvidence(root: string) { return collectArchitectureEvidence(root, this.analyzer); }
+    refineEvidence(root: string, packet: ArchitectureEvidencePacket, requests: ArchitectureEvidenceRequest[]) {
+        return refineArchitectureEvidence(root, this.analyzer, packet, requests);
+    }
 
     async analyze(root: string): Promise<SoftwareMapStatus> {
         const entry = this.entries.get(root) ?? { requested: 0, status: idle() };

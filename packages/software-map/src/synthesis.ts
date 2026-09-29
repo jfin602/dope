@@ -3,14 +3,16 @@ import { projectPath } from './architecture';
 /** Rebuildable deterministic facts. IDs are packet-local; source IDs link to physical evidence. */
 interface PacketItem { id: string; path: string; sourceEvidenceIds: string[] }
 export type ArchitectureEvidenceItem =
-    | (PacketItem & { kind: 'topology'; scope: 'workspace' | 'package'; name: string })
-    | (PacketItem & { kind: 'configuration'; signal: string })
+    | (PacketItem & { kind: 'topology'; scope: 'workspace' | 'package'; name: string; workspaces?: string[]; version?: string })
+    | (PacketItem & { kind: 'configuration'; signal: string; sourcePaths?: string[] })
     | (PacketItem & { kind: 'entrypoint'; role: string })
-    | (PacketItem & { kind: 'dependency'; targetPath: string; relationshipIds: string[] })
+    | (PacketItem & { kind: 'dependency'; targetPath: string; relation: string; relationshipIds: string[] })
     | (PacketItem & { kind: 'semantic'; symbol: string; relation: string })
     | (PacketItem & { kind: 'framework'; concept: string; name: string });
 export interface ArchitectureEvidencePacket {
     schemaVersion: 1;
+    /** Hash of implementation inputs only; excludes canonical architecture declarations. */
+    sourceFingerprint?: string;
     inputFingerprint: string;
     items: ArchitectureEvidenceItem[];
 }
@@ -108,6 +110,7 @@ function unique(values: string[], at: string): void {
 export function validateArchitectureEvidencePacket(packet: ArchitectureEvidencePacket): void {
     if (!packet || packet.schemaVersion !== 1 || !Array.isArray(packet.items)) fail('packet');
     string(packet.inputFingerprint, 'packet fingerprint');
+    if (packet.sourceFingerprint !== undefined) string(packet.sourceFingerprint, 'packet source fingerprint');
     const ids: string[] = [];
     for (const item of packet.items) {
         if (!item || !evidenceKinds.includes(item.kind)) fail('packet item kind');
@@ -117,11 +120,18 @@ export function validateArchitectureEvidencePacket(packet: ArchitectureEvidenceP
         switch (item.kind) {
             case 'topology':
                 if (item.scope !== 'workspace' && item.scope !== 'package') fail('topology scope');
-                string(item.name, 'topology name'); break;
-            case 'configuration': string(item.signal, 'configuration signal'); break;
+                string(item.name, 'topology name');
+                if (item.version !== undefined) string(item.version, 'topology version');
+                if (item.workspaces !== undefined) unique(list(item.workspaces.map(projectPath), 'workspace paths'), 'workspace paths');
+                break;
+            case 'configuration':
+                string(item.signal, 'configuration signal');
+                if (item.sourcePaths !== undefined) unique(list(item.sourcePaths.map(projectPath), 'source paths'), 'source paths');
+                break;
             case 'entrypoint': string(item.role, 'entrypoint role'); break;
             case 'dependency':
                 try { projectPath(item.targetPath); } catch { fail('dependency target'); }
+                string(item.relation, 'dependency relation');
                 unique(list(item.relationshipIds, 'relationship IDs', 1), 'relationship IDs'); break;
             case 'semantic': string(item.symbol, 'semantic symbol'); string(item.relation, 'semantic relation'); break;
             case 'framework': string(item.concept, 'framework concept'); string(item.name, 'framework name'); break;
