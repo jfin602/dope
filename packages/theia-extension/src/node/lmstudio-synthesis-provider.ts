@@ -1,5 +1,7 @@
-import { architectureProposalSchema, parseArchitectureProposal, validateArchitectureEvidencePacket } from '@dope/software-map';
-import type { ArchitectureEvidencePacket, ArchitectureProposal } from '@dope/software-map';
+import { architectureProposalSchema, assertSynthesisInputBudget, parseArchitectureProposal,
+    synthesisStageResultSchemas, validateArchitectureEvidencePacket } from '@dope/software-map';
+import type { ArchitectureEvidencePacket, ArchitectureProposal, SynthesisCapabilities,
+    SynthesisStageRequest } from '@dope/software-map';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
@@ -9,6 +11,10 @@ const readySchema = {
     type: 'object', additionalProperties: false, required: ['ready'],
     properties: { ready: { type: 'boolean', enum: [true] } },
 } as const;
+export const SYSTEM_DISCOVERY_INSTRUCTION = `Discover candidate Systems from the bounded repository-global deterministic evidence view.
+A System is a major independently meaningful software, runtime or product responsibility with a coherent architectural boundary and enough owned behavior to contain lower-level structure.
+A directory, package, framework, UI panel, persistence mechanism, Browser variant or Electron variant is not a System merely because it is separately named or deployed. Multiple packages can serve one System; one repository can contain multiple Systems. Do not force a target count.
+Return only candidate Systems. Do not infer or emit Subsystems or Components, and do not generate canonical architecture IDs. Each candidate needs a temporary candidateKey, name, purpose, boundaryRationale explaining the responsibility and boundary signals, confidence, uncertainty or counter-signals, and directly relevant evidenceRefs from this view. Test fixtures or generated files cannot be the sole support for a production System. Use only supplied evidence IDs; do not invent facts, request filesystem access, or use tools. The complete parent packet is retained by Dope for validation. Return only the strict JSON stage result, including the supplied stage/version, parentPacketFingerprint and viewId.`;
 
 export function normalizeSynthesisEndpoint(value = DEFAULT_ENDPOINT): string {
     let url: URL;
@@ -34,14 +40,18 @@ export class LmStudioSynthesisProvider {
     private warmKey?: string;
     private generation = 0;
     private warmPromise?: Promise<void>;
+    private readonly contextWindowTokens?: number;
 
-    constructor(options: { endpoint?: string; token?: string; timeoutMs?: number } = {}) {
+    constructor(options: { endpoint?: string; token?: string; timeoutMs?: number; contextWindowTokens?: number } = {}) {
         this.endpoint = normalizeSynthesisEndpoint(options.endpoint);
         if (options.token !== undefined && !/^[^\s]+$/.test(options.token)) throw new Error('Invalid synthesis token');
         if (options.timeoutMs !== undefined && (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs < 1)) throw new Error('Invalid synthesis timeout');
         this.token = options.token;
         this.timeoutMs = options.timeoutMs ?? 120_000;
         this.synthesisTimeoutMs = options.timeoutMs ?? DEFAULT_SYNTHESIS_TIMEOUT_MS;
+        if (options.contextWindowTokens !== undefined && (!Number.isSafeInteger(options.contextWindowTokens) || options.contextWindowTokens < 8192))
+            throw new Error('Invalid synthesis context capacity');
+        this.contextWindowTokens = options.contextWindowTokens;
     }
 
     get selectedModel(): string | undefined { return this.modelId; }
@@ -90,6 +100,40 @@ export class LmStudioSynthesisProvider {
         this.warmPromise = undefined;
     }
 
+    async capabilities(): Promise<SynthesisCapabilities> {
+        const model = this.requireModel();
+        if (!this.contextWindowTokens) throw new Error('Synthesis context capacity must be configured');
+        return { modelLabel: model, contextWindowTokens: this.contextWindowTokens,
+            maxInputTokens: this.contextWindowTokens, reservedInstructionTokens: 2048,
+            reservedOutputTokens: 4096, reservedOverheadTokens: 1024, tokenEstimate: 'conservative' };
+    }
+
+    /** Conservative fallback for the local adapter; a provider tokenizer can replace this. */
+    async estimateTokens(input: string): Promise<number> { return new TextEncoder().encode(input).length; }
+
+    async runStage(request: SynthesisStageRequest): Promise<unknown> {
+        if (request.stage !== 'system-discovery') throw new Error('Unsupported synthesis stage');
+        const model = this.requireModel();
+        if (!this.probed) throw new Error('Synthesis capability probe required');
+        const capability = await this.capabilities();
+        const input = JSON.stringify(request);
+        await assertSynthesisInputBudget(this, capability, input);
+        const generation = this.generation;
+        await this.ensureWarm(model);
+        if (generation !== this.generation || model !== this.modelId || !this.probed)
+            throw new Error('Synthesis connection changed before stage submission');
+        try {
+            const response = await this.chat(model, synthesisStageResultSchemas['system-discovery'],
+                'system_discovery', SYSTEM_DISCOVERY_INSTRUCTION, input);
+            if (generation !== this.generation || model !== this.modelId) throw new Error('Synthesis connection changed');
+            try { return JSON.parse(this.content(response)); }
+            catch (error) { if (error instanceof SyntaxError) throw new Error('Invalid System Discovery JSON'); throw error; }
+        } catch (error) {
+            this.invalidateWarmState();
+            throw error;
+        }
+    }
+
     async synthesize(packet: ArchitectureEvidencePacket): Promise<ArchitectureProposal> {
         validateArchitectureEvidencePacket(packet);
         const model = this.requireModel();
@@ -117,7 +161,7 @@ export class LmStudioSynthesisProvider {
                 return result;
             }) };
             const response = await this.chat(model, architectureProposalSchema, 'architecture_proposal',
-                'Propose a concise hierarchy from the deterministic facts: 1-2 Systems, 2-5 Subsystems, and 2-8 Components when evidence supports them. Every System has null parent; every Subsystem parents a System; every Component parents a Subsystem. A package or application variant is evidence, not automatically a System. Facts are ordered with topology and framework registrations first; each path number indexes paths. Give each node 1-4 directly relevant, distinct fact aliases (e1, e2, etc.) in evidenceRefs, including frontend/view and backend/RPC or DI facts where relevant. Do not use test fixtures or unrelated facts to support production boundaries. Limit unassignedEvidenceRefs to 10 representative facts. Keep rationale and evidence brief. Return only the required JSON proposal. Do not invent physical facts or canonical IDs.',
+                'Propose a concise hierarchy from the deterministic facts. Every System has null parent; every Subsystem parents a System; every Component parents a Subsystem. A package or application variant is evidence, not automatically a System. Facts are ordered with topology and framework registrations first; each path number indexes paths. Give each node 1-4 directly relevant, distinct fact aliases (e1, e2, etc.) in evidenceRefs, including frontend/view and backend/RPC or DI facts where relevant. Do not use test fixtures or unrelated facts to support production boundaries. Limit unassignedEvidenceRefs to 10 representative facts. Keep rationale and evidence brief. Return only the required JSON proposal. Do not invent physical facts or canonical IDs.',
                 JSON.stringify(compact));
             if (generation !== this.generation || model !== this.modelId) throw new Error('Synthesis connection changed');
             let value: unknown;

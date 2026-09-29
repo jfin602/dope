@@ -108,7 +108,7 @@ const capability: SynthesisCapabilities = { modelLabel: 'local model', contextWi
   reservedInstructionTokens: 100, reservedOutputTokens: 200, reservedOverheadTokens: 50, tokenEstimate: 'conservative' };
 const view = createArchitectureEvidenceView(packet, ['entry', 'package']);
 const systemCandidate: SystemCandidate = { candidateKey: 'candidate:app', kind: 'system', name: 'App', purpose: 'Serve users',
-  confidence: 0.8, uncertainty: [], evidenceRefs: ['entry'] };
+  boundaryRationale: 'The application owns request handling', confidence: 0.8, uncertainty: [], evidenceRefs: ['entry'] };
 const context = (systems: SystemCandidate[] = [], subjectSystemKey: string | null = null,
   subtrees: SubsystemDiscoveryResult[] = [], targetCandidateKeys: string[] = []) =>
   ({ systems, subjectSystemKey, subtrees, targetCandidateKeys });

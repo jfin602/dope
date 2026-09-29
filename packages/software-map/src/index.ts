@@ -6,3 +6,4 @@ export * from './service';
 export * from './synthesis';
 export * from './hierarchical-synthesis';
 export * from './evidence-planner';
+export * from './system-discovery';

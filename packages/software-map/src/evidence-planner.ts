@@ -1,5 +1,5 @@
 import type { ArchitectureEvidenceItem, ArchitectureEvidencePacket } from './synthesis';
-import { validateArchitectureEvidencePacket } from './synthesis';
+import { isProductionEvidencePath, validateArchitectureEvidencePacket } from './synthesis';
 import { createArchitectureEvidenceView, usableEvidenceTokens, validateSynthesisStageRequest,
     SYNTHESIS_STAGE_VERSION } from './hierarchical-synthesis';
 import type { SynthesisCapabilities, SynthesisProvider, SynthesisStage, SynthesisStageContext,
@@ -36,7 +36,7 @@ const digest = (value: unknown): string => {
     }
     return `plan:v1:${hash.toString(16).padStart(16, '0')}`;
 };
-const nonProduction = (path: string): boolean => /(^|\/)(test|tests|fixtures|examples?|generated|__tests__|__fixtures__|dist|build|coverage)(\/|$)|(?:\.test|\.spec)\.[^/]+$/.test(path);
+const nonProduction = (path: string): boolean => !isProductionEvidencePath(path);
 const physical = (item: ArchitectureEvidenceItem): boolean => !item.path.startsWith('.dope/');
 const group = (path: string): string => {
     const parts = path.split('/');

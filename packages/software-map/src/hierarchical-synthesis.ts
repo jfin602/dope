@@ -1,5 +1,5 @@
 import { ArchitectureEvidenceItem, ArchitectureEvidencePacket, ArchitectureProposal, ProposedArchitectureNode,
-    validateArchitectureEvidencePacket, parseArchitectureProposal } from './synthesis';
+    validateArchitectureEvidencePacket, parseArchitectureProposal, isProductionEvidencePath } from './synthesis';
 
 /** The adapter supplies model-specific limits and a conservative estimate when exact counting is unavailable. */
 export interface SynthesisCapabilities {
@@ -89,6 +89,7 @@ export interface SystemCandidate {
     kind: 'system';
     name: string;
     purpose: string;
+    boundaryRationale: string;
     confidence: number;
     uncertainty: string[];
     evidenceRefs: string[];
@@ -152,13 +153,15 @@ export type SynthesisStageResult = SystemDiscoveryResult | SystemChallengeResult
 /** Provider JSON schemas reject surplus fields; domain validators additionally resolve cross-stage references. */
 const refs = { type: 'array', items: nonempty, uniqueItems: true } as const;
 const candidate = { type: 'object', additionalProperties: false,
-    required: ['candidateKey', 'kind', 'name', 'purpose', 'confidence', 'uncertainty', 'evidenceRefs'],
+    required: ['candidateKey', 'kind', 'name', 'purpose', 'boundaryRationale', 'confidence', 'uncertainty', 'evidenceRefs'],
     properties: { candidateKey: { type: 'string', pattern: '^candidate:[A-Za-z0-9._-]+$' }, kind: { const: 'system' },
-        name: nonempty, purpose: nonempty, confidence: { type: 'number', minimum: 0, maximum: 1 },
+        name: nonempty, purpose: nonempty, boundaryRationale: nonempty, confidence: { type: 'number', minimum: 0, maximum: 1 },
         uncertainty: refs, evidenceRefs: { ...refs, minItems: 1 } } } as const;
 const subtreeNode = { type: 'object', additionalProperties: false,
     required: ['candidateKey', 'kind', 'parentCandidateKey', 'name', 'purpose', 'confidence', 'uncertainty', 'evidenceRefs'],
-    properties: { ...candidate.properties, kind: { enum: ['subsystem', 'component'] }, parentCandidateKey: nonempty } } as const;
+    properties: { candidateKey: candidate.properties.candidateKey, kind: { enum: ['subsystem', 'component'] },
+        parentCandidateKey: nonempty, name: nonempty, purpose: nonempty, confidence: candidate.properties.confidence,
+        uncertainty: refs, evidenceRefs: { ...refs, minItems: 1 } } } as const;
 const finding = { type: 'object', additionalProperties: false,
     required: ['candidateKeys', 'evidenceRefs', 'status', 'message'],
     properties: { candidateKeys: { ...refs, minItems: 1 }, evidenceRefs: { ...refs, minItems: 1 },
@@ -218,7 +221,7 @@ function system(value: unknown, allowed: Set<string>, at: string): SystemCandida
     const item = value as SystemCandidate;
     key(item.candidateKey, `${at}.candidateKey`);
     if (item.kind !== 'system') invalid(`${at}.kind`);
-    label(item.name, `${at}.name`); label(item.purpose, `${at}.purpose`);
+    label(item.name, `${at}.name`); label(item.purpose, `${at}.purpose`); label(item.boundaryRationale, `${at}.boundaryRationale`);
     confidence(item.confidence, `${at}.confidence`);
     strings(item.uncertainty, `${at}.uncertainty`);
     evidence(item.evidenceRefs, allowed, `${at}.evidenceRefs`);
@@ -303,7 +306,12 @@ export function parseSynthesisStageResult(input: unknown, request: SynthesisStag
         data.parentPacketFingerprint !== packet.inputFingerprint || data.viewId !== request.view.viewId) invalid('result stage/identity');
     const allowed = new Set(request.view.items.map(item => item.id));
     if (request.stage === 'system-discovery') {
-        systems(data.systems, allowed, 'result systems');
+        const discovered = systems(data.systems, allowed, 'result systems');
+        const byId = new Map(request.view.items.map(item => [item.id, item]));
+        for (const [index, candidate] of discovered.entries()) {
+            if (!candidate.evidenceRefs.some(ref => isProductionEvidencePath(byId.get(ref)!.path)))
+                invalid(`result systems[${index}] lacks production evidence`);
+        }
     } else if (request.stage === 'system-challenge') {
         if (!Array.isArray(data.decisions)) invalid('decisions');
         const source = new Set(request.context.systems.map(item => item.candidateKey));
@@ -404,7 +412,8 @@ export function assembleArchitectureProposal(input: ArchitectureProposalAssembly
     const nodes: ProposedArchitectureNode[] = candidates.map(item => ({
         proposalKey: proposalKeys.get(item.candidateKey)!, kind: item.kind, name: item.name, purpose: item.purpose,
         parentProposalKey: item.kind === 'system' ? null : proposalKeys.get(item.parentCandidateKey)!,
-        confidence: item.confidence, rationale: item.uncertainty.length ? item.uncertainty.join('; ') : item.purpose,
+        confidence: item.confidence, rationale: item.kind === 'system' ? item.boundaryRationale :
+            item.uncertainty.length ? item.uncertainty.join('; ') : item.purpose,
         evidenceRefs: item.evidenceRefs, evidence: item.evidenceRefs.map(ref => packet.items.find(fact => fact.id === ref)!.path),
     }));
     return parseArchitectureProposal({ schemaVersion: 1, summary: input.summary, needsMoreEvidence: false,

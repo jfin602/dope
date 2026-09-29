@@ -18,6 +18,11 @@ export interface ArchitectureEvidencePacket {
     items: ArchitectureEvidenceItem[];
 }
 
+/** Test and generated source can inform a boundary, but cannot alone establish a production System. */
+export const isProductionEvidencePath = (path: string): boolean =>
+    !/(^|\/)(test|tests|fixtures|examples?|generated|__tests__|__fixtures__|dist|build|coverage)(\/|$)|(?:\.test|\.spec)\.[^/]+$/.test(path) &&
+    !path.startsWith('.dope/');
+
 /** This lifecycle is distinct from Physical Map indexing status and declaration-file presence. */
 export type SoftwareMapInitializationState = 'uninitialized' | 'analyzing' | 'review_required' | 'initialized';
 export type ProposedArchitectureKind = 'system' | 'subsystem' | 'component';

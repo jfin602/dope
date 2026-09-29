@@ -32,7 +32,7 @@ const facts: ArchitectureEvidenceItem[] = [
 const packet: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'packet:controlled',
   sourceFingerprint: 'source:controlled', items: facts };
 const system: SystemCandidate = { candidateKey: 'candidate:app', kind: 'system', name: 'App', purpose: 'Serve',
-  confidence: 0.8, uncertainty: [], evidenceRefs: ['start', 'public'] };
+  boundaryRationale: 'Entrypoint and public exports define the application', confidence: 0.8, uncertainty: [], evidenceRefs: ['start', 'public'] };
 
 test('global skeleton is stable, bounded, whole, source-backed, and prioritizes production signals', async () => {
   const before = structuredClone(packet);
