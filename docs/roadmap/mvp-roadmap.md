@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 4 — Physical Map, ACTIVE from coherent package baseline `0.4.0`; correction `c3-remove-planning-instruments` is complete
+Current stage: Product Phase 4 — Physical Map, P6 QUALIFIED/GREEN at the uncommitted `0.4.6` candidate, pending runner commit; post-Phase-4 `/docs-review` precedes Phase 5 planning/activation
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -232,7 +232,7 @@ At unchanged `0.3.6`, aggregate surviving checks/builds pass; Project Mind and o
 
 ## Product Phase 4 — Physical Map
 
-Status: **OWNER APPROVED — ACTIVE**
+Status: **P6 QUALIFIED/GREEN — `0.4.6` candidate; runner closeout commit pending** (`docs/tasks/p4/closeout.md`)
 
 Execution folder: `p4`. Activation baseline: package `0.4.0`; implementation prompts advance through `0.4.1`–`0.4.6`. Authority: `docs/planning/p4/phase-4-plan.md` and `docs/planning/p4/activation.md`.
 
@@ -270,6 +270,8 @@ September 29 amendment / pre-closeout correction gate:
 Exit condition:
 
 Using the real Dope repository, the developer can inspect an evidence-backed current-state model organized by systems/subsystems/components, trace representative relationships back to source evidence, and detect representative subsystem-boundary violations without any model provider configured.
+
+Closeout disposition: P5 directly qualified the pre-ADR behavior; `c4-tweaks` Green/qualified at unchanged `0.4.5` supplied the mandatory naming/left-sidebar correction before P6. The P6 audit qualifies the approved Phase 4 scope at the uncommitted `0.4.6` candidate. After the runner commits it, route to `/docs-review` before Phase 5 planning or activation; the historical pre-closeout sequence above remains evidence of how this gate was reached.
 
 ## Product Phase 5 — Visual Software Planning
 

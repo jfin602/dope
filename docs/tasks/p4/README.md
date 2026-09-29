@@ -1,9 +1,11 @@
 # Product Phase 4 — Physical Map Task Stack
 
-Status: ACTIVE — `c4-tweaks` GREEN; P6 NEXT AFTER CORRECTION CLOSEOUT HANDOFF
+Status: COMPLETE/GREEN — P6 Qualified at the uncommitted `0.4.6` candidate; runner closeout commit pending
 Activation source/package baseline: `93a2b3152066029d28dabf73e5672e0663599e22`, `0.4.0`
 Theia baseline: `1.75.0`; Electron: `42.8.1`; Node: 24
 Authority: `docs/planning/p4/phase-4-plan.md`, `docs/planning/p4/activation.md`, ADR 0007 as amended by ADR 0008
+
+Closeout: `docs/tasks/p4/closeout.md`. After the runner commits this P6 candidate, route to post-Phase-4 `/docs-review` before any Phase 5 planning or activation. The historical execution instructions below remain the record of this stack.
 
 Correction `c3-remove-planning-instruments` is complete. Phase 3 Planning is historical evidence only and has no compatibility claim on this stack.
 
