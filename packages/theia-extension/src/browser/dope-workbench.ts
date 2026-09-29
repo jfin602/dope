@@ -1,26 +1,21 @@
-import { inject, injectable } from '@theia/core/shared/inversify';
+import { injectable } from '@theia/core/shared/inversify';
 import { CommandContribution, CommandRegistry, MenuContribution, MenuModelRegistry } from '@theia/core/lib/common';
-import { AbstractViewContribution, ApplicationShell, FrontendApplicationContribution, StatusBar, StatusBarAlignment } from '@theia/core/lib/browser';
+import { AbstractViewContribution } from '@theia/core/lib/browser';
 import { BaseWidget } from '@theia/core/lib/browser/widgets/widget';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
 import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-service';
 import { CommonMenus } from '@theia/core/lib/browser/common-menus';
-import { WorkspaceMode, WorkspaceModeService, parseWorkspaceMode } from '@dope/contracts';
 import type { Artifact, ArtifactLink, ArtifactStatus } from '@dope/contracts/lib/project-mind';
-import type { Plan } from '@dope/contracts/lib/planning';
 import { queryArtifacts } from '@dope/project-intelligence';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
-import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import { OpenerService, open } from '@theia/core/lib/browser';
 import { ConfirmDialog, ConfirmSaveDialog, SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
 import URI from '@theia/core/lib/common/uri';
 import { MindConnection, ProjectMindController } from './project-mind-controller';
-import { PlanningWidget, PLANNING_ID } from './planning-widget';
 import './dope.css';
 
 export const PROJECT_MIND_ID = 'dope-project-mind';
-export { PLANNING_ID } from './planning-widget';
 
 export class ProjectMindWidget extends BaseWidget {
     readonly controller: ProjectMindController;
@@ -35,16 +30,13 @@ export class ProjectMindWidget extends BaseWidget {
     private formKey = '';
     private workspaceRequest = 0;
     private fileRequest = 0;
-    private bridgePending = false;
     private loadPromise: Promise<void> = Promise.resolve();
     private readonly beforeUnload = (event: BeforeUnloadEvent) => {
         if (!this.controller.canLeave) { event.preventDefault(); event.returnValue = ''; }
     };
 
     constructor(connect: () => MindConnection, private readonly workspaceService: WorkspaceService,
-        private readonly files: FileService, private readonly opener: OpenerService,
-        private readonly relatedPlans: (artifactId: string) => Promise<Plan[]>,
-        private readonly createPlan: (decisionId: string) => Promise<void>, private readonly showPlan: (id: string) => Promise<void>) {
+        private readonly files: FileService, private readonly opener: OpenerService) {
         super();
         this.id = PROJECT_MIND_ID;
         this.title.label = this.title.caption = 'Project Mind';
@@ -241,20 +233,6 @@ export class ProjectMindWidget extends BaseWidget {
             section.append(this.button(`Superseded by · ${replacement.title || replacement.id}`, () => void this.navigate(replacement.id)));
         }
         const request = ++this.fileRequest;
-        if (artifact.type === 'decision' && this.controller.workspace) {
-            const related = document.createElement('div');
-            related.textContent = 'Related Plans: loading…';
-            section.append(related);
-            const workspace = this.controller.workspace;
-            void this.relatedPlans(artifact.id).then(plans => {
-                if (this.isDisposed || request !== this.fileRequest || workspace !== this.controller.workspace || artifact.id !== this.controller.selectedId) return;
-                related.replaceChildren();
-                if (!plans.length) related.textContent = 'No related Plans.';
-                for (const plan of plans) related.append(this.button(`${plan.title} · ${plan.status}`, () => void this.showPlan(plan.id)));
-            }).catch(() => { if (request === this.fileRequest) related.textContent = 'Related Plans unavailable.'; });
-            section.append(this.button('Create draft Plan from Decision', () => void this.createPlanFromDecision(artifact.id),
-                this.bridgePending || this.controller.pending || this.controller.dirty || this.controller.stale));
-        }
         for (const link of artifact.links) {
             const row = document.createElement('div');
             const target = link.target;
@@ -295,23 +273,6 @@ export class ProjectMindWidget extends BaseWidget {
             void this.controller.mutate({ type: 'link', artifactId: artifact.id, link });
         })(), this.controller.pending || this.controller.dirty || this.controller.stale));
         this.editor.append(section);
-    }
-
-    private async createPlanFromDecision(decisionId: string): Promise<void> {
-        if (this.bridgePending || !this.controller.canLeave || this.controller.stale || !this.controller.workspace) return;
-        this.bridgePending = true;
-        const workspace = this.controller.workspace;
-        const request = ++this.fileRequest;
-        this.render();
-        try {
-            await this.createPlan(decisionId);
-            if (this.isDisposed || workspace !== this.controller.workspace || decisionId !== this.controller.selectedId) return;
-        } catch (error) {
-            if (!this.isDisposed && workspace === this.controller.workspace) this.status.textContent = `${String(error)}. Inspect Planning before retrying.`;
-        } finally {
-            this.bridgePending = false;
-            if (request === this.fileRequest && !this.isDisposed) { this.formKey = ''; this.render(); }
-        }
     }
 
     private async discard(): Promise<void> {
@@ -357,90 +318,8 @@ export class ProjectMindView extends AbstractViewContribution<ProjectMindWidget>
 }
 
 @injectable()
-export class PlanningView extends AbstractViewContribution<PlanningWidget> {
-    constructor() {
-        super({ widgetId: PLANNING_ID, widgetName: 'Planning', defaultWidgetOptions: { area: 'main' } });
-    }
-    override registerCommands(commands: CommandRegistry): void {
-        super.registerCommands(commands);
-        commands.registerCommand({ id: 'dope.planning.open', label: 'Dope: Show Planning' }, {
-            execute: () => this.openView({ activate: true })
-        });
-    }
-    override registerMenus(menus: MenuModelRegistry): void {
-        menus.registerMenuAction(CommonMenus.VIEW_VIEWS, { commandId: 'dope.planning.open', label: 'Planning' });
-    }
-    async showPlan(id: string): Promise<void> { const widget = await this.openView({ activate: true }); await widget.openPlan(id); }
-    async relatedPlans(artifactId: string): Promise<Plan[]> {
-        const widget = await this.openView({ activate: false });
-        return widget.relatedPlans(artifactId);
-    }
-    async createPlanFromDecision(decisionId: string): Promise<void> {
-        const widget = await this.openView({ activate: true });
-        await widget.createPlanFromDecision(decisionId);
-    }
-}
-
-@injectable()
 export class DopeWindowTitleService extends WindowTitleService {
-    @inject(WorkspaceModeService) protected readonly workspaceMode!: WorkspaceModeService;
-
-    protected override init(): void {
-        super.init();
-        this.workspaceMode.onChange(() => this.update({}));
-        this.update({});
-    }
-
     override update(parts: Record<string, string | undefined>): void {
-        super.update({ ...parts, appName: `Dope · ${this.workspaceMode.current}` });
-    }
-}
-
-@injectable()
-export class DopeWorkbench implements FrontendApplicationContribution, CommandContribution, MenuContribution {
-    @inject(WorkspaceModeService) protected readonly workspaceMode!: WorkspaceModeService;
-    @inject(StatusBar) protected readonly statusBar!: StatusBar;
-    @inject(PlanningView) protected readonly planningView!: PlanningView;
-    @inject(ApplicationShell) protected readonly shell!: ApplicationShell;
-    @inject(EditorManager) protected readonly editors!: EditorManager;
-
-    registerCommands(commands: CommandRegistry): void {
-        for (const mode of [WorkspaceMode.BUILD, WorkspaceMode.PLAN]) {
-            commands.registerCommand({ id: `dope.mode.${mode.toLowerCase()}`, label: `Dope: ${mode} Mode` }, {
-                execute: () => this.applyMode(mode)
-            });
-        }
-        commands.registerCommand({ id: 'dope.mode.toggle', label: 'Dope: Switch Workspace Mode' }, {
-            execute: () => this.applyMode(this.workspaceMode.current === WorkspaceMode.BUILD ? WorkspaceMode.PLAN : WorkspaceMode.BUILD)
-        });
-    }
-
-    registerMenus(menus: MenuModelRegistry): void {
-        for (const mode of [WorkspaceMode.BUILD, WorkspaceMode.PLAN]) {
-            menus.registerMenuAction(CommonMenus.VIEW_VIEWS, { commandId: `dope.mode.${mode.toLowerCase()}`, label: `${mode} Mode` });
-        }
-    }
-
-    async onDidInitializeLayout(): Promise<void> {
-        let storedMode: string | null = null;
-        try { storedMode = window.localStorage.getItem('dope.workspaceMode'); } catch { /* Storage may be disabled. */ }
-        await this.applyMode(parseWorkspaceMode(storedMode));
-    }
-
-    async applyMode(mode: WorkspaceMode): Promise<void> {
-        this.workspaceMode.set(mode);
-        try { window.localStorage.setItem('dope.workspaceMode', mode); } catch { /* Keep the mode usable without storage. */ }
-        document.body.dataset.dopeMode = mode.toLowerCase();
-        await this.statusBar.setElement('dope-workspace-mode', {
-            text: `DOPE · ${mode}`,
-            name: 'Dope workspace mode',
-            tooltip: 'Switch between BUILD and PLAN',
-            command: 'dope.mode.toggle',
-            alignment: StatusBarAlignment.LEFT,
-            priority: 1000,
-            className: 'dope-mode-status'
-        });
-        if (mode === WorkspaceMode.PLAN) await this.planningView.openView({ activate: true });
-        else if (this.editors.currentEditor) await this.shell.activateWidget(this.editors.currentEditor.id);
+        super.update({ ...parts, appName: 'Dope' });
     }
 }

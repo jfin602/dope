@@ -5,7 +5,7 @@ import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 
 const root = new URL('../../', import.meta.url).pathname;
-const paths = ['package.json', 'apps/browser/package.json', 'apps/electron/package.json', 'packages/theia-extension/package.json', 'packages/contracts/package.json', 'packages/project-intelligence/package.json', 'packages/planning/package.json'];
+const paths = ['package.json', 'apps/browser/package.json', 'apps/electron/package.json', 'packages/theia-extension/package.json', 'packages/contracts/package.json', 'packages/project-intelligence/package.json'];
 const manifests = paths.map(path => ({ path, value: JSON.parse(readFileSync(join(root, path), 'utf8')) }));
 
 test('Theia stays on the qualified baseline and package versions stay coherent', () => {
@@ -59,13 +59,9 @@ test('both applications carry the required IDE composition', () => {
   assert.match(manifests[0].value.scripts['package:linux'], /npm run download:plugins/);
     assert.equal(manifests[3].value.dependencies['@dope/contracts'], '0.3.6');
     assert.equal(manifests[3].value.dependencies['@dope/project-intelligence'], '0.3.6');
-    assert.equal(manifests[3].value.dependencies['@dope/planning'], '0.3.6');
     assert.equal(manifests[5].value.dependencies['@dope/contracts'], '0.3.6');
-    assert.equal(manifests[6].value.dependencies['@dope/contracts'], '0.3.6');
-  assert.match(manifests[0].value.scripts['test:product'], /planning\.test\.ts/);
-  assert.match(manifests[0].value.scripts['test:product'], /planning-storage\.test\.ts/);
-  assert.match(manifests[0].value.scripts['test:product'], /planning-ui\.test\.ts/);
-  assert.match(manifests[0].value.scripts['typecheck'], /@dope\/planning build/);
+  assert.equal(manifests[4].value.main, 'lib/project-mind.js');
+  assert.equal(manifests[4].value.types, 'lib/project-mind.d.ts');
   assert.ok(manifests[0].value.workspaces.includes('packages/project-intelligence'));
   assert.match(manifests[0].value.scripts['build:extension'], /@dope\/project-intelligence build/);
   assert.match(manifests[0].value.scripts['test:product'], /project-intelligence\.test\.ts/);

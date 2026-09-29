@@ -2,8 +2,8 @@
   "name": "@dope/contracts",
   "version": "0.3.6",
   "private": true,
-  "main": "lib/workspace-mode.js",
-  "types": "lib/workspace-mode.d.ts",
+  "main": "lib/project-mind.js",
+  "types": "lib/project-mind.d.ts",
   "scripts": {
     "build": "tsc -p ."
   }
