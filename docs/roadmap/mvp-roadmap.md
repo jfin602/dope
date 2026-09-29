@@ -281,7 +281,7 @@ Status: **REQUIRED BEFORE PHASE 5 — docs authority locked; implementation stac
 
 Version semantics: unchanged package version `0.4.6`. This correction does not reopen or relabel Phase 4 qualification and must not advance Phase 5 versioning.
 
-Authority: ADR 0009 as amended by ADR 0010.
+Authority: ADR 0009 as amended by ADR 0010, plus ADR 0011 for the local-first reference synthesis bootstrap.
 
 Purpose:
 Correct the architectural interpretation and first-use workflow of the Physical Map before the visual map is built. Phase 4 successfully established the lower-level language-independent graph, TypeScript semantic analyzer, provenance, query/index and inspector substrate. The correction now turns that substrate into an explicit sMap initialization workflow where deterministic evidence supports flexible AI synthesis without surrendering developer architectural authority.
@@ -294,7 +294,14 @@ Required behavior:
 - keep the sMap surface available in an uninitialized empty state with an **Analyze Project** action that invokes the same flow later;
 - distinguish at least `uninitialized`, `analyzing`, `review_required` and `initialized`;
 - collect deterministic repository/workspace/build topology, entrypoints, dependency structure, semantic relationships, framework registration and other explicit evidence with provenance into an independently verifiable ArchitectureEvidencePacket;
-- send that packet through a provider-independent LLM synthesis capability to produce a strict Dope-owned ArchitectureProposal JSON response;
+- implement the first reference ArchitectureSynthesisProvider through a local LM Studio-compatible endpoint using Qwen3-Coder-30B-A3B-Instruct, while keeping Software Map contracts provider-independent;
+- keep local AI setup inside the Analyze Project flow: detect or configure the LM Studio endpoint, discover/select an available compatible model where supported, and allow manual endpoint configuration when auto-detection fails;
+- store endpoint/model/authentication/runtime choices as user/application state rather than canonical project state;
+- perform a tiny synthetic structured-output capability probe before marking a configured model synthesis-capable;
+- immediately before the first real synthesis request, warm the selected model with a tiny synthetic request containing no project/repository evidence;
+- treat warm-up failure as a hard gate: do not submit the ArchitectureEvidencePacket and expose retry/model/settings/cancel recovery;
+- invalidate warm readiness after runtime restart/reconnection, selected-model change or known unload; do not require redundant warm-up for bounded follow-up calls while the model is known to remain active;
+- send the packet through the provider-independent synthesis capability only after provider/runtime readiness to produce a strict Dope-owned ArchitectureProposal JSON response;
 - require each proposal node to carry temporary proposal identity, System/Subsystem/Component kind, name/purpose/parent, numeric 0..1 confidence, rationale, machine-verifiable `evidenceRefs` and human-readable `evidence`;
 - never treat a directory, package, dependency cluster, confidence value, human-readable evidence explanation or LLM response as architecture authority solely because it exists;
 - reject schema-invalid output, invalid/cyclic hierarchy, out-of-range confidence, unresolved parent keys, fabricated evidence references and any proposal that attempts to substitute prose for source-backed evidence;
@@ -307,25 +314,31 @@ Required behavior:
 - distinguish declared-only, detected/proposed-only, realized, drifted and unassigned implementation state as applicable;
 - preserve contrary physical evidence when it disagrees with canonical architecture and surface the difference as drift rather than silently redefining either side;
 - keep derived analysis/proposals rebuildable or disposable and keep provider-specific formats outside Software Map domain contracts;
-- introduce only the narrow architecture-synthesis model capability required by ADR 0010; keep general AI Presence, Agent Mind, chat, tool execution, mutation, delegation, Phase 5 visual canvas and Planning Map transformations out of this correction.
+- introduce only the narrow architecture-synthesis model capability required by ADR 0010; local LM Studio/Qwen is the first c4 reference implementation and paid/cloud APIs are not required for the core reference path;
+- do not bundle a Dope-owned inference engine or require multiple production providers in c4 merely to demonstrate provider independence;
+- keep general AI Presence, Agent Mind, chat, tool execution, mutation, delegation, Phase 5 visual canvas and Planning Map transformations out of this correction.
 
 Minimum qualification:
 - first opening an uninitialized project offers analysis rather than silently constructing an sMap;
 - declining leaves the sMap uninitialized and produces no canonical architecture or derived map state; visiting sMap later exposes Analyze Project and can start the flow;
 - accepting analysis produces an ArchitectureEvidencePacket that can be inspected and verified without invoking a model;
-- synthesis returns schema-valid structured JSON and every proposed architecture boundary is traceable through valid `evidenceRefs` to that exact packet;
+- the reference path can detect/configure LM Studio and select Qwen3-Coder-30B-A3B-Instruct through application/provider state without writing those choices into canonical project state;
+- a synthetic structured-output capability probe succeeds without project evidence;
+- immediately before the first real synthesis request, model warm-up succeeds using only synthetic non-project input;
+- a controlled warm-up failure proves no ArchitectureEvidencePacket request is issued and no proposal/canonical architecture is established;
+- synthesis through the real LM Studio + Qwen3-Coder-30B-A3B-Instruct reference path returns schema-valid structured JSON and every proposed architecture boundary is traceable through valid `evidenceRefs` to that exact packet;
 - focused negative tests reject fabricated evidence refs, malformed hierarchy, invalid numeric confidence and human-readable explanations without source-backed refs;
 - the review UI can show human-readable `evidence` while preserving drill-down to the underlying `evidenceRefs`;
 - a proposal remains non-canonical until explicit developer acceptance and temporary proposal keys never become canonical IDs implicitly;
 - developer correction of at least one proposed boundary establishes canonical architecture and subsequent analysis honors that identity while still reporting contradictory implementation evidence;
 - a greenfield/manual fixture can initialize canonical architecture with little/no implementation and no model configured, remaining visibly declared-only;
-- the real Dope repository can complete the evidence -> synthesis -> review/correction -> acceptance workflow;
+- the real Dope repository can complete the evidence -> LM Studio/Qwen synthesis -> validation -> review/correction -> acceptance workflow;
 - failure/cancellation before acceptance leaves or returns the project to uninitialized unless a separately approved resumable-draft contract exists;
 - repeated deterministic evidence extraction for the same inputs is stable and proposal inputs are explainable.
 
 Exit condition:
 
-At unchanged `0.4.6`, Dope can deliberately initialize sMap for an existing project through opt-in deterministic analysis plus bounded LLM synthesis, a developer can correct and explicitly establish canonical architecture, a greenfield project can initialize manually, and the Physical Map can explain how current implementation realizes or diverges from that authority. Only then may Product Phase 5 be planned/activated.
+At unchanged `0.4.6`, Dope can deliberately initialize sMap for an existing project through opt-in deterministic analysis plus bounded LLM synthesis, the local LM Studio/Qwen reference path is qualified including capability probing and pre-synthesis warm-up, a developer can correct and explicitly establish canonical architecture, a greenfield project can initialize manually, and the Physical Map can explain how current implementation realizes or diverges from that authority. Only then may Product Phase 5 be planned/activated.
 
 ## Product Phase 5 — Visual Software Planning
 
