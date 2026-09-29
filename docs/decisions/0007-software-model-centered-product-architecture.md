@@ -5,6 +5,8 @@ Date: 2026-09-28
 
 Terminology amendment: ADR 0008 supersedes this ADR's **Software Model / Physical Software Model / planning graph** product vocabulary with **Software Map (sMap) / Physical Map / Planning Map** and establishes default workbench placement. The architectural substance of ADR 0007 remains accepted; its original wording is preserved here as historical decision context.
 
+Architecture-authority amendment: ADR 0009 clarifies that deterministic analysis must discover candidate System / Subsystem / Component structure rather than requiring declarations to manufacture those physical levels. Developer-authored architecture remains canonical authority: detection proposes and explains; the developer confirms or corrects; subsequent analysis measures implementation against that canonical architecture. ADR 0009 also makes greenfield architecture-before-code a first-class workflow.
+
 ## Context
 
 Dope already treated a living software model, conceptual observability and visual planning as important long-term ideas, but the active roadmap deferred ArchitectureModel and visual architecture work until after the initial AI phases.
