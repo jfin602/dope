@@ -181,7 +181,7 @@ Dope is still pre-stability. Internal implementations from earlier product phase
 
 Prefer clean replacement when preserving an older internal schema, API, persistence format or UI would require adapters, dual state, synchronization or migration machinery that does not serve a concrete user/external commitment.
 
-Historical qualification remains evidence of what worked at that version; it does not require the implementation to survive. Correction `c3-remove-planning-instruments` is the mandatory pre-Phase-4 application of this rule: it removes the Phase 3 Planning subsystem before the software-model implementation begins.
+Historical qualification remains evidence of what worked at that version; it does not require the implementation to survive. Correction `c3-remove-planning-instruments` is the completed pre-Phase-4 application of this rule: it removed the Phase 3 Planning subsystem before the software-model implementation begins.
 
 ### Software Model
 
@@ -213,11 +213,11 @@ Owns ProjectArtifact identity/relationships, persistence contracts, provenance, 
 
 No Theia or provider dependency.
 
-### Phase 3 Planning — historical implementation scheduled for removal
+### Phase 3 Planning — historical implementation removed
 
 At `0.3.6`, the implemented Planning subsystem owns Plan, PlanStep, Task, status transitions, ordering, relationships to Project Mind/files, document and per-Plan revisions, and planning history.
 
-Those contracts describe the qualified Phase 3 implementation only. Correction `c3-remove-planning-instruments` removes the live domain, contracts, persistence, RPC, presentation, PLAN mode, dedicated tests and repository Planning state before Phase 4 activates. Product Phase 4 must start without that subsystem present.
+Those contracts describe the qualified Phase 3 implementation only. Correction `c3-remove-planning-instruments` has removed the live domain, contracts, persistence, RPC, presentation, PLAN mode, dedicated tests and repository Planning state. Product Phase 4 starts without that subsystem present.
 
 ### Persistence
 
@@ -365,7 +365,7 @@ Do not confuse derived convenience with canonical truth.
 
 ## Workspace surfaces
 
-The Phase 3 BUILD/PLAN WorkspaceMode abstraction is removed by `c3-remove-planning-instruments`; it is not carried into Phase 4.
+The Phase 3 BUILD/PLAN WorkspaceMode abstraction was removed by `c3-remove-planning-instruments`; it is not carried into Phase 4.
 
 After the correction, ordinary IDE behavior is the baseline presentation. Product Phase 4 may add bounded software-map inspection surfaces as required for qualification. Product Phase 5 defines the future multi-tab Visual Software Planning workspace and any resulting workspace-mode/perspective concepts from first principles.
 

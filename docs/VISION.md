@@ -118,7 +118,7 @@ The software model must remain useful without an AI provider and independent fro
 
 Dope's early differentiated value should not require an LLM.
 
-A real IDE, durable Project Mind, and live Planning should already improve the developer's ability to understand and direct a project.
+A real IDE and durable Project Mind already provide a usable base. The Physical Software Model adds deterministic architectural understanding; later Visual Software Planning restores planning as a graph-centered workflow designed from that model rather than from the removed Phase 3 runtime.
 
 AI is then introduced into an environment with durable human-meaningful state instead of becoming the foundation that everything else depends on.
 

@@ -83,7 +83,7 @@ The legacy spike Note has no historical timestamps. Its migrated creation/update
 
 ### Phase 3 — Planning
 
-Historical implemented model at `0.3.6`. This section records what Phase 3 qualified; it is not a compatibility promise or required ontology for Product Phase 5 and later. Correction `c3-remove-planning-instruments` removes this live model before Phase 4 activates.
+Historical implemented model at `0.3.6`. This section records what Phase 3 qualified; it is not a compatibility promise or required ontology for Product Phase 5 and later. Correction `c3-remove-planning-instruments` has removed this live model before Phase 4 activation.
 
 Phase 3 added:
 - Plan
@@ -137,7 +137,7 @@ No AI ownership, Agent Mind, model/provider state, ProposedAction or mutation au
 
 ### Phase 4 — Physical Software Model
 
-Prerequisite: correction `c3-remove-planning-instruments` is closed at unchanged `0.3.6`, leaving no live Phase 3 Planning domain/service/store/UI/PLAN mode in the product.
+Activation prerequisite satisfied: correction `c3-remove-planning-instruments` closed at unchanged `0.3.6`, leaving no live Phase 3 Planning domain/service/store/UI/PLAN mode in the product. Phase 4 begins from coherent package baseline `0.4.0`.
 
 Introduce the evidence-backed software model and deterministic code-analysis foundation.
 

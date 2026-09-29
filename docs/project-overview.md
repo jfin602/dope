@@ -145,7 +145,7 @@ Foundation Spike 0 — qualify Theia
 -> Phase 7 — Scoped Delegation
 -> Phase 8 — Development Sessions
 
-Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments are removed by mandatory correction `c3-remove-planning-instruments` before Phase 4. The forward core is completed only after the Physical Software Model and later Visual Software Planning redesign.
+Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments have been removed by completed correction `c3-remove-planning-instruments`. Phase 4 is now active from `0.4.0`; the forward core is completed only after the Physical Software Model and later Visual Software Planning redesign.
 
 ## Non-goals
 
