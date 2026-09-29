@@ -13,15 +13,15 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** ADR 0009 as amended by ADR 0010 requires mandatory correction `c4-architecture-discovery` at unchanged `0.4.6` before Phase 5 planning/activation. The correction preserves the Phase 4 semantic/evidence substrate while adding opt-in sMap initialization, deterministic ArchitectureEvidencePacket production, bounded structured architecture synthesis, developer confirmation/correction authority, greenfield architecture-before-code, and realization/drift reconciliation.
+**Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** ADR 0009 as amended by ADR 0010 requires mandatory correction `c4-architecture-discovery` at unchanged `0.4.6` before Phase 5 planning/activation. ADR 0011 selects the first local synthesis reference path. The correction preserves the Phase 4 semantic/evidence substrate while adding opt-in sMap initialization, deterministic ArchitectureEvidencePacket production, bounded structured architecture synthesis, provider readiness/warm-up, developer confirmation/correction authority, greenfield architecture-before-code, and realization/drift reconciliation.
 
-**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. Synthesis proposes architecture, while the developer owns canonical System / Subsystem / Component identity and may define it before code. Phase 5 still owns the central visual map/planning canvas.
+**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first synthesis bootstrap.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. Synthesis proposes architecture, while the developer owns canonical System / Subsystem / Component identity and may define it before code. The first c4 reference synthesizer is local LM Studio with Qwen3-Coder-30B-A3B-Instruct. Phase 5 still owns the central visual map/planning canvas.
 
 Phase 2's P6 `0.2.6` evidence-only audit remains **Not Qualified**. The owner subsequently explicitly closed Phase 2 for sequencing and authorized Phase 3 from a coherent `0.3.0` baseline. This owner disposition does not relabel the P6 audit Green or erase its evidence gaps. The retained Phase 2 gaps are the initially hidden legacy-migration entry, unproved dirty same-renderer workspace switch, lack of exact `0.2.6` native artifact launch/direct native visual Project Mind use, and inherited Phase 1 gaps where applicable. See `docs/tasks/p2/closeout.md` and `docs/planning/p3/activation.md`.
 
 The September 28, 2026 Phase 1 P6 closeout also remains **Not Qualified** at `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). Its historical failures are preserved. Neither the Phase 2 sequencing waiver nor the Phase 3 owner-close changes that evidence.
 
-Phase 3 added human-first live Planning on top of Project Mind and qualified it at `0.3.6`. Correction `c3-remove-planning-instruments` then removed that complete live subsystem before Phase 4 while preserving its historical plans/evidence. Phase 4 starts clean at `0.4.0` with no Phase 3 Planning compatibility obligation. Production visual planning, AI/provider integration, Agent Mind, tool calling, AI mutation, scoped delegation and durable Development Sessions remain deferred to their roadmap phases.
+Phase 3 added human-first live Planning on top of Project Mind and qualified it at `0.3.6`. Correction `c3-remove-planning-instruments` then removed that complete live subsystem before Phase 4 while preserving its historical plans/evidence. Phase 4 starts clean at `0.4.0` with no Phase 3 Planning compatibility obligation. ADR 0010/0011 authorize only the narrow pre-Phase-6 sMap synthesis provider needed by c4. Production visual planning, general AI Presence/provider integration, Agent Mind, tool calling, AI mutation, scoped delegation and durable Development Sessions remain deferred to their roadmap phases.
 
 The qualified substrate remains:
 
@@ -66,6 +66,7 @@ Current authority:
 - docs/decisions/0008-software-map-terminology-and-workbench-placement.md
 - docs/decisions/0009-architecture-discovery-and-developer-authority.md
 - docs/decisions/0010-smap-initialization-and-ai-assisted-architecture-synthesis.md
+- docs/decisions/0011-local-first-smap-synthesis-bootstrap.md
 
 ## Product premise
 
@@ -136,7 +137,7 @@ Agent Runtime
 
 Project Intelligence, Planning, and later Agent Runtime remain presentation-independent.
 
-Theia AI may be used selectively behind an adapter when AI Presence is implemented. Theia AI agent/chat abstractions do not define Dope's product domain.
+General Theia AI reuse may be introduced selectively behind an adapter when AI Presence is implemented. ADR 0011 separately permits the narrow local synthesis adapter/runtime plumbing required by c4. Theia AI agent/chat abstractions do not define Dope's product domain.
 
 ## Project Mind
 
@@ -165,7 +166,7 @@ First-class compatibility targets include:
 
 No provider owns Project Mind, Planning, Agent Mind, Sessions, Authority, Decisions, or Validation.
 
-The current GPT-6 Sol/Codex repository workflow is a development-tooling choice, not Dope's runtime architecture. ADR 0006 separately records Codex/OpenAI as the first reference AI implementation for Phase 6 qualification; that bootstrap choice does not add provider runtime code to Phase 3 or weaken provider independence.
+The current GPT-6 Sol/Codex repository workflow is a development-tooling choice, not Dope's runtime architecture. ADR 0011 selects LM Studio + Qwen3-Coder-30B-A3B-Instruct as the first reference implementation only for c4 sMap synthesis. ADR 0006 separately keeps Codex/OpenAI as the first reference AI implementation for general Phase 6 qualification. Neither bootstrap choice weakens provider independence.
 
 ## Progressive self-development
 
@@ -228,14 +229,17 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 Do not activate or author Product Phase 5 implementation work yet.
 
-Next, decompose and execute correction `c4-architecture-discovery` at unchanged package version `0.4.6`. Its governing contract is ADR 0009 as amended by ADR 0010, plus the amended Product Model, Architecture, roadmap and storage authority.
+Next, decompose and execute correction `c4-architecture-discovery` at unchanged package version `0.4.6`. Its governing contract is ADR 0009 as amended by ADR 0010, ADR 0011 for the local-first reference bootstrap, plus the amended Product Model, Architecture, roadmap and storage authority.
 
 The correction must:
 - preserve the existing TypeScript/JavaScript semantic analyzer, evidence/provenance, index/query and sMap inspector substrate;
 - detect an uninitialized sMap and require explicit Analyze Project consent before building the initial map;
 - leave the project uninitialized when analysis is declined and expose Analyze Project again from the sMap empty state;
 - produce an independently verifiable deterministic ArchitectureEvidencePacket before any synthesis request;
-- use a bounded provider-independent LLM architecture-synthesis capability to return strict ArchitectureProposal JSON with temporary proposal keys, numeric 0..1 confidence, rationale, machine-verifiable `evidenceRefs` and human-readable `evidence`;
+- implement the first reference synthesis provider through local LM Studio with Qwen3-Coder-30B-A3B-Instruct while keeping provider/runtime details outside Software Map canonical state;
+- keep setup inside Analyze Project: detect/configure the endpoint, discover/select the model where supported, and run a tiny structured-output capability probe with no project evidence;
+- immediately before the first real synthesis request, warm the selected model with a synthetic non-project request; if warm-up fails, do not submit the ArchitectureEvidencePacket;
+- use the bounded provider-independent LLM architecture-synthesis capability only after readiness to return strict ArchitectureProposal JSON with temporary proposal keys, numeric 0..1 confidence, rationale, machine-verifiable `evidenceRefs` and human-readable `evidence`;
 - validate structured output, hierarchy and every evidence reference against the exact packet; AI may interpret evidence but must not create it;
 - keep generated structure as proposal state until explicit developer review/correction and acceptance, and never silently promote proposal keys to canonical IDs;
 - keep developer-authored architecture canonical and support manual/greenfield architecture before code exists without requiring a model;
