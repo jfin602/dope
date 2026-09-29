@@ -146,11 +146,15 @@ Phase 4 established the evidence-backed Software Map core and deterministic Type
 - canonical developer-authored System, Subsystem and Component identities/constraints;
 - queryable physical relationships independent from visualization.
 
-ADR 0009 adds a mandatory post-Phase-4 correction before Phase 5. The Physical Map must also discover candidate Systems, Subsystems and Components from deterministic repository, semantic, framework and later runtime evidence. Detection is rebuildable derived interpretation, not architecture authority.
+ADR 0009 adds a mandatory post-Phase-4 correction before Phase 5, and ADR 0010 amends its initialization/discovery path.
 
-Developer-authored architecture remains canonical. The developer may confirm, rename, reparent, merge, split, replace or ignore detected candidates, and may define architecture before implementation exists. Analysis then reports how implementation realizes or diverges from that canonical architecture instead of silently rewriting it.
+A project whose sMap has never been initialized is explicitly uninitialized. Opening it may offer **Analyze Project?**, but Dope does not build the map unless the developer opts in. Declining leaves the project usable without an sMap; the sMap surface exposes an **Analyze Project** action so the same flow can be started later.
 
-The TypeScript semantic analyzer remains the lower-level evidence engine. The correction adds architecture discovery and realization/reconciliation above it; it does not replace semantic source analysis.
+For an existing project, the correction uses deterministic repository, semantic and framework analysis as the evidence substrate, then passes bounded architectural evidence through a provider-independent LLM synthesis capability to propose Systems, Subsystems and Components. The generated structure is proposal state, not physical fact and not canonical architecture.
+
+Developer-authored architecture remains canonical. The developer reviews and may confirm, rename, reparent, merge, split, add, remove, replace or ignore proposed boundaries. Only explicit acceptance establishes canonical architecture. Subsequent analysis reports how implementation realizes or diverges from that authority instead of silently rewriting it.
+
+A fresh project may initialize sMap manually by defining canonical architecture before implementation exists. The TypeScript semantic analyzer remains the lower-level evidence engine; AI synthesis interprets evidence above it rather than replacing semantic source analysis.
 
 ### Phase 5 — Visual Software Planning
 
