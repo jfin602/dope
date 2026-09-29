@@ -27,11 +27,13 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-The current implementation phase is Product Phase 4 — Physical Map, activated from coherent package baseline `0.4.0`. Correction `c3-remove-planning-instruments` is complete and Green/qualified for sequencing; no live Phase 3 Planning subsystem remains.
+Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved scope. The current implementation gate is mandatory correction `c4-architecture-discovery` at unchanged `0.4.6`; Phase 5 is not activated.
 
-Phase 4 is limited to deterministic current-state software maping: language-independent graph contracts, developer-authored architecture declarations/constraints, TypeScript/JavaScript-first analysis, rebuildable indexing, evidence/provenance, architecture-boundary validation, renderer-independent query APIs and bounded inspection/navigation UI. Do not introduce target/Planning Maps, editable architecture design, AI/provider runtime, Agent Mind, authority/delegation or Phase 3 compatibility scaffolding.
+ADR 0008 remains the Software Map terminology/workbench-placement authority. ADR 0009 amends the architecture contract: deterministic analysis must discover candidate Systems, Subsystems and Components, while developer-authored architecture remains canonical authority. Detection proposes and explains; the developer confirms or corrects; implementation is continuously reconciled against that decision.
 
-ADR 0008 is now current authority for this phase. Canonical product terminology is **Software Map (sMap)**, **Physical Map**, and **Planning Map**. The active P5 qualification may finish against the pre-ADR naming/layout, but a post-P5 Phase 4 correction is mandatory before P6 closeout. That correction owns the live rename and the move of the sMap inspector to a dedicated left Activity Bar/primary-sidebar surface. It must not pull the Phase 5 visual canvas into Phase 4.
+The correction may modify Software Map/domain/analyzer/index/backend/inspector behavior needed to support detected architecture, developer confirmation/correction, greenfield architecture-before-code and realization/drift state. It must preserve the existing lower-level TypeScript semantic analyzer/evidence substrate unless concrete defects require bounded repair.
+
+Do not introduce the Phase 5 visual Planning Map/work ontology, AI/provider runtime, Agent Mind, authority/delegation or Phase 3 compatibility scaffolding in this correction.
 
 Qualification requirements are phase-aware.
 
@@ -63,6 +65,8 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 - Conceptual changes must be inspectable before raw diffs are the only explanation.
 - Ideas, research, decisions, plans, tasks, validation, and architecture are first-class project knowledge.
 - The software map is organized primarily as System -> Subsystem -> Component -> Code; subsystems are first-class modular boundaries, not merely folders.
+- Deterministic analysis discovers and explains candidate Systems / Subsystems / Components; a folder, package or cluster is evidence, not automatic architecture.
+- The developer is the final source of truth for canonical architecture. Architecture may be defined before code; detection proposes, the developer confirms/corrects, and analysis reports realization or drift.
 - Physical software facts require deterministic source evidence or recorded runtime observation with provenance; AI interpretation and planning proposals remain distinct from physical truth.
 - The sMap inspector defaults to the left primary sidebar behind its own Activity Bar button; the center workspace hosts editors and, beginning in Phase 5, visual Physical Map / Planning Map canvases; the right secondary sidebar is reserved by default for Agent Mind/chat/AI interaction. User layout customization remains presentation state.
 - Theia is an IDE substrate. It must not define Dope's product model.
@@ -86,7 +90,7 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 - The Physical Map must remain independent from Theia, visualization libraries and model providers.
 - Language-specific analyzers emit a language-independent software graph.
 - Every physical graph relationship must retain traceable evidence/provenance.
-- Developer-authored System/Subsystem declarations and dependency constraints are architecture authority; extracted relationships validate against them.
+- Developer-authored System/Subsystem/Component identity, boundaries and dependency constraints are canonical architecture authority. Detected architecture is derived evidence-backed interpretation; it may propose boundaries but cannot silently rewrite canonical state. Conflicting implementation evidence remains visible as drift/detected-only/unassigned state.
 - Planning graphs reference physical identities and express target transformations rather than duplicating current architecture.
 - Pre-stability Dope prefers coherent replacement over internal compatibility scaffolding. Do not add adapters, dual writes, schema bridges or migrations for superseded internal product models unless a concrete user-data/external commitment justifies them.
 - Phase 3 Plan/PlanStep/Task, `.dope/planning.json`, Planning RPC/UI, PLAN mode and associated tests are historical implementation details already removed by `c3-remove-planning-instruments`; Phase 4 must not reintroduce them or compatibility scaffolding.
