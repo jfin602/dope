@@ -92,6 +92,11 @@ test('generated review stays transient, rejects invalid/stale drafts, then accep
     const handle = await attach(service, root);
     const review = await service.startInitialization(handle);
     assert.equal((await service.initializationStatus(handle)).state, 'review_required');
+    const sourceFact = review.packet.items.find((item: any) => item.path === 'src/api/a.ts');
+    assert.ok(sourceFact);
+    assert.equal((await service.resolveReviewSource(handle, review.reviewId, sourceFact.id))?.path, 'src/api/a.ts');
+    assert.equal(await service.resolveReviewSource(handle, 'wrong', sourceFact.id), undefined);
+    assert.equal(await service.resolveReviewSource(handle, review.reviewId, 'fabricated'), undefined);
     assert.equal(index.snapshot(root), undefined);
     assert.equal((await readdir(root)).includes('.dope'), false);
     await assert.rejects(service.acceptReview(handle, 'wrong', review.draft), /matching/);
@@ -107,6 +112,7 @@ test('generated review stays transient, rejects invalid/stale drafts, then accep
     assert.equal((await service.acceptReview(handle, review.reviewId, draft)).state, 'ready');
     assert.equal((await service.initializationStatus(handle)).state, 'initialized');
     assert.equal((await service.review(handle)), undefined);
+    assert.equal(await service.resolveReviewSource(handle, review.reviewId, sourceFact.id), undefined);
     assert.equal(index.snapshot(root)!.nodes.some(node => node.id === 'api'), true);
     service.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }

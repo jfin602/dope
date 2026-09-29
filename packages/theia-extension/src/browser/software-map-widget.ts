@@ -5,7 +5,8 @@ import { BaseWidget, codicon, Message } from '@theia/core/lib/browser/widgets/wi
 import { CommonMenus } from '@theia/core/lib/browser/common-menus';
 import URI from '@theia/core/lib/common/uri';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
-import type { Evidence, GraphNode, GraphRelationship } from '@dope/software-map';
+import { StorageService } from '@theia/core/lib/browser/storage-service';
+import type { ArchitectureEvidenceItem, Evidence, GraphNode, GraphRelationship } from '@dope/software-map';
 import { SoftwareMapConnection, SoftwareMapController } from './software-map-controller';
 import './dope.css';
 
@@ -19,9 +20,11 @@ export class SoftwareMapWidget extends BaseWidget {
     private readonly tree = document.createElement('section');
     private readonly detail = document.createElement('section');
     private readonly violations = document.createElement('section');
+    private readonly controls = document.createElement('section');
     private readonly expanded = new Set<string>();
 
-    constructor(connect: () => SoftwareMapConnection, private readonly workspaces: WorkspaceService, private readonly opener: OpenerService) {
+    constructor(connect: () => SoftwareMapConnection, private readonly workspaces: WorkspaceService, private readonly opener: OpenerService,
+        preferences?: StorageService) {
         super();
         this.id = SOFTWARE_MAP_ID;
         this.title.label = 'sMap';
@@ -31,15 +34,13 @@ export class SoftwareMapWidget extends BaseWidget {
         this.addClass('dope-spike-view');
         this.addClass('dope-smap-view');
         this.node.tabIndex = 0;
-        this.controller = new SoftwareMapController(connect, () => this.render());
+        this.controller = new SoftwareMapController(connect, () => this.render(), preferences);
         const heading = document.createElement('h2');
         heading.textContent = 'Software Map';
-        const analyze = this.button('Analyze / Refresh', () => void this.controller.analyze());
-        analyze.setAttribute('aria-label', 'Analyze or refresh Software Map');
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
-        this.node.append(heading, analyze, this.status, this.tree, this.detail, this.violations);
-        this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.controller.attach(); void this.attach(); });
+        this.node.append(heading, this.status, this.controls, this.tree, this.detail, this.violations);
+        this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.attach(); });
         void this.attach();
     }
     private button(label: string, action: () => void): HTMLButtonElement {
@@ -61,8 +62,163 @@ export class SoftwareMapWidget extends BaseWidget {
         if (text !== undefined) element.textContent = text;
         return element;
     }
+    private field(label: string, value: string, change: (value: string) => void, multiline = false, secret = false): HTMLElement {
+        const wrapper = this.element('label', label);
+        const input = multiline ? this.element('textarea') : this.element('input');
+        if (input instanceof HTMLInputElement && secret) input.type = 'password';
+        input.value = value;
+        input.oninput = () => change(input.value);
+        wrapper.append(input);
+        return wrapper;
+    }
+    private renderOnboarding(): void {
+        const model = this.controller;
+        this.controls.replaceChildren();
+        if (!model.workspace || !model.initialization) return;
+        if (model.initialization.state === 'initialized') {
+            this.controls.append(this.button('Refresh Software Map', () => void model.analyze()));
+            return;
+        }
+        if (model.flow === 'none') {
+            this.controls.append(this.button('Analyze Project', () => model.begin()));
+            this.controls.append(this.element('p', 'Software Map is uninitialized. Analyze Project is available whenever you are ready.'));
+        } else if (model.flow === 'offer') {
+            this.controls.append(this.element('h3', 'Analyze Project?'), this.element('p', 'Choose local synthesis, an existing declaration, or manual architecture.'));
+            const setup = this.button('Set up local synthesis', () => void model.setup());
+            setup.disabled = model.setupBusy;
+            this.controls.append(setup);
+            if (model.initialization.declarationPresent) {
+                const existing = this.button('Use existing architecture', () => void model.useExisting());
+                existing.disabled = model.setupBusy;
+                this.controls.append(existing);
+            }
+            this.controls.append(this.button('Define architecture manually', () => model.manual()), this.button('Not now', () => model.decline()));
+        } else if (model.flow === 'setup') this.renderSetup();
+        else if (model.flow === 'review') this.renderReview();
+        else if (model.flow === 'manual') this.renderDraft('Manual architecture');
+    }
+    private renderSetup(): void {
+        const model = this.controller;
+        this.controls.append(this.element('h3', 'Local synthesis setup'),
+            this.element('p', 'LM Studio compatible endpoint. Discovery and capability probing use no project evidence.'));
+        this.controls.append(this.field('Endpoint', model.endpoint, value => model.changeEndpoint(value)));
+        this.controls.append(this.field('Optional session token', model.token, value => model.changeToken(value), false, true));
+        this.controls.append(this.button('Discover models', () => void model.discover()));
+        const label = this.element('label', 'Model');
+        const select = this.element('select');
+        for (const id of model.models) {
+            const option = this.element('option', id);
+            option.value = id;
+            option.selected = id === model.model;
+            select.append(option);
+        }
+        select.onchange = () => model.changeModel(select.value);
+        label.append(select);
+        this.controls.append(label);
+        const probe = this.button('Run structured-output capability probe', () => void model.probe());
+        probe.disabled = model.setupBusy || !model.model;
+        this.controls.append(probe, this.element('p', model.setupReady ? 'Structured-output probe passed. Model ready.' :
+            model.setupBusy ? 'Checking local model…' : 'Run the probe before analysis.'));
+        const start = this.button('Analyze Project with selected model', () => void model.synthesize());
+        start.disabled = !model.setupReady || model.setupBusy;
+        const cancel = this.button('Cancel', () => void model.cancel());
+        this.controls.append(start, cancel);
+    }
+    private renderReview(): void {
+        const review = this.controller.review;
+        if (!review) return;
+        this.controls.append(this.element('h3', 'Review proposed architecture'), this.element('p', review.proposal.summary));
+        const byKey = new Map(review.proposal.nodes.map(node => [node.proposalKey, node]));
+        const facts = new Map(review.packet.items.map(item => [item.id, item]));
+        const list = this.element('ul');
+        const render = (parent: string | null, target: HTMLUListElement) => {
+            for (const draft of this.controller.draft.filter(node => node.parentProposalKey === parent)) {
+                const proposal = byKey.get(draft.proposalKey);
+                const row = this.element('li');
+                row.append(this.element('h4', `${draft.kind}: ${draft.name || '(unnamed)'}`), this.element('p', draft.purpose));
+                if (proposal) {
+                    row.append(this.element('p', `Confidence: ${proposal.confidence.toFixed(2)} (synthesis confidence, not probability)`),
+                        this.element('p', `Rationale: ${proposal.rationale}`), this.element('h4', 'Model explanation'));
+                    for (const statement of proposal.evidence) row.append(this.element('p', statement));
+                    row.append(this.element('h4', 'Source-backed evidence'));
+                    for (const ref of proposal.evidenceRefs) this.renderPacketFact(ref, facts.get(ref), row);
+                } else row.append(this.element('p', 'Developer-added boundary; no model evidence.'));
+                const children = this.element('ul'); render(draft.proposalKey, children);
+                row.append(children); target.append(row);
+            }
+        };
+        render(null, list);
+        this.controls.append(list, this.element('h4', 'Open questions'));
+        if (review.proposal.openQuestions.length) {
+            const questions = this.element('ul');
+            for (const question of review.proposal.openQuestions) questions.append(this.element('li', question));
+            this.controls.append(questions);
+        } else this.controls.append(this.element('p', 'None reported.'));
+        this.controls.append(this.element('h4', 'Unassigned source-backed evidence'));
+        if (!review.proposal.unassignedEvidenceRefs.length) this.controls.append(this.element('p', 'None reported.'));
+        for (const ref of review.proposal.unassignedEvidenceRefs) this.renderPacketFact(ref, facts.get(ref), this.controls);
+        this.renderDraft('Correct and accept architecture');
+    }
+    private renderPacketFact(ref: string, item: ArchitectureEvidenceItem | undefined, target: HTMLElement): void {
+        if (!item) { target.append(this.element('p', `Unavailable packet fact ${ref}`)); return; }
+        const fact = this.element('div');
+        fact.className = 'dope-smap-fact';
+        fact.append(this.element('p', `${item.kind} · ${item.path} · ${ref}`),
+            this.element('small', `Deterministic fact: ${JSON.stringify(item)} · source evidence IDs: ${item.sourceEvidenceIds.join(', ') || 'none'}`));
+        fact.append(this.button(`Open source for ${ref}`, () => void this.openReviewSource(ref)));
+        target.append(fact);
+    }
+    private async openReviewSource(ref: string): Promise<void> {
+        try {
+            const location = await this.controller.reviewSource(ref);
+            if (location && !this.isDisposed) await open(this.opener, new URI(location.uri));
+        } catch (error) { this.status.textContent = `Source navigation failed: ${String(error)}`; }
+    }
+    private renderDraft(title: string): void {
+        const model = this.controller;
+        const editor = this.element('section');
+        editor.append(this.element('h3', title));
+        const validation = this.element('p');
+        validation.setAttribute('role', 'status');
+        const accept = this.button('Accept architecture', () => void model.accept());
+        const refreshValidation = () => { const error = model.draftError(); validation.textContent = error ? `Cannot accept: ${error}` : 'Canonical architecture is valid.'; accept.disabled = !!error || model.setupBusy; };
+        for (const node of model.draft) {
+            const row = this.element('fieldset');
+            row.append(this.element('legend', `${node.kind}: ${node.name || '(unnamed)'}`));
+            const edit = (key: 'id' | 'name' | 'purpose', label: string) => this.field(label, node[key], value => { node[key] = value; refreshValidation(); });
+            row.append(edit('id', 'Canonical ID'), edit('name', 'Name'), edit('purpose', 'Purpose'));
+            if (node.kind !== 'system') {
+                const label = this.element('label', 'Parent boundary');
+                const select = this.element('select');
+                select.setAttribute('aria-label', `${node.kind} parent for ${node.name || node.proposalKey}`);
+                for (const parent of model.draft.filter(item => item.kind === (node.kind === 'subsystem' ? 'system' : 'subsystem'))) {
+                    const option = this.element('option', `${parent.name || parent.proposalKey} (${parent.id || 'no ID'})`);
+                    option.value = parent.proposalKey;
+                    option.selected = parent.proposalKey === node.parentProposalKey;
+                    select.append(option);
+                }
+                select.onchange = () => { node.parentProposalKey = select.value; refreshValidation(); };
+                label.append(select); row.append(label);
+            }
+            row.append(this.field('Implementation roots (one project-relative path per line)', node.roots.join('\n'), value => {
+                node.roots = value.split('\n').map(path => path.trim()).filter(Boolean); refreshValidation();
+            }, true));
+            if (node.kind !== 'component') row.append(this.button(`Add ${node.kind === 'system' ? 'subsystem' : 'component'} under ${node.name || node.proposalKey}`,
+                () => model.add(node.kind === 'system' ? 'subsystem' : 'component', node.proposalKey)));
+            row.append(this.button(`Remove ${node.kind} ${node.name || node.proposalKey} and its children`, () => model.remove(node.proposalKey)));
+            editor.append(row);
+        }
+        const cancel = this.button('Cancel', () => void model.cancel());
+        cancel.disabled = model.setupBusy;
+        editor.append(this.button('Add system', () => model.add('system')), validation, accept, cancel);
+        this.controls.append(editor);
+        refreshValidation();
+    }
     private render(): void {
         if (this.isDisposed) return;
+        const focusedControl = this.controls.contains(document.activeElement) ? (document.activeElement as HTMLElement) : undefined;
+        const focusedLabel = focusedControl?.closest('label')?.firstChild?.textContent;
+        const focusedButton = focusedControl?.tagName === 'BUTTON' ? focusedControl.textContent : undefined;
         const focusedNode = (document.activeElement as HTMLElement | null)?.dataset.nodeId;
         const focusedEdge = (document.activeElement as HTMLElement | null)?.dataset.edgeId;
         const model = this.controller;
@@ -70,12 +226,17 @@ export class SoftwareMapWidget extends BaseWidget {
         this.status.textContent = !model.workspace ? 'Open one local project folder to inspect its Software Map.' :
             model.error ? `Error: ${model.error}` :
             model.loading ? `Analyzing or loading generation ${status?.generation ?? '…'}; previous results hidden.` :
-            !status || status.state === 'idle' ? 'Ready to analyze. No derived graph is loaded.' :
+            model.initialization?.state !== 'initialized' ? model.setupBusy ? 'Software Map initialization in progress.' : 'Software Map is uninitialized.' :
+            !status || status.state === 'idle' ? 'Ready to refresh. No derived graph is loaded.' :
             status.state === 'failed' ? `Analysis failed at generation ${status.generation}.` :
             `Generation ${status.publishedGeneration} · ${status.analysis.completeness} · ${model.nodes.length} nodes · ${model.violations.length} violations`;
         this.tree.replaceChildren();
         this.detail.replaceChildren();
         this.violations.replaceChildren();
+        this.renderOnboarding();
+        if (focusedButton) [...this.controls.querySelectorAll('button')].find(button => button.textContent === focusedButton)?.focus();
+        else if (focusedLabel) [...this.controls.querySelectorAll('label')].find(label => label.firstChild?.textContent === focusedLabel)?.querySelector<HTMLElement>('input, textarea, select')?.focus();
+        if (model.initialization?.state !== 'initialized') return;
         if (status?.analysis.errors.length) {
             const diagnostics = this.element('section');
             diagnostics.append(this.element('h3', 'Diagnostics'));

@@ -9,6 +9,7 @@ import { ServiceConnectionProvider } from '@theia/core/lib/browser/messaging/ser
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { OpenerService } from '@theia/core/lib/browser';
+import { StorageService } from '@theia/core/lib/browser/storage-service';
 import { DopeWindowTitleService, ProjectMindView, ProjectMindWidget, PROJECT_MIND_ID } from './dope-workbench';
 import { SoftwareMapService, softwareMapServicePath } from '@dope/software-map';
 import type { SoftwareMapClient } from '@dope/software-map';
@@ -23,7 +24,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_ID, createWidget: () => new SoftwareMapWidget(
         () => context.container.get(SoftwareMapService) as SoftwareMapService & RpcServer<SoftwareMapClient>,
-        context.container.get(WorkspaceService), context.container.get(OpenerService)
+        context.container.get(WorkspaceService), context.container.get(OpenerService), context.container.get(StorageService)
     ) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: PROJECT_MIND_ID, createWidget: () => new ProjectMindWidget(
         () => context.container.get(ProjectMindService) as ProjectMindService & RpcServer<ProjectMindClient>,

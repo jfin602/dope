@@ -57,6 +57,7 @@ export interface SoftwareMapService {
     initializationStatus(projectHandle: string): Promise<SoftwareMapInitializationStatus>;
     startInitialization(projectHandle: string): Promise<ArchitectureReview>;
     review(projectHandle: string): Promise<ArchitectureReview | undefined>;
+    resolveReviewSource(projectHandle: string, reviewId: string, evidenceRef: string): Promise<SoftwareMapSourceLocation | undefined>;
     cancelInitialization(projectHandle: string): Promise<void>;
     acceptReview(projectHandle: string, reviewId: string, draft: ArchitectureReviewNode[]): Promise<SoftwareMapStatus>;
     acceptExisting(projectHandle: string, expectedFingerprint: string): Promise<SoftwareMapStatus>;

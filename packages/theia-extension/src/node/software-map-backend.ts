@@ -150,6 +150,19 @@ export class SoftwareMapBackend implements SoftwareMapService {
         const { reviewId, packet, proposal, draft } = this.pending;
         return structuredClone({ reviewId, packet, proposal, draft });
     }
+    async resolveReviewSource(projectHandle: string, reviewId: string, evidenceRef: string) {
+        const root = this.active(projectHandle);
+        if (!this.pending || this.pending.reviewId !== reviewId) return undefined;
+        const item = this.pending.packet.items.find(item => item.id === evidenceRef);
+        if (!item) return undefined;
+        const path = join(root, projectPath(item.path));
+        const canonical = await realpath(path);
+        this.active(projectHandle);
+        if (this.pending?.reviewId !== reviewId) return undefined;
+        const local = relative(root, canonical);
+        if (!local || local === '..' || local.startsWith(`..${sep}`)) throw new Error('Unsafe Software Map source path');
+        return { uri: pathToFileURL(canonical).href, path: item.path };
+    }
     async cancelInitialization(projectHandle: string): Promise<void> {
         this.active(projectHandle);
         this.run++;

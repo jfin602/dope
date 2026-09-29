@@ -470,6 +470,7 @@ test('Software Map rebuilds from source and declaration across process restart a
                     : await service.acceptManual(projectHandle, { schemaVersion: 1, systems: [{ id: 'manual', name: 'Manual', purpose: 'Test', subsystems: [
                         { id: 'manual-sub', name: 'Manual sub', purpose: 'Test', roots: ['unmatched'] },
                     ] }] }, initialization.declarationFingerprint);
+                await controller.attach(uri); // Reconcile the widget after this test's direct backend acceptance.
             } else status = await service.analyze(projectHandle);
         }
         if (status.state !== 'ready') return { initial, status };
@@ -516,7 +517,7 @@ test('Software Map rebuilds from source and declaration across process restart a
         assert.ok(firstPass.evidence.some(item => item.path === 'src/api/a.ts' && item.span?.line === 1));
         await evaluate(instance.page, `(async () => { await theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'CommandService')).executeCommand('dope.softwareMap.open'); return true; })()`);
         assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-map')?.textContent.includes('Architecture violations (1)')`)), true);
-        await evaluate(instance.page, `document.querySelector('#dope-software-map button[aria-label="Analyze or refresh Software Map"]').click()`);
+        await evaluate(instance.page, `[...document.querySelectorAll('#dope-software-map button')].find(button => button.textContent === 'Refresh Software Map').click()`);
         assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-map [role="status"]')?.textContent.includes('Generation 2')`)), true);
         await evaluate(instance.page, `document.querySelector('#dope-software-map button[data-node-id="api"]').click()`);
         assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-map')?.textContent.includes('Aggregated depends-on: API → Secret')`)), true);
