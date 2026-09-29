@@ -1,12 +1,12 @@
 # Correction 3 — Remove Phase 3 Planning Instruments
 
-Status: READY FOR EXECUTION
+Status: COMPLETE — GREEN / QUALIFIED FOR SEQUENCING at unchanged `0.3.6`
 Correction folder: `c3-remove-planning-instruments`
 Baseline: `68a51e78233f0a81bf295fb06e591fb508149bf0`
 Required unchanged version: `0.3.6`
 Theia: `1.75.0`; Electron: `42.8.1`; Node: 24
 
-This correction is the mandatory gate between the qualified historical Phase 3 Planning implementation and Product Phase 4 — Physical Software Model.
+This correction was the mandatory gate between the qualified historical Phase 3 Planning implementation and Product Phase 4 — Physical Software Model. [The evidence-only closeout](closeout.md) clears that cleanup gate for exact P2 source `d3dfeb209ab30c23951d894204a89698a6b44353`; retained gaps are documented there.
 
 It intentionally removes the live Phase 3 Planning subsystem rather than preserving compatibility.
 
@@ -56,4 +56,4 @@ The gate clears only when:
 - surviving aggregate/restart/build/package checks pass;
 - historical Phase 3 evidence remains intact.
 
-After closeout, run post-correction `/docs-review` before Product Phase 4 activation.
+The correction is complete. Next: post-correction `/docs-review` to reconcile current routing/status and prepare Product Phase 4 planning/activation, then explicit owner approval and `/docs-apply` as needed. No Product Phase 4 prompt or implementation is created by this closeout.
