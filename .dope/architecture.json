@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "systems": [
+    {
+      "id": "physical-model",
+      "name": "Physical Software Model",
+      "purpose": "Derive evidence-backed current software structure from project source and developer declarations.",
+      "subsystems": [
+        {
+          "id": "model-core",
+          "name": "Model core",
+          "purpose": "Own language-independent architecture, graph, evidence and query contracts.",
+          "roots": ["packages/software-model/src"],
+          "forbiddenDependencies": ["model-inspector"],
+          "components": [
+            { "id": "architecture-declaration", "name": "Architecture declaration", "purpose": "Parse and apply developer-authored boundaries.", "roots": ["packages/software-model/src/architecture.ts"] },
+            { "id": "physical-graph", "name": "Physical graph", "purpose": "Validate and query deterministic nodes and relationships.", "roots": ["packages/software-model/src/graph.ts"] }
+          ]
+        },
+        {
+          "id": "source-analysis",
+          "name": "Source analysis",
+          "purpose": "Discover source and build a disposable model index through the TypeScript adapter.",
+          "roots": ["packages/code-analysis/src", "packages/code-analysis-typescript/src"],
+          "forbiddenDependencies": ["model-inspector"],
+          "components": [
+            { "id": "model-index", "name": "Model index", "purpose": "Coordinate source, configuration and declaration reanalysis.", "roots": ["packages/code-analysis/src/node/model-index.ts"] }
+          ]
+        },
+        {
+          "id": "model-inspector",
+          "name": "Model inspector",
+          "purpose": "Present typed model queries in the Theia workbench without owning architecture state.",
+          "roots": ["packages/theia-extension/src/browser"],
+          "components": [
+            { "id": "inspector-view", "name": "Inspector view", "purpose": "Display hierarchy, dependencies, evidence and violations.", "roots": ["packages/theia-extension/src/browser/software-model-widget.ts"] }
+          ]
+        },
+        {
+          "id": "model-transport",
+          "name": "Model transport",
+          "purpose": "Bind local project handles to typed backend analysis and queries.",
+          "roots": ["packages/theia-extension/src/node"],
+          "components": [
+            { "id": "model-backend", "name": "Model backend", "purpose": "Serve project-bound queries and source locations.", "roots": ["packages/theia-extension/src/node/software-model-backend.ts"] }
+          ]
+        }
+      ]
+    }
+  ]
+}

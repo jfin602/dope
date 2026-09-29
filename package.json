@@ -1,6 +1,6 @@
 {
   "name": "dope",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "private": true,
   "type": "module",
   "packageManager": "yarn@1.22.22",
@@ -28,7 +28,7 @@
     "test": "npm run test:runner && npm run test:baseline && npm run test:product && npm run test:ide",
     "test:runner": "node --test test/unit/codex-phase-prompt-grammar.test.ts test/unit/codex-phase-runner.test.ts",
     "test:baseline": "node --test test/unit/theia-baseline.test.ts test/unit/pre-phase4-clean-baseline.test.ts",
-    "test:product": "npm run build:extension && node --test test/unit/note-persistence.test.ts test/unit/project-intelligence.test.ts test/unit/project-mind-storage.test.ts test/unit/project-mind-ui.test.ts test/unit/software-model.test.ts test/unit/code-analysis-typescript.test.ts test/unit/model-index-backend.test.ts",
+    "test:product": "npm run build:extension && node --test test/unit/note-persistence.test.ts test/unit/project-intelligence.test.ts test/unit/project-mind-storage.test.ts test/unit/project-mind-ui.test.ts test/unit/software-model.test.ts test/unit/code-analysis-typescript.test.ts test/unit/model-index-backend.test.ts test/unit/software-model-ui.test.ts",
     "test:ide": "node --test test/fixtures/ide-testing/sample.test.js",
     "test:restart": "node --test test/integration/restart.test.mjs",
     "codex:phase": "node scripts/codex-phase.mjs",

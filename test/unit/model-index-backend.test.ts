@@ -153,8 +153,10 @@ test('newest requested generation publishes even when older analysis finishes la
     const pending: Array<(result: typeof emptyResult) => void> = [];
     const index = new ModelIndex({ analyze: () => new Promise(resolve => pending.push(resolve)) });
     const first = index.analyze(root);
-    const second = index.analyze(root);
     const deadline = Date.now() + 5000;
+    while (pending.length < 1 && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
+    assert.equal(pending.length, 1);
+    const second = index.analyze(root);
     while (pending.length < 2 && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
     assert.equal(pending.length, 2, JSON.stringify(index.status(root)));
     pending[1](emptyResult);
@@ -165,7 +167,7 @@ test('newest requested generation publishes even when older analysis finishes la
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('typed backend binds each connection to one root/handle, bounds queries, resolves source and disposes', async () => {
+test('typed backend rebinds a connection across roots, bounds queries, resolves source and disposes', async () => {
   const firstRoot = await fixture();
   const secondRoot = await fixture();
   try {
@@ -177,7 +179,7 @@ test('typed backend binds each connection to one root/handle, bounds queries, re
     const first = await a.attach(pathToFileURL(firstRoot).href);
     const second = await b.attach(pathToFileURL(secondRoot).href);
     assert.notEqual(first.projectHandle, second.projectHandle);
-    await assert.rejects(a.attach(pathToFileURL(secondRoot).href), /different/);
+
     await assert.rejects(a.status(second.projectHandle), /Invalid/);
     await assert.rejects(a.analyze(second.projectHandle), /Invalid/);
     await a.analyze(first.projectHandle);
@@ -205,6 +207,10 @@ test('typed backend binds each connection to one root/handle, bounds queries, re
     await assert.rejects(a.resolveSource(first.projectHandle, evidence[0].id), /Unsafe/);
     await rm(source);
     await writeFile(source, original);
+    const rebound = await a.attach(pathToFileURL(secondRoot).href);
+    assert.notEqual(rebound.projectHandle, first.projectHandle);
+    await assert.rejects(a.status(first.projectHandle), /Invalid/);
+    assert.equal((await a.status(rebound.projectHandle)).state, 'ready');
     const count = updates.length;
     a.dispose();
     await assert.rejects(a.status(first.projectHandle), /Invalid/);

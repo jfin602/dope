@@ -11,6 +11,7 @@ import type { ArchitectureViolation, Evidence, ModelNode, ModelPage, ModelPageRe
 export class SoftwareModelBackend implements SoftwareModelService {
     private root?: string;
     private handle?: string;
+    private attaching = 0;
     private disposed = false;
     private readonly unlisten: () => void;
 
@@ -22,10 +23,11 @@ export class SoftwareModelBackend implements SoftwareModelService {
 
     async attach(folderUri: string) {
         if (this.disposed) throw new Error('Disposed Software Model connection');
+        const request = ++this.attaching;
         const root = await canonicalLocalRoot(folderUri);
-        if (this.root && this.root !== root) throw new Error('A different Software Model folder is already attached to this connection');
+        if (this.disposed || request !== this.attaching) throw new Error('Superseded Software Model attachment');
+        if (this.root !== root || !this.handle) this.handle = randomUUID();
         this.root = root;
-        this.handle ??= randomUUID();
         return { projectHandle: this.handle, status: this.index.status(root) };
     }
 
@@ -62,6 +64,12 @@ export class SoftwareModelBackend implements SoftwareModelService {
         const items = relationshipsFor(snapshot, request.nodeId, request.direction, request.kinds).filter(edge =>
             request.scope === 'aggregated' ? !!edge.originRelationshipIds?.length : request.scope === 'direct' ? !edge.originRelationshipIds?.length : true);
         return this.page(snapshot, request, items);
+    }
+    async relationshipEdges(request: ModelPageRequest & { relationshipIds: string[] }): Promise<ModelPage<ModelRelationship>> {
+        const snapshot = this.snapshot(request.projectHandle);
+        if (!Array.isArray(request.relationshipIds) || request.relationshipIds.length > 200 || request.relationshipIds.some(id => typeof id !== 'string')) throw new Error('Invalid Software Model relationship IDs');
+        const ids = new Set(request.relationshipIds);
+        return this.page(snapshot, request, snapshot.relationships.filter(edge => ids.has(edge.id)));
     }
     async evidence(request: ModelPageRequest & { evidenceIds: string[] }): Promise<ModelPage<Evidence>> {
         const snapshot = this.snapshot(request.projectHandle);

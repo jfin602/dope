@@ -82,7 +82,7 @@ export class ModelIndex {
             entry.snapshot = snapshot;
             entry.inputs = inputs;
             entry.result = result ?? entry.result;
-            entry.status = { generation, publishedGeneration: generation, state: analysis.completeness === 'failed' ? 'failed' : 'ready', analysis,
+            entry.status = { generation, publishedGeneration: generation, state: analysis.completeness === 'failed' ? 'failed' : 'ready', analysis, declarationPresent: text !== undefined,
                 inputFingerprint: inputs.fingerprint, reusedSourceFiles: result?.reusedSourceFiles ?? (same ? snapshot.nodes.filter(node => node.kind === 'code' && node.codeKind === 'file').length : 0) };
         } catch (error) {
             if (generation !== entry.requested) return this.status(root);

@@ -423,3 +423,116 @@ test('Project Mind survives process and profile restarts, isolates folders, and 
         await rm(directory, { recursive: true, force: true });
     }
 });
+
+test('Software Model rebuilds from source and declaration across process restart and reanalysis', { timeout: 300000 }, async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'dope-model-restart-'));
+    const first = join(directory, 'first');
+    const second = join(directory, 'second');
+    const profile = join(directory, 'profile');
+    const port = await availablePort();
+    const declaration = forbidden => ({ schemaVersion: 1, systems: [{ id: 'app', name: 'App', purpose: 'Application', subsystems: [
+        { id: 'api', name: 'API', purpose: 'Entry', roots: ['src/api'], forbiddenDependencies: [forbidden],
+            components: [{ id: 'handler', name: 'Handler', purpose: 'Request handler', roots: ['src/api/a.ts'] }] },
+        { id: 'core', name: 'Core', purpose: 'Domain', roots: ['src/core'] },
+        { id: 'secret', name: 'Secret', purpose: 'Private', roots: ['src/secret'] },
+    ] }] });
+    const source = imports => `${imports}\nexport const run = () => 1;\n`;
+    const attach = async (page, folder, analyze = false) => evaluate(page, `(async () => {
+        const container = theia.container;
+        const managerKey = [...container._bindingDictionary._map.entries()].find(([, bindings]) => bindings.some(binding => binding.implementationType?.prototype?.getOrCreateWidget))[0];
+        const widget = await container.get(managerKey).getOrCreateWidget('dope-software-model');
+        const controller = widget.controller;
+        const uri = ${JSON.stringify(pathToFileURL(folder).href)};
+        if (controller.workspace !== uri || !controller.handle) await controller.attach(uri);
+        const service = controller.connection;
+        const projectHandle = controller.handle;
+        const initial = await service.status(projectHandle);
+        const status = ${analyze} ? await service.analyze(projectHandle) : initial;
+        if (status.state !== 'ready') return { initial, status };
+        const all = async fetch => { const items = []; for (let offset = 0;; offset += 200) {
+            const page = await fetch(offset); if (page.generation !== status.publishedGeneration) throw Error('mixed generation');
+            items.push(...page.items); if (items.length >= page.total) return items;
+        } };
+        const nodes = await all(offset => service.hierarchy({ projectHandle, descendants: true, offset, limit: 200 }));
+        const violations = await all(offset => service.violations({ projectHandle, offset, limit: 200 }));
+        const dependency = await all(offset => service.relationships({ projectHandle, nodeId: 'api', direction: 'outgoing', scope: 'aggregated', offset, limit: 200 }));
+        const edge = dependency.find(item => item.targetId === 'secret' || item.targetId === 'core');
+        const evidence = edge ? await service.evidence({ projectHandle, evidenceIds: edge.evidenceIds }) : { items: [] };
+        const location = evidence.items[0] ? await service.resolveSource(projectHandle, evidence.items[0].id) : undefined;
+        return { initial, status, nodes: nodes.map(item => ({ id: item.id, kind: item.kind, parentId: item.parentId, ownership: item.ownership })),
+            violations, dependency, evidence: evidence.items, location };
+    })()`);
+    let instance;
+    try {
+        await mkdir(join(first, 'src/api'), { recursive: true });
+        await mkdir(join(first, 'src/core'), { recursive: true });
+        await mkdir(join(first, 'src/secret'), { recursive: true });
+        await mkdir(join(first, '.dope'));
+        await mkdir(join(second, 'src'), { recursive: true });
+        await writeFile(join(first, 'tsconfig.json'), JSON.stringify({ compilerOptions: { module: 'CommonJS' }, include: ['src/**/*.ts'] }));
+        await writeFile(join(first, '.dope/architecture.json'), JSON.stringify(declaration('secret')));
+        await writeFile(join(first, 'src/api/a.ts'), source("import { secret } from '../secret/s';"));
+        await writeFile(join(first, 'src/core/c.ts'), 'export const core = 1;\n');
+        await writeFile(join(first, 'src/secret/s.ts'), 'export const secret = 1;\n');
+        await writeFile(join(second, 'tsconfig.json'), JSON.stringify({ include: ['src/**/*.ts'] }));
+        await writeFile(join(second, 'src/index.ts'), 'export const second = 2;\n');
+        instance = await launch(profile, port, first);
+        assert.equal(await evaluate(instance.page, `(() => { const button = [...document.querySelectorAll('button')].find(value => value.textContent.includes('Yes, I trust the authors')); if (button) button.click(); return !!theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'SoftwareModelService')); })()`), true);
+        const firstPass = await attach(instance.page, first, true);
+        assert.equal(firstPass.initial.state, 'idle');
+        assert.equal(firstPass.status.state, 'ready');
+        assert.equal(firstPass.status.declarationPresent, true);
+        assert.ok(firstPass.nodes.some(item => item.id === 'app' && item.kind === 'system'));
+        assert.ok(firstPass.nodes.some(item => item.id === 'handler' && item.kind === 'component'));
+        assert.ok(firstPass.nodes.some(item => item.kind === 'code' && item.ownership?.componentId === 'handler'));
+        assert.deepEqual(firstPass.violations.map(item => item.targetSubsystemId), ['secret']);
+        assert.ok(firstPass.dependency.some(item => item.targetId === 'secret' && item.originRelationshipIds.length));
+        assert.equal(firstPass.location.path, 'src/api/a.ts');
+        assert.ok(firstPass.evidence.some(item => item.path === 'src/api/a.ts' && item.span?.line === 1));
+        await evaluate(instance.page, `(async () => { await theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'CommandService')).executeCommand('dope.softwareModel.open'); return true; })()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-model')?.textContent.includes('Architecture violations (1)')`)), true);
+        await evaluate(instance.page, `document.querySelector('#dope-software-model button[aria-label="Analyze or refresh Software Model"]').click()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-model [role="status"]')?.textContent.includes('Generation 2')`)), true);
+        await evaluate(instance.page, `document.querySelector('#dope-software-model button[data-node-id="api"]').click()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-model')?.textContent.includes('Aggregated depends-on: API → Secret')`)), true);
+        await evaluate(instance.page, `[...document.querySelectorAll('#dope-software-model button')].find(button => button.textContent === 'Show originating physical edges').click()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-model')?.textContent.includes('Originating physical edges (') && document.querySelector('#dope-software-model')?.textContent.includes('imports:')`)), true);
+        await evaluate(instance.page, `[...document.querySelectorAll('#dope-software-model button')].find(button => button.textContent.includes('forbidden-dependency')).click()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-model')?.textContent.includes('Offending physical edges') && document.querySelector('#dope-software-model')?.textContent.includes('src/api/a.ts:1')`)), true);
+        await evaluate(instance.page, `[...document.querySelectorAll('#dope-software-model button')].find(button => button.textContent.includes('src/api/a.ts:1')).click()`);
+        assert.equal(await until(() => evaluate(instance.page, `(() => { const entries = [...theia.container._bindingDictionary._map.entries()]; return theia.container.get(entries.find(([, bindings]) => bindings.some(binding => binding.implementationType?.prototype?.handleNewPreview))[0]).currentEditor?.title.label === 'a.ts'; })()`)), true);
+        await writeFile(join(first, 'src/api/a.ts'), source(''));
+        const removed = await attach(instance.page, first, true);
+        assert.equal(removed.status.generation, firstPass.status.generation + 2);
+        assert.deepEqual(removed.violations, []);
+        assert.ok(!removed.dependency.some(item => item.targetId === 'secret'));
+        await writeFile(join(first, 'src/api/a.ts'), source("import { secret } from '../secret/s';"));
+        const added = await attach(instance.page, first, true);
+        assert.deepEqual(added.violations.map(item => item.targetSubsystemId), ['secret']);
+        await close(instance);
+        await writeFile(join(first, '.dope/architecture.json'), JSON.stringify(declaration('core')));
+        await writeFile(join(first, 'src/api/a.ts'), source("import { core } from '../core/c';\nimport { secret } from '../secret/s';"));
+        instance = await launch(profile, port, first);
+        const before = await attach(instance.page, first);
+        assert.equal(before.initial.state, 'idle', 'derived graph must be rebuilt, not persisted');
+        const restarted = await attach(instance.page, first, true);
+        assert.equal(restarted.status.generation, 1);
+        assert.deepEqual(restarted.violations.map(item => item.targetSubsystemId), ['core']);
+        assert.ok(restarted.dependency.some(item => item.targetId === 'core' && item.originRelationshipIds.length));
+        assert.ok(restarted.evidence.some(item => item.path === 'src/api/a.ts'));
+        assert.equal(restarted.location.path, 'src/api/a.ts');
+        const isolated = await attach(instance.page, second, true);
+        assert.equal(isolated.status.declarationPresent, false);
+        assert.deepEqual(isolated.violations, []);
+        assert.ok(isolated.nodes.some(item => item.kind === 'code' && item.ownership?.state === 'unassigned'));
+        assert.ok(!isolated.nodes.some(item => item.id === 'app'));
+        await close(instance);
+    } catch (error) {
+        throw new Error(`${error}\n${instance?.output ?? ''}`);
+    } finally {
+        if (instance?.child.exitCode === null && instance.child.signalCode === null) {
+            try { await close(instance); } catch { try { process.kill(-instance.child.pid, 'SIGTERM'); } catch { } }
+        }
+        await rm(directory, { recursive: true, force: true });
+    }
+});

@@ -10,6 +10,7 @@ export interface ModelStatus {
     analysis: AnalysisStatus;
     inputFingerprint?: string;
     reusedSourceFiles: number;
+    declarationPresent?: boolean;
 }
 export interface ModelPage<T> { generation: number; total: number; items: T[] }
 export interface ModelPageRequest { projectHandle: string; offset?: number; limit?: number }
@@ -32,6 +33,7 @@ export interface SoftwareModelService {
     hierarchy(request: ModelPageRequest & { parentId?: string; descendants?: boolean }): Promise<ModelPage<ModelNode>>;
     node(projectHandle: string, nodeId: string): Promise<{ generation: number; item?: ModelNode }>;
     relationships(request: ModelRelationshipRequest): Promise<ModelPage<ModelRelationship>>;
+    relationshipEdges(request: ModelPageRequest & { relationshipIds: string[] }): Promise<ModelPage<ModelRelationship>>;
     evidence(request: ModelPageRequest & { evidenceIds: string[] }): Promise<ModelPage<Evidence>>;
     violations(request: ModelPageRequest & { subsystemId?: string; rule?: ArchitectureViolation['rule'] }): Promise<ModelPage<ArchitectureViolation>>;
     resolveSource(projectHandle: string, evidenceId: string): Promise<ModelSourceLocation | undefined>;
