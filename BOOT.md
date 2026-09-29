@@ -13,9 +13,9 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** ADR 0009 now requires mandatory correction `c4-architecture-discovery` at unchanged `0.4.6` before Phase 5 planning/activation. The correction preserves the Phase 4 semantic/evidence substrate while adding architecture-scale detection, developer confirmation/correction authority, greenfield architecture-before-code, and realization/drift reconciliation.
+**Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** ADR 0009 as amended by ADR 0010 requires mandatory correction `c4-architecture-discovery` at unchanged `0.4.6` before Phase 5 planning/activation. The correction preserves the Phase 4 semantic/evidence substrate while adding opt-in sMap initialization, deterministic ArchitectureEvidencePacket production, bounded structured architecture synthesis, developer confirmation/correction authority, greenfield architecture-before-code, and realization/drift reconciliation.
 
-**ADR 0008 remains the naming/workbench-placement authority and ADR 0009 is the architecture-discovery/developer-authority amendment.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. Detection proposes architecture from deterministic evidence; the developer owns canonical System / Subsystem / Component identity and may define it before code. Phase 5 still owns the central visual map/planning canvas.
+**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. Synthesis proposes architecture, while the developer owns canonical System / Subsystem / Component identity and may define it before code. Phase 5 still owns the central visual map/planning canvas.
 
 Phase 2's P6 `0.2.6` evidence-only audit remains **Not Qualified**. The owner subsequently explicitly closed Phase 2 for sequencing and authorized Phase 3 from a coherent `0.3.0` baseline. This owner disposition does not relabel the P6 audit Green or erase its evidence gaps. The retained Phase 2 gaps are the initially hidden legacy-migration entry, unproved dirty same-renderer workspace switch, lack of exact `0.2.6` native artifact launch/direct native visual Project Mind use, and inherited Phase 1 gaps where applicable. See `docs/tasks/p2/closeout.md` and `docs/planning/p3/activation.md`.
 
@@ -65,6 +65,7 @@ Current authority:
 - docs/decisions/0007-software-model-centered-product-architecture.md
 - docs/decisions/0008-software-map-terminology-and-workbench-placement.md
 - docs/decisions/0009-architecture-discovery-and-developer-authority.md
+- docs/decisions/0010-smap-initialization-and-ai-assisted-architecture-synthesis.md
 
 ## Product premise
 
@@ -104,7 +105,7 @@ THINK includes notes, ideas, questions, research, decisions, plans, architecture
 
 These are different views into the same project state.
 
-The software project is the center of gravity. Dope's core architecture hierarchy is Project -> System -> Subsystem -> Component -> Code. Deterministic analysis discovers architecture candidates and lower-level implementation evidence, but the developer owns canonical architecture. The Physical Map shows how implementation realizes or diverges from that authority; Visual Software Planning references the resulting identities and derives the future work model from graph transformations before reconciliation after implementation.
+The software project is the center of gravity. Dope's core architecture hierarchy is Project -> System -> Subsystem -> Component -> Code. Deterministic analysis produces independently verifiable architecture evidence and signals. Bounded synthesis interprets that packet into proposed Systems / Subsystems / Components, and the developer owns canonical architecture. The Physical Map shows how implementation realizes or diverges from that authority; Visual Software Planning references the resulting identities and derives the future work model from graph transformations before reconciliation after implementation.
 
 The intended knowledge lifecycle is:
 
@@ -233,8 +234,10 @@ The correction must:
 - preserve the existing TypeScript/JavaScript semantic analyzer, evidence/provenance, index/query and sMap inspector substrate;
 - detect an uninitialized sMap and require explicit Analyze Project consent before building the initial map;
 - leave the project uninitialized when analysis is declined and expose Analyze Project again from the sMap empty state;
-- produce deterministic repository/semantic/framework evidence first, then use a bounded provider-independent LLM architecture-synthesis capability to propose Systems, Subsystems and Components;
-- keep generated structure as proposal state until explicit developer review/correction and acceptance;
+- produce an independently verifiable deterministic ArchitectureEvidencePacket before any synthesis request;
+- use a bounded provider-independent LLM architecture-synthesis capability to return strict ArchitectureProposal JSON with temporary proposal keys, numeric 0..1 confidence, rationale, machine-verifiable `evidenceRefs` and human-readable `evidence`;
+- validate structured output, hierarchy and every evidence reference against the exact packet; AI may interpret evidence but must not create it;
+- keep generated structure as proposal state until explicit developer review/correction and acceptance, and never silently promote proposal keys to canonical IDs;
 - keep developer-authored architecture canonical and support manual/greenfield architecture before code exists without requiring a model;
 - distinguish uninitialized/analyzing/review-required/initialized lifecycle plus declared-only, proposed/detected-only, realized, drifted and unassigned realization states as applicable;
 - preserve contradictory physical evidence as drift rather than silently changing canonical architecture;
