@@ -6,7 +6,7 @@ This document is the compact routing contract for Dope's product identity. Deepe
 
 ## Single-sentence definition
 
-Dope is a software-model-centered AI-native development environment that keeps the developer at the center of engineering, combining a full IDE with a deterministic living model of the software, subsystem-first architecture, visual planning tied directly to implementation, durable project knowledge, visible AI collaboration, and scoped automation so developers can accomplish dramatically more without giving up understanding, authorship, skill, or the satisfaction of building software themselves.
+Dope is a software-map-centered AI-native development environment that keeps the developer at the center of engineering, combining a full IDE with a deterministic living Software Map (sMap), subsystem-first architecture, visual planning tied directly to implementation, durable project knowledge, visible AI collaboration, and scoped automation so developers can accomplish dramatically more without giving up understanding, authorship, skill, or the satisfaction of building software themselves.
 
 ## Why Dope exists
 
@@ -31,7 +31,7 @@ The environment must also ensure that the understanding survives the session as 
 5. Scoped delegation and explicit ownership.
 6. Conceptual observability before file-level diff inspection.
 7. Passive Ideas capture without task derailment.
-8. A living, evidence-backed software model organized around systems and subsystems.
+8. A living, evidence-backed software map organized around systems and subsystems.
 9. Persistent development context for the developer.
 10. Friction removal without skill removal.
 11. Planning, research, decisions, tasks, implementation, validation, and history live in one integrated environment.
@@ -44,7 +44,7 @@ These eleven pillars remain the product pillars. Framework and model/provider in
 
 The software project is the center of gravity. Source code and direct manipulation remain authoritative implementation surfaces.
 
-## Core software model
+## Core Software Map
 
 Dope models software primarily as:
 
@@ -54,9 +54,9 @@ Project
 -> Component
 -> Code
 
-The Physical Software Model describes current implemented reality from deterministic source analysis and recorded runtime evidence with provenance. Developer-authored subsystem declarations define intended modular boundaries and constraints.
+The **Software Map (sMap)** is Dope's architecture representation. The **Physical Map** describes current implemented reality from deterministic source analysis and recorded runtime evidence with provenance. Developer-authored subsystem declarations define intended modular boundaries and constraints.
 
-Planning diagrams reference that physical model and express target transformations. They do not duplicate current architecture into disconnected drawings.
+The **Planning Map** arrives in Phase 5 and references Physical Map identities to express proposed target-state transformations. The normalized graph remains an internal/query substrate; “map” is the product vocabulary. Planning views do not duplicate current architecture into disconnected drawings.
 
 The core loop is:
 
@@ -67,7 +67,7 @@ Understand current system
 -> Re-analyze
 -> Reconcile
 
-AI may reason over this model and propose changes, but it does not silently manufacture physical software facts.
+AI may reason over this map and propose changes, but it does not silently manufacture physical software facts.
 
 ## Project Mind
 
@@ -139,13 +139,13 @@ Foundation Spike 0 — qualify Theia
 -> Phase 2 — Project Mind
 -> Phase 3 — Planning Foundation
 -> correction c3 — remove Planning instruments
--> Phase 4 — Physical Software Model
+-> Phase 4 — Physical Map
 -> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
 -> Phase 7 — Scoped Delegation
 -> Phase 8 — Development Sessions
 
-Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments have been removed by completed correction `c3-remove-planning-instruments`. Phase 4 is now active from `0.4.0`; the forward core is completed only after the Physical Software Model and later Visual Software Planning redesign.
+Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments have been removed by completed correction `c3-remove-planning-instruments`. Phase 4 is now active from `0.4.0`; the forward core is completed only after the Physical Map and later Visual Software Planning redesign.
 
 ## Non-goals
 

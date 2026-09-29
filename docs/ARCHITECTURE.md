@@ -22,7 +22,7 @@ Dope presentation adapters and widgets
   |
 Application / orchestration
   |
-Project Intelligence / Software Model / later Visual Software Planning / later Agent Runtime
+Project Intelligence / Software Map / later Visual Software Planning / later Agent Runtime
   |
 Persistence / Model / Tool / Authority / Execution adapters
 
@@ -51,7 +51,7 @@ Theia supplies commodity IDE capabilities:
 
 Dope owns:
 - Project Mind / Project Intelligence
-- the Physical Software Model
+- the Physical Map
 - the future Visual Software Planning/work model
 - Agent Mind
 - DeveloperSession
@@ -60,7 +60,7 @@ Dope owns:
 - Ideas/Questions/Decisions/Research
 - conceptual ChangeSets
 - Validation
-- living software model
+- living software map
 - project search semantics
 - authority policy
 
@@ -88,6 +88,20 @@ For Product Phase 1:
 Presentation preferences such as theme, keybindings, panel layout, and editor preferences may persist for the user, but they are not canonical project-domain state.
 
 Dope is dark-first: first-run/default presentation should use a dark theme and Dope-owned surfaces should be designed and qualified dark-first. Explicit user theme selection must remain supported, persist across restart, and override the default. Structural UI styling should prefer semantic theme tokens rather than assuming fixed dark colors.
+
+## Workbench placement contract
+
+Dope's default workbench placement is part of the product architecture, while individual user layout customization remains presentation state.
+
+Default placement:
+- **Left primary sidebar / Activity Bar:** project-navigation surfaces, including a dedicated **sMap** button and Software Map inspector. The inspector owns hierarchy, dependency, violation, evidence and source-navigation views for the Physical Map.
+- **Center workspace:** editors and ordinary working surfaces. Product Phase 5 adds the large visual **Physical Map** and **Planning Map** canvases here as editor-like tabs/workspaces.
+- **Right secondary sidebar:** reserved by default for future **Agent Mind / chat / AI interaction**. The Software Map inspector must not claim this area as its default home.
+- **Bottom panel:** terminal, Problems, tests, runtime and similar execution/diagnostic surfaces.
+
+This is a default product-layout contract, not canonical project state and not a ban on user rearrangement.
+
+The September 29, 2026 ADR 0008 decision lands while Phase 4 P5 is already exercising the pre-decision implementation. P5 may finish without mid-run churn. A bounded post-P5 Phase 4 correction must rename the live software-architecture package/symbol/UI vocabulary and move the inspector to the left-side sMap surface before P6 closeout. The correction must not implement the Phase 5 visual canvas.
 
 ## Model and provider boundary
 
@@ -150,7 +164,7 @@ Likely shape:
 
   packages/
     project-intelligence/
-    software-model/
+    software-map/
     code-analysis/
     code-analysis-typescript/
     architecture-rules/
@@ -181,11 +195,11 @@ Dope is still pre-stability. Internal implementations from earlier product phase
 
 Prefer clean replacement when preserving an older internal schema, API, persistence format or UI would require adapters, dual state, synchronization or migration machinery that does not serve a concrete user/external commitment.
 
-Historical qualification remains evidence of what worked at that version; it does not require the implementation to survive. Correction `c3-remove-planning-instruments` is the completed pre-Phase-4 application of this rule: it removed the Phase 3 Planning subsystem before the software-model implementation begins.
+Historical qualification remains evidence of what worked at that version; it does not require the implementation to survive. Correction `c3-remove-planning-instruments` is the completed pre-Phase-4 application of this rule: it removed the Phase 3 Planning subsystem before the software-map implementation begins.
 
-### Software Model
+### Software Map
 
-Owns the language-independent Physical Software Model: System, Subsystem, Component, CodeEntity, typed relationships, provenance/evidence and graph queries.
+Owns the language-independent Physical Map: System, Subsystem, Component, CodeEntity, typed relationships, provenance/evidence and graph queries.
 
 The primary architecture hierarchy is System -> Subsystem -> Component -> Code. Subsystems are explicit modular architecture objects rather than aliases for directories.
 

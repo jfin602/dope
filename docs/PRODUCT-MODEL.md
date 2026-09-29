@@ -135,11 +135,11 @@ Planning uses the stable Project Mind `projectId`. It does not allocate a compet
 
 No AI ownership, Agent Mind, model/provider state, ProposedAction or mutation authority is introduced in Phase 3.
 
-### Phase 4 — Physical Software Model
+### Phase 4 — Physical Map
 
 Activation prerequisite satisfied: correction `c3-remove-planning-instruments` closed at unchanged `0.3.6`, leaving no live Phase 3 Planning domain/service/store/UI/PLAN mode in the product. Phase 4 begins from coherent package baseline `0.4.0`.
 
-Introduce the evidence-backed software model and deterministic code-analysis foundation.
+Introduce the evidence-backed software map and deterministic code-analysis foundation.
 
 Initial scope is TypeScript/JavaScript-first and establishes:
 - System, Subsystem and Component architecture identities;
@@ -153,17 +153,17 @@ The extracted physical graph is rebuildable derived state. Developer-authored Sy
 
 ### Phase 5 — Visual Software Planning
 
-Design the planning/work model from the Physical Software Model outward rather than adapting the graph to Phase 3 Planning.
+Design the planning/work model from the Physical Map outward rather than adapting the graph to Phase 3 Planning.
 
 Introduce:
 - physical architecture projections with semantic zoom;
-- planning graphs that reference physical nodes;
+- Planning Maps that reference physical nodes;
 - proposed graph transformations for add/modify/remove/move/split/merge/relationship changes;
 - graph-derived work decomposition, dependencies, acceptance criteria and validation targets;
 - target-versus-physical reconciliation after implementation;
 - a new planning/work ontology designed with no Phase 3 Planning runtime present.
 
-Phase 5 does not assume Plan -> PlanStep -> Task is the final ontology. The Phase 3 domain, `.dope/planning.json`, RPC, UI and associated tests have already been removed by the pre-Phase-4 correction. Phase 5 starts from the software graph and introduces only the work concepts the visual model actually requires.
+Phase 5 does not assume Plan -> PlanStep -> Task is the final ontology. The Phase 3 domain, `.dope/planning.json`, RPC, UI and associated tests have already been removed by the pre-Phase-4 correction. Phase 5 starts from the software graph and introduces only the work concepts the visual map workflow actually requires.
 
 Visual software planning remains useful with no model configured. A diagram is a projection of project state, not an independent source of architectural truth.
 
@@ -275,11 +275,21 @@ A structured investigation retaining question, alternatives, evidence, project c
 
 Research remains part of the vision but is deferred beyond the initial Project Mind scope.
 
-### PhysicalSoftwareModel
+### SoftwareMap (sMap)
+
+The umbrella architecture representation for one software project.
+
+The Software Map is the product concept. Its normalized graph is an implementation/query substrate, not the user-facing name. The map remains independent from Theia, diagram libraries and AI/model providers.
+
+The Software Map contains two intentionally distinct views of software state:
+- **Physical Map** — evidence-backed current implemented reality;
+- **Planning Map** — proposed target state and transformations that reference Physical Map identities rather than copying current architecture.
+
+### PhysicalMap
 
 The evidence-backed representation of implemented software.
 
-The model is organized primarily as:
+The Physical Map is organized primarily as:
 
 Project
 -> System
@@ -287,7 +297,7 @@ Project
 -> Component
 -> CodeEntity
 
-It also contains typed relationships, evidence/provenance and optional runtime observations. The model is independent from any particular diagram layout.
+It also contains typed relationships, evidence/provenance and optional runtime observations. The Physical Map is independent from any particular diagram layout.
 
 Physical source facts are deterministic or explicitly labeled otherwise. Runtime facts are observations. Inferred semantics remain inferred. Developer-authored target architecture and agent proposals never silently become physical state.
 
@@ -317,7 +327,7 @@ A language/framework-level implementation entity such as module, file, class, in
 
 Language-specific analyzers map their native semantics into Dope-owned CodeEntity and relationship contracts.
 
-### SoftwareModelEvidence
+### SoftwareMapEvidence
 
 Provenance for a physical node or relationship.
 
@@ -331,15 +341,15 @@ Evidence classes include:
 
 Evidence records enough source/runtime identity to explain why Dope believes a physical relationship exists.
 
-### PlanningGraph
+### PlanningMap
 
-A target/proposal graph that references PhysicalSoftwareModel identities.
+The target/proposal map that references PhysicalMap identities. Its implementation may use graph structures internally, but the product concept is the Planning Map.
 
 Existing physical nodes are referenced, not duplicated. Proposed nodes and relationships remain visibly planned.
 
 ### PlannedTransformation
 
-A proposed architectural change against the physical model.
+A proposed architectural change against the Physical Map.
 
 Initial conceptual operations include:
 - add;
@@ -355,7 +365,7 @@ The exact executable mapping is phase-owned; the important invariant is that pla
 
 ### Reconciliation
 
-A comparison between a planning target and the newly analyzed physical model after implementation.
+A comparison between a Planning Map target and the newly analyzed Physical Map after implementation.
 
 Useful outcomes include:
 - implemented as planned;

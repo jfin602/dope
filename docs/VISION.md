@@ -83,9 +83,9 @@ The project should become easier to understand over time because the environment
 
 The developer should not need an AI's private memory to understand their own project.
 
-## Software model as the core
+## Software Map as the core
 
-Dope centers the development environment on a living software model rather than treating architecture as disconnected documentation.
+Dope centers the development environment on a living **Software Map (sMap)** rather than treating architecture as disconnected documentation.
 
 The primary architecture hierarchy is:
 
@@ -99,7 +99,7 @@ Project
 
 Systems and subsystems are first-class modular architecture objects. They have identity, responsibility, contracts, dependencies, owned implementation and validation rather than being aliases for folders.
 
-The Physical Software Model represents what actually exists. Its source-derived facts must come from deterministic language/framework analysis, and runtime relationships must come from recorded observation. Every physical relationship retains provenance. Inference may assist interpretation, but AI output must not silently become physical truth.
+The Physical Map represents what actually exists. Its source-derived facts must come from deterministic language/framework analysis, and runtime relationships must come from recorded observation. Every physical relationship retains provenance. Inference may assist interpretation, but AI output must not silently become physical truth.
 
 Planning operates against that reality. Planning diagrams reference physical systems, subsystems and components and express proposed additions, removals, modifications and relationship changes rather than copying the current architecture into disconnected drawings.
 
@@ -112,13 +112,13 @@ Understand current system
 -> Re-analyze
 -> Reconcile target versus physical reality
 
-The software model must remain useful without an AI provider and independent from Theia or any visualization technology.
+The software map must remain useful without an AI provider and independent from Theia or any visualization technology.
 
 ## Project Mind before AI dependence
 
 Dope's early differentiated value should not require an LLM.
 
-A real IDE and durable Project Mind already provide a usable base. The Physical Software Model adds deterministic architectural understanding; later Visual Software Planning restores planning as a graph-centered workflow designed from that model rather than from the removed Phase 3 runtime.
+A real IDE and durable Project Mind already provide a usable base. The Physical Map adds deterministic architectural understanding; later Visual Software Planning restores planning as a graph-centered workflow designed from that map rather than from the removed Phase 3 runtime.
 
 AI is then introduced into an environment with durable human-meaningful state instead of becoming the foundation that everything else depends on.
 

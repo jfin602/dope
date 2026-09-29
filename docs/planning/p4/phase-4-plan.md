@@ -1,9 +1,12 @@
-# Product Phase 4 — Physical Software Model Plan
+# Product Phase 4 — Physical Map Plan
 
 Status: OWNER APPROVED — ACTIVE
 Package baseline: `0.4.0`
 Execution folder: `p4`
 Authority: ADR 0007, PRODUCT-MODEL, ARCHITECTURE, roadmap and Phase 4 activation
+
+Amended September 29, 2026 by ADR 0008: canonical product terminology is **Software Map (sMap)** / **Physical Map** / **Planning Map**, and the default Phase 4 inspector belongs in the left primary sidebar behind its own Activity Bar button. The in-flight P5 qualification may finish against the pre-amendment implementation; a post-P5 correction must bring live names and placement into conformance before P6 closeout.
+
 
 ## Objective
 
@@ -17,7 +20,7 @@ The developer must be able to answer:
 - exactly what source evidence caused Dope to believe each physical relationship;
 - where implementation violates developer-authored architecture constraints.
 
-The model must remain useful with no model provider configured.
+The Physical Map must remain useful with no model provider configured.
 
 ## Core product boundary
 
@@ -68,12 +71,12 @@ Create packages only when real code lands.
 
 Expected Phase 4 boundaries:
 
-- `@dope/software-model`: language-independent graph contracts, identity/evidence types, architecture declarations/rules, graph construction/query/validation semantics.
+- `@dope/software-map`: language-independent graph contracts, identity/evidence types, architecture declarations/rules, graph construction/query/validation semantics.
 - `@dope/code-analysis`: repository/workspace discovery and analyzer orchestration contracts; no TypeScript-specific ontology.
 - `@dope/code-analysis-typescript`: deterministic TypeScript/JavaScript analyzer adapter using TypeScript compiler/project semantics where authoritative.
 - existing `@dope/theia-extension`: typed backend attachment/orchestration and presentation only.
 
-Do not place Theia imports in software-model or analyzer domain packages.
+Do not place Theia imports in software-map or analyzer domain packages.
 
 Do not create a rendering/diagram package in Phase 4.
 
@@ -188,6 +191,13 @@ The Theia layer attaches a supported local project, triggers/observes analysis a
 
 Phase 4 presentation is an inspector, not a design canvas.
 
+Default placement is part of the product contract:
+- expose a dedicated **sMap** Activity Bar button;
+- open the Software Map inspector in the **left primary sidebar**;
+- leave the **right secondary sidebar** available by default for future Agent Mind/chat/AI interaction;
+- keep the center workspace available for editors now and the Phase 5 Physical Map / Planning Map visual canvases later;
+- permit ordinary user rearrangement as presentation state.
+
 Required user-visible capabilities:
 - navigate System -> Subsystem -> Component -> relevant code;
 - inspect purpose/identity and ownership;
@@ -214,6 +224,17 @@ If Phase 4 adds any derived cache/index on disk, document:
 - how stale/incompatible cache is rejected or rebuilt.
 
 Do not put derived graph snapshots into `.dope/project-mind.json`.
+
+## Post-P5 correction gate
+
+The Phase 4 P5 prompt/evidence may retain the legacy Software Model naming and current right-side placement because it was already in flight when ADR 0008 was accepted. Do not rewrite historical/in-flight qualification artifacts merely to make them look newer.
+
+After P5, before P6 closeout, execute a bounded correction at the unchanged then-current package version. It must:
+- rename live `@dope/software-model` / `software-model` package, symbol, command, view and UI terminology to the Software Map/sMap vocabulary;
+- move the inspector to the dedicated left Activity Bar/primary-sidebar surface;
+- install permanent regression guards for both terminology and default placement;
+- preserve all Phase 4 graph/evidence/query behavior;
+- avoid implementing the Phase 5 visual canvas or Planning Map editing.
 
 ## Dogfooding
 
@@ -253,7 +274,7 @@ Integrated evidence must separately cover real Dope analysis, GUI navigation, re
 
 Phase 4 does not implement:
 - Phase 3 Plan/PlanStep/Task or any compatibility adapter;
-- PlanningGraph / PlannedTransformation;
+- PlanningMap / PlannedTransformation;
 - editable architecture diagrams;
 - graph-derived tasks/work decomposition;
 - AI classification/inference as physical truth;

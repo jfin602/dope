@@ -134,7 +134,15 @@ Product Phase 4 uses execution folder `p4` and coherent package baseline `0.4.0`
 
 P4 versions are `0.4.1` through `0.4.6`. P1-P4 are runner-owned implementation/integration prompts, P5 is the direct interactive "Dope maps Dope" GUI handoff, and P6 is evidence-only closeout. P5 must inspect the real Dope repository through the actual Theia GUI and trace representative physical relationships/violations to source evidence; automated/headless checks do not replace its direct interaction evidence.
 
-Phase 4 has no model/provider runtime and no target/planning graph. It must preserve the distinction between developer-authored architecture declarations/constraints (canonical project state) and extracted physical graph/index data (rebuildable derived state). Phase 5 introduces Visual Software Planning; Phase 6 introduces AI Presence.
+Phase 4 has no model/provider runtime and no Planning Map. It must preserve the distinction between developer-authored architecture declarations/constraints (canonical project state) and extracted physical graph/index data (rebuildable derived state). Phase 5 introduces Visual Software Planning; Phase 6 introduces AI Presence.
+
+### September 29 sMap amendment and correction gate
+
+ADR 0008 changes the canonical architecture-feature vocabulary to **Software Map (sMap)**, **Physical Map**, and **Planning Map**, and fixes the default workbench placement.
+
+The already-running P5 direct GUI qualification is not restarted or rewritten solely for this decision. After successful P5, insert a bounded Phase 4 correction at the unchanged then-current package version (expected `0.4.5` after P5). The correction must rename live package/symbol/UI surfaces away from the legacy software-architecture `model` terminology, move the sMap inspector into its own left Activity Bar/primary-sidebar surface, preserve the right secondary sidebar for future Agent Mind/chat, and add permanent regression guards. It must not implement the Phase 5 visual map canvas.
+
+P6 closeout runs only after that correction is Green.
 
 ## Prompt metadata
 
@@ -202,7 +210,7 @@ Current aggregate commands:
 - `npm run check` composes typecheck, all current tests, browser build and Electron build.
 - `npm run test:restart` remains separate integrated restart/process evidence.
 
-Phase 4 prompts must add software-model/code-analysis suites to the real aggregate commands as capabilities land. Do not treat unit/build success as direct GUI or packaged-native qualification.
+Phase 4 prompts must add software-map/code-analysis suites to the real aggregate commands as capabilities land. Do not treat unit/build success as direct GUI or packaged-native qualification.
 
 ## Closeout truth
 

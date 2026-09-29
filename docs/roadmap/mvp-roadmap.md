@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 4 — Physical Software Model, ACTIVE from coherent package baseline `0.4.0`; correction `c3-remove-planning-instruments` is complete
+Current stage: Product Phase 4 — Physical Map, ACTIVE from coherent package baseline `0.4.0`; correction `c3-remove-planning-instruments` is complete
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -16,7 +16,7 @@ Theia
 -> Project Mind
 -> Planning Foundation
 -> remove Phase 3 Planning instruments
--> Physical Software Model
+-> Physical Map
 -> Visual Software Planning
 -> AI Presence
 -> Scoped Delegation
@@ -36,9 +36,9 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Product Phase 1 — IDE Alive | Dope as editor. Open and work on the Dope repository comfortably inside Dope using ordinary IDE capabilities. |
 | Product Phase 2 — Project Mind | Dope understands Dope. Its own decisions, notes, questions, ideas, and durable project context are useful through Project Mind. |
 | Product Phase 3 — Planning Foundation | Dope plans Dope. A real Dope feature can move from thought/decision into a live Plan and Tasks without leaving Dope. |
-| Product Phase 4 — Physical Software Model | Dope maps Dope. Its systems, subsystems, components and code relationships can be explored from evidence-backed current-state analysis. |
-| Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can branch from physical architecture into a target planning graph, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
-| Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, software-model context and provider-independent read-only assistance. |
+| Product Phase 4 — Physical Map | Dope maps Dope. Its systems, subsystems, components and code relationships can be explored from evidence-backed current-state analysis. |
+| Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can branch from physical architecture into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
+| Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 8 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
 
@@ -208,7 +208,7 @@ Status: **COMPLETE — GREEN / QUALIFIED FOR SEQUENCING at unchanged `0.3.6`** (
 Version semantics: correction stack at unchanged package version `0.3.6`. This is not Product Phase 4 and must not advance roadmap versioning.
 
 Purpose:
-Remove the complete Phase 3 Planning product/runtime vertical slice so the Physical Software Model starts from a clean repository rather than beside obsolete planning architecture.
+Remove the complete Phase 3 Planning product/runtime vertical slice so the Physical Map starts from a clean repository rather than beside obsolete planning architecture.
 
 Required removal:
 - `@dope/planning` package and root/package build/typecheck dependency wiring;
@@ -230,7 +230,7 @@ Exit condition:
 
 At unchanged `0.3.6`, aggregate surviving checks/builds pass; Project Mind and ordinary IDE behavior remain usable; package/build graphs no longer depend on `@dope/planning`; and negative guards prove no production Planning service/view/mode/storage wiring or repository `.dope/planning.json` remains. The correction closeout must explicitly clear this gate before Phase 4 activation.
 
-## Product Phase 4 — Physical Software Model
+## Product Phase 4 — Physical Map
 
 Status: **OWNER APPROVED — ACTIVE**
 
@@ -247,7 +247,7 @@ Prerequisite — satisfied:
 Initial scope:
 - clean implementation independent from any historical Phase 3 Planning contracts;
 - no compatibility adapter, migration or dual-state requirement for Phase 3 Planning;
-- language-independent Physical Software Model
+- language-independent Physical Map
 - Project -> System -> Subsystem -> Component -> Code hierarchy
 - explicit subsystem identity, purpose, ownership and dependency constraints
 - TypeScript/JavaScript-first deterministic semantic analysis
@@ -260,6 +260,13 @@ Initial scope:
 
 Physical source facts come from deterministic analyzers. Runtime relationships, when introduced, are recorded observations. Inference and proposals remain separately labeled.
 
+September 29 amendment / pre-closeout correction gate:
+- ADR 0008 makes **Software Map (sMap)**, **Physical Map**, and **Planning Map** the canonical product vocabulary.
+- The current P5 qualification may finish against the pre-decision implementation.
+- After P5 and before P6 closeout, a bounded Phase 4 correction must rename the live feature/package/symbol/UI vocabulary and move the inspector to a dedicated left Activity Bar/primary-sidebar surface.
+- The right secondary sidebar remains reserved by default for future Agent Mind/chat.
+- The Phase 5 center-workspace visual map canvas remains deferred; the correction must not pull it into Phase 4.
+
 Exit condition:
 
 Using the real Dope repository, the developer can inspect an evidence-backed current-state model organized by systems/subsystems/components, trace representative relationships back to source evidence, and detect representative subsystem-boundary violations without any model provider configured.
@@ -271,9 +278,9 @@ Design the new planning/work system from the software graph outward and turn arc
 
 Initial scope:
 - multi-tab central workspace for code and planning artifacts
-- physical architecture diagrams as projections of the software model
+- Physical Map diagrams as projections of the Software Map
 - semantic zoom from systems -> subsystems -> components -> code
-- planning graphs created from/referencing physical nodes
+- Planning Maps created from/referencing physical nodes
 - explicit planned add/modify/remove/move/split/merge/relationship changes
 - visible distinction between physical, planned, inferred and unknown state
 - graph-derived work decomposition, dependencies, acceptance criteria and validation targets
@@ -296,7 +303,7 @@ Project Mind
 +
 Planning
 +
-Physical Software Model
+Physical Map
 +
 Visual Planning
 

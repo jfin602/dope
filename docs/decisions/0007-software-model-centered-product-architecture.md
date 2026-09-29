@@ -3,6 +3,8 @@
 Status: Accepted
 Date: 2026-09-28
 
+Terminology amendment: ADR 0008 supersedes this ADR's **Software Model / Physical Software Model / planning graph** product vocabulary with **Software Map (sMap) / Physical Map / Planning Map** and establishes default workbench placement. The architectural substance of ADR 0007 remains accepted; its original wording is preserved here as historical decision context.
+
 ## Context
 
 Dope already treated a living software model, conceptual observability and visual planning as important long-term ideas, but the active roadmap deferred ArchitectureModel and visual architecture work until after the initial AI phases.
