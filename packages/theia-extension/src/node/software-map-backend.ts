@@ -7,7 +7,7 @@ import { readInitialization, acceptInitialization } from '@dope/code-analysis/li
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
 import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseArchitectureProposal } from '@dope/software-map';
 import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, SoftwareMapPageRequest, GraphRelationship, SoftwareMapRelationshipRequest,
-    PhysicalMapSnapshot, SoftwareMapClient, SoftwareMapService, ArchitectureSynthesisProvider, ArchitectureReview, ArchitectureReviewNode,
+    PhysicalMapSnapshot, SoftwareMapClient, SoftwareMapService, ArchitectureEvidencePacket, ArchitectureReview, ArchitectureReviewNode,
     ArchitectureDeclaration, SoftwareMapInitializationStatus } from '@dope/software-map';
 import { LmStudioSynthesisProvider } from './lmstudio-synthesis-provider';
 
@@ -20,7 +20,8 @@ export class SoftwareMapBackend implements SoftwareMapService {
     private run = 0;
     private phase: 'analyzing' | 'review_required' | undefined;
     private pending?: ArchitectureReview & { fingerprint: string };
-    private provider?: ArchitectureSynthesisProvider;
+    // Existing bootstrap route stays local until P7 replaces initialization orchestration.
+    private provider?: { synthesize(packet: ArchitectureEvidencePacket): Promise<unknown> };
     private localProvider?: LmStudioSynthesisProvider;
     private readonly unlisten: () => void;
     private idleStatus() {
@@ -29,7 +30,8 @@ export class SoftwareMapBackend implements SoftwareMapService {
             reusedSourceFiles: 0 };
     }
 
-    constructor(private readonly index: SoftwareMapIndex, client: SoftwareMapClient, provider?: ArchitectureSynthesisProvider) {
+    constructor(private readonly index: SoftwareMapIndex, client: SoftwareMapClient,
+        provider?: { synthesize(packet: ArchitectureEvidencePacket): Promise<unknown> }) {
         this.provider = provider;
         this.unlisten = index.onChange((root, status) => {
             if (!this.disposed && this.initialized && root === this.root) client.notifySoftwareMapChanged(status);

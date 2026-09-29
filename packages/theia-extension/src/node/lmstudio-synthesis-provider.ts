@@ -1,5 +1,5 @@
 import { architectureProposalSchema, parseArchitectureProposal, validateArchitectureEvidencePacket } from '@dope/software-map';
-import type { ArchitectureEvidencePacket, ArchitectureProposal, ArchitectureSynthesisProvider } from '@dope/software-map';
+import type { ArchitectureEvidencePacket, ArchitectureProposal } from '@dope/software-map';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
@@ -23,7 +23,7 @@ export function preferredSynthesisModel(models: readonly string[]): string | und
     return models.find(id => /qwen3[-_. ]coder[-_. ]30b[-_. ]a3b[-_. ]instruct/i.test(id)) ?? models[0];
 }
 
-export class LmStudioSynthesisProvider implements ArchitectureSynthesisProvider {
+export class LmStudioSynthesisProvider {
     readonly endpoint: string;
     private readonly token?: string;
     private readonly timeoutMs: number;

@@ -1,6 +1,7 @@
 import type { AnalysisStatus, ArchitectureViolation, Evidence, GraphNode, GraphRelationship, RelationshipKind } from './contracts';
 import type { ArchitectureDeclaration } from './contracts';
 import type { ArchitectureEvidencePacket, ArchitectureProposal, ProposedArchitectureKind } from './synthesis';
+import type { AnalysisProgressEvent } from './hierarchical-synthesis';
 
 export const softwareMapServicePath = '/services/dope/software-map';
 export const SoftwareMapService = Symbol('SoftwareMapService');
@@ -27,7 +28,11 @@ export interface SoftwareMapSourceLocation {
     path: string;
     span?: Evidence['span'];
 }
-export interface SoftwareMapClient { notifySoftwareMapChanged(status: SoftwareMapStatus): void }
+export interface SoftwareMapClient {
+    notifySoftwareMapChanged(status: SoftwareMapStatus): void;
+    /** P7 orchestration will emit these events; clients must not infer progress from provider logs. */
+    notifySoftwareMapAnalysisProgress?(projectHandle: string, event: AnalysisProgressEvent): void;
+}
 export interface SoftwareMapInitializationStatus {
     state: 'uninitialized' | 'analyzing' | 'review_required' | 'initialized';
     declarationPresent: boolean;

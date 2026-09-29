@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   architectureProposalSchema, parseArchitectureProposal, parseArchitectureProposalJson, validateArchitectureEvidencePacket,
+  createArchitectureEvidenceView, validateArchitectureEvidenceView, usableEvidenceTokens, assertSynthesisInputBudget,
+  validateSynthesisStageRequest, parseSynthesisStageResult, synthesisStageResultSchemas, assembleArchitectureProposal,
+  parseAnalysisProgressEvent, synthesisStageRequestSchema,
 } from '../../packages/software-map/lib/index.js';
-import type { ArchitectureEvidencePacket, ArchitectureProposal, SoftwareMapInitializationState } from '../../packages/software-map/lib/index.js';
+import type { ArchitectureEvidencePacket, ArchitectureProposal, SoftwareMapInitializationState,
+  SynthesisCapabilities, SynthesisStageRequest, SystemCandidate, SubsystemDiscoveryResult } from '../../packages/software-map/lib/index.js';
 
 const packet: ArchitectureEvidencePacket = {
   schemaVersion: 1, inputFingerprint: 'source@1', items: [
@@ -97,4 +102,143 @@ test('evidence requests are bounded, typed and path targeted', () => {
     changed(p => { p.needsMoreEvidence = true; p.evidenceRequests = [{ ...request, targets: ['../outside'] }]; }),
     changed(p => { p.needsMoreEvidence = true; p.evidenceRequests = [{ ...request, reason: '' }]; }),
   ]) assert.throws(() => parseArchitectureProposal(value, packet));
+});
+
+const capability: SynthesisCapabilities = { modelLabel: 'local model', contextWindowTokens: 1000, maxInputTokens: 900,
+  reservedInstructionTokens: 100, reservedOutputTokens: 200, reservedOverheadTokens: 50, tokenEstimate: 'conservative' };
+const view = createArchitectureEvidenceView(packet, ['entry', 'package']);
+const systemCandidate: SystemCandidate = { candidateKey: 'candidate:app', kind: 'system', name: 'App', purpose: 'Serve users',
+  confidence: 0.8, uncertainty: [], evidenceRefs: ['entry'] };
+const context = (systems: SystemCandidate[] = [], subjectSystemKey: string | null = null,
+  subtrees: SubsystemDiscoveryResult[] = [], targetCandidateKeys: string[] = []) =>
+  ({ systems, subjectSystemKey, subtrees, targetCandidateKeys });
+const request = (stage: SynthesisStageRequest['stage'], stageContext = context()): SynthesisStageRequest =>
+  ({ schemaVersion: 1, stage, stageVersion: 1, parentPacketFingerprint: packet.inputFingerprint, view, context: stageContext });
+const result = (stage: SynthesisStageRequest['stage'], extra: object) =>
+  ({ schemaVersion: 1, stageVersion: 1, parentPacketFingerprint: packet.inputFingerprint, viewId: view.viewId, stage, ...extra });
+const subtree = result('subsystem-discovery', { systemKey: systemCandidate.candidateKey, nodes: [
+  { candidateKey: 'candidate:server', kind: 'subsystem', parentCandidateKey: systemCandidate.candidateKey,
+    name: 'Server', purpose: 'Serve requests', confidence: 0.7, uncertainty: ['Entry role may overlap'], evidenceRefs: ['entry'] },
+  { candidateKey: 'candidate:main', kind: 'component', parentCandidateKey: 'candidate:server',
+    name: 'Main', purpose: 'Start server', confidence: 1, uncertainty: [], evidenceRefs: ['entry'] },
+] }) as SubsystemDiscoveryResult;
+test('capabilities reserve context and reject unsafe or malformed estimates', async () => {
+  assert.equal(usableEvidenceTokens(capability), 650);
+  assert.equal(await assertSynthesisInputBudget({ estimateTokens: async () => 650 }, capability, 'input'), 650);
+  await assert.rejects(assertSynthesisInputBudget({ estimateTokens: async () => 651 }, capability, 'input'), /budget/);
+  await assert.rejects(assertSynthesisInputBudget({ estimateTokens: async () => 2.5 }, capability, 'input'), /estimate/);
+  for (const bad of [
+    { ...capability, contextWindowTokens: 0 }, { ...capability, reservedOutputTokens: 900 },
+    { ...capability, maxInputTokens: Infinity }, { ...capability, tokenEstimate: 'guess' },
+    { ...capability, extra: 1 },
+  ]) assert.throws(() => usableEvidenceTokens(bad as SynthesisCapabilities));
+});
+
+test('views retain whole parent items, deterministic identity and exact source refs', () => {
+  assert.deepEqual(view.items.map(item => item.id), ['entry', 'package']);
+  assert.deepEqual(createArchitectureEvidenceView(packet, ['package', 'entry']), view);
+  validateArchitectureEvidenceView(view, packet);
+  assert.throws(() => createArchitectureEvidenceView(packet, ['entry', 'entry']), /view evidence IDs/);
+  assert.throws(() => createArchitectureEvidenceView(packet, ['fabricated']), /unknown/);
+  assert.throws(() => validateArchitectureEvidenceView({ ...view, items: [{ ...view.items[0], path: 'other.ts' }, view.items[1]] }, packet));
+  assert.throws(() => validateArchitectureEvidenceView(view, { ...packet, inputFingerprint: 'changed' }));
+  assert.throws(() => validateArchitectureEvidenceView({ ...view, viewVersion: 2 as 1 }, packet));
+});
+
+test('stage requests and outputs enforce stage, context, evidence and temporary identity', () => {
+  const discovery = request('system-discovery');
+  validateSynthesisStageRequest(discovery, packet);
+  assert.equal(synthesisStageRequestSchema.additionalProperties, false);
+  const discovered = result('system-discovery', { systems: [systemCandidate] });
+  assert.deepEqual(parseSynthesisStageResult(discovered, discovery, packet), discovered);
+  assert.equal(synthesisStageResultSchemas['system-discovery'].additionalProperties, false);
+  for (const bad of [
+    { ...discovered, stageVersion: 2 }, { ...discovered, viewId: 'wrong' },
+    result('system-discovery', { systems: [systemCandidate, systemCandidate] }),
+    result('system-discovery', { systems: [{ ...systemCandidate, candidateKey: 'app' }] }),
+    result('system-discovery', { systems: [{ ...systemCandidate, evidenceRefs: ['fabricated'] }] }),
+    result('system-discovery', { systems: [{ ...systemCandidate, confidence: NaN }] }),
+    result('system-discovery', { systems: [{ ...systemCandidate, uncertainty: ['x', 'x'] }] }),
+    { ...discovered, canonicalId: 'app' },
+  ]) assert.throws(() => parseSynthesisStageResult(bad, discovery, packet));
+  assert.throws(() => validateSynthesisStageRequest({ ...discovery, stage: 'unknown' as any }, packet));
+  assert.throws(() => validateSynthesisStageRequest({ ...discovery, context: context([systemCandidate]) }, packet));
+  assert.throws(() => validateSynthesisStageRequest({ ...discovery, parentPacketFingerprint: 'other' }, packet));
+});
+
+test('Software Map stage contract stays provider independent', () => {
+  const source = readFileSync(new URL('../../packages/software-map/src/hierarchical-synthesis.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /LM Studio|Qwen|65,536|32,768/);
+});
+
+test('System Challenge covers every source and validates keep, merge, split and reject', () => {
+  const second = { ...systemCandidate, candidateKey: 'candidate:browser' };
+  const third = { ...systemCandidate, candidateKey: 'candidate:electron' };
+  const challenged = request('system-challenge', context([systemCandidate, second, third]));
+  const decision = (action: string, sourceKeys: string[], systems: SystemCandidate[]) =>
+    ({ action, sourceKeys, systems, rationale: 'Boundary evidence', evidenceRefs: ['entry'] });
+  const keep = decision('keep', ['candidate:app'], [systemCandidate]);
+  const merge = decision('merge', ['candidate:browser', 'candidate:electron'],
+    [{ ...systemCandidate, candidateKey: 'candidate:desktop' }]);
+  const valid = result('system-challenge', { decisions: [keep, merge] });
+  assert.deepEqual(parseSynthesisStageResult(valid, challenged, packet), valid);
+  assert.deepEqual(parseSynthesisStageResult(result('system-challenge', { decisions: [
+    decision('split', ['candidate:app'], [{ ...systemCandidate, candidateKey: 'candidate:a' },
+      { ...systemCandidate, candidateKey: 'candidate:b' }]), decision('reject', ['candidate:browser'], []),
+    decision('reject', ['candidate:electron'], []),
+  ] }), challenged, packet).stage, 'system-challenge');
+  for (const decisions of [
+    [keep], [keep, keep, merge], [decision('merge', ['candidate:app'], [systemCandidate]), merge],
+    [keep, decision('split', ['candidate:browser'], [second]), decision('reject', ['candidate:electron'], [])],
+    [keep, decision('reject', ['candidate:browser'], [second]), decision('reject', ['candidate:electron'], [])],
+    [keep, decision('reject', ['candidate:browser'], []), decision('reject', ['candidate:missing'], [])],
+    [keep, { ...merge, evidenceRefs: ['unknown'] }],
+  ]) assert.throws(() => parseSynthesisStageResult(result('system-challenge', { decisions }), challenged, packet));
+});
+
+test('per-System trees, reconciliation, verification and final assembly preserve parent relationships', () => {
+  const perSystem = request('subsystem-discovery', context([systemCandidate], systemCandidate.candidateKey));
+  assert.deepEqual(parseSynthesisStageResult(subtree, perSystem, packet), subtree);
+  for (const nodes of [
+    [{ ...subtree.nodes[0], parentCandidateKey: 'candidate:missing' }],
+    [{ ...subtree.nodes[0], kind: 'component' }],
+    [subtree.nodes[0], { ...subtree.nodes[1], candidateKey: subtree.nodes[0].candidateKey }],
+    [{ ...subtree.nodes[0], evidenceRefs: ['unknown'] }],
+  ]) assert.throws(() => parseSynthesisStageResult({ ...subtree, nodes }, perSystem, packet));
+  const reconciliation = result('reconciliation', { findings: [{ candidateKeys: ['candidate:server'], evidenceRefs: ['entry'],
+    status: 'uncertain', message: 'Check boundary' }], unresolvedCandidateKeys: ['candidate:server'] });
+  const reconRequest = request('reconciliation', context([systemCandidate], null, [subtree]));
+  assert.deepEqual(parseSynthesisStageResult(reconciliation, reconRequest, packet), reconciliation);
+  const anotherSystem = { ...systemCandidate, candidateKey: 'candidate:another' };
+  assert.throws(() => validateSynthesisStageRequest(request('reconciliation',
+    context([systemCandidate, anotherSystem], null, [subtree, subtree])), packet), /duplicate/);
+  const verification = result('verification', { findings: [{ candidateKeys: ['candidate:server'], evidenceRefs: ['entry'],
+    status: 'supported', message: 'Boundary supported' }] });
+  assert.deepEqual(parseSynthesisStageResult(verification,
+    request('verification', context([systemCandidate], null, [subtree], ['candidate:server'])), packet), verification);
+  assert.throws(() => parseSynthesisStageResult({ ...verification, findings: [{ ...verification.findings[0],
+    candidateKeys: ['candidate:main'] }] }, request('verification', context([systemCandidate], null, [subtree], ['candidate:server'])), packet));
+  const assembly = { parentPacketFingerprint: packet.inputFingerprint, summary: 'App', systems: [systemCandidate],
+    subtrees: [subtree], reconciliation, verifications: [verification] };
+  const proposal = assembleArchitectureProposal(assembly, packet);
+  assert.deepEqual(proposal.nodes.map(node => node.proposalKey), ['proposal:stage-1', 'proposal:stage-2', 'proposal:stage-3']);
+  assert.equal(proposal.nodes[0].parentProposalKey, null);
+  assert.equal(proposal.nodes[2].parentProposalKey, 'proposal:stage-2');
+  assert.ok(proposal.nodes.every(node => !('id' in node) && !node.proposalKey.includes('candidate:')));
+  assert.throws(() => assembleArchitectureProposal({ ...assembly, parentPacketFingerprint: 'other' }, packet));
+  assert.throws(() => assembleArchitectureProposal({ ...assembly, systems: [{ ...systemCandidate, evidenceRefs: ['unknown'] }] }, packet));
+});
+
+test('progress events expose only bounded safe stage metadata and honest known counts', () => {
+  const event = { stage: 'subsystem-discovery', status: 'retrying', subject: 'App', completedUnits: 1, totalUnits: 3,
+    providerModelLabel: 'local model', attempt: 2, elapsedMs: 1234, message: 'Retrying App discovery' };
+  assert.deepEqual(parseAnalysisProgressEvent(event), event);
+  assert.deepEqual(parseAnalysisProgressEvent({ stage: 'planning-evidence', status: 'started', elapsedMs: 0,
+    message: 'Planning evidence' }).stage, 'planning-evidence');
+  for (const bad of [
+    { ...event, stage: 'imaginary' }, { ...event, status: 'thinking' }, { ...event, totalUnits: 0 },
+    { ...event, elapsedMs: -1 }, { ...event, attempt: 0 }, { ...event, message: 'x'.repeat(241) },
+    { ...event, message: 'raw\nprompt' }, { ...event, prompt: 'hidden' },
+    { ...event, stage: 'completed', status: 'started' },
+  ]) assert.throws(() => parseAnalysisProgressEvent(bad));
 });

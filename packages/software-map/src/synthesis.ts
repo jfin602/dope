@@ -51,11 +51,6 @@ export interface ArchitectureProposal {
     evidenceRequests: ArchitectureEvidenceRequest[];
 }
 
-/** Provider implementations return untrusted output; the caller validates it against the exact packet. */
-export interface ArchitectureSynthesisProvider {
-    synthesize(packet: ArchitectureEvidencePacket): Promise<unknown>;
-}
-
 const nonempty = { type: 'string', minLength: 1 } as const;
 // Canonical declaration IDs cannot contain ':', so these keys cannot be persisted as-is.
 const proposalKey = { type: 'string', pattern: '^proposal:[A-Za-z0-9._-]+$' } as const;
