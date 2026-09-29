@@ -13,9 +13,9 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Correction `c3-remove-planning-instruments` is complete and Green/qualified for sequencing at unchanged `0.3.6` (`3f0a4bd6854e3d4ef5781b1c0150e5c213a2d52b`). Product Phase 4 — Physical Map P6 is Qualified/Green at the uncommitted `0.4.6` closeout candidate, pending the runner-owned commit.** Phase 3 remains historical evidence, not a forward compatibility contract. See `docs/tasks/c3-remove-planning-instruments/closeout.md`, `docs/planning/p4/activation.md`, `docs/tasks/p4/closeout.md` and ADR 0007. Next route: post-Phase-4 `/docs-review` before Phase 5 planning or activation.
+**Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** ADR 0009 now requires mandatory correction `c4-architecture-discovery` at unchanged `0.4.6` before Phase 5 planning/activation. The correction preserves the Phase 4 semantic/evidence substrate while adding architecture-scale detection, developer confirmation/correction authority, greenfield architecture-before-code, and realization/drift reconciliation.
 
-**ADR 0008 is accepted as the current naming and workbench-placement authority.** The product terms are **Software Map (sMap)**, **Physical Map**, and **Planning Map**. P5 qualified the pre-ADR implementation directly; completed `c4-tweaks` then removed legacy live feature names, moved the sMap inspector to its own left Activity Bar/primary-sidebar surface, and qualified that change at unchanged `0.4.5` (`3995e00162b28cb2d97c33f552568065dfdc8b0c`). Phase 5 still owns the central visual map canvas.
+**ADR 0008 remains the naming/workbench-placement authority and ADR 0009 is the architecture-discovery/developer-authority amendment.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. Detection proposes architecture from deterministic evidence; the developer owns canonical System / Subsystem / Component identity and may define it before code. Phase 5 still owns the central visual map/planning canvas.
 
 Phase 2's P6 `0.2.6` evidence-only audit remains **Not Qualified**. The owner subsequently explicitly closed Phase 2 for sequencing and authorized Phase 3 from a coherent `0.3.0` baseline. This owner disposition does not relabel the P6 audit Green or erase its evidence gaps. The retained Phase 2 gaps are the initially hidden legacy-migration entry, unproved dirty same-renderer workspace switch, lack of exact `0.2.6` native artifact launch/direct native visual Project Mind use, and inherited Phase 1 gaps where applicable. See `docs/tasks/p2/closeout.md` and `docs/planning/p3/activation.md`.
 
@@ -64,6 +64,7 @@ Current authority:
 - docs/decisions/0006-codex-reference-ai-bootstrap.md
 - docs/decisions/0007-software-model-centered-product-architecture.md
 - docs/decisions/0008-software-map-terminology-and-workbench-placement.md
+- docs/decisions/0009-architecture-discovery-and-developer-authority.md
 
 ## Product premise
 
@@ -87,6 +88,7 @@ Foundation Spike 0 — qualify Theia
 -> Phase 3 — Planning Foundation
 -> correction c3 — remove Planning instruments
 -> Phase 4 — Physical Map
+-> correction c4 — architecture discovery + developer authority
 -> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
 -> Phase 7 — Scoped Delegation
@@ -102,7 +104,7 @@ THINK includes notes, ideas, questions, research, decisions, plans, architecture
 
 These are different views into the same project state.
 
-The software project is the center of gravity. Dope's core architecture hierarchy is Project -> System -> Subsystem -> Component -> Code. The Physical Map is evidence-backed current reality; Visual Software Planning references that reality and derives the future work model from graph transformations before reconciliation after implementation.
+The software project is the center of gravity. Dope's core architecture hierarchy is Project -> System -> Subsystem -> Component -> Code. Deterministic analysis discovers architecture candidates and lower-level implementation evidence, but the developer owns canonical architecture. The Physical Map shows how implementation realizes or diverges from that authority; Visual Software Planning references the resulting identities and derives the future work model from graph transformations before reconciliation after implementation.
 
 The intended knowledge lifecycle is:
 
@@ -223,14 +225,17 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Complete Product Phase 4 P5 — the direct “Dope maps Dope” GUI qualification — without restarting or rewriting the in-flight qualification solely for the September 29 terminology/layout decision.
+Do not activate or author Product Phase 5 implementation work yet.
 
-Then run a bounded Phase 4 correction before P6 closeout. That correction must:
-- rename the live software-architecture product/runtime/package/symbol/UI vocabulary to **Software Map (sMap)** / **Physical Map** / **Planning Map**, including replacing `software-model` package/symbol names where they describe the sMap feature;
-- move the sMap inspector to the **left primary sidebar** behind its own Activity Bar button;
-- keep the **right secondary sidebar reserved by default for future Agent Mind/chat/AI interaction**;
-- preserve the center workspace for editors and the Phase 5 Physical Map / Planning Map visual canvases;
-- add permanent regression guards for the canonical terminology and default placement;
-- avoid pulling Phase 5 diagram/canvas behavior into the correction.
+Next, decompose and execute correction `c4-architecture-discovery` at unchanged package version `0.4.6`. Its governing contract is ADR 0009 plus the amended Product Model, Architecture, roadmap and storage authority.
 
-Only after that correction is Green should Phase 4 P6 perform final closeout. Phase 4 remains deterministic, renderer-independent, provider-independent and current-state-only; Phase 5 introduces the actual visual map/planning canvas.
+The correction must:
+- preserve the existing TypeScript/JavaScript semantic analyzer, evidence/provenance, index/query and sMap inspector substrate;
+- discover candidate Systems, Subsystems and Components from deterministic repository/semantic/framework evidence rather than requiring `.dope/architecture.json` to create those physical levels;
+- keep developer-authored architecture canonical and provide an explicit confirmation/correction path;
+- support canonical architecture before code exists;
+- distinguish declared-only, detected-only, realized, drifted and unassigned state;
+- preserve contradictory physical evidence as drift rather than silently changing canonical architecture;
+- remain provider-independent and avoid Phase 5 visual Planning Map or AI runtime work.
+
+After the correction closes Green, run a fresh `/docs-review` for Phase 5 activation/planning.
