@@ -8,7 +8,8 @@ export type ArchitectureEvidenceItem =
     | (PacketItem & { kind: 'entrypoint'; role: string })
     | (PacketItem & { kind: 'dependency'; targetPath: string; relation: string; relationshipIds: string[] })
     | (PacketItem & { kind: 'semantic'; symbol: string; relation: string })
-    | (PacketItem & { kind: 'framework'; concept: string; name: string });
+    | (PacketItem & { kind: 'framework'; framework: string; producer: string; producerVersion: string; concept: string; name: string;
+        target?: string; role?: string; servicePath?: string; widgetArea?: string });
 export interface ArchitectureEvidencePacket {
     schemaVersion: 1;
     /** Hash of implementation inputs only; excludes canonical architecture declarations. */
@@ -134,7 +135,12 @@ export function validateArchitectureEvidencePacket(packet: ArchitectureEvidenceP
                 string(item.relation, 'dependency relation');
                 unique(list(item.relationshipIds, 'relationship IDs', 1), 'relationship IDs'); break;
             case 'semantic': string(item.symbol, 'semantic symbol'); string(item.relation, 'semantic relation'); break;
-            case 'framework': string(item.concept, 'framework concept'); string(item.name, 'framework name'); break;
+            case 'framework':
+                for (const [name, value] of Object.entries({ framework: item.framework, producer: item.producer,
+                    producerVersion: item.producerVersion, concept: item.concept, name: item.name })) string(value, `framework ${name}`);
+                for (const value of [item.target, item.role, item.servicePath, item.widgetArea]) if (value !== undefined) string(value, 'framework metadata');
+                if (!item.sourceEvidenceIds.length && item.concept !== 'manifest-extension') fail('framework source evidence');
+                break;
         }
     }
     unique(ids, 'packet item ID');

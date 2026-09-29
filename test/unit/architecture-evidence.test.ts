@@ -37,7 +37,7 @@ test('packet is deterministic, inspectable, source-backed, and collection does n
     assert.ok(first.items.some(item => item.kind === 'entrypoint' && item.role === 'main:src/index.ts'));
     assert.ok(first.items.some(item => item.kind === 'semantic' && item.relation.endsWith(':exported')));
     assert.ok(first.items.some(item => item.kind === 'dependency' && item.relationshipIds.length));
-    assert.ok(!first.items.some(item => item.kind === 'framework')); // no explicit framework extractor yet
+    assert.ok(!first.items.some(item => item.kind === 'framework')); // fixture has no framework wiring
     const analysis = new TypeScriptAnalyzer().analyze(root);
     const exported = analysis.relationships.find(edge => edge.kind === 'exports' && analysis.nodes.some(node => node.id === edge.targetId && node.codeKind === 'symbol'))!;
     assert.ok(first.items.some(item => item.kind === 'semantic' && item.sourceEvidenceIds.some(id => exported.evidenceIds.includes(id))));
@@ -60,6 +60,109 @@ test('packet is deterministic, inspectable, source-backed, and collection does n
       unassignedEvidenceRefs: [], openQuestions: [], evidenceRequests: [] }, first).nodes[0].evidenceRefs[0], hardRef);
     await index.analyze(root);
     assert.ok(index.snapshot(root)); // initialized/ordinary analysis behavior remains available
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('Theia/Inversify facts are source-backed, stable, refinable, and exclude unrelated same-name APIs', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-framework-'));
+  try {
+    await mkdir(join(root, 'src'));
+    await symlink(join(process.cwd(), 'node_modules'), join(root, 'node_modules'), 'dir');
+    await writeFile(join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'commonjs',
+      moduleResolution: 'node', skipLibCheck: true }, include: ['src/**/*.ts'] }));
+    await writeFile(join(root, 'package.json'), JSON.stringify({ name: 'framework-fixture', dependencies: { '@theia/core': '1.75.0' },
+      theiaExtensions: [{ frontend: 'lib/src/frontend', backend: 'lib/src/backend' }] }));
+    await writeFile(join(root, 'src/frontend.ts'), `
+import { ContainerModule } from '@theia/core/shared/inversify';
+import { FrontendApplicationContribution, WidgetFactory, AbstractViewContribution } from '@theia/core/lib/browser';
+import { bindViewContribution } from '@theia/core/lib/browser/shell/view-contribution';
+import { ServiceConnectionProvider } from '@theia/core/lib/browser/messaging/service-connection-provider';
+export const path = '/fixture/service';
+class Service {} class Impl {} class Widget {}
+export class View extends AbstractViewContribution<Widget> implements FrontendApplicationContribution {
+  constructor() { super({ widgetId: 'fixture-view', widgetName: 'Fixture', defaultWidgetOptions: { area: 'left' } }); }
+}
+export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
+  bindViewContribution(bind, View);
+  bind(FrontendApplicationContribution).toService(View);
+  bind(Service).to(Impl);
+  rebind(Service).to(Impl);
+  bind(WidgetFactory).toDynamicValue(() => ({ id: 'fixture-view', createWidget: () => new Widget() }));
+  bind(Service).toDynamicValue(context => ServiceConnectionProvider.createProxy(context.container, path));
+});
+`);
+    await writeFile(join(root, 'src/backend.ts'), `
+import { ContainerModule } from '@theia/core/shared/inversify';
+import { ConnectionHandler, RpcConnectionHandler } from '@theia/core/lib/common';
+import { path } from './frontend';
+export default new ContainerModule(bind => {
+  bind(ConnectionHandler).toDynamicValue(() => new RpcConnectionHandler(path, () => ({})));
+});
+`);
+    await writeFile(join(root, 'src/unrelated.ts'), `
+import { ContainerModule, RpcConnectionHandler, bindViewContribution, AbstractViewContribution, ServiceConnectionProvider } from './unrelated-api';
+class Service {} class Impl {} class Widget {}
+class View extends AbstractViewContribution { constructor() { super({ widgetId: 'fake', defaultWidgetOptions: { area: 'right' } }); } }
+new ContainerModule(bind => { bind(Service).to(Impl); bindViewContribution(bind, View);
+  new RpcConnectionHandler('/fake'); ServiceConnectionProvider.createProxy('/fake'); });
+`);
+    await writeFile(join(root, 'src/unrelated-api.ts'), `
+export class ContainerModule { constructor(callback: (bind: any) => void) {} }
+export class RpcConnectionHandler { constructor(path: string) {} }
+export class AbstractViewContribution { constructor(options: any) {} }
+export const bindViewContribution = (...args: any[]) => {};
+export const ServiceConnectionProvider = { createProxy: (...args: any[]) => ({}) };
+`);
+    await writeFile(join(root, 'src/shadow.ts'), `
+import { ContainerModule } from '@theia/core/shared/inversify';
+export function unrelated(ContainerModule: any) {
+  return new ContainerModule((bind: any) => bind('Fake').to('Fake'));
+}
+`);
+    const analyzer = new TypeScriptAnalyzer();
+    const index = new SoftwareMapIndex(analyzer);
+    const packet = await index.collectEvidence(root);
+    assert.deepEqual(await index.collectEvidence(root), packet);
+    validateArchitectureEvidencePacket(packet);
+    assert.equal(index.snapshot(root), undefined);
+    assert.equal(index.status(root).state, 'idle');
+    assert.deepEqual(packet.items.map(item => item.id), [...packet.items.map(item => item.id)].sort());
+    const facts = packet.items.filter(item => item.kind === 'framework');
+    assert.ok(facts.length >= 12);
+    assert.ok(facts.every(item => !['src/unrelated.ts', 'src/unrelated-api.ts', 'src/shadow.ts'].includes(item.path)));
+    assert.ok(facts.some(item => item.concept === 'manifest-extension' && item.role === 'frontend' && item.path === 'package.json'));
+    assert.ok(facts.some(item => item.concept === 'manifest-extension' && item.role === 'backend' && item.path === 'package.json'));
+    assert.ok(facts.some(item => item.concept === 'di-registration' && item.name === 'Service' && item.target === 'Impl' && item.role === 'bind'));
+    assert.ok(facts.some(item => item.concept === 'di-registration' && item.name === 'Service' && item.role === 'rebind'));
+    assert.ok(facts.some(item => item.concept === 'rpc-handler' && item.servicePath === '/fixture/service'));
+    assert.ok(facts.some(item => item.concept === 'frontend-proxy' && item.servicePath === '/fixture/service'));
+    assert.ok(facts.some(item => item.concept === 'widget-factory' && item.name === 'fixture-view' && item.target === 'Widget'));
+    assert.ok(facts.some(item => item.concept === 'view' && item.name === 'View' && item.widgetArea === 'left'));
+    assert.ok(facts.some(item => item.concept === 'frontend-application-contribution'));
+    const result = analyzer.analyze(root);
+    assert.ok(result.nodes.every(node => node.kind === 'code'));
+    const evidence = new Map(result.evidence.map(item => [item.id, item]));
+    for (const fact of facts) if (fact.concept !== 'manifest-extension') {
+      assert.ok(fact.sourceEvidenceIds.length);
+      for (const id of fact.sourceEvidenceIds) {
+        const source = evidence.get(id)!;
+        assert.equal(source.class, 'framework');
+        assert.equal(source.path, fact.path);
+        assert.equal(source.producer, fact.producer);
+        assert.equal(source.producerVersion, fact.producerVersion);
+        assert.ok(source.span?.length);
+        assert.ok(source.span!.start + source.span!.length <= (await readFile(join(root, fact.path))).length);
+      }
+    }
+    const ref = facts.find(item => item.concept === 'container-module' && item.path === 'src/frontend.ts')!;
+    const expanded = await index.refineEvidence(root, packet, [{ kind: 'framework', targets: [ref.id], reason: 'Inspect imports' }]);
+    assert.deepEqual(expanded, await index.refineEvidence(root, packet, [{ kind: 'framework', targets: [ref.id], reason: 'Inspect imports' }]));
+    assert.ok(expanded.items.some(item => item.kind === 'framework' && item.concept === 'import' && item.path === 'src/frontend.ts'));
+    assert.ok(!expanded.items.some(item => item.kind === 'framework' && item.concept === 'import' && item.path === 'src/backend.ts'));
+    assert.ok(expanded.items.length - packet.items.length <= 100);
+    await mkdir(join(root, '.dope'));
+    await writeFile(join(root, '.dope/architecture.json'), '{broken');
+    assert.deepEqual(await index.collectEvidence(root), packet);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

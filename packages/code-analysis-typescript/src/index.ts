@@ -3,7 +3,8 @@ import { isAbsolute, relative, resolve } from 'node:path';
 import * as ts from 'typescript';
 import { derivedId, relationshipId } from '@dope/software-map';
 import type { AnalysisError, CodeEntityNode, Evidence, GraphRelationship } from '@dope/software-map';
-import type { CodeAnalysisResult, CodeAnalyzer, AnalysisProject } from '@dope/code-analysis';
+import type { CodeAnalysisResult, CodeAnalyzer, AnalysisProject, FrameworkFact } from '@dope/code-analysis';
+import { theiaInversifyExtractor } from './framework-extractor';
 
 const PRODUCER = '@dope/code-analysis-typescript';
 const VERSION = '5.9.3';
@@ -60,6 +61,7 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
         const nodes = new Map<string, CodeEntityNode>();
         const relationships = new Map<string, GraphRelationship>();
         const evidence = new Map<string, Evidence>();
+        const frameworkFacts = new Map<string, FrameworkFact>();
         const errors = new Map<string, AnalysisError>();
         const projects: AnalysisProject[] = [];
         const configs = new Set<string>();
@@ -78,11 +80,12 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
             const position = file.getLineAndCharacterOfPosition(start);
             return { start, length: node.getWidth(file), line: position.line + 1, column: position.character + 1 };
         };
-        const addEvidence = (kind: Evidence['class'], file: ts.SourceFile, node: ts.Node, key: string): string => {
+        const addEvidence = (kind: Evidence['class'], file: ts.SourceFile, node: ts.Node, key: string,
+            producer = PRODUCER, producerVersion = VERSION): string => {
             const path = pathOf(file.fileName)!;
             const location = span(file, node);
             const id = `evidence:${encodeURIComponent([kind, path, location.start, location.length, key].join(':'))}`;
-            evidence.set(id, { id, class: kind, producer: PRODUCER, producerVersion: VERSION, path, span: location });
+            evidence.set(id, { id, class: kind, producer, producerVersion, path, span: location });
             return id;
         };
         const addNode = (id: string, path: string, name: string, codeKind: CodeEntityNode['codeKind'], analyzerKind: string, parentId: string | undefined, evidenceId: string): void => {
@@ -223,6 +226,12 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
             const canonical = (symbol: ts.Symbol | undefined): ts.Symbol | undefined => symbol && symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
             for (const file of files) {
                 const path = pathOf(file.fileName)!;
+                for (const extractor of [theiaInversifyExtractor]) extractor.extract(file, checker, options, (node, metadata) => {
+                    const sourceEvidenceId = addEvidence('framework', file, node, `${metadata.concept}:${metadata.name}`, extractor.producer, extractor.producerVersion);
+                    const fact: FrameworkFact = { kind: 'framework', path, sourceEvidenceIds: [sourceEvidenceId],
+                        framework: extractor.framework, producer: extractor.producer, producerVersion: extractor.producerVersion, ...metadata };
+                    frameworkFacts.set(JSON.stringify(fact), fact);
+                });
                 const moduleId = moduleIds.get(path)!;
                 const resolveImport = (specifier: ts.StringLiteralLike, isExport: boolean): void => {
                     const target = ts.resolveModuleName(specifier.text, file.fileName, options, ts.sys).resolvedModule;
@@ -273,6 +282,7 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
             nodes: ordered(nodes.values()).map(node => ({ ...node, evidenceIds: [...new Set(node.evidenceIds)].sort() })),
             relationships: ordered(relationships.values()).map(edge => ({ ...edge, evidenceIds: [...new Set(edge.evidenceIds)].sort() })),
             evidence: ordered(evidence.values()),
+            frameworkFacts: [...frameworkFacts.values()].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
             status: { completeness: !projects.length ? 'failed' : errors.size ? 'partial' : 'complete',
                 errors: [...errors.values()].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) }, reusedSourceFiles };
     }

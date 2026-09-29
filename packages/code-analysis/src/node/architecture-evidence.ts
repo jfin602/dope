@@ -80,7 +80,32 @@ function manifestFacts(path: string, data: unknown): ArchitectureEvidenceItem[] 
             }
         }
     }
+    if (typeof manifest.dependencies === 'object' && manifest.dependencies && '@theia/core' in manifest.dependencies &&
+        Array.isArray(manifest.theiaExtensions)) {
+        for (const extension of manifest.theiaExtensions) {
+            if (!extension || typeof extension !== 'object' || Array.isArray(extension)) continue;
+            for (const role of ['frontend', 'backend'] as const) {
+                const target = (extension as Record<string, unknown>)[role];
+                if (typeof target === 'string' && target.trim()) facts.push(makeItem({ ...base, kind: 'framework',
+                    framework: 'theia/inversify', producer: '@dope/code-analysis/theia-manifest', producerVersion: '1',
+                    concept: 'manifest-extension', name: `${role}:${target}`, role, target }));
+            }
+        }
+    }
     return facts;
+}
+
+function frameworkFacts(result: CodeAnalysisResult, detail = false): ArchitectureEvidenceItem[] {
+    const evidence = new Map(result.evidence.map(item => [item.id, item]));
+    return (result.frameworkFacts ?? []).filter(fact => !!fact.detail === detail).map(({ detail: _detail, ...fact }) => {
+        projectPath(fact.path);
+        if (!fact.sourceEvidenceIds.length || fact.sourceEvidenceIds.some(id => {
+            const source = evidence.get(id);
+            return source?.class !== 'framework' || source.path !== fact.path || source.producer !== fact.producer ||
+                source.producerVersion !== fact.producerVersion || !source.span;
+        })) throw new Error(`Invalid framework provenance: ${fact.path}`);
+        return makeItem(fact);
+    });
 }
 
 function semanticFacts(result: CodeAnalysisResult, all = false): ArchitectureEvidenceItem[] {
@@ -138,6 +163,7 @@ export async function collectArchitectureEvidence(rootPath: string, analyzer: In
             signal: 'configured-ts-js-project', sourcePaths: sorted(project.sourcePaths) }));
     }
     items.push(...semanticFacts(result));
+    items.push(...frameworkFacts(result));
     const sourceFingerprint = digest(JSON.stringify([...inputBytes].sort(([a], [b]) => a.localeCompare(b)).map(([path, bytes]) => [path, digest(bytes)])));
     const ordered = [...new Map(items.map(item => [item.id, item])).values()].sort((a, b) => a.id.localeCompare(b.id));
     const packet: ArchitectureEvidencePacket = { schemaVersion: 1, sourceFingerprint,
@@ -169,7 +195,7 @@ export async function refineArchitectureEvidence(root: string, analyzer: IndexAn
     if (paths.size > 20) throw new Error('Too many architecture evidence targets');
     const result = await analyzer.analyze(await realpath(root));
     const kinds = new Set(requests.map(request => request.kind));
-    const candidates = semanticFacts(result, true).filter(item => kinds.has(item.kind) &&
+    const candidates = [...semanticFacts(result, true), ...frameworkFacts(result, true)].filter(item => kinds.has(item.kind) &&
         (paths.has(item.path) || item.kind === 'dependency' && paths.has(item.targetPath)));
     const additions = candidates.filter(item => !byId.has(item.id)).slice(0, 100);
     const items = [...new Map([...packet.items, ...additions].map(item => [item.id, item])).values()].sort((a, b) => a.id.localeCompare(b.id));
