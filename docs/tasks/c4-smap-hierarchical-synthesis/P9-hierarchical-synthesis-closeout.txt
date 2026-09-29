@@ -1,0 +1,130 @@
+TASK: Correction 4 / P9 — Hierarchical sMap synthesis correction closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Perform an evidence-only closeout of `c4-smap-hierarchical-synthesis` using the exact P8 candidate/evidence. Do not repair product behavior.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0009-0012, current architecture/product/roadmap/storage authority, predecessor c4-smap-synth owner closeout, this correction assessment/plan/README, every P1-P8 prompt/result and `P8-hierarchical-smap-evidence.md`.
+
+Require exact P8 candidate identity and package `0.4.6`.
+
+Record Git state before audit.
+
+Do not rerun live Qwen synthesis merely to replace missing P8 evidence. Focused deterministic tests/checks may be rerun to validate the exact candidate, but live architecture/timing claims must come from P8 direct evidence.
+
+AUDIT GATES
+
+Disposition each gate Green / Not Green / Evidence Gap.
+
+A. **Hierarchical contracts and provider budget**
+- stage-capable provider-independent synthesis contract exists;
+- context/input capability is not hardcoded to 65,536;
+- request budgets reserve instructions/output/overhead;
+- no individual qualified call exceeded its configured budget.
+
+B. **Deterministic evidence planning**
+- full ArchitectureEvidencePacket remains intact/inspectable;
+- model-facing views are bounded/deterministic;
+- whole evidence items + original refs/provenance are preserved;
+- same inputs produce stable view identity/order.
+
+C. **Repository-global System Discovery**
+- discovery is a separate global stage;
+- no fixed System count bias;
+- real Dope candidates are materially plausible responsibilities;
+- package/browser/electron/framework/persistence presence alone does not define Systems.
+
+D. **System Challenge**
+- challenge is a separate call/stage;
+- explicit keep/merge/split/reject semantics are validated;
+- controlled fixtures prove it can correct bad first-pass boundaries;
+- real Dope evidence shows the challenge meaningfully evaluated candidates rather than rubber-stamping them.
+
+E. **Per-System hierarchy**
+- Subsystem/Component discovery occurs inside challenged System scopes;
+- hierarchy is responsibility-oriented, not just directories;
+- refs remain source-backed;
+- cross-System ownership/parent violations fail or surface.
+
+F. **Reconciliation / verification / provenance**
+- structural conflicts are detected;
+- targeted verification is bounded;
+- no autonomous loop exists;
+- final ArchitectureProposal validates against the complete parent packet;
+- intermediate IDs never become canonical IDs.
+
+G. **Progress / cancellation / isolation**
+- real browser evidence shows useful stage/call-purpose progress and elapsed time;
+- no fabricated percent when total work is unknown;
+- raw prompts/hidden chain-of-thought are not exposed;
+- cancel/failure/retry works;
+- stale project/root progress/results cannot leak across attachments.
+
+H. **Real local Qwen architecture quality**
+- exact LM Studio/Qwen reference path was used;
+- final Dope Systems are materially credible;
+- meaningful Subsystem descent exists where evidence supports it;
+- obvious Browser/Electron-only or infrastructure-only false Systems are absent/rejected;
+- representative rationale uses directly relevant source-backed evidence;
+- human review did not identify a material System-boundary failure.
+
+Valid JSON/reference integrity alone cannot make this gate Green.
+
+I. **Performance objective**
+- P8 clock semantics match the approved definition;
+- end-to-end initial analysis reached review in <=8 minutes for Green;
+- stage/call timings are recorded;
+- eight minutes was not implemented as a runtime cancellation cutoff;
+- if >8 minutes, mark this gate Not Green even if quality is acceptable.
+
+J. **Developer authority / lifecycle / package / phase boundary**
+- proposal remained non-canonical until explicit acceptance;
+- correction controls/invalid-draft guard worked;
+- manual/existing declaration path remains valid;
+- restart/project isolation/package evidence is coherent;
+- version stayed `0.4.6`;
+- no Phase 5 visual planning or general AI Presence scope was pulled forward.
+
+CHECKS
+
+Rerun as appropriate:
+- focused hierarchical/unit guards;
+- `npm run check`;
+- `npm run test:restart`;
+- `npm run codex:phase:validate -- c4-smap-hierarchical-synthesis`;
+- unchanged-version/internal-reference/no-root-lock/Theia/Electron checks;
+- `git diff --check`.
+
+Do not modify product source to turn a failing gate Green.
+
+CLOSEOUT DOCUMENTATION
+
+Write `docs/tasks/c4-smap-hierarchical-synthesis/closeout.md` containing:
+- exact candidate/source/package identities;
+- A-J gate table and supporting evidence;
+- exact final Dope hierarchy observed in P8;
+- timing summary;
+- architecture-quality assessment;
+- residual gaps;
+- clear qualification decision.
+
+Update this correction README status truthfully.
+
+If every mandatory gate is Green, route next to `c4-smap-storage`.
+
+Do not activate Phase 5 directly.
+
+If architecture quality or <=8-minute performance is Not Green, keep Phase 5/storage sequencing blocked as required by current roadmap authority and state the specific correction required.
+
+FINAL RESPONSE
+
+Report the exact closeout candidate, A-J disposition, architecture-quality result, <=8-minute result, checks, residual gaps and routing decision.

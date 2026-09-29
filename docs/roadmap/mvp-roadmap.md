@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: mandatory correction `c4-architecture-discovery` at unchanged `0.4.6` is still the active authored stack; mandatory `c4-smap-hierarchical-synthesis` follows at unchanged `0.4.6`, then bounded `c4-smap-storage` at unchanged `0.4.6` before Phase 5; Product Phase 4 is QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
+Current stage: `c4-smap-synth` / `c4-architecture-discovery` is OWNER-CLOSED / NOT QUALIFIED at terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0`; mandatory `c4-smap-hierarchical-synthesis` is now active/ready at unchanged `0.4.6`, then bounded `c4-smap-storage` at unchanged `0.4.6` before Phase 5; Product Phase 4 remains QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -281,7 +281,7 @@ Closeout disposition: P5 directly qualified the pre-ADR behavior; `c4-tweaks` Gr
 
 ## Mandatory post-Phase-4 correction — `c4-architecture-discovery`
 
-Status: **REQUIRED BEFORE PHASE 5 — docs authority locked; implementation stack pending**
+Status: **OWNER-CLOSED / NOT QUALIFIED — terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0`; superseded by ADR 0012 hierarchical correction**
 
 Version semantics: unchanged package version `0.4.6`. This correction does not reopen or relabel Phase 4 qualification and must not advance Phase 5 versioning.
 
@@ -346,9 +346,9 @@ At unchanged `0.4.6`, Dope can deliberately initialize sMap for an existing proj
 
 ## Mandatory pre-Phase-5 correction — `c4-smap-hierarchical-synthesis`
 
-Status: **REQUIRED AFTER `c4-architecture-discovery` — ADR 0012 authority locked; implementation stack pending**
+Status: **ACTIVE / READY — prompt stack authored under ADR 0012 at unchanged `0.4.6`**
 
-Version semantics: unchanged package version `0.4.6`. Do not rewrite or restart the already-running `c4-smap-synth` P6-P8 prompts.
+Version semantics: unchanged package version `0.4.6`. The predecessor `c4-smap-synth` is closed historical evidence and must not be reopened or relabeled Green.
 
 Authority: ADR 0012, with ADR 0009/0010 retaining developer-authority/evidence semantics and ADR 0011 retaining the local LM Studio/Qwen reference path.
 
@@ -395,7 +395,7 @@ At unchanged `0.4.6`, hierarchy-first bounded synthesis produces materially cred
 
 Status: **QUEUED — execute only after `c4-smap-hierarchical-synthesis` closes Green**
 
-Version semantics: bounded correction at unchanged package version `0.4.6`. Do not alter the already-running `c4-smap-synth` P6-P8 prompts or restart that stack.
+Version semantics: bounded correction at unchanged package version `0.4.6`. It executes only after `c4-smap-hierarchical-synthesis` closes Green.
 
 Purpose:
 Make the Software Map portable with the project by enforcing project-local persistence as an architectural invariant.
@@ -412,7 +412,7 @@ Required contract:
 
 Qualification must include a permanent regression guard for the persistence-boundary defect class and controlled copy/reopen/restart evidence showing that durable sMap state follows repository + `.dope/` without reliance on hidden machine-local state.
 
-The pre-authored `c4-smap-synth` P8 wording that routes a Green closeout directly toward Phase 5 does not override these newer owner-approved roadmap gates. P8 may close its own correction exactly as authored; `c4-smap-hierarchical-synthesis` is then mandatory, followed by `c4-smap-storage`, before any Phase 5 activation.
+The owner closed `c4-smap-synth` Not Qualified after P7 architecture-quality evidence; its P8 success closeout was not used to advance Phase 5. `c4-smap-hierarchical-synthesis` is now mandatory, followed by `c4-smap-storage`, before any Phase 5 activation.
 
 Exit condition:
 

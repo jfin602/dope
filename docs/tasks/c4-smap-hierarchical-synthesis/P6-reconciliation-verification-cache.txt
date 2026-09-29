@@ -1,0 +1,114 @@
+TASK: Correction 4 / P6 — Architecture reconciliation targeted verification and bounded reuse
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Reconcile the challenged Systems and per-System subtrees into one coherent final ArchitectureProposal, issue only bounded targeted verification for material uncertainty, preserve complete-packet provenance, and avoid repeating unchanged expensive stage work within the running application.
+
+PREFLIGHT
+
+Read ADR 0012, exact successful P1-P5 source/results, this correction assessment/plan and current canonical proposal validation.
+
+Require exact P5 predecessor, clean intended Git state and package `0.4.6`.
+
+RECONCILIATION
+
+Combine:
+- challenged Systems;
+- per-System Subsystems/Components;
+- deterministic cross-System evidence.
+
+Detect and resolve or explicitly surface:
+- duplicated responsibility/ownership;
+- contradictory parentage;
+- overlapping roots/evidence regions;
+- missing challenged Systems;
+- cross-System dependencies that imply a boundary problem;
+- Subsystems/Components that escaped their challenged System;
+- candidates supported only by weak/unrelated evidence.
+
+Use a bounded reconciliation model call only where structured reasoning adds value. Deterministic structural conflicts should be detected before the model call.
+
+TARGETED VERIFICATION
+
+When a material boundary remains uncertain, allow a small verification request containing:
+- the exact boundary/question;
+- directly relevant candidate state;
+- a small deterministic evidence view.
+
+Verification is not a general retrieval loop.
+
+Set explicit hard bounds on:
+- number of verification calls per analysis;
+- evidence-refinement rounds;
+- retries under one logical stage where applicable.
+
+These bounds are safety/complexity limits and are independent of the eight-minute performance objective.
+
+If uncertainty remains after the bound, preserve it in the final proposal/open questions rather than looping.
+
+FINAL PROPOSAL ASSEMBLY
+
+Assemble the ordinary ArchitectureProposal expected by the existing review/acceptance path.
+
+Requirements:
+- strict System -> Subsystem -> Component hierarchy;
+- every final evidenceRef resolves against the complete parent ArchitectureEvidencePacket;
+- no intermediate alias/candidate ID silently becomes canonical identity;
+- human-readable evidence/rationale remains explanation, not authority;
+- final validation uses the complete parent packet.
+
+BOUNDED REUSE / CACHE IDENTITY
+
+Add deterministic identities for stage work using at least:
+- parent packet fingerprint;
+- evidence-view/slice identity;
+- stage name/version;
+- prompt/contract version;
+- relevant candidate scope;
+- selected provider/model identity where output compatibility depends on it.
+
+Reuse unchanged successful stage output within the running backend/application process where safe so opening/returning to the UI does not needlessly repeat work.
+
+Do not persist a new opaque global cache as project truth.
+
+If any derived cache is persisted during this prompt, it must stay beneath the documented project-local `.dope/` sMap boundary and remain disposable/versioned; prefer process-memory reuse here and leave full persistence qualification to `c4-smap-storage`.
+
+PERFORMANCE INSTRUMENTATION
+
+Ensure orchestration can capture duration for:
+- deterministic planning;
+- every stage call;
+- verification calls;
+- final assembly.
+
+Do not implement the frontend progress view yet, but expose structured timing/progress data needed by P7.
+
+PERMANENT TESTS
+
+Cover:
+- cross-System duplicate/conflict detection;
+- reconciliation correcting or surfacing conflicts;
+- bounded verification count;
+- unresolved uncertainty surviving after bound;
+- stale/mismatched cache identity rejected;
+- identical stage identity reused;
+- changed packet/prompt/provider identity invalidates reuse;
+- final proposal refs resolve to full packet;
+- invalid final hierarchy rejected.
+
+Run focused tests, `npm run check`, restart, correction validation, unchanged-version/coherence checks and `git diff --check`.
+
+SCOPE
+
+No browser progress UI yet. No durable cache subsystem beyond the narrow rules above. No Phase 5 or general AI runtime.
+
+FINAL RESPONSE
+
+Report reconciliation logic, verification bounds, final proposal assembly, cache/reuse identity, timing instrumentation, tests/checks and readiness for P7.

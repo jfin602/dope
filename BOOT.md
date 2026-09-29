@@ -13,7 +13,7 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** ADR 0009 as amended by ADR 0010 requires mandatory correction `c4-architecture-discovery` at unchanged `0.4.6`; ADR 0011 selects the first local synthesis reference path. The already-running `c4-smap-synth` P6-P8 prompts are not rewritten. ADR 0012 adds the mandatory follow-on `c4-smap-hierarchical-synthesis` correction at unchanged `0.4.6` because architecture quality—especially System discovery—is the core gate. After that correction, `c4-smap-storage` remains mandatory before Phase 5.
+**Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** Correction `c4-smap-synth` / `c4-architecture-discovery` is now owner-closed **Not Qualified** at terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0`: the real local provider path worked, but System discovery quality failed. The current implementation gate is mandatory `c4-smap-hierarchical-synthesis` at unchanged `0.4.6` under ADR 0012. After it closes Green, `c4-smap-storage` remains mandatory before Phase 5.
 
 **ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first synthesis bootstrap; ADR 0012 governs hierarchy-first synthesis, visible progress and the analysis performance/quality gate.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. Synthesis proposes architecture, while the developer owns canonical System / Subsystem / Component identity and may define it before code. The first c4 reference synthesizer is local LM Studio with Qwen3-Coder-30B-A3B-Instruct. Its current qualification setup uses 65,536 loaded context as runtime headroom, not a product invariant. Phase 5 still owns the central visual map/planning canvas.
 
@@ -232,23 +232,26 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 Do not activate or author Product Phase 5 implementation work yet.
 
-Next, decompose and execute correction `c4-architecture-discovery` at unchanged package version `0.4.6`. Its governing contract is ADR 0009 as amended by ADR 0010, ADR 0011 for the local-first reference bootstrap, plus the amended Product Model, Architecture, roadmap and storage authority.
+Execute correction `c4-smap-hierarchical-synthesis` at unchanged package version `0.4.6`.
+
+Its governing contract is ADR 0012 plus ADR 0009/0010 developer/evidence authority and ADR 0011 for the local LM Studio/Qwen reference path.
 
 The correction must:
-- preserve the existing TypeScript/JavaScript semantic analyzer, evidence/provenance, index/query and sMap inspector substrate;
-- detect an uninitialized sMap and require explicit Analyze Project consent before building the initial map;
-- leave the project uninitialized when analysis is declined and expose Analyze Project again from the sMap empty state;
-- produce an independently verifiable deterministic ArchitectureEvidencePacket before any synthesis request;
-- implement the first reference synthesis provider through local LM Studio with Qwen3-Coder-30B-A3B-Instruct while keeping provider/runtime details outside Software Map canonical state;
-- keep setup inside Analyze Project: detect/configure the endpoint, discover/select the model where supported, and run a tiny structured-output capability probe with no project evidence;
-- immediately before the first real synthesis request, warm the selected model with a synthetic non-project request; if warm-up fails, do not submit the ArchitectureEvidencePacket;
-- use the bounded provider-independent LLM architecture-synthesis capability only after readiness to return strict ArchitectureProposal JSON with temporary proposal keys, numeric 0..1 confidence, rationale, machine-verifiable `evidenceRefs` and human-readable `evidence`;
-- validate structured output, hierarchy and every evidence reference against the exact packet; AI may interpret evidence but must not create it;
-- keep generated structure as proposal state until explicit developer review/correction and acceptance, and never silently promote proposal keys to canonical IDs;
-- keep developer-authored architecture canonical and support manual/greenfield architecture before code exists without requiring a model;
-- distinguish uninitialized/analyzing/review-required/initialized lifecycle plus declared-only, proposed/detected-only, realized, drifted and unassigned realization states as applicable;
-- preserve contradictory physical evidence as drift rather than silently changing canonical architecture;
-- retain proposal provenance to deterministic evidence;
-- avoid Phase 5 visual Planning Map work and keep general AI Presence, Agent Mind, tool execution, mutation and delegation out of this correction.
+- preserve the complete deterministic ArchitectureEvidencePacket and source provenance;
+- derive deterministic bounded evidence views from provider/model context capability rather than sending one unbounded packet;
+- build a repository-global architecture skeleton;
+- perform System Discovery as its own call without fixed System-count bias;
+- perform an explicit System Challenge keep/merge/split/reject call before descending;
+- discover Subsystems/Components per challenged System;
+- reconcile cross-System conflicts and use only bounded targeted verification;
+- validate the final ArchitectureProposal against the complete parent packet;
+- show user-visible analysis progress with current stage/call purpose, applicable System subject, known counts, elapsed time and retry/failure state;
+- never expose hidden chain-of-thought or invent precise percentage complete when future work is unknown;
+- treat the current Qwen 65,536 context load as qualification headroom, not a hardcoded product constant or prompt-size target;
+- qualify the real Dope-on-Dope initial analysis at <=8 minutes from Analyze invocation to rendered review state;
+- never implement eight minutes as a hard runtime timeout; slower runs continue for evidence but are Not Green on performance;
+- require materially credible System boundaries for Green even when JSON/schema/reference validation succeeds;
+- preserve explicit developer correction/acceptance as the only authority transition to canonical architecture;
+- keep Phase 5 visual planning, general AI Presence, Agent Mind, tools, mutation and multi-model debate out of scope.
 
-After the correction closes Green, run a fresh `/docs-review` for Phase 5 activation/planning.
+After `c4-smap-hierarchical-synthesis` closes Green, execute the queued `c4-smap-storage` correction. Only after both are Green may Phase 5 receive a fresh `/docs-review`.

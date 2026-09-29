@@ -1,0 +1,150 @@
+TASK: Correction 4 / P7 — Hierarchical initialization orchestration and visible analysis progress
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Replace the predecessor's opaque one-shot initialization loop with the P1-P6 hierarchical pipeline and expose real provider-independent analysis progress to the Software Map UI, including stage/call purpose and elapsed time.
+
+PREFLIGHT
+
+Read current authority, exact successful P1-P6 source/results, predecessor onboarding/acceptance code and this correction assessment/plan.
+
+Inspect exact:
+- `SoftwareMapService` / client event contracts;
+- `SoftwareMapBackend.startInitialization()`;
+- LM Studio readiness/warm behavior;
+- `SoftwareMapController`;
+- `SoftwareMapWidget`;
+- project-switch/stale-request guards;
+- initialization/review/manual acceptance tests.
+
+Require exact P6 predecessor, clean intended Git state and package `0.4.6`.
+
+HIERARCHICAL ORCHESTRATION
+
+Wire initialization in this order:
+
+1. collect complete deterministic ArchitectureEvidencePacket;
+2. build deterministic global skeleton / planned stage views;
+3. System Discovery;
+4. System Challenge;
+5. per-System Subsystem/Component discovery;
+6. reconciliation;
+7. bounded targeted verification if required;
+8. final ArchitectureProposal assembly/validation;
+9. review draft delivery.
+
+Preserve the existing pre-real-call readiness rule:
+- selected provider/model must be probed;
+- if not known warm, synthetic warm-up runs before the first project-evidence model request;
+- warm failure sends no project evidence;
+- bounded later calls reuse known warm state until invalidated.
+
+Do not re-warm before every stage.
+
+PROGRESS EVENTS
+
+Emit real backend/orchestration events, not frontend guesses.
+
+User-facing stages must distinguish at least:
+- Collecting repository evidence;
+- Building architecture skeleton;
+- Discovering Systems;
+- Challenging System boundaries;
+- Discovering Subsystems — <System>;
+- Reconciling architecture;
+- Verifying uncertain boundaries;
+- Preparing sMap for review;
+- Complete / Failed / Cancelled.
+
+For an active model call, expose its type/purpose in safe product language.
+
+Progress metadata may include:
+- subject;
+- completedUnits;
+- totalUnits only when known;
+- attempt;
+- provider/model label;
+- stage elapsed time;
+- total analysis elapsed time;
+- concise retry/failure message.
+
+Do not expose prompts, response scratch reasoning, hidden chain-of-thought or raw provider logs.
+
+Do not synthesize fake percentage-complete when later verification/call count is not known.
+
+EIGHT-MINUTE CLOCK
+
+Make the qualification interval observable.
+
+The clock starts when the already-configured frontend invokes Analyze Project / backend initialization and ends when the validated review is delivered/rendered.
+
+It includes:
+- warm-up if required;
+- deterministic evidence/planning;
+- all hierarchical calls;
+- reconciliation/verification;
+- final review preparation.
+
+It excludes model discovery and structured-output probe completed before Analyze is enabled.
+
+Do not add an eight-minute abort timer.
+
+CANCELLATION / FAILURE / RETRY
+
+Preserve explicit cancellation and no-write semantics.
+
+If cancellation/failure occurs during hierarchy analysis:
+- stop accepting later stage results;
+- clear transient proposal/review state;
+- do not write canonical architecture/marker;
+- expose the failed/cancelled stage;
+- invalidate readiness only when provider/runtime semantics require it;
+- ensure retry starts coherently.
+
+A project/root switch must prevent late progress/results from the old project from rendering or mutating the new one.
+
+VISIBLE UI
+
+Replace generic "Software Map initialization in progress" presentation with a compact progress report.
+
+Show:
+- completed/current/queued known stages;
+- current stage title;
+- current System subject where applicable;
+- elapsed analysis time;
+- known x/y counts such as Subsystem discovery 2/4 Systems;
+- visible failure/retry state.
+
+Keep the right secondary sidebar untouched; sMap remains in its approved left-side surface.
+
+PERMANENT TESTS
+
+Extend service/backend/controller/widget tests for:
+- ordered stage events;
+- known/unknown totals;
+- no fake percentage;
+- elapsed-time fields monotonic/nonnegative;
+- per-System subject/count updates;
+- failure/retry/cancel;
+- warm failure before project evidence;
+- stale A events/results ignored after switching to B;
+- review appears only after final validation;
+- no canonical write before Accept;
+- raw prompt/chain-of-thought absent from UI/event fields.
+
+Run focused product/UI/backend tests, `npm run check`, `npm run test:restart`, correction validation, unchanged-version/coherence checks and `git diff --check`.
+
+SCOPE
+
+Do not perform real browser/Qwen qualification yet; P8 owns it. No Phase 5 canvas, chat or general Agent Runtime.
+
+FINAL RESPONSE
+
+Report orchestration stage order, progress event/API changes, visible progress presentation, clock semantics, cancellation/stale-project behavior, tests/checks and readiness for P8.

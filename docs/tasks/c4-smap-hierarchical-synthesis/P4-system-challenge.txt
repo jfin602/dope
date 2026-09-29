@@ -1,0 +1,91 @@
+TASK: Correction 4 / P4 — System Challenge merge split reject pass
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Implement an independent System Challenge stage that actively tests the P3 System candidates against deterministic supporting, counter and cross-boundary evidence and can keep, merge, split or reject them before lower-level architecture discovery begins.
+
+PREFLIGHT
+
+Read ADR 0012, this correction assessment/plan, exact successful P1-P3 source/results and the predecessor real-Qwen failure.
+
+Require exact P3 predecessor, clean intended Git state and package `0.4.6`.
+
+CHALLENGE IS NOT A RUBBER STAMP
+
+The second call must not merely ask the model to restate or "review" the P3 answer.
+
+Its contract must require an explicit disposition for the discovered candidate set:
+- keep candidate;
+- merge two or more candidates into one corrected candidate;
+- split one candidate into multiple corrected candidates;
+- reject candidate as not System-level architecture.
+
+Challenge output must produce a coherent challenged System set suitable for P5.
+
+INPUT
+
+Use:
+- P3 System candidates;
+- their directly referenced evidence;
+- a deterministic bounded P2 challenge view emphasizing evidence that can disprove or alter a boundary;
+- cross-candidate dependency/entrypoint/framework/ownership signals;
+- source-backed counter evidence where available.
+
+Do not feed the full packet merely because it fits.
+
+Do not supply canonical `.dope/architecture.json` as a hidden answer key.
+
+CHALLENGE QUESTIONS
+
+The structured request should force evaluation of questions equivalent to:
+- Does this candidate own a major independent responsibility?
+- Is it merely a package, transport/runtime variant, persistence mechanism, framework integration or UI surface?
+- Should two candidates be one System because they jointly implement one responsibility?
+- Does one candidate actually contain multiple independently meaningful Systems?
+- Does cross-boundary evidence undermine the initial split?
+- Is the candidate supported by production evidence rather than test/example artifacts?
+
+Keep the instruction neutral about the desired number of Systems.
+
+OUTPUT / VALIDATION
+
+Validate every challenge operation:
+- all referenced input candidates exist;
+- no input candidate is silently dropped without explicit disposition;
+- merge participants are unique;
+- split outputs are new temporary candidate identities;
+- keep/reject cannot conflict with merge/split use;
+- every resulting candidate has directly relevant source-backed evidence;
+- resulting candidate IDs remain temporary and non-canonical.
+
+Preserve an auditable mapping from P3 candidates to P4 challenged Systems.
+
+PERMANENT TESTS
+
+Create controlled stage tests where:
+1. two runtime/package variants should merge into one System;
+2. an infrastructure/persistence candidate should be rejected;
+3. one broad candidate should split when evidence shows two independent responsibilities;
+4. a valid System should remain unchanged;
+5. malformed contradictory challenge output fails closed.
+
+At least one fixture should resemble the predecessor failure class: Browser/Electron implementation variants must not survive as separate Systems solely because they are different application shells.
+
+Prove final challenged evidence refs still resolve against the complete parent packet.
+
+Run focused stage/provider/planner tests, `npm run check`, restart, correction validation, unchanged-version/coherence checks and `git diff --check`.
+
+SCOPE
+
+No Subsystem/Component discovery yet. No final ArchitectureProposal assembly. No UI.
+
+FINAL RESPONSE
+
+Report challenge request/response contract, merge/split/reject validation, fixture evidence that the stage materially corrects bad first-pass boundaries, checks and readiness for P5.

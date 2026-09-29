@@ -1,0 +1,102 @@
+TASK: Correction 4 / P5 — Per-System Subsystem and Component discovery
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Descend only after the P4 System set is challenged: build deterministic per-System evidence scopes and synthesize coherent Subsystems and Components inside each candidate System.
+
+PREFLIGHT
+
+Read current authority, exact successful P1-P4 source/results and this correction assessment/plan.
+
+Inspect current candidate types, planner scopes, provider scheduling and final ArchitectureProposal hierarchy requirements.
+
+Require exact P4 predecessor, clean intended Git state and package `0.4.6`.
+
+PER-SYSTEM EVIDENCE SCOPE
+
+For each challenged System, deterministically select a bounded focused view containing:
+- the System's supporting evidence;
+- owned/likely-owned package/module/service facts;
+- internal dependency/cohesion signals;
+- public contracts/exports;
+- framework registrations;
+- data/state/entrypoint signals where relevant;
+- enough boundary-neighbor evidence to avoid swallowing adjacent Systems.
+
+Every included fact keeps original parent-packet evidence identity.
+
+The scope is a proposal aid, not deterministic ownership truth.
+
+SUBSYSTEM DISCOVERY
+
+The model stage should identify coherent responsibilities inside the current System.
+
+A Subsystem is not merely a directory/package.
+
+Require:
+- temporary Subsystem identity;
+- parent System candidate identity;
+- name/purpose;
+- directly relevant evidence refs;
+- rationale/uncertainty;
+- clear responsibility distinction from sibling Subsystems.
+
+Do not force a fixed Subsystem count. Allow zero only when the evidence honestly does not support a useful subdivision and ensure this remains visible for later reconciliation.
+
+COMPONENT DISCOVERY
+
+Within the same bounded System pass, or a second bounded stage only when the implemented contract makes that materially better, propose Components under Subsystems.
+
+A Component is a cohesive implementation unit, not every file/class/function.
+
+Keep the total local call structure bounded with the <=8-minute objective in mind.
+
+SCHEDULING / PERFORMANCE
+
+Introduce the smallest provider-aware scheduler needed for per-System calls.
+
+Independent System passes may execute concurrently only if the provider capability explicitly says that concurrency is safe and bounded.
+
+For the local LM Studio/Qwen reference path, default to one active generation unless direct qualification later proves parallel generation is safe and beneficial.
+
+Do not create a generic job system.
+
+VALIDATION / CROSS-SCOPE SAFETY
+
+Reject:
+- Subsystem parent outside the current challenged System;
+- Component parent outside a discovered Subsystem in the same System;
+- fabricated evidence refs;
+- duplicate temporary identities;
+- duplicate evidence-based ownership claims that obviously span multiple Systems without marking conflict for P6;
+- model-created canonical IDs.
+
+Retain enough metadata for P6 to detect cross-System duplicate/contradictory ownership.
+
+PERMANENT TESTS
+
+Use fixtures proving:
+- multiple packages can belong to one Subsystem;
+- one package can contain more than one meaningful Component where evidence supports it;
+- folder layout alone does not define hierarchy;
+- a per-System pass cannot claim another System's boundary;
+- zero/low-confidence subdivision remains explicit rather than inventing hierarchy;
+- scheduling obeys provider concurrency capability;
+- every local output ref resolves to the complete packet.
+
+Run focused planner/provider/synthesis tests, `npm run check`, restart, correction validation, unchanged-version/coherence checks and `git diff --check`.
+
+SCOPE
+
+Do not perform final cross-System reconciliation/verification yet. No UI.
+
+FINAL RESPONSE
+
+Report evidence-scope rules, per-System call structure, Subsystem/Component schema behavior, provider scheduling policy, fixtures/tests, performance implications and readiness for P6.

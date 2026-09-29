@@ -1,6 +1,6 @@
 # Correction 4 — sMap Architecture Synthesis
 
-Status: IN PROGRESS — P1/P2 COMPLETE; P3 FRAMEWORK EXTRACTION NEXT
+Status: OWNER-CLOSED / NOT QUALIFIED — superseded by `c4-smap-hierarchical-synthesis`
 Correction authority name: `c4-architecture-discovery`
 Execution folder: `c4-smap-synth`
 Required unchanged version: `0.4.6`
@@ -10,7 +10,7 @@ Phase 4 qualified source: `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
 Theia: `1.75.0`; Electron: `42.8.1`; Node: 24
 Authority: ADR 0009 as amended by ADR 0010; ADR 0011; current Software Map authority
 
-This stack implements the mandatory pre-Phase-5 architecture-discovery correction using deterministic evidence plus a bounded local architecture synthesizer.
+This stack is closed as historical implementation/evidence. P1-P6 established the deterministic evidence, local provider, initialization, acceptance and review path. P7 proved the real local path but failed the core architecture-quality gate; the owner stopped further qualification and routed the product to ADR 0012 / `c4-smap-hierarchical-synthesis`. P8 was not executed as a Green-qualification closeout.
 
 ## Stack
 
@@ -85,3 +85,14 @@ The correction clears only when:
 - restart/project isolation/package behavior remain coherent;
 - version stays `0.4.6`;
 - Phase 5/general AI scope is not pulled forward.
+
+
+## Owner closeout
+
+Owner disposition: 2026-09-29.
+
+Exact terminal evidence source: `0f94b0e3ba46e395394acdb5badc00dd092b37d0`.
+
+The correction is **closed, not qualified**. Its live source/repairs remain the predecessor baseline for the hierarchical correction. This disposition does not relabel the P7 gaps Green and does not activate Phase 5.
+
+See `docs/tasks/c4-smap-synth/closeout.md`.

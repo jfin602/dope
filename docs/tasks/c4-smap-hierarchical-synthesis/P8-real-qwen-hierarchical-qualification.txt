@@ -1,0 +1,194 @@
+TASK: Correction 4 / P8 — Real Qwen hierarchical sMap quality and performance qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Directly qualify the exact P7 candidate on the real Dope repository through the real local LM Studio + Qwen3-Coder-30B-A3B-Instruct hierarchical path, proving architecture quality, live progress, provider-budget safety and the <=8-minute initial-analysis objective without an eight-minute hard timeout.
+
+This is a qualification prompt. Repairs are allowed only when direct evidence exposes a concrete defect or measurable bottleneck; every repair requires permanent regression coverage and replay of affected evidence.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0009-0012, current Software Map/storage authority, predecessor c4-smap-synth closeout/P7 evidence, this correction assessment/plan/README and exact P1-P7 commits/results.
+
+Require:
+- exact successful P7 handoff;
+- package `0.4.6`;
+- clean intended Git state;
+- local LM Studio reachable;
+- Qwen3-Coder-30B-A3B-Instruct reference family available;
+- qualification model loaded/configured for **65,536 context**.
+
+Record actual endpoint mode and exact model ID. If runtime metadata exposes loaded context, record it. Otherwise record the operator-provided 65,536 qualification configuration without pretending Dope independently verified it.
+
+Do not silently substitute a cloud provider or another model family.
+
+CONTROLLED REAL-DOPE STATE
+
+Record:
+- Git status;
+- exact `.dope/architecture.json` bytes/hash if present;
+- exact `.dope/smap.json` bytes/hash if present.
+
+Use controlled reversible state to exercise the uninitialized brownfield path without feeding the existing canonical architecture into deterministic physical evidence or synthesis as an answer key.
+
+Restore controlled project files byte-for-byte unless this prompt explicitly establishes and records a deliberate accepted qualification state, then restore before completion if required by the runner/evidence convention.
+
+SETUP BEFORE PERFORMANCE CLOCK
+
+Using the real browser workbench:
+- enter Analyze Project flow;
+- configure/detect LM Studio;
+- discover/select the actual Qwen reference model;
+- run the structured-output capability probe.
+
+The <=8-minute qualification clock does **not** begin during endpoint/model discovery or probe.
+
+REAL PERFORMANCE CLOCK
+
+Start the end-to-end timer at the user action **Analyze Project with selected model** / exact backend initialization invocation.
+
+Stop it only when the validated review-ready architecture is rendered to the user.
+
+The measured interval includes:
+- synthetic warm-up if runtime is not already known warm;
+- deterministic evidence collection;
+- deterministic planning/skeleton;
+- System Discovery;
+- System Challenge;
+- every per-System Subsystem/Component pass;
+- reconciliation;
+- targeted verification;
+- final proposal assembly/validation;
+- delivery/rendering of review state.
+
+Record:
+- total elapsed time;
+- each deterministic stage elapsed time;
+- each model call purpose, input token estimate/count, output tokens where available and elapsed time;
+- any retries;
+- candidate counts before/after challenge;
+- number of per-System calls;
+- number of verification calls;
+- evidence view sizes/budgets.
+
+**Do not cancel or truncate solely because the timer passes eight minutes.** Let the run finish so quality and bottlenecks remain observable. A >8-minute completed run is Not Green on performance.
+
+CONTEXT / REQUEST SAFETY
+
+Prove:
+- no individual call exceeds provider-derived context/input budget;
+- 65,536 is treated as runtime headroom, not a fill target;
+- focused calls are materially smaller when less evidence is needed;
+- complete deterministic packet remains available server-side for provenance/final validation;
+- final refs resolve to the complete parent packet.
+
+ARCHITECTURE QUALITY MATRIX
+
+Inspect the actual generated architecture, not merely schema validity.
+
+Record the initial P3 System candidates and challenged P4 result.
+
+System quality must establish:
+- candidates correspond to major independently meaningful responsibilities;
+- Browser/Electron application variants are not separate Systems merely because they are variants;
+- ordinary packages/directories/frameworks/persistence utilities are not promoted without architectural justification;
+- System Challenge actually evaluates/changes weak boundaries when warranted;
+- resulting Systems have distinct, understandable purposes;
+- evidence supporting each System is directly relevant and production-oriented;
+- obvious contradictory/counter evidence is not hidden.
+
+Subsystem/Component quality must establish:
+- meaningful Subsystems exist where repository evidence supports them;
+- per-System hierarchy is responsibility-oriented rather than a directory tree;
+- Components bridge architecture and code at useful granularity;
+- children remain under coherent parent Systems;
+- no obvious duplicate ownership/cross-System contradiction survives final reconciliation without being surfaced.
+
+Do not require an exact match to the preexisting canonical declaration. After synthesis is complete, that declaration may be used as one developer-owned comparison/reference during human review, never as hidden synthesis input.
+
+If material System boundaries are wrong, the architecture-quality gate is Not Green even when all JSON/refs are valid.
+
+VISIBLE PROGRESS MATRIX
+
+Directly observe that the user sees meaningful updates through the real run:
+- evidence collection;
+- skeleton/planning;
+- System Discovery;
+- System Challenge;
+- per-System discovery with current subject and known counts;
+- reconciliation;
+- verification if invoked;
+- preparing review.
+
+Verify elapsed time updates and no misleading precise percent appears when remaining work is unknown.
+
+DEVELOPER AUTHORITY / REVIEW
+
+In the resulting review:
+- inspect rationale + source-backed refs;
+- navigate several representative refs to source;
+- exercise at least rename, reparent/add/remove and a merge/split-equivalent correction path;
+- prove invalid canonical draft cannot be accepted;
+- explicitly accept a controlled valid draft;
+- prove canonical architecture/marker publication occurs only after acceptance;
+- prove Physical Map reconciliation follows accepted authority.
+
+Also qualify existing/manual declaration initialization without requiring a model in a controlled scenario.
+
+FAILURE / CANCELLATION NEGATIVES
+
+Prove:
+- a controlled warm-up failure submits no project evidence;
+- cancel during a later hierarchical stage cannot publish late review/canonical state;
+- retry remains usable;
+- switching roots/projects rejects late progress/results.
+
+PACKAGE / RESTART
+
+Run focused and aggregate checks plus restart.
+
+Build/inspect the exact final `0.4.6` Linux AppImage:
+- path/mode/size/SHA-256;
+- embedded version;
+- expected Software Map/code-analysis/Theia composition;
+- no accidental Phase 6 Agent Runtime;
+- native launch/readiness/controlled close where environment permits.
+
+EVIDENCE
+
+Create `docs/tasks/c4-smap-hierarchical-synthesis/P8-hierarchical-smap-evidence.md`.
+
+Include:
+- exact source/candidate identity;
+- runtime/model/context configuration;
+- Git/project-state preflight/restoration;
+- packet/planner summary;
+- stage-by-stage progress/timing table;
+- per-call token/budget/timing table;
+- initial vs challenged System candidates;
+- final System/Subsystem/Component hierarchy;
+- representative evidence refs/source navigation;
+- architecture-quality assessment with concrete strengths/failures;
+- developer correction/acceptance proof;
+- failure/cancel/project-switch negatives;
+- package/restart/native evidence;
+- every repair + replay;
+- total measured analysis time and <=8-minute disposition;
+- residual Evidence Gaps.
+
+VALIDATION
+
+Run focused hierarchical tests, `npm run check`, `npm run test:restart`, `npm run codex:phase:validate -- c4-smap-hierarchical-synthesis`, unchanged-version/no-root-lock/Theia/Electron/internal-reference checks and `git diff --check`.
+
+FINAL RESPONSE
+
+Report exact candidate, actual Qwen/runtime identity, total/stage/call timing, request budgets, initial/challenged/final architecture, quality gate, progress UI observations, developer-authority proof, package/restart result, restored state, repairs and residual gaps.
+
+State readiness for P9 only when the evidence is complete enough for an evidence-only audit; a >8-minute run may proceed to P9 as evidence but cannot be called Green on performance.
