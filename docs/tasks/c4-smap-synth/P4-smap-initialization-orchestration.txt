@@ -1,0 +1,109 @@
+TASK: Correction 4 / P4 — sMap initialization orchestration and canonical acceptance
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Implement the backend/application lifecycle that turns explicit developer consent into transient evidence/proposal review and only explicit acceptance into durable canonical architecture plus an initialized Software Map.
+
+PREFLIGHT
+
+Read current authority, software-map-storage, this correction assessment/plan and exact successful P1-P3 commits/results. Inspect current architecture-file/index/backend/storage/restart patterns.
+
+Require exact P3 predecessor, clean intended Git state and package `0.4.6`.
+
+INITIALIZATION PERSISTENCE
+
+Implement the approved separate initialization representation, expected as readable project-local `.dope/smap.json` schema 1.
+
+It stores only durable accepted initialization metadata. It must not store:
+- provider endpoint/model/auth;
+- decline state;
+- ArchitectureEvidencePacket;
+- ArchitectureProposal;
+- transient review draft.
+
+Missing marker means uninitialized even if `.dope/architecture.json` exists.
+
+Document exact storage/recovery behavior in the current Software Map storage guide.
+
+TYPED ORCHESTRATION
+
+Extend the typed Software Map service/backend for bounded initialization operations.
+
+Required behavior:
+- read initialization status;
+- start initialization only after an explicit frontend call;
+- collect P2 evidence without publishing a Physical Map;
+- invoke the P3 provider readiness/synthesis path;
+- support the bounded evidence-refinement loop from ADR 0010;
+- retain packet/proposal/review only transiently per attached project;
+- enter `review_required` only after successful strict validation;
+- cancel/failure clears transient state and leaves uninitialized;
+- ordinary Physical Map refresh is an initialized-path operation.
+
+Do not auto-start from attach/status/view construction.
+
+REVIEW DRAFT
+
+Create transient Dope-owned review state derived from the validated proposal.
+
+The model may not supply canonical IDs/ownership roots.
+
+Seed editable root/path suggestions only from deterministic packet facts that explicitly support those paths. Expose enough draft structure for P5 to edit canonical IDs, names, purposes, parentage and roots.
+
+Acceptance must produce and validate an ordinary ArchitectureDeclaration with the existing strict parser.
+
+SAFE ACCEPTANCE
+
+Implement stale-safe, recoverable acceptance for canonical `.dope/architecture.json` plus the sMap marker.
+
+At minimum:
+- capture/validate expected pre-accept architecture bytes/fingerprint;
+- no-follow/path-containment discipline;
+- staged replacement;
+- bounded rollback/recovery on second-file failure;
+- never report `initialized` unless declaration + marker are coherent;
+- preserve original bytes on validation/conflict rejection;
+- clear transient proposal only after accepted durable state is established.
+
+After successful acceptance, publish/reanalyze the Physical Map against canonical architecture.
+
+EXISTING / MANUAL ARCHITECTURE
+
+If a valid declaration exists with no marker, expose an explicit backend path to initialize from that developer-authored declaration. Validate it and avoid rewriting it gratuitously.
+
+Support a manual/greenfield declaration acceptance path with no synthesis provider.
+
+TESTS
+
+Cover:
+- attach/status does not analyze or write;
+- decline/cancel/failure no-write state;
+- warm/provider failure no packet/canonical acceptance side effects;
+- uninitialized with existing declaration;
+- existing-declaration explicit acceptance;
+- generated review acceptance;
+- invalid draft;
+- stale/external declaration change conflict;
+- marker malformed/unsafe path/recovery;
+- controlled partial-write failure/rollback;
+- restart reads initialized marker;
+- second-root/project-handle isolation;
+- stale proposal from A cannot be accepted in B;
+- accepted state publishes Physical Map and dependency validation.
+
+Run focused backend/index/storage/domain tests, aggregate `npm run check`, restart, correction validation, coherence/version guards and `git diff --check`.
+
+SCOPE
+
+No frontend UX yet, no Phase 5 canvas, no general AI runtime.
+
+FINAL RESPONSE
+
+Report initialization storage schema, transient/durable boundaries, safe acceptance behavior, existing/manual path, isolation/failure tests, checks and readiness for P5.
