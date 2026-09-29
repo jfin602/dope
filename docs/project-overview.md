@@ -61,6 +61,7 @@ Its initialization and authority model is:
 Uninitialized project
 -> explicit Analyze Project consent
 -> deterministic repository / semantic / framework evidence
+-> synthesis provider/model readiness
 -> bounded LLM architecture synthesis
 -> proposed System / Subsystem / Component map
 -> developer review and correction
@@ -71,6 +72,8 @@ Uninitialized project
 **Analysis is opt-in; synthesis proposes; the developer owns architecture.** Opening a new repository in Dope does not silently build an sMap. If the developer declines the initial analysis offer, the project remains uninitialized and the sMap tab provides an Analyze Project action for later use.
 
 The developer may also define architecture before code exists. In an existing project, LLM-generated boundaries remain proposals until the developer accepts or corrects them. Deterministic evidence never becomes canonical architecture merely because it was observed, AI output never becomes canonical merely because it was generated, and canonical declarations never erase contrary implementation evidence.
+
+ADR 0011 makes the first sMap synthesis path local-first: LM Studio with Qwen3-Coder-30B-A3B-Instruct is the reference implementation, while the Dope contracts remain provider-independent. Setup performs a synthetic structured-output probe and the selected model is warmed with non-project data immediately before the first real synthesis request. If warm-up fails, Dope does not submit project evidence.
 
 The **Physical Map** describes current implemented reality mapped against canonical architecture. It distinguishes declared-only, detected-only, realized, drifted and unassigned implementation state, with provenance sufficient to explain the result.
 
@@ -204,11 +207,11 @@ Desired completion feeling:
 
 **Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved scope. Phase 5 is not activated.**
 
-The mandatory next gate is correction `c4-architecture-discovery` at unchanged `0.4.6`. It must preserve the Phase 4 semantic analyzer/evidence substrate while adding explicit sMap initialization, opt-in analysis, bounded provider-independent LLM architecture synthesis over deterministic evidence, proposal provenance, developer review/correction and acceptance, greenfield/manual architecture-before-code support, and implementation realization/drift reconciliation. ADR 0009 as amended by ADR 0010 governs the correction.
+The mandatory next gate is correction `c4-architecture-discovery` at unchanged `0.4.6`. It must preserve the Phase 4 semantic analyzer/evidence substrate while adding explicit sMap initialization, opt-in analysis, bounded provider-independent LLM architecture synthesis over deterministic evidence, local LM Studio/Qwen reference qualification with capability probing and pre-synthesis warm-up, proposal provenance, developer review/correction and acceptance, greenfield/manual architecture-before-code support, and implementation realization/drift reconciliation. ADR 0009 as amended by ADR 0010 governs the architecture contract; ADR 0011 governs the local-first reference bootstrap.
 
 Historical Phase 1/2 qualification gaps remain unchanged. Phase 3 remains historical evidence and its live Planning implementation remains removed. Theia stays pinned to 1.75.0 and Electron to 42.8.1 unless a deliberate framework upgrade is separately approved.
 
-Phase 5 Visual Software Planning, general AI Presence/model integration, Agent Mind, tool execution, AI mutation, scoped delegation and durable development sessions remain blocked behind their roadmap gates. ADR 0010 authorizes only the narrow pre-Phase-6 architecture-synthesis capability required by sMap initialization.
+Phase 5 Visual Software Planning, general AI Presence/model integration, Agent Mind, tool execution, AI mutation, scoped delegation and durable development sessions remain blocked behind their roadmap gates. ADR 0010 authorizes only the narrow pre-Phase-6 architecture-synthesis capability required by sMap initialization, and ADR 0011 selects its first local reference implementation without superseding ADR 0006 for Phase 6.
 
 ## Phase 3 result — live human-first Planning
 
