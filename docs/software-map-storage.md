@@ -65,6 +65,23 @@ Proposed boundaries may be confirmed, renamed, reparented, merged, split, added,
 
 A greenfield/manual path remains valid with no model configured: the developer may define architecture directly and initialize sMap from those declarations before implementation exists.
 
+## Project-local sMap persistence boundary
+
+The project-local `.dope/` directory is the required persistence boundary for durable Software Map state.
+
+At minimum:
+- `.dope/architecture.json` owns canonical developer-authored System / Subsystem / Component architecture;
+- `.dope/smap.json` owns durable sMap initialization/version/state metadata required to reopen the project coherently;
+- if Dope later persists additional sMap artifacts such as evidence packets, graph snapshots, fingerprints, proposal drafts or indexes, those project-persistent artifacts belong under `.dope/smap/` (or another explicitly documented `.dope/` child) in a Dope-owned, explicitly versioned format.
+
+The repository plus its project-local `.dope/` state must be sufficient to recover durable sMap state. No global Dope database, Theia workspace/application storage, provider-native session, LM Studio state, model cache or other machine-local location may be required to determine the project's canonical architecture, initialized state or other durable sMap truth.
+
+User/application preferences such as synthesis endpoint and selected model remain outside project files. Machine-local caches are permitted only as disposable accelerators: deleting them must not destroy project truth, change whether the sMap is initialized or prevent deterministic reconstruction from repository evidence plus `.dope/`.
+
+Deterministic evidence remains derived rather than canonical merely because it is serialized. Persisted evidence/proposal/cache artifacts must retain schema/version and source-association information sufficient to reject stale, mismatched or incompatible data.
+
+> Portability invariant: copying or cloning the repository together with its `.dope/` directory carries the durable Software Map with it.
+
 ## Filesystem and recovery rules
 
 Attachment resolves a local `file:` folder to its canonical real path. Reading rejects symlinked or non-directory `.dope` entries and symlinked or non-file architecture entries. Declared ownership roots must be normalized project-relative paths with no traversal. Source navigation resolves a source path only within the attached canonical root.
@@ -73,4 +90,4 @@ Malformed JSON, invalid schema, unsupported future versions and unsafe paths fai
 
 Acceptance checks the exact prior declaration fingerprint, stages replacement files in `.dope`, then installs the declaration followed by the marker. If the marker install fails, Dope restores the exact prior declaration bytes (or removes the newly created declaration). A malformed, unsafe or mismatched marker is never treated as initialized. Recover a mismatched pair by restoring the accepted declaration or removing the marker and explicitly accepting the intended declaration again. Marker and declaration entries must be regular files, and `.dope` must be a real directory; symlinks are rejected.
 
-No derived graph, ArchitectureEvidencePacket, ArchitectureProposal or architecture-discovery cache belongs in `.dope/project-mind.json`. If a future disk cache is introduced, it must be explicitly disposable, versioned and reject/rebuild stale, mismatched or incompatible entries.
+No derived graph, ArchitectureEvidencePacket, ArchitectureProposal or architecture-discovery cache belongs in `.dope/project-mind.json`. If any of those artifacts are persisted as project state, they belong under the documented sMap portion of `.dope/`; if they are cached outside the project, that cache must be explicitly disposable, versioned and safely reject/rebuild stale, mismatched or incompatible entries.
