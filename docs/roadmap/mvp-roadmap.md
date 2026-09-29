@@ -293,9 +293,13 @@ Required behavior:
 - if the developer declines, build no sMap and create no canonical/derived project state merely to record the refusal;
 - keep the sMap surface available in an uninitialized empty state with an **Analyze Project** action that invokes the same flow later;
 - distinguish at least `uninitialized`, `analyzing`, `review_required` and `initialized`;
-- collect deterministic repository/workspace/build topology, entrypoints, dependency structure, semantic relationships, framework registration and other explicit evidence with provenance;
-- send bounded architecture evidence through a provider-independent LLM synthesis capability to propose Systems, Subsystems and Components;
-- never treat a directory, package, dependency cluster or LLM response as architecture authority solely because it exists;
+- collect deterministic repository/workspace/build topology, entrypoints, dependency structure, semantic relationships, framework registration and other explicit evidence with provenance into an independently verifiable ArchitectureEvidencePacket;
+- send that packet through a provider-independent LLM synthesis capability to produce a strict Dope-owned ArchitectureProposal JSON response;
+- require each proposal node to carry temporary proposal identity, System/Subsystem/Component kind, name/purpose/parent, numeric 0..1 confidence, rationale, machine-verifiable `evidenceRefs` and human-readable `evidence`;
+- never treat a directory, package, dependency cluster, confidence value, human-readable evidence explanation or LLM response as architecture authority solely because it exists;
+- reject schema-invalid output, invalid/cyclic hierarchy, out-of-range confidence, unresolved parent keys, fabricated evidence references and any proposal that attempts to substitute prose for source-backed evidence;
+- keep temporary proposal keys distinct from canonical architecture IDs;
+- permit bounded `needsMoreEvidence` / `evidenceRequests` refinement where Dope—not the model—validates requests and gathers additional deterministic evidence;
 - retain evidence/derivation for every generated architecture proposal;
 - make developer-authored architecture canonical authority: synthesis proposes, the developer reviews/corrects and explicitly accepts;
 - support brownfield correction operations such as confirm, rename, reparent, merge, split, add, remove, replace or ignore without silently rewriting architecture;
@@ -308,8 +312,11 @@ Required behavior:
 Minimum qualification:
 - first opening an uninitialized project offers analysis rather than silently constructing an sMap;
 - declining leaves the sMap uninitialized and produces no canonical architecture or derived map state; visiting sMap later exposes Analyze Project and can start the flow;
-- accepting analysis runs deterministic evidence collection before LLM synthesis and every proposed architecture boundary is traceable to evidence;
-- a proposal remains non-canonical until explicit developer acceptance;
+- accepting analysis produces an ArchitectureEvidencePacket that can be inspected and verified without invoking a model;
+- synthesis returns schema-valid structured JSON and every proposed architecture boundary is traceable through valid `evidenceRefs` to that exact packet;
+- focused negative tests reject fabricated evidence refs, malformed hierarchy, invalid numeric confidence and human-readable explanations without source-backed refs;
+- the review UI can show human-readable `evidence` while preserving drill-down to the underlying `evidenceRefs`;
+- a proposal remains non-canonical until explicit developer acceptance and temporary proposal keys never become canonical IDs implicitly;
 - developer correction of at least one proposed boundary establishes canonical architecture and subsequent analysis honors that identity while still reporting contradictory implementation evidence;
 - a greenfield/manual fixture can initialize canonical architecture with little/no implementation and no model configured, remaining visibly declared-only;
 - the real Dope repository can complete the evidence -> synthesis -> review/correction -> acceptance workflow;
