@@ -156,6 +156,10 @@ Developer-authored architecture remains canonical. The developer reviews and may
 
 A fresh project may initialize sMap manually by defining canonical architecture before implementation exists. The TypeScript semantic analyzer remains the lower-level evidence engine; AI synthesis interprets evidence above it rather than replacing semantic source analysis.
 
+ADR 0011 sets the first reference synthesis path to local LM Studio with Qwen3-Coder-30B-A3B-Instruct so the core sMap initialization workflow does not require a paid API. The selected synthesis connection/model, endpoint, authentication and runtime/load settings are user/application state rather than canonical project state.
+
+Before the first real synthesis request, provider/runtime orchestration performs readiness checks using synthetic non-project prompts: a structured-output capability probe during setup and a warm-up immediately before project evidence would be submitted. Warm-up failure prevents ArchitectureEvidencePacket submission.
+
 ### Phase 5 — Visual Software Planning
 
 Design the planning/work model from the Physical Map outward rather than adapting the graph to Phase 3 Planning.
