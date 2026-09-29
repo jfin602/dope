@@ -56,16 +56,21 @@ Project
 
 The **Software Map (sMap)** is Dope's architecture representation.
 
-Its authority model is:
+Its initialization and authority model is:
 
-Repository / runtime evidence
--> deterministic architecture detection
--> detected System / Subsystem / Component candidates
--> developer confirmation or correction
+Uninitialized project
+-> explicit Analyze Project consent
+-> deterministic repository / semantic / framework evidence
+-> bounded LLM architecture synthesis
+-> proposed System / Subsystem / Component map
+-> developer review and correction
+-> explicit acceptance
 -> canonical architecture
 -> continuous implementation realization / drift analysis
 
-**Detection proposes; the developer owns architecture.** The developer may define architecture before code exists, or accept/rename/reparent/merge/split/replace/ignore detected boundaries in an existing project. Deterministic detection never silently becomes canonical architecture, and canonical declarations never erase contrary implementation evidence.
+**Analysis is opt-in; synthesis proposes; the developer owns architecture.** Opening a new repository in Dope does not silently build an sMap. If the developer declines the initial analysis offer, the project remains uninitialized and the sMap tab provides an Analyze Project action for later use.
+
+The developer may also define architecture before code exists. In an existing project, LLM-generated boundaries remain proposals until the developer accepts or corrects them. Deterministic evidence never becomes canonical architecture merely because it was observed, AI output never becomes canonical merely because it was generated, and canonical declarations never erase contrary implementation evidence.
 
 The **Physical Map** describes current implemented reality mapped against canonical architecture. It distinguishes declared-only, detected-only, realized, drifted and unassigned implementation state, with provenance sufficient to explain the result.
 
@@ -199,11 +204,11 @@ Desired completion feeling:
 
 **Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved scope. Phase 5 is not activated.**
 
-The mandatory next gate is correction `c4-architecture-discovery` at unchanged `0.4.6`. It must preserve the Phase 4 semantic analyzer/evidence substrate while adding deterministic System / Subsystem / Component discovery, explicit detected-versus-canonical architecture state, developer confirmation/correction authority, greenfield architecture-before-code support, and implementation realization/drift reconciliation. ADR 0009 is the governing authority.
+The mandatory next gate is correction `c4-architecture-discovery` at unchanged `0.4.6`. It must preserve the Phase 4 semantic analyzer/evidence substrate while adding explicit sMap initialization, opt-in analysis, bounded provider-independent LLM architecture synthesis over deterministic evidence, proposal provenance, developer review/correction and acceptance, greenfield/manual architecture-before-code support, and implementation realization/drift reconciliation. ADR 0009 as amended by ADR 0010 governs the correction.
 
 Historical Phase 1/2 qualification gaps remain unchanged. Phase 3 remains historical evidence and its live Planning implementation remains removed. Theia stays pinned to 1.75.0 and Electron to 42.8.1 unless a deliberate framework upgrade is separately approved.
 
-Phase 5 Visual Software Planning, model/provider integration, Agent Mind, tool execution, AI mutation, scoped delegation and durable development sessions remain blocked behind their roadmap gates.
+Phase 5 Visual Software Planning, general AI Presence/model integration, Agent Mind, tool execution, AI mutation, scoped delegation and durable development sessions remain blocked behind their roadmap gates. ADR 0010 authorizes only the narrow pre-Phase-6 architecture-synthesis capability required by sMap initialization.
 
 ## Phase 3 result — live human-first Planning
 
