@@ -16,7 +16,7 @@ Theia
 -> Project Mind
 -> Planning Foundation
 -> Physical Software Model
--> Visual Planning
+-> Visual Software Planning
 -> AI Presence
 -> Scoped Delegation
 -> Development Sessions
@@ -36,7 +36,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Product Phase 2 — Project Mind | Dope understands Dope. Its own decisions, notes, questions, ideas, and durable project context are useful through Project Mind. |
 | Product Phase 3 — Planning Foundation | Dope plans Dope. A real Dope feature can move from thought/decision into a live Plan and Tasks without leaving Dope. |
 | Product Phase 4 — Physical Software Model | Dope maps Dope. Its systems, subsystems, components and code relationships can be explored from evidence-backed current-state analysis. |
-| Product Phase 5 — Visual Planning | Dope designs Dope. A developer can branch from physical architecture into a target planning graph tied to Plans and Tasks, then reconcile implementation back to reality. |
+| Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can branch from physical architecture into a target planning graph tied to Plans and Tasks, then reconcile implementation back to reality. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, software-model context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 8 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
@@ -164,7 +164,7 @@ Using Dope should leave the project easier to understand when it is reopened, ev
 
 ## Product Phase 3 — Planning
 
-Status: **QUALIFIED FOR APPLICABLE SCOPE — `0.3.6`** (`docs/tasks/p3/closeout.md`); next gate: `/docs-review`, not Phase 4 execution.
+Status: **QUALIFIED FOR APPLICABLE SCOPE — `0.3.6`** (`docs/tasks/p3/closeout.md`). This is historical qualification, not a forward compatibility contract. Phase 4/5 may replace the Phase 3 planning domain, persistence and UI.
 
 Execution folder: `p3`. Activation baseline: package `0.3.0`; prompt versions `0.3.1`–`0.3.6`. Authority: `docs/planning/p3/phase-3-plan.md` and `docs/planning/p3/activation.md`.
 
@@ -206,6 +206,8 @@ Purpose:
 Make current software architecture a deterministic, explorable part of the development environment before AI is asked to reason over it.
 
 Initial scope:
+- clean implementation independent from Phase 3 Plan/PlanStep/Task, `.dope/planning.json`, Planning RPC and Planning UI;
+- no compatibility adapter, migration or dual-state requirement for Phase 3 Planning;
 - language-independent Physical Software Model
 - Project -> System -> Subsystem -> Component -> Code hierarchy
 - explicit subsystem identity, purpose, ownership and dependency constraints
@@ -223,10 +225,10 @@ Exit condition:
 
 Using the real Dope repository, the developer can inspect an evidence-backed current-state model organized by systems/subsystems/components, trace representative relationships back to source evidence, and detect representative subsystem-boundary violations without any model provider configured.
 
-## Product Phase 5 — Visual Planning
+## Product Phase 5 — Visual Software Planning
 
 Purpose:
-Turn architecture understanding and planning into one visual workflow directly connected to implementation.
+Design the new planning/work system from the software graph outward and turn architecture understanding, intent and implementation into one visual workflow.
 
 Initial scope:
 - multi-tab central workspace for code and planning artifacts
@@ -235,12 +237,14 @@ Initial scope:
 - planning graphs created from/referencing physical nodes
 - explicit planned add/modify/remove/move/split/merge/relationship changes
 - visible distinction between physical, planned, inferred and unknown state
-- linkage from planned transformations to Plans, PlanSteps and Tasks
+- graph-derived work decomposition, dependencies, acceptance criteria and validation targets
 - implementation targeting/working-set navigation from graph objects
 - post-implementation re-analysis and target-versus-physical reconciliation
+- deliberate replacement/removal of Phase 3 Planning domain/storage/RPC/UI/tests when the new system is qualified
+- no compatibility adapter or migration requirement for Phase 3 internal Planning state
 - no AI requirement
 
-Existing physical nodes are referenced rather than copied into planning diagrams.
+Existing physical nodes are referenced rather than copied into planning diagrams. Phase 5 does not assume Plan -> PlanStep -> Task survives; the graph-centered design determines the future work ontology.
 
 Exit condition:
 

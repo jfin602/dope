@@ -65,7 +65,7 @@ Existing physical nodes are referenced by identity, not duplicated. Plans can ad
 
 Physical/current and planned/target state must remain unambiguous.
 
-Planning transformations connect to canonical Plan, PlanStep and Task execution intent.
+The forward planning ontology is intentionally not inherited from Product Phase 3. Product Phase 5 designs planning from the software graph outward. It may retain useful concepts such as Plan or Task, rename them, reshape them, or replace Plan/PlanStep/Task entirely. The graph-centered model determines the work model, not the reverse.
 
 ### Reconciliation
 
@@ -88,14 +88,25 @@ Foundation Spike 0 — qualify Theia
 -> Phase 2 — Project Mind
 -> Phase 3 — Planning Foundation
 -> Phase 4 — Physical Software Model
--> Phase 5 — Visual Planning
+-> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
 -> Phase 7 — Scoped Delegation
 -> Phase 8 — Development Sessions
 
-The active Phase 3 implementation scope remains bounded. This ADR does not pull code analysis or diagram implementation into the current p3 task stack.
+Product Phase 3 is already qualified historical implementation at `0.3.6`. This ADR does not reinterpret or reopen that qualification, and Phase 3 does not become a forward compatibility contract.
 
 The prior Phase 4 AI Presence planning worksheet is retained and renumbered for Product Phase 6.
+
+## Pre-stability clean-break rule
+
+Dope has not entered a compatibility/stability era. Earlier internal product increments are evidence and learning, not permanent API/schema/UI commitments.
+
+Until an explicit compatibility milestone is adopted:
+- prefer the simplest correct forward architecture over preserving internal prototype compatibility;
+- do not add adapters, dual writes, compatibility schemas or migrations merely to keep superseded internal models alive;
+- Phase 3 `Plan`, `PlanStep`, `Task`, `.dope/planning.json`, Planning RPC/UI and their tests may be replaced or removed when the graph-centered planning system supersedes them;
+- historical qualification remains preserved in Git and evidence documents even when the qualified implementation is later deleted;
+- add compatibility only when a specific valuable user-data, external-interface or product commitment justifies its complexity.
 
 ## Architectural constraints
 
@@ -117,6 +128,8 @@ The prior Phase 4 AI Presence planning worksheet is retained and renumbered for 
 - Agent context can later be assembled around Systems/Subsystems/Components rather than repeatedly reconstructing architecture from arbitrary files.
 - Dope can eventually diagnose architectural boundary violations in addition to language/compiler errors.
 - Planning and implementation gain an explicit target-versus-physical reconciliation loop.
+- Phase 4 is free of Phase 3 Planning compatibility requirements.
+- Phase 5 may replace the Phase 3 planning domain, persistence, presentation and regression suite in one deliberate cutover after the replacement is qualified.
 
 ## Revisit when
 

@@ -18,7 +18,7 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 2. Read the narrowest relevant product, architecture, workflow, stability, and planning authority.
 3. Inspect current source and tests.
 4. Identify affected systems/subsystems/components where architecture authority exists, then trace affected producers, consumers, state owners, and presentation adapters. Until the Physical Software Model exists for the target, state intended boundaries explicitly rather than inventing software-model evidence.
-5. Identify behavior and architectural boundaries that must remain unchanged.
+5. Identify behavior and architectural boundaries the current authority explicitly preserves. Do not treat an earlier internal phase as a compatibility contract by default.
 6. Choose the smallest safe implementation boundary.
 7. Define focused tests plus broader regression coverage.
 8. Identify only the persistence, authority, process, filesystem, network, provider, UI, and framework failure modes applicable to capabilities that exist in the current phase.
@@ -81,6 +81,8 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 - Every physical graph relationship must retain traceable evidence/provenance.
 - Developer-authored System/Subsystem declarations and dependency constraints are architecture authority; extracted relationships validate against them.
 - Planning graphs reference physical identities and express target transformations rather than duplicating current architecture.
+- Pre-stability Dope prefers coherent replacement over internal compatibility scaffolding. Do not add adapters, dual writes, schema bridges or migrations for superseded internal product models unless a concrete user-data/external commitment justifies them.
+- Phase 3 Plan/PlanStep/Task, `.dope/planning.json`, Planning RPC/UI and associated tests are historical implementation details, not constraints on Phase 4 or Phase 5 architecture.
 - Prefer standard framework extension points over shell internals; isolate unavoidable deep Theia coupling.
 - Forking Theia is a last resort and a failed-spike signal unless explicitly accepted.
 - Preserve upgradeability as a design property; qualify it when a real framework upgrade is undertaken rather than forcing synthetic upgrade work into an unrelated phase.
@@ -116,6 +118,6 @@ New executable task stacks use explicit GPT-6 Sol labels:
 
 Do not author new Terra prompts. Do not silently remap old model labels.
 
-Every correction stack must include a permanent regression guard for the defect class.
+Every correction stack must include a permanent regression guard for the defect class while that behavior remains authoritative. When an entire pre-stability subsystem is deliberately superseded, obsolete tests may be removed with the old implementation rather than fossilizing the replaced architecture.
 
 Product authority lives in docs/project-overview.md plus docs/VISION.md, docs/PRINCIPLES.md, and docs/PRODUCT-MODEL.md. Architecture authority lives in docs/ARCHITECTURE.md. Qualification discipline lives in docs/stability-contract.md.

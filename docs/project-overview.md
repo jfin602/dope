@@ -124,7 +124,7 @@ First-class compatibility targets include:
 - local models and local inference runtimes
 - future providers through replaceable capability-based adapters
 
-Project Mind, Plans, Tasks, Agent Mind, Sessions, Decisions, Authority, and Validation are Dope-owned state.
+Project Mind, Agent Mind, Sessions, Decisions, Authority, and Validation are Dope-owned state. Phase 3 Plans/PlanSteps/Tasks are Dope-owned state for the qualified `0.3.6` implementation, but are not guaranteed as the forward planning ontology.
 
 Provider-specific IDs, context formats, sessions, and capabilities remain adapter concerns.
 
@@ -139,12 +139,12 @@ Foundation Spike 0 — qualify Theia
 -> Phase 2 — Project Mind
 -> Phase 3 — Planning Foundation
 -> Phase 4 — Physical Software Model
--> Phase 5 — Visual Planning
+-> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
 -> Phase 7 — Scoped Delegation
 -> Phase 8 — Development Sessions
 
-Phase 3 establishes the provider-free planning foundation. The core pre-AI milestone is a real IDE plus Project Mind plus Planning plus the Physical Software Model plus Visual Planning, all useful with zero configured LLMs.
+Phase 3 is a completed provider-free planning experiment/product increment. The forward core is completed only after the Physical Software Model and Visual Software Planning redesign. Phase 5 is allowed to replace Phase 3 Planning rather than preserve it.
 
 ## Non-goals
 
@@ -179,7 +179,7 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 3 — Planning** is Qualified for its applicable scope at `0.3.6` (see `docs/tasks/p3/closeout.md`). The next gate is post-Phase-3 `/docs-review`; Phase 4 AI Presence requires separate owner approval.
+**Product Phase 3 — Planning** is Qualified for its applicable scope at `0.3.6` (see `docs/tasks/p3/closeout.md`). Its implementation is historical evidence, not a forward compatibility contract. The next implementation target is Product Phase 4 — Physical Software Model; execution still requires its own activation/planning authority.
 
 Phase 2's `0.2.6` P6 audit remains **Not Qualified**. The owner explicitly accepted its remaining evidence gaps for sequencing and closed Phase 2 without relabeling the audit Green. The preserved gaps are recorded in `docs/tasks/p2/closeout.md`; Phase 1's historical Not Qualified result also remains unchanged.
 
@@ -191,7 +191,7 @@ Model/provider integration, Agent Mind, tool execution, AI mutation, scoped dele
 
 ## Phase 3 result — live human-first Planning
 
-Phase 3 adds Plan, PlanStep and Task as Dope-owned canonical planning state. Plans carry objective/context/status, ordered live steps and human-visible revision/history. Tasks are bounded units of work attached to plan steps, with requirements/constraints, project-relative working-set files, Project Mind links, status, completion notes and developer-entered validation notes.
+Phase 3 added Plan, PlanStep and Task as canonical planning state for the qualified `0.3.6` implementation. Those contracts may be removed or replaced by the graph-centered Phase 5 system; no compatibility layer or migration is implied by their historical qualification. Plans carry objective/context/status, ordered live steps and human-visible revision/history. Tasks are bounded units of work attached to plan steps, with requirements/constraints, project-relative working-set files, Project Mind links, status, completion notes and developer-entered validation notes.
 
 Planning remains useful with no model configured. Project Mind and Planning stay separate domain boundaries: Project Mind stores durable knowledge; Planning stores execution intent. Planning references Project Mind artifacts by stable ID instead of converting or duplicating them. Creating a Plan from a Decision creates a new Plan linked back to the Decision; it does not mutate the Decision into work.
 

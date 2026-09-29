@@ -68,7 +68,7 @@ The exact persistence/export mechanism may evolve. The invariant is that irrepla
 - Phase 2 — Project Mind: use Dope's own durable knowledge system to understand Dope.
 - Phase 3 — Planning Foundation: plan real Dope work inside Dope.
 - Phase 4 — Physical Software Model: map Dope's implemented systems, subsystems, components and code relationships from evidence.
-- Phase 5 — Visual Planning: design target Dope architecture from the physical model and tie transformations to Plans/Tasks.
+- Phase 5 — Visual Software Planning: design target Dope architecture from the physical model and tie transformations to Plans/Tasks.
 - Phase 6 — AI Presence: let provider-independent AI consume Dope-owned project and software-model context while assisting on Dope.
 - Phase 7 — Scoped Delegation: delegate bounded Dope changes through the normal authority/review path.
 - Phase 8 — Development Sessions: qualify a real end-to-end "Dope Builds Dope" feature flow.

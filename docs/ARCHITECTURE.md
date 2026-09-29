@@ -177,7 +177,13 @@ Likely shape:
 
 Early phases should create only the packages they need.
 
-## Core services
+## Pre-stability architecture rule
+
+Dope is still pre-stability. Internal implementations from earlier product phases do not receive automatic compatibility guarantees.
+
+Prefer clean replacement when preserving an older internal schema, API, persistence format or UI would require adapters, dual state, synchronization or migration machinery that does not serve a concrete user/external commitment.
+
+Historical qualification remains evidence of what worked at that version; it does not require the implementation to survive. When a replacement becomes authoritative, remove superseded code and obsolete tests instead of maintaining parallel architectures.
 
 ### Software Model
 
@@ -197,6 +203,8 @@ Owns repository/workspace discovery, analyzer orchestration, incremental indexin
 
 The normalized software graph is language-independent. Semantic analyzers are language-specific.
 
+Phase 4 is designed independently from `@dope/planning`, `.dope/planning.json`, the Phase 3 Planning RPC/UI and Plan/PlanStep/Task semantics. Do not add compatibility layers between them merely because Phase 3 shipped first.
+
 The first planned implementation is TypeScript/JavaScript-first and should prefer the TypeScript compiler/project/type-checker semantics where they provide authoritative symbol resolution, with parser/framework extractors added behind adapters as required.
 
 Framework extractors may produce deterministic concepts such as routes, jobs or schemas when explicit recognition rules support them.
@@ -207,11 +215,11 @@ Owns ProjectArtifact identity/relationships, persistence contracts, provenance, 
 
 No Theia or provider dependency.
 
-### Planning
+### Phase 3 Planning — current historical implementation
 
-Owns Plan, PlanStep, Task, status transitions, ordering, relationships to Project Mind/files, document and per-Plan revisions, and planning history.
+At `0.3.6`, the implemented Planning subsystem owns Plan, PlanStep, Task, status transitions, ordering, relationships to Project Mind/files, document and per-Plan revisions, and planning history.
 
-No model is required. Planning is canonical execution intent, not ProjectArtifact storage and not Theia workspace state.
+Those contracts describe the qualified Phase 3 implementation only. They are not a forward architecture constraint. Product Phase 4 must not shape the Physical Software Model around them, and Product Phase 5 may replace this domain, persistence, RPC, UI and tests rather than adapting the new graph-centered architecture to the old one.
 
 ### Persistence
 
@@ -337,9 +345,9 @@ Agent proposal
 
 Canonical product state includes, as phases introduce it:
 - ProjectArtifact
-- Plan / PlanStep / Task
+- Phase 3 Plan / PlanStep / Task while that historical Planning subsystem remains installed
 - developer-authored System/Subsystem declarations and architecture constraints
-- PlanningGraph transformations/target intent
+- future graph-centered planning/target intent as defined by Phase 5
 - accepted AgentWorkingState fields
 - ownership
 - ProposedAction lifecycle

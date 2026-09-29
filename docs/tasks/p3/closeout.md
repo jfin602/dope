@@ -38,3 +38,12 @@ P5 retained a first transient Electron frontend `ErrorEvent` in restart integrat
 Phase 1's `docs/tasks/p1/closeout.md` stays **Not Qualified**: interactive Test Explorer success, GUI restoration, extension function/restart and customization/theme persistence remain historically failed or unproved. Phase 2's `docs/tasks/p2/closeout.md` stays **Not Qualified**: hidden initial legacy migration control, its own missing direct dirty same-renderer workspace-switch proof and exact `0.2.6` native launch/direct native Project Mind visual proof remain unresolved for that candidate. P5's Planning workspace-switch and restart observations are new Phase 3 evidence, not retroactive Phase 1/2 repair. The owner Phase 2 sequencing waiver is not a Green audit.
 
 **Next action:** post-Phase-3 `/docs-review` of current product/architecture/roadmap and retained gaps, then explicit owner approval before any Phase 4 AI Presence prompt or implementation. No Phase 4 execution is authorized by this closeout.
+
+
+## Post-closeout routing update
+
+After this audit completed and the runner committed the Phase 3 closeout as `ed3bed1d2935c049ce5a6259b71b8b9c50f3340b` (`0.3.6 Closeout`), ADR 0007 changed the forward roadmap.
+
+The Phase 3 qualification above remains historical evidence for exactly the implementation it audited. It does **not** create a forward compatibility requirement for Plan/PlanStep/Task, `.dope/planning.json`, Planning RPC/UI, or their tests.
+
+The next product target is Product Phase 4 — Physical Software Model, not AI Presence. Phase 4 is intentionally independent from Phase 3 Planning. Product Phase 5 — Visual Software Planning may replace the Phase 3 planning implementation completely, without a compatibility adapter or migration, unless a later explicit decision identifies a concrete user-data or external-interface reason to preserve compatibility.

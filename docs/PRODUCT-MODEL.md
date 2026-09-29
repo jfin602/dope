@@ -83,7 +83,9 @@ The legacy spike Note has no historical timestamps. Its migrated creation/update
 
 ### Phase 3 — Planning
 
-Add:
+Historical implemented model at `0.3.6`. This section records what Phase 3 qualified; it is not a compatibility promise or required ontology for Product Phase 5 and later.
+
+Phase 3 added:
 - Plan
 - PlanStep
 - Task
@@ -147,18 +149,21 @@ Initial scope is TypeScript/JavaScript-first and establishes:
 
 The extracted physical graph is rebuildable derived state. Developer-authored System/Subsystem declarations and architecture constraints are canonical project architecture state.
 
-### Phase 5 — Visual Planning
+### Phase 5 — Visual Software Planning
 
-Connect the physical software model to the planning experience.
+Design the planning/work model from the Physical Software Model outward rather than adapting the graph to Phase 3 Planning.
 
 Introduce:
 - physical architecture projections with semantic zoom;
 - planning graphs that reference physical nodes;
 - proposed graph transformations for add/modify/remove/move/split/merge/relationship changes;
-- linkage from planning transformations to Plans/PlanSteps/Tasks;
-- target-versus-physical reconciliation after implementation.
+- graph-derived work decomposition, dependencies, acceptance criteria and validation targets;
+- target-versus-physical reconciliation after implementation;
+- a deliberate cutover from the Phase 3 planning implementation when the replacement is ready.
 
-Visual planning remains useful with no model configured. A diagram is a projection of project state, not an independent source of architectural truth.
+Phase 5 does not assume Plan -> PlanStep -> Task is the final ontology. It may preserve useful names/concepts or replace the Phase 3 domain, `.dope/planning.json`, RPC, UI and associated tests completely. No compatibility adapter or migration is required unless separately justified by valuable user data or an external product commitment.
+
+Visual software planning remains useful with no model configured. A diagram is a projection of project state, not an independent source of architectural truth.
 
 ### Phase 6-7 — AI collaboration and delegation
 
@@ -216,7 +221,7 @@ Later AI should be able to detect conflict with an accepted Decision.
 
 ### Plan
 
-A live control structure.
+Phase 3 historical planning semantics. A Plan is a live control structure in the `0.3.6` implementation; this shape is not guaranteed to survive the Phase 5 redesign.
 
 A Plan has explicit objective/context, status, ordered PlanSteps, a visible revision, links to supporting Project Mind knowledge/files and append-only mutation history. Plan edits are explicit saved mutations rather than hidden derivation from chat or editor state.
 
@@ -230,7 +235,7 @@ Changing a step, task, assumption-like plan text or order updates canonical Plan
 
 ### PlanStep
 
-An ordered unit inside a Plan.
+Phase 3 historical planning semantics. An ordered unit inside a Plan in the `0.3.6` implementation; Phase 5 may remove this concept.
 
 Initial statuses are `pending`, `active`, `blocked`, `complete`, `skipped` and `superseded`. Blocking requires a visible reason. Reopening or unblocking is explicit. Multiple steps may be active when the developer chooses; Phase 3 does not impose a synthetic single-active-step scheduler.
 
@@ -238,7 +243,7 @@ Tasks reference their parent Plan and PlanStep; the step does not duplicate task
 
 ### Task
 
-A bounded developer-owned unit of executable work.
+Phase 3 historical planning semantics. A bounded developer-owned unit of executable work in the `0.3.6` implementation; the graph-centered work model may reshape or replace it.
 
 A Task links objective, requirements, constraints, parent Plan/PlanStep, Project Mind context, project-relative working-set files, status, completion notes and developer-entered validation notes. It does not require AI ownership and has no AI owner field in Phase 3.
 
