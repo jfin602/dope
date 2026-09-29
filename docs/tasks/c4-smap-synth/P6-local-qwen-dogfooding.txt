@@ -1,111 +1,103 @@
-TASK: Correction 4 / P6 — Local Qwen sMap dogfooding and qualification
+TASK: Correction 4 / P6 — sMap Analyze Project onboarding and proposal review UI
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
-- Browser required: yes.
+- Browser required: no.
 
 VERSIONING
 - Required unchanged project version: `0.4.6`.
 
 GOAL
 
-Directly qualify the exact P5 candidate on the real Dope repository through the real local LM Studio + Qwen3-Coder-30B-A3B-Instruct reference path, including consent, capability probe, warm-up ordering, structured proposal review/correction/acceptance, restart and corrected package evidence.
-
-This is a qualification prompt. Product repairs are allowed only when direct evidence exposes a concrete defect; every repair requires permanent regression coverage and replay of affected evidence.
+Implement the bounded sMap first-use UX: explicit Analyze Project consent, streamlined local LM Studio/model setup, proposal explanation/review/correction, manual/existing architecture paths and explicit acceptance.
 
 PREFLIGHT
 
-Read BOOT/AGENTS, ADRs 0009-0011, current Software Map/storage authority, this correction assessment/plan/README, exact P1-P5 commits/results, Phase 4 closeout and relevant existing browser/package evidence.
+Read current authority, this correction assessment/plan and exact successful P1-P5 source/results. Inspect current SoftwareMapController/Widget/frontend wiring, Theia preference/application-state APIs and stale-workspace guards before editing.
 
-Require:
-- exact successful P5 handoff;
-- package `0.4.6`;
-- clean intended Git state;
-- local LM Studio reachable;
-- Qwen3-Coder-30B-A3B-Instruct reference family available.
+Require exact P5 predecessor, clean intended Git state and package `0.4.6`.
 
-Record the exact LM Studio endpoint mode and exact model ID returned by model discovery. Do not silently substitute a cloud provider or different model family.
+FIRST-USE CONSENT
 
-CONTROLLED PROJECT STATE
+For an uninitialized single local project:
+- automatically offer **Analyze Project?** without starting analysis;
+- **Not now** performs no backend analysis and no project write;
+- suppress repeated automatic nagging only as presentation/user-session state;
+- sMap uninitialized empty state always exposes **Analyze Project** to reopen the flow;
+- initialized projects expose ordinary Refresh instead.
 
-The real Dope repository already has `.dope/architecture.json`.
+Do not start analysis merely because the widget/view/workspace attaches.
 
-Before changing anything:
-- record Git status;
-- record exact architecture bytes/hash;
-- record any preexisting `.dope/smap.json` bytes/hash.
+LOCAL SETUP
 
-Use controlled reversible state to exercise an uninitialized synthesis path independently from the existing declaration. Do not feed the existing declaration into the ArchitectureEvidencePacket as physical evidence.
+If synthesis is selected and no ready model choice exists:
+- probe the local LM Studio default;
+- discover models;
+- prefer/show the Qwen3-Coder-30B-A3B-Instruct reference family when available;
+- allow compatible model selection and manual endpoint entry;
+- persist endpoint/model as user/application preference using supported Theia mechanisms, not project files;
+- keep auth/session secret handling bounded and do not persist a token insecurely merely for convenience;
+- run/display the P4 structured-output capability probe before marking setup ready.
 
-Unless the owner explicitly directs otherwise outside this prompt, restore the project-local architecture/initialization files byte-for-byte to preflight state before completion and prove Git state restoration.
+Keep setup inside the Analyze Project flow rather than sending the user through an unrelated settings journey.
 
-DIRECT BROWSER MATRIX
+REVIEW / EXPLANATION
 
-Using the real browser-hosted Dope workbench:
+For `review_required` render the proposed System -> Subsystem -> Component hierarchy.
 
-1. prove the uninitialized Analyze Project offer appears without analysis;
-2. choose Not now and prove no map/marker/canonical mutation occurs;
-3. open sMap and re-enter through Analyze Project;
-4. exercise LM Studio auto-detection or explicit local endpoint;
-5. discover/select the actual Qwen reference model;
-6. observe successful structured-output capability probe;
-7. start real initialization and establish that synthetic warm-up precedes the ArchitectureEvidencePacket request;
-8. obtain the real Qwen ArchitectureProposal for Dope;
-9. prove proposal JSON is schema/reference valid and every shown hard evidence ref resolves to the exact deterministic packet;
-10. inspect representative System / Subsystem / Component proposals, confidence, rationale and human-readable evidence;
-11. drill at least several hard refs through deterministic evidence/source navigation;
-12. exercise correction controls: rename, reparent, add/remove and a merge/split-equivalent child movement path;
-13. prove an invalid canonical draft cannot be accepted;
-14. explicitly accept a valid controlled draft and prove canonical architecture + initialization state become coherent;
-15. prove Physical Map publication/reconciliation follows acceptance rather than preceding it;
-16. restart/reopen and prove initialized state/Refresh works;
-17. exercise the existing/manual-declaration initialization path in a controlled scenario;
-18. verify Project Mind/editor/terminal/basic IDE behavior remains usable.
+For each proposal node expose:
+- name/purpose;
+- numeric confidence clearly labeled as confidence, not probability;
+- rationale;
+- human-readable `evidence`;
+- a separate hard-evidence/source section resolving `evidenceRefs`.
 
-Do not judge Qwen by requiring an exact match to the old Dope declaration. Record concrete proposal content, valid provenance, ambiguities/open questions and any obvious unsupported claims. Developer authority is the product invariant.
+Hard refs must remain navigable to deterministic evidence/source where available. Never visually present model prose as the hard evidence record.
 
-WARM-UP FAILURE NEGATIVE
+Show open questions and unassigned evidence honestly.
 
-Using a controlled reversible bad/unavailable provider/model state:
-- trigger warm-up failure;
-- prove the real ArchitectureEvidencePacket is not submitted;
-- prove no proposal/canonical architecture/marker is established;
-- prove retry/model/settings/cancel recovery is visible.
+CORRECTION CONTROLS
 
-Do not expose actual secrets in evidence.
+Provide practical non-canvas controls sufficient to:
+- confirm/rename;
+- edit canonical ID and purpose;
+- reparent;
+- add/remove/replace;
+- move children between boundaries so merge/split workflows are achievable;
+- edit/confirm deterministic implementation-root suggestions.
 
-RESTART / PACKAGE
+Block acceptance until the resulting canonical declaration passes backend/domain validation.
 
-Run focused/aggregate checks and current restart suite.
+Explicit Accept calls the P5 durable acceptance path. Cancel discards review without project writes.
 
-Build/inspect the exact corrected `0.4.6` Linux AppImage:
-- path/mode/size/SHA-256;
-- embedded package/app version;
-- expected Software Map/code-analysis/Theia composition;
-- no accidental general AI/Agent Runtime package;
-- native launch/readiness and controlled close where environment permits.
+Do not implement drag/drop graph visualization or Phase 5 Planning Map.
 
-EVIDENCE
+EXISTING / MANUAL PATH
 
-Create `docs/tasks/c4-smap-synth/P6-smap-synth-evidence.md` containing:
-- exact P5/P6 source identity;
-- Git/project-state preflight and restoration;
-- LM Studio/reference model identity;
-- request-order/data-separation observations;
-- deterministic packet summary/fingerprint;
-- proposal summary and representative valid evidence refs;
-- correction/acceptance observations;
-- warm failure negative;
-- restart/browser/package results;
-- any repair and replay;
-- residual Evidence Gaps.
+When a valid existing declaration is present but sMap is uninitialized, expose **Use existing architecture** as an explicit developer choice.
 
-VALIDATION
+Provide a bounded manual/greenfield hierarchy editor that can establish valid canonical architecture without a model.
 
-Run focused c4 tests, `npm run check`, `npm run test:restart`, `npm run codex:phase:validate -- c4-smap-synth`, unchanged-version/no-root-lock/Theia/Electron/internal-reference checks and `git diff --check`.
+RACE / ACCESSIBILITY TESTS
 
-Version remains exactly `0.4.6`.
+Extend focused controller/widget tests for:
+- attach causes no analysis;
+- decline and later Analyze Project;
+- provider/model preference is not project state;
+- stale workspace/provider/proposal responses cannot render into a new root;
+- setup/probe errors are recoverable;
+- proposal evidence prose versus hard refs;
+- correction draft validation;
+- cancel/accept state;
+- existing/manual path;
+- keyboard labels/focus and dark/light-compatible semantic styling for new controls.
+
+P7 owns direct browser observation.
+
+Run focused UI/backend tests, `npm run check`, restart, correction validation, unchanged-version/coherence guards and `git diff --check`.
+
+The runner owns staging/commit.
 
 FINAL RESPONSE
 
-Report exact candidate, actual LM Studio/Qwen identity, direct workflow result, warm-up ordering/failure proof, proposal/provenance observations, developer-correction/acceptance proof, restart/package result, restored Git/project state, repairs and residual gaps. State readiness for P7 only if evidence supports it.
+Report first-use flow, setup persistence boundary, review/correction capabilities, evidence UX, manual/existing path, race/accessibility guards, checks and readiness for P7.
