@@ -22,7 +22,7 @@ export function relationshipId(kind: RelationshipKind, sourceId: string, targetI
 
 export function assignOwnership(node: CodeEntityNode, architecture: ArchitectureDeclaration, projectId: string): CodeEntityNode {
     const ownership = ownershipForPath(architecture, node.path);
-    return { ...node, ownership, parentId: ownership.componentId ?? ownership.subsystemId ?? ownership.systemId ?? projectId };
+    return { ...node, ownership, parentId: node.parentId ?? ownership.componentId ?? ownership.subsystemId ?? ownership.systemId ?? projectId };
 }
 
 function validateEvidence(value: Evidence): Evidence {

@@ -14,8 +14,49 @@ const named = (node: ts.Node): node is ts.Node & { name: ts.Node } => 'name' in 
 
 /** Full rebuild; P3 owns generation, caching and cancellation. */
 export class TypeScriptAnalyzer implements CodeAnalyzer {
+    private readonly sourceCache = new Map<string, Map<string, { text: string; file: ts.SourceFile }>>();
+
+    /** Cheap configured inputs for exact fingerprinting, including newly included files. */
+    inputPaths(projectRoot: string): { sources: string[]; configs: string[] } {
+        const root = resolve(projectRoot);
+        const configs = new Set<string>();
+        const configFiles = new Set<string>();
+        const sources = new Set<string>();
+        const discover = (dir: string): void => {
+            for (const entry of readdirSync(dir, { withFileTypes: true })) {
+                const path = resolve(dir, entry.name);
+                if (entry.isDirectory() && !ignored.has(entry.name)) discover(path);
+                else if (entry.isFile() && /^(tsconfig|jsconfig)(?:\.[^/]*)?\.json$/.test(entry.name)) configs.add(path);
+                if (entry.isFile() && entry.name.endsWith('.json')) configFiles.add(path);
+            }
+        };
+        discover(root);
+        const queue = [...configs];
+        for (let i = 0; i < queue.length; i++) {
+            const config = queue[i];
+            const read = ts.readConfigFile(config, ts.sys.readFile);
+            if (read.error) continue;
+            const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, resolve(config, '..'), undefined, config);
+            for (const file of parsed.fileNames) {
+                const path = relative(root, resolve(file));
+                if (path && path !== '..' && !path.startsWith('../') && !isAbsolute(path) && sourceFile.test(file)) sources.add(resolve(file));
+            }
+            for (const reference of parsed.projectReferences ?? []) {
+                const path = ts.resolveProjectReferencePath(reference);
+                if (!configs.has(path) && (path === root || path.startsWith(`${root}/`))) { configs.add(path); queue.push(path); }
+            }
+        }
+        return { sources: [...sources].sort(), configs: [...new Set([...configFiles, ...configs])].sort() };
+    }
+
+    reset(projectRoot: string): void {
+        const prefix = `${resolve(projectRoot)}\0`;
+        for (const key of this.sourceCache.keys()) if (key.startsWith(prefix)) this.sourceCache.delete(key);
+    }
+
     analyze(projectRoot: string): CodeAnalysisResult {
         const root = resolve(projectRoot);
+        let reusedSourceFiles = 0;
         const nodes = new Map<string, CodeEntityNode>();
         const relationships = new Map<string, ModelRelationship>();
         const evidence = new Map<string, Evidence>();
@@ -96,7 +137,26 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
                 fileNames.forEach(file => paths.add(resolve(file)));
                 // Analyze referenced source directly; an unbuilt composite project's .d.ts is not required.
                 const options = { ...parsed.options, noEmit: true, composite: false };
-                const program = ts.createProgram({ rootNames: fileNames, options });
+                const cacheKey = `${root}\0${configPath}`;
+                const cache = this.sourceCache.get(cacheKey) ?? new Map<string, { text: string; file: ts.SourceFile }>();
+                const host = ts.createCompilerHost(options);
+                const originalGet = host.getSourceFile.bind(host);
+                const analyzable = new Set(fileNames);
+                const reused = new Set<string>();
+                host.getSourceFile = (file, languageVersion, onError, shouldCreateNewSourceFile) => {
+                    if (!analyzable.has(file)) return originalGet(file, languageVersion, onError, shouldCreateNewSourceFile);
+                    const text = ts.sys.readFile(file);
+                    if (text === undefined) return undefined;
+                    const prior = cache.get(file);
+                    if (!shouldCreateNewSourceFile && prior?.text === text) { reused.add(file); return prior.file; }
+                    const parsed = originalGet(file, languageVersion, onError, shouldCreateNewSourceFile);
+                    if (parsed) cache.set(file, { text, file: parsed });
+                    return parsed;
+                };
+                const program = ts.createProgram({ rootNames: fileNames, options, host });
+                reusedSourceFiles += reused.size;
+                for (const file of cache.keys()) if (!analyzable.has(file)) cache.delete(file);
+                this.sourceCache.set(cacheKey, cache);
                 const files = fileNames.map(file => program.getSourceFile(file));
                 fileNames.forEach((file, index) => { if (!files[index]) report('missing-source', `Compiler did not load ${pathOf(file)}`, configPath); });
                 programs.push({ program, options, files: files.filter((file): file is ts.SourceFile => !!file) });
@@ -214,6 +274,6 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
             relationships: ordered(relationships.values()).map(edge => ({ ...edge, evidenceIds: [...new Set(edge.evidenceIds)].sort() })),
             evidence: ordered(evidence.values()),
             status: { completeness: !projects.length ? 'failed' : errors.size ? 'partial' : 'complete',
-                errors: [...errors.values()].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) } };
+                errors: [...errors.values()].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) }, reusedSourceFiles };
     }
 }

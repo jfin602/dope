@@ -11,7 +11,9 @@ const analyzer = new TypeScriptAnalyzer();
 
 test('configured TS/JS projects, references and semantic edges are deterministic with source evidence', () => {
   const first = analyzer.analyze(fixture);
-  assert.deepEqual(first, analyzer.analyze(fixture));
+  const repeat = analyzer.analyze(fixture);
+  assert.ok(repeat.reusedSourceFiles! > 0);
+  assert.deepEqual({ ...first, reusedSourceFiles: 0 }, { ...repeat, reusedSourceFiles: 0 });
   assert.deepEqual(first.projects.map(project => project.configPath), [
     'packages/app/tsconfig.json', 'packages/lib/tsconfig.json', 'tsconfig.json',
   ]);

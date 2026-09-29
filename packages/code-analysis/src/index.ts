@@ -8,6 +8,8 @@ export interface CodeAnalysisResult {
     relationships: ModelRelationship[];
     evidence: Evidence[];
     status: AnalysisStatus;
+    /** Diagnostic only: unchanged compiler source units reused from the previous pass. */
+    reusedSourceFiles?: number;
 }
 export interface CodeAnalyzer {
     analyze(projectRoot: string): CodeAnalysisResult;
