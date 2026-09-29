@@ -1,0 +1,81 @@
+TASK: Correction 4 / P1 — sMap synthesis contracts and proposal validation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Establish the provider-independent Software Map contracts required by ADR 0010/0011: deterministic evidence packet types, strict structured ArchitectureProposal validation, initialization lifecycle types and a narrow architecture-synthesis provider boundary.
+
+Do not add a real model connection yet.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, PRINCIPLES, PRODUCT-MODEL, ARCHITECTURE, software-map-storage, workflow/stability, ADRs 0004/0008/0009/0010/0011, Phase 4 closeout, and this correction assessment/plan.
+
+Require package `0.4.6`, reachable Phase 4 closeout `fac88712bb55176d3d6d54fbe6034de8b0f801ff`, current ADR 0010/0011 authority, clean intended Git state, Node 24, no root package-lock, Theia 1.75.0 and Electron 42.8.1.
+
+ADR 0010/0011 supersede only the stale AGENTS c4 statements that forbid the narrow synthesis capability or say deterministic analysis alone creates the initial architecture proposal. Reconcile those stale AGENTS lines in this prompt so later agents receive coherent authority. Do not authorize general AI Presence.
+
+INSPECT FIRST
+
+Trace current `@dope/software-map` contracts/parser/exports/service and all SoftwareMapStatus/service consumers/tests before editing.
+
+IMPLEMENT
+
+Add provider-independent Dope-owned types/contracts for:
+- ArchitectureEvidencePacket and typed deterministic evidence items;
+- ArchitectureProposal;
+- proposed system/subsystem/component nodes with temporary `proposalKey`;
+- numeric finite `confidence` in inclusive 0..1;
+- `rationale`, machine-verifiable `evidenceRefs`, human-readable `evidence`;
+- `unassignedEvidenceRefs`, `openQuestions`, bounded `evidenceRequests`;
+- initialization lifecycle `uninitialized | analyzing | review_required | initialized`;
+- a narrow ArchitectureSynthesisProvider capability interface.
+
+Define/export a strict JSON Schema for ArchitectureProposal structured output plus strict parsing/validation.
+
+Reject at minimum:
+- malformed/unsupported/extra structured fields where schema strictness applies;
+- duplicate proposal keys;
+- invalid kind or System -> Subsystem -> Component parenting;
+- missing parents or cycles;
+- non-finite/out-of-range confidence;
+- empty/missing hard evidence refs for proposed nodes;
+- refs not present in the exact packet;
+- prose `evidence` attempting to substitute for hard refs;
+- invalid/unbounded evidence requests;
+- model-created packet evidence IDs.
+
+Temporary proposal keys are never canonical architecture IDs.
+
+Do not add LM Studio/OpenAI/Codex provider types or SDK dependencies to `@dope/software-map`.
+
+Keep existing Physical Map contracts/source evidence behavior compatible within this pre-stability correction unless an additive type change is required.
+
+TESTS
+
+Add focused unit coverage for:
+- valid proposal/schema;
+- every rejection above;
+- packet/reference validation;
+- confidence semantics;
+- hierarchy cycle/order;
+- temporary identity distinction;
+- lifecycle contract.
+
+Run focused Software Map tests, `npm run check`, `npm run test:restart`, `npm run codex:phase:validate -- c4-smap-synth`, unchanged-version/internal-reference/no-root-lock/Theia/Electron checks and `git diff --check`.
+
+The runner owns staging/commit. Do not commit manually.
+
+SCOPE
+
+No deterministic packet producer yet, no network/model calls, no initialization persistence/UI, no Phase 5 canvas, no Agent Mind/general Model Runtime.
+
+FINAL RESPONSE
+
+Report exact new contracts/schema/validation invariants, AGENTS reconciliation, focused tests, aggregate checks, unchanged `0.4.6` proof and readiness for P2.
