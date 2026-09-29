@@ -1,0 +1,154 @@
+TASK: Correction 4 / P3 — Deterministic framework evidence extraction
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Close the framework-semantics gap exposed by the committed P2 ArchitectureEvidencePacket before any LLM provider is introduced.
+
+P2 is accepted historical execution. Do not rewrite P1 or P2. Extend the deterministic evidence layer with a provider-independent framework-extraction seam and qualify Theia/Inversify as the first concrete extractor.
+
+PREFLIGHT
+
+Read current authority, ADR 0010, this correction assessment/plan, exact committed P1/P2 prompts/results, and current architecture-evidence/TypeScript analyzer source/tests.
+
+Require:
+- committed P2 predecessor `99f16e871b403be96c35078ec94a3ebb5ccf3990`;
+- package `0.4.6`;
+- clean intended Git state;
+- the P2 real-Dope baseline: 379 ordered facts, about 140 KB JSON, about 13 seconds, and zero framework facts.
+
+INSPECT FIRST
+
+Trace the P2 packet producer and determine how framework extraction can reuse existing TypeScript program/checker semantics instead of causing an avoidable second full repository parse.
+
+Inspect representative Dope framework wiring:
+- package `theiaExtensions` frontend/backend declarations;
+- `ContainerModule`;
+- Inversify `bind` / `rebind` registrations;
+- `RpcConnectionHandler`;
+- `ServiceConnectionProvider.createProxy`;
+- `bindViewContribution`;
+- `FrontendApplicationContribution`;
+- `WidgetFactory`;
+- `AbstractViewContribution` widget/default-area metadata.
+
+FRAMEWORK EXTRACTOR SEAM
+
+Add a provider-independent deterministic framework extractor contract behind code analysis.
+
+Conceptually:
+
+`semantic/repository evidence + FrameworkEvidenceExtractor[] -> ArchitectureEvidencePacket`
+
+Each extractor:
+- has deterministic framework/producer identity;
+- emits facts only from explicit source/config/package evidence;
+- never creates System/Subsystem/Component proposals;
+- never emits model-generated interpretation;
+- retains hard provenance;
+- omits ambiguous/unsupported patterns instead of guessing.
+
+Do not build a general plugin ecosystem; implement only the bounded seam needed now.
+
+FRAMEWORK EVIDENCE
+
+Use or additively extend the existing `kind: framework` packet item so it can express normalized deterministic metadata such as:
+- framework identity;
+- registration/concept kind;
+- name;
+- target/implementation when recoverable;
+- role/service path/widget area when recoverable;
+- source path;
+- physical source evidence IDs.
+
+Keep the contract generic enough for future framework extractors without implementing those frameworks now.
+
+THEIA / INVERSIFY EXTRACTOR
+
+Deterministically recognize where present:
+- package `theiaExtensions` frontend/backend declarations;
+- `ContainerModule` boundaries;
+- DI `bind` / `rebind` registrations and statically recoverable service/target relationships;
+- `RpcConnectionHandler` service registrations;
+- `ServiceConnectionProvider.createProxy` frontend proxies;
+- `bindViewContribution`;
+- `FrontendApplicationContribution`;
+- `WidgetFactory`;
+- `AbstractViewContribution` widget/default-area metadata when statically recoverable.
+
+Prefer TypeScript import/module resolution or equivalent provenance. A same-named local class/function imported from an unrelated module must not become a framework fact.
+
+When provenance cannot be established deterministically, emit no framework fact.
+
+HARD PROVENANCE
+
+Source-level framework registrations must resolve to physical Evidence with:
+- class `framework`;
+- deterministic producer/version;
+- source path;
+- source span when source syntax provides one.
+
+Packet `sourceEvidenceIds` must reference those records.
+
+Manifest-level framework facts must retain the exact manifest path and deterministic source identity.
+
+REFINEMENT
+
+Make P2's existing `kind: framework` evidenceRequest useful. Bounded framework refinement may return additional deterministic framework context around known packet refs/paths only. Preserve P2 staleness, bounds and filesystem-safety rules.
+
+PERFORMANCE
+
+Avoid an unnecessary second full TypeScript parse when the current semantic pass can be reused or cleanly extended.
+
+Regenerate the real Dope packet and compare elapsed time with the P2 ~13 second baseline. A material avoidable regression requires bounded repair/explanation; there is no fixed timing threshold.
+
+PERMANENT TESTS
+
+Add positive Theia/Inversify fixtures and negative same-name/unrelated-module fixtures.
+
+Prove:
+- framework facts have hard provenance;
+- order/fingerprint are deterministic;
+- repeated collection is stable;
+- framework facts do not create architecture nodes;
+- declaration-only changes remain irrelevant;
+- evidence collection still publishes no initial Physical Map;
+- bounded framework refinement works;
+- existing P2 safety remains Green.
+
+REAL DOPE GATE
+
+Regenerate the packet on the real Dope repository.
+
+Require:
+- framework fact count > 0;
+- representative frontend/view framework evidence;
+- representative backend/RPC framework evidence;
+- representative DI registration evidence;
+- hard provenance resolves to real source/config;
+- repeated collection is deterministic;
+- no architecture nodes are created.
+
+Record total facts, framework fact count, serialized size and elapsed collection time.
+
+Do not use the LLM yet.
+
+VALIDATION
+
+Run focused framework/packet/analyzer tests, P1/P2 suites, `npm run check`, `npm run test:restart`, `npm run codex:phase:validate -- c4-smap-synth`, unchanged-version/coherence checks and `git diff --check`.
+
+The runner owns staging/commit.
+
+SCOPE
+
+No LM Studio/network/provider implementation, no proposal generation, no canonical acceptance/UI, no Phase 5 canvas, no general Model Runtime.
+
+FINAL RESPONSE
+
+Report the framework extractor seam, Theia/Inversify facts supported, provenance/false-positive protections, real Dope before/after packet metrics, tests/checks and readiness for P4.
