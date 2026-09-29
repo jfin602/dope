@@ -3,6 +3,7 @@
 Status: Accepted
 Date: 2026-09-29
 Complements: ADR 0004, ADR 0006, ADR 0010
+Amended by: ADR 0012
 
 ## Context
 
@@ -115,6 +116,16 @@ The reference decision does not lock:
 
 Those are runtime/configuration choices and may vary by machine.
 
+### Reference context configuration and request budgeting
+
+The current local Qwen development/qualification setup uses a **65,536-token loaded context**.
+
+That value is runtime headroom, not a Software Map contract and not a preferred prompt size. Provider/model adapters expose the usable context/input capability to synthesis orchestration. Individual architecture-analysis calls reserve room for instructions, structured output and safety/provider overhead and should normally use substantially less than the full available window.
+
+ADR 0012 replaces the forward one-shot synthesis expectation with hierarchy-first bounded calls over deterministic evidence views. Repository growth may increase total evidence and call count, but it must not force individual requests to grow without bound.
+
+> Available context is headroom, not a target.
+
 ## Relationship to ADR 0006
 
 ADR 0011 does not supersede ADR 0006.
@@ -147,3 +158,10 @@ Qualification must separately prove:
 - The first real sMap synthesis request does not double as a cold model-load request.
 - Project evidence is not sent merely to probe or warm the model.
 - Hosted providers remain optional and can be added later through the same Dope-owned contracts.
+
+
+## ADR 0012 forward amendment
+
+The current `c4-smap-synth` stack may finish against its authored prompt sequence. After it closes, `c4-smap-hierarchical-synthesis` becomes mandatory before the storage correction and Phase 5.
+
+The reference LM Studio/Qwen path remains valid, but qualification shifts from proving one large real request can complete to proving a bounded hierarchy-first sequence can produce materially credible System boundaries, visible user progress, source-backed final output and an end-to-end initial-analysis result within the eight-minute performance objective.

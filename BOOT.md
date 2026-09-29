@@ -13,9 +13,9 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** ADR 0009 as amended by ADR 0010 requires mandatory correction `c4-architecture-discovery` at unchanged `0.4.6` before Phase 5 planning/activation. ADR 0011 selects the first local synthesis reference path. The correction preserves the Phase 4 semantic/evidence substrate while adding opt-in sMap initialization, deterministic ArchitectureEvidencePacket production, bounded structured architecture synthesis, provider readiness/warm-up, developer confirmation/correction authority, greenfield architecture-before-code, and realization/drift reconciliation.
+**Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** ADR 0009 as amended by ADR 0010 requires mandatory correction `c4-architecture-discovery` at unchanged `0.4.6`; ADR 0011 selects the first local synthesis reference path. The already-running `c4-smap-synth` P6-P8 prompts are not rewritten. ADR 0012 adds the mandatory follow-on `c4-smap-hierarchical-synthesis` correction at unchanged `0.4.6` because architecture quality—especially System discovery—is the core gate. After that correction, `c4-smap-storage` remains mandatory before Phase 5.
 
-**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first synthesis bootstrap.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. Synthesis proposes architecture, while the developer owns canonical System / Subsystem / Component identity and may define it before code. The first c4 reference synthesizer is local LM Studio with Qwen3-Coder-30B-A3B-Instruct. Phase 5 still owns the central visual map/planning canvas.
+**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first synthesis bootstrap; ADR 0012 governs hierarchy-first synthesis, visible progress and the analysis performance/quality gate.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. Synthesis proposes architecture, while the developer owns canonical System / Subsystem / Component identity and may define it before code. The first c4 reference synthesizer is local LM Studio with Qwen3-Coder-30B-A3B-Instruct. Its current qualification setup uses 65,536 loaded context as runtime headroom, not a product invariant. Phase 5 still owns the central visual map/planning canvas.
 
 Phase 2's P6 `0.2.6` evidence-only audit remains **Not Qualified**. The owner subsequently explicitly closed Phase 2 for sequencing and authorized Phase 3 from a coherent `0.3.0` baseline. This owner disposition does not relabel the P6 audit Green or erase its evidence gaps. The retained Phase 2 gaps are the initially hidden legacy-migration entry, unproved dirty same-renderer workspace switch, lack of exact `0.2.6` native artifact launch/direct native visual Project Mind use, and inherited Phase 1 gaps where applicable. See `docs/tasks/p2/closeout.md` and `docs/planning/p3/activation.md`.
 
@@ -67,6 +67,7 @@ Current authority:
 - docs/decisions/0009-architecture-discovery-and-developer-authority.md
 - docs/decisions/0010-smap-initialization-and-ai-assisted-architecture-synthesis.md
 - docs/decisions/0011-local-first-smap-synthesis-bootstrap.md
+- docs/decisions/0012-hierarchical-smap-synthesis-and-analysis-progress.md
 
 ## Product premise
 
@@ -91,6 +92,8 @@ Foundation Spike 0 — qualify Theia
 -> correction c3 — remove Planning instruments
 -> Phase 4 — Physical Map
 -> correction c4 — architecture discovery + developer authority
+-> correction c4-hierarchical — hierarchy-first sMap synthesis + visible progress
+-> correction c4-storage — project-local sMap persistence
 -> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
 -> Phase 7 — Scoped Delegation
@@ -106,7 +109,7 @@ THINK includes notes, ideas, questions, research, decisions, plans, architecture
 
 These are different views into the same project state.
 
-The software project is the center of gravity. Dope's core architecture hierarchy is Project -> System -> Subsystem -> Component -> Code. Deterministic analysis produces independently verifiable architecture evidence and signals. Bounded synthesis interprets that packet into proposed Systems / Subsystems / Components, and the developer owns canonical architecture. The Physical Map shows how implementation realizes or diverges from that authority; Visual Software Planning references the resulting identities and derives the future work model from graph transformations before reconciliation after implementation.
+The software project is the center of gravity. Dope's core architecture hierarchy is Project -> System -> Subsystem -> Component -> Code. Deterministic analysis produces independently verifiable architecture evidence and signals. Hierarchy-first bounded synthesis builds a global skeleton, discovers and challenges Systems, then descends per System into Subsystems/Components before reconciliation and targeted verification; the developer owns canonical architecture. The Physical Map shows how implementation realizes or diverges from that authority; Visual Software Planning references the resulting identities and derives the future work model from graph transformations before reconciliation after implementation.
 
 The intended knowledge lifecycle is:
 

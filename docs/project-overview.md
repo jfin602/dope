@@ -62,7 +62,11 @@ Uninitialized project
 -> explicit Analyze Project consent
 -> deterministic repository / semantic / framework evidence
 -> synthesis provider/model readiness
--> bounded LLM architecture synthesis
+-> deterministic global evidence planning / architecture skeleton
+-> System Discovery
+-> System Challenge (merge / split / reject)
+-> per-System Subsystem / Component refinement
+-> reconciliation / targeted verification
 -> proposed System / Subsystem / Component map
 -> developer review and correction
 -> explicit acceptance
@@ -73,7 +77,7 @@ Uninitialized project
 
 The developer may also define architecture before code exists. In an existing project, LLM-generated boundaries remain proposals until the developer accepts or corrects them. Deterministic evidence never becomes canonical architecture merely because it was observed, AI output never becomes canonical merely because it was generated, and canonical declarations never erase contrary implementation evidence.
 
-ADR 0011 makes the first sMap synthesis path local-first: LM Studio with Qwen3-Coder-30B-A3B-Instruct is the reference implementation, while the Dope contracts remain provider-independent. Setup performs a synthetic structured-output probe and the selected model is warmed with non-project data immediately before the first real synthesis request. If warm-up fails, Dope does not submit project evidence.
+ADR 0011 makes the first sMap synthesis path local-first: LM Studio with Qwen3-Coder-30B-A3B-Instruct is the reference implementation, while the Dope contracts remain provider-independent. Setup performs a synthetic structured-output probe and the selected model is warmed with non-project data immediately before the first real synthesis request. ADR 0012 then makes the forward synthesis workflow hierarchy-first and multi-call: global System discovery/challenge comes before per-System descent, bounded model-facing evidence views preserve deterministic provenance, and the user sees live stage/call-purpose progress. The current Qwen qualification setup uses 65,536 loaded context as headroom rather than a request-size target. If warm-up fails, Dope does not submit project evidence.
 
 The **Physical Map** describes current implemented reality mapped against canonical architecture. It distinguishes declared-only, detected-only, realized, drifted and unassigned implementation state, with provenance sufficient to explain the result.
 
@@ -165,13 +169,14 @@ Foundation Spike 0 — qualify Theia
 -> correction c3 — remove Planning instruments
 -> Phase 4 — Physical Map
 -> correction c4 — architecture discovery + developer authority
+-> correction c4-hierarchical — hierarchy-first synthesis + visible progress
 -> correction c4-storage — enforce project-local sMap persistence
 -> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
 -> Phase 7 — Scoped Delegation
 -> Phase 8 — Development Sessions
 
-Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map scope is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). ADR 0009 requires correction `c4-architecture-discovery` at unchanged `0.4.6`. After that active stack closes, a bounded `c4-smap-storage` correction at unchanged `0.4.6` must enforce the project-local `.dope/` sMap persistence boundary before Phase 5 planning or activation.
+Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map scope is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). ADR 0009 requires correction `c4-architecture-discovery` at unchanged `0.4.6`. Its already-running `c4-smap-synth` P6-P8 prompts remain unchanged. After that stack closes, ADR 0012 requires `c4-smap-hierarchical-synthesis` at unchanged `0.4.6`; only after that closes Green does bounded `c4-smap-storage` enforce the project-local `.dope/` sMap persistence boundary before Phase 5 planning or activation.
 
 ## Non-goals
 
@@ -208,9 +213,9 @@ Desired completion feeling:
 
 **Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved scope. Phase 5 is not activated.**
 
-The mandatory current gate is correction `c4-architecture-discovery` at unchanged `0.4.6`. It must preserve the Phase 4 semantic analyzer/evidence substrate while adding explicit sMap initialization, opt-in analysis, bounded provider-independent LLM architecture synthesis over deterministic evidence, local LM Studio/Qwen reference qualification with capability probing and pre-synthesis warm-up, proposal provenance, developer review/correction and acceptance, greenfield/manual architecture-before-code support, and implementation realization/drift reconciliation. ADR 0009 as amended by ADR 0010 governs the architecture contract; ADR 0011 governs the local-first reference bootstrap.
+The mandatory current gate is correction `c4-architecture-discovery` at unchanged `0.4.6`. It must preserve the Phase 4 semantic analyzer/evidence substrate while adding explicit sMap initialization, opt-in analysis, bounded provider-independent LLM architecture synthesis over deterministic evidence, local LM Studio/Qwen reference qualification with capability probing and pre-synthesis warm-up, proposal provenance, developer review/correction and acceptance, greenfield/manual architecture-before-code support, and implementation realization/drift reconciliation. ADR 0009 as amended by ADR 0010 governs the base architecture contract; ADR 0011 governs the local-first reference bootstrap; ADR 0012 governs the required follow-on hierarchical orchestration, visible progress and quality/performance gates.
 
-The already-running `c4-smap-synth` P6-P8 prompts are not changed by this documentation update. After that stack closes, `c4-smap-storage` becomes the mandatory pre-Phase-5 gate. It must prove that durable sMap state is recoverable from repository + project-local `.dope/`, with `.dope/architecture.json` and `.dope/smap.json` as the current required files; any additional persisted sMap artifacts must remain under versioned `.dope/` storage. Machine-local caches may be disposable accelerators only.
+The already-running `c4-smap-synth` P6-P8 prompts are not changed by this documentation update. After that stack closes, `c4-smap-hierarchical-synthesis` becomes the next mandatory pre-Phase-5 gate. It must replace one-shot synthesis as the intended design with global System Discovery, System Challenge, per-System descent, reconciliation/targeted verification, bounded provider-aware evidence views, visible progress/timing and an eight-minute initial-analysis qualification objective that does not hard-cancel slower runs. After that closes Green, `c4-smap-storage` becomes the final mandatory pre-Phase-5 gate. It must prove that durable sMap state is recoverable from repository + project-local `.dope/`, with `.dope/architecture.json` and `.dope/smap.json` as the current required files; any additional persisted sMap artifacts must remain under versioned `.dope/` storage. Machine-local caches may be disposable accelerators only.
 
 Historical Phase 1/2 qualification gaps remain unchanged. Phase 3 remains historical evidence and its live Planning implementation remains removed. Theia stays pinned to 1.75.0 and Electron to 42.8.1 unless a deliberate framework upgrade is separately approved.
 

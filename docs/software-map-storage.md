@@ -42,7 +42,7 @@ Until resumable review drafts are deliberately specified, failure or cancellatio
 
 ## Detected architecture and Physical Map
 
-Deterministic repository, semantic, framework and later runtime analyzers produce rebuildable evidence and architecture signals. For initial brownfield initialization, a bounded LLM synthesis step interprets that evidence into proposed System / Subsystem / Component structure.
+Deterministic repository, semantic, framework and later runtime analyzers produce rebuildable evidence and architecture signals. For initial brownfield initialization, a bounded hierarchy-first LLM synthesis workflow interprets deterministic evidence views into proposed System / Subsystem / Component structure while preserving references to the complete parent evidence packet.
 
 The ArchitectureEvidencePacket and ArchitectureProposal are distinct derived artifacts. The evidence packet must be deterministically reproducible/inspectable without AI. The proposal may contain model interpretation, numeric confidence, rationale and human-readable evidence explanations, but every claimed source basis must resolve through `evidenceRefs` to the exact packet supplied to synthesis.
 

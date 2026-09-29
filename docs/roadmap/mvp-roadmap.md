@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: mandatory correction `c4-architecture-discovery` at unchanged `0.4.6`; bounded `c4-smap-storage` follows at unchanged `0.4.6` before Phase 5; Product Phase 4 is QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
+Current stage: mandatory correction `c4-architecture-discovery` at unchanged `0.4.6` is still the active authored stack; mandatory `c4-smap-hierarchical-synthesis` follows at unchanged `0.4.6`, then bounded `c4-smap-storage` at unchanged `0.4.6` before Phase 5; Product Phase 4 is QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -18,6 +18,7 @@ Theia
 -> remove Phase 3 Planning instruments
 -> Physical Map
 -> sMap initialization + architecture synthesis + developer-authority correction
+-> hierarchy-first sMap synthesis + visible progress + quality/performance qualification
 -> enforce project-local sMap persistence
 -> Visual Software Planning
 -> AI Presence
@@ -40,6 +41,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Product Phase 3 — Planning Foundation | Dope plans Dope. A real Dope feature can move from thought/decision into a live Plan and Tasks without leaving Dope. |
 | Product Phase 4 — Physical Map | Dope maps Dope. Its lower-level semantic relationships, declared boundaries and evidence-backed current-state graph can be explored. |
 | Correction c4 — Architecture Discovery | Dope initializes Dope's sMap deliberately. Deterministic evidence feeds bounded LLM architecture synthesis, the developer corrects/accepts Systems/Subsystems/Components, and implementation realization/drift is visible. |
+| Correction c4-hierarchical — sMap Synthesis | Dope discovers Dope's Systems through a repository-global discovery/challenge pass, descends per System into Subsystems/Components, shows live analysis-stage progress, and qualifies architecture quality plus the <=8-minute initial-analysis objective without an eight-minute hard timeout. |
 | Correction c4-storage — sMap Persistence | Dope proves that durable Software Map state travels with the repository under project-local `.dope/`, while machine-local state remains disposable or preference-only. |
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
@@ -340,11 +342,58 @@ Minimum qualification:
 
 Exit condition:
 
-At unchanged `0.4.6`, Dope can deliberately initialize sMap for an existing project through opt-in deterministic analysis plus bounded LLM synthesis, the local LM Studio/Qwen reference path is qualified including capability probing and pre-synthesis warm-up, a developer can correct and explicitly establish canonical architecture, a greenfield project can initialize manually, and the Physical Map can explain how current implementation realizes or diverges from that authority. Completion clears the architecture-discovery correction, but Product Phase 5 remains blocked until the storage correction below is Green.
+At unchanged `0.4.6`, Dope can deliberately initialize sMap for an existing project through opt-in deterministic analysis plus bounded LLM synthesis, the local LM Studio/Qwen reference path is qualified including capability probing and pre-synthesis warm-up, a developer can correct and explicitly establish canonical architecture, a greenfield project can initialize manually, and the Physical Map can explain how current implementation realizes or diverges from that authority. Completion clears the architecture-discovery correction, but Product Phase 5 remains blocked behind the hierarchical-synthesis and storage corrections below.
+
+## Mandatory pre-Phase-5 correction — `c4-smap-hierarchical-synthesis`
+
+Status: **REQUIRED AFTER `c4-architecture-discovery` — ADR 0012 authority locked; implementation stack pending**
+
+Version semantics: unchanged package version `0.4.6`. Do not rewrite or restart the already-running `c4-smap-synth` P6-P8 prompts.
+
+Authority: ADR 0012, with ADR 0009/0010 retaining developer-authority/evidence semantics and ADR 0011 retaining the local LM Studio/Qwen reference path.
+
+Purpose:
+Replace one-shot architecture synthesis as the intended design with a bounded hierarchy-first workflow that improves the core sMap outcome: credible System boundaries. The correction also makes analysis progress visible and turns architecture quality plus end-to-end analysis time into explicit qualification evidence.
+
+Required behavior:
+- preserve the complete deterministic ArchitectureEvidencePacket as independently inspectable evidence authority;
+- derive deterministic bounded model-facing evidence views/slices that preserve parent evidence IDs/provenance and never truncate arbitrary evidence items mid-record;
+- obtain context/input capacity from provider/model capability instead of hardcoding a model window;
+- treat the current 65,536-token Qwen load as qualification headroom, not a required product value or preferred prompt size;
+- build a compact repository-global architecture skeleton before lower-level descent;
+- run repository-global **System Discovery** as its own synthesis stage;
+- run **System Challenge** to explicitly merge, split or reject proposed System boundaries and prevent infrastructure/packages/directories from being promoted without architectural justification;
+- after candidate Systems are established, run bounded per-System **Subsystem Discovery** and Component refinement as appropriate;
+- reconcile cross-System structure and issue small targeted verification calls for materially uncertain boundaries;
+- assemble/validate a final ArchitectureProposal whose source basis still resolves through the complete deterministic parent evidence packet;
+- keep the first implementation multi-call rather than multi-model; do not add model voting, debate, unlimited recursion or an autonomous retrieval loop;
+- cache/reuse unchanged bounded synthesis work using deterministic packet/stage/version/provider identity where safe;
+- expose provider-independent progress events and a user-facing progress report showing current stage, model-call purpose, applicable subject, known completed/remaining units, elapsed time and failures/retries;
+- do not expose raw hidden chain-of-thought and do not fabricate percentage complete when remaining work is not deterministically knowable;
+- record elapsed time for every deterministic stage and model call;
+- optimize the qualified initial Dope-on-Dope analysis to complete in **8 minutes or less** on the defined development setup;
+- treat eight minutes as a qualification objective, **not** a production timeout: a slower run continues so architecture quality and timing evidence can be inspected, but its performance gate is Not Green;
+- do not reduce architecture quality merely to meet the time target.
+
+Minimum qualification:
+- controlled fixtures demonstrate credible System detection and reject ordinary package/directory/infrastructure promotion without supporting architecture evidence;
+- System Challenge demonstrably merges, splits or rejects at least representative bad initial candidates;
+- per-System descent operates against established candidate Systems rather than repeatedly asking one model call to infer the entire hierarchy from all repository detail;
+- every final evidence reference resolves to the complete deterministic parent packet;
+- no individual request exceeds the configured provider/model budget;
+- real Dope-on-Dope analysis visibly reports each major stage/call purpose and timing;
+- the resulting Dope Systems/Subsystems pass explicit human architectural review; valid JSON with materially bad System boundaries is Not Green;
+- the qualified end-to-end initial Dope-on-Dope run is <=8 minutes;
+- a controlled >8-minute or simulated-over-budget case proves the run is not force-cancelled solely at eight minutes and retains usable timing/output evidence;
+- developer review/correction/acceptance remains the only transition to canonical architecture.
+
+Exit condition:
+
+At unchanged `0.4.6`, hierarchy-first bounded synthesis produces materially credible architecture on the Dope repository, source provenance remains intact across all stages, the user can see meaningful live analysis progress, model requests respect provider-derived budgets, and the initial qualification workload is Green only when it completes in eight minutes or less without sacrificing architecture quality. Only then may `c4-smap-storage` execute.
 
 ## Mandatory pre-Phase-5 correction — `c4-smap-storage`
 
-Status: **QUEUED — execute only after `c4-architecture-discovery` closes**
+Status: **QUEUED — execute only after `c4-smap-hierarchical-synthesis` closes Green**
 
 Version semantics: bounded correction at unchanged package version `0.4.6`. Do not alter the already-running `c4-smap-synth` P6-P8 prompts or restart that stack.
 
@@ -363,7 +412,7 @@ Required contract:
 
 Qualification must include a permanent regression guard for the persistence-boundary defect class and controlled copy/reopen/restart evidence showing that durable sMap state follows repository + `.dope/` without reliance on hidden machine-local state.
 
-The pre-authored `c4-smap-synth` P8 wording that routes a Green closeout directly toward Phase 5 does not override this newer owner-approved roadmap gate. P8 may close its own correction exactly as authored; `c4-smap-storage` is then mandatory before any Phase 5 activation.
+The pre-authored `c4-smap-synth` P8 wording that routes a Green closeout directly toward Phase 5 does not override these newer owner-approved roadmap gates. P8 may close its own correction exactly as authored; `c4-smap-hierarchical-synthesis` is then mandatory, followed by `c4-smap-storage`, before any Phase 5 activation.
 
 Exit condition:
 

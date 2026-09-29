@@ -292,7 +292,7 @@ The Software Map is the product concept. Its normalized graph is an implementati
 
 The Software Map deliberately separates:
 - **Architecture Evidence** — deterministic/reproducible source, semantic, framework and recorded-runtime facts packaged as an independently verifiable ArchitectureEvidencePacket.
-- **Architecture Proposal** — provider-independent structured interpretation of one evidence packet into proposed Systems / Subsystems / Components, with temporary proposal identity, numeric confidence, rationale, machine-verifiable evidence references and human-readable evidence explanations.
+- **Architecture Proposal** — provider-independent final structured interpretation over one logical evidence packet into proposed Systems / Subsystems / Components. It may be assembled through multiple bounded hierarchy-first synthesis stages over deterministic evidence views, with temporary proposal identity, numeric confidence, rationale, machine-verifiable evidence references and human-readable evidence explanations.
 - **Canonical Architecture** — developer-owned System / Subsystem / Component identity, purpose, boundaries, contracts and constraints. It may exist before code.
 - **Physical Map** — current implementation evidence mapped against canonical architecture, including proposal/detected-only structure, realization and drift.
 - **Planning Map** — proposed target state and transformations that reference canonical/physical identities rather than copying current architecture.
@@ -372,9 +372,11 @@ The deterministic, provider-independent synthesis input. It contains stable pack
 
 The packet exists before model synthesis. Models may reference evidence IDs but do not create, rewrite or promote evidence.
 
+Dope may derive bounded deterministic synthesis views/slices for individual hierarchy stages. Those views retain parent packet identity and original evidence references; they are context-budgeted projections, not new evidence authorities.
+
 ### ArchitectureProposal
 
-The provider-independent structured synthesis output for one ArchitectureEvidencePacket.
+The provider-independent final structured synthesis output for one logical ArchitectureEvidencePacket, potentially assembled/reconciled from multiple bounded hierarchy-first synthesis stages over deterministic views of that packet.
 
 V1 includes `schemaVersion`, `summary`, `needsMoreEvidence`, `nodes`, `unassignedEvidenceRefs`, `openQuestions` and `evidenceRequests`.
 
@@ -382,7 +384,11 @@ Each proposed node carries temporary `proposalKey`, kind/name/purpose/parent, nu
 
 `evidenceRefs` are machine-verifiable provenance. `evidence` is frontend explanation of those observations. `rationale` is the architectural conclusion drawn from them. Confidence is a synthesis signal rather than a calibrated probability or authority score.
 
-Dope validates structured output, hierarchy and every evidence reference against the exact input packet before entering review. Proposal identity is not canonical identity.
+Dope validates structured output, hierarchy and every evidence reference against the complete parent evidence packet before entering review. Proposal identity is not canonical identity.
+
+Hierarchy-first synthesis treats repository-global System discovery as a distinct problem: build a compact global skeleton, discover Systems, challenge candidates for merge/split/rejection, then descend per System into Subsystems/Components, reconcile across Systems and perform targeted verification where uncertainty remains. Materially wrong System boundaries are an architecture-quality failure even when output is schema-valid.
+
+Analysis progress is observable product state while the workflow runs: stage/call purpose, applicable subject, known completed/total units, elapsed time and visible retry/failure state may be rendered without exposing private chain-of-thought. The end-to-end initial Dope-on-Dope qualification objective is eight minutes or less; this is not a runtime cancellation threshold.
 
 ### PlanningMap
 

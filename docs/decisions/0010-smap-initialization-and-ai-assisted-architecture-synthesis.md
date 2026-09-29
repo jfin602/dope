@@ -4,6 +4,7 @@ Status: Accepted
 Date: 2026-09-29
 Amends: ADR 0009
 Complements: ADR 0004, ADR 0006, ADR 0008, ADR 0011
+Amended by: ADR 0012
 
 ## Context
 
@@ -73,7 +74,7 @@ The synthesis boundary uses two separate provider-independent JSON contracts.
 
 **ArchitectureEvidencePacket** is produced by deterministic analyzers before any model request. It contains normalized, source-backed evidence and stable evidence identifiers. The model may consume the packet but cannot add to it, modify it or manufacture additional evidence identifiers.
 
-**ArchitectureProposal** is model-generated interpretation over one supplied packet. Its v1 response shape contains:
+**ArchitectureProposal** is the final provider-independent structured interpretation over one logical ArchitectureEvidencePacket. ADR 0012 permits that interpretation to be produced through multiple bounded, deterministic evidence slices and intermediate candidate stages rather than requiring one monolithic model request. Final evidence references still resolve against the parent packet. Its v1 response shape contains:
 - `schemaVersion`;
 - `summary`;
 - `needsMoreEvidence`;
@@ -136,7 +137,7 @@ The forward initialization pipeline is:
 Repository / configuration evidence
 -> deterministic language/framework analysis
 -> normalized evidence graph
--> bounded architecture-synthesis request
+-> bounded hierarchy-first architecture-synthesis workflow
 -> proposed Systems / Subsystems / Components
 -> developer review and correction
 -> explicit acceptance
@@ -156,7 +157,7 @@ The LLM may propose:
 
 LLM output is a **proposal class**. It is neither deterministic physical fact nor canonical architecture.
 
-Every proposed architectural element must retain enough provenance to explain which repository evidence was supplied or cited as its basis.
+Every proposed architectural element must retain enough provenance to explain which repository evidence was supplied or cited as its basis. Under ADR 0012, intermediate bounded synthesis slices preserve parent-packet evidence identity/provenance and final proposal references resolve to that complete deterministic packet.
 
 ### Developer acceptance remains the authority transition
 
@@ -231,3 +232,12 @@ The correction must preserve the qualified Phase 4 analyzer/evidence/query subst
 - The developer can correct the initial proposal before any architecture becomes canonical.
 - Greenfield projects remain fully supported without an LLM.
 - General AI Presence, delegation and mutation remain behind their existing roadmap gates.
+
+
+## ADR 0012 forward amendment
+
+The already-running `c4-smap-synth` P6-P8 prompts remain historical/current execution inputs and are not rewritten mid-stack.
+
+ADR 0012 changes the required forward synthesis orchestration after that stack: System discovery becomes an explicit repository-global stage, candidate System boundaries are challenged before per-System descent, model-facing evidence is provided through deterministic bounded packet views, uncertain boundaries may receive targeted verification, and the user sees meaningful stage/call-purpose progress while analysis runs.
+
+Valid structured output alone is not qualification. Materially incorrect System boundaries are Not Green. The follow-on `c4-smap-hierarchical-synthesis` correction must also qualify an end-to-end initial Dope-on-Dope analysis objective of eight minutes or less without implementing an eight-minute runtime cutoff.

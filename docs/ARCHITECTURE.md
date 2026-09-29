@@ -111,7 +111,7 @@ For a project whose sMap has never been initialized, Dope offers an explicit Ana
 
 The Software Map application/domain layer distinguishes at least `uninitialized -> analyzing -> review_required -> initialized`. Initialization state is not equivalent to the existence of `.dope/architecture.json`.
 
-For an existing project, accepted initialization follows: deterministic evidence collection -> provider/runtime readiness -> bounded LLM architecture proposal -> developer review/correction -> explicit acceptance -> canonical architecture. Before acceptance, generated structure is proposal state only.
+For an existing project, accepted initialization follows: deterministic evidence collection -> provider/runtime readiness -> deterministic evidence planning/global skeleton -> System Discovery -> System Challenge -> per-System Subsystem/Component refinement -> reconciliation/targeted verification -> validated ArchitectureProposal -> developer review/correction -> explicit acceptance -> canonical architecture. Before acceptance, generated structure is proposal state only.
 
 Provider/runtime readiness includes a synthetic structured-output capability probe when configuring a model and an explicit warm-up immediately before the first real synthesis request that may submit project evidence. Probe and warm-up requests contain no project evidence. If warm-up fails, the ArchitectureEvidencePacket is not submitted.
 
@@ -267,13 +267,19 @@ Deterministic analyzers produce the ArchitectureEvidencePacket from repository, 
 
 No single signal, especially folder layout, automatically defines architecture. Evidence remains inspectable without AI.
 
-The synthesis layer consumes that packet and returns a strict Dope-owned ArchitectureProposal. AI interprets evidence; it does not create evidence.
+The synthesis layer consumes deterministic bounded views of that packet and ultimately produces a strict Dope-owned ArchitectureProposal. AI interprets evidence; it does not create evidence.
 
-ADR 0010 amends the initial discovery path for uninitialized brownfield projects. Deterministic analyzers remain the evidence authority, but initial System / Subsystem / Component synthesis is performed through a bounded provider-independent LLM architecture-synthesis capability over that evidence.
+ADR 0010 amends the initial discovery path for uninitialized brownfield projects. ADR 0012 further requires hierarchy-first orchestration because architecture-scale quality—especially System discovery—cannot be treated as a side effect of one large synthesis call.
 
-The LLM output is a proposal class, never physical fact or canonical architecture. Every proposal node uses a temporary `proposalKey`, numeric 0..1 `confidence`, architectural `rationale`, machine-verifiable `evidenceRefs` into the exact input packet, and human-readable `evidence` explanations for the UI. Dope validates schema, hierarchy and references before review. Human-readable evidence cannot substitute for evidenceRefs, and proposal keys cannot silently become canonical IDs. The developer may correct the proposal and explicitly accepts the canonical architecture.
+The forward flow first builds a compact repository-global skeleton, performs repository-global System Discovery, explicitly challenges candidate Systems for merge/split/rejection, then descends per System into Subsystem/Component refinement before cross-System reconciliation and targeted uncertainty verification. The complete ArchitectureEvidencePacket remains the deterministic evidence authority; model-facing slices preserve parent evidence IDs/provenance and remain bounded by provider/model capability.
+
+The LLM output is a proposal/candidate class, never physical fact or canonical architecture. Intermediate stage outputs remain derived candidates. Every final proposal node uses a temporary `proposalKey`, numeric 0..1 `confidence`, architectural `rationale`, machine-verifiable `evidenceRefs` into the complete parent packet, and human-readable `evidence` explanations for the UI. Dope validates schema, hierarchy and references before review. Human-readable evidence cannot substitute for evidenceRefs, and proposal keys cannot silently become canonical IDs. The developer may correct the proposal and explicitly accepts the canonical architecture.
 
 Manual/greenfield architecture remains available with no model configured. A developer may define canonical architecture before code exists, after which deterministic analysis realizes or reports drift against it.
+
+Architecture synthesis orchestration emits provider-independent progress events for user-visible stages such as evidence collection, architecture skeleton preparation, System Discovery, System Challenge, per-System Subsystem Discovery, reconciliation and targeted verification. The UI shows current stage/call purpose, applicable subject, known unit counts, elapsed time and failures/retries; it does not expose hidden chain-of-thought or fabricate precise completion percentages when remaining work is unknown.
+
+The current local Qwen qualification setup uses a 65,536-token loaded context as headroom. Context capacity is a provider capability, not a Software Map constant or request-size target. The initial Dope-on-Dope analysis has an eight-minute end-to-end qualification objective. Eight minutes is not a runtime timeout: slower runs continue to completion for quality/timing evidence but are Not Green on performance.
 
 ### Code Analysis
 
