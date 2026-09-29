@@ -111,7 +111,9 @@ For a project whose sMap has never been initialized, Dope offers an explicit Ana
 
 The Software Map application/domain layer distinguishes at least `uninitialized -> analyzing -> review_required -> initialized`. Initialization state is not equivalent to the existence of `.dope/architecture.json`.
 
-For an existing project, accepted initialization follows: deterministic evidence collection -> bounded LLM architecture proposal -> developer review/correction -> explicit acceptance -> canonical architecture. Before acceptance, generated structure is proposal state only.
+For an existing project, accepted initialization follows: deterministic evidence collection -> provider/runtime readiness -> bounded LLM architecture proposal -> developer review/correction -> explicit acceptance -> canonical architecture. Before acceptance, generated structure is proposal state only.
+
+Provider/runtime readiness includes a synthetic structured-output capability probe when configuring a model and an explicit warm-up immediately before the first real synthesis request that may submit project evidence. Probe and warm-up requests contain no project evidence. If warm-up fails, the ArchitectureEvidencePacket is not submitted.
 
 A greenfield project may instead initialize through developer-authored architecture before code exists. Cancellation or failure before acceptance returns to uninitialized unless a future resumable-draft contract is deliberately introduced.
 
@@ -163,6 +165,20 @@ Do not make Theia AI's agent/chat/session ontology Dope's product ontology.
 Theia AI is optional infrastructure.
 
 General Theia AI reuse is qualified when AI Presence is implemented, not during Foundation Spike 0. ADR 0010 permits the narrower pre-Phase-6 architecture-synthesis capability required for initial sMap generation; that capability must still use Dope-owned contracts and replaceable provider adapters.
+
+## Local-first sMap synthesis bootstrap
+
+ADR 0011 chooses a local LM Studio server with Qwen3-Coder-30B-A3B-Instruct as the first reference implementation for the narrow architecture-synthesis capability.
+
+That is an adapter/bootstrap choice, not a Software Map dependency. The domain continues to depend only on provider-independent synthesis contracts.
+
+The reference setup path should remain inside the Analyze Project workflow: detect or configure a local LM Studio-compatible endpoint, discover/select an available model where supported, run a synthetic structured-output capability probe, then continue into analysis.
+
+Immediately before the first real synthesis request, the provider/runtime layer must ensure the selected model is warm using a tiny synthetic request that contains no repository evidence. Warm-up absorbs model loading/cold inference before the ArchitectureEvidencePacket is submitted. A successful earlier probe may incidentally warm the model but does not guarantee indefinite residency.
+
+Warm state belongs to the provider/runtime/application layer and may be tracked per connection/model. Runtime restart/reconnection, model change or known unload invalidates that state. Warm-up failure blocks real synthesis.
+
+AI connection details such as endpoint, model selection, optional authentication, quantization and local runtime settings are user/application state by default, not canonical project state.
 
 ## Target repository structure
 
