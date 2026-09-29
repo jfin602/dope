@@ -322,9 +322,9 @@ Physical source facts are deterministic or explicitly labeled otherwise. Runtime
 
 A major independently meaningful software, runtime or product boundary.
 
-Systems should be discoverable from deterministic evidence such as applications, deployable/runtime units, entrypoints, workspace topology, process boundaries and framework bootstraps. Repository layout alone does not define System identity.
+Deterministic evidence for System synthesis may include applications, deployable/runtime units, entrypoints, workspace topology, process boundaries and framework bootstraps. Repository layout alone does not define System identity. The architecture synthesizer interprets those facts into a proposed System boundary.
 
-The developer owns canonical System identity and may define it before implementation or correct a detected candidate.
+The developer owns canonical System identity and may define it before implementation or correct a synthesized proposal.
 
 ### Subsystem
 
@@ -332,7 +332,7 @@ The primary modular architecture unit.
 
 A Subsystem has stable canonical identity, purpose, owned implementation, public contracts, allowed dependencies, forbidden dependencies, entry points, owned data, tests and child Components as applicable.
 
-Subsystem discovery may combine deterministic evidence such as dependency cohesion/direction, package or workspace boundaries, public exports, entrypoints, framework registration and runtime/process boundaries. A directory or cluster is evidence, not authority.
+Deterministic evidence for Subsystem synthesis may include dependency cohesion/direction, package or workspace boundaries, public exports, entrypoints, framework registration and runtime/process boundaries. A directory or cluster is evidence, not authority. The synthesizer interprets those facts into proposed Subsystem boundaries.
 
 Developer confirmation/correction establishes canonical Subsystem identity. Analysis then validates implementation against it and surfaces drift.
 
@@ -340,7 +340,7 @@ Developer confirmation/correction establishes canonical Subsystem identity. Anal
 
 A cohesive implementation unit within a Subsystem.
 
-Components bridge architecture-scale reasoning and lower-level modules/files/symbols. Components may be detected from finer-grained cohesive implementation evidence, but canonical Component structure remains developer-owned and may exist before code.
+Components bridge architecture-scale reasoning and lower-level modules/files/symbols. Deterministic finer-grained cohesive implementation evidence may support synthesized Component proposals, but canonical Component structure remains developer-owned and may exist before code.
 
 ### CodeEntity
 
