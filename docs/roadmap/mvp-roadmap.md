@@ -17,7 +17,7 @@ Theia
 -> Planning Foundation
 -> remove Phase 3 Planning instruments
 -> Physical Map
--> architecture discovery + developer-authority correction
+-> sMap initialization + architecture synthesis + developer-authority correction
 -> Visual Software Planning
 -> AI Presence
 -> Scoped Delegation
@@ -38,7 +38,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Product Phase 2 — Project Mind | Dope understands Dope. Its own decisions, notes, questions, ideas, and durable project context are useful through Project Mind. |
 | Product Phase 3 — Planning Foundation | Dope plans Dope. A real Dope feature can move from thought/decision into a live Plan and Tasks without leaving Dope. |
 | Product Phase 4 — Physical Map | Dope maps Dope. Its lower-level semantic relationships, declared boundaries and evidence-backed current-state graph can be explored. |
-| Correction c4 — Architecture Discovery | Dope discovers Dope at architecture scale. Deterministic evidence proposes Systems/Subsystems/Components, the developer confirms or corrects them, and implementation realization/drift is visible. |
+| Correction c4 — Architecture Discovery | Dope initializes Dope's sMap deliberately. Deterministic evidence feeds bounded LLM architecture synthesis, the developer corrects/accepts Systems/Subsystems/Components, and implementation realization/drift is visible. |
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
@@ -281,32 +281,44 @@ Status: **REQUIRED BEFORE PHASE 5 — docs authority locked; implementation stac
 
 Version semantics: unchanged package version `0.4.6`. This correction does not reopen or relabel Phase 4 qualification and must not advance Phase 5 versioning.
 
+Authority: ADR 0009 as amended by ADR 0010.
+
 Purpose:
-Correct the architectural interpretation of the Physical Map before the visual map is built. Phase 4 successfully established the lower-level language-independent graph, TypeScript semantic analyzer, provenance, query/index and inspector substrate, but its System / Subsystem / Component levels are currently created from developer declarations rather than discovered from implementation evidence.
+Correct the architectural interpretation and first-use workflow of the Physical Map before the visual map is built. Phase 4 successfully established the lower-level language-independent graph, TypeScript semantic analyzer, provenance, query/index and inspector substrate. The correction now turns that substrate into an explicit sMap initialization workflow where deterministic evidence supports flexible AI synthesis without surrendering developer architectural authority.
 
 Required behavior:
 - preserve the existing TypeScript/JavaScript semantic analyzer as the lower-level evidence engine;
-- add deterministic architecture discovery for candidate Systems, Subsystems and Components using repository/workspace/build topology, entrypoints, dependency structure, semantic relationships, framework registration and later runtime observations where available;
-- never equate a directory, package or dependency cluster with architecture solely because it exists;
-- retain evidence/derivation for every architecture candidate;
-- make developer-authored architecture canonical authority: detection proposes, the developer confirms or corrects;
-- support brownfield correction operations such as confirm, rename, reparent, merge, split, replace or ignore without silently rewriting architecture;
-- support greenfield canonical System / Subsystem / Component definition before implementation exists;
-- distinguish declared-only, detected-only, realized, drifted and unassigned implementation state;
+- detect when the current project has no initialized sMap without treating a missing declaration file as the entire lifecycle model;
+- on first use, offer an explicit **Analyze Project?** choice rather than silently building the map;
+- if the developer declines, build no sMap and create no canonical/derived project state merely to record the refusal;
+- keep the sMap surface available in an uninitialized empty state with an **Analyze Project** action that invokes the same flow later;
+- distinguish at least `uninitialized`, `analyzing`, `review_required` and `initialized`;
+- collect deterministic repository/workspace/build topology, entrypoints, dependency structure, semantic relationships, framework registration and other explicit evidence with provenance;
+- send bounded architecture evidence through a provider-independent LLM synthesis capability to propose Systems, Subsystems and Components;
+- never treat a directory, package, dependency cluster or LLM response as architecture authority solely because it exists;
+- retain evidence/derivation for every generated architecture proposal;
+- make developer-authored architecture canonical authority: synthesis proposes, the developer reviews/corrects and explicitly accepts;
+- support brownfield correction operations such as confirm, rename, reparent, merge, split, add, remove, replace or ignore without silently rewriting architecture;
+- support greenfield/manual canonical System / Subsystem / Component definition before implementation exists and without requiring a model;
+- distinguish declared-only, detected/proposed-only, realized, drifted and unassigned implementation state as applicable;
 - preserve contrary physical evidence when it disagrees with canonical architecture and surface the difference as drift rather than silently redefining either side;
-- keep derived detection rebuildable/disposable and provider-independent;
-- keep Phase 5 visual canvas, Planning Map transformations and AI runtime out of this correction.
+- keep derived analysis/proposals rebuildable or disposable and keep provider-specific formats outside Software Map domain contracts;
+- introduce only the narrow architecture-synthesis model capability required by ADR 0010; keep general AI Presence, Agent Mind, chat, tool execution, mutation, delegation, Phase 5 visual canvas and Planning Map transformations out of this correction.
 
 Minimum qualification:
-- a project with no architecture declaration still yields evidence-backed architecture candidates;
-- a greenfield fixture with canonical architecture and little/no implementation remains valid and visibly declared-only;
-- the real Dope repository produces architecture-scale candidates without using its declaration to manufacture those candidates;
-- developer correction of at least one detected boundary establishes canonical architecture and subsequent analysis honors that identity while still reporting contradictory implementation evidence;
-- clean rebuild/reanalysis is deterministic for the same inputs and candidate evidence is explainable.
+- first opening an uninitialized project offers analysis rather than silently constructing an sMap;
+- declining leaves the sMap uninitialized and produces no canonical architecture or derived map state; visiting sMap later exposes Analyze Project and can start the flow;
+- accepting analysis runs deterministic evidence collection before LLM synthesis and every proposed architecture boundary is traceable to evidence;
+- a proposal remains non-canonical until explicit developer acceptance;
+- developer correction of at least one proposed boundary establishes canonical architecture and subsequent analysis honors that identity while still reporting contradictory implementation evidence;
+- a greenfield/manual fixture can initialize canonical architecture with little/no implementation and no model configured, remaining visibly declared-only;
+- the real Dope repository can complete the evidence -> synthesis -> review/correction -> acceptance workflow;
+- failure/cancellation before acceptance leaves or returns the project to uninitialized unless a separately approved resumable-draft contract exists;
+- repeated deterministic evidence extraction for the same inputs is stable and proposal inputs are explainable.
 
 Exit condition:
 
-At unchanged `0.4.6`, Dope can discover architecture at System / Subsystem / Component scale, a developer can establish or correct canonical architecture, and the Physical Map can explain how current implementation realizes or diverges from that authority. Only then may Product Phase 5 be planned/activated.
+At unchanged `0.4.6`, Dope can deliberately initialize sMap for an existing project through opt-in deterministic analysis plus bounded LLM synthesis, a developer can correct and explicitly establish canonical architecture, a greenfield project can initialize manually, and the Physical Map can explain how current implementation realizes or diverges from that authority. Only then may Product Phase 5 be planned/activated.
 
 ## Product Phase 5 — Visual Software Planning
 
