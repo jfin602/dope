@@ -54,20 +54,36 @@ Project
 -> Component
 -> Code
 
-The **Software Map (sMap)** is Dope's architecture representation. The **Physical Map** describes current implemented reality from deterministic source analysis and recorded runtime evidence with provenance. Developer-authored subsystem declarations define intended modular boundaries and constraints.
+The **Software Map (sMap)** is Dope's architecture representation.
 
-The **Planning Map** arrives in Phase 5 and references Physical Map identities to express proposed target-state transformations. The normalized graph remains an internal/query substrate; “map” is the product vocabulary. Planning views do not duplicate current architecture into disconnected drawings.
+Its authority model is:
+
+Repository / runtime evidence
+-> deterministic architecture detection
+-> detected System / Subsystem / Component candidates
+-> developer confirmation or correction
+-> canonical architecture
+-> continuous implementation realization / drift analysis
+
+**Detection proposes; the developer owns architecture.** The developer may define architecture before code exists, or accept/rename/reparent/merge/split/replace/ignore detected boundaries in an existing project. Deterministic detection never silently becomes canonical architecture, and canonical declarations never erase contrary implementation evidence.
+
+The **Physical Map** describes current implemented reality mapped against canonical architecture. It distinguishes declared-only, detected-only, realized, drifted and unassigned implementation state, with provenance sufficient to explain the result.
+
+The **Planning Map** arrives in Phase 5 and references canonical/physical identities to express proposed target-state transformations. The normalized graph remains an internal/query substrate; “map” is the product vocabulary. Planning views do not duplicate current architecture into disconnected drawings.
+
+Semantic zoom is architectural rather than merely graphical: System -> Subsystem -> Component -> package/module/service -> file/symbol -> syntax/semantic source relationships.
 
 The core loop is:
 
-Understand current system
+Discover / define architecture
+-> Understand current realization
 -> Design target system
 -> Plan transformations
 -> Implement
 -> Re-analyze
 -> Reconcile
 
-AI may reason over this map and propose changes, but it does not silently manufacture physical software facts.
+AI may reason over this map and propose changes, but it does not silently manufacture physical software facts or canonical architecture.
 
 ## Project Mind
 
@@ -140,12 +156,13 @@ Foundation Spike 0 — qualify Theia
 -> Phase 3 — Planning Foundation
 -> correction c3 — remove Planning instruments
 -> Phase 4 — Physical Map
+-> correction c4 — architecture discovery + developer authority
 -> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
 -> Phase 7 — Scoped Delegation
 -> Phase 8 — Development Sessions
 
-Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments have been removed by completed correction `c3-remove-planning-instruments`. Phase 4's Physical Map is Qualified/Green at the uncommitted `0.4.6` closeout candidate (`docs/tasks/p4/closeout.md`), pending its runner-owned commit. Next is post-Phase-4 `/docs-review` before Phase 5 planning or activation; the broader forward core still requires the later Visual Software Planning redesign.
+Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map scope is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). ADR 0009 now requires correction `c4-architecture-discovery` at unchanged `0.4.6` before Phase 5 planning or activation.
 
 ## Non-goals
 
@@ -180,15 +197,13 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 3 — Planning** is Qualified for its applicable scope at `0.3.6` (see `docs/tasks/p3/closeout.md`). Its implementation is historical evidence, not a forward compatibility contract. The mandatory next gate is `c3-remove-planning-instruments` at unchanged `0.3.6`; Phase 4 cannot activate until that correction closes.
+**Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved scope. Phase 5 is not activated.**
 
-Phase 2's `0.2.6` P6 audit remains **Not Qualified**. The owner explicitly accepted its remaining evidence gaps for sequencing and closed Phase 2 without relabeling the audit Green. The preserved gaps are recorded in `docs/tasks/p2/closeout.md`; Phase 1's historical Not Qualified result also remains unchanged.
+The mandatory next gate is correction `c4-architecture-discovery` at unchanged `0.4.6`. It must preserve the Phase 4 semantic analyzer/evidence substrate while adding deterministic System / Subsystem / Component discovery, explicit detected-versus-canonical architecture state, developer confirmation/correction authority, greenfield architecture-before-code support, and implementation realization/drift reconciliation. ADR 0009 is the governing authority.
 
-Foundation Spike 0 qualified Theia 1.75.0 at package `0.0.6`. Theia remains pinned to 1.75.0 and Electron to 42.8.1 unless a deliberate framework upgrade is separately approved.
+Historical Phase 1/2 qualification gaps remain unchanged. Phase 3 remains historical evidence and its live Planning implementation remains removed. Theia stays pinned to 1.75.0 and Electron to 42.8.1 unless a deliberate framework upgrade is separately approved.
 
-Production Project Mind is the Phase 2 foundation. The Foundation Spike Planning placeholder has been replaced by the Phase 3 product surface.
-
-Model/provider integration, Agent Mind, tool execution, AI mutation, scoped delegation and durable development sessions remain deferred to their roadmap phases.
+Phase 5 Visual Software Planning, model/provider integration, Agent Mind, tool execution, AI mutation, scoped delegation and durable development sessions remain blocked behind their roadmap gates.
 
 ## Phase 3 result — live human-first Planning
 
