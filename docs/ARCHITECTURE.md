@@ -22,7 +22,7 @@ Dope presentation adapters and widgets
   |
 Application / orchestration
   |
-Project Intelligence / Planning / Software Model / later Agent Runtime
+Project Intelligence / Software Model / later Visual Software Planning / later Agent Runtime
   |
 Persistence / Model / Tool / Authority / Execution adapters
 
@@ -51,7 +51,8 @@ Theia supplies commodity IDE capabilities:
 
 Dope owns:
 - Project Mind / Project Intelligence
-- Plans and Tasks
+- the Physical Software Model
+- the future Visual Software Planning/work model
 - Agent Mind
 - DeveloperSession
 - ownership/delegation
@@ -149,12 +150,10 @@ Likely shape:
 
   packages/
     project-intelligence/
-    planning/
     software-model/
     code-analysis/
     code-analysis-typescript/
     architecture-rules/
-    planning-graph/
     persistence/
 
     agent-state/
@@ -166,7 +165,6 @@ Likely shape:
 
     theia-shell/
     theia-project-mind/
-    theia-planning/
     theia-software-map/
     theia-agent-mind/
     theia-runtime/
@@ -183,7 +181,7 @@ Dope is still pre-stability. Internal implementations from earlier product phase
 
 Prefer clean replacement when preserving an older internal schema, API, persistence format or UI would require adapters, dual state, synchronization or migration machinery that does not serve a concrete user/external commitment.
 
-Historical qualification remains evidence of what worked at that version; it does not require the implementation to survive. When a replacement becomes authoritative, remove superseded code and obsolete tests instead of maintaining parallel architectures.
+Historical qualification remains evidence of what worked at that version; it does not require the implementation to survive. Correction `c3-remove-planning-instruments` is the mandatory pre-Phase-4 application of this rule: it removes the Phase 3 Planning subsystem before the software-model implementation begins.
 
 ### Software Model
 
@@ -215,11 +213,11 @@ Owns ProjectArtifact identity/relationships, persistence contracts, provenance, 
 
 No Theia or provider dependency.
 
-### Phase 3 Planning — current historical implementation
+### Phase 3 Planning — historical implementation scheduled for removal
 
 At `0.3.6`, the implemented Planning subsystem owns Plan, PlanStep, Task, status transitions, ordering, relationships to Project Mind/files, document and per-Plan revisions, and planning history.
 
-Those contracts describe the qualified Phase 3 implementation only. They are not a forward architecture constraint. Product Phase 4 must not shape the Physical Software Model around them, and Product Phase 5 may replace this domain, persistence, RPC, UI and tests rather than adapting the new graph-centered architecture to the old one.
+Those contracts describe the qualified Phase 3 implementation only. Correction `c3-remove-planning-instruments` removes the live domain, contracts, persistence, RPC, presentation, PLAN mode, dedicated tests and repository Planning state before Phase 4 activates. Product Phase 4 must start without that subsystem present.
 
 ### Persistence
 
@@ -345,7 +343,6 @@ Agent proposal
 
 Canonical product state includes, as phases introduce it:
 - ProjectArtifact
-- Phase 3 Plan / PlanStep / Task while that historical Planning subsystem remains installed
 - developer-authored System/Subsystem declarations and architecture constraints
 - future graph-centered planning/target intent as defined by Phase 5
 - accepted AgentWorkingState fields
@@ -366,24 +363,13 @@ Derived/non-canonical state includes:
 
 Do not confuse derived convenience with canonical truth.
 
-## Workspace modes
+## Workspace surfaces
 
-Dope defines a product-level WorkspaceMode abstraction.
+The Phase 3 BUILD/PLAN WorkspaceMode abstraction is removed by `c3-remove-planning-instruments`; it is not carried into Phase 4.
 
-Initial useful modes:
-- BUILD
-- PLAN
+After the correction, ordinary IDE behavior is the baseline presentation. Product Phase 4 may add bounded software-map inspection surfaces as required for qualification. Product Phase 5 defines the future multi-tab Visual Software Planning workspace and any resulting workspace-mode/perspective concepts from first principles.
 
-ARCHITECTURE becomes a first-class work surface as the Physical Software Model and Visual Planning phases land.
-
-Later modes may include:
-- RESEARCH
-- DEBUG
-- REVIEW
-
-Theia Perspectives may be used as an adapter if qualified.
-
-Critical product state must not depend directly on an unstable framework API.
+Theia Perspectives may be used as an adapter if qualified. Critical product state must not depend directly on an unstable framework API.
 
 ## Customization hierarchy
 
@@ -434,7 +420,7 @@ Dope should eventually be able to develop Dope, but self-development is an ordin
 
 When the target repository is Dope:
 - Project Intelligence uses the same canonical product contracts;
-- Planning uses the same Plan/Task contracts;
+- future Visual Software Planning uses the same graph-centered product contracts as any other project;
 - model providers use the same capability adapters;
 - Agent Runtime uses the same execution path;
 - observation and mutation authority remain unchanged;

@@ -46,4 +46,6 @@ After this audit completed and the runner committed the Phase 3 closeout as `ed3
 
 The Phase 3 qualification above remains historical evidence for exactly the implementation it audited. It does **not** create a forward compatibility requirement for Plan/PlanStep/Task, `.dope/planning.json`, Planning RPC/UI, or their tests.
 
-The next product target is Product Phase 4 — Physical Software Model, not AI Presence. Phase 4 is intentionally independent from Phase 3 Planning. Product Phase 5 — Visual Software Planning may replace the Phase 3 planning implementation completely, without a compatibility adapter or migration, unless a later explicit decision identifies a concrete user-data or external-interface reason to preserve compatibility.
+The roadmap was subsequently tightened again: before Product Phase 4 can activate, mandatory correction `c3-remove-planning-instruments` removes the entire live Phase 3 Planning vertical slice at unchanged version `0.3.6`. This includes the planning domain/contracts, persistence/RPC, UI/Project Mind bridges, PLAN workspace mode, dedicated tests and repository `.dope/planning.json`.
+
+The Phase 3 audit above remains historical evidence for the implementation it qualified. The correction does not relabel or invalidate that evidence; it intentionally deletes the qualified implementation from the current product so Phase 4 — Physical Software Model starts from a clean baseline.

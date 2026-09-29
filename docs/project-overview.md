@@ -81,7 +81,7 @@ Early Project Mind starts with:
 - Question
 - Decision
 
-Planning builds on that state later with Plan and Task.
+Future Visual Software Planning builds on that durable knowledge later; its work ontology is intentionally deferred until the graph-centered design.
 
 ## Build + Think
 
@@ -138,13 +138,14 @@ Foundation Spike 0 — qualify Theia
 -> Phase 1 — IDE Alive
 -> Phase 2 — Project Mind
 -> Phase 3 — Planning Foundation
+-> correction c3 — remove Planning instruments
 -> Phase 4 — Physical Software Model
 -> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
 -> Phase 7 — Scoped Delegation
 -> Phase 8 — Development Sessions
 
-Phase 3 is a completed provider-free planning experiment/product increment. The forward core is completed only after the Physical Software Model and Visual Software Planning redesign. Phase 5 is allowed to replace Phase 3 Planning rather than preserve it.
+Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments are removed by mandatory correction `c3-remove-planning-instruments` before Phase 4. The forward core is completed only after the Physical Software Model and later Visual Software Planning redesign.
 
 ## Non-goals
 
@@ -179,7 +180,7 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 3 — Planning** is Qualified for its applicable scope at `0.3.6` (see `docs/tasks/p3/closeout.md`). Its implementation is historical evidence, not a forward compatibility contract. The next implementation target is Product Phase 4 — Physical Software Model; execution still requires its own activation/planning authority.
+**Product Phase 3 — Planning** is Qualified for its applicable scope at `0.3.6` (see `docs/tasks/p3/closeout.md`). Its implementation is historical evidence, not a forward compatibility contract. The mandatory next gate is `c3-remove-planning-instruments` at unchanged `0.3.6`; Phase 4 cannot activate until that correction closes.
 
 Phase 2's `0.2.6` P6 audit remains **Not Qualified**. The owner explicitly accepted its remaining evidence gaps for sequencing and closed Phase 2 without relabeling the audit Green. The preserved gaps are recorded in `docs/tasks/p2/closeout.md`; Phase 1's historical Not Qualified result also remains unchanged.
 
@@ -191,7 +192,7 @@ Model/provider integration, Agent Mind, tool execution, AI mutation, scoped dele
 
 ## Phase 3 result — live human-first Planning
 
-Phase 3 added Plan, PlanStep and Task as canonical planning state for the qualified `0.3.6` implementation. Those contracts may be removed or replaced by the graph-centered Phase 5 system; no compatibility layer or migration is implied by their historical qualification. Plans carry objective/context/status, ordered live steps and human-visible revision/history. Tasks are bounded units of work attached to plan steps, with requirements/constraints, project-relative working-set files, Project Mind links, status, completion notes and developer-entered validation notes.
+Phase 3 added Plan, PlanStep and Task as canonical planning state for the qualified `0.3.6` implementation. Correction `c3-remove-planning-instruments` now removes those live contracts and their runtime/presentation/persistence before Phase 4. Their qualification remains historical evidence only. Plans carry objective/context/status, ordered live steps and human-visible revision/history. Tasks are bounded units of work attached to plan steps, with requirements/constraints, project-relative working-set files, Project Mind links, status, completion notes and developer-entered validation notes.
 
 Planning remains useful with no model configured. Project Mind and Planning stay separate domain boundaries: Project Mind stores durable knowledge; Planning stores execution intent. Planning references Project Mind artifacts by stable ID instead of converting or duplicating them. Creating a Plan from a Decision creates a new Plan linked back to the Decision; it does not mutate the Decision into work.
 

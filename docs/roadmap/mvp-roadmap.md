@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current gate: post-Phase-3 `/docs-review` (Planning Qualified at `0.3.6`; Phase 4 not yet approved)
+Current gate: mandatory correction `c3-remove-planning-instruments` at unchanged `0.3.6`; Phase 4 cannot activate until the correction closes
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -15,6 +15,7 @@ Theia
 -> IDE
 -> Project Mind
 -> Planning Foundation
+-> remove Phase 3 Planning instruments
 -> Physical Software Model
 -> Visual Software Planning
 -> AI Presence
@@ -36,7 +37,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Product Phase 2 — Project Mind | Dope understands Dope. Its own decisions, notes, questions, ideas, and durable project context are useful through Project Mind. |
 | Product Phase 3 — Planning Foundation | Dope plans Dope. A real Dope feature can move from thought/decision into a live Plan and Tasks without leaving Dope. |
 | Product Phase 4 — Physical Software Model | Dope maps Dope. Its systems, subsystems, components and code relationships can be explored from evidence-backed current-state analysis. |
-| Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can branch from physical architecture into a target planning graph tied to Plans and Tasks, then reconcile implementation back to reality. |
+| Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can branch from physical architecture into a target planning graph, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, software-model context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 8 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
@@ -164,7 +165,7 @@ Using Dope should leave the project easier to understand when it is reopened, ev
 
 ## Product Phase 3 — Planning
 
-Status: **QUALIFIED FOR APPLICABLE SCOPE — `0.3.6`** (`docs/tasks/p3/closeout.md`). This is historical qualification, not a forward compatibility contract. Phase 4/5 may replace the Phase 3 planning domain, persistence and UI.
+Status: **QUALIFIED FOR APPLICABLE SCOPE — `0.3.6`** (`docs/tasks/p3/closeout.md`). This is historical qualification, not a forward compatibility contract. Its live Planning instruments must be removed by the mandatory correction gate before Phase 4.
 
 Execution folder: `p3`. Activation baseline: package `0.3.0`; prompt versions `0.3.1`–`0.3.6`. Authority: `docs/planning/p3/phase-3-plan.md` and `docs/planning/p3/activation.md`.
 
@@ -200,13 +201,46 @@ Project Mind
 +
 Live Planning
 
+## Mandatory pre-Phase-4 correction — `c3-remove-planning-instruments`
+
+Status: **REQUIRED / NOT YET CLOSED**
+
+Version semantics: correction stack at unchanged package version `0.3.6`. This is not Product Phase 4 and must not advance roadmap versioning.
+
+Purpose:
+Remove the complete Phase 3 Planning product/runtime vertical slice so the Physical Software Model starts from a clean repository rather than beside obsolete planning architecture.
+
+Required removal:
+- `@dope/planning` package and root/package build/typecheck dependency wiring;
+- Planning DTO/service contracts (`Plan`, `PlanStep`, `Task`, operations/history/document, service/client/path);
+- Planning store/backend/RPC registration;
+- Planning controller/widget/file navigation/view/menu/command;
+- Project Mind related-Plan/create-from-Decision/show-Plan bridges;
+- BUILD/PLAN mode, `WorkspaceMode.PLAN`, PLAN-specific local storage/title/status/CSS behavior;
+- Planning-specific unit/storage/UI/restart tests;
+- repository `.dope/planning.json` and live Planning storage documentation that only documents the removed runtime.
+
+Required preservation:
+- Phase 3 plans, prompts, closeout and evidence documents as history;
+- Project Mind domain/persistence/UI and its repository `.dope/project-mind.json`;
+- ordinary editor, terminal, SCM, debugger, search, Problems, tests, extensions, preferences/themes and packaging behavior;
+- repository workflow and correction/phase runner semantics.
+
+Exit condition:
+
+At unchanged `0.3.6`, aggregate surviving checks/builds pass; Project Mind and ordinary IDE behavior remain usable; package/build graphs no longer depend on `@dope/planning`; and negative guards prove no production Planning service/view/mode/storage wiring or repository `.dope/planning.json` remains. The correction closeout must explicitly clear this gate before Phase 4 activation.
+
 ## Product Phase 4 — Physical Software Model
 
 Purpose:
 Make current software architecture a deterministic, explorable part of the development environment before AI is asked to reason over it.
 
+Prerequisite:
+- `c3-remove-planning-instruments` closed Green/qualified enough for sequencing at unchanged `0.3.6`;
+- no live Phase 3 Planning subsystem remains.
+
 Initial scope:
-- clean implementation independent from Phase 3 Plan/PlanStep/Task, `.dope/planning.json`, Planning RPC and Planning UI;
+- clean implementation independent from any historical Phase 3 Planning contracts;
 - no compatibility adapter, migration or dual-state requirement for Phase 3 Planning;
 - language-independent Physical Software Model
 - Project -> System -> Subsystem -> Component -> Code hierarchy

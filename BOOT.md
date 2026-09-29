@@ -13,13 +13,13 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Product Phase 3 — Planning is Qualified for its applicable scope at `0.3.6`. Its implementation is historical evidence, not a forward compatibility contract. The next implementation target is Product Phase 4 — Physical Software Model; Phase 4 execution still requires explicit activation/planning authority.** See `docs/tasks/p3/closeout.md` and ADR 0007.
+**Product Phase 3 — Planning is Qualified for its applicable scope at `0.3.6`. Its implementation is historical evidence, not a forward compatibility contract. The mandatory current gate is correction `c3-remove-planning-instruments` at unchanged `0.3.6`. Product Phase 4 — Physical Software Model must not activate until that correction closes.** See `docs/tasks/p3/closeout.md` and ADR 0007.
 
 Phase 2's P6 `0.2.6` evidence-only audit remains **Not Qualified**. The owner subsequently explicitly closed Phase 2 for sequencing and authorized Phase 3 from a coherent `0.3.0` baseline. This owner disposition does not relabel the P6 audit Green or erase its evidence gaps. The retained Phase 2 gaps are the initially hidden legacy-migration entry, unproved dirty same-renderer workspace switch, lack of exact `0.2.6` native artifact launch/direct native visual Project Mind use, and inherited Phase 1 gaps where applicable. See `docs/tasks/p2/closeout.md` and `docs/planning/p3/activation.md`.
 
 The September 28, 2026 Phase 1 P6 closeout also remains **Not Qualified** at `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). Its historical failures are preserved. Neither the Phase 2 sequencing waiver nor the Phase 3 owner-close changes that evidence.
 
-Phase 3 added human-first live Planning on top of Project Mind and qualified it at `0.3.6`. Phase 4 does not preserve that Planning architecture by default. Phase 5 may replace its domain, persistence, RPC, UI and tests in favor of the graph-centered planning model. Production AI/provider integration, Agent Mind, tool calling, AI mutation, scoped delegation and durable Development Sessions remain deferred to their roadmap phases.
+Phase 3 added human-first live Planning on top of Project Mind and qualified it at `0.3.6`. That live subsystem is now scheduled for complete removal by `c3-remove-planning-instruments` before Phase 4. The correction removes its domain, persistence, RPC, UI, PLAN mode, dedicated tests and repository `.dope/planning.json`; no compatibility adapter or migration is required. Production AI/provider integration, Agent Mind, tool calling, AI mutation, scoped delegation and durable Development Sessions remain deferred to their roadmap phases.
 
 The qualified substrate remains:
 
@@ -80,6 +80,7 @@ Foundation Spike 0 — qualify Theia
 -> Phase 1 — IDE Alive
 -> Phase 2 — Project Mind
 -> Phase 3 — Planning Foundation
+-> correction c3 — remove Planning instruments
 -> Phase 4 — Physical Software Model
 -> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
@@ -113,8 +114,11 @@ Current/early layers:
 Dope desktop / Theia workbench
 -> Dope presentation adapters and widgets
 -> Application / orchestration
--> Project Intelligence / Planning / Software Model
+-> Project Intelligence / Software Model
 -> Code-analysis and persistence adapters
+
+Later:
+-> Visual Software Planning
 
 Later AI layers:
 
@@ -138,7 +142,7 @@ Initial Project Mind scope begins with:
 - Question
 - Decision
 
-Phase 3 already added Plan/PlanStep/Task as an internal planning model. Phase 4 adds the Physical Software Model; Phase 5 designs the forward Visual Software Planning/work model and may replace the Phase 3 concepts entirely. Later phases add Agent Mind, DeveloperSession, ChangeSet, Validation, and Research according to the roadmap.
+Phase 3 added Plan/PlanStep/Task as an internal planning model, but correction `c3-remove-planning-instruments` removes that live implementation before Phase 4. Phase 4 adds the Physical Software Model to a clean baseline; Phase 5 designs the forward Visual Software Planning/work model from scratch. Later phases add Agent Mind, DeveloperSession, ChangeSet, Validation, and Research according to the roadmap.
 
 Chat is one interface for manipulating project state. Chat history is not canonical product state.
 
@@ -214,8 +218,10 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Plan and explicitly activate Product Phase 4 — Physical Software Model from the qualified `0.3.6` repository baseline.
+Plan, write and execute correction stack `c3-remove-planning-instruments` at unchanged package version `0.3.6`.
 
-Phase 4 should build the new System -> Subsystem -> Component -> Code model, deterministic TypeScript/JavaScript analysis, evidence/provenance, architecture declarations, graph queries and boundary validation independently from Phase 3 Planning. Do not add Plan/PlanStep/Task adapters, `.dope/planning.json` migration, dual writes or old/new synchronization merely for compatibility.
+The correction must remove the complete live Phase 3 Planning vertical slice: Plan/PlanStep/Task contracts, Planning service/store/backend, Planning UI/controller/navigation, Project Mind Planning bridges, PLAN workspace mode/presentation, `@dope/planning` package/build wiring, Planning-specific restart/unit tests, repository `.dope/planning.json`, and current Planning storage documentation where it only describes the removed runtime.
 
-Phase 5 will design the forward Visual Software Planning/work model from the graph outward and may remove superseded Phase 3 Planning code/tests in a deliberate qualified cutover.
+The correction must preserve Project Mind, ordinary IDE/Theia behavior, repository workflow/runner behavior and historical Phase 3 plans/evidence. Its closeout must prove the surviving product builds/tests cleanly and that no production Planning service/view/mode/storage wiring remains.
+
+Only after that correction closes may Product Phase 4 — Physical Software Model be planned/activated from the clean `0.3.6` baseline.

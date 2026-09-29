@@ -95,6 +95,8 @@ Foundation Spike 0 — qualify Theia
 
 Product Phase 3 is already qualified historical implementation at `0.3.6`. This ADR does not reinterpret or reopen that qualification, and Phase 3 does not become a forward compatibility contract.
 
+Before Product Phase 4 can activate, correction stack `c3-remove-planning-instruments` must remove the live Phase 3 Planning subsystem at unchanged version `0.3.6`. Historical Phase 3 plans/evidence remain in Git; the runtime/domain/storage/UI/test instruments do not.
+
 The prior Phase 4 AI Presence planning worksheet is retained and renumbered for Product Phase 6.
 
 ## Pre-stability clean-break rule
@@ -104,7 +106,7 @@ Dope has not entered a compatibility/stability era. Earlier internal product inc
 Until an explicit compatibility milestone is adopted:
 - prefer the simplest correct forward architecture over preserving internal prototype compatibility;
 - do not add adapters, dual writes, compatibility schemas or migrations merely to keep superseded internal models alive;
-- Phase 3 `Plan`, `PlanStep`, `Task`, `.dope/planning.json`, Planning RPC/UI and their tests may be replaced or removed when the graph-centered planning system supersedes them;
+- Phase 3 `Plan`, `PlanStep`, `Task`, `.dope/planning.json`, Planning RPC/UI, PLAN workspace mode and their dedicated tests are removed in `c3-remove-planning-instruments` before Phase 4 begins;
 - historical qualification remains preserved in Git and evidence documents even when the qualified implementation is later deleted;
 - add compatibility only when a specific valuable user-data, external-interface or product commitment justifies its complexity.
 
@@ -128,8 +130,8 @@ Until an explicit compatibility milestone is adopted:
 - Agent context can later be assembled around Systems/Subsystems/Components rather than repeatedly reconstructing architecture from arbitrary files.
 - Dope can eventually diagnose architectural boundary violations in addition to language/compiler errors.
 - Planning and implementation gain an explicit target-versus-physical reconciliation loop.
-- Phase 4 is free of Phase 3 Planning compatibility requirements.
-- Phase 5 may replace the Phase 3 planning domain, persistence, presentation and regression suite in one deliberate cutover after the replacement is qualified.
+- Phase 4 starts from a repository with no live Phase 3 Planning subsystem and no compatibility requirement for it.
+- Phase 5 designs Visual Software Planning from the software graph outward with no legacy Planning runtime present.
 
 ## Revisit when
 

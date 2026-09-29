@@ -27,6 +27,10 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
+The mandatory current implementation gate is correction `c3-remove-planning-instruments` at unchanged `0.3.6`. Do not plan, prompt or implement Product Phase 4 source work until that correction closeout clears the gate.
+
+The correction removes the live Phase 3 Planning vertical slice, including its contracts/domain, persistence/RPC, UI/Project Mind bridges, PLAN mode, dedicated tests and repository Planning state. Historical Phase 3 docs/evidence remain.
+
 Qualification requirements are phase-aware.
 
 A future invariant does not authorize premature implementation.
@@ -82,7 +86,7 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 - Developer-authored System/Subsystem declarations and dependency constraints are architecture authority; extracted relationships validate against them.
 - Planning graphs reference physical identities and express target transformations rather than duplicating current architecture.
 - Pre-stability Dope prefers coherent replacement over internal compatibility scaffolding. Do not add adapters, dual writes, schema bridges or migrations for superseded internal product models unless a concrete user-data/external commitment justifies them.
-- Phase 3 Plan/PlanStep/Task, `.dope/planning.json`, Planning RPC/UI and associated tests are historical implementation details, not constraints on Phase 4 or Phase 5 architecture.
+- Phase 3 Plan/PlanStep/Task, `.dope/planning.json`, Planning RPC/UI, PLAN mode and associated tests are historical implementation details and must be removed by `c3-remove-planning-instruments` before Phase 4 activation.
 - Prefer standard framework extension points over shell internals; isolate unavoidable deep Theia coupling.
 - Forking Theia is a last resort and a failed-spike signal unless explicitly accepted.
 - Preserve upgradeability as a design property; qualify it when a real framework upgrade is undertaken rather than forcing synthetic upgrade work into an unrelated phase.
@@ -118,6 +122,6 @@ New executable task stacks use explicit GPT-6 Sol labels:
 
 Do not author new Terra prompts. Do not silently remap old model labels.
 
-Every correction stack must include a permanent regression guard for the defect class while that behavior remains authoritative. When an entire pre-stability subsystem is deliberately superseded, obsolete tests may be removed with the old implementation rather than fossilizing the replaced architecture.
+Every correction stack must include a permanent regression guard for the defect class while that behavior remains authoritative. For `c3-remove-planning-instruments`, the permanent guard is negative: current production/package wiring must not reintroduce the removed Planning service/view/mode/storage or `@dope/planning` dependency. Historical docs may still contain those names. When an entire pre-stability subsystem is deliberately superseded, obsolete tests may be removed with the old implementation rather than fossilizing the replaced architecture.
 
 Product authority lives in docs/project-overview.md plus docs/VISION.md, docs/PRINCIPLES.md, and docs/PRODUCT-MODEL.md. Architecture authority lives in docs/ARCHITECTURE.md. Qualification discipline lives in docs/stability-contract.md.
