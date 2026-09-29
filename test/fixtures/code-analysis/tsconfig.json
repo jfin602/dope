@@ -1,0 +1,4 @@
+{
+  "compilerOptions": { "target": "ES2022", "module": "commonjs", "allowJs": true, "checkJs": false, "baseUrl": ".", "paths": { "@lib/*": ["src/*"] }, "skipLibCheck": true },
+  "include": ["src/**/*"], "exclude": ["generated", "vendor"]
+}
