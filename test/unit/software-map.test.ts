@@ -3,8 +3,8 @@ import test from 'node:test';
 import {
   aggregateDependencies, assignOwnership, createSnapshot, derivedId, hierarchy, ownershipForPath,
   parseArchitecture, parseArchitectureJson, relationshipId, relationshipsFor, validateSubsystemDependencies,
-} from '../../packages/software-model/lib/index.js';
-import type { ArchitectureDeclaration, CodeEntityNode, Evidence, ModelNode, ModelRelationship, SnapshotMetadata } from '../../packages/software-model/lib/index.js';
+} from '../../packages/software-map/lib/index.js';
+import type { ArchitectureDeclaration, CodeEntityNode, Evidence, GraphNode, GraphRelationship, SnapshotMetadata } from '../../packages/software-map/lib/index.js';
 
 const declaration: ArchitectureDeclaration = {
   schemaVersion: 1,
@@ -26,12 +26,12 @@ const code = (path: string): CodeEntityNode => assignOwnership({
   id: derivedId('file', path), kind: 'code', codeKind: 'file', name: path, path,
   evidenceIds: ['import-a'], ownership: { state: 'unassigned' },
 }, architecture, 'project');
-const project: ModelNode = { id: 'project', kind: 'project', name: 'Fixture', evidenceIds: [] };
-const system: ModelNode = { id: 'app', kind: 'system', name: 'Application', purpose: 'Serve', parentId: 'project', evidenceIds: ['decl'] };
-const api: ModelNode = { id: 'api', kind: 'subsystem', name: 'API', purpose: 'Public', parentId: 'app', evidenceIds: ['decl'] };
-const core: ModelNode = { id: 'core', kind: 'subsystem', name: 'Core', purpose: 'Logic', parentId: 'app', evidenceIds: ['decl'] };
-const secret: ModelNode = { id: 'secret', kind: 'subsystem', name: 'Secret', purpose: 'Private', parentId: 'app', evidenceIds: ['decl'] };
-const routes: ModelNode = { id: 'routes', kind: 'component', name: 'Routes', purpose: 'Handlers', parentId: 'api', evidenceIds: ['decl'] };
+const project: GraphNode = { id: 'project', kind: 'project', name: 'Fixture', evidenceIds: [] };
+const system: GraphNode = { id: 'app', kind: 'system', name: 'Application', purpose: 'Serve', parentId: 'project', evidenceIds: ['decl'] };
+const api: GraphNode = { id: 'api', kind: 'subsystem', name: 'API', purpose: 'Public', parentId: 'app', evidenceIds: ['decl'] };
+const core: GraphNode = { id: 'core', kind: 'subsystem', name: 'Core', purpose: 'Logic', parentId: 'app', evidenceIds: ['decl'] };
+const secret: GraphNode = { id: 'secret', kind: 'subsystem', name: 'Secret', purpose: 'Private', parentId: 'app', evidenceIds: ['decl'] };
+const routes: GraphNode = { id: 'routes', kind: 'component', name: 'Routes', purpose: 'Handlers', parentId: 'api', evidenceIds: ['decl'] };
 
 test('strict declaration parser rejects malformed, future, duplicate and unsafe data', () => {
   assert.deepEqual(parseArchitectureJson(JSON.stringify(declaration)), architecture);
@@ -71,7 +71,7 @@ test('derived identities, order, dedupe and queries are deterministic', () => {
   assert.equal(derivedId('symbol', 'src/a.ts', 'C.method'), derivedId('symbol', 'src/a.ts', 'C.method'));
   assert.notEqual(derivedId('file', 'src/a.ts'), derivedId('module', 'src/a.ts'));
   const id = relationshipId('imports', a.id, b.id, '4');
-  const edge: ModelRelationship = { id, kind: 'imports', sourceId: a.id, targetId: b.id, evidenceIds: ['import-a'] };
+  const edge: GraphRelationship = { id, kind: 'imports', sourceId: a.id, targetId: b.id, evidenceIds: ['import-a'] };
   const nodes = [core, a, routes, project, b, secret, api, system, unassigned];
   const snapshot = createSnapshot(metadata, nodes, [edge, { ...edge, evidenceIds: ['import-b'] }], evidence);
   const reversed = createSnapshot(metadata, [...nodes].reverse(), [{ ...edge, evidenceIds: ['import-b'] }, edge], [...evidence].reverse());
@@ -88,7 +88,7 @@ test('physical relationships require traceable evidence and valid references', (
   const a = code('src/api/routes/a.ts');
   const b = code('src/core/b.ts');
   const nodes = [project, system, api, core, secret, routes, a, b];
-  const edge: ModelRelationship = { id: relationshipId('imports', a.id, b.id), kind: 'imports', sourceId: a.id, targetId: b.id, evidenceIds: ['import-a'] };
+  const edge: GraphRelationship = { id: relationshipId('imports', a.id, b.id), kind: 'imports', sourceId: a.id, targetId: b.id, evidenceIds: ['import-a'] };
   assert.throws(() => createSnapshot(metadata, nodes, [{ ...edge, evidenceIds: [] }], evidence));
   assert.throws(() => createSnapshot(metadata, nodes, [{ ...edge, evidenceIds: ['missing'] }], evidence));
   assert.throws(() => createSnapshot(metadata, nodes, [{ ...edge, targetId: 'missing' }], evidence));
@@ -105,7 +105,7 @@ test('aggregation retains concrete origins and forbidden rules take precedence o
   const b = code('src/core/b.ts');
   const c = code('src/secret/c.ts');
   const d = code('src/api/routes/d.ts');
-  const edges: ModelRelationship[] = [
+  const edges: GraphRelationship[] = [
     { id: 'e1', kind: 'imports', sourceId: a.id, targetId: b.id, evidenceIds: ['import-a'] },
     { id: 'e2', kind: 'imports', sourceId: a.id, targetId: b.id, evidenceIds: ['import-b'] },
     { id: 'e3', kind: 'references', sourceId: a.id, targetId: c.id, evidenceIds: ['import-b'] },

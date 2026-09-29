@@ -5,14 +5,14 @@ import { BaseWidget } from '@theia/core/lib/browser/widgets/widget';
 import { CommonMenus } from '@theia/core/lib/browser/common-menus';
 import URI from '@theia/core/lib/common/uri';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
-import type { Evidence, ModelNode, ModelRelationship } from '@dope/software-model';
-import { ModelConnection, SoftwareModelController } from './software-model-controller';
+import type { Evidence, GraphNode, GraphRelationship } from '@dope/software-map';
+import { SoftwareMapConnection, SoftwareMapController } from './software-map-controller';
 import './dope.css';
 
-export const SOFTWARE_MODEL_ID = 'dope-software-model';
+export const SOFTWARE_MAP_ID = 'dope-software-map';
 
-export class SoftwareModelWidget extends BaseWidget {
-    readonly controller: SoftwareModelController;
+export class SoftwareMapWidget extends BaseWidget {
+    readonly controller: SoftwareMapController;
     private readonly rootsListener;
     private workspaceRequest = 0;
     private readonly status = document.createElement('p');
@@ -21,19 +21,19 @@ export class SoftwareModelWidget extends BaseWidget {
     private readonly violations = document.createElement('section');
     private readonly expanded = new Set<string>();
 
-    constructor(connect: () => ModelConnection, private readonly workspaces: WorkspaceService, private readonly opener: OpenerService) {
+    constructor(connect: () => SoftwareMapConnection, private readonly workspaces: WorkspaceService, private readonly opener: OpenerService) {
         super();
-        this.id = SOFTWARE_MODEL_ID;
-        this.title.label = this.title.caption = 'Software Model';
+        this.id = SOFTWARE_MAP_ID;
+        this.title.label = this.title.caption = 'Software Map';
         this.title.closable = true;
         this.addClass('dope-spike-view');
-        this.addClass('dope-model-view');
+        this.addClass('dope-smap-view');
         this.node.tabIndex = 0;
-        this.controller = new SoftwareModelController(connect, () => this.render());
+        this.controller = new SoftwareMapController(connect, () => this.render());
         const heading = document.createElement('h2');
-        heading.textContent = 'Software Model';
+        heading.textContent = 'Software Map';
         const analyze = this.button('Analyze / Refresh', () => void this.controller.analyze());
-        analyze.setAttribute('aria-label', 'Analyze or refresh Software Model');
+        analyze.setAttribute('aria-label', 'Analyze or refresh Software Map');
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.node.append(heading, analyze, this.status, this.tree, this.detail, this.violations);
@@ -84,7 +84,7 @@ export class SoftwareModelWidget extends BaseWidget {
         if (status.declarationPresent === false) this.tree.append(this.element('p', 'No .dope/architecture.json declaration. Analyzed implementation remains unassigned.'));
         if (status.analysis.completeness === 'partial') this.tree.append(this.element('p', 'Partial analysis: inspect diagnostics before relying on this graph.'));
         const nodes = model.nodes;
-        const children = new Map<string, ModelNode[]>();
+        const children = new Map<string, GraphNode[]>();
         for (const node of nodes) {
             const parent = node.parentId ?? '';
             const group = children.get(parent) ?? [];
@@ -92,7 +92,7 @@ export class SoftwareModelWidget extends BaseWidget {
             children.set(parent, group);
         }
         for (const group of children.values()) group.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
-        const renderNode = (node: ModelNode): HTMLElement => {
+        const renderNode = (node: GraphNode): HTMLElement => {
             const row = this.element('li');
             const descendants = children.get(node.id) ?? [];
             const button = this.button(`${node.name} · ${node.kind}${node.kind === 'code' ? ` · ${node.codeKind}` : ''}`, () => void model.select(node.id));
@@ -109,7 +109,7 @@ export class SoftwareModelWidget extends BaseWidget {
             } else row.append(button);
             return row;
         };
-        const list = (items: ModelNode[]): HTMLUListElement => {
+        const list = (items: GraphNode[]): HTMLUListElement => {
             const ul = this.element('ul');
             for (const item of items) ul.append(renderNode(item));
             return ul;
@@ -132,7 +132,7 @@ export class SoftwareModelWidget extends BaseWidget {
         if (focusedNode) [...this.tree.querySelectorAll<HTMLButtonElement>('button[data-node-id]')].find(button => button.dataset.nodeId === focusedNode)?.focus();
         if (focusedEdge) [...this.detail.querySelectorAll<HTMLButtonElement>('button[data-edge-id]')].find(button => button.dataset.edgeId === focusedEdge)?.focus();
     }
-    private renderNodeDetail(node?: ModelNode): void {
+    private renderNodeDetail(node?: GraphNode): void {
         if (!node) return;
         this.detail.append(this.element('h3', node.name), this.element('p', `${node.kind} · ${node.id}`));
         if ('purpose' in node) this.detail.append(this.element('p', node.purpose));
@@ -153,13 +153,13 @@ export class SoftwareModelWidget extends BaseWidget {
         this.renderEdges('Source relationships', this.controller.offending);
         this.renderEvidence(this.controller.evidence);
     }
-    private renderEdges(label: string, edges: ModelRelationship[]): void {
+    private renderEdges(label: string, edges: GraphRelationship[]): void {
         this.detail.append(this.element('h4', `${label} (${edges.length})`));
         for (const edge of edges) {
             const source = this.controller.nodes.find(item => item.id === edge.sourceId)?.name ?? edge.sourceId;
             const target = this.controller.nodes.find(item => item.id === edge.targetId)?.name ?? edge.targetId;
             const row = this.element('div');
-            row.className = 'dope-model-edge';
+            row.className = 'dope-smap-edge';
             row.append(this.element('p', `${edge.originRelationshipIds?.length ? 'Aggregated' : 'Direct'} ${edge.kind}: ${source} → ${target}${edge.originRelationshipIds?.length ? ` · ${edge.originRelationshipIds.length} physical edges` : ''}`));
             this.renderEvidence(this.controller.evidence.filter(item => edge.evidenceIds.includes(item.id)), row);
             if (edge.originRelationshipIds?.length) {
@@ -201,13 +201,13 @@ export class SoftwareModelWidget extends BaseWidget {
 }
 
 @injectable()
-export class SoftwareModelView extends AbstractViewContribution<SoftwareModelWidget> {
-    constructor() { super({ widgetId: SOFTWARE_MODEL_ID, widgetName: 'Software Model', defaultWidgetOptions: { area: 'right' } }); }
+export class SoftwareMapView extends AbstractViewContribution<SoftwareMapWidget> {
+    constructor() { super({ widgetId: SOFTWARE_MAP_ID, widgetName: 'Software Map', defaultWidgetOptions: { area: 'right' } }); }
     override registerCommands(commands: CommandRegistry): void {
         super.registerCommands(commands);
-        commands.registerCommand({ id: 'dope.softwareModel.open', label: 'Dope: Show Software Model' }, { execute: () => this.openView({ activate: true }) });
+        commands.registerCommand({ id: 'dope.softwareMap.open', label: 'Dope: Show Software Map' }, { execute: () => this.openView({ activate: true }) });
     }
     override registerMenus(menus: MenuModelRegistry): void {
-        menus.registerMenuAction(CommonMenus.VIEW_VIEWS, { commandId: 'dope.softwareModel.open', label: 'Software Model' });
+        menus.registerMenuAction(CommonMenus.VIEW_VIEWS, { commandId: 'dope.softwareMap.open', label: 'Software Map' });
     }
 }

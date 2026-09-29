@@ -1,19 +1,19 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
-import { assembleModel } from '@dope/software-model';
-import type { ModelStatus, PhysicalModelSnapshot } from '@dope/software-model';
+import { assemblePhysicalMap } from '@dope/software-map';
+import type { SoftwareMapStatus, PhysicalMapSnapshot } from '@dope/software-map';
 import type { CodeAnalysisResult } from '../index';
 import { readArchitecture } from './architecture-file';
 
 const skipped = new Set(['node_modules', '.git', '.dope', '.theia', 'plugins', 'dist', 'build', 'out', 'coverage', 'generated', 'vendor']);
 const source = /\.(?:[cm]?[jt]s|[jt]sx)$/i;
 const config = /^(?:tsconfig|jsconfig)(?:\.[^/]*)?\.json$/;
-const failed = (message: string): ModelStatus['analysis'] => ({ completeness: 'failed', errors: [{ producer: '@dope/code-analysis', code: 'index-failure', message }] });
-const idle = (): ModelStatus => ({ generation: 0, publishedGeneration: 0, state: 'idle', analysis: failed('Analysis has not run'), reusedSourceFiles: 0 });
+const failed = (message: string): SoftwareMapStatus['analysis'] => ({ completeness: 'failed', errors: [{ producer: '@dope/code-analysis', code: 'index-failure', message }] });
+const idle = (): SoftwareMapStatus => ({ generation: 0, publishedGeneration: 0, state: 'idle', analysis: failed('Analysis has not run'), reusedSourceFiles: 0 });
 
 interface Inputs { sourceFingerprint: string; configFingerprint: string; declarationFingerprint: string; fingerprint: string }
-interface Entry { requested: number; status: ModelStatus; snapshot?: PhysicalModelSnapshot; inputs?: Inputs; result?: CodeAnalysisResult }
+interface Entry { requested: number; status: SoftwareMapStatus; snapshot?: PhysicalMapSnapshot; inputs?: Inputs; result?: CodeAnalysisResult }
 export interface IndexAnalyzer {
     analyze(root: string): CodeAnalysisResult | Promise<CodeAnalysisResult>;
     reset?(root: string): void;
@@ -46,23 +46,23 @@ async function fingerprints(root: string, declarationText?: string, paths?: { so
 }
 
 /** One disposable, per-project in-memory index. Latest requested generation is the only publisher. */
-export class ModelIndex {
+export class SoftwareMapIndex {
     private readonly entries = new Map<string, Entry>();
-    private readonly listeners = new Set<(root: string, status: ModelStatus) => void>();
+    private readonly listeners = new Set<(root: string, status: SoftwareMapStatus) => void>();
 
     constructor(private readonly analyzer: IndexAnalyzer) { }
 
-    onChange(listener: (root: string, status: ModelStatus) => void): () => void {
+    onChange(listener: (root: string, status: SoftwareMapStatus) => void): () => void {
         this.listeners.add(listener);
         return () => this.listeners.delete(listener);
     }
-    private notify(root: string, status: ModelStatus): void {
+    private notify(root: string, status: SoftwareMapStatus): void {
         for (const listener of this.listeners) { try { listener(root, status); } catch { /* A closed RPC client cannot affect analysis. */ } }
     }
-    status(root: string): ModelStatus { return structuredClone(this.entries.get(root)?.status ?? idle()); }
-    snapshot(root: string): PhysicalModelSnapshot | undefined { return this.entries.get(root)?.snapshot; }
+    status(root: string): SoftwareMapStatus { return structuredClone(this.entries.get(root)?.status ?? idle()); }
+    snapshot(root: string): PhysicalMapSnapshot | undefined { return this.entries.get(root)?.snapshot; }
 
-    async analyze(root: string): Promise<ModelStatus> {
+    async analyze(root: string): Promise<SoftwareMapStatus> {
         const entry = this.entries.get(root) ?? { requested: 0, status: idle() };
         this.entries.set(root, entry);
         const generation = ++entry.requested;
@@ -78,7 +78,7 @@ export class ModelIndex {
             const result = same ? undefined : await this.analyzer.analyze(root);
             if (generation !== entry.requested) return this.status(root);
             const analysis = (result ?? entry.result!).status;
-            const snapshot = assembleModel({ projectId: 'project:root', generation, inputFingerprint: inputs.fingerprint, analysis }, architecture, result ?? entry.result!);
+            const snapshot = assemblePhysicalMap({ projectId: 'project:root', generation, inputFingerprint: inputs.fingerprint, analysis }, architecture, result ?? entry.result!);
             entry.snapshot = snapshot;
             entry.inputs = inputs;
             entry.result = result ?? entry.result;

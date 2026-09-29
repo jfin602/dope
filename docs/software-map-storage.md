@@ -1,4 +1,4 @@
-# Physical Software Model storage
+# Physical Map storage
 
 The canonical architecture declaration is one project-local `.dope/architecture.json` file. Developers edit it with the ordinary editor and review/version it with Git. Dope reads it; Phase 4 does not write or migrate it. It contains explicit System, Subsystem, and optional Component identities, ownership roots, purposes, and Subsystem dependency rules. It does not allocate a second Project identity or alter Project Mind.
 

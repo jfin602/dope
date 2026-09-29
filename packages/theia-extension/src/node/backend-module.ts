@@ -6,18 +6,18 @@ import { NoteStore } from './note-store';
 import { ProjectMindClient, projectMindServicePath } from '@dope/contracts/lib/project-mind-service';
 import { ProjectMindStore } from '@dope/project-intelligence/lib/node/project-mind-store';
 import { ProjectMindBackend } from './project-mind-backend';
-import { softwareModelServicePath } from '@dope/software-model';
-import type { SoftwareModelClient } from '@dope/software-model';
-import { ModelIndex } from '@dope/code-analysis/lib/node/model-index';
+import { softwareMapServicePath } from '@dope/software-map';
+import type { SoftwareMapClient } from '@dope/software-map';
+import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
 import { TypeScriptAnalyzer } from '@dope/code-analysis-typescript';
-import { SoftwareModelBackend } from './software-model-backend';
+import { SoftwareMapBackend } from './software-map-backend';
 
 export default new ContainerModule(bind => {
     bind(NoteStore).toSelf().inSingletonScope();
     bind(ProjectMindStore).toSelf().inSingletonScope();
-    bind(ModelIndex).toDynamicValue(() => new ModelIndex(new TypeScriptAnalyzer())).inSingletonScope();
-    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<SoftwareModelClient>(softwareModelServicePath, client => {
-        const backend = new SoftwareModelBackend(context.container.get(ModelIndex), client);
+    bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
+    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<SoftwareMapClient>(softwareMapServicePath, client => {
+        const backend = new SoftwareMapBackend(context.container.get(SoftwareMapIndex), client);
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

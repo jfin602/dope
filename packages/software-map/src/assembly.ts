@@ -1,15 +1,15 @@
 import { assignOwnership, aggregateDependencies, createSnapshot, relationshipId, validateSubsystemDependencies } from './graph';
-import type { ArchitectureDeclaration, Evidence, ModelNode, ModelRelationship, PhysicalModelSnapshot, SnapshotMetadata } from './contracts';
+import type { ArchitectureDeclaration, Evidence, GraphNode, GraphRelationship, PhysicalMapSnapshot, SnapshotMetadata } from './contracts';
 
 export interface AnalyzedCode {
-    nodes: Extract<ModelNode, { kind: 'code' }>[];
-    relationships: ModelRelationship[];
+    nodes: Extract<GraphNode, { kind: 'code' }>[];
+    relationships: GraphRelationship[];
     evidence: Evidence[];
 }
 
 /** Combine canonical declarations with source facts without persisting the result. */
-export function assembleModel(metadata: SnapshotMetadata, architecture: ArchitectureDeclaration, code: AnalyzedCode): PhysicalModelSnapshot {
-    const nodes: ModelNode[] = [{ id: metadata.projectId, kind: 'project', name: 'Project', evidenceIds: [] }];
+export function assemblePhysicalMap(metadata: SnapshotMetadata, architecture: ArchitectureDeclaration, code: AnalyzedCode): PhysicalMapSnapshot {
+    const nodes: GraphNode[] = [{ id: metadata.projectId, kind: 'project', name: 'Project', evidenceIds: [] }];
     const relationships = [...code.relationships];
     const evidence = [...code.evidence];
     const addBoundary = (id: string, kind: 'system' | 'subsystem' | 'component', name: string, purpose: string, parentId: string): void => {

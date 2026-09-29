@@ -424,7 +424,7 @@ test('Project Mind survives process and profile restarts, isolates folders, and 
     }
 });
 
-test('Software Model rebuilds from source and declaration across process restart and reanalysis', { timeout: 300000 }, async () => {
+test('Software Map rebuilds from source and declaration across process restart and reanalysis', { timeout: 300000 }, async () => {
     const directory = await mkdtemp(join(tmpdir(), 'dope-model-restart-'));
     const first = join(directory, 'first');
     const second = join(directory, 'second');
@@ -440,7 +440,7 @@ test('Software Model rebuilds from source and declaration across process restart
     const attach = async (page, folder, analyze = false) => evaluate(page, `(async () => {
         const container = theia.container;
         const managerKey = [...container._bindingDictionary._map.entries()].find(([, bindings]) => bindings.some(binding => binding.implementationType?.prototype?.getOrCreateWidget))[0];
-        const widget = await container.get(managerKey).getOrCreateWidget('dope-software-model');
+        const widget = await container.get(managerKey).getOrCreateWidget('dope-software-map');
         const controller = widget.controller;
         const uri = ${JSON.stringify(pathToFileURL(folder).href)};
         if (controller.workspace !== uri || !controller.handle) await controller.attach(uri);
@@ -477,7 +477,7 @@ test('Software Model rebuilds from source and declaration across process restart
         await writeFile(join(second, 'tsconfig.json'), JSON.stringify({ include: ['src/**/*.ts'] }));
         await writeFile(join(second, 'src/index.ts'), 'export const second = 2;\n');
         instance = await launch(profile, port, first);
-        assert.equal(await evaluate(instance.page, `(() => { const button = [...document.querySelectorAll('button')].find(value => value.textContent.includes('Yes, I trust the authors')); if (button) button.click(); return !!theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'SoftwareModelService')); })()`), true);
+        assert.equal(await evaluate(instance.page, `(() => { const button = [...document.querySelectorAll('button')].find(value => value.textContent.includes('Yes, I trust the authors')); if (button) button.click(); return !!theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'SoftwareMapService')); })()`), true);
         const firstPass = await attach(instance.page, first, true);
         assert.equal(firstPass.initial.state, 'idle');
         assert.equal(firstPass.status.state, 'ready');
@@ -489,17 +489,17 @@ test('Software Model rebuilds from source and declaration across process restart
         assert.ok(firstPass.dependency.some(item => item.targetId === 'secret' && item.originRelationshipIds.length));
         assert.equal(firstPass.location.path, 'src/api/a.ts');
         assert.ok(firstPass.evidence.some(item => item.path === 'src/api/a.ts' && item.span?.line === 1));
-        await evaluate(instance.page, `(async () => { await theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'CommandService')).executeCommand('dope.softwareModel.open'); return true; })()`);
-        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-model')?.textContent.includes('Architecture violations (1)')`)), true);
-        await evaluate(instance.page, `document.querySelector('#dope-software-model button[aria-label="Analyze or refresh Software Model"]').click()`);
-        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-model [role="status"]')?.textContent.includes('Generation 2')`)), true);
-        await evaluate(instance.page, `document.querySelector('#dope-software-model button[data-node-id="api"]').click()`);
-        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-model')?.textContent.includes('Aggregated depends-on: API → Secret')`)), true);
-        await evaluate(instance.page, `[...document.querySelectorAll('#dope-software-model button')].find(button => button.textContent === 'Show originating physical edges').click()`);
-        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-model')?.textContent.includes('Originating physical edges (') && document.querySelector('#dope-software-model')?.textContent.includes('imports:')`)), true);
-        await evaluate(instance.page, `[...document.querySelectorAll('#dope-software-model button')].find(button => button.textContent.includes('forbidden-dependency')).click()`);
-        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-model')?.textContent.includes('Offending physical edges') && document.querySelector('#dope-software-model')?.textContent.includes('src/api/a.ts:1')`)), true);
-        await evaluate(instance.page, `[...document.querySelectorAll('#dope-software-model button')].find(button => button.textContent.includes('src/api/a.ts:1')).click()`);
+        await evaluate(instance.page, `(async () => { await theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'CommandService')).executeCommand('dope.softwareMap.open'); return true; })()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-map')?.textContent.includes('Architecture violations (1)')`)), true);
+        await evaluate(instance.page, `document.querySelector('#dope-software-map button[aria-label="Analyze or refresh Software Map"]').click()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-map [role="status"]')?.textContent.includes('Generation 2')`)), true);
+        await evaluate(instance.page, `document.querySelector('#dope-software-map button[data-node-id="api"]').click()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-map')?.textContent.includes('Aggregated depends-on: API → Secret')`)), true);
+        await evaluate(instance.page, `[...document.querySelectorAll('#dope-software-map button')].find(button => button.textContent === 'Show originating physical edges').click()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-map')?.textContent.includes('Originating physical edges (') && document.querySelector('#dope-software-map')?.textContent.includes('imports:')`)), true);
+        await evaluate(instance.page, `[...document.querySelectorAll('#dope-software-map button')].find(button => button.textContent.includes('forbidden-dependency')).click()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-map')?.textContent.includes('Offending physical edges') && document.querySelector('#dope-software-map')?.textContent.includes('src/api/a.ts:1')`)), true);
+        await evaluate(instance.page, `[...document.querySelectorAll('#dope-software-map button')].find(button => button.textContent.includes('src/api/a.ts:1')).click()`);
         assert.equal(await until(() => evaluate(instance.page, `(() => { const entries = [...theia.container._bindingDictionary._map.entries()]; return theia.container.get(entries.find(([, bindings]) => bindings.some(binding => binding.implementationType?.prototype?.handleNewPreview))[0]).currentEditor?.title.label === 'a.ts'; })()`)), true);
         await writeFile(join(first, 'src/api/a.ts'), source(''));
         const removed = await attach(instance.page, first, true);

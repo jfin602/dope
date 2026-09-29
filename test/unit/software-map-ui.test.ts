@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { SoftwareModelController } = require('../../packages/theia-extension/lib/browser/software-model-controller.js');
+const { SoftwareMapController } = require('../../packages/theia-extension/lib/browser/software-map-controller.js');
 const deferred = () => {
   let resolve: (value: any) => void = () => {};
   const promise = new Promise<any>(ok => { resolve = ok; });
@@ -25,7 +25,7 @@ function connection() {
   let disposed = false;
   return {
     attachPending: attach, analyzePending: analyze, statusPending: statusRequest, hierarchyPending: hierarchy, violationsPending: violations, relationshipsPending: relationships, relationshipEdgesPending: relationshipEdges, evidencePending: evidence,
-    setClient(value: any) { client = value; }, event(value: any) { client?.notifySoftwareModelChanged(value); },
+    setClient(value: any) { client = value; }, event(value: any) { client?.notifySoftwareMapChanged(value); },
     attach() { return attach.promise; }, analyze() { return analyze.promise; },
     status() { return statusRequest.promise; },
     hierarchy() { return hierarchy.promise; }, violations() { return violations.promise; },
@@ -39,7 +39,7 @@ test('late attach and query from A cannot render in B; disposal rejects late dat
   const a = connection();
   const b = connection();
   let count = 0;
-  const controller = new SoftwareModelController(() => ++count === 1 ? a : b, () => {});
+  const controller = new SoftwareMapController(() => ++count === 1 ? a : b, () => {});
   const attachingA = controller.attach('file:///A');
   const attachingB = controller.attach('file:///B');
   a.attachPending.resolve({ projectHandle: 'a', status: idle });
@@ -63,7 +63,7 @@ test('late attach and query from A cannot render in B; disposal rejects late dat
 
 test('attach reconciles analysis completed before handle was available', async () => {
   const c = connection();
-  const controller = new SoftwareModelController(() => c, () => {});
+  const controller = new SoftwareMapController(() => c, () => {});
   const attached = controller.attach('file:///A');
   c.attachPending.resolve({ projectHandle: 'a', status: { ...status(1), state: 'analyzing', publishedGeneration: 0 } });
   c.statusPending.resolve(status(1));
@@ -76,7 +76,7 @@ test('attach reconciles analysis completed before handle was available', async (
 
 test('late aggregate origins from A cannot appear after a root switch', async () => {
   const c = connection();
-  const controller = new SoftwareModelController(() => c, () => {});
+  const controller = new SoftwareMapController(() => c, () => {});
   const attached = controller.attach('file:///A');
   c.attachPending.resolve({ projectHandle: 'a', status: idle });
   await attached;
@@ -92,7 +92,7 @@ test('late aggregate origins from A cannot appear after a root switch', async ()
 
 test('refresh clears old generation and stale query cannot publish', async () => {
   const c = connection();
-  const controller = new SoftwareModelController(() => c, () => {});
+  const controller = new SoftwareMapController(() => c, () => {});
   const attaching = controller.attach('file:///A');
   c.attachPending.resolve({ projectHandle: 'a', status: idle });
   await attaching;

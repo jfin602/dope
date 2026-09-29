@@ -44,10 +44,10 @@ export interface CodeEntityNode extends BaseNode {
     symbol?: string;
     ownership: Ownership;
 }
-export type ModelNode = ProjectNode | SystemNode | SubsystemNode | ComponentNode | CodeEntityNode;
+export type GraphNode = ProjectNode | SystemNode | SubsystemNode | ComponentNode | CodeEntityNode;
 
 export type RelationshipKind = 'contains' | 'owns' | 'imports' | 'depends-on' | 'exports' | 'references' | 'extends' | 'implements';
-export interface ModelRelationship {
+export interface GraphRelationship {
     id: string;
     kind: RelationshipKind;
     sourceId: string;
@@ -78,10 +78,10 @@ export interface SnapshotMetadata {
     projectId: string;
     analysis: AnalysisStatus;
 }
-export interface PhysicalModelSnapshot {
+export interface PhysicalMapSnapshot {
     metadata: SnapshotMetadata;
-    nodes: ModelNode[];
-    relationships: ModelRelationship[];
+    nodes: GraphNode[];
+    relationships: GraphRelationship[];
     evidence: Evidence[];
     violations: ArchitectureViolation[];
 }

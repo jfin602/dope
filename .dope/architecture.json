@@ -3,46 +3,46 @@
   "systems": [
     {
       "id": "physical-model",
-      "name": "Physical Software Model",
+      "name": "Physical Map",
       "purpose": "Derive evidence-backed current software structure from project source and developer declarations.",
       "subsystems": [
         {
           "id": "model-core",
-          "name": "Model core",
+          "name": "Software Map core",
           "purpose": "Own language-independent architecture, graph, evidence and query contracts.",
-          "roots": ["packages/software-model/src"],
+          "roots": ["packages/software-map/src"],
           "forbiddenDependencies": ["model-inspector"],
           "components": [
-            { "id": "architecture-declaration", "name": "Architecture declaration", "purpose": "Parse and apply developer-authored boundaries.", "roots": ["packages/software-model/src/architecture.ts"] },
-            { "id": "physical-graph", "name": "Physical graph", "purpose": "Validate and query deterministic nodes and relationships.", "roots": ["packages/software-model/src/graph.ts"] }
+            { "id": "architecture-declaration", "name": "Architecture declaration", "purpose": "Parse and apply developer-authored boundaries.", "roots": ["packages/software-map/src/architecture.ts"] },
+            { "id": "physical-graph", "name": "Physical graph", "purpose": "Validate and query deterministic nodes and relationships.", "roots": ["packages/software-map/src/graph.ts"] }
           ]
         },
         {
           "id": "source-analysis",
           "name": "Source analysis",
-          "purpose": "Discover source and build a disposable model index through the TypeScript adapter.",
+          "purpose": "Discover source and build a disposable Software Map index through the TypeScript adapter.",
           "roots": ["packages/code-analysis/src", "packages/code-analysis-typescript/src"],
           "forbiddenDependencies": ["model-inspector"],
           "components": [
-            { "id": "model-index", "name": "Model index", "purpose": "Coordinate source, configuration and declaration reanalysis.", "roots": ["packages/code-analysis/src/node/model-index.ts"] }
+            { "id": "model-index", "name": "Software Map index", "purpose": "Coordinate source, configuration and declaration reanalysis.", "roots": ["packages/code-analysis/src/node/software-map-index.ts"] }
           ]
         },
         {
           "id": "model-inspector",
-          "name": "Model inspector",
-          "purpose": "Present typed model queries in the Theia workbench without owning architecture state.",
+          "name": "Software Map inspector",
+          "purpose": "Present typed Software Map queries in the Theia workbench without owning architecture state.",
           "roots": ["packages/theia-extension/src/browser"],
           "components": [
-            { "id": "inspector-view", "name": "Inspector view", "purpose": "Display hierarchy, dependencies, evidence and violations.", "roots": ["packages/theia-extension/src/browser/software-model-widget.ts"] }
+            { "id": "inspector-view", "name": "Inspector view", "purpose": "Display hierarchy, dependencies, evidence and violations.", "roots": ["packages/theia-extension/src/browser/software-map-widget.ts"] }
           ]
         },
         {
           "id": "model-transport",
-          "name": "Model transport",
+          "name": "Software Map transport",
           "purpose": "Bind local project handles to typed backend analysis and queries.",
           "roots": ["packages/theia-extension/src/node"],
           "components": [
-            { "id": "model-backend", "name": "Model backend", "purpose": "Serve project-bound queries and source locations.", "roots": ["packages/theia-extension/src/node/software-model-backend.ts"] }
+            { "id": "model-backend", "name": "Software Map backend", "purpose": "Serve project-bound queries and source locations.", "roots": ["packages/theia-extension/src/node/software-map-backend.ts"] }
           ]
         }
       ]

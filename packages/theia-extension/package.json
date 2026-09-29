@@ -20,7 +20,7 @@
   "dependencies": {
     "@dope/contracts": "0.4.5",
     "@dope/project-intelligence": "0.4.5",
-    "@dope/software-model": "0.4.5",
+    "@dope/software-map": "0.4.5",
     "@dope/code-analysis": "0.4.5",
     "@dope/code-analysis-typescript": "0.4.5",
     "@theia/core": "1.75.0",

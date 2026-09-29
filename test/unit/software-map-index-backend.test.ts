@@ -6,8 +6,8 @@ import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { TypeScriptAnalyzer } from '../../packages/code-analysis-typescript/lib/index.js';
 import { canonicalLocalRoot, readArchitecture } from '../../packages/code-analysis/lib/node/architecture-file.js';
-import { ModelIndex } from '../../packages/code-analysis/lib/node/model-index.js';
-import { SoftwareModelBackend } from '../../packages/theia-extension/lib/node/software-model-backend.js';
+import { SoftwareMapIndex } from '../../packages/code-analysis/lib/node/software-map-index.js';
+import { SoftwareMapBackend } from '../../packages/theia-extension/lib/node/software-map-backend.js';
 
 const declaration = {
   schemaVersion: 1, systems: [{ id: 'app', name: 'App', purpose: 'Application', subsystems: [
@@ -20,7 +20,7 @@ const declaration = {
   ] }],
 };
 const emptyResult = { projects: [], nodes: [], relationships: [], evidence: [], status: { completeness: 'complete' as const, errors: [] } };
-const snapshotData = (index: ModelIndex, root: string) => {
+const snapshotData = (index: SoftwareMapIndex, root: string) => {
   const snapshot = structuredClone(index.snapshot(root)!);
   snapshot.metadata.generation = 0;
   return snapshot;
@@ -72,8 +72,8 @@ test('index invalidates source/config/declaration, matches clean rebuild, and re
     await architecture(root);
     const analyzer = new TypeScriptAnalyzer();
     let resets = 0;
-    const index = new ModelIndex({ analyze: path => analyzer.analyze(path), reset: path => { resets++; analyzer.reset(path); }, inputPaths: path => analyzer.inputPaths(path) });
-    const clean = async () => { const separate = new ModelIndex(new TypeScriptAnalyzer()); await separate.analyze(root); return snapshotData(separate, root); };
+    const index = new SoftwareMapIndex({ analyze: path => analyzer.analyze(path), reset: path => { resets++; analyzer.reset(path); }, inputPaths: path => analyzer.inputPaths(path) });
+    const clean = async () => { const separate = new SoftwareMapIndex(new TypeScriptAnalyzer()); await separate.analyze(root); return snapshotData(separate, root); };
     let status = await index.analyze(root);
     assert.equal(status.state, 'ready');
     assert.deepEqual(snapshotData(index, root), await clean());
@@ -151,7 +151,7 @@ test('newest requested generation publishes even when older analysis finishes la
   const root = await fixture();
   try {
     const pending: Array<(result: typeof emptyResult) => void> = [];
-    const index = new ModelIndex({ analyze: () => new Promise(resolve => pending.push(resolve)) });
+    const index = new SoftwareMapIndex({ analyze: () => new Promise(resolve => pending.push(resolve)) });
     const first = index.analyze(root);
     const deadline = Date.now() + 5000;
     while (pending.length < 1 && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
@@ -172,10 +172,10 @@ test('typed backend rebinds a connection across roots, bounds queries, resolves 
   const secondRoot = await fixture();
   try {
     await architecture(firstRoot);
-    const index = new ModelIndex(new TypeScriptAnalyzer());
+    const index = new SoftwareMapIndex(new TypeScriptAnalyzer());
     const updates: number[] = [];
-    const a = new SoftwareModelBackend(index, { notifySoftwareModelChanged: event => updates.push(event.generation) });
-    const b = new SoftwareModelBackend(index, { notifySoftwareModelChanged: () => {} });
+    const a = new SoftwareMapBackend(index, { notifySoftwareMapChanged: event => updates.push(event.generation) });
+    const b = new SoftwareMapBackend(index, { notifySoftwareMapChanged: () => {} });
     const first = await a.attach(pathToFileURL(firstRoot).href);
     const second = await b.attach(pathToFileURL(secondRoot).href);
     assert.notEqual(first.projectHandle, second.projectHandle);

@@ -1,7 +1,7 @@
 import { ownershipForPath, projectPath } from './architecture';
-import type { ArchitectureDeclaration, ArchitectureViolation, CodeEntityNode, Evidence, ModelNode, ModelRelationship, NodeKind, PhysicalModelSnapshot, RelationshipKind, SnapshotMetadata, SubsystemDeclaration } from './contracts';
+import type { ArchitectureDeclaration, ArchitectureViolation, CodeEntityNode, Evidence, GraphNode, GraphRelationship, NodeKind, PhysicalMapSnapshot, RelationshipKind, SnapshotMetadata, SubsystemDeclaration } from './contracts';
 
-function invalid(message: string): never { throw new Error(`Invalid physical model: ${message}`); }
+function invalid(message: string): never { throw new Error(`Invalid Physical Map: ${message}`); }
 function name(value: unknown): value is string { return typeof value === 'string' && !!value.trim() && value === value.trim(); }
 function sortedUnique(values: string[]): string[] { return [...new Set(values)].sort(); }
 function same(a: unknown, b: unknown): boolean { return JSON.stringify(a) === JSON.stringify(b); }
@@ -40,7 +40,7 @@ function validateEvidence(value: Evidence): Evidence {
 }
 
 /** Validates references and returns stable, deduplicated, read-only-friendly arrays. */
-export function createSnapshot(metadata: SnapshotMetadata, nodes: ModelNode[], relationships: ModelRelationship[], evidence: Evidence[], violations: ArchitectureViolation[] = []): PhysicalModelSnapshot {
+export function createSnapshot(metadata: SnapshotMetadata, nodes: GraphNode[], relationships: GraphRelationship[], evidence: Evidence[], violations: ArchitectureViolation[] = []): PhysicalMapSnapshot {
     if (!name(metadata.projectId) || !name(metadata.inputFingerprint) || !Number.isSafeInteger(metadata.generation) || metadata.generation < 0 ||
         !['complete', 'partial', 'failed'].includes(metadata.analysis.completeness) || !Array.isArray(metadata.analysis.errors) ||
         metadata.analysis.completeness === 'complete' && metadata.analysis.errors.length) invalid('metadata');
@@ -50,7 +50,7 @@ export function createSnapshot(metadata: SnapshotMetadata, nodes: ModelNode[], r
         if (byEvidence.has(entry.id)) invalid(`duplicate evidence ${entry.id}`);
         byEvidence.set(entry.id, entry);
     }
-    const byNode = new Map<string, ModelNode>();
+    const byNode = new Map<string, GraphNode>();
     for (const raw of nodes) {
         if (!name(raw.id) || !name(raw.name) || !kinds.includes(raw.kind) || !Array.isArray(raw.evidenceIds) ||
             raw.kind !== 'project' && !raw.evidenceIds.length || raw.evidenceIds.some(id => !byEvidence.has(id))) invalid(`node ${raw.id}`);
@@ -84,7 +84,7 @@ export function createSnapshot(metadata: SnapshotMetadata, nodes: ModelNode[], r
             visited.add(parent);
         }
     }
-    const byRelationship = new Map<string, ModelRelationship>();
+    const byRelationship = new Map<string, GraphRelationship>();
     for (const raw of relationships) {
         if (!name(raw.id) || !relations.includes(raw.kind) || !byNode.has(raw.sourceId) || !byNode.has(raw.targetId) ||
             !raw.evidenceIds.length || raw.evidenceIds.some(id => !byEvidence.has(id))) invalid(`relationship ${raw.id}`);
@@ -122,7 +122,7 @@ export function createSnapshot(metadata: SnapshotMetadata, nodes: ModelNode[], r
     };
 }
 
-export function hierarchy(snapshot: PhysicalModelSnapshot, parentId: string, descendants = false): ModelNode[] {
+export function hierarchy(snapshot: PhysicalMapSnapshot, parentId: string, descendants = false): GraphNode[] {
     const ids = new Set([parentId]);
     if (descendants) {
         let priorSize: number;
@@ -133,20 +133,20 @@ export function hierarchy(snapshot: PhysicalModelSnapshot, parentId: string, des
     }
     return snapshot.nodes.filter(node => node.parentId && ids.has(node.parentId) && node.id !== parentId);
 }
-export function relationshipsFor(snapshot: PhysicalModelSnapshot, nodeId: string, direction: 'incoming' | 'outgoing', kinds?: RelationshipKind[]): ModelRelationship[] {
+export function relationshipsFor(snapshot: PhysicalMapSnapshot, nodeId: string, direction: 'incoming' | 'outgoing', kinds?: RelationshipKind[]): GraphRelationship[] {
     return snapshot.relationships.filter(edge => (direction === 'incoming' ? edge.targetId : edge.sourceId) === nodeId && (!kinds || kinds.includes(edge.kind)));
 }
 
 type Level = 'system' | 'subsystem' | 'component';
-function owner(node: ModelNode, level: Level): string | undefined {
+function owner(node: GraphNode, level: Level): string | undefined {
     if (node.kind === level) return node.id;
     if (node.kind === 'code') return node.ownership[`${level}Id`];
     return undefined;
 }
 /** Aggregates only concrete lower-level dependency edges and keeps every origin/evidence ID. */
-export function aggregateDependencies(snapshot: PhysicalModelSnapshot, level: Level): ModelRelationship[] {
+export function aggregateDependencies(snapshot: PhysicalMapSnapshot, level: Level): GraphRelationship[] {
     const nodes = new Map(snapshot.nodes.map(node => [node.id, node]));
-    const groups = new Map<string, ModelRelationship>();
+    const groups = new Map<string, GraphRelationship>();
     for (const edge of snapshot.relationships) {
         if (!['imports', 'depends-on', 'references', 'extends', 'implements'].includes(edge.kind) || edge.originRelationshipIds?.length) continue;
         const source = owner(nodes.get(edge.sourceId)!, level);
@@ -161,7 +161,7 @@ export function aggregateDependencies(snapshot: PhysicalModelSnapshot, level: Le
     return [...groups.values()].map(edge => ({ ...edge, evidenceIds: sortedUnique(edge.evidenceIds), originRelationshipIds: sortedUnique(edge.originRelationshipIds!) })).sort((a, b) => a.id.localeCompare(b.id));
 }
 
-export function validateSubsystemDependencies(architecture: ArchitectureDeclaration, aggregates: ModelRelationship[]): ArchitectureViolation[] {
+export function validateSubsystemDependencies(architecture: ArchitectureDeclaration, aggregates: GraphRelationship[]): ArchitectureViolation[] {
     const subsystems = new Map<string, SubsystemDeclaration>();
     for (const system of architecture.systems) for (const subsystem of system.subsystems) subsystems.set(subsystem.id, subsystem);
     const violations: ArchitectureViolation[] = [];

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { TypeScriptAnalyzer } from '../../packages/code-analysis-typescript/lib/index.js';
-import { derivedId } from '../../packages/software-model/lib/index.js';
+import { derivedId } from '../../packages/software-map/lib/index.js';
 
 const fixture = new URL('../fixtures/code-analysis/', import.meta.url).pathname;
 const analyzer = new TypeScriptAnalyzer();

@@ -2,18 +2,18 @@ import { constants } from 'node:fs';
 import { lstat, open, realpath, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseArchitectureJson } from '@dope/software-model';
-import type { ArchitectureDeclaration } from '@dope/software-model';
+import { parseArchitectureJson } from '@dope/software-map';
+import type { ArchitectureDeclaration } from '@dope/software-map';
 
 const missing = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
 
 export async function canonicalLocalRoot(uri: string): Promise<string> {
-    if (typeof uri !== 'string') throw new Error('Software Model requires a local folder');
+    if (typeof uri !== 'string') throw new Error('Software Map requires a local folder');
     let url: URL;
-    try { url = new URL(uri); } catch { throw new Error('Software Model requires a local folder'); }
-    if (url.protocol !== 'file:' || url.host) throw new Error('Software Model requires a local folder');
+    try { url = new URL(uri); } catch { throw new Error('Software Map requires a local folder'); }
+    if (url.protocol !== 'file:' || url.host) throw new Error('Software Map requires a local folder');
     const root = await realpath(fileURLToPath(url));
-    if (!(await stat(root)).isDirectory()) throw new Error('Software Model requires a folder');
+    if (!(await stat(root)).isDirectory()) throw new Error('Software Map requires a folder');
     return root;
 }
 

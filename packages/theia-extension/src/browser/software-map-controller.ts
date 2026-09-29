@@ -1,24 +1,24 @@
-import type { ArchitectureViolation, Evidence, ModelNode, ModelPage, ModelRelationship, ModelStatus, SoftwareModelClient, SoftwareModelService } from '@dope/software-model';
+import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService } from '@dope/software-map';
 
-export type ModelConnection = SoftwareModelService & { setClient(client: SoftwareModelClient | undefined): void };
+export type SoftwareMapConnection = SoftwareMapService & { setClient(client: SoftwareMapClient | undefined): void };
 
-export class SoftwareModelController {
+export class SoftwareMapController {
     workspace?: string;
-    status?: ModelStatus;
-    nodes: ModelNode[] = [];
+    status?: SoftwareMapStatus;
+    nodes: GraphNode[] = [];
     selectedId?: string;
     selectedViolation?: ArchitectureViolation;
-    incoming: ModelRelationship[] = [];
-    outgoing: ModelRelationship[] = [];
-    offending: ModelRelationship[] = [];
-    originEdges: ModelRelationship[] = [];
+    incoming: GraphRelationship[] = [];
+    outgoing: GraphRelationship[] = [];
+    offending: GraphRelationship[] = [];
+    originEdges: GraphRelationship[] = [];
     originEvidence: Evidence[] = [];
     selectedAggregateId?: string;
     evidence: Evidence[] = [];
     violations: ArchitectureViolation[] = [];
     loading = false;
     error = '';
-    private connection?: ModelConnection;
+    private connection?: SoftwareMapConnection;
     private handle?: string;
     private project = 0;
     private request = 0;
@@ -26,7 +26,7 @@ export class SoftwareModelController {
     private originRequest = 0;
     private disposed = false;
 
-    constructor(private readonly connect: () => ModelConnection, private readonly changed: () => void) { }
+    constructor(private readonly connect: () => SoftwareMapConnection, private readonly changed: () => void) { }
 
     private current(project: number, request: number): boolean {
         return !this.disposed && project === this.project && request === this.request;
@@ -59,7 +59,7 @@ export class SoftwareModelController {
         try {
             const connection = this.connect();
             this.connection = connection;
-            connection.setClient({ notifySoftwareModelChanged: status => {
+            connection.setClient({ notifySoftwareMapChanged: status => {
                 if (this.disposed || project !== this.project || !this.handle || status.generation < (this.status?.generation ?? 0) ||
                     status.generation === this.status?.generation && this.status.state === 'ready' && status.state === 'analyzing') return;
                 this.status = status;
@@ -111,16 +111,16 @@ export class SoftwareModelController {
             if (this.current(project, request)) { this.error = String(error); this.loading = false; this.changed(); }
         }
     }
-    private async pages<T>(fetch: (offset: number) => Promise<ModelPage<T>>, generation: number): Promise<T[]> {
+    private async pages<T>(fetch: (offset: number) => Promise<SoftwareMapPage<T>>, generation: number): Promise<T[]> {
         const items: T[] = [];
         for (let offset = 0; ; offset += 200) {
             const page = await fetch(offset);
-            if (page.generation !== generation) throw new Error('Software Model generation changed during query');
+            if (page.generation !== generation) throw new Error('Software Map generation changed during query');
             items.push(...page.items);
             if (items.length >= page.total) return items;
         }
     }
-    private async load(status: ModelStatus): Promise<void> {
+    private async load(status: SoftwareMapStatus): Promise<void> {
         if (!this.connection || !this.handle || status.state !== 'ready' || status.generation !== status.publishedGeneration) return;
         const project = this.project;
         const request = ++this.request;
@@ -186,7 +186,7 @@ export class SoftwareModelController {
             if (this.current(project, request) && detail === this.detailRequest) { this.error = String(error); this.changed(); }
         }
     }
-    private async evidenceFor(ids: string[], connection: ModelConnection, handle: string, generation: number): Promise<Evidence[]> {
+    private async evidenceFor(ids: string[], connection: SoftwareMapConnection, handle: string, generation: number): Promise<Evidence[]> {
         const batches = [];
         for (let i = 0; i < ids.length; i += 200) batches.push(this.pages(offset => connection.evidence({ projectHandle: handle, evidenceIds: ids.slice(i, i + 200), offset, limit: 200 }), generation));
         return (await Promise.all(batches)).flat();
@@ -218,7 +218,7 @@ export class SoftwareModelController {
             if (this.current(project, request) && detail === this.detailRequest) { this.error = String(error); this.changed(); }
         }
     }
-    async origins(edge: ModelRelationship): Promise<void> {
+    async origins(edge: GraphRelationship): Promise<void> {
         if (!edge.originRelationshipIds?.length || !this.connection || !this.handle || !this.status || !this.published(this.status.generation)) return;
         const project = this.project;
         const request = this.request;

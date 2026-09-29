@@ -1,8 +1,8 @@
 import { readdirSync, statSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 import * as ts from 'typescript';
-import { derivedId, relationshipId } from '@dope/software-model';
-import type { AnalysisError, CodeEntityNode, Evidence, ModelRelationship } from '@dope/software-model';
+import { derivedId, relationshipId } from '@dope/software-map';
+import type { AnalysisError, CodeEntityNode, Evidence, GraphRelationship } from '@dope/software-map';
 import type { CodeAnalysisResult, CodeAnalyzer, AnalysisProject } from '@dope/code-analysis';
 
 const PRODUCER = '@dope/code-analysis-typescript';
@@ -58,7 +58,7 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
         const root = resolve(projectRoot);
         let reusedSourceFiles = 0;
         const nodes = new Map<string, CodeEntityNode>();
-        const relationships = new Map<string, ModelRelationship>();
+        const relationships = new Map<string, GraphRelationship>();
         const evidence = new Map<string, Evidence>();
         const errors = new Map<string, AnalysisError>();
         const projects: AnalysisProject[] = [];
@@ -95,7 +95,7 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
                 path, name, ...(codeKind === 'symbol' ? { symbol: name } : {}), ...(parentId ? { parentId } : {}),
                 ownership: { state: 'unassigned' }, evidenceIds: [evidenceId] });
         };
-        const addEdge = (kind: ModelRelationship['kind'], sourceId: string, targetId: string, file: ts.SourceFile, node: ts.Node): void => {
+        const addEdge = (kind: GraphRelationship['kind'], sourceId: string, targetId: string, file: ts.SourceFile, node: ts.Node): void => {
             const id = relationshipId(kind, sourceId, targetId);
             const evidenceId = addEvidence(kind === 'contains' ? 'syntax' : 'semantic', file, node, id);
             const prior = relationships.get(id);
