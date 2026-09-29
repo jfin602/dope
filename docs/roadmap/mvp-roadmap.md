@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: mandatory correction `c4-architecture-discovery` at unchanged `0.4.6` before Phase 5; Product Phase 4 is QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
+Current stage: mandatory correction `c4-architecture-discovery` at unchanged `0.4.6`; bounded `c4-smap-storage` follows at unchanged `0.4.6` before Phase 5; Product Phase 4 is QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -18,6 +18,7 @@ Theia
 -> remove Phase 3 Planning instruments
 -> Physical Map
 -> sMap initialization + architecture synthesis + developer-authority correction
+-> enforce project-local sMap persistence
 -> Visual Software Planning
 -> AI Presence
 -> Scoped Delegation
@@ -39,6 +40,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Product Phase 3 — Planning Foundation | Dope plans Dope. A real Dope feature can move from thought/decision into a live Plan and Tasks without leaving Dope. |
 | Product Phase 4 — Physical Map | Dope maps Dope. Its lower-level semantic relationships, declared boundaries and evidence-backed current-state graph can be explored. |
 | Correction c4 — Architecture Discovery | Dope initializes Dope's sMap deliberately. Deterministic evidence feeds bounded LLM architecture synthesis, the developer corrects/accepts Systems/Subsystems/Components, and implementation realization/drift is visible. |
+| Correction c4-storage — sMap Persistence | Dope proves that durable Software Map state travels with the repository under project-local `.dope/`, while machine-local state remains disposable or preference-only. |
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
@@ -338,7 +340,34 @@ Minimum qualification:
 
 Exit condition:
 
-At unchanged `0.4.6`, Dope can deliberately initialize sMap for an existing project through opt-in deterministic analysis plus bounded LLM synthesis, the local LM Studio/Qwen reference path is qualified including capability probing and pre-synthesis warm-up, a developer can correct and explicitly establish canonical architecture, a greenfield project can initialize manually, and the Physical Map can explain how current implementation realizes or diverges from that authority. Only then may Product Phase 5 be planned/activated.
+At unchanged `0.4.6`, Dope can deliberately initialize sMap for an existing project through opt-in deterministic analysis plus bounded LLM synthesis, the local LM Studio/Qwen reference path is qualified including capability probing and pre-synthesis warm-up, a developer can correct and explicitly establish canonical architecture, a greenfield project can initialize manually, and the Physical Map can explain how current implementation realizes or diverges from that authority. Completion clears the architecture-discovery correction, but Product Phase 5 remains blocked until the storage correction below is Green.
+
+## Mandatory pre-Phase-5 correction — `c4-smap-storage`
+
+Status: **QUEUED — execute only after `c4-architecture-discovery` closes**
+
+Version semantics: bounded correction at unchanged package version `0.4.6`. Do not alter the already-running `c4-smap-synth` P6-P8 prompts or restart that stack.
+
+Purpose:
+Make the Software Map portable with the project by enforcing project-local persistence as an architectural invariant.
+
+Required contract:
+- repository + project-local `.dope/` is sufficient to recover durable sMap state;
+- `.dope/architecture.json` remains canonical developer-owned architecture;
+- `.dope/smap.json` owns durable initialization/version/state metadata required to reopen coherently;
+- any additional persisted sMap evidence packet, graph snapshot, fingerprint, proposal draft, index or similar artifact remains beneath `.dope/` in a Dope-owned, explicitly versioned format;
+- provider endpoint/model preferences, Theia presentation/workspace state and provider/runtime state remain non-project state;
+- machine-local/global caches may exist only as disposable accelerators and deleting them cannot destroy project truth or change initialized state;
+- persisted derived evidence remains derived and must carry enough version/source association to reject stale or incompatible data;
+- recovery and project isolation remain safe under the existing path/symlink rules.
+
+Qualification must include a permanent regression guard for the persistence-boundary defect class and controlled copy/reopen/restart evidence showing that durable sMap state follows repository + `.dope/` without reliance on hidden machine-local state.
+
+The pre-authored `c4-smap-synth` P8 wording that routes a Green closeout directly toward Phase 5 does not override this newer owner-approved roadmap gate. P8 may close its own correction exactly as authored; `c4-smap-storage` is then mandatory before any Phase 5 activation.
+
+Exit condition:
+
+At unchanged `0.4.6`, durable sMap state is demonstrably project-local, versioned, recoverable and portable; no machine-local application/provider/cache state is required to reconstruct project truth; regression coverage prevents required sMap persistence from escaping `.dope/`. Only then may Product Phase 5 receive a fresh `/docs-review`.
 
 ## Product Phase 5 — Visual Software Planning
 
