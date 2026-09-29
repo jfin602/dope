@@ -437,6 +437,20 @@ test('Software Map rebuilds from source and declaration across process restart a
         { id: 'secret', name: 'Secret', purpose: 'Private', roots: ['src/secret'] },
     ] }] });
     const source = imports => `${imports}\nexport const run = () => 1;\n`;
+    const placement = async (page, area = 'left') => {
+        const actual = await evaluate(page, `(async () => {
+            const entries = [...theia.container._bindingDictionary._map.entries()];
+            const typed = method => theia.container.get(entries.find(([, bindings]) => bindings.some(binding => binding.implementationType?.prototype?.[method]))[0]);
+            const manager = typed('getOrCreateWidget');
+            const widget = await manager.getOrCreateWidget('dope-software-map');
+            const shell = typed('getAreaFor');
+            return { area: shell.getAreaFor(widget), label: widget.title.label, icon: widget.title.iconClass,
+                tabs: shell.getTabBarFor(widget)?.titles.filter(title => title.owner.id === 'dope-software-map').length,
+                legacyFactory: theia.container.getAll(entries.find(([key]) => key.description === 'WidgetFactory')[0]).some(factory => factory.id === 'dope-software-model'),
+                legacyView: !!document.getElementById('dope-software-model') };
+        })()`);
+        assert.deepEqual(actual, { area, label: 'sMap', icon: 'codicon codicon-type-hierarchy', tabs: 1, legacyFactory: false, legacyView: false });
+    };
     const attach = async (page, folder, analyze = false) => evaluate(page, `(async () => {
         const container = theia.container;
         const managerKey = [...container._bindingDictionary._map.entries()].find(([, bindings]) => bindings.some(binding => binding.implementationType?.prototype?.getOrCreateWidget))[0];
@@ -477,6 +491,7 @@ test('Software Map rebuilds from source and declaration across process restart a
         await writeFile(join(second, 'tsconfig.json'), JSON.stringify({ include: ['src/**/*.ts'] }));
         await writeFile(join(second, 'src/index.ts'), 'export const second = 2;\n');
         instance = await launch(profile, port, first);
+        await placement(instance.page);
         assert.equal(await evaluate(instance.page, `(() => { const button = [...document.querySelectorAll('button')].find(value => value.textContent.includes('Yes, I trust the authors')); if (button) button.click(); return !!theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'SoftwareMapService')); })()`), true);
         const firstPass = await attach(instance.page, first, true);
         assert.equal(firstPass.initial.state, 'idle');
@@ -513,6 +528,7 @@ test('Software Map rebuilds from source and declaration across process restart a
         await writeFile(join(first, '.dope/architecture.json'), JSON.stringify(declaration('core')));
         await writeFile(join(first, 'src/api/a.ts'), source("import { core } from '../core/c';\nimport { secret } from '../secret/s';"));
         instance = await launch(profile, port, first);
+        await placement(instance.page);
         const before = await attach(instance.page, first);
         assert.equal(before.initial.state, 'idle', 'derived graph must be rebuilt, not persisted');
         const restarted = await attach(instance.page, first, true);
@@ -526,6 +542,31 @@ test('Software Map rebuilds from source and declaration across process restart a
         assert.deepEqual(isolated.violations, []);
         assert.ok(isolated.nodes.some(item => item.kind === 'code' && item.ownership?.state === 'unassigned'));
         assert.ok(!isolated.nodes.some(item => item.id === 'app'));
+        // A supported user move remains presentation state; startup must not force it left.
+        await evaluate(instance.page, `(async () => {
+            const entries = [...theia.container._bindingDictionary._map.entries()];
+            const typed = method => theia.container.get(entries.find(([, bindings]) => bindings.some(binding => binding.implementationType?.prototype?.[method]))[0]);
+            await typed('getAreaFor').addWidget(await typed('getOrCreateWidget').getOrCreateWidget('dope-software-map'), { area: 'right' });
+        })()`);
+        await placement(instance.page, 'right');
+        await close(instance);
+        instance = await launch(profile, port, first);
+        await placement(instance.page, 'right');
+        // Simulate a pre-rename saved right-side view, using the supported restorer/storage seam.
+        await evaluate(instance.page, `(async () => {
+            const entries = [...theia.container._bindingDictionary._map.entries()];
+            const typed = method => theia.container.get(entries.find(([, bindings]) => bindings.some(binding => binding.implementationType?.prototype?.[method]))[0]);
+            const restorer = typed('storeLayout');
+            const layout = restorer.deflate(typed('getAreaFor').getLayoutData());
+            const legacy = JSON.parse(JSON.stringify(layout).replaceAll('dope-software-map', 'dope-software-model'));
+            await restorer.storageService.setData('layout', legacy);
+            await restorer.storageService.setData('perspective-layouts', undefined);
+            restorer.shouldStoreLayout = false;
+        })()`);
+        await close(instance);
+        instance = await launch(profile, port, first);
+        await placement(instance.page);
+        assert.match(instance.output, /Couldn't restore widget for dope-software-model/);
         await close(instance);
     } catch (error) {
         throw new Error(`${error}\n${instance?.output ?? ''}`);

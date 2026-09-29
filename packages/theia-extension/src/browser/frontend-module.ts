@@ -1,5 +1,5 @@
 import { ContainerModule } from '@theia/core/shared/inversify';
-import { WidgetFactory } from '@theia/core/lib/browser';
+import { FrontendApplicationContribution, WidgetFactory } from '@theia/core/lib/browser';
 import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-service';
 import { bindViewContribution } from '@theia/core/lib/browser/shell/view-contribution';
 import { NoteService, noteServicePath } from '@dope/contracts/lib/note-service';
@@ -17,6 +17,7 @@ import { SoftwareMapView, SoftwareMapWidget, SOFTWARE_MAP_ID } from './software-
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bindViewContribution(bind, ProjectMindView);
     bindViewContribution(bind, SoftwareMapView);
+    bind(FrontendApplicationContribution).toService(SoftwareMapView);
     bind(NoteService).toDynamicValue(context => ServiceConnectionProvider.createProxy<NoteService>(context.container, noteServicePath)).inSingletonScope();
     bind(ProjectMindService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ProjectMindService & RpcServer<ProjectMindClient>>(context.container, projectMindServicePath));
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();

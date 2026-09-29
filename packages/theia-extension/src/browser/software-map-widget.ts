@@ -1,7 +1,7 @@
 import { injectable } from '@theia/core/shared/inversify';
 import { CommandRegistry, MenuModelRegistry } from '@theia/core/lib/common';
-import { AbstractViewContribution, OpenerService, open } from '@theia/core/lib/browser';
-import { BaseWidget } from '@theia/core/lib/browser/widgets/widget';
+import { AbstractViewContribution, FrontendApplicationContribution, OpenerService, open } from '@theia/core/lib/browser';
+import { BaseWidget, codicon, Message } from '@theia/core/lib/browser/widgets/widget';
 import { CommonMenus } from '@theia/core/lib/browser/common-menus';
 import URI from '@theia/core/lib/common/uri';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
@@ -24,7 +24,9 @@ export class SoftwareMapWidget extends BaseWidget {
     constructor(connect: () => SoftwareMapConnection, private readonly workspaces: WorkspaceService, private readonly opener: OpenerService) {
         super();
         this.id = SOFTWARE_MAP_ID;
-        this.title.label = this.title.caption = 'Software Map';
+        this.title.label = 'sMap';
+        this.title.caption = 'sMap — Software Map';
+        this.title.iconClass = codicon('type-hierarchy');
         this.title.closable = true;
         this.addClass('dope-spike-view');
         this.addClass('dope-smap-view');
@@ -65,7 +67,7 @@ export class SoftwareMapWidget extends BaseWidget {
         const focusedEdge = (document.activeElement as HTMLElement | null)?.dataset.edgeId;
         const model = this.controller;
         const status = model.status;
-        this.status.textContent = !model.workspace ? 'Open one local project folder to inspect its software model.' :
+        this.status.textContent = !model.workspace ? 'Open one local project folder to inspect its Software Map.' :
             model.error ? `Error: ${model.error}` :
             model.loading ? `Analyzing or loading generation ${status?.generation ?? '…'}; previous results hidden.` :
             !status || status.state === 'idle' ? 'Ready to analyze. No derived graph is loaded.' :
@@ -192,6 +194,10 @@ export class SoftwareMapWidget extends BaseWidget {
             await open(this.opener, new URI(location.uri), location.span?.line ? { selection: { start: { line: location.span.line - 1, character: (location.span.column ?? 1) - 1 } } } : undefined);
         } catch (error) { this.status.textContent = `Source navigation failed: ${String(error)}`; }
     }
+    protected override onActivateRequest(msg: Message): void {
+        super.onActivateRequest(msg);
+        this.node.focus();
+    }
     override dispose(): void {
         ++this.workspaceRequest;
         this.rootsListener.dispose();
@@ -201,8 +207,12 @@ export class SoftwareMapWidget extends BaseWidget {
 }
 
 @injectable()
-export class SoftwareMapView extends AbstractViewContribution<SoftwareMapWidget> {
-    constructor() { super({ widgetId: SOFTWARE_MAP_ID, widgetName: 'Software Map', defaultWidgetOptions: { area: 'right' } }); }
+export class SoftwareMapView extends AbstractViewContribution<SoftwareMapWidget> implements FrontendApplicationContribution {
+    constructor() { super({ widgetId: SOFTWARE_MAP_ID, widgetName: 'sMap', defaultWidgetOptions: { area: 'left', rank: 200 } }); }
+    async onDidInitializeLayout(): Promise<void> {
+        // Add the Activity Bar entry without activating it or moving a restored user layout.
+        await this.openView();
+    }
     override registerCommands(commands: CommandRegistry): void {
         super.registerCommands(commands);
         commands.registerCommand({ id: 'dope.softwareMap.open', label: 'Dope: Show Software Map' }, { execute: () => this.openView({ activate: true }) });
