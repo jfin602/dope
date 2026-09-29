@@ -287,12 +287,13 @@ The umbrella architecture representation for one software project.
 The Software Map is the product concept. Its normalized graph is an implementation/query substrate, not the user-facing name. The map remains independent from Theia, diagram libraries and AI/model providers.
 
 The Software Map deliberately separates:
+- **Architecture Evidence** — deterministic/reproducible source, semantic, framework and recorded-runtime facts packaged as an independently verifiable ArchitectureEvidencePacket.
+- **Architecture Proposal** — provider-independent structured interpretation of one evidence packet into proposed Systems / Subsystems / Components, with temporary proposal identity, numeric confidence, rationale, machine-verifiable evidence references and human-readable evidence explanations.
 - **Canonical Architecture** — developer-owned System / Subsystem / Component identity, purpose, boundaries, contracts and constraints. It may exist before code.
-- **Detected Architecture** — rebuildable evidence-backed candidate System / Subsystem / Component structure derived from repository, semantic, framework and runtime evidence.
-- **Physical Map** — current implementation evidence mapped against canonical architecture, including detected-only structure, realization and drift.
+- **Physical Map** — current implementation evidence mapped against canonical architecture, including proposal/detected-only structure, realization and drift.
 - **Planning Map** — proposed target state and transformations that reference canonical/physical identities rather than copying current architecture.
 
-Detection proposes; the developer confirms or corrects. A detector never silently becomes architectural authority, and a developer declaration never erases contradictory implementation evidence.
+AI interprets evidence; it does not create evidence. Synthesis proposes; the developer confirms or corrects. A structured proposal never silently becomes architectural authority, and a developer declaration never erases contradictory implementation evidence.
 
 ### PhysicalMap
 
@@ -360,6 +361,24 @@ Evidence classes include:
 - inferred semantic relationship.
 
 Evidence records enough source/runtime identity to explain why Dope believes a physical relationship exists.
+
+### ArchitectureEvidencePacket
+
+The deterministic, provider-independent synthesis input. It contains stable packet-local evidence IDs, normalized facts and enough source/provenance to verify those facts without AI.
+
+The packet exists before model synthesis. Models may reference evidence IDs but do not create, rewrite or promote evidence.
+
+### ArchitectureProposal
+
+The provider-independent structured synthesis output for one ArchitectureEvidencePacket.
+
+V1 includes `schemaVersion`, `summary`, `needsMoreEvidence`, `nodes`, `unassignedEvidenceRefs`, `openQuestions` and `evidenceRequests`.
+
+Each proposed node carries temporary `proposalKey`, kind/name/purpose/parent, numeric 0..1 `confidence`, `rationale`, source-backed `evidenceRefs` and human-readable `evidence`.
+
+`evidenceRefs` are machine-verifiable provenance. `evidence` is frontend explanation of those observations. `rationale` is the architectural conclusion drawn from them. Confidence is a synthesis signal rather than a calibrated probability or authority score.
+
+Dope validates structured output, hierarchy and every evidence reference against the exact input packet before entering review. Proposal identity is not canonical identity.
 
 ### PlanningMap
 
