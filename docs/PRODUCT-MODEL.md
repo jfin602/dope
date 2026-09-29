@@ -137,19 +137,20 @@ No AI ownership, Agent Mind, model/provider state, ProposedAction or mutation au
 
 ### Phase 4 — Physical Map
 
-Activation prerequisite satisfied: correction `c3-remove-planning-instruments` closed at unchanged `0.3.6`, leaving no live Phase 3 Planning domain/service/store/UI/PLAN mode in the product. Phase 4 begins from coherent package baseline `0.4.0`.
+Correction `c3-remove-planning-instruments` closed at unchanged `0.3.6`, and Product Phase 4 subsequently qualified its approved Physical Map substrate at `0.4.6`.
 
-Introduce the evidence-backed software map and deterministic code-analysis foundation.
-
-Initial scope is TypeScript/JavaScript-first and establishes:
-- System, Subsystem and Component architecture identities;
+Phase 4 established the evidence-backed Software Map core and deterministic TypeScript/JavaScript-first source analysis:
 - language-independent graph nodes/relationships;
 - deterministic source evidence and provenance;
 - language-specific semantic analysis behind adapters;
-- declared subsystem boundaries and dependency rules;
-- queryable physical architecture independent from visualization.
+- canonical developer-authored System, Subsystem and Component identities/constraints;
+- queryable physical relationships independent from visualization.
 
-The extracted physical graph is rebuildable derived state. Developer-authored System/Subsystem declarations and architecture constraints are canonical project architecture state.
+ADR 0009 adds a mandatory post-Phase-4 correction before Phase 5. The Physical Map must also discover candidate Systems, Subsystems and Components from deterministic repository, semantic, framework and later runtime evidence. Detection is rebuildable derived interpretation, not architecture authority.
+
+Developer-authored architecture remains canonical. The developer may confirm, rename, reparent, merge, split, replace or ignore detected candidates, and may define architecture before implementation exists. Analysis then reports how implementation realizes or diverges from that canonical architecture instead of silently rewriting it.
+
+The TypeScript semantic analyzer remains the lower-level evidence engine. The correction adds architecture discovery and realization/reconciliation above it; it does not replace semantic source analysis.
 
 ### Phase 5 — Visual Software Planning
 
@@ -281,13 +282,17 @@ The umbrella architecture representation for one software project.
 
 The Software Map is the product concept. Its normalized graph is an implementation/query substrate, not the user-facing name. The map remains independent from Theia, diagram libraries and AI/model providers.
 
-The Software Map contains two intentionally distinct views of software state:
-- **Physical Map** — evidence-backed current implemented reality;
-- **Planning Map** — proposed target state and transformations that reference Physical Map identities rather than copying current architecture.
+The Software Map deliberately separates:
+- **Canonical Architecture** — developer-owned System / Subsystem / Component identity, purpose, boundaries, contracts and constraints. It may exist before code.
+- **Detected Architecture** — rebuildable evidence-backed candidate System / Subsystem / Component structure derived from repository, semantic, framework and runtime evidence.
+- **Physical Map** — current implementation evidence mapped against canonical architecture, including detected-only structure, realization and drift.
+- **Planning Map** — proposed target state and transformations that reference canonical/physical identities rather than copying current architecture.
+
+Detection proposes; the developer confirms or corrects. A detector never silently becomes architectural authority, and a developer declaration never erases contradictory implementation evidence.
 
 ### PhysicalMap
 
-The evidence-backed representation of implemented software.
+The evidence-backed representation of implemented software and its realization of canonical architecture.
 
 The Physical Map is organized primarily as:
 
@@ -297,29 +302,40 @@ Project
 -> Component
 -> CodeEntity
 
+Architecture-scale nodes may be canonical, detected candidates, or a reconciliation of both. The map must distinguish at least:
+- **declared-only** — canonical architecture exists but implementation has not yet realized it;
+- **detected-only** — implementation evidence suggests an architectural boundary not yet accepted into canonical architecture;
+- **realized** — implementation evidence supports the canonical boundary;
+- **drifted** — implementation materially disagrees with canonical ownership/boundaries/contracts;
+- **unassigned** — implementation is known but not meaningfully mapped yet.
+
 It also contains typed relationships, evidence/provenance and optional runtime observations. The Physical Map is independent from any particular diagram layout.
 
-Physical source facts are deterministic or explicitly labeled otherwise. Runtime facts are observations. Inferred semantics remain inferred. Developer-authored target architecture and agent proposals never silently become physical state.
+Physical source facts are deterministic or explicitly labeled otherwise. Runtime facts are observations. Architecture discovery is derived interpretation with evidence. Developer-authored canonical architecture remains authoritative for architectural identity and intent, while conflicting physical evidence remains visible as drift rather than being discarded.
 
 ### System
 
 A major independently meaningful software, runtime or product boundary.
 
-A System can own Subsystems and relationships to other Systems. Repository layout does not define System identity by itself.
+Systems should be discoverable from deterministic evidence such as applications, deployable/runtime units, entrypoints, workspace topology, process boundaries and framework bootstraps. Repository layout alone does not define System identity.
+
+The developer owns canonical System identity and may define it before implementation or correct a detected candidate.
 
 ### Subsystem
 
 The primary modular architecture unit.
 
-A Subsystem has stable identity, purpose, owned implementation, public contracts, allowed dependencies, forbidden dependencies, entry points, owned data, tests and child Components as applicable.
+A Subsystem has stable canonical identity, purpose, owned implementation, public contracts, allowed dependencies, forbidden dependencies, entry points, owned data, tests and child Components as applicable.
 
-Subsystem declarations express intended modular architecture. The physical analyzer validates implemented relationships against those declarations rather than treating directories as architecture by default.
+Subsystem discovery may combine deterministic evidence such as dependency cohesion/direction, package or workspace boundaries, public exports, entrypoints, framework registration and runtime/process boundaries. A directory or cluster is evidence, not authority.
+
+Developer confirmation/correction establishes canonical Subsystem identity. Analysis then validates implementation against it and surfaces drift.
 
 ### Component
 
 A cohesive implementation unit within a Subsystem.
 
-Components bridge architecture-scale reasoning and lower-level modules/files/symbols.
+Components bridge architecture-scale reasoning and lower-level modules/files/symbols. Components may be detected from finer-grained cohesive implementation evidence, but canonical Component structure remains developer-owned and may exist before code.
 
 ### CodeEntity
 
