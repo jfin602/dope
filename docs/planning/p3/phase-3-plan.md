@@ -18,6 +18,8 @@ The exact committed activation source is recorded in `activation.md`.
 
 Make planning and implementation one durable developer-controlled project workflow without requiring an LLM.
 
+Phase 3 is the Planning Foundation. It deliberately does not implement the Physical Software Model or visual planning; those now follow as Product Phases 4 and 5 so this active stack stays bounded.
+
 Using the real Dope repository, the developer must be able to move from genuine Project Mind knowledge/Decision -> Plan -> ordered PlanSteps -> Tasks -> ordinary coding, update the live plan deliberately, restart/reopen, and recover the same planning state and history.
 
 Use a second unrelated local project to demonstrate isolation. Automated/unit/process evidence supplements but does not replace the direct GUI dogfood gate.
@@ -195,7 +197,7 @@ Do not add:
 - AI ownership/delegation;
 - mutation authority.
 
-ADR 0006 records Codex/OpenAI as the first Phase 4 reference implementation only.
+ADR 0006 records Codex/OpenAI as the first Phase 6 reference implementation only.
 
 ## Validation stack
 
@@ -238,4 +240,4 @@ A required failed/missing matrix item prevents Green P5 absent a separate explic
 
 ## Exclusions
 
-No AI/runtime/provider integration, local-model work, Agent Mind, ProposedAction, authority/tool execution, autonomous mutation, DevelopmentSession, semantic search, architecture model, collaboration/sync, remote/multi-root Planning, database, generic workflow engine or framework upgrade.
+No AI/runtime/provider integration, local-model work, Agent Mind, ProposedAction, authority/tool execution, autonomous mutation, DevelopmentSession, semantic search, Product Phase 4 Physical Software Model/code analysis, Product Phase 5 visual planning, collaboration/sync, remote/multi-root Planning, database, generic workflow engine or framework upgrade.

@@ -5,7 +5,7 @@ Date: 2026-09-28
 
 ## Decision
 
-When Product Phase 4 — AI Presence begins, Dope will implement and qualify OpenAI/Codex as the first reference AI provider/workflow.
+When Product Phase 6 — AI Presence begins, Dope will implement and qualify OpenAI/Codex as the first reference AI provider/workflow.
 
 This is a bootstrap and qualification strategy, not a canonical product dependency.
 
@@ -41,7 +41,7 @@ After the Dope-owned contracts are proven against that reference, local models c
 
 Phase 3 creates live human-first Planning only.
 
-Phase 4 may add the Model Runtime and first Codex/OpenAI adapter after Planning is qualified enough to supply canonical project/task context. Local-model integration follows the same boundary rather than requiring a redesign of Project Mind or Planning.
+Phase 6 may add the Model Runtime and first Codex/OpenAI adapter after Planning is qualified enough to supply canonical project/task context. Local-model integration follows the same boundary rather than requiring a redesign of Project Mind or Planning.
 
 ## Revisit when
 

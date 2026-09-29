@@ -22,7 +22,7 @@ Dope presentation adapters and widgets
   |
 Application / orchestration
   |
-Project Intelligence / Planning / later Agent Runtime
+Project Intelligence / Planning / Software Model / later Agent Runtime
   |
 Persistence / Model / Tool / Authority / Execution adapters
 
@@ -150,6 +150,11 @@ Likely shape:
   packages/
     project-intelligence/
     planning/
+    software-model/
+    code-analysis/
+    code-analysis-typescript/
+    architecture-rules/
+    planning-graph/
     persistence/
 
     agent-state/
@@ -162,6 +167,7 @@ Likely shape:
     theia-shell/
     theia-project-mind/
     theia-planning/
+    theia-software-map/
     theia-agent-mind/
     theia-runtime/
 
@@ -172,6 +178,28 @@ Likely shape:
 Early phases should create only the packages they need.
 
 ## Core services
+
+### Software Model
+
+Owns the language-independent Physical Software Model: System, Subsystem, Component, CodeEntity, typed relationships, provenance/evidence and graph queries.
+
+The primary architecture hierarchy is System -> Subsystem -> Component -> Code. Subsystems are explicit modular architecture objects rather than aliases for directories.
+
+The extracted physical graph is rebuildable derived state. Developer-authored System/Subsystem declarations and architecture constraints are canonical project architecture state. Visualization/layout is presentation state.
+
+Physical source relationships must come from deterministic analyzers or be labeled with a different evidence class. Runtime relationships come from recorded observations. Inferred semantics and proposals remain distinguishable. AI may explain, classify and propose architecture but cannot silently establish physical truth.
+
+Every physical relationship must be traceable to evidence.
+
+### Code Analysis
+
+Owns repository/workspace discovery, analyzer orchestration, incremental indexing and language/framework adapters.
+
+The normalized software graph is language-independent. Semantic analyzers are language-specific.
+
+The first planned implementation is TypeScript/JavaScript-first and should prefer the TypeScript compiler/project/type-checker semantics where they provide authoritative symbol resolution, with parser/framework extractors added behind adapters as required.
+
+Framework extractors may produce deterministic concepts such as routes, jobs or schemas when explicit recognition rules support them.
 
 ### Project Intelligence
 
@@ -217,7 +245,7 @@ Planning mutations use expected document revision plus a project-bound handle. E
 
 The real Planning UI should live in focused presentation/controller files rather than substantially growing `dope-workbench.ts`. Preserve the existing Project Mind draft/race lessons: dirty Planning drafts must survive navigation/workspace/event races, late responses must be generation/project guarded, and save status must reflect backend acknowledgement. BUILD/PLAN mode may foreground Planning or coding surfaces but remains presentation state.
 
-No model/provider SDK, Theia AI ontology, Codex/OpenAI runtime, local-model runtime, Agent Mind, ProposedAction, authority or tool execution belongs in Phase 3. ADR 0006 selects Codex/OpenAI only as the first Phase 4 reference integration.
+No model/provider SDK, Theia AI ontology, Codex/OpenAI runtime, local-model runtime, Agent Mind, ProposedAction, authority or tool execution belongs in Phase 3. ADR 0006 selects Codex/OpenAI only as the first Phase 6 reference integration.
 
 ### Agent State
 
@@ -310,6 +338,8 @@ Agent proposal
 Canonical product state includes, as phases introduce it:
 - ProjectArtifact
 - Plan / PlanStep / Task
+- developer-authored System/Subsystem declarations and architecture constraints
+- PlanningGraph transformations/target intent
 - accepted AgentWorkingState fields
 - ownership
 - ProposedAction lifecycle
@@ -321,7 +351,7 @@ Derived/non-canonical state includes:
 - user presentation preferences such as theme/keybindings
 - rendered panels
 - search indexes
-- recomputable architecture projections
+- extracted/recomputable physical software graph snapshots and architecture projections
 - provider-native response IDs
 - provider-native chat/session state
 - Theia AI session state
@@ -336,9 +366,10 @@ Initial useful modes:
 - BUILD
 - PLAN
 
+ARCHITECTURE becomes a first-class work surface as the Physical Software Model and Visual Planning phases land.
+
 Later modes may include:
 - RESEARCH
-- ARCHITECTURE
 - DEBUG
 - REVIEW
 

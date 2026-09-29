@@ -133,7 +133,34 @@ Planning uses the stable Project Mind `projectId`. It does not allocate a compet
 
 No AI ownership, Agent Mind, model/provider state, ProposedAction or mutation authority is introduced in Phase 3.
 
-### Phase 4-5 — AI collaboration and delegation
+### Phase 4 — Physical Software Model
+
+Introduce the evidence-backed software model and deterministic code-analysis foundation.
+
+Initial scope is TypeScript/JavaScript-first and establishes:
+- System, Subsystem and Component architecture identities;
+- language-independent graph nodes/relationships;
+- deterministic source evidence and provenance;
+- language-specific semantic analysis behind adapters;
+- declared subsystem boundaries and dependency rules;
+- queryable physical architecture independent from visualization.
+
+The extracted physical graph is rebuildable derived state. Developer-authored System/Subsystem declarations and architecture constraints are canonical project architecture state.
+
+### Phase 5 — Visual Planning
+
+Connect the physical software model to the planning experience.
+
+Introduce:
+- physical architecture projections with semantic zoom;
+- planning graphs that reference physical nodes;
+- proposed graph transformations for add/modify/remove/move/split/merge/relationship changes;
+- linkage from planning transformations to Plans/PlanSteps/Tasks;
+- target-versus-physical reconciliation after implementation.
+
+Visual planning remains useful with no model configured. A diagram is a projection of project state, not an independent source of architectural truth.
+
+### Phase 6-7 — AI collaboration and delegation
 
 Introduce or activate:
 - AgentWorkingState / Agent Mind
@@ -142,7 +169,7 @@ Introduce or activate:
 - ChangeSet
 - Validation integration
 
-### Phase 6 — Development Sessions
+### Phase 8 — Development Sessions
 
 Introduce durable DeveloperSession as the cross-time development unit.
 
@@ -150,7 +177,6 @@ Introduce durable DeveloperSession as the cross-time development unit.
 
 Defer until the product earns the complexity:
 - Research as a dedicated workflow/artifact
-- ArchitectureModel
 - advanced semantic project search
 - richer conceptual ChangeSet history
 
@@ -242,18 +268,95 @@ A structured investigation retaining question, alternatives, evidence, project c
 
 Research remains part of the vision but is deferred beyond the initial Project Mind scope.
 
-### ArchitectureModel
+### PhysicalSoftwareModel
 
-A versioned/refreshable software model containing subsystems, modules, files, symbols, dependencies, runtime/data-flow edges, ownership, tests, active-task impact, and target-architecture overlays.
+The evidence-backed representation of implemented software.
 
-Evidence classes remain distinguishable:
-- observed deterministic structure
-- runtime observation
-- inferred semantic relationship
-- developer-authored target
-- agent proposal
+The model is organized primarily as:
 
-ArchitectureModel is deferred beyond the initial roadmap.
+Project
+-> System
+-> Subsystem
+-> Component
+-> CodeEntity
+
+It also contains typed relationships, evidence/provenance and optional runtime observations. The model is independent from any particular diagram layout.
+
+Physical source facts are deterministic or explicitly labeled otherwise. Runtime facts are observations. Inferred semantics remain inferred. Developer-authored target architecture and agent proposals never silently become physical state.
+
+### System
+
+A major independently meaningful software, runtime or product boundary.
+
+A System can own Subsystems and relationships to other Systems. Repository layout does not define System identity by itself.
+
+### Subsystem
+
+The primary modular architecture unit.
+
+A Subsystem has stable identity, purpose, owned implementation, public contracts, allowed dependencies, forbidden dependencies, entry points, owned data, tests and child Components as applicable.
+
+Subsystem declarations express intended modular architecture. The physical analyzer validates implemented relationships against those declarations rather than treating directories as architecture by default.
+
+### Component
+
+A cohesive implementation unit within a Subsystem.
+
+Components bridge architecture-scale reasoning and lower-level modules/files/symbols.
+
+### CodeEntity
+
+A language/framework-level implementation entity such as module, file, class, interface, function, method, symbol, endpoint, job, schema or similar analyzer-defined object.
+
+Language-specific analyzers map their native semantics into Dope-owned CodeEntity and relationship contracts.
+
+### SoftwareModelEvidence
+
+Provenance for a physical node or relationship.
+
+Evidence classes include:
+- deterministic source syntax/structure;
+- semantic symbol/type/reference resolution;
+- deterministic framework extraction;
+- developer-authored architecture declaration;
+- recorded runtime observation;
+- inferred semantic relationship.
+
+Evidence records enough source/runtime identity to explain why Dope believes a physical relationship exists.
+
+### PlanningGraph
+
+A target/proposal graph that references PhysicalSoftwareModel identities.
+
+Existing physical nodes are referenced, not duplicated. Proposed nodes and relationships remain visibly planned.
+
+### PlannedTransformation
+
+A proposed architectural change against the physical model.
+
+Initial conceptual operations include:
+- add;
+- modify;
+- remove;
+- move;
+- split;
+- merge;
+- redirect relationship;
+- change contract.
+
+The exact executable mapping is phase-owned; the important invariant is that planning expresses transformations of reality rather than maintaining an unrelated drawing.
+
+### Reconciliation
+
+A comparison between a planning target and the newly analyzed physical model after implementation.
+
+Useful outcomes include:
+- implemented as planned;
+- implemented differently;
+- not implemented;
+- unexpected implementation discovered.
+
+Reconciliation never promotes intent into physical truth merely because a Plan or Task is marked complete.
 
 ### ChangeSet
 

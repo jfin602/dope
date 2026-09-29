@@ -51,7 +51,7 @@ But the shorthand is subordinate to the inversion:
 
 > The AI should inhabit the IDE. The IDE should not inhabit the AI chat.
 
-Code remains the center of gravity.
+The software project is the center of gravity. Source code remains authoritative implementation truth, while code, architecture, plans, decisions, runtime evidence, validation, and conversation are synchronized views of the same evolving software system.
 
 Conversation is useful, but conversation is one interface among many for manipulating shared development state.
 
@@ -82,6 +82,37 @@ When work completes, Dope should explain the change conceptually before forcing 
 The project should become easier to understand over time because the environment retains decisions and rationale, plans and execution history, research and sources, unresolved questions, ideas, architecture relationships, changesets, validation evidence, and session summaries.
 
 The developer should not need an AI's private memory to understand their own project.
+
+## Software model as the core
+
+Dope centers the development environment on a living software model rather than treating architecture as disconnected documentation.
+
+The primary architecture hierarchy is:
+
+Project
+-> System
+-> Subsystem
+-> Component
+-> Module/File
+-> Symbol
+-> Code
+
+Systems and subsystems are first-class modular architecture objects. They have identity, responsibility, contracts, dependencies, owned implementation and validation rather than being aliases for folders.
+
+The Physical Software Model represents what actually exists. Its source-derived facts must come from deterministic language/framework analysis, and runtime relationships must come from recorded observation. Every physical relationship retains provenance. Inference may assist interpretation, but AI output must not silently become physical truth.
+
+Planning operates against that reality. Planning diagrams reference physical systems, subsystems and components and express proposed additions, removals, modifications and relationship changes rather than copying the current architecture into disconnected drawings.
+
+The core development loop is:
+
+Understand current system
+-> Design target system
+-> Plan transformations
+-> Implement
+-> Re-analyze
+-> Reconcile target versus physical reality
+
+The software model must remain useful without an AI provider and independent from Theia or any visualization technology.
 
 ## Project Mind before AI dependence
 

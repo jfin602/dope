@@ -62,13 +62,17 @@ Capture them into an Ideas bin with enough provenance to revisit later.
 
 Ideas can later become notes, research, decisions, plans, or tasks.
 
-## 8. Living software model
+## 8. Living software model and modularity by construction
 
-Maintain an explorable model of architecture, subsystem relationships, dependencies, runtime relationships, tasks, decisions, and relevant history.
+Maintain an explorable model of the software as the architectural backbone of the environment.
 
-Derive from reality where possible.
+The primary hierarchy is System -> Subsystem -> Component -> Code. Systems and subsystems are first-class modular objects with explicit purpose, contracts, dependencies and owned implementation; they are not merely inferred folders.
 
-Clearly distinguish observed structure, inferred semantics, developer-authored target architecture, and proposals.
+Physical software facts must derive from deterministic source analysis or recorded runtime observation and retain provenance. Clearly distinguish deterministic structure, runtime observation, inferred semantics, developer-authored declarations, target architecture and proposals.
+
+Planning diagrams reference the physical model and express transformations against it rather than becoming disconnected drawings. After implementation, Dope should re-analyze the software and reconcile the planned target with physical reality.
+
+Dope should help developers preserve modular boundaries. Declared subsystem dependency rules and forbidden relationships should become machine-checkable architecture constraints as the software model matures.
 
 ## 9. Persistent developer context
 

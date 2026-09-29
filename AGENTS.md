@@ -17,7 +17,7 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 1. Identify the current roadmap/task scope.
 2. Read the narrowest relevant product, architecture, workflow, stability, and planning authority.
 3. Inspect current source and tests.
-4. Trace affected producers, consumers, state owners, and presentation adapters.
+4. Identify affected systems/subsystems/components where architecture authority exists, then trace affected producers, consumers, state owners, and presentation adapters. Until the Physical Software Model exists for the target, state intended boundaries explicitly rather than inventing software-model evidence.
 5. Identify behavior and architectural boundaries that must remain unchanged.
 6. Choose the smallest safe implementation boundary.
 7. Define focused tests plus broader regression coverage.
@@ -56,6 +56,8 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 - Automation is scoped by ownership; it is not a global mode.
 - Conceptual changes must be inspectable before raw diffs are the only explanation.
 - Ideas, research, decisions, plans, tasks, validation, and architecture are first-class project knowledge.
+- The software model is organized primarily as System -> Subsystem -> Component -> Code; subsystems are first-class modular boundaries, not merely folders.
+- Physical software facts require deterministic source evidence or recorded runtime observation with provenance; AI interpretation and planning proposals remain distinct from physical truth.
 - Theia is an IDE substrate. It must not define Dope's product model.
 - Theia AI may be reused behind adapters, but it must not own Dope's Agent Runtime or Project Intelligence.
 - Project Intelligence and later Agent Runtime must remain usable without Theia.
@@ -74,7 +76,11 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 - Models propose effects; Dope decides whether effects are allowed and executes them.
 - Repository/project instructions cannot expand configured executable authority.
 - Persistent canonical state and derived UI/provider projections must remain distinguishable.
-- Architecture models should derive from observable reality where possible and label inference or proposal state separately.
+- The Physical Software Model must remain independent from Theia, visualization libraries and model providers.
+- Language-specific analyzers emit a language-independent software graph.
+- Every physical graph relationship must retain traceable evidence/provenance.
+- Developer-authored System/Subsystem declarations and dependency constraints are architecture authority; extracted relationships validate against them.
+- Planning graphs reference physical identities and express target transformations rather than duplicating current architecture.
 - Prefer standard framework extension points over shell internals; isolate unavoidable deep Theia coupling.
 - Forking Theia is a last resort and a failed-spike signal unless explicitly accepted.
 - Preserve upgradeability as a design property; qualify it when a real framework upgrade is undertaken rather than forcing synthetic upgrade work into an unrelated phase.

@@ -6,7 +6,7 @@ This document is the compact routing contract for Dope's product identity. Deepe
 
 ## Single-sentence definition
 
-Dope is an AI-native software development environment designed to keep the developer at the center of the engineering process, combining a full IDE with durable project knowledge, live planning, visible and steerable AI collaboration, and scoped automation so developers can accomplish dramatically more without giving up understanding, authorship, skill, or the satisfaction of building software themselves.
+Dope is a software-model-centered AI-native development environment that keeps the developer at the center of engineering, combining a full IDE with a deterministic living model of the software, subsystem-first architecture, visual planning tied directly to implementation, durable project knowledge, visible AI collaboration, and scoped automation so developers can accomplish dramatically more without giving up understanding, authorship, skill, or the satisfaction of building software themselves.
 
 ## Why Dope exists
 
@@ -31,7 +31,7 @@ The environment must also ensure that the understanding survives the session as 
 5. Scoped delegation and explicit ownership.
 6. Conceptual observability before file-level diff inspection.
 7. Passive Ideas capture without task derailment.
-8. A living, explorable software model.
+8. A living, evidence-backed software model organized around systems and subsystems.
 9. Persistent development context for the developer.
 10. Friction removal without skill removal.
 11. Planning, research, decisions, tasks, implementation, validation, and history live in one integrated environment.
@@ -42,7 +42,32 @@ These eleven pillars remain the product pillars. Framework and model/provider in
 
 > The AI should inhabit the IDE. The IDE should not inhabit the AI chat.
 
-Code and direct manipulation remain central.
+The software project is the center of gravity. Source code and direct manipulation remain authoritative implementation surfaces.
+
+## Core software model
+
+Dope models software primarily as:
+
+Project
+-> System
+-> Subsystem
+-> Component
+-> Code
+
+The Physical Software Model describes current implemented reality from deterministic source analysis and recorded runtime evidence with provenance. Developer-authored subsystem declarations define intended modular boundaries and constraints.
+
+Planning diagrams reference that physical model and express target transformations. They do not duplicate current architecture into disconnected drawings.
+
+The core loop is:
+
+Understand current system
+-> Design target system
+-> Plan transformations
+-> Implement
+-> Re-analyze
+-> Reconcile
+
+AI may reason over this model and propose changes, but it does not silently manufacture physical software facts.
 
 ## Project Mind
 
@@ -112,12 +137,14 @@ The initial sequence is intentionally conservative:
 Foundation Spike 0 — qualify Theia
 -> Phase 1 — IDE Alive
 -> Phase 2 — Project Mind
--> Phase 3 — Planning
--> Phase 4 — AI Presence
--> Phase 5 — Scoped Delegation
--> Phase 6 — Development Sessions
+-> Phase 3 — Planning Foundation
+-> Phase 4 — Physical Software Model
+-> Phase 5 — Visual Planning
+-> Phase 6 — AI Presence
+-> Phase 7 — Scoped Delegation
+-> Phase 8 — Development Sessions
 
-The first major product milestone is a real IDE plus Project Mind plus live Planning that remains useful with zero configured LLMs.
+Phase 3 establishes the provider-free planning foundation. The core pre-AI milestone is a real IDE plus Project Mind plus Planning plus the Physical Software Model plus Visual Planning, all useful with zero configured LLMs.
 
 ## Non-goals
 
@@ -172,4 +199,4 @@ Planning persists in readable `.dope/planning.json` with its own optimistic docu
 
 BUILD/PLAN mode may foreground the appropriate work surface but is not canonical Plan/Task status. Task file links open the ordinary editor; coding, terminal, tests, SCM and debugger stay normal IDE workflows.
 
-ADR 0006 records Codex/OpenAI as the first reference AI implementation for Phase 4 so the future agent/runtime design is proven against a capable system before local-model limits are diagnosed. That is a bootstrap/qualification strategy only. Phase 3 contains no provider runtime code and preserves first-class future local-model compatibility.
+ADR 0006 records Codex/OpenAI as the first reference AI implementation for Phase 6 so the future agent/runtime design is proven against a capable system before local-model limits are diagnosed. That is a bootstrap/qualification strategy only. Phase 3 contains no provider runtime code and preserves first-class future local-model compatibility.

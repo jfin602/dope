@@ -14,7 +14,9 @@ The sequencing rule is:
 Theia
 -> IDE
 -> Project Mind
--> Planning
+-> Planning Foundation
+-> Physical Software Model
+-> Visual Planning
 -> AI Presence
 -> Scoped Delegation
 -> Development Sessions
@@ -32,10 +34,12 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Foundation Spike 0 | External bootstrap. Qualify the substrate with existing external tools. Self-hosting is not required. |
 | Product Phase 1 — IDE Alive | Dope as editor. Open and work on the Dope repository comfortably inside Dope using ordinary IDE capabilities. |
 | Product Phase 2 — Project Mind | Dope understands Dope. Its own decisions, notes, questions, ideas, and durable project context are useful through Project Mind. |
-| Product Phase 3 — Planning | Dope plans Dope. A real Dope feature can move from thought/decision into a live Plan and Tasks without leaving Dope. |
-| Product Phase 4 — AI Presence | AI understands Dope through Dope-owned project state and provider-independent read-only assistance. |
-| Product Phase 5 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
-| Product Phase 6 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, planning, implementation, validation, review, and session closeout inside Dope. |
+| Product Phase 3 — Planning Foundation | Dope plans Dope. A real Dope feature can move from thought/decision into a live Plan and Tasks without leaving Dope. |
+| Product Phase 4 — Physical Software Model | Dope maps Dope. Its systems, subsystems, components and code relationships can be explored from evidence-backed current-state analysis. |
+| Product Phase 5 — Visual Planning | Dope designs Dope. A developer can branch from physical architecture into a target planning graph tied to Plans and Tasks, then reconcile implementation back to reality. |
+| Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, software-model context and provider-independent read-only assistance. |
+| Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
+| Product Phase 8 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
 
 Self-development never receives privileged authority.
 
@@ -180,7 +184,7 @@ Initial scope:
 
 Plans are live control structures, not static memos. BUILD/PLAN mode remains presentation state and must never silently mutate Plan, PlanStep or Task status.
 
-Phase 3 deliberately remains human-first. It has no model runtime, Codex/OpenAI product integration, local-model runtime, Agent Mind, ProposedAction, tool calling, AI ownership or mutation authority. ADR 0006 makes Codex/OpenAI the first reference provider when AI Presence begins in Phase 4; it does not pull AI into Phase 3.
+Phase 3 deliberately remains human-first. It has no model runtime, Codex/OpenAI product integration, local-model runtime, Agent Mind, ProposedAction, tool calling, AI ownership or mutation authority. ADR 0006 makes Codex/OpenAI the first reference provider when AI Presence begins in Phase 6; it does not pull AI into Phase 3.
 
 Planning uses the existing Project Mind `projectId` as the project identity. Phase 3 does not create a competing project identity allocator. If a local project has no canonical Project Mind identity yet, Planning must surface that prerequisite rather than silently creating unrelated identity state. Planning persists separately in readable `.dope/planning.json` and validates identity against Project Mind.
 
@@ -196,7 +200,65 @@ Project Mind
 +
 Live Planning
 
-## Product Phase 4 — AI Presence
+## Product Phase 4 — Physical Software Model
+
+Purpose:
+Make current software architecture a deterministic, explorable part of the development environment before AI is asked to reason over it.
+
+Initial scope:
+- language-independent Physical Software Model
+- Project -> System -> Subsystem -> Component -> Code hierarchy
+- explicit subsystem identity, purpose, ownership and dependency constraints
+- TypeScript/JavaScript-first deterministic semantic analysis
+- repository/workspace discovery and incremental indexing
+- nodes/relationships for modules, files, symbols and relevant framework concepts
+- evidence/provenance for every physical relationship
+- declared-versus-observed architecture validation
+- query APIs independent from diagram rendering
+- no AI requirement
+
+Physical source facts come from deterministic analyzers. Runtime relationships, when introduced, are recorded observations. Inference and proposals remain separately labeled.
+
+Exit condition:
+
+Using the real Dope repository, the developer can inspect an evidence-backed current-state model organized by systems/subsystems/components, trace representative relationships back to source evidence, and detect representative subsystem-boundary violations without any model provider configured.
+
+## Product Phase 5 — Visual Planning
+
+Purpose:
+Turn architecture understanding and planning into one visual workflow directly connected to implementation.
+
+Initial scope:
+- multi-tab central workspace for code and planning artifacts
+- physical architecture diagrams as projections of the software model
+- semantic zoom from systems -> subsystems -> components -> code
+- planning graphs created from/referencing physical nodes
+- explicit planned add/modify/remove/move/split/merge/relationship changes
+- visible distinction between physical, planned, inferred and unknown state
+- linkage from planned transformations to Plans, PlanSteps and Tasks
+- implementation targeting/working-set navigation from graph objects
+- post-implementation re-analysis and target-versus-physical reconciliation
+- no AI requirement
+
+Existing physical nodes are referenced rather than copied into planning diagrams.
+
+Exit condition:
+
+A developer can start from the current physical Dope architecture, create a target architectural plan, connect its transformations to executable Planning state, implement work through ordinary IDE surfaces, re-analyze the repository and see whether the resulting physical software matches the plan.
+
+This completes the core pre-AI product foundation:
+
+Real IDE
++
+Project Mind
++
+Planning
++
+Physical Software Model
++
+Visual Planning
+
+## Product Phase 6 — AI Presence
 
 Purpose:
 Introduce AI as an observable collaborator inside an already-useful development environment.
@@ -219,7 +281,7 @@ Exit condition:
 
 AI can understand and assist with the project without owning canonical product state or requiring Dope to become chat-first.
 
-## Product Phase 5 — Scoped Delegation
+## Product Phase 7 — Scoped Delegation
 
 Purpose:
 Give AI bounded hands without giving away the developer's authorship or control.
@@ -238,7 +300,7 @@ Exit condition:
 
 A developer can delegate a bounded portion of work, see what the agent believes and intends, intervene during execution, and retain control over mutation.
 
-## Product Phase 6 — Development Sessions
+## Product Phase 8 — Development Sessions
 
 Purpose:
 Make the development session durable for the developer, not only for the model.
@@ -262,11 +324,9 @@ Returning to a project restores the developer's mental context well enough to co
 
 These remain valid parts of the vision but must not block the initial product:
 - dedicated Research workspace
-- ArchitectureModel and visual architecture canvas
 - semantic project-wide search
 - advanced ambient intelligence
 - automatic Ideas capture
-- visual planning and freeform canvases
 - sophisticated model routing
 - multi-agent orchestration
 - cloud/remote execution

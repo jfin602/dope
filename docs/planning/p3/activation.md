@@ -48,7 +48,9 @@ Not authorized:
 - autonomous mutation;
 - Development Sessions.
 
-ADR 0006 applies to the next AI phase, not to this implementation stack.
+ADR 0006 applies to the next AI phase, now Product Phase 6 — AI Presence, not to this implementation stack.
+
+The subsequent roadmap insertion of Product Phase 4 — Physical Software Model and Product Phase 5 — Visual Planning does not expand or reopen this Phase 3 authorization.
 
 ## Execution
 

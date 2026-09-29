@@ -58,6 +58,7 @@ Current authority:
 - docs/decisions/0004-model-provider-independence.md
 - docs/decisions/0005-progressive-self-development.md
 - docs/decisions/0006-codex-reference-ai-bootstrap.md
+- docs/decisions/0007-software-model-centered-product-architecture.md
 
 ## Product premise
 
@@ -78,10 +79,12 @@ The initial sequence is intentionally small:
 Foundation Spike 0 — qualify Theia
 -> Phase 1 — IDE Alive
 -> Phase 2 — Project Mind
--> Phase 3 — Planning
--> Phase 4 — AI Presence
--> Phase 5 — Scoped Delegation
--> Phase 6 — Development Sessions
+-> Phase 3 — Planning Foundation
+-> Phase 4 — Physical Software Model
+-> Phase 5 — Visual Planning
+-> Phase 6 — AI Presence
+-> Phase 7 — Scoped Delegation
+-> Phase 8 — Development Sessions
 
 Do not pull later-phase concepts forward merely because they already exist in the long-term product model.
 
@@ -92,6 +95,8 @@ BUILD includes editor, terminal, debugger, tests, source control, runtime, agent
 THINK includes notes, ideas, questions, research, decisions, plans, architecture, and exploration.
 
 These are different views into the same project state.
+
+The software project is the center of gravity. Dope's core architecture hierarchy is Project -> System -> Subsystem -> Component -> Code. The Physical Software Model is evidence-backed current reality; Visual Planning references that reality and expresses target transformations that feed Plans/Tasks and are reconciled after implementation.
 
 The intended knowledge lifecycle is:
 
@@ -108,8 +113,8 @@ Current/early layers:
 Dope desktop / Theia workbench
 -> Dope presentation adapters and widgets
 -> Application / orchestration
--> Project Intelligence / Planning
--> Persistence adapters
+-> Project Intelligence / Planning / Software Model
+-> Code-analysis and persistence adapters
 
 Later AI layers:
 
@@ -133,7 +138,7 @@ Initial Project Mind scope begins with:
 - Question
 - Decision
 
-Later phases add Plans, Tasks, Agent Mind, DeveloperSession, ChangeSet, Validation, Research, and ArchitectureModel according to the roadmap.
+Later phases add Plans, Tasks, the Physical Software Model, Visual Planning, Agent Mind, DeveloperSession, ChangeSet, Validation, and Research according to the roadmap.
 
 Chat is one interface for manipulating project state. Chat history is not canonical product state.
 
@@ -148,7 +153,7 @@ First-class compatibility targets include:
 
 No provider owns Project Mind, Planning, Agent Mind, Sessions, Authority, Decisions, or Validation.
 
-The current GPT-6 Sol/Codex repository workflow is a development-tooling choice, not Dope's runtime architecture. ADR 0006 separately records Codex/OpenAI as the first reference AI implementation for Phase 4 qualification; that bootstrap choice does not add provider runtime code to Phase 3 or weaken provider independence.
+The current GPT-6 Sol/Codex repository workflow is a development-tooling choice, not Dope's runtime architecture. ADR 0006 separately records Codex/OpenAI as the first reference AI implementation for Phase 6 qualification; that bootstrap choice does not add provider runtime code to Phase 3 or weaken provider independence.
 
 ## Progressive self-development
 
@@ -158,6 +163,8 @@ external bootstrap
 -> Dope as editor
 -> Dope as project brain
 -> Dope as planner
+-> Dope maps Dope
+-> Dope visually designs Dope
 -> Dope as agent supervisor
 -> Dope develops Dope
 
@@ -211,4 +218,4 @@ Execute the approved Phase 3 Planning stack from the coherent `0.3.0` activation
 
 Phase 3 must first establish provider-free Planning contracts and persistence, then the real Planning workspace, restart/package evidence, direct Dope-on-Dope planning dogfood, and evidence-only closeout. The exit path is developer-driven: thought/Decision -> Plan -> PlanStep -> Task -> ordinary coding -> explicit plan/task progress, with restart continuity and no LLM required.
 
-Do not repair or relabel the retained Phase 1/2 evidence gaps inside Phase 3 unless a Phase 3 change directly touches the same behavior and produces new evidence. Do not introduce Codex/OpenAI/local-model runtime integration early; ADR 0006 makes Codex the first Phase 4 reference provider, not a Phase 3 dependency.
+Do not repair or relabel the retained Phase 1/2 evidence gaps inside Phase 3 unless a Phase 3 change directly touches the same behavior and produces new evidence. Do not introduce Codex/OpenAI/local-model runtime integration early; ADR 0006 makes Codex the first Phase 6 reference provider, not a Phase 3 dependency.
