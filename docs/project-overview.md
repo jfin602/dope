@@ -165,12 +165,13 @@ Foundation Spike 0 — qualify Theia
 -> correction c3 — remove Planning instruments
 -> Phase 4 — Physical Map
 -> correction c4 — architecture discovery + developer authority
+-> correction c4-storage — enforce project-local sMap persistence
 -> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
 -> Phase 7 — Scoped Delegation
 -> Phase 8 — Development Sessions
 
-Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map scope is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). ADR 0009 now requires correction `c4-architecture-discovery` at unchanged `0.4.6` before Phase 5 planning or activation.
+Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map scope is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). ADR 0009 requires correction `c4-architecture-discovery` at unchanged `0.4.6`. After that active stack closes, a bounded `c4-smap-storage` correction at unchanged `0.4.6` must enforce the project-local `.dope/` sMap persistence boundary before Phase 5 planning or activation.
 
 ## Non-goals
 
@@ -207,7 +208,9 @@ Desired completion feeling:
 
 **Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved scope. Phase 5 is not activated.**
 
-The mandatory next gate is correction `c4-architecture-discovery` at unchanged `0.4.6`. It must preserve the Phase 4 semantic analyzer/evidence substrate while adding explicit sMap initialization, opt-in analysis, bounded provider-independent LLM architecture synthesis over deterministic evidence, local LM Studio/Qwen reference qualification with capability probing and pre-synthesis warm-up, proposal provenance, developer review/correction and acceptance, greenfield/manual architecture-before-code support, and implementation realization/drift reconciliation. ADR 0009 as amended by ADR 0010 governs the architecture contract; ADR 0011 governs the local-first reference bootstrap.
+The mandatory current gate is correction `c4-architecture-discovery` at unchanged `0.4.6`. It must preserve the Phase 4 semantic analyzer/evidence substrate while adding explicit sMap initialization, opt-in analysis, bounded provider-independent LLM architecture synthesis over deterministic evidence, local LM Studio/Qwen reference qualification with capability probing and pre-synthesis warm-up, proposal provenance, developer review/correction and acceptance, greenfield/manual architecture-before-code support, and implementation realization/drift reconciliation. ADR 0009 as amended by ADR 0010 governs the architecture contract; ADR 0011 governs the local-first reference bootstrap.
+
+The already-running `c4-smap-synth` P6-P8 prompts are not changed by this documentation update. After that stack closes, `c4-smap-storage` becomes the mandatory pre-Phase-5 gate. It must prove that durable sMap state is recoverable from repository + project-local `.dope/`, with `.dope/architecture.json` and `.dope/smap.json` as the current required files; any additional persisted sMap artifacts must remain under versioned `.dope/` storage. Machine-local caches may be disposable accelerators only.
 
 Historical Phase 1/2 qualification gaps remain unchanged. Phase 3 remains historical evidence and its live Planning implementation remains removed. Theia stays pinned to 1.75.0 and Electron to 42.8.1 unless a deliberate framework upgrade is separately approved.
 
