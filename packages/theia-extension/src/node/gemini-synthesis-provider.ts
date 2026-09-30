@@ -121,7 +121,7 @@ export class GeminiSynthesisProvider {
             if (!Number.isSafeInteger(limit) || !limit || limit < 8192) throw new Error('Invalid model capacity');
             // Keep the model's large context as headroom; planner requests use a small fraction of its input limit.
             this.capability = { modelLabel: selectedModel, contextWindowTokens: limit,
-                maxInputTokens: Math.max(8192, Math.floor(limit / 32)), reservedInstructionTokens: 2048,
+                maxInputTokens: Math.max(8192, Math.floor(limit / 16)), reservedInstructionTokens: 2048,
                 reservedOutputTokens: 4096, reservedOverheadTokens: 1024,
                 tokenEstimate: 'conservative', maxConcurrentGenerations: 1 };
             return this.capability;

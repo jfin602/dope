@@ -60,6 +60,7 @@ test('Gemini SDK applies the API key, selected model, compact schema and provide
   const capability = await provider.capabilities();
   assert.equal(capability.modelLabel, modelId);
   assert.equal(capability.contextWindowTokens, 1048576);
+  assert.equal(capability.maxInputTokens, 65536);
   assert.ok(capability.maxInputTokens < capability.contextWindowTokens / 8);
   const executed = await provider.runStage(request);
   assert.deepEqual(parseSynthesisStageResult(executed.output, request, packet), output);
@@ -214,6 +215,7 @@ test('Local instructions and Gemini schemas route the same three compact lower s
     } });
     const executed = await provider.runStage(stageRequest);
     assert.equal(body.systemInstruction.parts[0].text, instruction);
+    assert.match(instruction, /Never use dependency, topology, configuration, test, or document refs as ownership/);
     assert.deepEqual(body.generationConfig.responseJsonSchema,
       geminiStageSchema(synthesisStageResultSchemas[stageRequest.stage]));
     assert.deepEqual(parseSynthesisStageResult(executed.output, stageRequest, packet), response);

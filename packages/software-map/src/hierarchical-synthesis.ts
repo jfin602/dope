@@ -131,20 +131,41 @@ export function buildCoverageLedger(packet: ArchitectureEvidencePacket, subtrees
 }
 export const evidenceSourceArea = (path: string): string => {
     const parts = path.split('/');
-    const area = parts[0] === 'packages' || parts[0] === 'apps' || parts[0] === 'src'
-        ? parts.slice(0, 2).join('/') : parts[0];
+    const area = parts[0] === 'src' ? parts.slice(0, parts[1] !== 'client' && parts.length > 3 ? 3 : 2).join('/') :
+        parts[0] === 'packages' || parts[0] === 'apps' ? parts.slice(0, 2).join('/') : parts[0];
     return area.length <= 80 ? area : `${area.slice(0, 48)}:${digest(area).slice(-16)}`;
 };
 const genericConcepts = new Set(['application', 'backend', 'client', 'component', 'config', 'controller',
-    'create', 'data', 'default', 'delete', 'fetch', 'find', 'frontend', 'handler', 'index', 'input',
-    'interface', 'json', 'list', 'load', 'main', 'module', 'output', 'page', 'provider', 'read',
-    'repository', 'request', 'response', 'result', 'route', 'save', 'server', 'service', 'state',
-    'store', 'type', 'update', 'util', 'view', 'worker', 'write']);
+    'context', 'create', 'data', 'default', 'delete', 'error', 'fetch', 'find', 'frontend', 'handler',
+    'index', 'input', 'interface', 'json', 'kind', 'list', 'load', 'main', 'message', 'module',
+    'normalize', 'origin', 'output', 'page', 'parse', 'provider', 'read', 'repository', 'request',
+    'response', 'result', 'route', 'routes', 'save', 'server', 'service', 'state', 'store', 'type',
+    'update', 'util', 'view', 'worker', 'write']);
 /** Only recurring source-backed behavior terms across source areas; no inferred ownership. */
 export function deriveResponsibilitySignals(items: readonly ArchitectureEvidenceItem[]): ResponsibilitySignal[] {
-    const strong = items.filter(item => isDirectSystemResponsibilityEvidence(item) &&
+    const behaviorRank = (item: ArchitectureEvidenceItem): number => item.kind !== 'semantic' ? 3 :
+        /(?:Error|Exception)$/.test(item.symbol) ? 0 :
+        item.relation.startsWith('class:') ? 5 : item.relation.startsWith('function:') ? 4 :
+            item.relation.startsWith('interface:') ? 2 : item.relation.startsWith('type:') ? 1 : 0;
+    const behaviors = items.filter(item => isDirectSystemResponsibilityEvidence(item) &&
         (item.kind === 'semantic' && item.relation.includes(':exported') || item.kind === 'framework' || item.kind === 'entrypoint' && item.path !== 'package.json'))
-        .sort((a, b) => a.path.localeCompare(b.path) || a.id.localeCompare(b.id)).slice(0, 24)
+        .sort((a, b) => evidenceSourceArea(a.path).localeCompare(evidenceSourceArea(b.path)) ||
+            behaviorRank(b) - behaviorRank(a) || a.path.localeCompare(b.path) || a.id.localeCompare(b.id));
+    const areas = new Map<string, ArchitectureEvidenceItem[]>();
+    for (const item of behaviors) {
+        const area = evidenceSourceArea(item.path);
+        if (!areas.has(area)) areas.set(area, []);
+        areas.get(area)!.push(item);
+    }
+    const selected: ArchitectureEvidenceItem[] = [];
+    for (let depth = 0; selected.length < 48; depth++) {
+        let added = false;
+        for (const bucket of areas.values()) if (bucket[depth] && selected.length < 48) {
+            selected.push(bucket[depth]); added = true;
+        }
+        if (!added) break;
+    }
+    const strong = selected
         .map(item => ({ key: digest(['behavior', item.id]).replace('view:v1:', 'signal:v1:'),
             concept: item.kind === 'semantic' ? item.symbol : item.kind === 'framework' ? item.name :
                 item.kind === 'entrypoint' ? item.role : item.path,

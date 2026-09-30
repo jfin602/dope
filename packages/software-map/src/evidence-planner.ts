@@ -10,7 +10,7 @@ export const EVIDENCE_PLANNER_VERSION = 5;
 type Category = ArchitectureEvidenceItem['kind'];
 const categories: Category[] = ['topology', 'entrypoint', 'framework', 'dependency', 'configuration', 'semantic'];
 const globalLimits: Record<Category, number> = {
-    topology: 48, entrypoint: 24, framework: 36, dependency: 40, configuration: 20, semantic: 32,
+    topology: 48, entrypoint: 24, framework: 36, dependency: 24, configuration: 20, semantic: 48,
 };
 const focusedLimits: Record<Category, number> = {
     topology: 20, entrypoint: 16, framework: 32, dependency: 48, configuration: 16, semantic: 48,
@@ -44,7 +44,7 @@ const physical = (item: ArchitectureEvidenceItem): boolean => !item.path.startsW
 const group = (path: string): string => {
     const parts = path.split('/');
     return parts[0] === 'packages' || parts[0] === 'apps' ? parts.slice(0, 2).join('/') :
-        parts[0] === 'src' ? parts.slice(0, 2).join('/') : parts[0];
+        parts[0] === 'src' ? parts.slice(0, parts[1] !== 'client' && parts.length > 3 ? 3 : 2).join('/') : parts[0];
 };
 const sameArea = (a: string, b: string): boolean => a === b || group(a) === group(b);
 const rank = (item: ArchitectureEvidenceItem): number => {
@@ -201,8 +201,8 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
     }
     if (!mandatory.length && await estimate([]) > budget) throw new Error(`Evidence planner ${stage} context exceeds input budget`);
     const scoped = packet.items.filter(eligible);
-    // Put bounded cross-area behavior pairs ahead of path/category coverage. Each item remains whole.
-    for (const signal of signals) {
+    // Global discovery first needs breadth of direct behavior; pairs can inform later boundary challenges.
+    for (const signal of stage === 'system-discovery' ? [] : signals) {
         const representatives = [...new Set(signal.evidenceRefs.map(ref => evidenceSourceArea(byId.get(ref)!.path)))].slice(0, 2)
             .map(area => signal.evidenceRefs.map(ref => byId.get(ref)!).find(item => evidenceSourceArea(item.path) === area && eligible(item)))
             .filter((item): item is ArchitectureEvidenceItem => !!item);
@@ -226,14 +226,16 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
         (stage === 'subsystem-challenge' && crossCandidate(item) ? 100 : 0) +
         (stage === 'system-challenge' && crossCandidate(item) ? 100 : 0) +
         (stage === 'reconciliation' && item.kind === 'dependency' && group(item.path) !== group(item.targetPath) ? 25 : 0);
-    const stageCategories: Category[] = lowerStage
+    const stageCategories: Category[] = stage === 'system-discovery'
+        ? ['topology', 'entrypoint', 'semantic', 'framework', 'dependency', 'configuration'] : lowerStage
         ? ['semantic', 'framework', 'dependency', 'entrypoint', 'topology', 'configuration'] : stage === 'system-challenge'
         ? ['dependency', 'entrypoint', 'framework', 'semantic', 'topology', 'configuration'] : stage === 'reconciliation'
         ? ['dependency', 'entrypoint', 'framework', 'topology', 'configuration', 'semantic'] : categories;
     for (const category of stageCategories) {
         const candidates = scoped.filter(item => item.kind === category).sort((a, b) =>
             priority(b) - priority(a) || group(a.path).localeCompare(group(b.path)) || a.path.localeCompare(b.path) || a.id.localeCompare(b.id));
-        if (lowerStage) {
+        if (lowerStage || (stage === 'system-discovery' || stage === 'system-challenge') &&
+            (category === 'semantic' || category === 'framework')) {
             const positions = new Map<string, number>();
             const turns = new Map(candidates.map(item => {
                 const area = group(item.path);
@@ -246,6 +248,10 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
         for (const item of candidates) {
             if (selectedSet.has(item.id) || (counts.get(category) ?? 0) >= limits[category] ||
                 stage === 'verification' && selected.length >= 24) continue;
+            if (stage === 'system-discovery' && category === 'entrypoint' &&
+                selected.filter(id => byId.get(id)?.kind === 'entrypoint' && byId.get(id)?.path === item.path).length >= 2) continue;
+            if (stage === 'system-discovery' && category === 'dependency' &&
+                selected.filter(id => byId.get(id)?.kind === 'dependency' && byId.get(id)?.path === item.path).length >= 4) continue;
             // Diversity prevents one package or repeated test surface from consuming a whole category.
             if (!refs.has(item.id) && category !== 'topology' &&
                 (groupCounts.get(group(item.path)) ?? 0) >= (lowerStage ? 4 : 20)) continue;

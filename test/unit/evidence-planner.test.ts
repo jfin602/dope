@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { deriveResponsibilitySignals, planArchitectureEvidence, validateArchitectureEvidenceView,
+import { deriveResponsibilitySignals, evidenceSourceArea, planArchitectureEvidence, validateArchitectureEvidenceView,
   validateSynthesisStageRequest } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidenceItem, ArchitectureEvidencePacket, SynthesisCapabilities,
   SynthesisStageContext, SystemCandidate } from '../../packages/software-map/lib/index.js';
@@ -61,6 +61,40 @@ test('global skeleton is stable, bounded, whole, source-backed, and prioritizes 
   const entry = revised.items.find(fact => fact.id === 'start') as Extract<ArchitectureEvidenceItem, { kind: 'entrypoint' }>;
   entry.role = 'main:revised.ts';
   assert.notEqual((await planArchitectureEvidence(revised, 'system-discovery', context(), capability(1100), counter)).planId, first.planId);
+});
+
+test('source behavior cues and the global view do not disappear behind many exports in one source area', async () => {
+  assert.equal(evidenceSourceArea('src/client/feeds/page.tsx'), 'src/client');
+  assert.equal(evidenceSourceArea('src/server/feeds/feed-service.ts'), 'src/server/feeds');
+  const crowded = [
+    ...Array.from({ length: 40 }, (_, i) => item(`client-${i}`, 'semantic', `src/client/app/widget-${i}.ts`)),
+    item('collection', 'semantic', 'src/server/collection/collect.ts'),
+    item('delivery', 'semantic', 'src/server/installations/deliver.ts'),
+    item('integration', 'semantic', 'src/server/integrations/sync.ts'),
+  ];
+  const cues = deriveResponsibilitySignals(crowded);
+  assert.ok(cues.some(cue => cue.concept === 'collection'));
+  assert.ok(cues.some(cue => cue.concept === 'delivery'));
+  assert.ok(cues.some(cue => cue.concept === 'integration'));
+  const ranked = deriveResponsibilitySignals([
+    { ...item('constant', 'semantic', 'src/server/feeds/constants.ts'), relation: 'variable:exported' },
+    { ...item('FeedError', 'semantic', 'src/server/feeds/errors.ts'), relation: 'class:exported' },
+    item('feedPipeline', 'semantic', 'src/server/feeds/feed-pipeline.ts'),
+  ]);
+  assert.equal(ranked[0].concept, 'feedPipeline');
+  const broad = { ...packet, items: [item('workspace', 'topology', 'package.json'),
+    item('start', 'entrypoint', 'package.json'),
+    ...Array.from({ length: 30 }, (_, i) => ({ ...item(`script-${i}`, 'entrypoint', 'package.json'), role: `script:task-${i}` })),
+    ...Array.from({ length: 30 }, (_, i) => item(`import-${i}`, 'dependency', 'src/server/main.ts')),
+    ...crowded] };
+  const plan = await planArchitectureEvidence(broad, 'system-discovery', context(), capability(9000), counter);
+  const paths = plan.request.view.items.map(fact => fact.path);
+  assert.ok(paths.some(path => path.startsWith('src/server/collection/')));
+  assert.ok(paths.some(path => path.startsWith('src/server/installations/')));
+  assert.ok(paths.some(path => path.startsWith('src/server/integrations/')));
+  assert.ok(plan.request.view.items.filter(fact => fact.kind === 'entrypoint' && fact.path === 'package.json').length <= 2);
+  assert.equal(plan.request.view.items.filter(fact => fact.kind === 'dependency' && fact.path === 'src/server/main.ts').length, 4);
+  assert.ok(cues.length <= 48);
 });
 
 test('minimal skeleton fits exactly when possible and fails clearly below that', async () => {

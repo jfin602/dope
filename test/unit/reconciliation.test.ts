@@ -156,7 +156,22 @@ test('Gemini transient retry retains failed and consumed attempts with exact req
   assert.equal(cache.attempts()[0].modelLabel, 'gemini-fixed');
 });
 
-test('Gemini retry cap and nonretryable stage failures remain explicit', async () => {
+test('Gemini retries one malformed stage result and retains both attempts', async () => {
+  const cache = new SynthesisStageCache();
+  const req = request('system-discovery');
+  let calls = 0;
+  const provider = { kind: 'gemini', runStage: async (input: SynthesisStageRequest) => {
+    calls++;
+    return executed(input, { systems: [{ ...system('a', 'a'), ...(calls === 1 ? { extra: true } : {}) }] });
+  } } as SynthesisProvider;
+  await cache.run(req, packet, provider, 'gemini/model');
+  assert.equal(calls, 2);
+  assert.deepEqual(cache.attempts().map(item => [item.failureClass, item.consumed]),
+    [['invalid-stage-result', false], [undefined, true]]);
+  assert.equal(cache.attempts()[1].retryOf, cache.attempts()[0].attemptId);
+});
+
+test('Gemini retry caps and nonretryable provider failures remain explicit', async () => {
   const req = request('system-discovery');
   for (const failure of ['upstream', 'invalid-json', 'schema', 'content', 'auth'] as const) {
     const cache = new SynthesisStageCache();
@@ -170,7 +185,8 @@ test('Gemini retry cap and nonretryable stage failures remain explicit', async (
         ...(failure === 'schema' ? { extra: true } : { evidenceRefs: ['fabricated'] }) }] });
     } } as SynthesisProvider;
     await assert.rejects(cache.run(req, packet, provider, 'gemini/model'));
-    assert.equal(calls, failure === 'upstream' ? MAX_GEMINI_ATTEMPTS : 1, failure);
+    assert.equal(calls, failure === 'upstream' ? MAX_GEMINI_ATTEMPTS :
+      failure === 'schema' || failure === 'content' ? 2 : 1, failure);
     assert.equal(cache.attempts().length, calls);
     assert.ok(cache.attempts().every(item => !item.consumed));
     if (failure === 'invalid-json') assert.equal(cache.attempts()[0].failureClass, 'invalid-json');

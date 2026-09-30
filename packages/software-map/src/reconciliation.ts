@@ -123,9 +123,10 @@ export class SynthesisStageCache {
                 if (this.results.size > this.maximum) this.results.delete(this.results.keys().next().value!);
                 return { result, reused: false, durationMs, usage: execution!.usage };
             }
-            if (provider.kind !== 'gemini' || !(failure instanceof SynthesisProviderFailure) ||
-                !['transient-transport', 'transient-upstream'].includes(failure.failureClass) ||
-                number >= MAX_GEMINI_ATTEMPTS) throw failure;
+            const retryMalformed = failure instanceof StageResultFailure && number < 2;
+            const retryTransient = failure instanceof SynthesisProviderFailure &&
+                ['transient-transport', 'transient-upstream'].includes(failure.failureClass) && number < MAX_GEMINI_ATTEMPTS;
+            if (provider.kind !== 'gemini' || !retryMalformed && !retryTransient) throw failure;
             checkpoint();
         }
     }
