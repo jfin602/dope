@@ -207,6 +207,7 @@ export class SoftwareMapController {
             const environment = await this.connection!.synthesisEnvironment(this.handle!);
             if (project !== this.project || request !== this.setupRequest) return;
             this.geminiEnvironmentKeyAvailable = environment.geminiKeyAvailable;
+            this.notify();
         } catch (error) {
             if (project === this.project && request === this.setupRequest) { this.error = String(error); this.notify(); }
         }

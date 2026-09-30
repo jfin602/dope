@@ -134,13 +134,16 @@ test('local setup prefers Qwen and stores endpoint/model only as application sta
 test('Gemini setup uses only Gemini, drops session key, and switching clears readiness', async () => {
   const c = connection();
   const writes: any[] = [];
+  let changes = 0;
   c.synthesisEnvironment = () => Promise.resolve({ geminiKeyAvailable: true });
-  const controller = new SoftwareMapController(() => c, () => {}, {
+  const controller = new SoftwareMapController(() => c, () => { changes++; }, {
     getData: async () => undefined, setData: async (...args: any[]) => { writes.push(args); }
   });
   const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  changes = 0;
   await controller.setup();
   assert.equal(controller.geminiEnvironmentKeyAvailable, true);
+  assert.equal(changes, 2);
   controller.changeGeminiKey('session-secret');
   controller.chooseProvider('gemini');
   await controller.discoverGemini();

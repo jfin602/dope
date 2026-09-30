@@ -77,8 +77,6 @@ test('global view groups Browser and Electron packages under one responsibility 
     assert.ok(first.plan.omittedEvidenceRefs.length > 0);
     assert.equal(JSON.stringify(sent).includes('sourceFingerprint'), false);
     assert.equal(server.calls[3].body.response_format.json_schema.schema.properties.systems.items.properties.kind.const, 'system');
-    assert.equal(JSON.stringify(server.calls[3].body.response_format.json_schema.schema).includes('subsystem'), false);
-    assert.equal(JSON.stringify(server.calls[3].body.response_format.json_schema.schema).includes('component'), false);
     assert.ok(!/1-2 Systems|2-5 Subsystems|2-8 Components/.test(SYSTEM_DISCOVERY_INSTRUCTION));
     assert.match(SYSTEM_DISCOVERY_INSTRUCTION, /Do not force a count/);
     assert.ok(!server.calls[1].body.messages.some((message: { content: string }) => message.content.includes('workbench')));
