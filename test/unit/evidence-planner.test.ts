@@ -70,6 +70,35 @@ test('minimal skeleton fits exactly when possible and fails clearly below that',
   await assert.rejects(planArchitectureEvidence(packet, 'system-discovery', context(), capability(20), counter), /minimal.*skeleton|context exceeds/);
 });
 
+test('bootstrap and supporting documents leave room for source-backed System discovery', async () => {
+  const document = (path: string, kind: 'modules-seed' | 'readme-orientation' | 'architecture', content: string) =>
+    ({ path, class: kind, authority: 'Documented' as const, status: 'unknown' as const,
+      sha256: 'a'.repeat(64), bytes: content.length, truncated: false, content });
+  const documented: ArchitectureEvidencePacket = { ...packet, documents: [
+    document('MODULES.md', 'modules-seed', 'M'.repeat(4741)),
+    document('README.md', 'readme-orientation', 'R'.repeat(6340)),
+    ...Array.from({ length: 8 }, (_, i) => document(`docs/architecture/${i}.md`, 'architecture', 'D'.repeat(2000))),
+  ] };
+  const byteCounter = { estimateTokens: async (input: string) => Buffer.byteLength(input) };
+  const plan = await planArchitectureEvidence(documented, 'system-discovery', context(),
+    { modelLabel: 'controlled provider', contextWindowTokens: 1_048_576, maxInputTokens: 32_768,
+      reservedInstructionTokens: 2048, reservedOutputTokens: 4096, reservedOverheadTokens: 1024,
+      tokenEstimate: 'conservative' }, byteCounter);
+  assert.ok(plan.includedEvidenceRefs.includes('start'));
+  assert.deepEqual(plan.request.view.documents?.slice(0, 2).map(doc => [doc.path, doc.truncated]),
+    [['MODULES.md', false], ['README.md', false]]);
+  assert.ok(plan.inputTokens <= plan.inputBudgetTokens);
+  validateSynthesisStageRequest(plan.request, documented);
+  const challenge = await planArchitectureEvidence(documented, 'system-challenge', context([
+    { ...system, evidenceRefs: ['start', 'service', 'edge', 'public'] },
+  ]), { modelLabel: 'controlled provider', contextWindowTokens: 1_048_576, maxInputTokens: 32_768,
+    reservedInstructionTokens: 2048, reservedOutputTokens: 4096, reservedOverheadTokens: 1024,
+    tokenEstimate: 'conservative' }, byteCounter);
+  assert.ok(challenge.includedEvidenceRefs.includes('public'));
+  assert.ok(challenge.request.view.documents?.some(doc => doc.path === 'README.md'));
+  validateSynthesisStageRequest(challenge.request, documented);
+});
+
 test('later stages use candidate refs and packet relationships, never arbitrary path requests', async () => {
   const subtree = { systemKey: system.candidateKey, nodes: [] };
   for (const [stage, ctx] of [

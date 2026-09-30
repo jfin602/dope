@@ -211,7 +211,17 @@ export function createArchitectureEvidenceView(packet: ArchitectureEvidencePacke
         stage === 'subsystem-discovery' || stage === 'subsystem-challenge' ?
             doc.class !== 'readme-orientation' && doc.class !== 'modules-seed' &&
             (doc.path.startsWith('docs/') || ordered.some(item => item.path.startsWith(doc.path.split('/').slice(0, 2).join('/')))) : false);
-    const selectedDocuments = documents?.slice(0, stage === 'system-discovery' || stage === 'system-challenge' ? 10 : 4);
+    // Keep documented orientation from crowding source facts out of the minimum stage request.
+    let documentContentLeft = stage === 'system-discovery' ? 12_000 :
+        Math.max(0, 12_000 - JSON.stringify(ordered).length);
+    const selectedDocuments = documents?.slice(0, stage === 'system-discovery' || stage === 'system-challenge' ? 10 : 4)
+        .flatMap(doc => {
+            const limit = doc.class === 'modules-seed' && documents.some(item => item.class === 'readme-orientation')
+                ? Math.min(8_000, Math.ceil(documentContentLeft / 2)) : documentContentLeft;
+            const content = doc.content.slice(0, limit);
+            documentContentLeft -= content.length;
+            return content ? [{ ...doc, content, truncated: doc.truncated || content.length < doc.content.length }] : [];
+        });
     return { schemaVersion: 1, viewVersion: SYNTHESIS_VIEW_VERSION, parentPacketFingerprint: packet.inputFingerprint,
         viewId: digest([SYNTHESIS_VIEW_VERSION, packet.inputFingerprint, ordered, responsibilitySignals, selectedDocuments]),
         items: structuredClone(ordered), responsibilitySignals,
