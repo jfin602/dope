@@ -1,6 +1,6 @@
 # Correction 4 — Hierarchical sMap Synthesis
 
-Status: **APPROVED / READY**
+Status: **IMPLEMENTATION THROUGH P7 COMPLETE — P8/P9 SUPERSEDED / NOT EXECUTED under ADR 0013**
 Correction folder: `c4-smap-hierarchical-synthesis`
 Required unchanged version: `0.4.6`
 Predecessor: owner-closed / Not Qualified `c4-smap-synth`, terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0`
@@ -47,7 +47,7 @@ Run:
 
 `npm run codex:phase -- c4-smap-hierarchical-synthesis`
 
-P1-P7 are runner-capable. P8 requires browser plus real local LM Studio/Qwen. P9 is evidence-only closeout.
+P1-P7 were implemented; the reachable P7 implementation commit is `66f023f717afd63433d442015b575edf049ae1b6`. P8 and P9 remain historical unexecuted prompt instructions. ADR 0013 supersedes them: do not run them before `c4-smap-gemini-provider`, do not fabricate their evidence, and do not relabel this correction Green. Real Local qualification now occurs alongside Gemini in the successor correction's P4, with closeout in its P5.
 
 ## Exit gate
 
