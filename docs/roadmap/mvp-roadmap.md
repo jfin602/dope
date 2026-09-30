@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: `c4-smap-synth` / `c4-architecture-discovery` is OWNER-CLOSED / NOT QUALIFIED at terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0`; mandatory `c4-smap-hierarchical-synthesis` is active at unchanged `0.4.6`. After it closes truthfully, mandatory `c4-smap-gemini-provider` runs at unchanged `0.4.6`, followed by bounded `c4-smap-storage` at unchanged `0.4.6` before Phase 5; Product Phase 4 remains QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
+Current stage: `c4-smap-synth` / `c4-architecture-discovery` is OWNER-CLOSED / NOT QUALIFIED at terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0`; `c4-smap-hierarchical-synthesis` implementation P1-P7 is complete at reachable P7 commit `66f023f717afd63433d442015b575edf049ae1b6`, while its P8/P9 qualification/closeout prompts are superseded and unexecuted under ADR 0013. Mandatory `c4-smap-gemini-provider` is now the active correction at unchanged `0.4.6`, followed by bounded `c4-smap-storage` at unchanged `0.4.6` before Phase 5; Product Phase 4 remains QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -348,7 +348,7 @@ At unchanged `0.4.6`, Dope can deliberately initialize sMap for an existing proj
 
 ## Mandatory pre-Phase-5 correction — `c4-smap-hierarchical-synthesis`
 
-Status: **ACTIVE / READY — prompt stack authored under ADR 0012 at unchanged `0.4.6`**
+Status: **IMPLEMENTATION THROUGH P7 COMPLETE — P8/P9 SUPERSEDED / NOT EXECUTED under ADR 0013; reachable P7 implementation commit `66f023f717afd63433d442015b575edf049ae1b6`**
 
 Version semantics: unchanged package version `0.4.6`. The predecessor `c4-smap-synth` is closed historical evidence and must not be reopened or relabeled Green.
 
@@ -391,7 +391,7 @@ Minimum qualification:
 
 Exit condition:
 
-At unchanged `0.4.6`, hierarchy-first bounded synthesis produces materially credible architecture on the Dope repository, source provenance remains intact across all stages, the user can see meaningful live analysis progress, model requests respect provider-derived budgets, and the initial qualification workload is Green only when it completes in eight minutes or less without sacrificing architecture quality. After `c4-smap-hierarchical-synthesis` closes truthfully, route to mandatory `c4-smap-gemini-provider`. That correction is allowed and required even if the local-Qwen architecture-quality or <=8-minute gate is Not Green, because it corrects the shared intermediate protocol and distinguishes synthesis-design cost from provider/model/runtime cost. `c4-smap-storage` remains blocked until `c4-smap-gemini-provider` closes Green.
+At unchanged `0.4.6`, hierarchy-first bounded synthesis produces materially credible architecture on the Dope repository, source provenance remains intact across all stages, the user can see meaningful live analysis progress, model requests respect provider-derived budgets, and the initial qualification workload is Green only when it completes in eight minutes or less without sacrificing architecture quality. ADR 0013 supersedes the unexecuted hierarchical P8/P9 qualification/closeout prompts. The P1-P7 implementation baseline is sufficient to start mandatory `c4-smap-gemini-provider`; do not invent P8/P9 evidence or relabel the hierarchical correction Green. The Gemini correction now owns the real same-pipeline Local/Gemini qualification and evidence-only closeout. `c4-smap-storage` remains blocked until `c4-smap-gemini-provider` closes Green.
 
 ## Mandatory pre-Phase-5 correction — `c4-smap-gemini-provider`
 
