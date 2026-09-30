@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import type { KeyStoreService } from '@theia/core/lib/common/key-store';
 import { canonicalLocalRoot } from '@dope/code-analysis/lib/node/architecture-file';
 import { readInitialization, acceptInitialization } from '@dope/code-analysis/lib/node/smap-initialization-file';
+import { bootstrapDocumentPresence } from '@dope/code-analysis/lib/node/architecture-evidence';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
 import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseAnalysisProgressEvent,
     HierarchicalSynthesisOrchestrator, SynthesisStageCache } from '@dope/software-map';
@@ -205,7 +206,8 @@ export class SoftwareMapBackend implements SoftwareMapService {
         const state = await readInitialization(root);
         this.initialized = state.initialized;
         return { state: state.initialized ? 'initialized' : this.phase ?? 'uninitialized',
-            declarationPresent: state.declarationPresent, declarationFingerprint: state.declarationFingerprint };
+            declarationPresent: state.declarationPresent, declarationFingerprint: state.declarationFingerprint,
+            ...(state.initialized ? {} : { bootstrap: await bootstrapDocumentPresence(root) }) };
     }
     private still(handle: string, root: string, run: number): void {
         if (this.active(handle) !== root || this.run !== run) throw new Error('Superseded Software Map initialization');
@@ -244,7 +246,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
                 localProvider?.endpoint ?? provider.kind, undefined, undefined, emit,
                 () => this.still(projectHandle, root, run), localProvider ? () => localProvider.warmUp() : undefined,
                 this.synthesisCache);
-            const { proposal } = await orchestrator.analyze(packet);
+            const { proposal, coverageLedger } = await orchestrator.analyze(packet);
             this.still(projectHandle, root, run);
             emit({ stage: 'preparing-review', status: 'started', elapsedMs: 0, message: 'Preparing sMap for review' });
             if ((await readInitialization(root)).declarationFingerprint !== fingerprint) throw new Error('Stale Software Map architecture declaration');
@@ -260,7 +262,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
             });
             this.still(projectHandle, root, run);
             const reviewId = randomUUID();
-            this.pending = { reviewId, packet, proposal, draft, fingerprint };
+            this.pending = { reviewId, packet, proposal, draft, coverageLedger, fingerprint };
             this.phase = 'review_required';
             this.analysisStarted = undefined;
             emit({ stage: 'preparing-review', status: 'completed', elapsedMs: 0, message: 'Validated review ready' });
@@ -280,8 +282,8 @@ export class SoftwareMapBackend implements SoftwareMapService {
     async review(projectHandle: string): Promise<ArchitectureReview | undefined> {
         this.active(projectHandle);
         if (!this.pending) return undefined;
-        const { reviewId, packet, proposal, draft } = this.pending;
-        return structuredClone({ reviewId, packet, proposal, draft });
+        const { reviewId, packet, proposal, draft, coverageLedger } = this.pending;
+        return structuredClone({ reviewId, packet, proposal, draft, coverageLedger });
     }
     async resolveReviewSource(projectHandle: string, reviewId: string, evidenceRef: string) {
         const root = this.active(projectHandle);

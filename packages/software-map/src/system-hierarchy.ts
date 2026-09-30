@@ -31,7 +31,8 @@ export async function discoverSystemHierarchy(packet: ArchitectureEvidencePacket
         { plan: EvidencePlan; result: SubsystemDiscoveryResult };
     const challenge = await call(packet, provider, 'subsystem-challenge',
         context(systems, systemKey, discovery.result.subsystems)) as { plan: EvidencePlan; result: SubsystemChallengeResult };
-    const subsystems = challenge.result.decisions.flatMap(decision => decision.subsystems);
+    const subsystems = [...challenge.result.decisions.flatMap(decision => decision.subsystems),
+        ...(challenge.result.recovered ?? []).map(item => item.subsystem)];
     const components: { plan: EvidencePlan; result: ComponentDiscoveryResult }[] = [];
     for (const subsystem of subsystems) {
         components.push(await call(packet, provider, 'component-discovery',

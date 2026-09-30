@@ -1,4 +1,4 @@
-import { ArchitectureEvidenceItem, ArchitectureEvidencePacket, ArchitectureProposal, ProposedArchitectureNode,
+import { ArchitectureEvidenceItem, ArchitectureEvidencePacket, ArchitectureProposal, ProposedArchitectureNode, DocumentSupport,
     validateArchitectureEvidencePacket, parseArchitectureProposal, isProductionEvidencePath,
     isDirectSystemResponsibilityEvidence } from './synthesis';
 
@@ -96,6 +96,25 @@ export interface ResponsibilitySignal {
     concept: string;
     evidenceRefs: string[];
     sourceAreas: string[];
+    strength?: 'behavior' | 'recurrence';
+}
+export interface CoverageLedgerEntry {
+    cueKey: string;
+    concept: string;
+    evidenceRefs: string[];
+    status: 'represented' | 'mapped' | 'unresolved';
+    candidateKeys: string[];
+}
+/** Diagnostic only: a document can annotate a cue, never create or cover one. */
+export function buildCoverageLedger(packet: ArchitectureEvidencePacket, subtrees: readonly SystemSubtree[],
+    recoveredKeys: ReadonlySet<string> = new Set()): CoverageLedgerEntry[] {
+    const nodes = subtrees.flatMap(tree => tree.nodes.filter(node => node.kind === 'subsystem'));
+    return deriveResponsibilitySignals(packet.items).map(cue => {
+        const matching = nodes.filter(node => cue.evidenceRefs.some(ref => node.ownershipEvidenceRefs.includes(ref)));
+        return { cueKey: cue.key, concept: cue.concept, evidenceRefs: cue.evidenceRefs,
+            status: matching.length ? matching.some(node => recoveredKeys.has(node.candidateKey)) ? 'mapped' : 'represented' : 'unresolved',
+            candidateKeys: matching.map(node => node.candidateKey) };
+    });
 }
 export const evidenceSourceArea = (path: string): string => {
     const parts = path.split('/');
@@ -110,6 +129,13 @@ const genericConcepts = new Set(['application', 'backend', 'client', 'component'
     'store', 'type', 'update', 'util', 'view', 'worker', 'write']);
 /** Only recurring source-backed behavior terms across source areas; no inferred ownership. */
 export function deriveResponsibilitySignals(items: readonly ArchitectureEvidenceItem[]): ResponsibilitySignal[] {
+    const strong = items.filter(item => isDirectSystemResponsibilityEvidence(item) &&
+        (item.kind === 'semantic' && item.relation.includes(':exported') || item.kind === 'framework' || item.kind === 'entrypoint' && item.path !== 'package.json'))
+        .sort((a, b) => a.path.localeCompare(b.path) || a.id.localeCompare(b.id)).slice(0, 24)
+        .map(item => ({ key: digest(['behavior', item.id]).replace('view:v1:', 'signal:v1:'),
+            concept: item.kind === 'semantic' ? item.symbol : item.kind === 'framework' ? item.name :
+                item.kind === 'entrypoint' ? item.role : item.path,
+            evidenceRefs: [item.id], sourceAreas: [evidenceSourceArea(item.path)], strength: 'behavior' as const }));
     const concepts = new Map<string, ArchitectureEvidenceItem[]>();
     for (const item of items) {
         if (!isDirectSystemResponsibilityEvidence(item) && !(item.kind === 'framework' &&
@@ -124,15 +150,16 @@ export function deriveResponsibilitySignals(items: readonly ArchitectureEvidence
             concepts.get(word)!.push(item);
         }
     }
-    return [...concepts].flatMap(([concept, facts]) => {
+    const recurring: ResponsibilitySignal[] = [...concepts].flatMap(([concept, facts]) => {
         const ordered = [...facts].sort((a, b) => evidenceSourceArea(a.path).localeCompare(evidenceSourceArea(b.path)) ||
             a.path.localeCompare(b.path) || a.id.localeCompare(b.id));
         const areas = [...new Set(ordered.map(item => evidenceSourceArea(item.path)))];
         if (areas.length < 2) return [];
         const selected = areas.slice(0, 4).flatMap(area => ordered.filter(item => evidenceSourceArea(item.path) === area).slice(0, 2));
         return [{ key: digest([concept, selected.map(item => item.id)]).replace('view:v1:', 'signal:v1:'), concept,
-            evidenceRefs: selected.map(item => item.id).sort(), sourceAreas: areas.slice(0, 4) }];
-    }).sort((a, b) => b.sourceAreas.length - a.sourceAreas.length || a.concept.localeCompare(b.concept)).slice(0, 12);
+            evidenceRefs: selected.map(item => item.id).sort(), sourceAreas: areas.slice(0, 4), strength: 'recurrence' as const }];
+    }).sort((a, b) => b.sourceAreas.length - a.sourceAreas.length || a.concept.localeCompare(b.concept)).slice(0, 8);
+    return [...strong, ...recurring];
 }
 export interface ArchitectureEvidenceView {
     schemaVersion: 1;
@@ -144,6 +171,8 @@ export interface ArchitectureEvidenceView {
     items: ArchitectureEvidenceItem[];
     /** Derived hints, never parent evidence or canonical architecture. */
     responsibilitySignals: ResponsibilitySignal[];
+    /** Documented context, never eligible for evidenceRefs or ownershipEvidenceRefs. */
+    documents?: DocumentSupport[];
 }
 // View IDs are cache keys, never evidence authority. Exact item equality is checked separately.
 const digest = (value: unknown) => {
@@ -153,7 +182,7 @@ const digest = (value: unknown) => {
     }
     return `view:v1:${hash.toString(16).padStart(16, '0')}`;
 };
-export function createArchitectureEvidenceView(packet: ArchitectureEvidencePacket, evidenceIds: readonly string[]): ArchitectureEvidenceView {
+export function createArchitectureEvidenceView(packet: ArchitectureEvidencePacket, evidenceIds: readonly string[], stage?: SynthesisStage): ArchitectureEvidenceView {
     validateArchitectureEvidencePacket(packet);
     if (!Array.isArray(evidenceIds) || new Set(evidenceIds).size !== evidenceIds.length) invalid('view evidence IDs');
     const byId = new Map(packet.items.map(item => [item.id, item]));
@@ -164,18 +193,27 @@ export function createArchitectureEvidenceView(packet: ArchitectureEvidencePacke
     });
     const ordered = [...items].sort((a, b) => a.id.localeCompare(b.id));
     const responsibilitySignals = deriveResponsibilitySignals(ordered);
+    const documents = packet.documents?.filter(doc => stage === 'system-discovery' || stage === 'system-challenge' ?
+        ['modules-seed', 'readme-orientation'].includes(doc.class) || packet.documents!.indexOf(doc) < 10 :
+        stage === 'subsystem-discovery' || stage === 'subsystem-challenge' ?
+            doc.class !== 'readme-orientation' && doc.class !== 'modules-seed' &&
+            (doc.path.startsWith('docs/') || ordered.some(item => item.path.startsWith(doc.path.split('/').slice(0, 2).join('/')))) : false);
+    const selectedDocuments = documents?.slice(0, stage === 'system-discovery' || stage === 'system-challenge' ? 10 : 4);
     return { schemaVersion: 1, viewVersion: SYNTHESIS_VIEW_VERSION, parentPacketFingerprint: packet.inputFingerprint,
-        viewId: digest([SYNTHESIS_VIEW_VERSION, packet.inputFingerprint, ordered, responsibilitySignals]),
-        items: structuredClone(ordered), responsibilitySignals };
+        viewId: digest([SYNTHESIS_VIEW_VERSION, packet.inputFingerprint, ordered, responsibilitySignals, selectedDocuments]),
+        items: structuredClone(ordered), responsibilitySignals,
+        ...(selectedDocuments?.length ? { documents: structuredClone(selectedDocuments) } : {}) };
 }
-export function validateArchitectureEvidenceView(view: ArchitectureEvidenceView, packet: ArchitectureEvidencePacket): void {
+export function validateArchitectureEvidenceView(view: ArchitectureEvidenceView, packet: ArchitectureEvidencePacket, stage?: SynthesisStage): void {
     validateArchitectureEvidencePacket(packet);
-    exact(view, ['schemaVersion', 'viewVersion', 'parentPacketFingerprint', 'viewId', 'items', 'responsibilitySignals'], 'view');
+    exact(view, ['schemaVersion', 'viewVersion', 'parentPacketFingerprint', 'viewId', 'items', 'responsibilitySignals',
+        ...(view.documents === undefined ? [] : ['documents'])], 'view');
     if (view.schemaVersion !== 1 || view.viewVersion !== SYNTHESIS_VIEW_VERSION ||
         view.parentPacketFingerprint !== packet.inputFingerprint || !Array.isArray(view.items)) invalid('view identity');
-    const expected = createArchitectureEvidenceView(packet, view.items.map(item => item?.id));
+    const expected = createArchitectureEvidenceView(packet, view.items.map(item => item?.id), stage);
     if (view.viewId !== expected.viewId || JSON.stringify(view.items) !== JSON.stringify(expected.items) ||
-        JSON.stringify(view.responsibilitySignals) !== JSON.stringify(expected.responsibilitySignals)) invalid('view items, signals or identity');
+        JSON.stringify(view.responsibilitySignals) !== JSON.stringify(expected.responsibilitySignals) ||
+        JSON.stringify(view.documents) !== JSON.stringify(expected.documents)) invalid('view items, signals or identity');
 }
 
 export const SYNTHESIS_STAGE_VERSION = 3;
@@ -268,6 +306,7 @@ export interface SubsystemDiscoveryResult extends StageResultBase {
 }
 export interface SubsystemChallengeResult extends StageResultBase {
     stage: 'subsystem-challenge'; systemKey: string; decisions: SubsystemChallengeDecision[];
+    recovered?: { cueKey: string; subsystem: SubsystemCandidate }[];
 }
 export interface ComponentDiscoveryResult extends StageResultBase {
     stage: 'component-discovery'; systemKey: string; subsystemKey: string; components: ComponentCandidate[];
@@ -313,6 +352,9 @@ export const synthesisStageResultSchemas = {
     'subsystem-challenge': { type: 'object', additionalProperties: false,
         required: ['schemaVersion', 'stageVersion', 'parentPacketFingerprint', 'viewId', 'stage', 'systemKey', 'decisions'],
         properties: { ...base, stage: { const: 'subsystem-challenge' }, systemKey: nonempty,
+            recovered: { type: 'array', maxItems: 4, items: { type: 'object', additionalProperties: false,
+                required: ['cueKey', 'subsystem'], properties: { cueKey: nonempty,
+                    subsystem: { ...subtreeNode, properties: { ...subtreeNode.properties, kind: { const: 'subsystem' } } } } } },
             decisions: { type: 'array', items: { type: 'object', additionalProperties: false,
                 required: ['action', 'sourceKeys', 'subsystems', 'evidenceRefs'], properties: {
                     action: { enum: ['keep', 'merge', 'split', 'reject'] }, sourceKeys: { ...refs, minItems: 1 },
@@ -433,7 +475,7 @@ export function validateSynthesisStageRequest(request: SynthesisStageRequest, pa
     exact(request, ['schemaVersion', 'stage', 'stageVersion', 'parentPacketFingerprint', 'view', 'context'], 'request');
     if (request.schemaVersion !== 1 || request.stageVersion !== SYNTHESIS_STAGE_VERSION ||
         !Object.hasOwn(synthesisStageResultSchemas, request.stage)) invalid('request stage/version');
-    validateArchitectureEvidenceView(request.view, packet);
+    validateArchitectureEvidenceView(request.view, packet, request.stage);
     if (request.parentPacketFingerprint !== packet.inputFingerprint) invalid('request parent packet');
     exact(request.context, ['systems', 'subjectSystemKey', 'subsystems', 'subjectSubsystemKey', 'subtrees',
         'targetCandidateKeys', ...(request.context.challengedBy === undefined ? [] : ['challengedBy']),
@@ -463,7 +505,8 @@ export function validateSynthesisStageRequest(request: SynthesisStageRequest, pa
     if (request.context.challengedBy !== undefined) {
         if (request.stage !== 'component-discovery') invalid('challenge output outside Component Discovery');
         const challenge = request.context.challengedBy;
-        exact(challenge, synthesisStageResultSchemas['subsystem-challenge'].required, 'request challenge output');
+        exact(challenge, [...synthesisStageResultSchemas['subsystem-challenge'].required,
+            ...(challenge.recovered === undefined ? [] : ['recovered'])], 'request challenge output');
         if (challenge.stage !== 'subsystem-challenge' || challenge.schemaVersion !== 1 ||
             challenge.stageVersion !== SYNTHESIS_STAGE_VERSION || challenge.parentPacketFingerprint !== packet.inputFingerprint ||
             challenge.systemKey !== subject || !challenge.viewId || !Array.isArray(challenge.decisions)) invalid('request challenge identity');
@@ -472,7 +515,8 @@ export function validateSynthesisStageRequest(request: SynthesisStageRequest, pa
             evidence(decision.evidenceRefs, allRefs, `request challenge decision[${i}].evidenceRefs`);
             strings(decision.sourceKeys, `request challenge decision[${i}].sourceKeys`, 1);
         }
-        if (JSON.stringify(challenge.decisions.flatMap(decision => decision.subsystems)) !== JSON.stringify(request.context.subsystems))
+        if (JSON.stringify([...challenge.decisions.flatMap(decision => decision.subsystems),
+            ...(challenge.recovered ?? []).map(item => item.subsystem)]) !== JSON.stringify(request.context.subsystems))
             invalid('request challenged Subsystem set');
     }
     switch (request.stage) {
@@ -505,7 +549,7 @@ export function parseSynthesisStageResult(input: unknown, request: SynthesisStag
     validateSynthesisStageRequest(request, packet);
     const data = record(input, 'result');
     const schema = synthesisStageResultSchemas[request.stage];
-    exact(data, schema.required, 'result');
+    exact(data, [...schema.required, ...(request.stage === 'subsystem-challenge' && data.recovered !== undefined ? ['recovered'] : [])], 'result');
     if (data.schemaVersion !== 1 || data.stageVersion !== SYNTHESIS_STAGE_VERSION || data.stage !== request.stage ||
         data.parentPacketFingerprint !== packet.inputFingerprint || data.viewId !== request.view.viewId) invalid('result stage/identity');
     const allowed = new Set(request.view.items.map(item => item.id));
@@ -568,6 +612,22 @@ export function parseSynthesisStageResult(input: unknown, request: SynthesisStag
         }
         strings(seen, 'Subsystem Challenge source keys'); strings(output, 'Subsystem Challenge output keys');
         if (seen.length !== source.size || output.some(item => request.context.systems.some(system => system.candidateKey === item))) invalid('Subsystem Challenge coverage/key');
+        if (data.recovered !== undefined) {
+            if (!Array.isArray(data.recovered) || data.recovered.length > 4) invalid('Subsystem recovery bound');
+            const cues = new Map(request.view.responsibilitySignals.filter(cue => cue.strength === 'behavior').map(cue => [cue.key, cue]));
+            for (const [i, raw] of data.recovered.entries()) {
+                exact(raw, ['cueKey', 'subsystem'], `recovered[${i}]`);
+                const recovery = raw as { cueKey: string; subsystem: SubsystemCandidate };
+                const cue = cues.get(recovery.cueKey);
+                if (!cue || !cue.evidenceRefs.some(ref => recovery.subsystem.ownershipEvidenceRefs?.includes(ref)))
+                    invalid(`recovered[${i}] uncovered implementation cue`);
+                const [node] = lowerNodes([recovery.subsystem], 'subsystem', data.systemKey as string, allowed, packet, `recovered[${i}].subsystem`);
+                if (source.has(node.candidateKey) || output.includes(node.candidateKey) ||
+                    data.recovered.slice(0, i).some((entry: { subsystem: SubsystemCandidate }) => entry.subsystem.candidateKey === node.candidateKey) ||
+                    request.context.subsystems.some(item => item.ownershipEvidenceRefs.includes(cue.evidenceRefs[0])))
+                    invalid(`recovered[${i}] already covered`);
+            }
+        }
     } else if (request.stage === 'component-discovery') {
         if (data.systemKey !== request.context.subjectSystemKey || data.subsystemKey !== request.context.subjectSubsystemKey)
             invalid('Component Discovery parent');

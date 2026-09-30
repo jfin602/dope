@@ -1,4 +1,5 @@
-import { assembleArchitectureProposal, parseSynthesisStageResult, SYNTHESIS_STAGE_VERSION, SynthesisProviderFailure } from './hierarchical-synthesis';
+import { assembleArchitectureProposal, parseSynthesisStageResult, SYNTHESIS_STAGE_VERSION, SynthesisProviderFailure,
+    buildCoverageLedger } from './hierarchical-synthesis';
 import { planArchitectureEvidence } from './evidence-planner';
 import { isProductionEvidencePath, validateArchitectureEvidencePacket } from './synthesis';
 import type { ArchitectureEvidencePacket, ArchitectureProposal } from './synthesis';
@@ -7,7 +8,7 @@ import type { ReconciliationResult, SubsystemCandidate, SubsystemDiscoveryResult
     SynthesisStage, SynthesisStageContext, SynthesisStageRequest, SynthesisStageResult, SystemCandidate,
     SystemChallengeResult, SystemDiscoveryResult, VerificationResult, SynthesisIssueCode } from './hierarchical-synthesis';
 
-export const SYNTHESIS_PROMPT_VERSION = 4;
+export const SYNTHESIS_PROMPT_VERSION = 5;
 export const MAX_VERIFICATION_CALLS = 2;
 export const MAX_VERIFICATION_TARGETS = 4;
 export const MAX_EVIDENCE_REFINEMENT_ROUNDS = 2;
@@ -30,6 +31,7 @@ export interface HierarchicalAnalysis {
     timings: SynthesisTiming[];
     findings: SynthesisFinding[];
     verificationCalls: number;
+    coverageLedger: import('./hierarchical-synthesis').CoverageLedgerEntry[];
 }
 
 /** Exact serialized identity avoids hash collisions; cached values are always revalidated against the parent packet. */
@@ -359,11 +361,16 @@ export class HierarchicalSynthesisOrchestrator {
         if (!systems.length) throw new Error('System Challenge rejected every System');
         subsystemTotal = systems.length;
         const subtrees: SystemSubtree[] = [];
+        const recoveredKeys = new Set<string>();
         for (const system of systems) {
             const discovered = (await run('subsystem-discovery', context(systems, [], system.candidateKey))).result as SubsystemDiscoveryResult;
             const challenged = (await run('subsystem-challenge', context(systems, [], system.candidateKey, [],
                 discovered.subsystems))).result as SubsystemChallengeResult;
-            const subsystems = challenged.decisions.flatMap(decision => decision.subsystems);
+            for (const decision of challenged.decisions) if (decision.action === 'merge' || decision.action === 'split')
+                for (const item of decision.subsystems) recoveredKeys.add(item.candidateKey);
+            const subsystems = [...challenged.decisions.flatMap(decision => decision.subsystems),
+                ...(challenged.recovered ?? []).map(item => item.subsystem)];
+            for (const item of challenged.recovered ?? []) recoveredKeys.add(item.subsystem.candidateKey);
             const nodes: SystemSubtree['nodes'] = [...subsystems];
             componentCompleted = 0; componentTotal = subsystems.length;
             for (const subsystem of subsystems) {
@@ -427,6 +434,7 @@ export class HierarchicalSynthesisOrchestrator {
             systems, subtrees, reconciliation: finalReconciliation, verifications }, packet);
         this.checkpoint();
         record({ operation: 'assembly', durationMs: performance.now() - start, reused: false });
-        return { proposal, timings, findings, verificationCalls: verifications.length };
+        return { proposal, timings, findings, verificationCalls: verifications.length,
+            coverageLedger: buildCoverageLedger(packet, subtrees, recoveredKeys) };
     }
 }

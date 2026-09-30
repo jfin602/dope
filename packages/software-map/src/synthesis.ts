@@ -2,6 +2,18 @@ import { projectPath } from './architecture';
 
 /** Rebuildable deterministic facts. IDs are packet-local; source IDs link to physical evidence. */
 interface PacketItem { id: string; path: string; sourceEvidenceIds: string[] }
+/** Repository-authored context. Never an implementation evidence reference. */
+export interface DocumentSupport {
+    path: string;
+    class: 'modules-seed' | 'readme-orientation' | 'architecture' | 'decision' | 'contract' |
+        'package-readme' | 'operations' | 'api-config' | 'developer-guidance' | 'planning';
+    authority: 'Documented';
+    status: 'accepted' | 'unknown';
+    sha256: string;
+    bytes: number;
+    truncated: boolean;
+    content: string;
+}
 export type ArchitectureEvidenceItem =
     | (PacketItem & { kind: 'topology'; scope: 'workspace' | 'package'; name: string; workspaces?: string[]; version?: string })
     | (PacketItem & { kind: 'configuration'; signal: string; sourcePaths?: string[] })
@@ -16,6 +28,7 @@ export interface ArchitectureEvidencePacket {
     sourceFingerprint?: string;
     inputFingerprint: string;
     items: ArchitectureEvidenceItem[];
+    documents?: DocumentSupport[];
 }
 
 /** Test and generated source can inform a boundary, but cannot alone establish a production System. */
@@ -151,6 +164,20 @@ export function validateArchitectureEvidencePacket(packet: ArchitectureEvidenceP
         }
     }
     unique(ids, 'packet item ID');
+    if (packet.documents !== undefined) {
+        if (!Array.isArray(packet.documents)) fail('packet documents');
+        const paths: string[] = [];
+        for (const doc of packet.documents) {
+            try { projectPath(doc.path); } catch { fail('document path'); }
+            paths.push(doc.path);
+            if (doc.authority !== 'Documented' || !['accepted', 'unknown'].includes(doc.status) ||
+                !['modules-seed', 'readme-orientation', 'architecture', 'decision', 'contract', 'package-readme',
+                    'operations', 'api-config', 'developer-guidance', 'planning'].includes(doc.class) ||
+                !/^[a-f0-9]{64}$/.test(doc.sha256) || !Number.isSafeInteger(doc.bytes) || doc.bytes < 0 ||
+                typeof doc.truncated !== 'boolean' || typeof doc.content !== 'string' || doc.content.length > 20000) fail('document metadata');
+        }
+        unique(paths, 'document paths');
+    }
 }
 
 /** Strict structured-output validation plus packet-local provenance and hierarchy checks. */

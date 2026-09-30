@@ -83,6 +83,16 @@ export class SoftwareMapReviewWidget extends BaseWidget {
             const item = review.packet.items.find(fact => fact.id === ref);
             questions.append(this.button(`${item?.kind ?? 'Evidence'} · ${item?.path ?? ref}`, () => void this.openSource(ref)));
         }
+        const coverage = this.element('details');
+        coverage.append(this.element('summary', `Source-backed coverage · ${review.coverageLedger?.filter(item => item.status === 'unresolved').length ?? 0} unresolved cues`));
+        for (const cue of review.coverageLedger ?? []) {
+            const row = this.element('p', `${cue.status}: ${cue.concept} → ${cue.candidateKeys.join(', ') || 'unresolved'}`);
+            coverage.append(row);
+            for (const ref of cue.evidenceRefs) {
+                const item = review.packet.items.find(fact => fact.id === ref);
+                coverage.append(this.button(item?.path ?? ref, () => void this.openSource(ref)));
+            }
+        }
         const layout = this.element('div'); layout.className = 'dope-smap-review-layout';
         const tree = this.element('nav'); tree.setAttribute('aria-label', 'Architecture hierarchy');
         tree.append(this.element('h3', 'Proposed hierarchy'));
@@ -109,7 +119,7 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         const actions = this.element('div'); actions.className = 'dope-smap-review-actions';
         actions.append(this.button('Add System', () => this.add('system')), validation, accept,
             this.button('Decline review', () => void this.controller.cancel()));
-        this.content.replaceChildren(heading, summary, ambiguity, questions, layout, actions);
+        this.content.replaceChildren(heading, summary, ambiguity, questions, coverage, layout, actions);
         const advanced = this.content.querySelector<HTMLDetailsElement>('.dope-smap-review-layout details');
         if (advanced) advanced.open = advancedOpen;
         if (focusedField) {

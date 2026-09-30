@@ -63,6 +63,30 @@ test('packet is deterministic, inspectable, source-backed, and collection does n
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('root bootstrap and eligible docs stay documented, bounded and invalidate synthesis input', async () => {
+  const root = await fixture();
+  try {
+    const index = new SoftwareMapIndex(new TypeScriptAnalyzer());
+    await writeFile(join(root, 'MODULES.md'), '# System\nSubsystem: stale architecture intent');
+    await writeFile(join(root, 'README.md'), 'Project orientation '.repeat(1000));
+    await mkdir(join(root, 'docs', 'tasks'), { recursive: true });
+    await writeFile(join(root, 'docs', 'tasks', 'expected-architecture.md'), 'answer key');
+    await writeFile(join(root, 'docs', 'ARCHITECTURE.md'), 'Status: Accepted\nCurrent responsibility');
+    const first = await index.collectEvidence(root);
+    assert.deepEqual(first.documents?.map(doc => doc.path), ['MODULES.md', 'README.md', 'docs/ARCHITECTURE.md']);
+    assert.equal(first.documents?.[0].authority, 'Documented');
+    assert.equal(first.documents?.[1].truncated, true);
+    assert.equal(first.documents?.[1].content.length, 12000);
+    assert.equal(first.documents?.[2].status, 'unknown');
+    assert.ok(first.documents?.every(doc => /^[a-f0-9]{64}$/.test(doc.sha256)));
+    assert.ok(first.items.every(item => item.path !== 'MODULES.md' && item.path !== 'README.md'));
+    await writeFile(join(root, 'MODULES.md'), '# Changed');
+    const changed = await index.collectEvidence(root);
+    assert.notEqual(changed.inputFingerprint, first.inputFingerprint);
+    assert.equal(changed.sourceFingerprint, first.sourceFingerprint);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('Theia/Inversify facts are source-backed, stable, refinable, and exclude unrelated same-name APIs', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-framework-'));
   try {

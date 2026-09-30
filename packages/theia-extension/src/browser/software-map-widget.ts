@@ -112,7 +112,14 @@ export class SoftwareMapWidget extends BaseWidget {
             this.controls.append(this.element('p', 'Software Map is uninitialized. Analyze Project is available whenever you are ready.'));
         } else if (model.flow === 'offer') {
             this.controls.append(this.element('h3', 'Analyze Project?'), this.element('p', 'Choose a synthesis provider, an existing declaration, or manual architecture.'));
-            const setup = this.button('Set up synthesis', () => void model.setup());
+            const bootstrap = model.initialization.bootstrap;
+            if (bootstrap?.modules) this.controls.append(this.element('p', 'Root MODULES.md will guide the initial architecture proposal as documented intent. Repository evidence remains authoritative for implementation.'));
+            else {
+                this.controls.append(this.element('p', 'Recommended: create a root MODULES.md to describe Systems and Subsystems before analysis. You can analyze now without it.'));
+                const prompt = `Prepare this repository for Dope. Analyze the actual repository and create only a root MODULES.md describing its System -> Subsystem architecture: purpose, responsibilities, primary paths, major dependencies, and explicit uncertainty. Use source code, existing documentation, package/workspace boundaries, runtime entry points, imports, build configuration, infrastructure, and tests as evidence. Do not invent uncertain boundaries, enumerate every Component/file/class/function, or modify application code.`;
+                this.controls.append(this.button('Copy Prepare this repository for Dope prompt', () => void navigator.clipboard.writeText(prompt)));
+            }
+            const setup = this.button(bootstrap?.modules ? 'Set up synthesis' : bootstrap?.readme ? 'Continue with README' : 'Analyze repository anyway', () => void model.setup());
             setup.disabled = model.setupBusy;
             this.controls.append(setup);
             if (model.initialization.declarationPresent) {

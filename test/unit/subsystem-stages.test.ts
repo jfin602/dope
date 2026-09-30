@@ -102,6 +102,21 @@ test('Subsystem Challenge coverage, parent, refs and compact shape fail closed',
     { systemKey: system.candidateKey, decisions: [] }), empty.request, packet).stage, 'subsystem-challenge');
 });
 
+test('challenge recovers only an uncovered implementation cue under its System', async () => {
+  const plan = await planArchitectureEvidence(packet, 'subsystem-challenge', context([frontend]), capability, counter);
+  const cue = plan.request.view.responsibilitySignals.find(item => item.strength === 'behavior' && item.evidenceRefs.includes('other'))!;
+  assert.ok(cue);
+  const recovery = { cueKey: cue.key, subsystem: subsystem('reports', ['other']) };
+  const fields = { systemKey: system.candidateKey, decisions: [{ action: 'keep', sourceKeys: [frontend.candidateKey],
+    subsystems: [frontend], evidenceRefs: ['client'] }], recovered: [recovery] };
+  const accepted = parseSynthesisStageResult(result(plan.request, fields), plan.request, packet);
+  assert.equal(accepted.stage, 'subsystem-challenge');
+  assert.throws(() => parseSynthesisStageResult(result(plan.request, { ...fields, recovered: [
+    { ...recovery, subsystem: subsystem('docs-only', ['fabricated']) }] }), plan.request, packet));
+  assert.throws(() => parseSynthesisStageResult(result(plan.request, { ...fields, recovered: [
+    { ...recovery, cueKey: 'document:claim' }] }), plan.request, packet));
+});
+
 test('Component parent escape and old combined result fail closed', async () => {
   const challengePlan = await planArchitectureEvidence(packet, 'subsystem-challenge', context([frontend, backend, platform]), capability, counter);
   const challengedBy = parseSynthesisStageResult(result(challengePlan.request,

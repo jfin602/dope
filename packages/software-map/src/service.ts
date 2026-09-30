@@ -38,6 +38,7 @@ export interface SoftwareMapInitializationStatus {
     declarationPresent: boolean;
     /** Hash of the exact declaration bytes, or the absent-file sentinel. Supply it on manual acceptance. */
     declarationFingerprint: string;
+    bootstrap?: { modules: boolean; readme: boolean };
 }
 export interface ArchitectureReviewNode {
     proposalKey: string;
@@ -53,6 +54,7 @@ export interface ArchitectureReview {
     packet: ArchitectureEvidencePacket;
     proposal: ArchitectureProposal;
     draft: ArchitectureReviewNode[];
+    coverageLedger?: import('./hierarchical-synthesis').CoverageLedgerEntry[];
 }
 export type SynthesisSetup = { kind: 'local'; endpoint?: string; token?: string; contextWindowTokens?: number } |
     { kind: 'gemini'; apiKey?: string };

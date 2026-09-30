@@ -3,7 +3,7 @@ import { constants } from 'node:fs';
 import { lstat, open, readdir, realpath, stat } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'node:path';
 import { projectPath, validateArchitectureEvidencePacket } from '@dope/software-map';
-import type { ArchitectureEvidenceItem, ArchitectureEvidencePacket, ArchitectureEvidenceRequest, CodeEntityNode } from '@dope/software-map';
+import type { ArchitectureEvidenceItem, ArchitectureEvidencePacket, ArchitectureEvidenceRequest, CodeEntityNode, DocumentSupport } from '@dope/software-map';
 import type { CodeAnalysisResult } from '../index';
 import type { IndexAnalyzer } from './software-map-index';
 
@@ -26,6 +26,63 @@ async function safeRead(root: string, path: string): Promise<Buffer> {
         if (!(await handle.stat()).isFile() || await realpath(absolute) !== absolute) throw new Error(`Unsafe architecture evidence input: ${path}`);
         return await handle.readFile();
     } finally { await handle.close(); }
+}
+
+const DOCUMENT_POLICY_VERSION = 1;
+const documentBudget = { 'modules-seed': 20000, 'readme-orientation': 12000 } as const;
+const excludedDocument = (path: string): boolean =>
+    /(^|\/)(docs\/tasks|test|tests|fixtures|benchmarks?|generated|dist|build|node_modules|\.dope)(\/|$)/i.test(path) ||
+    /(?:^|\/)(?:AGENTS|BOOT|SKILL|PROMPT|(?:.*[-_.])?(?:evidence|validation|qualification|closeout|expected|reference|answer[-_]key))\.(?:md|mdx|txt)$/i.test(path);
+function documentClass(path: string): DocumentSupport['class'] | undefined {
+    if (path === 'MODULES.md') return 'modules-seed';
+    if (path === 'README.md') return 'readme-orientation';
+    if (excludedDocument(path)) return undefined;
+    if (/(^|\/)README\.md$/i.test(path)) return 'package-readme';
+    if (/(^|\/)(?:decisions?|adr)(\/|$)/i.test(path)) return 'decision';
+    if (/(^|\/)(?:architecture|system-design)(\/|\.|$)/i.test(path)) return 'architecture';
+    if (/(^|\/)(?:contracts?|protocols?|api|config)(\/|$|[-_.])/i.test(path)) return 'contract';
+    if (/(^|\/)(?:deployment|runbooks?|operations|ops)(\/|$|[-_.])/i.test(path)) return 'operations';
+    if (/(^|\/)(?:roadmap|planning|design)(\/|$|[-_.])/i.test(path)) return 'planning';
+    if (/(^|\/)(?:CONTRIBUTING|DEVELOPMENT|GUIDE)\.md$/i.test(path)) return 'developer-guidance';
+    return undefined;
+}
+export async function collectArchitectureDocuments(rootPath: string): Promise<DocumentSupport[]> {
+    const root = await realpath(rootPath);
+    const paths: string[] = [];
+    const walk = async (directory: string): Promise<void> => {
+        for (const entry of (await readdir(directory, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
+            const path = local(root, join(directory, entry.name));
+            if (entry.isDirectory() && !ignored.has(entry.name) && !excludedDocument(`${path}/`)) await walk(join(directory, entry.name));
+            else if (entry.isFile() && /\.(?:md|mdx|txt)$/i.test(entry.name) && documentClass(path)) paths.push(path);
+            else if (directory === root && entry.isSymbolicLink() && ['MODULES.md', 'README.md'].includes(entry.name))
+                paths.push(path); // safeRead rejects links, including links outside the project.
+        }
+    };
+    await walk(root);
+    const selected = [...paths.filter(path => path === 'MODULES.md' || path === 'README.md'),
+        ...paths.filter(path => path !== 'MODULES.md' && path !== 'README.md').slice(0, 24)];
+    const documents: DocumentSupport[] = [];
+    for (const path of selected) {
+        const bytes = await safeRead(root, path);
+        const classification = documentClass(path)!;
+        const budget = classification === 'modules-seed' || classification === 'readme-orientation' ?
+            documentBudget[classification] : 2000;
+        const content = bytes.toString('utf8');
+        documents.push({ path, class: classification, authority: 'Documented',
+            status: classification === 'decision' && /\bStatus:\s*Accepted\b/i.test(content) ? 'accepted' : 'unknown',
+            sha256: digest(bytes), bytes: bytes.length, truncated: content.length > budget,
+            content: content.slice(0, budget) });
+    }
+    return documents;
+}
+
+export async function bootstrapDocumentPresence(rootPath: string): Promise<{ modules: boolean; readme: boolean }> {
+    const root = await realpath(rootPath);
+    const present = async (name: string): Promise<boolean> => {
+        try { const entry = await lstat(join(root, name)); return entry.isFile() || entry.isSymbolicLink(); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error; }
+    };
+    return { modules: await present('MODULES.md'), readme: await present('README.md') };
 }
 
 async function manifests(root: string): Promise<string[]> {
@@ -164,10 +221,11 @@ export async function collectArchitectureEvidence(rootPath: string, analyzer: In
     }
     items.push(...semanticFacts(result));
     items.push(...frameworkFacts(result));
+    const documents = await collectArchitectureDocuments(root);
     const sourceFingerprint = digest(JSON.stringify([...inputBytes].sort(([a], [b]) => a.localeCompare(b)).map(([path, bytes]) => [path, digest(bytes)])));
     const ordered = [...new Map(items.map(item => [item.id, item])).values()].sort((a, b) => a.id.localeCompare(b.id));
     const packet: ArchitectureEvidencePacket = { schemaVersion: 1, sourceFingerprint,
-        inputFingerprint: digest(JSON.stringify([sourceFingerprint, ordered])), items: ordered };
+        inputFingerprint: digest(JSON.stringify([sourceFingerprint, ordered, DOCUMENT_POLICY_VERSION, documents])), items: ordered, documents };
     validateArchitectureEvidencePacket(packet);
     return packet;
 }
@@ -200,7 +258,8 @@ export async function refineArchitectureEvidence(root: string, analyzer: IndexAn
     const additions = candidates.filter(item => !byId.has(item.id)).slice(0, 100);
     const items = [...new Map([...packet.items, ...additions].map(item => [item.id, item])).values()].sort((a, b) => a.id.localeCompare(b.id));
     const expanded: ArchitectureEvidencePacket = { schemaVersion: 1, sourceFingerprint: current.sourceFingerprint,
-        inputFingerprint: digest(JSON.stringify([current.sourceFingerprint, items])), items };
+        inputFingerprint: digest(JSON.stringify([current.sourceFingerprint, items, DOCUMENT_POLICY_VERSION, current.documents])),
+        items, documents: current.documents };
     validateArchitectureEvidencePacket(expanded);
     return expanded;
 }

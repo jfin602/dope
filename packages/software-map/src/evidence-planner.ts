@@ -91,7 +91,7 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
     const budget = usableEvidenceTokens(capability);
     const makeRequest = (ids: string[]): SynthesisStageRequest => ({ schemaVersion: 1, stage,
         stageVersion: SYNTHESIS_STAGE_VERSION, parentPacketFingerprint: packet.inputFingerprint,
-        view: createArchitectureEvidenceView(packet, ids), context: structuredClone(context) });
+        view: createArchitectureEvidenceView(packet, ids, stage), context: structuredClone(context) });
     // P1 validation also rejects malformed candidate scopes and unknown evidence references.
     validateSynthesisStageRequest(makeRequest([]), packet);
     const byId = new Map(packet.items.map(item => [item.id, item]));
@@ -129,6 +129,7 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
         if (lowerStage) {
             if (refs.has(item.id)) return true;
             if (otherSystemRefs.has(item.id)) return false;
+            if (stage === 'subsystem-challenge' && isDirectSystemResponsibilityEvidence(item)) return true;
             if (signalRefs.has(item.id)) return true;
             if (rootManifestScope && !nonProduction(item.path)) return true;
             if (ownGroups.has(group(item.path))) return true;
