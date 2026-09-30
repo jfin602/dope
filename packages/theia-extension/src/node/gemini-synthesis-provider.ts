@@ -93,7 +93,7 @@ export class GeminiSynthesisProvider {
             const response = await this.client.models.generateContent({ model,
                 contents: 'Return readiness for this synthetic request.', config: {
                     systemInstruction: 'Return only {"ready":true}.', responseMimeType: 'application/json',
-                    responseJsonSchema: { type: 'object', properties: { ready: { type: 'boolean', enum: [true] } },
+                    responseJsonSchema: { type: 'object', properties: { ready: { type: 'boolean' } },
                         required: ['ready'], additionalProperties: false }, maxOutputTokens: 16,
                     abortSignal: AbortSignal.timeout(this.timeoutMs) } });
             if (JSON.parse(response.text ?? '')?.ready !== true) throw new Error('Invalid readiness response');
