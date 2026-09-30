@@ -14,11 +14,11 @@ VALIDATION TIER / EXECUTION BUDGET
 
 GOAL
 
-Directly qualify the pending architecture review workflow, including developer correction, valid explicit acceptance, evidence navigation, project switching and branch-local Search Deeper preview/Accept/Reject.
+Directly qualify the uninitialized-project bootstrap-document choices and pending architecture review workflow, including developer correction, valid explicit acceptance, evidence navigation, project switching and branch-local Search Deeper preview/Accept/Reject.
 
 PREFLIGHT
 
-Read BOOT/AGENTS, ADR 0008-0014, current architecture/product/roadmap/workflow, successful P1-P4 results, and this correction assessment/plan/README.
+Read BOOT/AGENTS, ADR 0008-0015, current architecture/product/roadmap/workflow, successful P1-P4 results, and this correction assessment/plan/README.
 
 Require:
 - exact P4 predecessor;
@@ -27,6 +27,16 @@ Require:
 - a controlled project/proposal capable of exercising all review operations without contaminating benchmark canonical state.
 
 Run cheap focused review guards before opening the browser.
+
+BOOTSTRAP DOCUMENT MATRIX
+
+Using controlled uninitialized projects, prove in the actual browser workbench:
+- MODULES + README: Dope detects root `MODULES.md` as the preferred architecture seed and keeps README as secondary orientation;
+- README only: Dope recommends creating `MODULES.md` and **Continue with README** proceeds without blocking;
+- neither file: Dope recommends creating `MODULES.md` and **Analyze repository anyway** proceeds without blocking;
+- the recommendation exposes the portable **Prepare this repository for Dope** prompt/copy path;
+- the prompt text is bounded to creating `MODULES.md` and does not authorize application-code modification;
+- no bootstrap choice writes canonical architecture before explicit final acceptance.
 
 DIRECT REVIEW MATRIX
 
@@ -86,7 +96,8 @@ Write `docs/tasks/c4-synth-coverage-review/P5-review-qualification-evidence.md`.
 Record:
 - exact candidate SHA/version;
 - browser app/build identity;
-- controlled project identity;
+- controlled project identities;
+- bootstrap document matrix result;
 - review matrix result;
 - Search Deeper matrix result;
 - navigation evidence;
@@ -97,7 +108,7 @@ Record:
 T3 VALIDATION
 
 Run only:
-- focused review/Search Deeper permanent guards;
+- focused bootstrap/review/Search Deeper permanent guards;
 - browser build/start evidence required for this matrix;
 - `npm run codex:phase:validate -- c4-synth-coverage-review` if available;
 - `git diff --check`.
@@ -106,4 +117,4 @@ Defer live multi-repository synthesis, full `npm run check`, restart, packaging 
 
 FINAL RESPONSE
 
-Report exact candidate, review matrix, Search Deeper matrix, explicit acceptance result, navigation, project switching, repairs, focused checks, residual gaps and readiness for P6.
+Report exact candidate, bootstrap document matrix, review matrix, Search Deeper matrix, explicit acceptance result, navigation, project switching, repairs, focused checks, residual gaps and readiness for P6.
