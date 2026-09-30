@@ -202,4 +202,4 @@ Green requires:
 - package remains `0.4.6`;
 - no new persistence of rebuildable synthesis/Physical Map artifacts.
 
-If Green, route directly to a fresh Product Phase 5 `/docs-review`.
+If Green, route to the bounded Dope logo-palette/application-color alignment step; after that is complete, route to a fresh Product Phase 5 `/docs-review`.
