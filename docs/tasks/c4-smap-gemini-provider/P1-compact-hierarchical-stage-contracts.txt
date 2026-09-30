@@ -13,7 +13,7 @@ Replace prose-heavy model-to-model hierarchy-stage payloads with strict compact 
 
 PREFLIGHT
 
-Read BOOT/AGENTS, ADR 0004 and ADR 0009-0013, current ARCHITECTURE/PRODUCT-MODEL/project-overview/roadmap/software-map-storage, exact truthful closeout/evidence from `c4-smap-hierarchical-synthesis`, and this correction assessment/plan/README.
+Read BOOT/AGENTS, ADR 0004 and ADR 0009-0013, current ARCHITECTURE/PRODUCT-MODEL/project-overview/roadmap/software-map-storage, hierarchical P1-P7 implementation history/results including reachable P7 commit `66f023f717afd63433d442015b575edf049ae1b6`, and this correction assessment/plan/README. P8/P9 predecessor results are intentionally absent and are not a preflight requirement.
 
 Inspect exact current:
 - `packages/software-map/src/hierarchical-synthesis.ts`;
@@ -21,7 +21,7 @@ Inspect exact current:
 - `packages/theia-extension/src/node/lmstudio-synthesis-provider.ts`;
 - all affected hierarchical/provider tests and root test aggregation.
 
-Require predecessor closed truthfully, clean intended Git state and package exactly `0.4.6`.
+Require hierarchical P7 implementation commit `66f023f717afd63433d442015b575edf049ae1b6` reachable in history, current source containing that implementation baseline, clean intended Git state and package exactly `0.4.6`. Do not require hierarchical P8 evidence or P9 closeout; ADR 0013 supersedes those unexecuted prompts.
 
 COMPACT SHARED CONTRACT
 
