@@ -7,6 +7,11 @@ MODEL / REASONING / USAGE
 VERSIONING
 - Required unchanged project version: `0.4.6`.
 
+VALIDATION TIER / EXECUTION BUDGET
+- Tier: **T3 — Evidence-only closeout**.
+- This prompt audits the exact P4 candidate/evidence; it is not another qualification run.
+- Do not rerun expensive aggregate, restart, package/native or live-provider evidence that P4 already established on the same candidate.
+
 GOAL
 
 Perform an evidence-only closeout of `c4-synth-improvements` using the exact P4 candidate and `P4-responsibility-synthesis-evidence.md`. Do not repair product behavior and do not rerun live synthesis merely to replace missing evidence.
@@ -102,15 +107,19 @@ J. **Regression / restart / package / version / phase boundary**
 - closed Gemini-provider correction was not reopened;
 - no Local-specific optimization, provider ensemble, general Agent Runtime or Phase 5 Planning Map was added.
 
-CHECKS
+CLOSEOUT CHECKS
 
-Rerun only as appropriate:
-- focused correction guards;
-- `npm run check`;
-- `npm run test:restart`;
+Audit P4's recorded aggregate/restart/package/native results rather than rerunning them.
+
+Rerun only cheap deterministic checks needed to establish closeout integrity, normally:
+- focused correction guards only when the recorded P4 result is ambiguous or the guard itself is needed to verify the exact candidate;
 - `npm run codex:phase:validate -- c4-synth-improvements`;
-- unchanged-version/no-root-lock/Theia/Electron/internal-reference checks;
+- unchanged-version/no-root-lock/source-identity checks;
 - `git diff --check`.
+
+Do **not** rerun `npm run check`, `npm run test:restart`, AppImage packaging/native launch, browser dogfooding or live Gemini synthesis merely to duplicate complete P4 evidence.
+
+If exact P4 evidence for a mandatory gate is missing, classify it Evidence Gap rather than spending closeout time recreating qualification.
 
 Do not modify product source to turn a failing gate Green.
 

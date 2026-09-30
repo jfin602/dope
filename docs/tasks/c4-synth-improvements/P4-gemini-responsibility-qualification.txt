@@ -7,6 +7,11 @@ MODEL / REASONING / USAGE
 VERSIONING
 - Required unchanged project version: `0.4.6`.
 
+VALIDATION TIER / EXECUTION BUDGET
+- Tier: **T3 — Qualification / release validation**.
+- This prompt is intentionally exempt from the ordinary 15-minute implementation ceiling because its purpose is direct live-provider, browser, restart and package qualification.
+- Still fail fast: run cheap focused guards before live/packaging work, and perform the consolidated expensive aggregate/package validation once on the exact final candidate after the last repair.
+
 GOAL
 
 Directly qualify the exact P3 candidate on the pinned Adaptive SEO benchmark through a real selected/probed Gemini model, proving that the corrected shared pipeline produces a responsibility-oriented hierarchy and that the center-editor review is usable, then run the expensive regression/restart/package gates once.
@@ -149,8 +154,11 @@ REPAIRS
 P4 may repair a concrete defect exposed by direct evidence.
 
 Every repair requires:
-- permanent focused regression;
-- replay of every qualification measurement invalidated by the repair.
+- a permanent focused regression;
+- immediate rerun of the smallest focused test that proves the repair;
+- replay only of qualification measurements the repair could invalidate.
+
+Do not automatically restart the entire qualification matrix after every repair. If product source changes after an aggregate/package pass, perform the required consolidated final-candidate pass once after the last repair.
 
 Do not:
 - hard-code Adaptive SEO domain vocabulary;
@@ -181,17 +189,22 @@ Include:
 - benchmark restoration;
 - residual Evidence Gaps.
 
-CONSOLIDATED EXPENSIVE VALIDATION
+T3 CONSOLIDATED VALIDATION
 
-On the exact final candidate run:
-- focused correction tests;
+Fail fast before expensive work:
+1. run the focused correction guards for the changed responsibility hierarchy/review path;
+2. resolve any focused failure before live qualification or packaging.
+
+After the last product repair, run the expensive final-candidate validation **once**:
 - `npm run check`;
 - `npm run test:restart`;
 - `npm run codex:phase:validate -- c4-synth-improvements`;
 - unchanged-version/no-root-lock/Theia/Electron/internal-reference checks;
-- build/inspect Linux AppImage including path/mode/size/SHA-256/embedded version;
+- build/inspect the Linux AppImage including path/mode/size/SHA-256/embedded version;
 - native launch/readiness/controlled close where environment permits;
 - `git diff --check`.
+
+Do not rerun `npm run check`, restart, or packaging merely for reassurance after they pass. Repeat one only if a subsequent repair could invalidate that evidence.
 
 Do not run a Local comparison in this correction.
 

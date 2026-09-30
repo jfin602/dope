@@ -7,6 +7,14 @@ MODEL / REASONING / USAGE
 VERSIONING
 - Required unchanged project version: `0.4.6`.
 
+VALIDATION TIER / EXECUTION BUDGET
+- Tier: **T2 — Integration validation**.
+- Target wall time: <=8 minutes.
+- Soft ceiling: 10 minutes.
+- Hard execution budget: 15 minutes.
+- Keep validation bounded to the orchestration/reconciliation/review surfaces changed here. P4 owns full qualification, aggregate checks, restart, packaging and live-provider evidence.
+- If the budget is approaching, do not start a new broad validation step. Finish the smallest directly relevant check, preserve completed work and report any deferred P4 evidence.
+
 GOAL
 
 Wire the P1/P2 responsibility-oriented hierarchy through orchestration/reconciliation/progress and replace the unreadable left-sidebar stacked proposal form with a dedicated center-editor hierarchy review while preserving one coherent review authority.
@@ -159,16 +167,23 @@ Add/expand permanent tests proving:
 
 Wire any new files into root `test:product`.
 
-FOCUSED VALIDATION ONLY
+T2 VALIDATION
 
-Run focused orchestration/backend/UI tests, required build/typecheck and `git diff --check`.
+Use fail-fast, change-aware validation in this order:
+1. run tests added/changed by P3 plus the smallest existing orchestration/reconciliation/backend/UI tests that cover the touched behavior;
+2. build/typecheck only directly affected workspaces (expected `@dope/software-map` and `@dope/theia-extension`; include another workspace only if P3 actually changes it);
+3. run any cheap permanent stale-project/review-authority guard introduced by P3;
+4. run `git diff --check` and unchanged-version/coherence checks.
 
 Do not run:
 - real Gemini/Local synthesis;
-- full `npm run check`;
+- root `npm test` or `npm run check`;
+- root-wide typecheck/build solely for reassurance;
 - restart matrix;
 - AppImage/native qualification;
 - broad browser dogfooding.
+
+Do not rerun a passing broader check after a focused repair unless that repair could invalidate it. Defer full aggregate/restart/package/live-provider evidence to P4.
 
 FINAL RESPONSE
 
