@@ -1,5 +1,30 @@
 # Physical Map storage
 
+## Current correction execution — 2026-09-30
+
+`c4-smap-storage` is the sole remaining mandatory pre-Phase-5 correction at package `0.4.6`.
+
+This correction is a **portability proof with bounded repair**, not authorization to create a larger persistence subsystem. Current source already implements the intended core model: `.dope/architecture.json` as canonical architecture, `.dope/smap.json` as accepted-initialization marker, safe/fail-closed file handling, and disposable in-memory physical/synthesis state.
+
+Keep these transient unless a concrete storage defect proves otherwise:
+- architecture synthesis reviews/drafts;
+- ArchitectureEvidencePacket and proposal caches;
+- Physical Map snapshots/indexes/compiler programs;
+- coverage ledgers and responsibility diagnostics;
+- synthesis attempts/cache/progress;
+- Search Deeper previews;
+- provider/model setup and credentials;
+- presentation/workspace state.
+
+The qualification is deliberately streamlined:
+1. P1 audits the persistence boundary, repairs only concrete defects and installs/retains focused permanent guards.
+2. P2 directly proves copy/reopen/restart portability on a controlled repository and initializes Dope's existing canonical declaration through the real acceptance path. It should avoid live provider runs, architecture-quality benchmarking, AppImage/native packaging and broad browser qualification unless P1 materially changes code that makes them necessary.
+3. P3 performs an evidence-only closeout.
+
+Dope currently tracks `.dope/architecture.json` but not `.dope/smap.json`. The correction should finish with Dope carrying a valid marker generated through the production acceptance path, so cloning/opening Dope can recover accepted canonical sMap state without rerunning architecture synthesis.
+
+Storage Green routes directly to a fresh Product Phase 5 `/docs-review`.
+
 Canonical architecture and detected architecture are intentionally different kinds of state.
 
 ## Canonical architecture
