@@ -1,0 +1,204 @@
+TASK: Correction 4 / P4 — Real Local/Gemini same-pipeline comparison and consolidated qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Qualify the exact P3 candidate through one controlled Local run and one controlled Gemini 3.8 Flash run on the same pinned benchmark/pipeline, directly inspect architecture quality and UI/security behavior, collect comparable timing/token evidence, then pay the full regression/restart/package cost once.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0004 and ADR 0009-0013, current architecture/product/roadmap/storage authority, predecessor `c4-smap-hierarchical-synthesis` closeout + P8 evidence, this correction assessment/plan/README, and exact P1-P3 prompts/results/source.
+
+Require:
+- successful exact P3 predecessor;
+- package exactly `0.4.6`;
+- clean intended Dope Git state;
+- exact clean Adaptive SEO benchmark root and pinned SHA from predecessor P8 evidence;
+- benchmark fetch enabled and push disabled;
+- no live customer credentials in benchmark/runtime;
+- working Local LM Studio/Qwen qualification configuration;
+- working Gemini AI Studio key via `GEMINI_API_KEY` or explicit session entry.
+
+Do not print, persist, screenshot in readable form, or record the Gemini key in evidence.
+
+If the predecessor did not leave an exact usable pinned benchmark identity, record that prerequisite gap and stop rather than silently substituting a different repository.
+
+BASELINE / COMPARISON CONTROL
+
+Before each run:
+- restore benchmark to exact pinned SHA/clean state;
+- verify push remains disabled;
+- use the exact same Dope P3 candidate;
+- ensure provider cache identity cannot reuse the other provider's model output;
+- record provider/runtime/model setup.
+
+Hold constant:
+- repository commit;
+- analyzer inputs;
+- deterministic ArchitectureEvidencePacket/planner version;
+- stage/contract version;
+- compact JSON schemas/order;
+- evidence-selection rules;
+- reconciliation/verification bounds;
+- developer-authority rules.
+
+Do not add a provider-specific architecture prompt, Local-only chunking/compression or different stage semantics between runs.
+
+REAL LOCAL RUN
+
+Through the real sMap UI:
+- expand/configure Local;
+- probe readiness;
+- start Local analysis;
+- observe progress;
+- let it complete unless a real failure/cancel negative is intentionally being tested.
+
+Record:
+- exact Local runtime/model/context;
+- packet/view identities;
+- every model stage/call purpose;
+- planning duration;
+- provider-call duration;
+- request/output bytes;
+- input/output/total tokens and measurement source;
+- cache reuse;
+- candidate/unresolved counts;
+- total model calls;
+- total provider-call time;
+- deterministic/planning/assembly time;
+- end-to-end elapsed time;
+- final hierarchy.
+
+REAL GEMINI RUN
+
+Restore the same benchmark state.
+
+Through the real sMap UI:
+- expand/configure Gemini;
+- verify cloud disclosure;
+- verify environment-key detected or enter the session key without exposing it;
+- test Gemini readiness;
+- start Gemini analysis;
+- observe progress and complete the run.
+
+Record the same metrics as Local using actual Gemini provider usage when available.
+
+Do not use a second repository or a different evidence packet to make Gemini look better/worse.
+
+ARCHITECTURE QUALITY
+
+For both outputs inspect actual architecture, not merely JSON validity.
+
+Record:
+- initial Systems and challenged Systems;
+- final Systems / Subsystems / Components;
+- responsibility coherence;
+- package/folder/framework/infrastructure false promotion;
+- meaningful Subsystem descent;
+- duplicate/cross-System ownership;
+- unresolved items;
+- representative evidence refs and source navigation;
+- materially wrong System boundaries.
+
+After each generated hierarchy is frozen, compare it against the same independent developer/reference architecture sources used by predecessor P8 where available. Never feed those references into synthesis to patch the run.
+
+Valid refs are necessary but not sufficient for Green architecture quality.
+
+DIAGNOSTIC COMPARISON
+
+Use the ADR 0013 categories:
+- similar architecture + much slower Local calls => evidence for local model/runtime bottleneck;
+- materially better Gemini architecture from equivalent input => evidence for model capability difference;
+- both slow/oversized => evidence for shared synthesis/planner bottleneck;
+- both materially improved over predecessor => evidence that prose-heavy intermediate protocol was a bottleneck.
+
+State evidence and uncertainty. Do not perform the next Local optimization inside P4 merely because the result points to one.
+
+UI / SECURITY / LIFECYCLE MATRIX
+
+Directly prove:
+- Local and Gemini sections collapse/expand independently;
+- Gemini cloud disclosure is visible;
+- key is masked and never shown back;
+- environment-key status reveals no value;
+- no key appears in StorageService/preferences, `.dope/`, logs, progress, telemetry, evidence, cache identity, review or surfaced errors;
+- selected provider is obvious;
+- no Local -> Gemini or Gemini -> Local fallback;
+- Local probe/warm-up still works;
+- Gemini readiness works;
+- cancellation and retry remain usable;
+- switching provider/root/project rejects stale results;
+- existing/manual architecture remains usable without provider where expected;
+- review/source navigation works;
+- developer correction and explicit acceptance remain the only canonical transition.
+
+Perform at least one controlled selected-provider failure proving no fallback and no project evidence is sent to the unselected provider.
+
+REPAIRS
+
+Repairs are allowed only for concrete P4 defects.
+
+For a shared defect:
+- add permanent regression coverage;
+- repair shared code;
+- replay every comparison measurement invalidated by the repair.
+
+For a provider-adapter defect:
+- add provider-specific regression coverage;
+- repair only the adapter/provider setup;
+- replay affected provider evidence without changing shared synthesis semantics.
+
+Do not add aggressive Local-specific compression/chunking.
+
+EVIDENCE
+
+Write `docs/tasks/c4-smap-gemini-provider/P4-local-gemini-comparison-evidence.md`.
+
+Include:
+- exact Dope candidate;
+- exact benchmark root/SHA and push-disable proof;
+- Local/Gemini runtime/model identities;
+- key-source type only (environment/session), never key value;
+- packet/planner/contract identity;
+- per-stage timing/token/byte table for both providers;
+- measurement-source caveats;
+- initial/challenged/final hierarchies;
+- architecture-quality assessment per provider;
+- representative source-backed refs;
+- diagnostic comparison conclusion;
+- UI/security/no-fallback/cancel/project-switch evidence;
+- repairs + replay;
+- aggregate/restart/package/native evidence;
+- benchmark restoration;
+- residual Evidence Gaps.
+
+CONSOLIDATED EXPENSIVE VALIDATION
+
+On the exact final candidate run:
+- focused correction tests;
+- `npm run check`;
+- `npm run test:restart`;
+- `npm run codex:phase:validate -- c4-smap-gemini-provider`;
+- unchanged-version/no-root-lock/Theia/Electron/internal-reference checks;
+- `git diff --check`.
+
+Build/inspect the exact final Linux AppImage:
+- path/mode/size/SHA-256;
+- embedded version;
+- expected sMap/code-analysis/Local/Gemini composition;
+- no Phase 6 general Agent Runtime;
+- native launch/readiness/controlled close where environment permits.
+
+Do not repeat a complete provider comparison merely to duplicate evidence once the exact final candidate is fully evidenced.
+
+FINAL RESPONSE
+
+Report exact candidate and benchmark identity, both provider/runtime identities, both final hierarchies, per-stage/total timing and token/byte evidence with measurement caveats, architecture-quality dispositions, diagnostic conclusion, UI/security/no-fallback proof, repairs/replays, full checks/restart/package/native result, residual gaps and whether evidence is complete enough for P5.
+
+P4 may proceed to P5 with Not Green comparative evidence; do not call a failing mandatory gate Green.

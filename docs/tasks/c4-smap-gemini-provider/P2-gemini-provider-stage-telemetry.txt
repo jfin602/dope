@@ -1,0 +1,144 @@
+TASK: Correction 4 / P2 — Gemini synthesis provider and comparable stage telemetry
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Add Gemini 3.8 Flash through the Gemini Developer API / AI Studio key path behind the exact P1 provider-independent stage contracts, and instrument Local/Gemini stage usage so later qualification can compare latency and token/byte cost without changing architecture semantics.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0004 and ADR 0009-0013, current architecture/product/roadmap/storage authority, this correction assessment/plan/README, exact P1 prompt/result/source, and predecessor hierarchical evidence.
+
+Require successful exact P1 predecessor, clean intended Git state and package exactly `0.4.6`.
+
+Inspect current:
+- `SynthesisProvider`, stage execution/cache/timing contracts;
+- P1 stage schemas/validators;
+- Local LM Studio adapter;
+- `@dope/theia-extension` package/dependency graph;
+- root Yarn/test scripts.
+
+DEPENDENCY / ADAPTER
+
+Add the current official `@google/genai` SDK to `@dope/theia-extension` using Yarn and update `yarn.lock`.
+
+Do not create `package-lock.json`.
+
+Add a narrow node adapter, expected as `packages/theia-extension/src/node/gemini-synthesis-provider.ts` or equivalent.
+
+Initial model is exactly:
+- `gemini-3.8-flash`.
+
+Do not add a Gemini model picker in P2.
+
+AUTH / SECRET BOUNDARY
+
+The adapter accepts a key supplied by backend configuration/environment later in P3. P2 tests may inject synthetic keys only.
+
+Never:
+- put a key into `@dope/software-map`;
+- include it in provider/cache/work identity;
+- include it in errors/log text;
+- expose it in result/usage metadata;
+- persist it.
+
+STRUCTURED OUTPUT
+
+Gemini and Local must emit the same P1 intermediate JSON semantics.
+
+Use Gemini structured JSON output with a provider-compatible JSON Schema projection.
+
+Gemini supports a subset of JSON Schema. If the P1 Dope schema contains keywords Gemini cannot accept:
+- translate/strip only unsupported provider-schema keywords inside the Gemini adapter;
+- keep shape/required/enums as strong as the provider supports;
+- never weaken/remove the full Dope parser/validator;
+- pass parsed Gemini output through the same `parseSynthesisStageResult` path used for Local.
+
+A response accepted by Gemini's provider schema but rejected by Dope must fail closed.
+
+Do not copy Gemini-native request/response/SDK types into `@dope/software-map`.
+
+CAPABILITIES / BUDGETING
+
+Expose Gemini capabilities through the existing provider-independent capability contract.
+
+Keep context/input headroom provider-derived. Do not treat the large Gemini window as a fill target.
+
+Avoid turning remote `countTokens` into a hot-loop call for every evidence-planner estimate. Use a safe bounded estimator for planning unless one bounded exact count is genuinely required. Actual response usage is the primary per-call telemetry source when Gemini reports it.
+
+STAGE EXECUTION TELEMETRY
+
+Introduce/complete a provider-independent stage execution envelope or equivalent that atomically returns model output plus normalized usage/size metadata.
+
+Record at least:
+- provider kind;
+- provider model label;
+- request bytes;
+- output bytes;
+- input tokens when available;
+- output tokens when available;
+- total tokens when available;
+- token measurement source: `provider-reported`, `tokenizer`, `estimated`, or `unavailable`.
+
+Dope orchestration/cache layer measures wall-clock call duration.
+
+Cache reuse:
+- must remain part of stage identity with provider/model;
+- reused work records no new provider-call duration/token spend;
+- telemetry must distinguish reused from fresh.
+
+LOCAL TELEMETRY
+
+Update LM Studio adapter without changing Local architecture behavior:
+- normalize OpenAI-compatible `usage` when present;
+- if absent, retain conservative input estimation and mark it `estimated`;
+- never invent exact output/total tokens;
+- preserve probe/warm-up/readiness semantics;
+- preserve no-project-evidence warm-up gate.
+
+ERROR / CANCELLATION
+
+Gemini adapter must fail with sanitized errors for representative:
+- missing/invalid key/config;
+- 401/403 auth;
+- 429 quota/rate limit;
+- 5xx upstream failure;
+- malformed provider response;
+- malformed stage JSON;
+- timeout/cancellation.
+
+No raw response/error path may echo the API key.
+
+FOCUSED TESTS ONLY
+
+Add a mocked Gemini provider unit suite. Do not make a real Gemini request in P2.
+
+Prove:
+- exact model ID;
+- auth is applied without secret leakage;
+- P1 schema/result semantics;
+- provider schema projection does not weaken Dope validation;
+- success usage normalization;
+- error/redaction matrix;
+- cancellation/timeout;
+- request/output byte accounting.
+
+Expand Local tests for provider-reported vs estimated usage.
+
+Expand cache/orchestration timing tests for fresh vs reused execution.
+
+Wire every new unit test file into root `test:product`.
+
+Run only focused tests plus necessary package build/typecheck and `git diff --check`.
+
+Do not run full `npm run check`, restart matrix, AppImage, browser dogfood or live provider analysis in P2.
+
+FINAL RESPONSE
+
+Report exact Gemini SDK/model integration, schema-projection strategy, provider-neutral execution telemetry shape, Local usage behavior, secret/error handling, focused tests/checks, unchanged `0.4.6`, and readiness for P3.

@@ -1,10 +1,23 @@
 # Correction 4 Implementation Plan — Gemini Provider + Compact Shared sMap Pipeline
 
-Status: **APPROVED / QUEUED**
+Status: **APPROVED / READY**
 Correction folder: `c4-smap-gemini-provider`
 Required unchanged package version: `0.4.6`
 Predecessor: `c4-smap-hierarchical-synthesis` after truthful closeout
 Authority: ADR 0013 plus ADR 0004/0009-0012 where not amended
+
+## Source trace
+
+Current implementation seams:
+- `packages/software-map/src/hierarchical-synthesis.ts` owns `SynthesisProvider`, capabilities/budgeting, strict staged request/results, progress contracts and final proposal assembly.
+- `packages/software-map/src/evidence-planner.ts` creates deterministic bounded evidence views under provider capability.
+- `packages/software-map/src/system-discovery.ts`, `system-challenge.ts`, `per-system-discovery.ts` and `reconciliation.ts` implement the hierarchy-first sequence.
+- `packages/theia-extension/src/node/lmstudio-synthesis-provider.ts` translates stages to the OpenAI-compatible Local endpoint and currently asks for prose-heavy rationale/uncertainty fields.
+- `packages/software-map/src/service.ts` and `packages/theia-extension/src/node/software-map-backend.ts` expose/implement a Local-shaped setup API even though the analysis provider itself is generic.
+- `packages/theia-extension/src/browser/software-map-controller.ts` and `software-map-widget.ts` own setup/progress state and currently render Local-only configuration.
+- `SynthesisTiming` currently measures duration/cache reuse but not tokens/bytes/provider kind.
+- `@dope/theia-extension` has no Gemini SDK dependency.
+- root `test:product` enumerates tests explicitly, so new provider tests must be wired into the aggregate.
 
 ## Preflight for every prompt
 
@@ -13,18 +26,17 @@ Read:
 - ADR 0004 and ADR 0009-0013;
 - current ARCHITECTURE, PRODUCT-MODEL, project-overview, roadmap and software-map-storage;
 - exact `c4-smap-hierarchical-synthesis` closeout/candidate/evidence;
-- this correction README/plan;
-- all earlier prompt/results in this correction.
+- this correction assessment/plan/README;
+- all earlier prompts/results in this correction.
 
 Require:
+- predecessor closed truthfully; do not reopen/relabel it;
 - package exactly `0.4.6`;
 - clean intended Git state apart from runner-owned changes;
 - Node 24;
 - Theia 1.75.0 / Electron 42.8.1;
-- no root package-lock;
+- Yarn 1 workspace discipline and no root package-lock;
 - Phase 5 inactive.
-
-Do not reopen/relabel the predecessor. This correction consumes its evidence and remediates the shared synthesis/provider boundary.
 
 ## Global time-efficiency rule
 
@@ -44,25 +56,23 @@ Never trade away permanent focused regression coverage merely to save time.
 
 ## P1 — Compact provider-independent hierarchical stage contracts
 
-Refactor the current hierarchical stage protocol before adding Gemini.
+Refactor the current strict-but-prose-heavy stage protocol before adding Gemini.
 
-The current schemas are strict JSON but still carry unnecessary prose-heavy fields. Replace cross-stage model prose with compact typed state.
+Use a new synthesis stage/contract version and update cache/work identity accordingly.
 
-Define/validate a new stage contract version that can express, as required by each stage:
+The provider-facing intermediate contract should contain only downstream-required architectural state. Define bounded typed structures for:
 - packet/view/stage identity;
 - temporary candidate key;
-- node kind;
-- short bounded name/responsibility;
-- parent key;
+- node kind/name/parent;
+- short bounded responsibility;
 - confidence;
-- evidenceRefs;
-- ownershipEvidenceRefs;
+- evidenceRefs / ownershipEvidenceRefs;
 - typed ambiguity/unresolved codes;
-- typed candidate relationships with evidence refs;
+- typed candidate relationships when the next stage needs them;
 - challenge keep/merge/split/reject mappings;
 - unresolved candidate/item status.
 
-Remove intermediate requirements for provider-generated:
+Remove model-authored intermediate requirements for:
 - boundary rationale;
 - free-form rationale;
 - sibling distinction;
@@ -70,193 +80,239 @@ Remove intermediate requirements for provider-generated:
 - subdivision rationale paragraphs;
 - finding/reconciliation/verification message prose.
 
-Strict schema must reject surplus prose/fields.
+Strict provider-independent validation rejects surplus fields/prose and fabricated refs.
 
-Update:
-- validators;
-- stage request/result schemas;
-- cache/stage identity/version;
-- planner/context serialization;
-- reconciliation/conflict/verification context;
-- final proposal assembly.
+Update all producers/consumers together:
+- stage schemas/parser;
+- stage context serialization;
+- planner assumptions;
+- discovery/challenge/subtree/reconciliation/verification flow;
+- structural conflict generation;
+- final proposal assembly;
+- Local stage instructions/schemas;
+- affected fixtures/tests.
 
-Human review must remain understandable. Add deterministic mapping from typed ambiguity/finding codes + candidate/evidence state into concise review/open-question text. Do not add a narration model call.
+Human review must remain useful. Map typed findings/ambiguity plus deterministic evidence into concise final rationale/open-question text outside the provider data bus. Do not add another LLM narration call.
 
-Preserve complete packet provenance, candidate/proposal/canonical identity separation, developer acceptance and all structural/evidence negative guards.
+Preserve:
+- full ArchitectureEvidencePacket;
+- provider-derived budgets;
+- whole evidence items and original refs;
+- System -> Subsystem -> Component structural validation;
+- proposal-only candidate identity;
+- developer review/correction/explicit acceptance;
+- bounded reconciliation/verification;
+- progress safety.
 
-If the old one-shot Local `synthesize(packet)` path is now dead production code, remove/quarantine it rather than maintaining a second incompatible synthesis protocol; prove callers before removal.
+Inspect the legacy Local one-shot `synthesize(packet)` method and all repository callers. If dead after hierarchical orchestration, remove it and its obsolete tests/instructions rather than keep a second incompatible protocol. If a live caller remains, return Planning needed rather than silently creating dual semantics.
 
-Focused tests only, including permanent guards that reject prose-heavy surplus output and fabricated refs.
+Focused validation:
+- build/typecheck the Software Map and affected extension surface as needed;
+- run synthesis/planner/System/challenge/per-system/reconciliation and Local-provider focused tests;
+- add permanent guards that prose-heavy surplus output is rejected;
+- `git diff --check`.
 
-## P2 — Gemini provider and shared provider telemetry
+Do not run real Local/Gemini inference, full restart, package or full `npm run check` in P1.
 
-Add a Gemini 3.8 Flash adapter behind the existing provider-independent synthesis boundary.
+## P2 — Gemini provider + provider-independent telemetry
 
-Use the Gemini Developer API / AI Studio API-key path. Keep Google SDK/request/response types out of `@dope/software-map`.
+Add Gemini 3.8 Flash behind the exact P1 `SynthesisProvider` semantics.
 
-Gemini must:
-- implement the exact P1 stage contracts;
-- use provider structured output/schema enforcement where supported;
-- expose provider capabilities/context/input budget;
-- support cancellation/timeout;
-- classify authentication, quota/rate-limit and upstream failures without leaking secrets;
-- report token usage metadata when available.
+Dependency/runtime:
+- add the current official `@google/genai` package to `@dope/theia-extension` using Yarn;
+- update `yarn.lock`;
+- never create `package-lock.json`;
+- keep Google SDK/native response types in the node adapter.
 
-Introduce a provider-independent stage execution/usage envelope or equivalent so orchestration can capture:
-- input tokens;
-- output tokens;
-- total tokens;
-- measurement source/quality;
-- output bytes if easiest at the adapter boundary.
+Gemini adapter requirements:
+- fixed initial model `gemini-3.8-flash`;
+- Gemini Developer API / AI Studio API-key authentication;
+- strict structured JSON generation against a provider-compatible projection of the P1 schema;
+- parse/validate the raw output through the same full Dope stage validator Local uses;
+- do not weaken Dope schema/domain validation merely because Gemini supports only a subset of JSON Schema;
+- provider capabilities/context budget;
+- cancellation/timeout;
+- sanitized auth/quota/429/upstream error classes/messages;
+- no secret echo.
 
-Extend Local adapter telemetry:
-- use OpenAI-compatible reported usage when available;
-- otherwise retain conservative estimation and label it `estimated`;
-- never fabricate exact output usage.
+Do not make remote token counting part of every evidence-planner estimate loop. Keep budgeting safe and bounded without multiplying API requests. Normalize actual provider-reported response usage when available.
 
-Orchestration, not adapters, measures wall-clock stage duration.
+Add a provider-independent execution/usage envelope or equivalent:
+- output;
+- inputTokens?;
+- outputTokens?;
+- totalTokens?;
+- tokenMeasurement: `provider-reported | tokenizer | estimated | unavailable`;
+- requestBytes;
+- outputBytes.
 
-Do not change evidence selection, stage semantics or Local chunking/compression behavior in P2.
+Orchestration measures call duration. Extend `SynthesisTiming`/analysis telemetry with provider/model and normalized usage/size data while preserving cache semantics: reused results record zero new provider tokens/call time and remain distinguishable from fresh calls.
 
-Use mocks/fixtures for Gemini; do not spend a real API call yet.
+Extend Local:
+- capture OpenAI-compatible `usage` if LM Studio supplies it;
+- otherwise report conservative input estimates as `estimated`;
+- never invent exact output/total counts.
+
+Focused tests:
+- new Gemini provider mocked tests for auth header/client config, model, structured output, schema projection, success, malformed result, cancellation/timeout, 401/403, 429, 5xx and secret redaction;
+- Local telemetry regression;
+- cache/reconciliation timing/usage tests;
+- wire new test files into root `test:product`;
+- build/typecheck affected packages;
+- `git diff --check`.
+
+No real Gemini request and no full aggregate/restart/package pass in P2.
 
 ## P3 — Explicit provider selection, secrets and collapsible setup UI
 
-Make the backend configuration/provider selection explicit and provider-neutral.
+Make the setup/service path provider-neutral without constructing the future general Model Runtime.
 
-Required provider modes:
-- `local`;
-- `gemini`.
+Define a narrow Dope-owned synthesis provider selector/config:
+- provider kind `local | gemini`;
+- Local-only endpoint/context/token/model discovery/probe state;
+- Gemini-only readiness/key-source state;
+- selected provider identity used by analysis/cache/telemetry.
 
-Replace LM-Studio-shaped service methods/state where needed without leaking provider-native contracts into Software Map domain semantics.
+Backend:
+- configure/select/probe the chosen provider explicitly;
+- hold pasted Gemini key only in backend/runtime memory;
+- allow backend `GEMINI_API_KEY` detection/use without returning the secret;
+- clear provider/session secret/readiness on detach/reconnect where appropriate;
+- never persist API keys to project or browser preference state;
+- no automatic fallback on setup/call failure.
 
-Gemini key sources:
-1. backend `GEMINI_API_KEY`;
-2. explicit UI session key held in runtime/process memory.
+Frontend/controller:
+- persist only harmless selection/preferences (for example provider kind, Local endpoint/model) if useful;
+- never persist Gemini key;
+- keep request/project generation guards;
+- maintain manual/existing architecture routes and decline/cancel semantics.
 
-Never persist a key in:
-- `.dope/`;
-- StorageService/preferences;
-- synthesis provider selection preferences;
-- logs;
-- progress events;
-- cache identities;
-- evidence/proposals;
-- raw surfaced errors.
+Widget:
+- Analyze Project setup contains independently collapsible **Local model** and **Gemini 3.8 Flash** sections, preferably accessible native `details/summary` or equivalent;
+- Local shows current LM Studio controls;
+- Gemini shows cloud disclosure that bounded repository synthesis evidence is sent to Google's Gemini API;
+- Gemini key input is password-style when an environment key is not being used;
+- show environment-key-detected state without exposing value;
+- separate Test/Probe and Analyze actions;
+- provider choice is explicit;
+- progress shows provider/model and normalized timing/token metadata when present;
+- no raw prompts, chain-of-thought, key material or misleading exact token values when measurement is only estimated/unavailable.
 
-Persist only harmless provider UX choices when appropriate.
+Focused validation:
+- backend/provider-selection tests;
+- secret non-persistence/redaction tests;
+- software-map controller/widget tests for independent collapsibles and provider switching;
+- initialization/cancel/root-switch regressions;
+- build/typecheck affected packages;
+- `git diff --check`.
 
-Analyze Project setup presents independently collapsible sections:
+No live full synthesis, restart matrix, AppImage or full `npm run check` in P3.
 
-**Local model**
-- endpoint;
-- loaded context;
-- optional local token;
-- discover/select model;
-- probe/test;
-- Analyze with Local.
-
-**Gemini 3.8 Flash**
-- clear cloud/repository-evidence disclosure;
-- environment-key detected state or password-style session key input;
-- fixed initial model label unless later requirements justify model selection;
-- Test Gemini connection;
-- Analyze with Gemini.
-
-Provider failure ends the run with retry/settings/provider-selection recovery. Never auto-fallback.
-
-Progress UI shows provider/model plus available per-stage timing/token usage without raw prompts or hidden reasoning.
-
-Use focused controller/widget/backend/security tests only. No real full analysis yet.
-
-## P4 — Real same-pipeline Local/Gemini comparison and consolidated qualification
+## P4 — Real same-pipeline Local/Gemini comparison + consolidated qualification
 
 Browser and real providers required.
 
-Use the same clean benchmark source for both providers, preferably the exact Adaptive SEO benchmark clone/commit selected by predecessor P8.
+Benchmark:
+- use the exact clean Adaptive SEO benchmark root and pinned SHA recorded by predecessor hierarchical P8 evidence;
+- verify fetch is enabled and push remains disabled;
+- restore the benchmark to exact pinned/clean state before each provider run;
+- do not expose/use live customer credentials;
+- if predecessor evidence did not establish an exact usable benchmark, stop with the specific prerequisite/evidence gap rather than silently substituting another repository.
 
-Hold constant:
-- repository commit;
-- deterministic analyzer inputs;
-- planner/stage versions;
-- compact intermediate contracts;
-- stage order;
-- evidence selection;
-- reconciliation/verification limits;
-- canonical developer-authority rules.
+Hold constant between Local and Gemini:
+- benchmark commit;
+- Dope candidate;
+- analyzer inputs;
+- planner/stage/contract versions;
+- compact schemas and stage order;
+- evidence-selection rules;
+- reconciliation/verification bounds;
+- developer-authority semantics.
 
-Run the corrected pipeline once through Local and once through Gemini.
+Run one fresh Local analysis and one fresh Gemini analysis. Avoid cache contamination between provider comparison runs; provider identity remains part of cache identity.
 
-Do not introduce a provider-specific repair between the two comparison runs. If a shared defect is found, repair it with permanent regression coverage and replay both affected measurements as needed. If a provider adapter bug is found, repair the adapter without changing shared synthesis semantics.
-
-For every stage/call record:
+Record every stage/call:
 - provider/model;
 - subject;
 - planning duration;
-- call duration;
+- fresh provider-call duration;
 - request/output bytes;
-- input/output/total tokens and measurement source;
+- input/output/total tokens + measurement source;
 - cache reuse;
-- error/retry state;
-- candidate/unresolved counts where meaningful.
+- retry/error;
+- candidate/unresolved counts.
 
-For each complete run record:
-- Systems/Subsystems/Components;
-- architecture-quality review;
-- provenance/ref validity;
+Record each complete run:
+- packet/planner identity;
+- exact Systems/Subsystems/Components;
+- initial/challenged hierarchy where useful;
+- architecture-quality assessment;
+- provenance/ref validation;
 - unresolved/open review items;
-- number of model calls;
+- model-call count;
 - total provider-call time;
-- deterministic/planning time;
-- total input/output tokens with measurement-quality caveats;
+- deterministic/planning/assembly time;
+- total token/byte volume with measurement caveats;
 - end-to-end elapsed time.
 
-Interpret differences using ADR 0013 diagnostic categories. Do not implement aggressive Local-specific chunking/compression in this prompt merely because the comparison identifies Local as slower; capture the evidence for a later targeted correction.
+Assess results using ADR 0013:
+- comparable quality + much slower Local => local model/runtime bottleneck evidence;
+- materially better Gemini from same input => model capability evidence;
+- both slow/oversized => shared design/planner evidence;
+- both materially improved vs predecessor => prior prose-heavy protocol bottleneck evidence.
 
-Also qualify:
-- explicit Local/Gemini collapsibles;
+Do not add aggressive Local-specific chunking/compression, different Local stage semantics or provider-specific architecture prompts after seeing the first result. Preserve comparison integrity. Product repair is allowed only for a concrete shared defect or provider-adapter defect, with permanent coverage and appropriate replay.
+
+Direct UI/security/lifecycle qualification:
+- independently collapsible Local/Gemini setup;
 - cloud disclosure;
-- session/environment key behavior;
-- key non-persistence/non-leakage;
+- environment and session key paths without revealing key;
+- no key in preferences/.dope/log/progress/error/cache/evidence;
+- explicit provider selection;
 - no silent fallback;
-- Local probe/warm-up regression;
-- cancellation/retry/provider switching;
-- restart/project isolation;
-- final browser behavior.
+- Local probe/warm-up remains functional;
+- Gemini test/readiness works;
+- cancel/retry/provider switching/root switching;
+- review/source navigation/developer correction/acceptance;
+- manual/existing declaration still works with no provider where applicable.
 
-Then run consolidated expensive validation once on the exact final candidate:
+Evidence file:
+Create `docs/tasks/c4-smap-gemini-provider/P4-local-gemini-comparison-evidence.md` with exact candidate/benchmark/provider identities, setup, security checks, per-stage telemetry tables, both hierarchies, quality comparison, diagnostic conclusion, UI/lifecycle proof, repairs/replays and residual gaps. Never write the API key.
+
+Consolidated expensive validation on the exact final candidate:
 - focused correction tests;
-- full `npm run check`;
-- full required restart suite;
-- correction prompt validation;
-- version/internal-reference/no-root-lock/Theia/Electron checks;
-- required Electron build/package/native-launch evidence;
+- `npm run check`;
+- `npm run test:restart`;
+- `npm run codex:phase:validate -- c4-smap-gemini-provider`;
+- unchanged-version/no-root-lock/Theia/Electron/internal-reference checks;
+- build/package the exact Linux AppImage and record path/mode/size/SHA-256/embedded version/composition;
+- native launch/readiness/controlled close where environment permits;
 - `git diff --check`.
 
-Do not require a second unnecessary full Local/Gemini architecture run after the exact candidate evidence is already complete.
+Do not run a second unnecessary full provider comparison after complete exact-candidate evidence already exists.
 
 ## P5 — Evidence-only closeout
 
-Audit exact P4 candidate/evidence. Do not repair product behavior and do not rerun live provider synthesis merely to replace missing evidence.
+Audit exact P4 evidence/candidate. Do not repair product behavior and do not rerun live Local/Gemini synthesis merely to replace missing evidence.
 
 Disposition:
 A. compact shared intermediate contracts;
-B. canonical/provider boundary;
-C. Gemini adapter and AI Studio authentication;
-D. secret handling / explicit provider choice / no fallback;
+B. provider-neutral canonical boundary / schema enforcement;
+C. Gemini adapter + AI Studio authentication;
+D. secret handling / explicit choice / no fallback;
 E. Local regression;
-F. telemetry correctness/measurement quality;
+F. timing/token/size telemetry correctness and measurement quality;
 G. real same-pipeline Local/Gemini architecture quality;
 H. timing/token comparison and diagnostic conclusion;
-I. UI/progress/cancellation/project isolation;
+I. UI/progress/cancellation/project isolation/developer authority;
 J. full repository/restart/package/version/phase boundary.
 
-Green requires every mandatory gate Green.
+Green requires all mandatory gates Green.
 
-If Green, route to `c4-smap-storage`.
+If Green, route to `c4-smap-storage`; do not activate Phase 5 directly.
 
-If Not Green, identify the narrow next correction. Do not activate Phase 5.
+If Not Green, identify the narrow next correction and keep storage/Phase 5 blocked.
 
 ## Scope guard
 
-No Phase 5 visual Physical/Planning Map canvas, general AI Presence/Agent Mind/chat/tool execution, provider voting/debate, mixed per-stage provider routing, automatic fallback, persistent API-key preference storage, aggressive Local-specific chunking/compression, model-specific architecture contracts or Theia upgrade.
+No Phase 5 visual Physical/Planning Map canvas, general AI Presence/Agent Mind/chat/tool execution, provider voting/debate, mixed per-stage provider routing, automatic fallback, persistent API-key preference storage, aggressive Local-specific chunking/compression, model-specific canonical architecture contracts or Theia upgrade.

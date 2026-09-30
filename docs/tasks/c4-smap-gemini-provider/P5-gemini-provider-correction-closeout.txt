@@ -1,0 +1,148 @@
+TASK: Correction 4 / P5 — Gemini provider and compact sMap pipeline correction closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Perform an evidence-only closeout of `c4-smap-gemini-provider` using the exact P4 candidate and `P4-local-gemini-comparison-evidence.md`. Do not repair product behavior and do not rerun live Local/Gemini synthesis merely to replace missing evidence.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0004 and ADR 0009-0013, current architecture/product/roadmap/storage authority, predecessor hierarchical closeout/evidence, this correction assessment/plan/README, every P1-P4 prompt/result and P4 evidence.
+
+Require exact P4 candidate identity and package `0.4.6`.
+
+Record Git state before audit.
+
+Focused deterministic tests/checks may be rerun against the exact candidate. Live provider architecture/timing/quality claims must come from P4 direct evidence unless a rerun is independently required to verify candidate identity; missing P4 evidence is an Evidence Gap, not permission to silently regenerate a better run.
+
+AUDIT GATES
+
+Disposition each gate Green / Not Green / Evidence Gap.
+
+A. **Compact shared intermediate contracts**
+- new stage/contract version exists;
+- Local/Gemini intermediate outputs use the same compact provider-independent schemas;
+- provider-generated boundary rationale/sibling distinction/free-form uncertainty/reconciliation-message prose is absent from the cross-stage data bus;
+- short semantic responsibility labels are bounded;
+- typed ambiguity/unresolved/relationship state is validated;
+- surplus prose/fabricated refs fail closed.
+
+B. **Provider-neutral canonical/schema boundary**
+- `@dope/software-map` contains no Gemini/LM Studio SDK-native domain types;
+- complete deterministic packet remains evidence authority;
+- Gemini provider schema projection did not weaken the full Dope parser/validator;
+- final ArchitectureProposal/review remains provider-neutral;
+- deterministic explanation assembly preserves usable human review;
+- developer acceptance remains canonical authority.
+
+C. **Gemini adapter / AI Studio authentication**
+- exact Gemini 3.8 Flash provider path was used;
+- real AI Studio key path qualified;
+- structured JSON output qualified across the hierarchy stages;
+- capability/budget/cancel/error behavior is coherent;
+- Google dependency is correctly owned by adapter/package wiring.
+
+D. **Secret handling / explicit provider choice / no fallback**
+- environment/session key paths expose no key value;
+- no key persisted in `.dope/`, preferences, cache identity, evidence/review, progress/telemetry, logs or errors;
+- Local/Gemini choice is explicit;
+- controlled failure proves no silent provider fallback and no unselected cloud submission.
+
+E. **Local regression**
+- Local discovery/selection/probe/warm-up remains valid;
+- Local uses the same compact stage semantics;
+- Local errors/cancel remain coherent;
+- no Gemini requirement was introduced for Local/manual/existing paths.
+
+F. **Telemetry correctness**
+- every fresh provider stage can record provider/model, duration and request/output bytes;
+- input/output/total token usage is recorded when available;
+- measurement source distinguishes provider-reported/tokenizer/estimated/unavailable;
+- Local estimates are not presented as exact;
+- cache reuse records no new provider spend;
+- telemetry collection does not create an unbounded token-count call loop.
+
+G. **Real same-pipeline Local/Gemini architecture quality**
+- exact same benchmark source/contract/planner semantics were used;
+- both hierarchies are source-backed and materially reviewable;
+- System boundaries are judged on responsibility rather than directory/framework naming;
+- meaningful Subsystem/Component descent exists where supported;
+- material architecture failures are Not Green even if JSON/refs are valid.
+
+H. **Timing/token comparison and diagnostic conclusion**
+- P4 contains per-stage and total measurements for both providers;
+- measurement caveats are explicit;
+- model-call count, provider-call time and deterministic/planning time are distinguishable;
+- comparison was not contaminated by aggressive Local-specific chunking/compression or changed stage semantics;
+- the diagnostic conclusion follows actual evidence and identifies remaining shared/model/runtime bottleneck uncertainty.
+
+I. **UI / progress / lifecycle / developer authority**
+- Local/Gemini setup sections are independently collapsible;
+- Gemini cloud disclosure is clear;
+- provider/model/elapsed/usage progress is useful without chain-of-thought/raw prompts;
+- cancel/retry/provider/root switching guards work;
+- review/source navigation and correction work;
+- existing/manual paths remain valid;
+- canonical state is written only by explicit acceptance.
+
+J. **Repository / restart / package / version / phase boundary**
+- exact P4 candidate passed required focused + aggregate checks;
+- restart/project isolation is coherent;
+- AppImage/build/native evidence is coherent;
+- version stayed `0.4.6`;
+- no root package-lock;
+- no general Phase 6 Model Runtime/Agent Mind/chat/tool execution;
+- no Phase 5 visual canvas;
+- no automatic/mixed/ensemble provider behavior.
+
+CHECKS
+
+Rerun only as appropriate:
+- focused correction guards;
+- `npm run check`;
+- `npm run test:restart`;
+- `npm run codex:phase:validate -- c4-smap-gemini-provider`;
+- unchanged-version/no-root-lock/Theia/Electron/internal-reference checks;
+- `git diff --check`.
+
+Do not modify product source to turn a failing gate Green.
+
+CLOSEOUT DOCUMENTATION
+
+Write `docs/tasks/c4-smap-gemini-provider/closeout.md` containing:
+- exact candidate/source/package identities;
+- A-J gate table and evidence;
+- compact-contract summary;
+- exact Local and Gemini final hierarchies;
+- timing/token/byte comparison;
+- measurement-quality caveats;
+- architecture-quality comparison;
+- diagnostic conclusion;
+- security/no-fallback result;
+- aggregate/restart/package result;
+- residual gaps;
+- clear qualification decision.
+
+Update this correction README status truthfully.
+
+ROUTING
+
+If every mandatory gate is Green:
+- route next to `c4-smap-storage`;
+- do not activate Phase 5 directly;
+- do not start Local-specific optimization unless separately approved.
+
+If any mandatory gate is Not Green or Evidence Gap:
+- keep `c4-smap-storage` and Phase 5 blocked;
+- name the narrow next correction required;
+- preserve all P4 comparative evidence.
+
+FINAL RESPONSE
+
+Report exact closeout candidate, A-J disposition, Local/Gemini architecture-quality results, timing/token comparison + diagnostic conclusion, secret/no-fallback result, checks/package/restart outcome, residual gaps and routing decision.

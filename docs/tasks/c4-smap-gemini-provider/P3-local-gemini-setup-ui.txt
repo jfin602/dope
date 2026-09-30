@@ -1,0 +1,167 @@
+TASK: Correction 4 / P3 — Explicit Local/Gemini backend setup and collapsible synthesis UI
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Make sMap synthesis provider selection explicit and provider-neutral in the service/backend/controller, securely support AI Studio keys, and present independently collapsible Local and Gemini setup sections without performing expensive real-provider qualification yet.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0004 and ADR 0009-0013, current architecture/product/roadmap/storage authority, this correction assessment/plan/README, exact P1/P2 prompts/results/source, and predecessor hierarchical evidence.
+
+Require successful exact P2 predecessor, clean intended Git state and package exactly `0.4.6`.
+
+Trace:
+- `packages/software-map/src/service.ts`;
+- `packages/theia-extension/src/node/software-map-backend.ts`;
+- Local and Gemini adapters;
+- `packages/theia-extension/src/browser/software-map-controller.ts`;
+- `software-map-widget.ts` / `dope.css`;
+- initialization/UI/provider tests.
+
+NARROW PROVIDER CONFIG CONTRACT
+
+Replace the Local-shaped synthesis setup RPC/state with a narrow Dope-owned provider selector sufficient for this correction.
+
+Required provider kinds:
+- `local`;
+- `gemini`.
+
+The canonical Software Map and ArchitectureProposal must not know Google or LM Studio request types.
+
+Local-specific setup remains behind Local configuration:
+- endpoint;
+- configured context;
+- optional local bearer/session token;
+- model discovery/selection;
+- structured-output probe;
+- warm-up before first evidence call.
+
+Gemini-specific setup remains behind Gemini configuration:
+- fixed `gemini-3.8-flash`;
+- environment-key availability;
+- optional explicit session key;
+- structured-output/readiness probe.
+
+Do not build the general Phase 6 Model Runtime.
+
+SECRET LIFECYCLE
+
+Support:
+1. backend `GEMINI_API_KEY`;
+2. explicit UI-provided session key sent to backend and held only in backend/runtime memory.
+
+The frontend may know only the currently typed session secret long enough to submit setup; do not persist it.
+
+Never store or copy the key into:
+- `.dope/`;
+- StorageService/preferences;
+- provider selection preferences;
+- canonical architecture;
+- evidence packet/proposal/review;
+- progress/telemetry;
+- cache/work identity;
+- log/debug strings;
+- surfaced raw errors.
+
+Environment-key status is boolean/label only. Never return the key.
+
+On detach/reconnect/provider reconfiguration, invalidate readiness/session-secret state conservatively.
+
+EXPLICIT PROVIDER SELECTION / NO FALLBACK
+
+The developer explicitly chooses Local or Gemini for the analysis run.
+
+If the selected provider fails:
+- stop that run;
+- preserve safe retry/settings/provider-change recovery;
+- never invoke the other provider automatically;
+- never send repository evidence to Gemini because Local failed.
+
+Provider identity must be part of cache/telemetry identity.
+
+COLLAPSIBLE SETUP UX
+
+Replace the single Local setup surface with independently collapsible sections.
+
+**Local model**
+- clear "local" description;
+- endpoint;
+- loaded context tokens;
+- optional session token;
+- Discover models;
+- model selection;
+- Test/structured-output probe;
+- Analyze with Local.
+
+**Gemini 3.8 Flash**
+- clear cloud description;
+- explicit disclosure that bounded repository evidence used for synthesis is sent to Google's Gemini API when Gemini is selected;
+- show `GEMINI_API_KEY detected` or equivalent without the value;
+- when needed, password-style AI Studio API key input;
+- Test Gemini connection;
+- Analyze with Gemini.
+
+Prefer accessible native `details/summary` or equivalent behavior. Both sections must collapse/expand independently. Do not require opening one to close the other.
+
+Preserve existing/manual architecture and "Not now" actions.
+
+CONTROLLER / PREFERENCES
+
+Persist only harmless UX choices if useful:
+- selected provider kind;
+- Local endpoint/model.
+
+Never persist Gemini key or Local session token.
+
+Keep stale request/project generation guards and clear readiness after relevant setting/provider changes.
+
+PROGRESS / TELEMETRY UI
+
+During analysis show:
+- current stage/call purpose;
+- provider + model;
+- current System subject when applicable;
+- elapsed time;
+- known units;
+- per-stage/call token usage when available;
+- measurement caveat when estimated/unavailable rather than implying exactness.
+
+Do not expose:
+- prompts;
+- hidden chain-of-thought;
+- raw model responses;
+- API keys;
+- fabricated percent complete.
+
+FOCUSED SECURITY / UI TESTS
+
+Add/expand permanent tests for:
+- provider-specific configuration dispatch;
+- environment-key detected path;
+- session key never persisted/returned;
+- no key in errors/progress/cache state;
+- no fallback;
+- provider switching invalidates readiness safely;
+- Local setup remains functional;
+- Gemini setup/probe uses only selected provider;
+- independent collapsibles and cloud disclosure;
+- password input;
+- progress provider/model/usage rendering;
+- cancel/retry/root switching/manual/existing architecture regressions.
+
+Use mocked providers/config for P3. Do not perform real full Local/Gemini synthesis.
+
+Run focused tests plus required extension build/typecheck and `git diff --check`.
+
+Do not run full `npm run check`, full restart matrix, AppImage/native launch or broad browser qualification in P3.
+
+FINAL RESPONSE
+
+Report provider-neutral service/backend changes, exact secret lifetime, no-fallback proof, Local/Gemini setup UX, preference behavior, progress telemetry presentation, focused tests/checks, unchanged `0.4.6`, and readiness for P4.

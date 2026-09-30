@@ -1,6 +1,6 @@
 # Correction 4 — Gemini Provider + Compact Shared sMap Pipeline
 
-Status: **APPROVED / QUEUED**
+Status: **APPROVED / PROMPT STACK READY — execute after `c4-smap-hierarchical-synthesis` truthful closeout**
 Correction folder: `c4-smap-gemini-provider`
 Required unchanged version: `0.4.6`
 Predecessor: `c4-smap-hierarchical-synthesis` after truthful closeout
