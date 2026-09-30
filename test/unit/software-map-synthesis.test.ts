@@ -116,11 +116,14 @@ const request = (stage: SynthesisStageRequest['stage'], stageContext = context()
   ({ schemaVersion: 1, stage, stageVersion: 1, parentPacketFingerprint: packet.inputFingerprint, view, context: stageContext });
 const result = (stage: SynthesisStageRequest['stage'], extra: object) =>
   ({ schemaVersion: 1, stageVersion: 1, parentPacketFingerprint: packet.inputFingerprint, viewId: view.viewId, stage, ...extra });
-const subtree = result('subsystem-discovery', { systemKey: systemCandidate.candidateKey, nodes: [
+const subtree = result('subsystem-discovery', { systemKey: systemCandidate.candidateKey,
+  subdivisionAssessment: { rationale: 'Request serving has a meaningful boundary', confidence: 0.7, uncertainty: [] }, nodes: [
   { candidateKey: 'candidate:server', kind: 'subsystem', parentCandidateKey: systemCandidate.candidateKey,
-    name: 'Server', purpose: 'Serve requests', confidence: 0.7, uncertainty: ['Entry role may overlap'], evidenceRefs: ['entry'] },
+    name: 'Server', purpose: 'Serve requests', rationale: 'Owns request handling', siblingDistinction: 'Request service boundary',
+    confidence: 0.7, uncertainty: ['Entry role may overlap'], evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] },
   { candidateKey: 'candidate:main', kind: 'component', parentCandidateKey: 'candidate:server',
-    name: 'Main', purpose: 'Start server', confidence: 1, uncertainty: [], evidenceRefs: ['entry'] },
+    name: 'Main', purpose: 'Start server', rationale: 'Owns startup', siblingDistinction: 'Startup unit',
+    confidence: 1, uncertainty: [], evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] },
 ] }) as SubsystemDiscoveryResult;
 test('capabilities reserve context and reject unsafe or malformed estimates', async () => {
   assert.equal(usableEvidenceTokens(capability), 650);
@@ -130,6 +133,7 @@ test('capabilities reserve context and reject unsafe or malformed estimates', as
   for (const bad of [
     { ...capability, contextWindowTokens: 0 }, { ...capability, reservedOutputTokens: 900 },
     { ...capability, maxInputTokens: Infinity }, { ...capability, tokenEstimate: 'guess' },
+    { ...capability, maxConcurrentGenerations: 0 }, { ...capability, maxConcurrentGenerations: 9 },
     { ...capability, extra: 1 },
   ]) assert.throws(() => usableEvidenceTokens(bad as SynthesisCapabilities));
 });

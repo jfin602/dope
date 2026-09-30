@@ -69,7 +69,8 @@ test('minimal skeleton fits exactly when possible and fails clearly below that',
 
 test('later stages use candidate refs and packet relationships, never arbitrary path requests', async () => {
   const subtree = { schemaVersion: 1 as const, stage: 'subsystem-discovery' as const, stageVersion: 1 as const,
-    parentPacketFingerprint: packet.inputFingerprint, viewId: 'view:prior', systemKey: system.candidateKey, nodes: [] };
+    parentPacketFingerprint: packet.inputFingerprint, viewId: 'view:prior', systemKey: system.candidateKey, nodes: [],
+    subdivisionAssessment: { rationale: 'No useful split', confidence: 0.3, uncertainty: ['Limited evidence'] } };
   for (const [stage, ctx] of [
     ['system-challenge', context([system])], ['subsystem-discovery', context([system], system.candidateKey)],
     ['verification', context([system], null, [system.candidateKey])],

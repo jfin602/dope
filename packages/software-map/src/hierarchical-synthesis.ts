@@ -11,6 +11,8 @@ export interface SynthesisCapabilities {
     reservedOutputTokens: number;
     reservedOverheadTokens: number;
     tokenEstimate: 'exact' | 'conservative';
+    /** Omitted means one active generation. Values above one require explicit provider qualification. */
+    maxConcurrentGenerations?: number;
 }
 export interface SynthesisProvider {
     capabilities(): Promise<SynthesisCapabilities>;
@@ -18,8 +20,10 @@ export interface SynthesisProvider {
     runStage(request: SynthesisStageRequest): Promise<unknown>;
 }
 export function usableEvidenceTokens(capability: SynthesisCapabilities): number {
-    exact(capability, ['modelLabel', 'contextWindowTokens', 'maxInputTokens', 'reservedInstructionTokens',
-        'reservedOutputTokens', 'reservedOverheadTokens', 'tokenEstimate'], 'capabilities');
+    const capabilityFields = ['modelLabel', 'contextWindowTokens', 'maxInputTokens', 'reservedInstructionTokens',
+        'reservedOutputTokens', 'reservedOverheadTokens', 'tokenEstimate'];
+    exact(capability, capability.maxConcurrentGenerations === undefined ? capabilityFields :
+        [...capabilityFields, 'maxConcurrentGenerations'], 'capabilities');
     label(capability.modelLabel, 'modelLabel');
     for (const key of ['contextWindowTokens', 'maxInputTokens', 'reservedInstructionTokens',
         'reservedOutputTokens', 'reservedOverheadTokens'] as const) {
@@ -27,6 +31,9 @@ export function usableEvidenceTokens(capability: SynthesisCapabilities): number 
         if (!Number.isSafeInteger(value) || value < (key === 'reservedOverheadTokens' ? 0 : 1)) invalid(key);
     }
     if (capability.tokenEstimate !== 'exact' && capability.tokenEstimate !== 'conservative') invalid('tokenEstimate');
+    if (capability.maxConcurrentGenerations !== undefined &&
+        (!Number.isSafeInteger(capability.maxConcurrentGenerations) || capability.maxConcurrentGenerations < 1 ||
+            capability.maxConcurrentGenerations > 8)) invalid('maxConcurrentGenerations');
     const usable = Math.min(capability.maxInputTokens - capability.reservedInstructionTokens - capability.reservedOverheadTokens,
         capability.contextWindowTokens - capability.reservedInstructionTokens - capability.reservedOutputTokens - capability.reservedOverheadTokens);
     if (usable < 1) invalid('insufficient context budget');
@@ -100,9 +107,14 @@ export interface SubtreeCandidate {
     parentCandidateKey: string;
     name: string;
     purpose: string;
+    rationale: string;
+    /** Responsibility distinction from sibling candidates; for a sole child, explain why it is a useful boundary. */
+    siblingDistinction: string;
     confidence: number;
     uncertainty: string[];
     evidenceRefs: string[];
+    /** Direct implementation facts claimed by this node, a subset of evidenceRefs. */
+    ownershipEvidenceRefs: string[];
 }
 export type ChallengeDecision = {
     action: 'keep' | 'merge' | 'split' | 'reject';
@@ -144,7 +156,10 @@ export const synthesisStageRequestSchema = { type: 'object', additionalPropertie
 interface StageResultBase { schemaVersion: 1; stageVersion: 1; parentPacketFingerprint: string; viewId: string }
 export interface SystemDiscoveryResult extends StageResultBase { stage: 'system-discovery'; systems: SystemCandidate[] }
 export interface SystemChallengeResult extends StageResultBase { stage: 'system-challenge'; decisions: ChallengeDecision[] }
-export interface SubsystemDiscoveryResult extends StageResultBase { stage: 'subsystem-discovery'; systemKey: string; nodes: SubtreeCandidate[] }
+export interface SubsystemDiscoveryResult extends StageResultBase {
+    stage: 'subsystem-discovery'; systemKey: string; nodes: SubtreeCandidate[];
+    subdivisionAssessment: { rationale: string; confidence: number; uncertainty: string[] };
+}
 export interface ReconciliationResult extends StageResultBase { stage: 'reconciliation'; findings: SynthesisFinding[]; unresolvedCandidateKeys: string[] }
 export interface VerificationResult extends StageResultBase { stage: 'verification'; findings: SynthesisFinding[] }
 export type SynthesisStageResult = SystemDiscoveryResult | SystemChallengeResult | SubsystemDiscoveryResult |
@@ -158,10 +173,12 @@ const candidate = { type: 'object', additionalProperties: false,
         name: nonempty, purpose: nonempty, boundaryRationale: nonempty, confidence: { type: 'number', minimum: 0, maximum: 1 },
         uncertainty: refs, evidenceRefs: { ...refs, minItems: 1 } } } as const;
 const subtreeNode = { type: 'object', additionalProperties: false,
-    required: ['candidateKey', 'kind', 'parentCandidateKey', 'name', 'purpose', 'confidence', 'uncertainty', 'evidenceRefs'],
+    required: ['candidateKey', 'kind', 'parentCandidateKey', 'name', 'purpose', 'rationale', 'siblingDistinction',
+        'confidence', 'uncertainty', 'evidenceRefs', 'ownershipEvidenceRefs'],
     properties: { candidateKey: candidate.properties.candidateKey, kind: { enum: ['subsystem', 'component'] },
-        parentCandidateKey: nonempty, name: nonempty, purpose: nonempty, confidence: candidate.properties.confidence,
-        uncertainty: refs, evidenceRefs: { ...refs, minItems: 1 } } } as const;
+        parentCandidateKey: nonempty, name: nonempty, purpose: nonempty, rationale: nonempty,
+        siblingDistinction: nonempty, confidence: candidate.properties.confidence,
+        uncertainty: refs, evidenceRefs: { ...refs, minItems: 1 }, ownershipEvidenceRefs: { ...refs, minItems: 1 } } } as const;
 const finding = { type: 'object', additionalProperties: false,
     required: ['candidateKeys', 'evidenceRefs', 'status', 'message'],
     properties: { candidateKeys: { ...refs, minItems: 1 }, evidenceRefs: { ...refs, minItems: 1 },
@@ -178,8 +195,11 @@ export const synthesisStageResultSchemas = {
             systems: { type: 'array', items: candidate }, rationale: nonempty, evidenceRefs: { ...refs, minItems: 1 },
         } } }),
     'subsystem-discovery': { type: 'object', additionalProperties: false,
-        required: ['schemaVersion', 'stageVersion', 'parentPacketFingerprint', 'viewId', 'stage', 'systemKey', 'nodes'],
-        properties: { ...base, stage: { const: 'subsystem-discovery' }, systemKey: nonempty, nodes: { type: 'array', items: subtreeNode } } },
+        required: ['schemaVersion', 'stageVersion', 'parentPacketFingerprint', 'viewId', 'stage', 'systemKey', 'nodes', 'subdivisionAssessment'],
+        properties: { ...base, stage: { const: 'subsystem-discovery' }, systemKey: nonempty, nodes: { type: 'array', items: subtreeNode },
+            subdivisionAssessment: { type: 'object', additionalProperties: false,
+                required: ['rationale', 'confidence', 'uncertainty'], properties: {
+                    rationale: nonempty, confidence: candidate.properties.confidence, uncertainty: refs } } } },
     reconciliation: { type: 'object', additionalProperties: false,
         required: ['schemaVersion', 'stageVersion', 'parentPacketFingerprint', 'viewId', 'stage', 'findings', 'unresolvedCandidateKeys'],
         properties: { ...base, stage: { const: 'reconciliation' }, findings: { type: 'array', items: finding }, unresolvedCandidateKeys: refs } },
@@ -236,6 +256,11 @@ function systems(values: unknown, allowed: Set<string>, at: string): SystemCandi
 function subtree(value: unknown, systemKey: string, allowed: Set<string>, at: string): SubsystemDiscoveryResult {
     const data = record(value, at);
     if (data.systemKey !== systemKey || !Array.isArray(data.nodes)) invalid(`${at}.systemKey or nodes`);
+    exact(data.subdivisionAssessment, ['rationale', 'confidence', 'uncertainty'], `${at}.subdivisionAssessment`);
+    const assessment = data.subdivisionAssessment as SubsystemDiscoveryResult['subdivisionAssessment'];
+    label(assessment.rationale, `${at}.subdivisionAssessment.rationale`);
+    confidence(assessment.confidence, `${at}.subdivisionAssessment.confidence`);
+    strings(assessment.uncertainty, `${at}.subdivisionAssessment.uncertainty`);
     const nodes = data.nodes.map((raw, i) => {
         const where = `${at}.nodes[${i}]`;
         exact(raw, subtreeNode.required, where);
@@ -243,14 +268,18 @@ function subtree(value: unknown, systemKey: string, allowed: Set<string>, at: st
         key(node.candidateKey, `${where}.candidateKey`); key(node.parentCandidateKey, `${where}.parentCandidateKey`);
         if (node.kind !== 'subsystem' && node.kind !== 'component') invalid(`${where}.kind`);
         label(node.name, `${where}.name`); label(node.purpose, `${where}.purpose`);
+        label(node.rationale, `${where}.rationale`); label(node.siblingDistinction, `${where}.siblingDistinction`);
         confidence(node.confidence, `${where}.confidence`); strings(node.uncertainty, `${where}.uncertainty`);
         evidence(node.evidenceRefs, allowed, `${where}.evidenceRefs`);
+        evidence(node.ownershipEvidenceRefs, allowed, `${where}.ownershipEvidenceRefs`);
+        if (node.ownershipEvidenceRefs.some(ref => !node.evidenceRefs.includes(ref))) invalid(`${where} ownership outside evidence`);
         return node;
     });
     strings(nodes.map(node => node.candidateKey), `${at} candidate keys`);
     if (nodes.some(node => node.candidateKey === systemKey)) invalid(`${at} reuses System key`);
     const kinds = new Map<string, string>([[systemKey, 'system'], ...nodes.map(node => [node.candidateKey, node.kind] as const)]);
     for (const node of nodes) if (kinds.get(node.parentCandidateKey) !== (node.kind === 'subsystem' ? 'system' : 'subsystem')) invalid(`${at} parent`);
+    if (!nodes.some(node => node.kind === 'subsystem') && nodes.length) invalid(`${at} components without Subsystem`);
     return data as unknown as SubsystemDiscoveryResult;
 }
 function candidateIndex(context: SynthesisStageContext): Set<string> {
@@ -345,7 +374,17 @@ export function parseSynthesisStageResult(input: unknown, request: SynthesisStag
         strings(seen, 'challenge source keys'); strings(output, 'challenge output keys');
         if (seen.length !== source.size) invalid('incomplete challenge coverage');
     } else if (request.stage === 'subsystem-discovery') {
-        subtree(data, request.context.subjectSystemKey!, allowed, 'result');
+        const tree = subtree(data, request.context.subjectSystemKey!, allowed, 'result');
+        const otherRefs = new Set(request.context.systems.filter(system => system.candidateKey !== tree.systemKey)
+            .flatMap(system => system.evidenceRefs));
+        const byId = new Map(request.view.items.map(item => [item.id, item]));
+        for (const node of tree.nodes) for (const ref of node.ownershipEvidenceRefs) {
+            const fact = byId.get(ref)!;
+            if (otherRefs.has(ref) && !request.context.systems.find(system => system.candidateKey === tree.systemKey)!.evidenceRefs.includes(ref))
+                invalid('ownership claims another System supporting fact');
+            if (!isProductionEvidencePath(fact.path) || fact.kind === 'topology' || fact.kind === 'configuration' ||
+                fact.kind === 'dependency') invalid('ownership requires direct production behavior');
+        }
     } else {
         if (!Array.isArray(data.findings)) invalid('findings');
         const known = candidateIndex(request.context);
@@ -422,7 +461,7 @@ export function assembleArchitectureProposal(input: ArchitectureProposalAssembly
         proposalKey: proposalKeys.get(item.candidateKey)!, kind: item.kind, name: item.name, purpose: item.purpose,
         parentProposalKey: item.kind === 'system' ? null : proposalKeys.get(item.parentCandidateKey)!,
         confidence: item.confidence, rationale: item.kind === 'system' ? item.boundaryRationale :
-            item.uncertainty.length ? item.uncertainty.join('; ') : item.purpose,
+            item.rationale,
         evidenceRefs: item.evidenceRefs, evidence: item.evidenceRefs.map(ref => packet.items.find(fact => fact.id === ref)!.path),
     }));
     return parseArchitectureProposal({ schemaVersion: 1, summary: input.summary, needsMoreEvidence: false,

@@ -6,7 +6,7 @@ import type { SynthesisCapabilities, SynthesisProvider, SynthesisStage, Synthesi
     SynthesisStageRequest } from './hierarchical-synthesis';
 
 /** Selection policy version. Increment when ranking, quotas, or scope rules change. */
-export const EVIDENCE_PLANNER_VERSION = 1;
+export const EVIDENCE_PLANNER_VERSION = 2;
 type Category = ArchitectureEvidenceItem['kind'];
 const categories: Category[] = ['topology', 'entrypoint', 'framework', 'dependency', 'configuration', 'semantic'];
 const globalLimits: Record<Category, number> = {
@@ -17,7 +17,7 @@ const focusedLimits: Record<Category, number> = {
 };
 
 export interface EvidencePlan {
-    plannerVersion: 1;
+    plannerVersion: 2;
     /** Selection identity includes scope, capability, policy version, and selected whole facts. */
     planId: string;
     request: SynthesisStageRequest;
@@ -89,6 +89,11 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
     if ([...refs].some(ref => !physical(byId.get(ref)!))) throw new Error('Evidence planner candidate scope references project declarations');
     const related = [...refs].map(ref => byId.get(ref)!).filter(Boolean);
     const candidateGroups = new Set(related.map(item => group(item.path)));
+    const otherSystemRefs = new Set(stage === 'subsystem-discovery' ? context.systems
+        .filter(system => system.candidateKey !== context.subjectSystemKey).flatMap(system => system.evidenceRefs) : []);
+    const otherGroups = new Set([...otherSystemRefs].map(ref => group(byId.get(ref)!.path)));
+    const ownGroups = new Set([...candidateGroups].filter(value => !otherGroups.has(value)));
+    const sharedGroups = new Set([...candidateGroups].filter(value => otherGroups.has(value)));
     const linkedGroups = new Set(candidateGroups);
     if (stage === 'system-challenge') {
         for (const item of packet.items) if (item.kind === 'dependency' &&
@@ -102,6 +107,14 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
         if (stage === 'system-challenge') return refs.has(item.id) ||
             item.kind === 'topology' && item.scope === 'workspace' || linkedGroups.has(group(item.path)) ||
             item.kind === 'dependency' && linkedGroups.has(group(item.targetPath));
+        if (stage === 'subsystem-discovery') {
+            if (refs.has(item.id)) return true;
+            if (otherSystemRefs.has(item.id)) return false;
+            if (ownGroups.has(group(item.path))) return true;
+            if (sharedGroups.has(group(item.path)) && ['semantic', 'framework', 'entrypoint'].includes(item.kind)) return true;
+            return item.kind === 'dependency' &&
+                (ownGroups.has(group(item.path)) || ownGroups.has(group(item.targetPath)));
+        }
         if (refs.has(item.id)) return true;
         return related.some(seed => sameArea(item.path, seed.path) ||
             item.kind === 'dependency' && (sameArea(item.targetPath, seed.path) ||
@@ -143,6 +156,9 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
             const first = ordered(candidate.evidenceRefs.map(ref => byId.get(ref)!).filter(Boolean))[0];
             if (first) mandatory.push(first);
         }
+    } else if (stage === 'subsystem-discovery') {
+        // Every cited System fact must remain visible in the focused view; budget failure is explicit.
+        mandatory.push(...ordered(related));
     } else if (refs.size) {
         mandatory.push(...ordered([...refs].map(ref => byId.get(ref)!).filter(Boolean)).slice(0, 1));
     }
@@ -161,6 +177,7 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
         group(item.path) !== group(item.targetPath) &&
         (candidateGroups.has(group(item.path)) || candidateGroups.has(group(item.targetPath)));
     const priority = (item: ArchitectureEvidenceItem) => (refs.has(item.id) ? 1000 : 0) + rank(item) +
+        (stage === 'subsystem-discovery' && ownGroups.has(group(item.path)) ? 40 : 0) +
         (stage === 'system-challenge' && crossCandidate(item) ? 100 : 0) +
         (stage === 'reconciliation' && item.kind === 'dependency' && group(item.path) !== group(item.targetPath) ? 25 : 0);
     const stageCategories: Category[] = stage === 'system-challenge'
@@ -196,6 +213,7 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
     });
     if (refs.size) selectionReasons.push(`candidate scope: ${refs.size} parent evidence refs`);
     if (stage === 'system-challenge') selectionReasons.push('cross-candidate dependencies, entrypoints, framework ownership and production counter-signals');
+    if (stage === 'subsystem-discovery') selectionReasons.push('subject supporting facts, likely owned package behavior and cross-boundary dependency neighbors; ownership remains proposed');
     return { plannerVersion: EVIDENCE_PLANNER_VERSION,
         planId: digest([EVIDENCE_PLANNER_VERSION, stage, SYNTHESIS_STAGE_VERSION, packet.inputFingerprint,
             context, capability, request.view.viewId]), request, includedEvidenceRefs, omittedEvidenceRefs,

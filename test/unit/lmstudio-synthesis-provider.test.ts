@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import test from 'node:test';
-import type { ArchitectureEvidencePacket, ArchitectureProposal } from '../../packages/software-map/lib/index.js';
-import { DEFAULT_SYNTHESIS_TIMEOUT_MS, LmStudioSynthesisProvider, normalizeSynthesisEndpoint, preferredSynthesisModel } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
+import { createArchitectureEvidenceView } from '../../packages/software-map/lib/index.js';
+import type { ArchitectureEvidencePacket, ArchitectureProposal, SynthesisStageRequest } from '../../packages/software-map/lib/index.js';
+import { DEFAULT_SYNTHESIS_TIMEOUT_MS, LmStudioSynthesisProvider, normalizeSynthesisEndpoint, preferredSynthesisModel,
+  SUBSYSTEM_DISCOVERY_INSTRUCTION } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
 
 const modelId = 'publisher/Qwen3-Coder-30B-A3B-Instruct-GGUF';
 const secret = 'PROJECT_SECRET_FRAMEWORK_EVIDENCE';
@@ -47,6 +49,34 @@ async function configured(endpoint: string, options: { token?: string; timeoutMs
   await provider.probe();
   return provider;
 }
+
+test('local adapter runs one structured per-System call and declares serial generation', async () => {
+  const server = await mockServer((request, response) => {
+    if (request.path === '/v1/models') return normalReply(request, response);
+    if (request.body.response_format.json_schema.name === 'readiness') return json(response, completion('{"ready":true}'));
+    const sent = JSON.parse(request.body.messages[1].content) as SynthesisStageRequest;
+    json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 1, stage: 'subsystem-discovery',
+      parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId, systemKey: sent.context.subjectSystemKey,
+      subdivisionAssessment: { rationale: 'One responsibility; no useful split', confidence: 0.4,
+        uncertainty: ['Limited implementation'] }, nodes: [] })));
+  });
+  try {
+    const provider = new LmStudioSynthesisProvider({ endpoint: server.endpoint, contextWindowTokens: 8192 });
+    await provider.discoverModels(); provider.selectModel(modelId); await provider.probe();
+    assert.equal((await provider.capabilities()).maxConcurrentGenerations, 1);
+    const request: SynthesisStageRequest = { schemaVersion: 1, stage: 'subsystem-discovery', stageVersion: 1,
+      parentPacketFingerprint: packet.inputFingerprint, view: createArchitectureEvidenceView(packet, ['framework:1']),
+      context: { systems: [{ candidateKey: 'candidate:app', kind: 'system', name: 'App', purpose: 'Serve',
+        boundaryRationale: 'Registered service', confidence: 0.8, uncertainty: [], evidenceRefs: ['framework:1'] }],
+        subjectSystemKey: 'candidate:app', subtrees: [], targetCandidateKeys: [] } };
+    const result = await provider.runStage(request) as { systemKey: string; nodes: unknown[] };
+    assert.equal(result.systemKey, 'candidate:app'); assert.deepEqual(result.nodes, []);
+    assert.equal(server.requests.at(-1)!.body.response_format.json_schema.name, 'subsystem_discovery');
+    assert.match(server.requests.at(-1)!.body.messages[0].content, /may span several packages/);
+    assert.match(SUBSYSTEM_DISCOVERY_INSTRUCTION, /one package may contain several Components/i);
+    assert.deepEqual(server.requests.slice(1, 3).map(r => r.body.response_format.json_schema.name), ['readiness', 'readiness']);
+  } finally { await server.close(); }
+});
 
 test('discovery -> synthetic probe -> synthetic warm -> compact facts; refs resolve against exact packet', async () => {
   const server = await mockServer(normalReply);

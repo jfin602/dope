@@ -18,6 +18,8 @@ Return only candidate Systems. Do not infer or emit Subsystems or Components, an
 export const SYSTEM_CHALLENGE_INSTRUCTION = `Independently challenge the supplied first-pass System candidates using their cited facts and the bounded deterministic counter and cross-boundary evidence view. Produce an explicit disposition for every input candidate. A System owns a major independent responsibility with enough behavior for lower-level structure; a package, Browser or Electron application shell, transport/runtime variant, persistence mechanism, framework integration, or UI surface alone does not establish one.
 For each candidate or candidate group choose exactly one action: keep one candidate with its existing temporary key; merge two or more candidates into one corrected candidate with a new temporary key; split one candidate into two or more corrected candidates with new temporary keys; or reject one candidate with no output System. No candidate may appear in more than one decision. For every decision explain why the boundary holds or changes and cite evidenceRefs from this view. Every resulting System must cite directly relevant source-backed production behavior; test/example/generated facts alone are insufficient. Keep candidate keys temporary; never use canonical architecture IDs.
 Actively test whether each candidate owns an independent responsibility, whether candidates jointly implement one responsibility, whether a broad candidate hides separate responsibilities, and whether dependency direction, entrypoints, framework registrations, ownership or counter-evidence undermine the initial boundaries. Do not assume the first pass is correct. Do not force a target System count. Use only supplied facts; do not invent evidence, access files, or use tools. Return only strict JSON for the system-challenge stage with decisions, supplied stage/version, parentPacketFingerprint and viewId. Do not emit Subsystems, Components or a final architecture proposal.`;
+export const SUBSYSTEM_DISCOVERY_INSTRUCTION = `Discover coherent Subsystems and Components only inside the challenged System named by context.subjectSystemKey. This is one bounded per-System pass. The view carries whole deterministic facts with original parent-packet IDs; the System's cited facts and boundary neighbors are proposal context, not ownership truth.
+A Subsystem has a distinct responsibility and may span several packages. A directory or package alone is not a Subsystem. A Component is a cohesive implementation unit under one Subsystem, not every file, class or function. One package may contain several Components. Do not force a count. If evidence does not support useful subdivision, return zero nodes and explain that explicitly in subdivisionAssessment with confidence and uncertainty. Otherwise, each Subsystem needs temporary candidateKey, parentCandidateKey equal to the subject System, name, purpose, rationale, siblingDistinction, confidence, uncertainty, directly relevant evidenceRefs and ownershipEvidenceRefs for direct production behavior. Each Component needs the same fields and a parentCandidateKey naming a Subsystem from this output. ownershipEvidenceRefs must be a subset of evidenceRefs. Distinguish siblings by responsibility, not folder name. Never claim another System's boundary, fabricate refs, create canonical IDs, or emit a final ArchitectureProposal. Return only strict subsystem-discovery JSON with supplied stage/version, parentPacketFingerprint, viewId, systemKey, nodes and subdivisionAssessment.`;
 
 export function normalizeSynthesisEndpoint(value = DEFAULT_ENDPOINT): string {
     let url: URL;
@@ -108,14 +110,16 @@ export class LmStudioSynthesisProvider {
         if (!this.contextWindowTokens) throw new Error('Synthesis context capacity must be configured');
         return { modelLabel: model, contextWindowTokens: this.contextWindowTokens,
             maxInputTokens: this.contextWindowTokens, reservedInstructionTokens: 2048,
-            reservedOutputTokens: 4096, reservedOverheadTokens: 1024, tokenEstimate: 'conservative' };
+            reservedOutputTokens: 4096, reservedOverheadTokens: 1024, tokenEstimate: 'conservative',
+            maxConcurrentGenerations: 1 };
     }
 
     /** Conservative fallback for the local adapter; a provider tokenizer can replace this. */
     async estimateTokens(input: string): Promise<number> { return new TextEncoder().encode(input).length; }
 
     async runStage(request: SynthesisStageRequest): Promise<unknown> {
-        if (request.stage !== 'system-discovery' && request.stage !== 'system-challenge') throw new Error('Unsupported synthesis stage');
+        if (request.stage !== 'system-discovery' && request.stage !== 'system-challenge' &&
+            request.stage !== 'subsystem-discovery') throw new Error('Unsupported synthesis stage');
         const model = this.requireModel();
         if (!this.probed) throw new Error('Synthesis capability probe required');
         const capability = await this.capabilities();
@@ -126,13 +130,13 @@ export class LmStudioSynthesisProvider {
         if (generation !== this.generation || model !== this.modelId || !this.probed)
             throw new Error('Synthesis connection changed before stage submission');
         try {
-            const challenge = request.stage === 'system-challenge';
+            const stage = request.stage;
             const response = await this.chat(model, synthesisStageResultSchemas[request.stage],
-                challenge ? 'system_challenge' : 'system_discovery',
-                challenge ? SYSTEM_CHALLENGE_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION, input);
+                stage.replaceAll('-', '_'), stage === 'system-challenge' ? SYSTEM_CHALLENGE_INSTRUCTION :
+                    stage === 'subsystem-discovery' ? SUBSYSTEM_DISCOVERY_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION, input);
             if (generation !== this.generation || model !== this.modelId) throw new Error('Synthesis connection changed');
             try { return JSON.parse(this.content(response)); }
-            catch (error) { if (error instanceof SyntaxError) throw new Error(`Invalid ${challenge ? 'System Challenge' : 'System Discovery'} JSON`); throw error; }
+            catch (error) { if (error instanceof SyntaxError) throw new Error(`Invalid ${stage} JSON`); throw error; }
         } catch (error) {
             this.invalidateWarmState();
             throw error;
