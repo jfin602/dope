@@ -13,13 +13,13 @@ Qualify the exact P3 candidate through one controlled Local run and one controll
 
 PREFLIGHT
 
-Read BOOT/AGENTS, ADR 0004 and ADR 0009-0013, current architecture/product/roadmap/storage authority, predecessor `c4-smap-hierarchical-synthesis` closeout + P8 evidence, this correction assessment/plan/README, and exact P1-P3 prompts/results/source.
+Read BOOT/AGENTS, ADR 0004 and ADR 0009-0013, current architecture/product/roadmap/storage authority, hierarchical P1-P7 implementation history plus the unexecuted predecessor P8 prompt as the approved benchmark specification, this correction assessment/plan/README, and exact P1-P3 prompts/results/source. Do not expect predecessor P8 evidence or P9 closeout.
 
 Require:
 - successful exact P3 predecessor;
 - package exactly `0.4.6`;
 - clean intended Dope Git state;
-- exact clean Adaptive SEO benchmark root and pinned SHA from predecessor P8 evidence;
+- exact Adaptive SEO benchmark root `~/dev/adaptive-seo-dope-p8` and pinned SHA `0b26a25107be7d8dfb2210bc7258ccac8603197e` from the predecessor P8 benchmark specification;
 - benchmark fetch enabled and push disabled;
 - no live customer credentials in benchmark/runtime;
 - working Local LM Studio/Qwen qualification configuration;
@@ -27,7 +27,7 @@ Require:
 
 Do not print, persist, screenshot in readable form, or record the Gemini key in evidence.
 
-If the predecessor did not leave an exact usable pinned benchmark identity, record that prerequisite gap and stop rather than silently substituting a different repository.
+If that exact benchmark clone is missing, dirty in an unrecoverable way, points at a different repository/SHA, or has push enabled, record the specific prerequisite gap and stop rather than silently substituting another repository. Missing predecessor P8 evidence is expected and is not itself a blocker.
 
 BASELINE / COMPARISON CONTROL
 
