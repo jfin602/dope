@@ -31,9 +31,11 @@ function sanitized(error: unknown, aborted: boolean): Error {
         (error as { name?: unknown } | null)?.name === 'TimeoutError')
         return new Error('Gemini synthesis cancelled or timed out');
     const status = (error as { status?: unknown } | null)?.status;
+    if (error instanceof Error && ['Invalid model capacity', 'Invalid readiness response'].includes(error.message)) return error;
     if (status === 401 || status === 403) return new Error(`Gemini authentication failed (HTTP ${status})`);
     if (status === 429) return new Error('Gemini quota or rate limit exceeded (HTTP 429)');
     if (typeof status === 'number' && status >= 500) return new Error(`Gemini upstream service failed (HTTP ${status})`);
+    if (typeof status === 'number' && status >= 400) return new Error(`Gemini request rejected (HTTP ${status})`);
     return new Error('Gemini synthesis request failed');
 }
 
@@ -96,7 +98,9 @@ export class GeminiSynthesisProvider {
                     responseJsonSchema: { type: 'object', properties: { ready: { type: 'boolean' } },
                         required: ['ready'], additionalProperties: false }, maxOutputTokens: 16,
                     abortSignal: AbortSignal.timeout(this.timeoutMs) } });
-            if (JSON.parse(response.text ?? '')?.ready !== true) throw new Error('Invalid readiness response');
+            let ready: unknown;
+            try { ready = JSON.parse(response.text ?? '')?.ready; } catch { throw new Error('Invalid readiness response'); }
+            if (ready !== true) throw new Error('Invalid readiness response');
         } catch (error) { throw sanitized(error, false); }
     }
 

@@ -148,7 +148,7 @@ test('Gemini configuration, auth, quota, upstream and arbitrary errors never exp
   assert.throws(() => new GeminiSynthesisProvider({ apiKey: '' }), /Invalid Gemini API key/);
   assert.throws(() => new GeminiSynthesisProvider({ apiKey: `${key}\n` }), /Invalid Gemini API key/);
   assert.throws(() => new GeminiSynthesisProvider({ apiKey: key, timeoutMs: 0 }), /Invalid Gemini synthesis timeout/);
-  for (const [status, message] of [[401, 'authentication'], [403, 'authentication'], [429, 'quota'], [503, 'upstream']] as const) {
+  for (const [status, message] of [[400, 'HTTP 400'], [401, 'authentication'], [403, 'authentication'], [429, 'quota'], [503, 'upstream']] as const) {
     const provider = await prepared({ apiKey: key, fetch: async () => json({ error: { code: status,
       message: `${key} rejected` } }, status) });
     await assert.rejects(provider.capabilities(), error => {
