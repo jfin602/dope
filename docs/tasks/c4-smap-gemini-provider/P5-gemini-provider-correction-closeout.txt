@@ -13,7 +13,7 @@ Perform an evidence-only closeout of `c4-smap-gemini-provider` using the exact P
 
 PREFLIGHT
 
-Read BOOT/AGENTS, ADR 0004 and ADR 0009-0013, current architecture/product/roadmap/storage authority, predecessor hierarchical closeout/evidence, this correction assessment/plan/README, every P1-P4 prompt/result and P4 evidence.
+Read BOOT/AGENTS, ADR 0004 and ADR 0009-0013, current architecture/product/roadmap/storage authority, hierarchical P1-P7 implementation history and truthful superseded/unexecuted P8/P9 disposition, this correction assessment/plan/README, every P1-P4 prompt/result and P4 evidence.
 
 Require exact P4 candidate identity and package `0.4.6`.
 
