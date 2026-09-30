@@ -101,3 +101,17 @@ test('planner never reads canonical declarations into physical evidence', async 
   await assert.rejects(planArchitectureEvidence(withDeclaration, 'subsystem-discovery',
     context([{ ...system, evidenceRefs: ['declaration'] }], system.candidateKey), capability(1100), counter), /declarations/);
 });
+
+test('root manifest System scope includes production source behavior for Subsystem discovery', async () => {
+  const scoped: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'root-manifest', items: [
+    item('root', 'entrypoint', 'package.json'),
+    ...Array.from({ length: 6 }, (_, i) => item(`client-${i}`, 'semantic', `src/client/app/file-${i}.ts`)),
+    item('worker', 'semantic', 'src/server/worker.ts'), item('test', 'semantic', 'test/main.test.ts'),
+  ] };
+  const parent = { ...system, evidenceRefs: ['root'] };
+  const plan = await planArchitectureEvidence(scoped, 'subsystem-discovery', context([parent], parent.candidateKey),
+    capability(450), counter);
+  assert.ok(plan.includedEvidenceRefs.includes('client-0'));
+  assert.ok(plan.includedEvidenceRefs.includes('worker'));
+  assert.ok(!plan.includedEvidenceRefs.includes('test'));
+});

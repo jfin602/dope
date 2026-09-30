@@ -46,6 +46,8 @@ test('deterministic audit catches cross-System duplicate ownership, overlapping 
   assert.ok(findings.some(f => f.code === 'cross-system-dependency'));
   assert.ok(detectReconciliationConflicts(packet, systems, [tree('candidate:a', 'b'), tree('candidate:b', 'b')])
     .some(f => f.code === 'outside-system'));
+  assert.ok(!detectReconciliationConflicts(packet, [system('root', 'top')], [tree('candidate:root', 'a')])
+    .some(f => f.code === 'outside-system'));
   assert.ok(detectReconciliationConflicts(packet, [systems[0], { ...systems[1], responsibility: systems[0].responsibility }],
     [tree('candidate:a', 'a'), tree('candidate:b', 'b')]).some(f => f.code === 'duplicate-responsibility'));
   assert.throws(() => detectReconciliationConflicts(packet, systems, [trees[0]]), /Missing/);

@@ -120,7 +120,9 @@ export function detectReconciliationConflicts(packet: ArchitectureEvidencePacket
             }
         }
         const own = systems.find(system => system.candidateKey === systemKey)!;
-        const ownAreas = new Set(own.evidenceRefs.map(ref => refs.get(ref)).filter(Boolean).map(item => area(item!.path)));
+        // A root manifest locates the repository, not a System's exclusive source area.
+        const ownAreas = new Set(own.evidenceRefs.map(ref => refs.get(ref)).filter(item => item && item.path !== 'package.json')
+            .map(item => area(item!.path)));
         const nodeAreas = node.ownershipEvidenceRefs.map(ref => refs.get(ref)).filter(Boolean).map(item => area(item!.path));
         if (ownAreas.size && nodeAreas.length && nodeAreas.every(group => !ownAreas.has(group)) &&
             !node.evidenceRefs.some(ref => own.evidenceRefs.includes(ref)))

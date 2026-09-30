@@ -347,11 +347,13 @@ test('Gemini key survives backend restart in the machine credential store, outsi
 
 test('Gemini stage exposes only fixed safe failure diagnostics', async () => {
   const root = await fixture();
-  const provider = { ...fakeProvider(() => { throw new Error('Gemini request rejected (HTTP 400)'); }), kind: 'gemini' as const };
+  const failures = ['Gemini request rejected (HTTP 400)', 'System Discovery produced no Systems to challenge'];
+  const provider = { ...fakeProvider(() => { throw new Error(failures.shift()); }), kind: 'gemini' as const };
   const service = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), provider);
   try {
     const handle = await attach(service, root);
     await assert.rejects(service.startInitialization(handle), /Gemini analysis failed: Gemini request rejected \(HTTP 400\)/);
+    await assert.rejects(service.startInitialization(handle), /Gemini analysis failed: System Discovery produced no Systems to challenge/);
     assert.equal((await readdir(root)).includes('.dope'), false);
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });

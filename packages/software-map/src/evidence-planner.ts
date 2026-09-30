@@ -43,7 +43,8 @@ const nonProduction = (path: string): boolean => !isProductionEvidencePath(path)
 const physical = (item: ArchitectureEvidenceItem): boolean => !item.path.startsWith('.dope/');
 const group = (path: string): string => {
     const parts = path.split('/');
-    return parts[0] === 'packages' || parts[0] === 'apps' ? parts.slice(0, 2).join('/') : parts[0];
+    return parts[0] === 'packages' || parts[0] === 'apps' ? parts.slice(0, 2).join('/') :
+        parts[0] === 'src' ? parts.slice(0, 3).join('/') : parts[0];
 };
 const sameArea = (a: string, b: string): boolean => a === b || group(a) === group(b);
 const rank = (item: ArchitectureEvidenceItem): number => {
@@ -91,6 +92,8 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
     const refs = scopeRefs(stage, context);
     if ([...refs].some(ref => !physical(byId.get(ref)!))) throw new Error('Evidence planner candidate scope references project declarations');
     const related = [...refs].map(ref => byId.get(ref)!).filter(Boolean);
+    const rootManifestScope = stage === 'subsystem-discovery' &&
+        related.some(item => item.kind === 'entrypoint' && item.path === 'package.json');
     const candidateGroups = new Set(related.map(item => group(item.path)));
     const otherSystemRefs = new Set(stage === 'subsystem-discovery' ? context.systems
         .filter(system => system.candidateKey !== context.subjectSystemKey).flatMap(system => system.evidenceRefs) : []);
@@ -113,6 +116,7 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
         if (stage === 'subsystem-discovery') {
             if (refs.has(item.id)) return true;
             if (otherSystemRefs.has(item.id)) return false;
+            if (rootManifestScope && !nonProduction(item.path)) return true;
             if (ownGroups.has(group(item.path))) return true;
             if (sharedGroups.has(group(item.path)) && ['semantic', 'framework', 'entrypoint'].includes(item.kind)) return true;
             return item.kind === 'dependency' &&
@@ -184,17 +188,29 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
         (stage === 'subsystem-discovery' && ownGroups.has(group(item.path)) ? 40 : 0) +
         (stage === 'system-challenge' && crossCandidate(item) ? 100 : 0) +
         (stage === 'reconciliation' && item.kind === 'dependency' && group(item.path) !== group(item.targetPath) ? 25 : 0);
-    const stageCategories: Category[] = stage === 'system-challenge'
+    const stageCategories: Category[] = stage === 'subsystem-discovery'
+        ? ['semantic', 'framework', 'dependency', 'entrypoint', 'topology', 'configuration'] : stage === 'system-challenge'
         ? ['dependency', 'entrypoint', 'framework', 'semantic', 'topology', 'configuration'] : stage === 'reconciliation'
         ? ['dependency', 'entrypoint', 'framework', 'topology', 'configuration', 'semantic'] : categories;
     for (const category of stageCategories) {
         const candidates = scoped.filter(item => item.kind === category).sort((a, b) =>
             priority(b) - priority(a) || group(a.path).localeCompare(group(b.path)) || a.path.localeCompare(b.path) || a.id.localeCompare(b.id));
+        if (stage === 'subsystem-discovery') {
+            const positions = new Map<string, number>();
+            const turns = new Map(candidates.map(item => {
+                const area = group(item.path);
+                const turn = positions.get(area) ?? 0;
+                positions.set(area, turn + 1);
+                return [item.id, turn] as const;
+            }));
+            candidates.sort((a, b) => turns.get(a.id)! - turns.get(b.id)! || priority(b) - priority(a) || a.path.localeCompare(b.path));
+        }
         for (const item of candidates) {
             if (selectedSet.has(item.id) || (counts.get(category) ?? 0) >= limits[category] ||
                 stage === 'verification' && selected.length >= 24) continue;
             // Diversity prevents one package or repeated test surface from consuming a whole category.
-            if (!refs.has(item.id) && category !== 'topology' && (groupCounts.get(group(item.path)) ?? 0) >= 20) continue;
+            if (!refs.has(item.id) && category !== 'topology' &&
+                (groupCounts.get(group(item.path)) ?? 0) >= (stage === 'subsystem-discovery' ? 4 : 20)) continue;
             const next = [...selected, item.id];
             if (await estimate(next) > budget) continue;
             selected.push(item.id); selectedSet.add(item.id);
