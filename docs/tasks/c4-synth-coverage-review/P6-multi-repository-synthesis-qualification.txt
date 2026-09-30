@@ -14,11 +14,11 @@ VALIDATION TIER / EXECUTION BUDGET
 
 GOAL
 
-Qualify the corrected shared synthesis pipeline across Adaptive SEO, Dope and a smaller structurally clear target, including README/document behavior, coverage/recovery, Component-descent diagnostics, complete call-attempt telemetry and <=8-minute review-ready performance, then run the consolidated expensive regression/restart/package/native gate once.
+Qualify the corrected shared synthesis pipeline across Adaptive SEO, Dope and a smaller structurally clear target, including MODULES/README/bootstrap-document behavior, coverage/recovery, Component-descent diagnostics, complete call-attempt telemetry and <=8-minute review-ready performance, then run the consolidated expensive regression/restart/package/native gate once.
 
 PREFLIGHT
 
-Read BOOT/AGENTS, ADR 0008-0014, current architecture/product/roadmap/workflow, successful P1-P5 results, P5 evidence, and this correction assessment/plan/README.
+Read BOOT/AGENTS, ADR 0008-0015, current architecture/product/roadmap/workflow, successful P1-P5 results, P5 evidence, and this correction assessment/plan/README.
 
 Require:
 - exact successful P5 predecessor;
@@ -36,7 +36,7 @@ Use pinned benchmark:
 - SHA `0b26a25107be7d8dfb2210bc7258ccac8603197e`;
 - push disabled.
 
-Repository-owned root README/current ordinary docs are allowed under ADR 0014.
+Repository-owned root `MODULES.md`, README and current ordinary docs are allowed under ADR 0014/0015 according to their documented authority levels.
 
 Independent developer architecture/reference material used for scoring remains forbidden until the generated hierarchy is frozen.
 
@@ -62,20 +62,23 @@ Its expected architecture/reference is consulted only after freeze.
 DOCUMENTATION CONTROLS
 
 Across the three targets and/or dedicated controlled variants, directly prove:
-1. useful root README is included as bounded initial orientation;
-2. missing README does not block or materially break synthesis;
-3. stale/conflicting README/docs do not become Observed physical truth;
-4. implementation absent from docs remains discoverable;
-5. historical/qualification/answer-key docs are excluded;
-6. oversized README policy is deterministic if exercised;
-7. changed README/doc context changes affected request/cache identity.
+1. root `MODULES.md` is included as the preferred Documented architecture seed when present;
+2. MODULES + README keeps README secondary;
+3. README-only continuation works after the MODULES recommendation;
+4. no-bootstrap-doc continuation works after the MODULES recommendation;
+5. stale/conflicting MODULES/README/docs do not become Observed physical truth;
+6. source-backed implementation omitted by MODULES/docs remains discoverable;
+7. historical/qualification/answer-key docs are excluded;
+8. oversized MODULES/README policy is deterministic if exercised;
+9. changed MODULES/README/doc context changes affected request/cache identity;
+10. once canonical architecture is explicitly accepted, later MODULES edits do not silently mutate it during ordinary refresh.
 
 REAL GEMINI RUNS
 
 For every controlled initial analysis:
 - use the exact selected/probed Gemini model;
 - run the same shared stage semantics;
-- record root README orientation state/size/truncation;
+- record MODULES/README bootstrap-selection state/size/truncation;
 - record documentation evidence counts/classes;
 - record deterministic packet/planner/coverage identities;
 - record every provider call attempt, including failures/retries and consumed-output state;
@@ -115,7 +118,7 @@ A target is Green only when:
 - major implemented responsibilities are represented or explicitly unresolved;
 - coverage ledger does not silently lose substantial source-backed cues;
 - recovered boundaries are source-backed;
-- documentation-only claims are not promoted to physical truth;
+- documentation-only claims, including MODULES architecture intent, are not promoted to physical truth or canonical state;
 - empty Component descent is typed/defensible;
 - technical-layer decomposition does not dominate without evidence;
 - every final evidence ref resolves correctly;
@@ -143,7 +146,7 @@ Include:
 - exact Dope candidate;
 - exact target roots/SHAs;
 - exact Gemini model;
-- README/document-input summary;
+- MODULES/README/document-input summary and post-acceptance no-silent-reimport result;
 - coverage-ledger summary;
 - complete provider-attempt telemetry;
 - stage results/recovery/descent dispositions;
@@ -175,4 +178,4 @@ Do not run the deferred Local/Gemini provider-comparison correction here.
 
 FINAL RESPONSE
 
-Report exact candidate/model/targets, documentation controls, attempt telemetry, coverage/recovery, typed Component descents, each frozen hierarchy and post-freeze architecture-quality disposition, <=8-minute results, final checks/restart/package/native status, residual gaps and readiness for P7.
+Report exact candidate/model/targets, MODULES/README/bootstrap-document controls, attempt telemetry, coverage/recovery, typed Component descents, each frozen hierarchy and post-freeze architecture-quality disposition, <=8-minute results, final checks/restart/package/native status, residual gaps and readiness for P7.
