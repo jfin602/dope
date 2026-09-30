@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: `c4-smap-synth` / `c4-architecture-discovery` is OWNER-CLOSED / NOT QUALIFIED at terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0`; `c4-smap-hierarchical-synthesis` implementation P1-P7 is complete at reachable P7 commit `66f023f717afd63433d442015b575edf049ae1b6`, while its P8/P9 qualification/closeout prompts are superseded and unexecuted under ADR 0013. Mandatory `c4-smap-gemini-provider` is now the active correction at unchanged `0.4.6`, followed by bounded `c4-smap-storage` at unchanged `0.4.6` before Phase 5; Product Phase 4 remains QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
+Current stage: `c4-smap-synth` / `c4-architecture-discovery` is OWNER-CLOSED / NOT QUALIFIED at terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0`; `c4-smap-hierarchical-synthesis` implementation P1-P7 is complete while P8/P9 are superseded and will not run; `c4-smap-gemini-provider` is OWNER-CLOSED / NOT QUALIFIED at `8ea34ae1300a387ac63aad9462ae649ac78a9605` after Gemini-only debugging exposed responsibility-decomposition defects. Mandatory `c4-synth-improvements` is now active/queued at unchanged `0.4.6`; a fresh provider-comparison correction and then `c4-smap-storage` remain required before Phase 5. Product Phase 4 remains QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -19,7 +19,9 @@ Theia
 -> Physical Map
 -> sMap initialization + architecture synthesis + developer-authority correction
 -> hierarchy-first sMap synthesis + visible progress + quality/performance qualification
--> compact shared synthesis contracts + explicit Local/Gemini providers + controlled provider comparison
+-> compact shared synthesis contracts + explicit Local/Gemini providers
+-> responsibility-oriented sMap synthesis + hierarchical review
+-> fresh Local/Gemini provider comparison
 -> enforce project-local sMap persistence
 -> Visual Software Planning
 -> AI Presence
@@ -43,7 +45,9 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Product Phase 4 — Physical Map | Dope maps Dope. Its lower-level semantic relationships, declared boundaries and evidence-backed current-state graph can be explored. |
 | Correction c4 — Architecture Discovery | Dope initializes Dope's sMap deliberately. Deterministic evidence feeds bounded LLM architecture synthesis, the developer corrects/accepts Systems/Subsystems/Components, and implementation realization/drift is visible. |
 | Correction c4-hierarchical — sMap Synthesis | Dope discovers Dope's Systems through a repository-global discovery/challenge pass, descends per System into Subsystems/Components, shows live analysis-stage progress, and qualifies architecture quality plus the <=8-minute initial-analysis objective without an eight-minute hard timeout. |
-| Correction c4-gemini — Shared sMap Provider Pipeline | Dope uses compact strict provider-independent intermediate JSON, exposes Local and Gemini as explicit user-selected synthesis paths, records comparable per-stage timing/token telemetry, and compares both providers on the same corrected pipeline before Local-specific optimization. |
+| Correction c4-gemini — Shared sMap Provider Pipeline | Owner-closed Not Qualified after Gemini-only debugging: compact contracts/provider integration landed, but responsibility decomposition remained weak and the planned full provider comparison did not run. |
+| Correction c4-synth-improvements — Responsibility-oriented Synthesis | Dope decomposes software by source-backed responsibility, challenges Subsystems before Component descent, and reviews the proposal as an indented center-editor hierarchy. |
+| Correction c4-provider-comparison — Provider Qualification | A fresh bounded Local/Gemini comparison runs only after the shared synthesis design is Green. |
 | Correction c4-storage — sMap Persistence | Dope proves that durable Software Map state travels with the repository under project-local `.dope/`, while machine-local state remains disposable or preference-only. |
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
@@ -395,7 +399,7 @@ At unchanged `0.4.6`, hierarchy-first bounded synthesis produces materially cred
 
 ## Mandatory pre-Phase-5 correction — `c4-smap-gemini-provider`
 
-Status: **QUEUED / APPROVED — execute after `c4-smap-hierarchical-synthesis` closes truthfully**
+Status: **OWNER-CLOSED / NOT QUALIFIED — terminal evidence source `8ea34ae1300a387ac63aad9462ae649ac78a9605`; planned full Local/Gemini comparison and formal P5 audit not executed**
 
 Version semantics: unchanged package version `0.4.6`. This is a bounded Phase 4 correction. It does not reopen or relabel Product Phase 4 qualification and must not advance Phase 5 versioning.
 
@@ -454,13 +458,46 @@ These are diagnostic evidence categories, not excuses to weaken architecture-qua
 
 Exit condition:
 
-At unchanged `0.4.6`, the hierarchy-first sMap pipeline exchanges compact strict provider-neutral intermediate JSON, explicit Local and Gemini 3.8 Flash paths are usable without secret leakage or silent fallback, comparable timing/token telemetry exists for every stage, and a controlled same-pipeline comparison establishes actionable evidence for later Local optimization. Only then may `c4-smap-storage` execute.
+Owner closeout disposition: provider integration, compact contracts and Gemini debugging evidence are retained, but architecture quality is Not Green. The generated Adaptive SEO proposal decomposed primarily into Backend/Frontend technical tiers rather than stronger cross-layer responsibilities. The planned full Local/Gemini comparison is intentionally deferred until the shared synthesis algorithm is corrected. Do not reopen this closed correction.
+
+## Mandatory pre-Phase-5 correction — `c4-synth-improvements`
+
+Status: **APPROVED / QUEUED at unchanged `0.4.6`**
+
+Activation source: `8ea34ae1300a387ac63aad9462ae649ac78a9605`.
+
+Authority: ADR 0014.
+
+Purpose:
+Correct the shared synthesis algorithm so Systems/Subsystems/Components represent source-backed software responsibilities rather than repository layout, frontend/backend tiers or framework/runtime structure.
+
+Required scope:
+- deterministic responsibility-oriented planning signals with provenance;
+- stronger direct production-behavior support for System responsibility;
+- explicit one-System umbrella-collapse challenge without forcing multiple Systems;
+- separate Subsystem Discovery, Subsystem Challenge and Component Discovery;
+- responsibility-aware reconciliation/verification;
+- center-editor indented hierarchy review with focused node details/evidence;
+- real Gemini requalification on the pinned Adaptive SEO benchmark;
+- <=8-minute objective retained;
+- no benchmark-specific answer vocabulary and no Local-specific optimization.
+
+Green routes to a fresh bounded Local/Gemini provider-comparison correction. The old `c4-smap-gemini-provider` remains closed.
+
+## Mandatory pre-Phase-5 correction — `c4-smap-provider-comparison`
+
+Status: **QUEUED / NOT YET PLANNED — execute only after `c4-synth-improvements` closes Green**
+
+Purpose:
+Run the controlled Local/Gemini comparison against the corrected shared synthesis pipeline so remaining model/runtime differences can be measured without contaminating architecture semantics.
+
+This is a fresh correction. It must not rewrite or reopen the closed `c4-smap-gemini-provider` history.
 
 ## Mandatory pre-Phase-5 correction — `c4-smap-storage`
 
-Status: **QUEUED — execute only after `c4-smap-hierarchical-synthesis` closes Green**
+Status: **QUEUED — execute only after `c4-synth-improvements` and fresh `c4-smap-provider-comparison` close Green**
 
-Version semantics: bounded correction at unchanged package version `0.4.6`. It executes only after `c4-smap-gemini-provider` closes Green.
+Version semantics: bounded correction at unchanged package version `0.4.6`. The closed Not Green `c4-smap-gemini-provider` is historical evidence and is not reopened.
 
 Purpose:
 Make the Software Map portable with the project by enforcing project-local persistence as an architectural invariant.
@@ -477,7 +514,7 @@ Required contract:
 
 Qualification must include a permanent regression guard for the persistence-boundary defect class and controlled copy/reopen/restart evidence showing that durable sMap state follows repository + `.dope/` without reliance on hidden machine-local state.
 
-The owner closed `c4-smap-synth` Not Qualified after P7 architecture-quality evidence; its P8 success closeout was not used to advance Phase 5. `c4-smap-hierarchical-synthesis` closes first, then mandatory `c4-smap-gemini-provider` corrects and compares the shared provider pipeline, followed by `c4-smap-storage`, before any Phase 5 activation.
+The owner closed `c4-smap-synth` Not Qualified after P7 architecture-quality evidence. Hierarchical P8/P9 will not run. `c4-smap-gemini-provider` is also owner-closed Not Qualified after Gemini-only debugging. Mandatory `c4-synth-improvements` must establish responsibility-oriented architecture quality, followed by a fresh provider comparison and then `c4-smap-storage`, before any Phase 5 activation.
 
 Exit condition:
 
