@@ -2,6 +2,7 @@ import type { AnalysisStatus, ArchitectureViolation, Evidence, GraphNode, GraphR
 import type { ArchitectureDeclaration } from './contracts';
 import type { ArchitectureEvidencePacket, ArchitectureProposal, ProposedArchitectureKind } from './synthesis';
 import type { AnalysisProgressEvent, SynthesisCallAttempt } from './hierarchical-synthesis';
+import type { TargetedRefinementInput, TargetedRefinementResult } from './refinement';
 
 export const softwareMapServicePath = '/services/dope/software-map';
 export const SoftwareMapService = Symbol('SoftwareMapService');
@@ -73,7 +74,9 @@ export interface SoftwareMapService {
     initializationStatus(projectHandle: string): Promise<SoftwareMapInitializationStatus>;
     startInitialization(projectHandle: string): Promise<ArchitectureReview>;
     review(projectHandle: string): Promise<ArchitectureReview | undefined>;
+    searchDeeper(projectHandle: string, input: TargetedRefinementInput): Promise<TargetedRefinementResult>;
     resolveReviewSource(projectHandle: string, reviewId: string, evidenceRef: string): Promise<SoftwareMapSourceLocation | undefined>;
+    resolveReviewDocument(projectHandle: string, reviewId: string, path: string): Promise<SoftwareMapSourceLocation | undefined>;
     cancelInitialization(projectHandle: string): Promise<void>;
     acceptReview(projectHandle: string, reviewId: string, draft: ArchitectureReviewNode[]): Promise<SoftwareMapStatus>;
     acceptExisting(projectHandle: string, expectedFingerprint: string): Promise<SoftwareMapStatus>;

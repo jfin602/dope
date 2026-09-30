@@ -376,9 +376,91 @@ test('review has one controller, center hierarchy, focused detail and explicit a
   assert.match(editor, /this\.renderDetail\(selected, detail\)/);
   assert.match(editor, /reviewSource\(ref\)/);
   assert.match(editor, /Accept architecture/);
+  assert.match(editor, /node\.kind !== 'component'[\s\S]*Search Deeper/);
+  for (const label of ['Observed', 'Documented', 'Inferred', 'Accept refinement', 'Reject refinement']) assert.match(editor, new RegExp(label));
+  assert.match(editor, /reviewDocument\(path\)/);
   assert.match(editor, /Advanced: canonical ID and implementation roots/);
   assert.match(css, /dope-smap-review-layout/);
   assert.match(css, /var\(--theia-list-activeSelectionBackground\)/);
+});
+
+test('Search Deeper previews current edits, preserves siblings, rejects stale and switches roots safely', async () => {
+  const c = connection();
+  const pending = deferred();
+  let sent: any;
+  c.searchDeeper = (_handle: string, input: any) => { sent = input; return pending.promise; };
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attached = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attached;
+  controller.review = { reviewId: 'r', packet: { items: [] }, proposal: { nodes: [] }, draft: [] };
+  controller.flow = 'review'; controller.initialization = { state: 'review_required', declarationFingerprint: 'absent', declarationPresent: false };
+  controller.draft = [
+    { proposalKey: 'proposal:a', kind: 'system', parentProposalKey: null, id: 'a', name: 'Edited A', purpose: 'A', roots: ['src/a'] },
+    { proposalKey: 'proposal:b', kind: 'system', parentProposalKey: null, id: 'b', name: 'B', purpose: 'B', roots: ['src/b'] },
+    { proposalKey: 'proposal:s', kind: 'subsystem', parentProposalKey: 'proposal:a', id: 's', name: 'Manual S', purpose: 'S', roots: [] },
+    { proposalKey: 'draft:1', kind: 'component', parentProposalKey: 'proposal:s', id: 'c', name: 'Manual C', purpose: 'C', roots: [] },
+  ];
+  const original = structuredClone(controller.draft);
+  const search = controller.searchDeeper('proposal:a');
+  assert.deepEqual(sent.branch.map((node: any) => node.name), ['Edited A', 'Manual S', 'Manual C']);
+  const proposal = { nodes: [
+    { proposalKey: 'proposal:new-a', kind: 'system', parentProposalKey: null, name: 'Refined A', purpose: 'A', evidenceRefs: [] },
+    { proposalKey: 'proposal:new-s', kind: 'subsystem', parentProposalKey: 'proposal:new-a', name: 'Refined S', purpose: 'S', evidenceRefs: [] },
+  ] };
+  pending.resolve({ ...sent, parentPacketFingerprint: 'packet', proposal }); await search;
+  assert.deepEqual(controller.draft, original);
+  controller.rejectRefinement(); assert.deepEqual(controller.draft, original);
+  c.searchDeeper = (_handle: string, input: any) => Promise.resolve({ ...input, parentPacketFingerprint: 'packet', proposal });
+  await controller.searchDeeper('proposal:a'); controller.acceptRefinement();
+  assert.equal(controller.draft.find((node: any) => node.proposalKey === 'proposal:b').name, 'B');
+  assert.equal(controller.draft.some((node: any) => node.name === 'Manual C'), false);
+  assert.equal(controller.draft.some((node: any) => node.name === 'Refined S'), true);
+  assert.ok(controller.refinedEvidence.size === 2);
+  assert.equal(c.accepted, 0);
+  const stale = deferred(); c.searchDeeper = (_handle: string, input: any) => { sent = input; return stale.promise; };
+  const inFlight = controller.searchDeeper('proposal:b');
+  controller.draft.find((node: any) => node.proposalKey === 'proposal:b').name = 'Changed B'; controller.draftChanged();
+  stale.resolve({ ...sent, proposal }); await inFlight;
+  assert.equal(controller.refinementPreview, undefined);
+  assert.match(controller.refinementError.message, /changed/);
+  c.searchDeeper = (_handle: string, input: any) => Promise.resolve({ ...input, proposal });
+  await controller.searchDeeper('proposal:b');
+  assert.ok(controller.refinementPreview);
+  const switchedCall = deferred();
+  c.searchDeeper = (_handle: string, input: any) => { sent = input; return switchedCall.promise; };
+  const inFlightSwitch = controller.searchDeeper('proposal:b');
+  const switched = controller.attach('file:///B'); c.attachPending.resolve({ projectHandle: 'b', status: idle }); await switched;
+  switchedCall.resolve({ ...sent, proposal }); await inFlightSwitch;
+  assert.equal(controller.refinementPreview, undefined);
+  assert.equal(controller.refinementBusyKey, undefined);
+  controller.dispose();
+});
+
+test('Subsystem refinement replaces only that Subsystem inside its parent System', async () => {
+  const c = connection();
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attached = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attached;
+  controller.review = { reviewId: 'r', packet: { items: [] }, proposal: { nodes: [] }, draft: [] };
+  controller.flow = 'review';
+  controller.draft = [
+    { proposalKey: 'proposal:a', kind: 'system', parentProposalKey: null, id: 'a', name: 'A', purpose: 'A', roots: [] },
+    { proposalKey: 'proposal:b', kind: 'system', parentProposalKey: null, id: 'b', name: 'B', purpose: 'B', roots: [] },
+    { proposalKey: 'proposal:s', kind: 'subsystem', parentProposalKey: 'proposal:a', id: 's', name: 'S', purpose: 'S', roots: [] },
+    { proposalKey: 'proposal:t', kind: 'subsystem', parentProposalKey: 'proposal:a', id: 't', name: 'T', purpose: 'T', roots: [] },
+  ];
+  c.searchDeeper = (_handle: string, input: any) => Promise.resolve({ ...input, parentPacketFingerprint: 'packet', proposal: { nodes: [
+    { proposalKey: 'proposal:anchor', kind: 'system', parentProposalKey: null, name: 'A', purpose: 'A', evidenceRefs: [] },
+    { proposalKey: 'proposal:new-s1', kind: 'subsystem', parentProposalKey: 'proposal:anchor', name: 'S1', purpose: 'S1', evidenceRefs: [] },
+    { proposalKey: 'proposal:new-s2', kind: 'subsystem', parentProposalKey: 'proposal:anchor', name: 'S2', purpose: 'S2', evidenceRefs: [] },
+  ] } });
+  await controller.searchDeeper('proposal:s');
+  assert.equal(controller.draft.length, 4);
+  controller.acceptRefinement();
+  assert.equal(controller.draft.length, 5);
+  assert.deepEqual(controller.draft.filter((node: any) => node.kind === 'system').map((node: any) => node.name), ['A', 'B']);
+  assert.equal(controller.draft.find((node: any) => node.proposalKey === 'proposal:t').name, 'T');
+  assert.deepEqual(controller.draft.filter((node: any) => node.name === 'S1' || node.name === 'S2').map((node: any) => node.parentProposalKey),
+    ['proposal:a', 'proposal:a']);
+  controller.dispose();
 });
 
 test('attach reconciles analysis completed before handle was available', async () => {

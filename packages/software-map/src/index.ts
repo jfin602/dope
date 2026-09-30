@@ -10,3 +10,4 @@ export * from './system-discovery';
 export * from './system-challenge';
 export * from './system-hierarchy';
 export * from './reconciliation';
+export * from './refinement';

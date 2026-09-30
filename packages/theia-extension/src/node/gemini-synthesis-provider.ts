@@ -1,9 +1,9 @@
 import { GoogleGenAI } from '@google/genai';
-import { assertSynthesisInputBudget, synthesisStageResultSchemas, SynthesisProviderFailure } from '@dope/software-map';
-import type { SynthesisCapabilities, SynthesisStageExecution, SynthesisStageRequest } from '@dope/software-map';
+import { architectureProposalSchema, assertSynthesisInputBudget, synthesisStageResultSchemas, SynthesisProviderFailure } from '@dope/software-map';
+import type { SynthesisCapabilities, SynthesisStageExecution, SynthesisStageRequest, TargetedRefinementRequest } from '@dope/software-map';
 import { COMPONENT_DISCOVERY_INSTRUCTION, RECONCILIATION_INSTRUCTION, SUBSYSTEM_CHALLENGE_INSTRUCTION,
     SUBSYSTEM_DISCOVERY_INSTRUCTION, SYSTEM_CHALLENGE_INSTRUCTION,
-    SYSTEM_DISCOVERY_INSTRUCTION, VERIFICATION_INSTRUCTION } from './lmstudio-synthesis-provider';
+    SYSTEM_DISCOVERY_INSTRUCTION, TARGET_REFINEMENT_INSTRUCTION, VERIFICATION_INSTRUCTION } from './lmstudio-synthesis-provider';
 
 const DEFAULT_TIMEOUT_MS = 900_000;
 const schemaKeywords = new Set(['type', 'enum', 'items', 'minItems', 'maxItems', 'minimum', 'maximum',
@@ -131,19 +131,22 @@ export class GeminiSynthesisProvider {
     /** Local byte estimate avoids countTokens calls in the evidence planner's search loop. */
     async estimateTokens(input: string): Promise<number> { return Buffer.byteLength(input); }
 
-    async runStage(request: SynthesisStageRequest, signal?: AbortSignal): Promise<SynthesisStageExecution> {
+    async runRefinement(request: TargetedRefinementRequest, signal?: AbortSignal): Promise<SynthesisStageExecution> { return this.runStage(request, signal); }
+
+    async runStage(request: SynthesisStageRequest | TargetedRefinementRequest, signal?: AbortSignal): Promise<SynthesisStageExecution> {
         if (signal?.aborted) throw sanitized(undefined, true);
         const model = this.requireModel();
         const capability = await this.capabilities();
         const input = JSON.stringify(request);
         await assertSynthesisInputBudget(this, capability, input);
         const instruction = request.stage === 'system-challenge' ? SYSTEM_CHALLENGE_INSTRUCTION :
+            request.stage === 'target-refinement' ? TARGET_REFINEMENT_INSTRUCTION :
             request.stage === 'subsystem-discovery' ? SUBSYSTEM_DISCOVERY_INSTRUCTION :
             request.stage === 'subsystem-challenge' ? SUBSYSTEM_CHALLENGE_INSTRUCTION :
             request.stage === 'component-discovery' ? COMPONENT_DISCOVERY_INSTRUCTION :
             request.stage === 'reconciliation' ? RECONCILIATION_INSTRUCTION :
             request.stage === 'verification' ? VERIFICATION_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION;
-        const schema = geminiStageSchema(synthesisStageResultSchemas[request.stage]);
+        const schema = geminiStageSchema(request.stage === 'target-refinement' ? architectureProposalSchema : synthesisStageResultSchemas[request.stage]);
         const body = { model, contents: input, config: { systemInstruction: instruction,
             responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0, maxOutputTokens: 32768 } };
         const timeout = AbortSignal.timeout(this.timeoutMs);

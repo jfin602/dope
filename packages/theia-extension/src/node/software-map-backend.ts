@@ -8,10 +8,11 @@ import { readInitialization, acceptInitialization } from '@dope/code-analysis/li
 import { bootstrapDocumentPresence } from '@dope/code-analysis/lib/node/architecture-evidence';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
 import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseAnalysisProgressEvent,
-    HierarchicalSynthesisOrchestrator, SynthesisStageCache } from '@dope/software-map';
+    HierarchicalSynthesisOrchestrator, SynthesisStageCache, planTargetedRefinement, parseTargetedRefinement } from '@dope/software-map';
 import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, SoftwareMapPageRequest, GraphRelationship, SoftwareMapRelationshipRequest,
     PhysicalMapSnapshot, SoftwareMapClient, SoftwareMapService, ArchitectureEvidencePacket, ArchitectureReview, ArchitectureReviewNode,
-    ArchitectureDeclaration, SoftwareMapInitializationStatus, SynthesisProvider, SynthesisSetup, SynthesisSetupResult, AnalysisProgressEvent } from '@dope/software-map';
+    ArchitectureDeclaration, SoftwareMapInitializationStatus, SynthesisProvider, SynthesisSetup, SynthesisSetupResult, AnalysisProgressEvent,
+    TargetedRefinementInput, TargetedRefinementResult } from '@dope/software-map';
 import { LmStudioSynthesisProvider } from './lmstudio-synthesis-provider';
 import { GeminiSynthesisProvider } from './gemini-synthesis-provider';
 
@@ -285,6 +286,40 @@ export class SoftwareMapBackend implements SoftwareMapService {
         const { reviewId, packet, proposal, draft, coverageLedger, componentDescents } = this.pending;
         return structuredClone({ reviewId, packet, proposal, draft, coverageLedger, componentDescents });
     }
+    async searchDeeper(projectHandle: string, input: TargetedRefinementInput): Promise<TargetedRefinementResult> {
+        const root = this.active(projectHandle), pending = this.pending, run = this.run;
+        if (this.phase !== 'review_required' || !pending || pending.reviewId !== input.reviewId)
+            throw new Error('No matching architecture review');
+        const provider = this.provider;
+        const refine = provider?.runRefinement;
+        if (!provider || !(await this.synthesisReady(projectHandle)) || !refine)
+            throw new Error('Synthesis provider is not ready');
+        const modelLabel = (await provider.capabilities()).modelLabel;
+        const request = await planTargetedRefinement(input, pending.packet, pending.coverageLedger ?? [], provider, pending.proposal);
+        this.still(projectHandle, root, run);
+        const startedAt = new Date().toISOString(), start = performance.now();
+        let execution: Awaited<ReturnType<NonNullable<SynthesisProvider['runRefinement']>>> | undefined;
+        let result: TargetedRefinementResult | undefined;
+        let failureClass: 'invalid-stage-result' | 'provider-failure' | 'cancelled' | undefined;
+        try {
+            execution = await refine.call(provider, request);
+            this.still(projectHandle, root, run);
+            if (this.pending?.reviewId !== input.reviewId) throw new Error('Stale architecture review');
+            result = parseTargetedRefinement(execution.output, request, pending.packet);
+            return structuredClone(result);
+        } catch (error) {
+            failureClass = execution ? 'invalid-stage-result' : this.run !== run ? 'cancelled' : 'provider-failure';
+            throw provider.kind === 'gemini' && this.run === run ? geminiAnalysisError(error) : error;
+        } finally {
+            if (this.run === run) this.synthesisCache.recordTargetAttempt({ stage: 'target-refinement', subject: input.targetKey,
+                providerKind: provider.kind, modelLabel,
+                startedAt, durationMs: performance.now() - start, requestBytes: Buffer.byteLength(JSON.stringify(request)),
+                ...(execution ? { outputBytes: execution.usage.outputBytes, inputTokens: execution.usage.inputTokens,
+                    outputTokens: execution.usage.outputTokens, totalTokens: execution.usage.totalTokens } : {}),
+                tokenMeasurement: execution?.usage.tokenMeasurement ?? 'unavailable',
+                ...(failureClass ? { failureClass } : {}), consumed: !!result });
+        }
+    }
     async resolveReviewSource(projectHandle: string, reviewId: string, evidenceRef: string) {
         const root = this.active(projectHandle);
         if (!this.pending || this.pending.reviewId !== reviewId) return undefined;
@@ -297,6 +332,17 @@ export class SoftwareMapBackend implements SoftwareMapService {
         const local = relative(root, canonical);
         if (!local || local === '..' || local.startsWith(`..${sep}`)) throw new Error('Unsafe Software Map source path');
         return { uri: pathToFileURL(canonical).href, path: item.path };
+    }
+    async resolveReviewDocument(projectHandle: string, reviewId: string, path: string) {
+        const root = this.active(projectHandle);
+        if (!this.pending || this.pending.reviewId !== reviewId ||
+            !this.pending.packet.documents?.some(doc => doc.path === path)) return undefined;
+        const canonical = await realpath(join(root, projectPath(path)));
+        this.active(projectHandle);
+        if (this.pending?.reviewId !== reviewId) return undefined;
+        const local = relative(root, canonical);
+        if (!local || local === '..' || local.startsWith(`..${sep}`)) throw new Error('Unsafe Software Map document path');
+        return { uri: pathToFileURL(canonical).href, path };
     }
     async cancelInitialization(projectHandle: string): Promise<void> {
         this.active(projectHandle);

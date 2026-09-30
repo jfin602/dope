@@ -137,7 +137,8 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         else if (focusedButton) [...this.content.querySelectorAll('button')].find(button => button.textContent === focusedButton)?.focus();
     }
     private renderDetail(node: ArchitectureReviewNode, target: HTMLElement): void {
-        const proposal = this.controller.review!.proposal.nodes.find(item => item.proposalKey === node.proposalKey);
+        const proposal = this.controller.refinedEvidence.get(node.proposalKey) ??
+            this.controller.review!.proposal.nodes.find(item => item.proposalKey === node.proposalKey);
         target.append(this.element('h3', `${node.kind}: ${node.name || '(unnamed)'}`));
         const edit = (key: 'name' | 'purpose') => this.field(key === 'name' ? 'Name' : 'Purpose / responsibility', node[key], value => {
             const oldSuggestedId = key === 'name' ? this.suggestId(node.name, node) : '';
@@ -160,18 +161,52 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         target.append(this.element('p', `Implementation roots: ${node.roots.length}${node.roots.length ? ` · ${node.roots.slice(0, 3).join(', ')}${node.roots.length > 3 ? '…' : ''}` : ''}`));
         if (proposal) {
             target.append(this.element('p', `Confidence: ${proposal.confidence.toFixed(2)} · synthesis estimate`));
+            target.append(this.element('h4', 'Inferred'));
             if (proposal.rationale) target.append(this.element('p', proposal.rationale));
             if (proposal.evidence.length) {
                 const evidence = this.element('ul');
                 for (const statement of proposal.evidence) evidence.append(this.element('li', statement));
                 target.append(evidence);
             }
-            target.append(this.element('h4', 'Source-backed evidence'));
+            target.append(this.element('h4', 'Observed'));
             for (const ref of proposal.evidenceRefs) {
                 const item = this.controller.review!.packet.items.find(fact => fact.id === ref);
                 target.append(this.button(`${item?.kind ?? 'Evidence'} · ${item?.path ?? ref}`, () => void this.openSource(ref)));
             }
         } else target.append(this.element('p', 'Developer-added boundary.'));
+        const docs = this.controller.review!.packet.documents?.filter(doc =>
+            ['modules-seed', 'readme-orientation'].includes(doc.class) || node.roots.some(root => doc.path.startsWith(root.split('/').slice(0, 2).join('/')))).slice(0, 6) ?? [];
+        if (docs.length) {
+            target.append(this.element('h4', 'Documented'));
+            for (const doc of docs) target.append(this.button(`${doc.class} · ${doc.path}`, () => void this.openDocument(doc.path)));
+        }
+        if (node.kind !== 'component') {
+            const search = this.button('Search Deeper', () => void this.controller.searchDeeper(node.proposalKey));
+            search.disabled = !!this.controller.refinementBusyKey || this.controller.setupBusy;
+            target.append(search);
+            if (this.controller.refinementBusyKey === node.proposalKey) target.append(this.element('p', 'Searching this branch…'));
+            if (this.controller.refinementError?.key === node.proposalKey)
+                target.append(this.element('p', this.controller.refinementError.message));
+            const preview = this.controller.refinementPreview;
+            if (preview?.targetKey === node.proposalKey) {
+                const section = this.element('section'); section.setAttribute('aria-label', 'Search Deeper preview');
+                section.append(this.element('h4', 'Refinement preview · current draft unchanged'));
+                const before = preview.branch.map(item => `${item.kind}: ${item.name}`).join(', ');
+                const after = preview.proposal.nodes.filter(item => !(preview.targetKind === 'subsystem' && item.kind === 'system'))
+                    .map(item => `${item.kind}: ${item.name}`).join(', ');
+                section.append(this.element('p', `Current: ${before}`), this.element('p', `Proposed: ${after}`));
+                for (const proposed of preview.proposal.nodes.filter(item => !(preview.targetKind === 'subsystem' && item.kind === 'system'))) {
+                    section.append(this.element('p', `Inferred: ${proposed.rationale}`));
+                    for (const ref of proposed.evidenceRefs) {
+                        const item = this.controller.review!.packet.items.find(fact => fact.id === ref);
+                        section.append(this.button(`Observed: ${item?.path ?? ref}`, () => void this.openSource(ref)));
+                    }
+                }
+                section.append(this.button('Accept refinement', () => this.controller.acceptRefinement()),
+                    this.button('Reject refinement', () => this.controller.rejectRefinement()));
+                target.append(section);
+            }
+        }
         const advanced = this.element('details');
         advanced.append(this.element('summary', 'Advanced: canonical ID and implementation roots'),
             this.field('Canonical ID', node.id, value => { node.id = value; this.controller.draftChanged(); }),
@@ -200,6 +235,12 @@ export class SoftwareMapReviewWidget extends BaseWidget {
             const location = await this.controller.reviewSource(ref);
             if (location && !this.isDisposed) await open(this.opener, new URI(location.uri));
         } catch (error) { this.content.append(this.element('p', `Source navigation failed: ${String(error)}`)); }
+    }
+    private async openDocument(path: string): Promise<void> {
+        try {
+            const location = await this.controller.reviewDocument(path);
+            if (location && !this.isDisposed) await open(this.opener, new URI(location.uri));
+        } catch (error) { this.content.append(this.element('p', `Document navigation failed: ${String(error)}`)); }
     }
     protected override onActivateRequest(msg: Message): void { super.onActivateRequest(msg); this.node.focus(); }
     override dispose(): void { ++this.workspaceRequest; this.listener.dispose(); this.rootsListener.dispose(); super.dispose(); }

@@ -1,5 +1,5 @@
-import { assertSynthesisInputBudget, synthesisStageResultSchemas } from '@dope/software-map';
-import type { SynthesisCapabilities, SynthesisStageRequest, SynthesisStageExecution } from '@dope/software-map';
+import { architectureProposalSchema, assertSynthesisInputBudget, synthesisStageResultSchemas } from '@dope/software-map';
+import type { SynthesisCapabilities, SynthesisStageRequest, SynthesisStageExecution, TargetedRefinementRequest } from '@dope/software-map';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
@@ -17,6 +17,7 @@ export const SUBSYSTEM_CHALLENGE_INSTRUCTION = `Challenge all initial Subsystems
 export const COMPONENT_DISCOVERY_INSTRUCTION = `Discover Components only within the exact challenged context.subjectSubsystemKey under context.subjectSystemKey. Each Component cites direct ownershipEvidenceRefs within evidenceRefs. If components is empty, include exactly one disposition with kind leaf-responsibility, insufficient-evidence, responsibility-belongs-elsewhere, or no-stable-component-boundary; systemKey/subsystemKey must match the challenged parents, parentPacketFingerprint/viewId must match the request, and evidenceRefs must cite source-backed implementation ownership of the parent in the view. Omit disposition when components is nonempty. Prefer a truthful empty disposition to generic service/controller/database Components or folder mirrors with weak evidence. Documents including MODULES.md cannot prove a leaf. ${COMPACT_RULES}`;
 export const RECONCILIATION_INSTRUCTION = `Review cross-System ownership, overlap, dependency, weak support and context.subtrees componentDescents. A leaf-responsibility is terminal, not a defect; insufficient-evidence remains unresolved; responsibility-belongs-elsewhere requires ownership challenge; no-stable-component-boundary remains explicit uncertainty. Return only typed findings with candidateKeys, evidenceRefs, status and code, plus unresolved candidateKey/code pairs. Each unresolved candidateKey may appear only once. Do not alter the hierarchy. ${COMPACT_RULES}`;
 export const VERIFICATION_INSTRUCTION = `Check only context.boundaryCode for context.targetCandidateKeys using this bounded view. Return typed supported, uncertain or contradicted findings. Do not alter the hierarchy. ${COMPACT_RULES}`;
+export const TARGET_REFINEMENT_INSTRUCTION = `Search deeper only within the supplied current edited target branch. Respect its manual names, parents, additions and removals. Return strict ArchitectureProposal JSON with schemaVersion 1, summary, needsMoreEvidence false, nodes, unassignedEvidenceRefs [], openQuestions, evidenceRequests []. Use proposal keys matching ^proposal:[A-Za-z0-9._-]+$, never canonical IDs. For a System target, propose only replacement System(s) and descendants. For a Subsystem target, include one context System parent as an unchanged anchor and propose replacement Subsystem(s) with Components only under that anchor; the anchor is never applied. Cite only view.items evidence IDs for every proposed boundary, including direct production behavior. coverageCues are diagnostic; documents are Documented orientation only and cannot prove implementation. Do not move content into siblings or other Systems. This is one bounded call, not recursive search.`;
 
 export function normalizeSynthesisEndpoint(value = DEFAULT_ENDPOINT): string {
     let url: URL;
@@ -123,7 +124,9 @@ export class LmStudioSynthesisProvider {
         await this.ensureWarm(model);
     }
 
-    async runStage(request: SynthesisStageRequest): Promise<SynthesisStageExecution> {
+    async runRefinement(request: TargetedRefinementRequest): Promise<SynthesisStageExecution> { return this.runStage(request); }
+
+    async runStage(request: SynthesisStageRequest | TargetedRefinementRequest): Promise<SynthesisStageExecution> {
         const model = this.requireModel();
         if (!this.probed) throw new Error('Synthesis capability probe required');
         const capability = await this.capabilities();
@@ -135,8 +138,9 @@ export class LmStudioSynthesisProvider {
             throw new Error('Synthesis connection changed before stage submission');
         try {
             const stage = request.stage;
-            const response = await this.chat(model, synthesisStageResultSchemas[request.stage],
+            const response = await this.chat(model, stage === 'target-refinement' ? architectureProposalSchema : synthesisStageResultSchemas[stage],
                 stage.replaceAll('-', '_'), stage === 'system-challenge' ? SYSTEM_CHALLENGE_INSTRUCTION :
+                    stage === 'target-refinement' ? TARGET_REFINEMENT_INSTRUCTION :
                     stage === 'subsystem-discovery' ? SUBSYSTEM_DISCOVERY_INSTRUCTION :
                     stage === 'subsystem-challenge' ? SUBSYSTEM_CHALLENGE_INSTRUCTION :
                     stage === 'component-discovery' ? COMPONENT_DISCOVERY_INSTRUCTION :

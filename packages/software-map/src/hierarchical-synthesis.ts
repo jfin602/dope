@@ -20,6 +20,7 @@ export interface SynthesisProvider {
     capabilities(): Promise<SynthesisCapabilities>;
     estimateTokens(input: string): Promise<number>;
     runStage(request: SynthesisStageRequest, signal?: AbortSignal): Promise<SynthesisStageExecution>;
+    runRefinement?(request: import('./refinement').TargetedRefinementRequest, signal?: AbortSignal): Promise<SynthesisStageExecution>;
 }
 export interface SynthesisStageUsage {
     providerKind: 'local' | 'gemini';
@@ -43,7 +44,7 @@ export interface SynthesisCallAttempt {
     callId: string;
     attemptId: string;
     retryOf?: string;
-    stage: SynthesisStage;
+    stage: SynthesisStage | 'target-refinement';
     subject?: string;
     providerKind: SynthesisProvider['kind'];
     modelLabel: string;

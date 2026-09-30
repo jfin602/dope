@@ -130,6 +130,10 @@ export class SynthesisStageCache {
         }
     }
     attempts(): SynthesisCallAttempt[] { return structuredClone(this.ledger); }
+    recordTargetAttempt(attempt: Omit<SynthesisCallAttempt, 'callId' | 'attemptId' | 'attempt' | 'reused'>): void {
+        const callId = `call:${++this.nextCall}`;
+        this.ledger.push({ ...attempt, callId, attemptId: `${callId}:1`, attempt: 1, reused: false });
+    }
     clear(): void { this.results.clear(); this.ledger.length = 0; this.nextCall = 0; }
 }
 

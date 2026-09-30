@@ -9,6 +9,7 @@ import { SoftwareMapIndex } from '../../packages/code-analysis/lib/node/software
 import { acceptInitialization, readInitialization } from '../../packages/code-analysis/lib/node/smap-initialization-file.js';
 import { SoftwareMapBackend } from '../../packages/theia-extension/lib/node/software-map-backend.js';
 import type { SynthesisProvider, SynthesisStageRequest, SoftwareMapClient, AnalysisProgressEvent } from '../../packages/software-map/lib/index.js';
+import { branchFingerprint, isDirectSystemResponsibilityEvidence } from '../../packages/software-map/lib/index.js';
 
 const declaration = { schemaVersion: 1 as const, systems: [{ id: 'app', name: 'App', purpose: 'App', subsystems: [
   { id: 'api', name: 'API', purpose: 'API', roots: ['src/api'], forbiddenDependencies: ['secret'] },
@@ -162,6 +163,82 @@ test('generated review stays transient, rejects invalid/stale drafts, then accep
     assert.equal((await service.review(handle)), undefined);
     assert.equal(await service.resolveReviewSource(handle, review.reviewId, sourceFact.id), undefined);
     assert.equal(index.snapshot(root)!.nodes.some(node => node.id === 'api'), true);
+    service.dispose();
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('targeted backend call uses pending packet and edited branch, validates evidence and records purpose', async () => {
+  const root = await fixture();
+  try {
+    await writeFile(join(root, 'MODULES.md'), '# Original architecture seed');
+    await writeFile(join(root, 'README.md'), '# Original orientation');
+    let seen: any;
+    const provider: SynthesisProvider = { ...fakeProvider(), runRefinement: async request => {
+      seen = request;
+      const fact = request.view.items.find(isDirectSystemResponsibilityEvidence);
+      assert.ok(fact);
+      return { output: { schemaVersion: 1, summary: 'Refined target', needsMoreEvidence: false,
+        nodes: [{ proposalKey: 'proposal:refined', kind: 'system', name: 'Refined', purpose: 'Refined behavior',
+          parentProposalKey: null, confidence: .8, rationale: 'Observed behavior', evidenceRefs: [fact.id], evidence: [fact.path] }],
+        unassignedEvidenceRefs: [], openQuestions: [], evidenceRequests: [] },
+        usage: { providerKind: 'local', modelLabel: 'fixture-model', requestBytes: 1, outputBytes: 1,
+          tokenMeasurement: 'unavailable' } };
+    } };
+    const service = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), provider);
+    const handle = await attach(service, root);
+    const review = await service.startInitialization(handle);
+    const target = review.draft.find(node => node.kind === 'system')!;
+    const branch = review.draft.filter(node => node.proposalKey === target.proposalKey || node.parentProposalKey === target.proposalKey)
+      .map(node => ({ ...node, name: node.proposalKey === target.proposalKey ? 'Manual rename' : node.name }));
+    await writeFile(join(root, 'MODULES.md'), '# Changed after review');
+    const input = { reviewId: review.reviewId, targetKey: target.proposalKey, targetKind: 'system' as const,
+      parentKey: null, branch, branchFingerprint: branchFingerprint(branch) };
+    const result = await service.searchDeeper(handle, input);
+    assert.equal(seen.stage, 'target-refinement');
+    assert.equal(seen.branch[0].name, 'Manual rename');
+    assert.equal(seen.parentPacketFingerprint, review.packet.inputFingerprint);
+    assert.equal(seen.documents.find((doc: any) => doc.path === 'MODULES.md').content, '# Original architecture seed');
+    assert.equal(result.proposal.nodes[0].name, 'Refined');
+    assert.equal((await service.review(handle))?.draft[0].name, review.draft[0].name);
+    assert.equal((await service.synthesisAttempts(handle)).at(-1)?.stage, 'target-refinement');
+    assert.equal((await service.synthesisAttempts(handle)).at(-1)?.consumed, true);
+    const subsystem = review.draft.find(node => node.kind === 'subsystem')!;
+    const parentContext = { ...target, name: 'Edited parent' };
+    const subBranch = [{ ...subsystem, name: 'Edited Subsystem' }];
+    const subInput = { reviewId: review.reviewId, targetKey: subsystem.proposalKey, targetKind: 'subsystem' as const,
+      parentKey: target.proposalKey, parentContext, branch: subBranch,
+      branchFingerprint: branchFingerprint(subBranch, parentContext) };
+    provider.runRefinement = async request => {
+      const fact = request.view.items.find(isDirectSystemResponsibilityEvidence)!;
+      const node = (key: string, kind: 'system' | 'subsystem', parent: string | null) => ({ proposalKey: key, kind,
+        name: key, purpose: key, parentProposalKey: parent, confidence: .8, rationale: fact.path,
+        evidenceRefs: [fact.id], evidence: [fact.path] });
+      return { output: { schemaVersion: 1, summary: 'Split', needsMoreEvidence: false,
+        nodes: [node('proposal:anchor', 'system', null), node('proposal:one', 'subsystem', 'proposal:anchor'),
+          node('proposal:two', 'subsystem', 'proposal:anchor')],
+        unassignedEvidenceRefs: [], openQuestions: [], evidenceRequests: [] },
+        usage: { providerKind: 'local', modelLabel: 'fixture-model', requestBytes: 1, outputBytes: 1,
+          tokenMeasurement: 'unavailable' } };
+    };
+    assert.equal((await service.searchDeeper(handle, subInput)).proposal.nodes.filter(node => node.kind === 'subsystem').length, 2);
+    provider.runRefinement = async request => {
+      const fact = request.view.items.find(isDirectSystemResponsibilityEvidence)!;
+      return { output: { schemaVersion: 1, summary: 'Invalid escape', needsMoreEvidence: false,
+        nodes: [{ proposalKey: 'proposal:outside', kind: 'system', name: 'Outside', purpose: 'Outside',
+          parentProposalKey: null, confidence: .8, rationale: fact.path, evidenceRefs: [fact.id], evidence: [fact.path] }],
+        unassignedEvidenceRefs: [], openQuestions: [], evidenceRequests: [] },
+        usage: { providerKind: 'local', modelLabel: 'fixture-model', requestBytes: 1, outputBytes: 1,
+          tokenMeasurement: 'unavailable' } };
+    };
+    await assert.rejects(service.searchDeeper(handle, subInput), /Invalid targeted refinement boundary/);
+    assert.equal((await service.synthesisAttempts(handle)).at(-1)?.consumed, false);
+    assert.equal((await service.resolveReviewDocument(handle, review.reviewId, 'MODULES.md'))?.path, 'MODULES.md');
+    assert.equal(await service.resolveReviewDocument(handle, review.reviewId, 'docs/tasks/answer.md'), undefined);
+    await rm(join(root, 'MODULES.md'));
+    await symlink('/etc/hosts', join(root, 'MODULES.md'));
+    await assert.rejects(service.resolveReviewDocument(handle, review.reviewId, 'MODULES.md'), /Unsafe/);
+    await assert.rejects(service.searchDeeper(handle, { ...input, branchFingerprint: 'wrong' }), /Invalid refinement branch/);
+    await assert.rejects(service.searchDeeper(handle, { ...input, reviewId: 'wrong' }), /matching/);
     service.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }
 });

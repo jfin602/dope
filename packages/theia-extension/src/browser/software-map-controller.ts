@@ -1,5 +1,5 @@
-import { parseArchitecture, parseAnalysisProgressEvent } from '@dope/software-map';
-import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup } from '@dope/software-map';
+import { parseArchitecture, parseAnalysisProgressEvent, branchFingerprint, targetBranch } from '@dope/software-map';
+import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
 
 export type SoftwareMapConnection = SoftwareMapService & { setClient(client: SoftwareMapClient | undefined): void };
 export interface SynthesisPreferenceStore {
@@ -34,7 +34,12 @@ export class SoftwareMapController {
         return { dispose: () => { this.listeners.delete(listener); } };
     }
     private notify(): void { this.changed(); for (const listener of this.listeners) listener(); }
-    draftChanged(): void { this.notify(); }
+    draftChanged(): void {
+        if (this.refinementPreview && branchFingerprint(targetBranch(this.draft, this.refinementPreview.targetKey),
+            this.draft.find(node => node.proposalKey === this.refinementPreview!.parentKey)) !== this.refinementPreview.branchFingerprint)
+            this.refinementPreview = undefined;
+        this.notify();
+    }
     workspace?: string;
     status?: SoftwareMapStatus;
     nodes: GraphNode[] = [];
@@ -54,6 +59,11 @@ export class SoftwareMapController {
     flow: 'none' | 'offer' | 'setup' | 'review' | 'manual' = 'none';
     review?: ArchitectureReview;
     draft: ArchitectureReviewNode[] = [];
+    refinementPreview?: TargetedRefinementResult;
+    readonly refinedEvidence = new Map<string, ProposedArchitectureNode>();
+    refinementBusyKey?: string;
+    refinementError?: { key: string; message: string };
+    private refinementRequest = 0;
     endpoint = 'http://127.0.0.1:1234/v1';
     model = '';
     token = '';
@@ -115,6 +125,8 @@ export class SoftwareMapController {
         this.flow = 'none';
         this.review = undefined;
         this.draft = [];
+        this.refinementPreview = undefined; this.refinementBusyKey = undefined; this.refinementError = undefined; ++this.refinementRequest;
+        this.refinedEvidence.clear();
         this.models = [];
         this.geminiModels = [];
         this.geminiConfigured = false;
@@ -372,6 +384,7 @@ export class SoftwareMapController {
         this.progressEvents = [];
         this.review = undefined;
         this.draft = [];
+        this.refinementPreview = undefined; this.refinementBusyKey = undefined; this.refinementError = undefined; ++this.refinementRequest;
         this.error = '';
         this.notify();
         try {
@@ -405,7 +418,7 @@ export class SoftwareMapController {
     }
     add(kind: ArchitectureReviewNode['kind'], parentProposalKey: string | null = null): void {
         this.draft.push({ proposalKey: `draft:${++this.nextKey}`, kind, id: '', name: '', purpose: '', parentProposalKey, roots: [] });
-        this.notify();
+        this.draftChanged();
     }
     remove(key: string): void {
         const removed = new Set([key]);
@@ -414,7 +427,59 @@ export class SoftwareMapController {
             for (const node of this.draft) if (node.parentProposalKey && removed.has(node.parentProposalKey) && !removed.has(node.proposalKey)) { removed.add(node.proposalKey); changed = true; }
         }
         this.draft = this.draft.filter(node => !removed.has(node.proposalKey));
-        this.notify();
+        for (const key of removed) this.refinedEvidence.delete(key);
+        this.draftChanged();
+    }
+    async searchDeeper(key: string): Promise<void> {
+        if (!this.connection || !this.handle || !this.review || this.flow !== 'review' || this.refinementBusyKey) return;
+        const target = this.draft.find(node => node.proposalKey === key);
+        if (!target || target.kind === 'component') return;
+        const project = this.project, reviewId = this.review.reviewId, request = ++this.refinementRequest;
+        const branch = structuredClone(targetBranch(this.draft, key));
+        const parentContext = this.draft.find(node => node.proposalKey === target.parentProposalKey);
+        const fingerprint = branchFingerprint(branch, parentContext);
+        this.refinementPreview = undefined; this.refinementError = undefined; this.refinementBusyKey = key; this.notify();
+        try {
+            const result = await this.connection.searchDeeper(this.handle, { reviewId, targetKey: key,
+                targetKind: target.kind, parentKey: target.parentProposalKey,
+                ...(parentContext ? { parentContext: structuredClone(parentContext) } : {}), branchFingerprint: fingerprint, branch });
+            if (project !== this.project || request !== this.refinementRequest || this.review?.reviewId !== reviewId) return;
+            if (result.reviewId !== reviewId || result.targetKey !== key || result.branchFingerprint !== fingerprint ||
+                branchFingerprint(targetBranch(this.draft, key), this.draft.find(node => node.proposalKey === target.parentProposalKey)) !== fingerprint)
+                throw new Error('Target branch changed during Search Deeper');
+            this.refinementPreview = result;
+        } catch (error) {
+            if (project === this.project && request === this.refinementRequest)
+                this.refinementError = { key, message: String(error) };
+        } finally {
+            if (project === this.project && request === this.refinementRequest) { this.refinementBusyKey = undefined; this.notify(); }
+        }
+    }
+    rejectRefinement(): void { this.refinementPreview = undefined; this.notify(); }
+    acceptRefinement(): void {
+        const preview = this.refinementPreview;
+        if (!preview || this.review?.reviewId !== preview.reviewId ||
+            branchFingerprint(targetBranch(this.draft, preview.targetKey),
+                this.draft.find(node => node.proposalKey === preview.parentKey)) !== preview.branchFingerprint) {
+            this.refinementPreview = undefined; this.refinementError = preview ? { key: preview.targetKey, message: 'Target branch changed' } : undefined;
+            this.notify(); return;
+        }
+        const omittedAnchor = preview.targetKind === 'subsystem' ? preview.proposal.nodes.find(node => node.kind === 'system')?.proposalKey : undefined;
+        const replacements = preview.proposal.nodes.filter(node => node.proposalKey !== omittedAnchor);
+        const keys = new Map(replacements.map(node => [node.proposalKey, `draft:${++this.nextKey}`]));
+        const replacementNodes: ArchitectureReviewNode[] = replacements.map(node => {
+            const roots = [...new Set(node.evidenceRefs.flatMap(ref => {
+                const item = this.review!.packet.items.find(fact => fact.id === ref);
+                return item?.kind === 'configuration' ? item.sourcePaths ?? [] : item ? [item.path] : [];
+            }))].sort();
+            return { proposalKey: keys.get(node.proposalKey)!, kind: node.kind, id: '', name: node.name, purpose: node.purpose,
+                parentProposalKey: node.parentProposalKey === null || node.parentProposalKey === omittedAnchor ? preview.parentKey : keys.get(node.parentProposalKey)!, roots };
+        });
+        const removed = new Set(targetBranch(this.draft, preview.targetKey).map(node => node.proposalKey));
+        for (const key of removed) this.refinedEvidence.delete(key);
+        for (const node of replacements) this.refinedEvidence.set(keys.get(node.proposalKey)!, node);
+        this.draft = [...this.draft.filter(node => !removed.has(node.proposalKey)), ...replacementNodes];
+        this.refinementPreview = undefined; this.draftChanged();
     }
     draftError(): string | undefined {
         try { declarationFromDraft(this.draft); return undefined; } catch (error) { return String(error); }
@@ -433,6 +498,9 @@ export class SoftwareMapController {
             if (project !== this.project || request !== this.setupRequest) return;
             this.initialization = { ...this.initialization, state: 'initialized' };
             this.flow = 'none'; this.review = undefined; this.draft = [];
+            this.refinementPreview = undefined;
+            this.refinementBusyKey = undefined; this.refinementError = undefined; ++this.refinementRequest;
+            this.refinedEvidence.clear();
             this.status = status;
             if (status.state === 'ready') await this.load(status);
         } catch (error) {
@@ -472,6 +540,8 @@ export class SoftwareMapController {
             if (project !== this.project || request !== this.setupRequest) return;
             if (connection && handle) await connection.clearSynthesis(handle);
             this.review = undefined; this.draft = []; this.setupReady = false; this.flow = wasAnalyzing ? 'setup' : 'none'; this.token = ''; this.geminiKey = '';
+            this.refinementPreview = undefined; this.refinementBusyKey = undefined; this.refinementError = undefined; ++this.refinementRequest;
+            this.refinedEvidence.clear();
             this.analysisStartedAt = undefined;
             if (this.initialization?.state !== 'initialized' && this.initialization) this.initialization = { ...this.initialization, state: 'uninitialized' };
         } catch (error) {
@@ -490,6 +560,12 @@ export class SoftwareMapController {
             if (project === this.project && request === this.setupRequest) throw error;
             return undefined;
         }
+    }
+    async reviewDocument(path: string) {
+        if (!this.connection || !this.handle || !this.review) return undefined;
+        const project = this.project, reviewId = this.review.reviewId;
+        const location = await this.connection.resolveReviewDocument(this.handle, reviewId, path);
+        return project === this.project && this.review?.reviewId === reviewId && this.flow === 'review' ? location : undefined;
     }
     async analyze(): Promise<void> {
         if (!this.connection || !this.handle || this.disposed) return;
