@@ -67,6 +67,7 @@ test('Gemini SDK applies the API key, selected model, compact schema and provide
   assert.ok(calls.every(call => call.url.includes(`/models/${modelId}`)));
   assert.ok(calls.every(call => new Headers(call.init.headers).get('x-goog-api-key') === key));
   const body = JSON.parse(String(calls[1].init.body));
+  assert.match(body.systemInstruction.parts[0].text, /candidateKey.*candidate:api/);
   assert.equal(body.generationConfig.responseMimeType, 'application/json');
   assert.equal(body.generationConfig.maxOutputTokens, 32768);
   const schema = body.generationConfig.responseJsonSchema;
@@ -76,6 +77,8 @@ test('Gemini SDK applies the API key, selected model, compact schema and provide
   assert.deepEqual(schema.properties.systems.items.required,
     ['candidateKey', 'kind', 'name', 'responsibility', 'confidence', 'ambiguityCodes', 'evidenceRefs']);
   assert.equal(schema.properties.systems.items.properties.evidenceRefs.uniqueItems, undefined);
+  assert.equal(schema.properties.systems.items.properties.candidateKey.description,
+    'Must match ^candidate:[A-Za-z0-9._-]+$');
   assert.equal(JSON.stringify(body).includes(key), false);
 });
 

@@ -6,7 +6,7 @@ import { RECONCILIATION_INSTRUCTION, SUBSYSTEM_DISCOVERY_INSTRUCTION, SYSTEM_CHA
 
 const DEFAULT_TIMEOUT_MS = 900_000;
 const schemaKeywords = new Set(['type', 'enum', 'items', 'minItems', 'maxItems', 'minimum', 'maximum',
-    'properties', 'additionalProperties', 'required', 'anyOf', 'oneOf']);
+    'properties', 'additionalProperties', 'required', 'anyOf', 'oneOf', 'description']);
 
 /** Gemini accepts only part of JSON Schema. Dope's complete result parser remains authoritative. */
 export function geminiStageSchema(value: unknown): unknown {
@@ -15,6 +15,7 @@ export function geminiStageSchema(value: unknown): unknown {
     const projected: Record<string, unknown> = {};
     for (const [key, child] of Object.entries(value)) {
         if (key === 'const') projected.enum = [child];
+        else if (key === 'pattern' && typeof child === 'string') projected.description = `Must match ${child}`;
         else if (key === 'properties' && child && typeof child === 'object' && !Array.isArray(child))
             projected.properties = Object.fromEntries(Object.entries(child).map(([name, property]) => [name, geminiStageSchema(property)]));
         else if (schemaKeywords.has(key)) projected[key] = geminiStageSchema(child);
@@ -137,7 +138,7 @@ export class GeminiSynthesisProvider {
             request.stage === 'reconciliation' ? RECONCILIATION_INSTRUCTION :
             request.stage === 'verification' ? VERIFICATION_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION;
         const schema = geminiStageSchema(synthesisStageResultSchemas[request.stage]);
-        const body = { model, contents: input, config: { systemInstruction: instruction,
+        const body = { model, contents: input, config: { systemInstruction: `${instruction} Every candidateKey and parentCandidateKey must match ^candidate:[A-Za-z0-9._-]+$ (for example, candidate:api).`,
             responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0, maxOutputTokens: 32768 } };
         const timeout = AbortSignal.timeout(this.timeoutMs);
         const abortSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
