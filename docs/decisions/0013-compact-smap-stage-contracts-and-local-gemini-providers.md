@@ -145,16 +145,18 @@ This is a time-efficiency rule, not permission to skip final qualification.
 
 ## Correction and sequencing
 
-After the current `c4-smap-hierarchical-synthesis` stack closes truthfully, run mandatory `c4-smap-gemini-provider` at unchanged package version `0.4.6`.
+The hierarchy-first implementation through `c4-smap-hierarchical-synthesis` P7 is the required implementation predecessor. Commit `66f023f717afd63433d442015b575edf049ae1b6` records that P7 implementation and must remain reachable.
 
-This correction is required even when the current local-Qwen hierarchy stack closes Not Green, because it is the approved remediation/diagnostic path for shared protocol and provider/runtime uncertainty.
+Do **not** require hierarchical P8/P9 to execute before this correction. ADR 0013 intentionally supersedes those two unexecuted qualification/closeout prompts: P8's real Local qualification is replaced by the controlled Local/Gemini same-pipeline qualification in `c4-smap-gemini-provider` P4, and P9's evidence-only closeout is replaced by this correction's P5 closeout.
+
+This does not relabel `c4-smap-hierarchical-synthesis` Green or manufacture missing P8/P9 evidence. Its truthful disposition is: implementation through P7 completed; P8/P9 superseded and not executed under ADR 0013.
 
 ADR 0012's earlier rule that `c4-smap-storage` may run only after hierarchical synthesis closes Green is amended.
 
 New order:
 
-`c4-smap-hierarchical-synthesis`
--> `c4-smap-gemini-provider`
+`c4-smap-hierarchical-synthesis` P1-P7 implementation baseline
+-> `c4-smap-gemini-provider` P1-P5 qualification/closeout
 -> `c4-smap-storage`
 -> Product Phase 5
 
