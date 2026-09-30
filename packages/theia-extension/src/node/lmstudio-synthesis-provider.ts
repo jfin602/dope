@@ -20,6 +20,8 @@ For each candidate or candidate group choose exactly one action: keep one candid
 Actively test whether each candidate owns an independent responsibility, whether candidates jointly implement one responsibility, whether a broad candidate hides separate responsibilities, and whether dependency direction, entrypoints, framework registrations, ownership or counter-evidence undermine the initial boundaries. Do not assume the first pass is correct. Do not force a target System count. Use only supplied facts; do not invent evidence, access files, or use tools. Return only strict JSON for the system-challenge stage with decisions, supplied stage/version, parentPacketFingerprint and viewId. Do not emit Subsystems, Components or a final architecture proposal.`;
 export const SUBSYSTEM_DISCOVERY_INSTRUCTION = `Discover coherent Subsystems and Components only inside the challenged System named by context.subjectSystemKey. This is one bounded per-System pass. The view carries whole deterministic facts with original parent-packet IDs; the System's cited facts and boundary neighbors are proposal context, not ownership truth.
 A Subsystem has a distinct responsibility and may span several packages. A directory or package alone is not a Subsystem. A Component is a cohesive implementation unit under one Subsystem, not every file, class or function. One package may contain several Components. Do not force a count. If evidence does not support useful subdivision, return zero nodes and explain that explicitly in subdivisionAssessment with confidence and uncertainty. Otherwise, each Subsystem needs temporary candidateKey, parentCandidateKey equal to the subject System, name, purpose, rationale, siblingDistinction, confidence, uncertainty, directly relevant evidenceRefs and ownershipEvidenceRefs for direct production behavior. Each Component needs the same fields and a parentCandidateKey naming a Subsystem from this output. ownershipEvidenceRefs must be a subset of evidenceRefs. Distinguish siblings by responsibility, not folder name. Never claim another System's boundary, fabricate refs, create canonical IDs, or emit a final ArchitectureProposal. Return only strict subsystem-discovery JSON with supplied stage/version, parentPacketFingerprint, viewId, systemKey, nodes and subdivisionAssessment.`;
+export const RECONCILIATION_INSTRUCTION = `Review the challenged Systems and their per-System Subsystem and Component candidates against the bounded deterministic cross-System evidence. Identify responsibility duplication, contradictory ownership, overlapping source regions, weak support and dependencies that may challenge a boundary. Structural conflicts are also audited by Dope independently. Return findings with candidateKeys, evidenceRefs from this view, status and concise message; list unresolvedCandidateKeys. Do not rewrite candidate hierarchy, claim canonical identity or invent evidence. A finding is interpretation, not physical fact. Return strict reconciliation JSON with supplied stage/version, parentPacketFingerprint and viewId.`;
+export const VERIFICATION_INSTRUCTION = `Answer only context.boundaryQuestion about context.targetCandidateKeys using directly relevant candidate state and this small deterministic evidence view. Return supported, uncertain or contradicted findings with targeted candidateKeys, evidenceRefs from this view and a concise message. If evidence cannot settle the question, return uncertain. Do not request more evidence, alter hierarchy, invent facts or claim canonical identity. Return strict verification JSON with supplied stage/version, parentPacketFingerprint and viewId.`;
 
 export function normalizeSynthesisEndpoint(value = DEFAULT_ENDPOINT): string {
     let url: URL;
@@ -118,8 +120,6 @@ export class LmStudioSynthesisProvider {
     async estimateTokens(input: string): Promise<number> { return new TextEncoder().encode(input).length; }
 
     async runStage(request: SynthesisStageRequest): Promise<unknown> {
-        if (request.stage !== 'system-discovery' && request.stage !== 'system-challenge' &&
-            request.stage !== 'subsystem-discovery') throw new Error('Unsupported synthesis stage');
         const model = this.requireModel();
         if (!this.probed) throw new Error('Synthesis capability probe required');
         const capability = await this.capabilities();
@@ -133,7 +133,9 @@ export class LmStudioSynthesisProvider {
             const stage = request.stage;
             const response = await this.chat(model, synthesisStageResultSchemas[request.stage],
                 stage.replaceAll('-', '_'), stage === 'system-challenge' ? SYSTEM_CHALLENGE_INSTRUCTION :
-                    stage === 'subsystem-discovery' ? SUBSYSTEM_DISCOVERY_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION, input);
+                    stage === 'subsystem-discovery' ? SUBSYSTEM_DISCOVERY_INSTRUCTION :
+                    stage === 'reconciliation' ? RECONCILIATION_INSTRUCTION :
+                    stage === 'verification' ? VERIFICATION_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION, input);
             if (generation !== this.generation || model !== this.modelId) throw new Error('Synthesis connection changed');
             try { return JSON.parse(this.content(response)); }
             catch (error) { if (error instanceof SyntaxError) throw new Error(`Invalid ${stage} JSON`); throw error; }

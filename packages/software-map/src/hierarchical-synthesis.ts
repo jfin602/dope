@@ -138,6 +138,8 @@ export interface SynthesisStageContext {
     subtrees: SubsystemDiscoveryResult[];
     /** Only targeted verification may supply candidate targets. */
     targetCandidateKeys: string[];
+    /** Exact question for a targeted verification; omitted outside verification. */
+    boundaryQuestion?: string;
 }
 export interface SynthesisStageRequest {
     schemaVersion: 1;
@@ -293,7 +295,9 @@ export function validateSynthesisStageRequest(request: SynthesisStageRequest, pa
         !Object.hasOwn(synthesisStageResultSchemas, request.stage)) invalid('request stage/version');
     validateArchitectureEvidenceView(request.view, packet);
     if (request.parentPacketFingerprint !== packet.inputFingerprint) invalid('request parent packet');
-    exact(request.context, ['systems', 'subjectSystemKey', 'subtrees', 'targetCandidateKeys'], 'request context');
+    exact(request.context, request.context.boundaryQuestion === undefined ?
+        ['systems', 'subjectSystemKey', 'subtrees', 'targetCandidateKeys'] :
+        ['systems', 'subjectSystemKey', 'subtrees', 'targetCandidateKeys', 'boundaryQuestion'], 'request context');
     const allRefs = new Set(packet.items.map(item => item.id));
     systems(request.context.systems, allRefs, 'request systems');
     if (!Array.isArray(request.context.subtrees)) invalid('request subtrees');
@@ -311,6 +315,11 @@ export function validateSynthesisStageRequest(request: SynthesisStageRequest, pa
     if (targets.some(item => !keys.has(item))) invalid('unknown request target');
     const subject = request.context.subjectSystemKey;
     if (subject !== null) key(subject, 'request subject');
+    if (request.context.boundaryQuestion !== undefined) {
+        if (request.stage !== 'verification') invalid('question outside verification');
+        label(request.context.boundaryQuestion, 'verification question');
+        if (request.context.boundaryQuestion.length > 240) invalid('verification question length');
+    }
     switch (request.stage) {
         case 'system-discovery':
             if (request.context.systems.length || request.context.subtrees.length || targets.length || subject !== null) invalid('discovery context'); break;
@@ -464,8 +473,18 @@ export function assembleArchitectureProposal(input: ArchitectureProposalAssembly
             item.rationale,
         evidenceRefs: item.evidenceRefs, evidence: item.evidenceRefs.map(ref => packet.items.find(fact => fact.id === ref)!.path),
     }));
+    const unresolved = new Set(input.reconciliation.unresolvedCandidateKeys);
+    for (const verification of input.verifications) for (const finding of verification.findings)
+        if (finding.status !== 'supported') finding.candidateKeys.forEach(key => unresolved.add(key));
+    const openFindings = [...input.reconciliation.findings, ...input.verifications.flatMap(result => result.findings)]
+        .filter(item => item.status !== 'supported' && item.candidateKeys.some(key => unresolved.has(key)));
+    const questions = openFindings
+        .map(item => `${item.candidateKeys.map(key => candidates.find(candidate => candidate.candidateKey === key)?.name ?? key).join(' / ')}: ${item.message}`);
+    const explained = new Set(openFindings.flatMap(item => item.candidateKeys));
+    for (const key of unresolved) if (!explained.has(key))
+        questions.push(`Review boundary for ${candidates.find(candidate => candidate.candidateKey === key)?.name ?? key}.`);
     return parseArchitectureProposal({ schemaVersion: 1, summary: input.summary, needsMoreEvidence: false,
-        nodes, unassignedEvidenceRefs: [], openQuestions: [], evidenceRequests: [] }, packet);
+        nodes, unassignedEvidenceRefs: [], openQuestions: [...new Set(questions)], evidenceRequests: [] }, packet);
 }
 
 export type AnalysisProgressStage = 'collecting-evidence' | 'planning-evidence' | 'building-skeleton' |

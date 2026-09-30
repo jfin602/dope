@@ -55,13 +55,18 @@ test('local adapter runs one structured per-System call and declares serial gene
     if (request.path === '/v1/models') return normalReply(request, response);
     if (request.body.response_format.json_schema.name === 'readiness') return json(response, completion('{"ready":true}'));
     const sent = JSON.parse(request.body.messages[1].content) as SynthesisStageRequest;
+    if (sent.stage === 'reconciliation') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 1,
+      stage: sent.stage, parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId,
+      findings: [], unresolvedCandidateKeys: [] })));
+    if (sent.stage === 'verification') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 1,
+      stage: sent.stage, parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId, findings: [] })));
     json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 1, stage: 'subsystem-discovery',
       parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId, systemKey: sent.context.subjectSystemKey,
       subdivisionAssessment: { rationale: 'One responsibility; no useful split', confidence: 0.4,
         uncertainty: ['Limited implementation'] }, nodes: [] })));
   });
   try {
-    const provider = new LmStudioSynthesisProvider({ endpoint: server.endpoint, contextWindowTokens: 8192 });
+    const provider = new LmStudioSynthesisProvider({ endpoint: server.endpoint, contextWindowTokens: 16384 });
     await provider.discoverModels(); provider.selectModel(modelId); await provider.probe();
     assert.equal((await provider.capabilities()).maxConcurrentGenerations, 1);
     const request: SynthesisStageRequest = { schemaVersion: 1, stage: 'subsystem-discovery', stageVersion: 1,
@@ -75,6 +80,20 @@ test('local adapter runs one structured per-System call and declares serial gene
     assert.match(server.requests.at(-1)!.body.messages[0].content, /may span several packages/);
     assert.match(SUBSYSTEM_DISCOVERY_INSTRUCTION, /one package may contain several Components/i);
     assert.deepEqual(server.requests.slice(1, 3).map(r => r.body.response_format.json_schema.name), ['readiness', 'readiness']);
+    const subtree = { ...result as object, schemaVersion: 1 as const, stageVersion: 1 as const,
+      stage: 'subsystem-discovery' as const, parentPacketFingerprint: packet.inputFingerprint,
+      viewId: request.view.viewId, systemKey: 'candidate:app', nodes: [],
+      subdivisionAssessment: { rationale: 'No split', confidence: 0.4, uncertainty: [] } };
+    const reconciliation: SynthesisStageRequest = { ...request, stage: 'reconciliation',
+      context: { ...request.context, subjectSystemKey: null, subtrees: [subtree] } };
+    await provider.runStage(reconciliation);
+    const verification: SynthesisStageRequest = { ...reconciliation, stage: 'verification',
+      context: { ...reconciliation.context, targetCandidateKeys: ['candidate:app'],
+        boundaryQuestion: 'Does the service belong to this System?' } };
+    await provider.runStage(verification);
+    assert.deepEqual(server.requests.slice(-2).map(r => r.body.response_format.json_schema.name), ['reconciliation', 'verification']);
+    assert.match(server.requests.at(-2)!.body.messages[0].content, /cross-System/i);
+    assert.match(server.requests.at(-1)!.body.messages[0].content, /boundaryQuestion/);
   } finally { await server.close(); }
 });
 

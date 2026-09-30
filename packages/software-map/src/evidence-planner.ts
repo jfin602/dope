@@ -6,7 +6,7 @@ import type { SynthesisCapabilities, SynthesisProvider, SynthesisStage, Synthesi
     SynthesisStageRequest } from './hierarchical-synthesis';
 
 /** Selection policy version. Increment when ranking, quotas, or scope rules change. */
-export const EVIDENCE_PLANNER_VERSION = 2;
+export const EVIDENCE_PLANNER_VERSION = 3;
 type Category = ArchitectureEvidenceItem['kind'];
 const categories: Category[] = ['topology', 'entrypoint', 'framework', 'dependency', 'configuration', 'semantic'];
 const globalLimits: Record<Category, number> = {
@@ -15,9 +15,12 @@ const globalLimits: Record<Category, number> = {
 const focusedLimits: Record<Category, number> = {
     topology: 20, entrypoint: 16, framework: 32, dependency: 48, configuration: 16, semantic: 48,
 };
+const verificationLimits: Record<Category, number> = {
+    topology: 2, entrypoint: 4, framework: 6, dependency: 6, configuration: 2, semantic: 6,
+};
 
 export interface EvidencePlan {
-    plannerVersion: 2;
+    plannerVersion: 3;
     /** Selection identity includes scope, capability, policy version, and selected whole facts. */
     planId: string;
     request: SynthesisStageRequest;
@@ -124,7 +127,8 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
     const selectedSet = new Set<string>();
     const counts = new Map<Category, number>();
     const groupCounts = new Map<string, number>();
-    const limits = stage === 'system-discovery' || stage === 'system-challenge' ? globalLimits : focusedLimits;
+    const limits = stage === 'verification' ? verificationLimits :
+        stage === 'system-discovery' || stage === 'system-challenge' ? globalLimits : focusedLimits;
     const estimate = async (ids: string[]): Promise<number> => {
         const count = await counter.estimateTokens(JSON.stringify(makeRequest(ids)));
         if (!Number.isSafeInteger(count) || count < 0) throw new Error('Invalid evidence planner token estimate');
@@ -187,7 +191,8 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
         const candidates = scoped.filter(item => item.kind === category).sort((a, b) =>
             priority(b) - priority(a) || group(a.path).localeCompare(group(b.path)) || a.path.localeCompare(b.path) || a.id.localeCompare(b.id));
         for (const item of candidates) {
-            if (selectedSet.has(item.id) || (counts.get(category) ?? 0) >= limits[category]) continue;
+            if (selectedSet.has(item.id) || (counts.get(category) ?? 0) >= limits[category] ||
+                stage === 'verification' && selected.length >= 24) continue;
             // Diversity prevents one package or repeated test surface from consuming a whole category.
             if (!refs.has(item.id) && category !== 'topology' && (groupCounts.get(group(item.path)) ?? 0) >= 20) continue;
             const next = [...selected, item.id];

@@ -5,7 +5,8 @@ import { pathToFileURL } from 'node:url';
 import { canonicalLocalRoot } from '@dope/code-analysis/lib/node/architecture-file';
 import { readInitialization, acceptInitialization } from '@dope/code-analysis/lib/node/smap-initialization-file';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
-import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseArchitectureProposal } from '@dope/software-map';
+import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseArchitectureProposal,
+    MAX_EVIDENCE_REFINEMENT_ROUNDS } from '@dope/software-map';
 import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, SoftwareMapPageRequest, GraphRelationship, SoftwareMapRelationshipRequest,
     PhysicalMapSnapshot, SoftwareMapClient, SoftwareMapService, ArchitectureEvidencePacket, ArchitectureReview, ArchitectureReviewNode,
     ArchitectureDeclaration, SoftwareMapInitializationStatus } from '@dope/software-map';
@@ -117,11 +118,11 @@ export class SoftwareMapBackend implements SoftwareMapService {
             let packet = await this.index.collectEvidence(root);
             this.still(projectHandle, root, run);
             let proposal;
-            for (let round = 0; round <= 2; round++) {
+            for (let round = 0; round <= MAX_EVIDENCE_REFINEMENT_ROUNDS; round++) {
                 proposal = parseArchitectureProposal(await provider.synthesize(packet), packet);
                 this.still(projectHandle, root, run);
                 if (!proposal.needsMoreEvidence) break;
-                if (round === 2) throw new Error('Architecture evidence refinement limit reached');
+                if (round === MAX_EVIDENCE_REFINEMENT_ROUNDS) throw new Error('Architecture evidence refinement limit reached');
                 packet = await this.index.refineEvidence(root, packet, proposal.evidenceRequests);
                 this.still(projectHandle, root, run);
             }
