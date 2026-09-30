@@ -1,6 +1,6 @@
 # Correction 4 Prompt Assessment — Gemini Provider + Compact Shared sMap Pipeline
 
-Status: **APPROVED / READY**
+Status: **OWNER-CLOSED / NOT QUALIFIED — HISTORICAL ASSESSMENT; superseded by `c4-synth-improvements`**
 Correction folder: `c4-smap-gemini-provider`
 Required unchanged package version: `0.4.6`
 Predecessor: `c4-smap-hierarchical-synthesis` implementation through P7 at reachable commit `66f023f717afd63433d442015b575edf049ae1b6`; P8/P9 intentionally superseded/unexecuted by ADR 0013
