@@ -47,7 +47,7 @@ Run:
 
 `npm run codex:phase -- c4-smap-hierarchical-synthesis`
 
-P1-P7 were implemented; the reachable P7 implementation commit is `66f023f717afd63433d442015b575edf049ae1b6`. P8 and P9 remain historical unexecuted prompt instructions. ADR 0013 supersedes them: do not run them before `c4-smap-gemini-provider`, do not fabricate their evidence, and do not relabel this correction Green. Real Local qualification now occurs alongside Gemini in the successor correction's P4, with closeout in its P5.
+P1-P7 were implemented; the reachable P7 implementation commit is `66f023f717afd63433d442015b575edf049ae1b6`. P8 and P9 remain historical unexecuted prompt instructions and **will not be run**. ADR 0013/0014 supersede them; do not fabricate their evidence and do not relabel this correction Green. The later Gemini-provider correction was itself owner-closed Not Green, and mandatory next work is `c4-synth-improvements`.
 
 ## Exit gate
 
@@ -67,4 +67,4 @@ Green requires:
 - restart/package/project isolation remain coherent;
 - version remains `0.4.6`.
 
-ADR 0013 supersedes this stack's unexecuted P8/P9 qualification/closeout route. From the completed P7 implementation baseline, route to `c4-smap-gemini-provider`; only that successor's Green closeout may route to `c4-smap-storage`.
+ADR 0013/0014 supersede this stack's unexecuted P8/P9 qualification/closeout route. P8/P9 will not run. The completed P7 implementation remains a historical baseline; current routing is through owner-closed `c4-smap-gemini-provider` into mandatory `c4-synth-improvements`.
