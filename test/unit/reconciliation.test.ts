@@ -16,35 +16,35 @@ const packet: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint:
     sourceEvidenceIds: ['source:a'], relationshipIds: ['edge:a-b'], relation: 'imports' },
 ] };
 const system = (id: string, ref: string): SystemCandidate => ({ candidateKey: `candidate:${id}`, kind: 'system',
-  name: id, purpose: `${id} responsibility`, boundaryRationale: 'Distinct runtime responsibility', confidence: 0.8,
-  uncertainty: [], evidenceRefs: [ref] });
+  name: id, responsibility: `${id} responsibility`, confidence: 0.8,
+  ambiguityCodes: [], evidenceRefs: [ref] });
 const systems = [system('a', 'a'), system('b', 'b')];
 const tree = (systemKey: string, ref: string, ownership = ref): SubsystemDiscoveryResult => ({
-  schemaVersion: 1, stageVersion: 1, stage: 'subsystem-discovery', parentPacketFingerprint: packet.inputFingerprint,
-  viewId: `view:${systemKey}`, systemKey, subdivisionAssessment: { rationale: 'Distinct unit', confidence: 0.8, uncertainty: [] },
+  schemaVersion: 1, stageVersion: 2, stage: 'subsystem-discovery', parentPacketFingerprint: packet.inputFingerprint,
+  viewId: `view:${systemKey}`, systemKey, subdivisionAssessment: { confidence: 0.8, ambiguityCodes: [] },
   nodes: [{ candidateKey: `${systemKey}.sub`, kind: 'subsystem', parentCandidateKey: systemKey, name: `${systemKey} sub`,
-    purpose: 'Own behavior', rationale: 'Direct source', siblingDistinction: 'Runtime role', confidence: 0.8,
-    uncertainty: [], evidenceRefs: [ref, ...(ownership === ref ? [] : [ownership])], ownershipEvidenceRefs: [ownership] }],
+    responsibility: 'Own behavior', confidence: 0.8,
+    ambiguityCodes: [], evidenceRefs: [ref, ...(ownership === ref ? [] : [ownership])], ownershipEvidenceRefs: [ownership] }],
 });
 const context = { systems: [], subtrees: [], subjectSystemKey: null, targetCandidateKeys: [] };
 const request = (stage: SynthesisStageRequest['stage'], fingerprint = packet.inputFingerprint): SynthesisStageRequest => ({
-  schemaVersion: 1, stageVersion: 1, stage, parentPacketFingerprint: fingerprint,
+  schemaVersion: 1, stageVersion: 2, stage, parentPacketFingerprint: fingerprint,
   view: createArchitectureEvidenceView({ ...packet, inputFingerprint: fingerprint }, ['top', 'a', 'b', 'shared', 'cross']), context,
 });
-const response = (req: SynthesisStageRequest, extra: object) => ({ schemaVersion: 1, stageVersion: 1,
+const response = (req: SynthesisStageRequest, extra: object) => ({ schemaVersion: 1, stageVersion: 2,
   stage: req.stage, parentPacketFingerprint: req.parentPacketFingerprint, viewId: req.view.viewId, ...extra });
 
 test('deterministic audit catches cross-System duplicate ownership, overlapping support and dependencies', () => {
   const sharedSystems = systems.map(s => ({ ...s, evidenceRefs: [...s.evidenceRefs, 'shared'] }));
   const trees = [tree('candidate:a', 'shared'), tree('candidate:b', 'shared')];
   const findings = detectReconciliationConflicts(packet, sharedSystems, trees);
-  assert.ok(findings.some(f => /claimed by multiple Systems/.test(f.message)));
-  assert.ok(findings.some(f => /share supporting evidence/.test(f.message)));
-  assert.ok(findings.some(f => /cross-System dependency/.test(f.message)));
+  assert.ok(findings.some(f => f.code === 'ownership-conflict'));
+  assert.ok(findings.some(f => f.code === 'boundary-overlap'));
+  assert.ok(findings.some(f => f.code === 'cross-system-dependency'));
   assert.ok(detectReconciliationConflicts(packet, systems, [tree('candidate:a', 'b'), tree('candidate:b', 'b')])
-    .some(f => /outside the challenged System/.test(f.message)));
-  assert.ok(detectReconciliationConflicts(packet, [systems[0], { ...systems[1], purpose: systems[0].purpose }],
-    [tree('candidate:a', 'a'), tree('candidate:b', 'b')]).some(f => /same name or responsibility/.test(f.message)));
+    .some(f => f.code === 'outside-system'));
+  assert.ok(detectReconciliationConflicts(packet, [systems[0], { ...systems[1], responsibility: systems[0].responsibility }],
+    [tree('candidate:a', 'a'), tree('candidate:b', 'b')]).some(f => f.code === 'duplicate-responsibility'));
   assert.throws(() => detectReconciliationConflicts(packet, systems, [trees[0]]), /Missing/);
   assert.throws(() => detectReconciliationConflicts(packet, systems, [
     { ...trees[0], nodes: [{ ...trees[0].nodes[0], parentCandidateKey: 'candidate:b' }] }, trees[1],
@@ -85,7 +85,7 @@ test('targeted verification view remains small over a larger complete packet', a
     reservedInstructionTokens: 1000, reservedOutputTokens: 2000, reservedOverheadTokens: 1000,
     tokenEstimate: 'conservative' as const };
   const plan = await planArchitectureEvidence(large, 'verification', { systems: [system('a', 'a')], subtrees: [],
-    subjectSystemKey: null, targetCandidateKeys: ['candidate:a'], boundaryQuestion: 'Is this one System?' },
+    subjectSystemKey: null, targetCandidateKeys: ['candidate:a'], boundaryCode: 'boundary-overlap' },
   capability, { estimateTokens: async input => input.length });
   assert.ok(plan.request.view.items.length <= 24);
   assert.ok(plan.request.view.items.some(item => item.id === 'a'));
@@ -114,18 +114,18 @@ test('orchestrator caps targeted verification, preserves uncertainty and assembl
       switch (req.stage) {
         case 'system-discovery': return response(req, { systems: overlappingSystems });
         case 'system-challenge': return response(req, { decisions: overlappingSystems.map(s => ({ action: 'keep', sourceKeys: [s.candidateKey],
-          systems: [s], rationale: 'Independent behavior', evidenceRefs: s.evidenceRefs })) });
+          systems: [s], evidenceRefs: s.evidenceRefs })) });
         case 'subsystem-discovery': return response(req, { systemKey: req.context.subjectSystemKey,
           nodes: tree(req.context.subjectSystemKey!, req.context.subjectSystemKey === 'candidate:a' ? 'a' : 'b', 'shared').nodes,
-          subdivisionAssessment: { rationale: 'Distinct', confidence: 0.8, uncertainty: [] } });
+          subdivisionAssessment: { confidence: 0.8, ambiguityCodes: [] } });
         case 'reconciliation': return response(req, { findings: [{ candidateKeys: ['candidate:a', 'candidate:b'],
-          evidenceRefs: ['cross'], status: 'uncertain', message: 'Cross boundary needs review' }],
-          unresolvedCandidateKeys: ['candidate:a', 'candidate:b'] });
+          evidenceRefs: ['cross'], status: 'uncertain', code: 'boundary-overlap' }],
+          unresolved: [{ candidateKey: 'candidate:a', code: 'boundary-overlap' }, { candidateKey: 'candidate:b', code: 'boundary-overlap' }] });
         case 'verification':
-          assert.ok(req.context.boundaryQuestion);
+          assert.ok(req.context.boundaryCode);
           assert.ok(req.view.items.length <= 24);
           return response(req, { findings: [{ candidateKeys: req.context.targetCandidateKeys,
-            evidenceRefs: [req.view.items[0].id], status: 'uncertain', message: 'Evidence remains ambiguous' }] });
+            evidenceRefs: [req.view.items[0].id], status: 'uncertain', code: req.context.boundaryCode }] });
       }
     },
   };
@@ -157,11 +157,11 @@ test('clear boundaries skip reconciliation and verification model calls', async 
       calls.push(req.stage);
       if (req.stage === 'system-discovery') return response(req, { systems });
       if (req.stage === 'system-challenge') return response(req, { decisions: systems.map(s => ({ action: 'keep',
-        sourceKeys: [s.candidateKey], systems: [s], rationale: 'Distinct', evidenceRefs: s.evidenceRefs })) });
+        sourceKeys: [s.candidateKey], systems: [s], evidenceRefs: s.evidenceRefs })) });
       if (req.stage === 'subsystem-discovery') {
         const ref = req.context.subjectSystemKey === 'candidate:a' ? 'a' : 'b';
         return response(req, { systemKey: req.context.subjectSystemKey, nodes: tree(req.context.subjectSystemKey!, ref).nodes,
-          subdivisionAssessment: { rationale: 'Distinct', confidence: 0.8, uncertainty: [] } });
+          subdivisionAssessment: { confidence: 0.8, ambiguityCodes: [] } });
       }
       throw new Error(`Unexpected ${req.stage}`);
     },

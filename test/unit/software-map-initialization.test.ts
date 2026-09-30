@@ -23,7 +23,7 @@ async function fixture() {
   await writeFile(join(root, 'src/secret/s.ts'), 'export const secret = 1;\n');
   return root;
 }
-const stageResult = (request: SynthesisStageRequest, fields: object) => ({ schemaVersion: 1, stageVersion: 1,
+const stageResult = (request: SynthesisStageRequest, fields: object) => ({ schemaVersion: 1, stageVersion: 2,
   stage: request.stage, parentPacketFingerprint: request.parentPacketFingerprint, viewId: request.view.viewId, ...fields });
 const fakeProvider = (observe?: (request: SynthesisStageRequest) => Promise<void> | void): SynthesisProvider => ({
   capabilities: async () => ({ modelLabel: 'fixture-model', contextWindowTokens: 100000, maxInputTokens: 90000,
@@ -35,20 +35,18 @@ const fakeProvider = (observe?: (request: SynthesisStageRequest) => Promise<void
       const ref = request.view.items.find(item => item.kind === 'semantic' && item.sourceEvidenceIds.length)?.id ??
         request.view.items.find(item => item.kind === 'entrypoint' && item.sourceEvidenceIds.length)?.id;
       assert.ok(ref);
-      return stageResult(request, { systems: [{ candidateKey: 'candidate:app', kind: 'system', name: 'App', purpose: 'App',
-        boundaryRationale: 'Owns runtime behavior', confidence: .8, uncertainty: [], evidenceRefs: [ref] }] });
+      return stageResult(request, { systems: [{ candidateKey: 'candidate:app', kind: 'system', name: 'App', responsibility: 'App',
+        confidence: .8, ambiguityCodes: [], evidenceRefs: [ref] }] });
     }
     if (request.stage === 'system-challenge') return stageResult(request, { decisions: [{ action: 'keep',
-      sourceKeys: ['candidate:app'], systems: request.context.systems, rationale: 'Independent behavior',
-      evidenceRefs: request.context.systems[0].evidenceRefs }] });
+      sourceKeys: ['candidate:app'], systems: request.context.systems, evidenceRefs: request.context.systems[0].evidenceRefs }] });
     if (request.stage === 'subsystem-discovery') {
       const ref = request.context.systems[0].evidenceRefs[0];
       return stageResult(request, { systemKey: request.context.subjectSystemKey, nodes: [{ candidateKey: 'candidate:api',
-        kind: 'subsystem', parentCandidateKey: 'candidate:app', name: 'API', purpose: 'API', rationale: 'Own behavior',
-        siblingDistinction: 'API responsibility', confidence: .8, uncertainty: [], evidenceRefs: [ref], ownershipEvidenceRefs: [ref] }],
-        subdivisionAssessment: { rationale: 'API responsibility', confidence: .8, uncertainty: [] } });
+        kind: 'subsystem', parentCandidateKey: 'candidate:app', name: 'API', responsibility: 'API', confidence: .8, ambiguityCodes: [], evidenceRefs: [ref], ownershipEvidenceRefs: [ref] }],
+        subdivisionAssessment: { confidence: .8, ambiguityCodes: [] } });
     }
-    if (request.stage === 'reconciliation') return stageResult(request, { findings: [], unresolvedCandidateKeys: [] });
+    if (request.stage === 'reconciliation') return stageResult(request, { findings: [], unresolved: [] });
     return stageResult(request, { findings: [] });
   },
 });

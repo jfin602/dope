@@ -35,30 +35,28 @@ const packet: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint:
   ...Array.from({ length: 100 }, (_, i) => fact(`noise-${i}`, 'semantic', `test/fixtures/noise-${i}.ts`)),
 ] as ArchitectureEvidencePacket['items'] };
 const candidate = (id: string, refs: string[]): SystemCandidate => ({ candidateKey: `candidate:${id}`, kind: 'system',
-  name: id, purpose: `Own ${id} behavior`, boundaryRationale: `Boundary for ${id}`, confidence: 0.8,
-  uncertainty: [], evidenceRefs: refs });
+  name: id, responsibility: `Own ${id} behavior`, confidence: 0.8,
+  ambiguityCodes: [], evidenceRefs: refs });
 const firstPass = [candidate('browser', ['browser-main', 'browser-workbench']),
   candidate('electron', ['electron-main', 'electron-workbench']), candidate('storage', ['store']),
   candidate('services', ['api-main', 'compiler-main']), candidate('search', ['search-main'])];
 const corrected: ChallengeDecision[] = [
   { action: 'merge', sourceKeys: ['candidate:browser', 'candidate:electron'],
     systems: [candidate('workbench', ['browser-main', 'electron-main', 'shared-workbench'])],
-    rationale: 'Browser and Electron are shells for one workbench responsibility',
     evidenceRefs: ['browser-core', 'electron-core'] },
   { action: 'reject', sourceKeys: ['candidate:storage'], systems: [],
-    rationale: 'Storage is implementation infrastructure for the workbench', evidenceRefs: ['store-core'] },
+    evidenceRefs: ['store-core'] },
   { action: 'split', sourceKeys: ['candidate:services'],
     systems: [candidate('api', ['api-main', 'api-contract']), candidate('compiler', ['compiler-main', 'compiler-contract'])],
-    rationale: 'The API and compiler own separate responsibilities and entrypoints',
     evidenceRefs: ['api-main', 'compiler-main'] },
   { action: 'keep', sourceKeys: ['candidate:search'], systems: [candidate('search', ['search-main', 'search-contract'])],
-    rationale: 'Search has its own service and contract', evidenceRefs: ['search-main'] },
+    evidenceRefs: ['search-main'] },
 ];
 const capability = { modelLabel: 'fixture-provider', contextWindowTokens: 65536, maxInputTokens: 65536,
   reservedInstructionTokens: 1000, reservedOutputTokens: 2000, reservedOverheadTokens: 500,
   tokenEstimate: 'conservative' as const };
 const stageResult = (request: SynthesisStageRequest, body: Record<string, unknown>) => ({ schemaVersion: 1,
-  stageVersion: 1, stage: request.stage, parentPacketFingerprint: request.parentPacketFingerprint,
+  stageVersion: 2, stage: request.stage, parentPacketFingerprint: request.parentPacketFingerprint,
   viewId: request.view.viewId, ...body });
 const provider = (decisions: ChallengeDecision[] = corrected, calls: SynthesisStageRequest[] = []): SynthesisProvider => ({
   capabilities: async () => capability,
@@ -95,9 +93,9 @@ test('independent challenge merges Browser/Electron, rejects storage, splits ser
   assert.ok(!JSON.stringify(view).includes('.dope/architecture.json'));
   validateSynthesisStageRequest(challenged.plan.request, packet);
   assert.match(SYSTEM_CHALLENGE_INSTRUCTION, /merge two or more/);
-  assert.match(SYSTEM_CHALLENGE_INSTRUCTION, /split one candidate/);
-  assert.match(SYSTEM_CHALLENGE_INSTRUCTION, /reject one candidate/);
-  assert.match(SYSTEM_CHALLENGE_INSTRUCTION, /Do not force a target System count/);
+  assert.match(SYSTEM_CHALLENGE_INSTRUCTION, /split one into two/);
+  assert.match(SYSTEM_CHALLENGE_INSTRUCTION, /reject one with no output/);
+  assert.match(SYSTEM_CHALLENGE_INSTRUCTION, /Do not force a count/);
 });
 
 test('contradictory or unsupported decisions fail closed', async () => {
@@ -160,7 +158,7 @@ test('local provider sends independent structured challenge call after discovery
     assert.equal(calls[3].body.response_format.json_schema.schema.properties.decisions.type, 'array');
     assert.equal(calls[3].body.response_format.json_schema.schema.properties.decisions.items.properties.action.enum.length, 4);
     assert.deepEqual(JSON.parse(calls[3].body.messages[1].content), challenged.plan.request);
-    assert.ok(calls[3].body.messages[0].content.includes('cross-boundary'));
+    assert.ok(calls[3].body.messages[0].content.includes('counter-evidence'));
   } finally {
     server.closeAllConnections();
     await new Promise<void>(resolve => server.close(() => resolve()));

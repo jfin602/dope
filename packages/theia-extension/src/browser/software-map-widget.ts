@@ -198,7 +198,7 @@ export class SoftwareMapWidget extends BaseWidget {
                 row.append(this.element('h4', `${draft.kind}: ${draft.name || '(unnamed)'}`), this.element('p', draft.purpose));
                 if (proposal) {
                     row.append(this.element('p', `Confidence: ${proposal.confidence.toFixed(2)} (synthesis confidence, not probability)`),
-                        this.element('p', `Rationale: ${proposal.rationale}`), this.element('h4', 'Model explanation'));
+                        this.element('p', `Rationale: ${proposal.rationale}`), this.element('h4', 'Evidence explanation'));
                     for (const statement of proposal.evidence) row.append(this.element('p', statement));
                     row.append(this.element('h4', 'Source-backed evidence'));
                     for (const ref of proposal.evidenceRefs) this.renderPacketFact(ref, facts.get(ref), row);

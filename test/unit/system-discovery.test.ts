@@ -50,9 +50,8 @@ async function serverFor(reply: (request: SynthesisStageRequest) => unknown, war
     close: async () => { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); } };
 }
 const candidate = (key: string, name: string, refs: string[]) => ({ candidateKey: `candidate:${key}`, kind: 'system', name,
-  purpose: `Own ${name} behavior`, boundaryRationale: `${name} has an independent responsibility and owned entrypoint`,
-  confidence: 0.8, uncertainty: [], evidenceRefs: refs });
-const result = (request: SynthesisStageRequest, systems: unknown[]) => ({ schemaVersion: 1, stageVersion: 1,
+  responsibility: `Own ${name} behavior`, confidence: 0.8, ambiguityCodes: [], evidenceRefs: refs });
+const result = (request: SynthesisStageRequest, systems: unknown[]) => ({ schemaVersion: 1, stageVersion: 2,
   stage: 'system-discovery', parentPacketFingerprint: request.parentPacketFingerprint, viewId: request.view.viewId, systems });
 async function configured(endpoint: string) {
   const provider = new LmStudioSynthesisProvider({ endpoint, contextWindowTokens: 32768 });
@@ -81,7 +80,7 @@ test('global view groups Browser and Electron packages under one responsibility 
     assert.equal(JSON.stringify(server.calls[3].body.response_format.json_schema.schema).includes('subsystem'), false);
     assert.equal(JSON.stringify(server.calls[3].body.response_format.json_schema.schema).includes('component'), false);
     assert.ok(!/1-2 Systems|2-5 Subsystems|2-8 Components/.test(SYSTEM_DISCOVERY_INSTRUCTION));
-    assert.match(SYSTEM_DISCOVERY_INSTRUCTION, /Do not force a target count/);
+    assert.match(SYSTEM_DISCOVERY_INSTRUCTION, /Do not force a count/);
     assert.ok(!server.calls[1].body.messages.some((message: { content: string }) => message.content.includes('workbench')));
     assert.ok(!server.calls[2].body.messages.some((message: { content: string }) => message.content.includes('workbench')));
   } finally { await server.close(); }

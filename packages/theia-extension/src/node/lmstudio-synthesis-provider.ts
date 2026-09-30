@@ -1,7 +1,5 @@
-import { architectureProposalSchema, assertSynthesisInputBudget, parseArchitectureProposal,
-    synthesisStageResultSchemas, validateArchitectureEvidencePacket } from '@dope/software-map';
-import type { ArchitectureEvidencePacket, ArchitectureProposal, SynthesisCapabilities,
-    SynthesisStageRequest } from '@dope/software-map';
+import { assertSynthesisInputBudget, synthesisStageResultSchemas } from '@dope/software-map';
+import type { SynthesisCapabilities, SynthesisStageRequest } from '@dope/software-map';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
@@ -11,17 +9,12 @@ const readySchema = {
     type: 'object', additionalProperties: false, required: ['ready'],
     properties: { ready: { type: 'boolean', enum: [true] } },
 } as const;
-export const SYSTEM_DISCOVERY_INSTRUCTION = `Discover candidate Systems from the bounded repository-global deterministic evidence view.
-A System is a major independently meaningful software, runtime or product responsibility with a coherent architectural boundary and enough owned behavior to contain lower-level structure.
-A directory, package, framework, UI panel, persistence mechanism, Browser variant or Electron variant is not a System merely because it is separately named or deployed. Multiple packages can serve one System; one repository can contain multiple Systems. Do not force a target count.
-Return only candidate Systems. Do not infer or emit Subsystems or Components, and do not generate canonical architecture IDs. Each candidate needs a temporary candidateKey, name, purpose, boundaryRationale explaining the responsibility and boundary signals, confidence, uncertainty or counter-signals, and directly relevant evidenceRefs from this view. Test fixtures or generated files cannot be the sole support for a production System. Use only supplied evidence IDs; do not invent facts, request filesystem access, or use tools. The complete parent packet is retained by Dope for validation. Return only the strict JSON stage result, including the supplied stage/version, parentPacketFingerprint and viewId.`;
-export const SYSTEM_CHALLENGE_INSTRUCTION = `Independently challenge the supplied first-pass System candidates using their cited facts and the bounded deterministic counter and cross-boundary evidence view. Produce an explicit disposition for every input candidate. A System owns a major independent responsibility with enough behavior for lower-level structure; a package, Browser or Electron application shell, transport/runtime variant, persistence mechanism, framework integration, or UI surface alone does not establish one.
-For each candidate or candidate group choose exactly one action: keep one candidate with its existing temporary key; merge two or more candidates into one corrected candidate with a new temporary key; split one candidate into two or more corrected candidates with new temporary keys; or reject one candidate with no output System. No candidate may appear in more than one decision. For every decision explain why the boundary holds or changes and cite evidenceRefs from this view. Every resulting System must cite directly relevant source-backed production behavior; test/example/generated facts alone are insufficient. Keep candidate keys temporary; never use canonical architecture IDs.
-Actively test whether each candidate owns an independent responsibility, whether candidates jointly implement one responsibility, whether a broad candidate hides separate responsibilities, and whether dependency direction, entrypoints, framework registrations, ownership or counter-evidence undermine the initial boundaries. Do not assume the first pass is correct. Do not force a target System count. Use only supplied facts; do not invent evidence, access files, or use tools. Return only strict JSON for the system-challenge stage with decisions, supplied stage/version, parentPacketFingerprint and viewId. Do not emit Subsystems, Components or a final architecture proposal.`;
-export const SUBSYSTEM_DISCOVERY_INSTRUCTION = `Discover coherent Subsystems and Components only inside the challenged System named by context.subjectSystemKey. This is one bounded per-System pass. The view carries whole deterministic facts with original parent-packet IDs; the System's cited facts and boundary neighbors are proposal context, not ownership truth.
-A Subsystem has a distinct responsibility and may span several packages. A directory or package alone is not a Subsystem. A Component is a cohesive implementation unit under one Subsystem, not every file, class or function. One package may contain several Components. Do not force a count. If evidence does not support useful subdivision, return zero nodes and explain that explicitly in subdivisionAssessment with confidence and uncertainty. Otherwise, each Subsystem needs temporary candidateKey, parentCandidateKey equal to the subject System, name, purpose, rationale, siblingDistinction, confidence, uncertainty, directly relevant evidenceRefs and ownershipEvidenceRefs for direct production behavior. Each Component needs the same fields and a parentCandidateKey naming a Subsystem from this output. ownershipEvidenceRefs must be a subset of evidenceRefs. Distinguish siblings by responsibility, not folder name. Never claim another System's boundary, fabricate refs, create canonical IDs, or emit a final ArchitectureProposal. Return only strict subsystem-discovery JSON with supplied stage/version, parentPacketFingerprint, viewId, systemKey, nodes and subdivisionAssessment.`;
-export const RECONCILIATION_INSTRUCTION = `Review the challenged Systems and their per-System Subsystem and Component candidates against the bounded deterministic cross-System evidence. Identify responsibility duplication, contradictory ownership, overlapping source regions, weak support and dependencies that may challenge a boundary. Structural conflicts are also audited by Dope independently. Return findings with candidateKeys, evidenceRefs from this view, status and concise message; list unresolvedCandidateKeys. Do not rewrite candidate hierarchy, claim canonical identity or invent evidence. A finding is interpretation, not physical fact. Return strict reconciliation JSON with supplied stage/version, parentPacketFingerprint and viewId.`;
-export const VERIFICATION_INSTRUCTION = `Answer only context.boundaryQuestion about context.targetCandidateKeys using directly relevant candidate state and this small deterministic evidence view. Return supported, uncertain or contradicted findings with targeted candidateKeys, evidenceRefs from this view and a concise message. If evidence cannot settle the question, return uncertain. Do not request more evidence, alter hierarchy, invent facts or claim canonical identity. Return strict verification JSON with supplied stage/version, parentPacketFingerprint and viewId.`;
+const COMPACT_RULES = `Return only strict JSON for the supplied stage/version, parentPacketFingerprint and viewId. Use temporary candidate keys and supplied evidence IDs only. Name <=80 characters; responsibility is a semantic label <=160 characters. Use only schema-defined ambiguityCodes and finding codes. Do not emit explanations, rationale, uncertainty strings or other prose fields. Never invent physical facts or canonical IDs.`;
+export const SYSTEM_DISCOVERY_INSTRUCTION = `Discover repository-global candidate Systems with independent responsibilities and enough owned behavior for lower-level structure. Packages, application variants, framework integrations and UI surfaces alone are not Systems. Do not force a count. Cite direct production evidence. ${COMPACT_RULES}`;
+export const SYSTEM_CHALLENGE_INSTRUCTION = `Challenge every input System boundary against source-backed counter-evidence. Cover each source candidate exactly once: keep one with its key, merge two or more into one new key, split one into two or more new keys, or reject one with no output. Cite directly relevant production evidence for outputs. Do not force a count. ${COMPACT_RULES}`;
+export const SUBSYSTEM_DISCOVERY_INSTRUCTION = `Discover useful Subsystems and Components only inside context.subjectSystemKey. A Subsystem may span several packages; one package may contain several Components. A folder alone is not an architecture boundary. Each node cites direct ownershipEvidenceRefs that are a subset of evidenceRefs. Component parents must be Subsystems in this pass. Return zero nodes with typed ambiguityCodes when no useful subdivision is supported. ${COMPACT_RULES}`;
+export const RECONCILIATION_INSTRUCTION = `Review cross-System ownership, overlap, dependency and weak support. Return only typed findings with candidateKeys, evidenceRefs, status and code, plus unresolved candidateKey/code pairs. Do not alter the hierarchy. ${COMPACT_RULES}`;
+export const VERIFICATION_INSTRUCTION = `Check only context.boundaryCode for context.targetCandidateKeys using this bounded view. Return typed supported, uncertain or contradicted findings. Do not alter the hierarchy. ${COMPACT_RULES}`;
 
 export function normalizeSynthesisEndpoint(value = DEFAULT_ENDPOINT): string {
     let url: URL;
@@ -147,54 +140,6 @@ export class LmStudioSynthesisProvider {
             if (generation !== this.generation || model !== this.modelId) throw new Error('Synthesis connection changed');
             try { return JSON.parse(this.content(response)); }
             catch (error) { if (error instanceof SyntaxError) throw new Error(`Invalid ${stage} JSON`); throw error; }
-        } catch (error) {
-            this.invalidateWarmState();
-            throw error;
-        }
-    }
-
-    async synthesize(packet: ArchitectureEvidencePacket): Promise<ArchitectureProposal> {
-        validateArchitectureEvidencePacket(packet);
-        const model = this.requireModel();
-        if (!this.probed) throw new Error('Synthesis capability probe required');
-        const generation = this.generation;
-        await this.ensureWarm(model);
-        if (generation !== this.generation || model !== this.modelId || !this.probed) throw new Error('Synthesis connection changed before packet submission');
-        try {
-            const priority = { topology: 0, framework: 1, entrypoint: 2, configuration: 3, dependency: 4, semantic: 5 };
-            const facts = [...packet.items].sort((a, b) => priority[a.kind] - priority[b.kind] || a.path.localeCompare(b.path) || a.id.localeCompare(b.id));
-            const paths = [...new Set(facts.flatMap(item => [item.path, ...('sourcePaths' in item ? item.sourcePaths ?? [] : []),
-                ...('workspaces' in item ? item.workspaces ?? [] : []), ...('targetPath' in item ? [item.targetPath] : [])]))].sort();
-            const pathIndex = new Map(paths.map((path, index) => [path, index]));
-            const refs = new Map(facts.map((item, index) => [`e${index + 1}`, item.id]));
-            // Keep the exact packet server-side; send every fact with short refs and a path dictionary to fit local context.
-            const compact = { fingerprint: packet.inputFingerprint, paths, items: facts.map((item, index) => {
-                const { id, sourceEvidenceIds, ...fact } = item;
-                const result: Record<string, unknown> = { ref: `e${index + 1}`, ...fact, path: pathIndex.get(item.path) };
-                delete result.relationshipIds;
-                delete result.producer;
-                delete result.producerVersion;
-                if ('targetPath' in item) result.targetPath = pathIndex.get(item.targetPath);
-                if ('sourcePaths' in item && item.sourcePaths) result.sourcePaths = item.sourcePaths.map(path => pathIndex.get(path));
-                if ('workspaces' in item && item.workspaces) result.workspaces = item.workspaces.map(path => pathIndex.get(path));
-                return result;
-            }) };
-            const response = await this.chat(model, architectureProposalSchema, 'architecture_proposal',
-                'Propose a concise hierarchy from the deterministic facts. Every System has null parent; every Subsystem parents a System; every Component parents a Subsystem. A package or application variant is evidence, not automatically a System. Facts are ordered with topology and framework registrations first; each path number indexes paths. Give each node 1-4 directly relevant, distinct fact aliases (e1, e2, etc.) in evidenceRefs, including frontend/view and backend/RPC or DI facts where relevant. Do not use test fixtures or unrelated facts to support production boundaries. Limit unassignedEvidenceRefs to 10 representative facts. Keep rationale and evidence brief. Return only the required JSON proposal. Do not invent physical facts or canonical IDs.',
-                JSON.stringify(compact));
-            if (generation !== this.generation || model !== this.modelId) throw new Error('Synthesis connection changed');
-            let value: unknown;
-            const content = this.content(response);
-            try { value = JSON.parse(content); } catch { throw new Error('Invalid architecture proposal: malformed JSON'); }
-            if (value && typeof value === 'object' && !Array.isArray(value)) {
-                const output = value as Record<string, unknown>;
-                const expand = (items: unknown) => Array.isArray(items) ? items.map(ref => typeof ref === 'string' ? refs.get(ref) ?? ref : ref) : items;
-                if (Array.isArray(output.nodes)) for (const node of output.nodes) {
-                    if (node && typeof node === 'object' && !Array.isArray(node)) node.evidenceRefs = expand(node.evidenceRefs);
-                }
-                output.unassignedEvidenceRefs = expand(output.unassignedEvidenceRefs);
-            }
-            return parseArchitectureProposal(value, packet);
         } catch (error) {
             this.invalidateWarmState();
             throw error;

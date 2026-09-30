@@ -20,15 +20,13 @@ const packet: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint:
   fact('fixture-only', 'test/fixtures/catalog.ts'),
 ] };
 const system = (key: string, refs: string[]): SystemCandidate => ({ candidateKey: `candidate:${key}`, kind: 'system',
-  name: key, purpose: `${key} responsibility`, boundaryRationale: 'Direct behavior and public contract',
-  confidence: 0.8, uncertainty: [], evidenceRefs: refs });
+  name: key, responsibility: `${key} responsibility`, confidence: 0.8, ambiguityCodes: [], evidenceRefs: refs });
 const catalog = system('catalog', ['catalog-contract', 'catalog-b']);
 const search = system('search', ['search-contract']);
 const systems = [catalog, search];
 const node = (key: string, kind: SubtreeCandidate['kind'], parent: string, refs: string[]): SubtreeCandidate => ({
-  candidateKey: `candidate:${key}`, kind, parentCandidateKey: parent, name: key, purpose: `${key} responsibility`,
-  rationale: 'Behavior and public boundary', siblingDistinction: `${key} owns a distinct behavior`,
-  confidence: 0.8, uncertainty: [], evidenceRefs: refs, ownershipEvidenceRefs: refs,
+  candidateKey: `candidate:${key}`, kind, parentCandidateKey: parent, name: key, responsibility: `${key} responsibility`,
+  confidence: 0.8, ambiguityCodes: [], evidenceRefs: refs, ownershipEvidenceRefs: refs,
 });
 const catalogNodes = [node('catalog-data', 'subsystem', catalog.candidateKey, ['catalog-a', 'catalog-b']),
   node('catalog-loader', 'component', 'candidate:catalog-data', ['catalog-a']),
@@ -37,13 +35,13 @@ const capability = (parallel?: number) => ({ modelLabel: 'fixture', contextWindo
   maxInputTokens: 30000, reservedInstructionTokens: 100, reservedOutputTokens: 100,
   reservedOverheadTokens: 100, tokenEstimate: 'exact' as const,
   ...(parallel === undefined ? {} : { maxConcurrentGenerations: parallel }) });
-const stage = (request: SynthesisStageRequest, body: object) => ({ schemaVersion: 1, stageVersion: 1,
+const stage = (request: SynthesisStageRequest, body: object) => ({ schemaVersion: 1, stageVersion: 2,
   stage: request.stage, viewId: request.view.viewId, parentPacketFingerprint: request.parentPacketFingerprint, ...body });
 async function challenged(provider: SynthesisProvider) {
   const context = { systems, subjectSystemKey: null, subtrees: [], targetCandidateKeys: [] };
   const plan = await planArchitectureEvidence(packet, 'system-challenge', context, await provider.capabilities(), provider);
   const result = stage(plan.request, { decisions: systems.map(s => ({ action: 'keep', sourceKeys: [s.candidateKey],
-    systems: [s], rationale: 'Direct production responsibility', evidenceRefs: s.evidenceRefs })) });
+    systems: [s], evidenceRefs: s.evidenceRefs })) });
   return { plan, result: parseSynthesisStageResult(result, plan.request, packet) as SystemChallengeResult, systems };
 }
 const provider = (parallel?: number, onCall?: (request: SynthesisStageRequest) => Promise<void>,
@@ -53,8 +51,8 @@ const provider = (parallel?: number, onCall?: (request: SynthesisStageRequest) =
     await onCall?.(request);
     return stage(request, { systemKey: request.context.subjectSystemKey,
       subdivisionAssessment: request.context.subjectSystemKey === catalog.candidateKey
-        ? { rationale: 'Two behaviors form one useful Subsystem', confidence: 0.8, uncertainty: [] }
-        : { rationale: 'No useful subdivision supported', confidence: 0.3, uncertainty: ['One visible responsibility'] },
+        ? { confidence: 0.8, ambiguityCodes: [] }
+        : { confidence: 0.3, ambiguityCodes: ['insufficient-evidence'] },
       nodes: request.context.subjectSystemKey === catalog.candidateKey ? nodes : [] });
   } });
 
@@ -65,7 +63,7 @@ test('one focused pass per challenged System retains whole facts and meaningful 
   assert.deepEqual(calls.map(call => call.context.subjectSystemKey), systems.map(s => s.candidateKey));
   assert.deepEqual(result.passes[0].result.nodes, catalogNodes);
   assert.equal(result.passes[1].result.nodes.length, 0);
-  assert.match(result.passes[1].result.subdivisionAssessment.rationale, /No useful subdivision/);
+  assert.deepEqual(result.passes[1].result.subdivisionAssessment.ambiguityCodes, ['insufficient-evidence']);
   const ids = new Set(packet.items.map(item => item.id));
   for (const pass of result.passes) {
     assert.ok(pass.result.nodes.every(n => n.evidenceRefs.every(ref => ids.has(ref))));
@@ -86,7 +84,7 @@ test('per-System results reject foreign parents, fabricated refs, duplicate keys
   const context = { systems, subjectSystemKey: catalog.candidateKey, subtrees: [], targetCandidateKeys: [] };
   const plan = await planArchitectureEvidence(packet, 'subsystem-discovery', context, await adapter.capabilities(), adapter);
   const body = { systemKey: catalog.candidateKey,
-    subdivisionAssessment: { rationale: 'Useful boundary', confidence: 0.8, uncertainty: [] }, nodes: catalogNodes };
+    subdivisionAssessment: { confidence: 0.8, ambiguityCodes: [] }, nodes: catalogNodes };
   const bad = [
     { ...body, nodes: [{ ...catalogNodes[0], parentCandidateKey: search.candidateKey }] },
     { ...body, nodes: [{ ...catalogNodes[0], evidenceRefs: ['invented'] }] },
@@ -119,7 +117,7 @@ test('shared direct ownership claims are marked for P6 and cross-System keys can
   const searchNode = node('search-data', 'subsystem', search.candidateKey, ['catalog-b']);
   const adapter: SynthesisProvider = { ...base, runStage: async request => request.context.subjectSystemKey === search.candidateKey
     ? stage(request, { systemKey: search.candidateKey,
-      subdivisionAssessment: { rationale: 'Possible shared data owner', confidence: 0.4, uncertainty: ['Cross-System overlap'] },
+      subdivisionAssessment: { confidence: 0.4, ambiguityCodes: ['insufficient-evidence'] },
       nodes: [searchNode] }) : base.runStage(request) };
   const result = await discoverPerSystemSubtrees(packet, challenge, adapter);
   assert.deepEqual(result.ownershipConflicts, [{ evidenceRef: 'catalog-b',
@@ -128,7 +126,7 @@ test('shared direct ownership claims are marked for P6 and cross-System keys can
   const duplicate = { ...adapter, runStage: async (request: SynthesisStageRequest) =>
     request.context.subjectSystemKey === search.candidateKey
       ? stage(request, { systemKey: search.candidateKey,
-        subdivisionAssessment: { rationale: 'Duplicate temporary key', confidence: 0.4, uncertainty: [] },
+        subdivisionAssessment: { confidence: 0.4, ambiguityCodes: [] },
         nodes: [{ ...searchNode, candidateKey: 'candidate:catalog-data' }] }) : base.runStage(request) };
   await assert.rejects(discoverPerSystemSubtrees(packet, challenge, duplicate), /Duplicate cross-System candidate identity/);
 });

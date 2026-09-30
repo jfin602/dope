@@ -5,9 +5,9 @@ import type { ArchitectureEvidencePacket, ArchitectureProposal } from './synthes
 import type { AnalysisProgressEvent } from './hierarchical-synthesis';
 import type { ReconciliationResult, SubsystemDiscoveryResult, SynthesisFinding, SynthesisProvider,
     SynthesisStage, SynthesisStageContext, SynthesisStageRequest, SynthesisStageResult, SystemCandidate,
-    SystemChallengeResult, SystemDiscoveryResult, VerificationResult } from './hierarchical-synthesis';
+    SystemChallengeResult, SystemDiscoveryResult, VerificationResult, SynthesisIssueCode } from './hierarchical-synthesis';
 
-export const SYNTHESIS_PROMPT_VERSION = 1;
+export const SYNTHESIS_PROMPT_VERSION = 2;
 export const MAX_VERIFICATION_CALLS = 2;
 export const MAX_VERIFICATION_TARGETS = 4;
 export const MAX_EVIDENCE_REFINEMENT_ROUNDS = 2;
@@ -80,9 +80,9 @@ export function detectReconciliationConflicts(packet: ArchitectureEvidencePacket
         new Set(subtrees.map(tree => tree.systemKey)).size !== systems.length ||
         subtrees.some(tree => !systemKeys.has(tree.systemKey))) throw new Error('Missing or duplicated challenged System subtree');
     const findings: SynthesisFinding[] = [];
-    const add = (keys: string[], evidenceRefs: string[], message: string): void => {
+    const add = (keys: string[], evidenceRefs: string[], code: SynthesisIssueCode): void => {
         const ids = unique(evidenceRefs).filter(ref => refs.has(ref));
-        if (ids.length) findings.push({ candidateKeys: unique(keys), evidenceRefs: ids, status: 'uncertain', message });
+        if (ids.length) findings.push({ candidateKeys: unique(keys), evidenceRefs: ids, status: 'uncertain', code });
     };
     const claims = new Map<string, { keys: string[]; systems: string[] }>();
     const pathClaims = new Map<string, { keys: string[]; systems: string[]; refs: string[] }>();
@@ -107,36 +107,36 @@ export function detectReconciliationConflicts(packet: ArchitectureEvidencePacket
         const nodeAreas = node.ownershipEvidenceRefs.map(ref => refs.get(ref)).filter(Boolean).map(item => area(item!.path));
         if (ownAreas.size && nodeAreas.length && nodeAreas.every(group => !ownAreas.has(group)) &&
             !node.evidenceRefs.some(ref => own.evidenceRefs.includes(ref)))
-            add([systemKey, node.candidateKey], node.ownershipEvidenceRefs, 'Candidate responsibility lies outside the challenged System evidence region.');
+            add([systemKey, node.candidateKey], node.ownershipEvidenceRefs, 'outside-system');
         if (!node.ownershipEvidenceRefs.some(ref => {
             const item = refs.get(ref);
             return item && isProductionEvidencePath(item.path) && item.sourceEvidenceIds.length > 0;
-        })) add([node.candidateKey], node.evidenceRefs, 'Candidate has weak direct production support.');
+        })) add([node.candidateKey], node.evidenceRefs, 'weak-support');
     }
     for (const [ref, claim] of claims) if (new Set(claim.systems).size > 1)
-        add(claim.keys, [ref], 'The same implementation fact is claimed by multiple Systems.');
+        add(claim.keys, [ref], 'ownership-conflict');
     for (const claim of pathClaims.values()) if (new Set(claim.systems).size > 1 && new Set(claim.refs).size > 1)
-        add(claim.keys, claim.refs, 'Multiple Systems claim behavior in the same source file.');
+        add(claim.keys, claim.refs, 'same-source-region');
     for (let i = 0; i < systems.length; i++) for (let j = i + 1; j < systems.length; j++) {
         const a = systems[i], b = systems[j];
         const shared = a.evidenceRefs.filter(ref => b.evidenceRefs.includes(ref));
-        if (shared.length) add([a.candidateKey, b.candidateKey], shared, 'System boundaries share supporting evidence; review responsibility overlap.');
+        if (shared.length) add([a.candidateKey, b.candidateKey], shared, 'boundary-overlap');
         if (a.name.toLowerCase() === b.name.toLowerCase() ||
-            a.purpose.toLowerCase() === b.purpose.toLowerCase())
+            a.responsibility.toLowerCase() === b.responsibility.toLowerCase())
             add([a.candidateKey, b.candidateKey], [...a.evidenceRefs, ...b.evidenceRefs],
-                'System candidates describe the same name or responsibility.');
+                'duplicate-responsibility');
         const aPaths = new Set(a.evidenceRefs.map(ref => refs.get(ref)?.path));
         const bPaths = new Set(b.evidenceRefs.map(ref => refs.get(ref)?.path));
         const samePaths = a.evidenceRefs.filter(ref => bPaths.has(refs.get(ref)?.path));
         if (samePaths.length && !shared.length) add([a.candidateKey, b.candidateKey], samePaths,
-            'System evidence occupies the same source region.');
+            'same-source-region');
         const cross = packet.items.filter(item => item.kind === 'dependency' && (
             aPaths.has(item.path) && bPaths.has(item.targetPath) || bPaths.has(item.path) && aPaths.has(item.targetPath)));
         if (cross.length) add([a.candidateKey, b.candidateKey], cross.slice(0, 4).map(item => item.id),
-            'Direct cross-System dependency may indicate a boundary problem.');
+            'cross-system-dependency');
     }
     return findings.sort((a, b) => a.candidateKeys.join().localeCompare(b.candidateKeys.join()) ||
-        a.message.localeCompare(b.message));
+        a.code.localeCompare(b.code));
 }
 
 export class HierarchicalSynthesisOrchestrator {
@@ -227,18 +227,18 @@ export class HierarchicalSynthesisOrchestrator {
             subtrees.push(pass.result as SubsystemDiscoveryResult);
         }
         const structural = detectReconciliationConflicts(packet, systems, subtrees);
-        const reconciliation: ReconciliationResult = structural.length || systems.some(system => system.uncertainty.length) ||
-            subtrees.some(tree => tree.subdivisionAssessment.uncertainty.length || tree.nodes.some(node => node.uncertainty.length))
+        const reconciliation: ReconciliationResult = structural.length || systems.some(system => system.ambiguityCodes.length) ||
+            subtrees.some(tree => tree.subdivisionAssessment.ambiguityCodes.length || tree.nodes.some(node => node.ambiguityCodes.length))
             ? (await run('reconciliation', context(systems, subtrees))).result as ReconciliationResult
             : { schemaVersion: 1, stageVersion: SYNTHESIS_STAGE_VERSION, parentPacketFingerprint: packet.inputFingerprint,
-                viewId: 'deterministic:no-conflicts', stage: 'reconciliation' as const, findings: [], unresolvedCandidateKeys: [] };
+                viewId: 'deterministic:no-conflicts', stage: 'reconciliation' as const, findings: [], unresolved: [] };
         if (!structural.length && reconciliation.viewId === 'deterministic:no-conflicts') {
             emit('reconciliation', 'started', 'Reconciling architecture');
             emit('reconciliation', 'completed', 'No cross-System conflicts found');
         }
         const findings = [...structural, ...reconciliation.findings];
         const pendingFindings = findings.filter(item => item.status !== 'supported');
-        const unresolved = unique([...reconciliation.unresolvedCandidateKeys,
+        const unresolved = unique([...reconciliation.unresolved.map(item => item.candidateKey),
             ...pendingFindings.flatMap(item => item.candidateKeys)]);
         const verifications: VerificationResult[] = [];
         const groups = pendingFindings.filter(item => item.candidateKeys.length <= MAX_VERIFICATION_TARGETS &&
@@ -254,7 +254,7 @@ export class HierarchicalSynthesisOrchestrator {
             const scopedSystems = systems.filter(system => targetKeys.has(system.candidateKey) ||
                 scopedTrees.some(tree => tree.systemKey === system.candidateKey));
             const verificationContext = { ...context(scopedSystems, scopedTrees, null, group.candidateKeys),
-                boundaryQuestion: group.message };
+                boundaryCode: group.code };
             const checked = await run('verification', verificationContext);
             const verification = checked.result as VerificationResult;
             verifications.push(verification);
@@ -264,13 +264,19 @@ export class HierarchicalSynthesisOrchestrator {
         }
         emit('verification', 'completed', 'Boundary verification complete',
             { completedUnits: verificationCompleted, totalUnits: groups.length });
-        const unresolvedWithoutFinding = reconciliation.unresolvedCandidateKeys.filter(key =>
-            !findings.some(item => item.candidateKeys.includes(key)));
+        const unresolvedWithoutFinding = reconciliation.unresolved.filter(item =>
+            !findings.some(finding => finding.candidateKeys.includes(item.candidateKey)));
         const finalReconciliation: ReconciliationResult = { ...reconciliation, findings: pendingFindings,
-            unresolvedCandidateKeys: unique([...unresolvedWithoutFinding, ...pendingFindings.flatMap(item => item.candidateKeys)]) };
+            unresolved: [...new Map([...unresolvedWithoutFinding, ...pendingFindings.flatMap(item =>
+                item.candidateKeys.map(candidateKey => ({ candidateKey, code: item.code })))].map(item => [item.candidateKey, item])).values()] };
         const start = performance.now();
+        const firstNames = new Map(first.systems.map(system => [system.candidateKey, system.name]));
+        const changes = challenge.decisions.filter(decision => decision.action !== 'keep').map(decision =>
+            `${decision.action} ${decision.sourceKeys.map(key => firstNames.get(key)!).join(' / ')}` +
+            (decision.systems.length ? ` → ${decision.systems.map(system => system.name).join(' / ')}` : ''));
         const proposal = assembleArchitectureProposal({ parentPacketFingerprint: packet.inputFingerprint,
-            summary: `Architecture proposal with ${systems.length} challenged System${systems.length === 1 ? '' : 's'}.`,
+            summary: `Architecture proposal with ${systems.length} challenged System${systems.length === 1 ? '' : 's'}.` +
+                (changes.length ? ` Challenge: ${changes.slice(0, 5).join('; ')}${changes.length > 5 ? `; ${changes.length - 5} more changes` : ''}.` : ''),
             systems, subtrees, reconciliation: finalReconciliation, verifications }, packet);
         this.checkpoint();
         record({ operation: 'assembly', durationMs: performance.now() - start, reused: false });

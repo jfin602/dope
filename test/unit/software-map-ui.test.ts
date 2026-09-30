@@ -269,7 +269,7 @@ test('failed cancel keeps review available for retry', async () => {
 test('widget keeps explanation separate from hard facts and labels keyboard controls with theme colors', () => {
   const widget = readFileSync(new URL('../../packages/theia-extension/src/browser/software-map-widget.ts', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
-  assert.match(widget, /'Model explanation'/);
+  assert.match(widget, /'Evidence explanation'/);
   assert.match(widget, /'Source-backed evidence'/);
   assert.match(widget, /renderPacketFact\(ref, facts\.get\(ref\), row\)/);
   assert.match(widget, /'Open questions'/);

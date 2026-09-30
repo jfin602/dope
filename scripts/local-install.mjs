@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { constants } from 'node:fs';
 import { access, chmod, copyFile, mkdir, open, readFile, readlink, rename, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -17,7 +17,8 @@ const current = path.join(root, 'current');
 const history = path.join(root, 'history.jsonl');
 const summary = path.join(root, 'BUILD-HISTORY.md');
 const launcher = path.join(dataHome, 'applications/dope.desktop');
-const icon = path.join(dataHome, 'icons/hicolor/512x512/apps/dope.png');
+const icons = path.join(dataHome, 'icons/hicolor/512x512/apps');
+const sourceIcon = path.join(repo, 'apps/electron/build/icon.png');
 
 const git = (...args) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' }).trim();
 const timestamp = () => new Date().toISOString();
@@ -93,12 +94,18 @@ async function checkArtifact(file) {
   }
 }
 
-async function writeLauncher() {
+async function writeLauncher(id) {
   await mkdir(path.dirname(launcher), { recursive: true });
-  await mkdir(path.dirname(icon), { recursive: true });
-  await copyFile(path.join(repo, 'apps/electron/build/icon.png'), icon);
+  await mkdir(icons, { recursive: true });
+  const releaseIcon = path.join(buildPath(id), 'icon.png');
+  const image = await readFile(releaseIcon).catch(error => {
+    if (error.code === 'ENOENT') return readFile(sourceIcon); // Releases made before icons were stored per build.
+    throw error;
+  });
+  const icon = path.join(icons, `dope-${createHash('sha256').update(image).digest('hex').slice(0, 16)}.png`);
+  await writeFile(icon, image);
   const exec = path.join(current, 'Dope.AppImage').replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('%', '%%');
-  const body = `[Desktop Entry]\nType=Application\nName=Dope\nComment=Dope development environment\nExec="${exec}" %U\nIcon=dope\nTerminal=false\nCategories=Development;IDE;\nStartupWMClass=dope\n`;
+  const body = `[Desktop Entry]\nType=Application\nName=Dope\nComment=Dope development environment\nExec="${exec}" %U\nIcon=${icon}\nTerminal=false\nCategories=Development;IDE;\nStartupWMClass=dope\n`;
   const tmp = `${launcher}.${process.pid}.tmp`;
   await writeFile(tmp, body);
   await rename(tmp, launcher);
@@ -128,12 +135,13 @@ async function install(note, artifact) {
   await mkdir(buildPath(id));
   try {
     await copyFile(source, target, constants.COPYFILE_EXCL);
+    await copyFile(sourceIcon, path.join(buildPath(id), 'icon.png'), constants.COPYFILE_EXCL);
     await chmod(target, 0o755);
     await checkArtifact(target);
     const base = { timestamp: timestamp(), action: 'install', buildId: id, version, commit, branch, dirty, packagePath: source, artifactPath: target, notes: note || null };
     await writeFile(path.join(buildPath(id), 'build.json'), `${JSON.stringify(base, null, 2)}\n`, { flag: 'wx' });
-    await writeLauncher();
     await recordActivation(base, id);
+    await writeLauncher(id);
     console.log(`Installed ${id}\nLauncher: ${launcher}\nHistory: ${summary}`);
   } catch (error) {
     if (await activeId() !== id) await rm(buildPath(id), { recursive: true, force: true });
@@ -149,6 +157,7 @@ async function rollback(id, note) {
   await access(artifactPath(id), constants.X_OK);
   if (await activeId() === id) throw new Error(`${id} is already active`);
   await recordActivation({ ...base, timestamp: timestamp(), action: 'rollback', notes: note || null }, id);
+  await writeLauncher(id);
   console.log(`Activated ${id}`);
 }
 
@@ -165,7 +174,12 @@ try {
   if (command === 'install' && positionals.length === 1) await install(values.note, values.artifact);
   else if (command === 'rollback' && positionals.length === 2 && !values.artifact) await rollback(id, values.note);
   else if (command === 'list' && positionals.length === 1 && !values.note && !values.artifact) await list();
-  else throw new Error('Usage: local-install.mjs install [--note TEXT] [--artifact FILE] | rollback BUILD_ID [--note TEXT] | list');
+  else if (command === 'refresh-launcher' && positionals.length === 1 && !values.note && !values.artifact) {
+    const active = await activeId();
+    if (!active) throw new Error('No active Dope release');
+    await writeLauncher(active);
+    console.log(`Updated ${launcher}`);
+  } else throw new Error('Usage: local-install.mjs install [--note TEXT] [--artifact FILE] | rollback BUILD_ID [--note TEXT] | list | refresh-launcher');
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

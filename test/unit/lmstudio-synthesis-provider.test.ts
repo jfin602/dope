@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import test from 'node:test';
 import { createArchitectureEvidenceView } from '../../packages/software-map/lib/index.js';
-import type { ArchitectureEvidencePacket, ArchitectureProposal, SynthesisStageRequest } from '../../packages/software-map/lib/index.js';
-import { DEFAULT_SYNTHESIS_TIMEOUT_MS, LmStudioSynthesisProvider, normalizeSynthesisEndpoint, preferredSynthesisModel,
+import type { ArchitectureEvidencePacket, SynthesisStageRequest } from '../../packages/software-map/lib/index.js';
+import { DEFAULT_SYNTHESIS_TIMEOUT_MS, LmStudioSynthesisProvider, normalizeSynthesisEndpoint,
   SUBSYSTEM_DISCOVERY_INSTRUCTION } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
 
 const modelId = 'publisher/Qwen3-Coder-30B-A3B-Instruct-GGUF';
@@ -12,10 +12,6 @@ const packet: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint:
   { id: 'framework:1', kind: 'framework', path: 'src/backend.ts', sourceEvidenceIds: ['physical:1'],
     framework: 'theia', producer: 'theia-inversify', producerVersion: '1', concept: 'rpc-handler', name: secret },
 ] };
-const proposal: ArchitectureProposal = { schemaVersion: 1, summary: 'One system', needsMoreEvidence: false, nodes: [
-  { proposalKey: 'proposal:app', kind: 'system', name: 'App', purpose: 'Serve the app', parentProposalKey: null,
-    confidence: 0.8, rationale: 'Framework registration', evidenceRefs: ['framework:1'], evidence: ['RPC handler'] },
-], unassignedEvidenceRefs: [], openQuestions: [], evidenceRequests: [] };
 
 type Request = { path: string; authorization?: string; body?: any };
 async function mockServer(reply: (request: Request, response: ServerResponse) => void) {
@@ -40,175 +36,80 @@ const completion = (content: unknown) => ({ choices: [{ message: { content } }] 
 function normalReply(request: Request, response: ServerResponse) {
   if (request.path === '/v1/models') return json(response, { data: [{ id: 'another-model' }, { id: modelId }] });
   if (request.body.response_format.json_schema.name === 'readiness') return json(response, completion('{"ready":true}'));
-  return json(response, completion(JSON.stringify({ ...proposal, nodes: [{ ...proposal.nodes[0], evidenceRefs: ['e1'] }] })));
+  return json(response, completion('{}'));
 }
-async function configured(endpoint: string, options: { token?: string; timeoutMs?: number } = {}) {
-  const provider = new LmStudioSynthesisProvider({ endpoint, ...options });
-  const models = await provider.discoverModels();
-  provider.selectModel(preferredSynthesisModel(models)!);
-  await provider.probe();
-  return provider;
-}
-
 test('local adapter runs one structured per-System call and declares serial generation', async () => {
   const server = await mockServer((request, response) => {
     if (request.path === '/v1/models') return normalReply(request, response);
     if (request.body.response_format.json_schema.name === 'readiness') return json(response, completion('{"ready":true}'));
     const sent = JSON.parse(request.body.messages[1].content) as SynthesisStageRequest;
-    if (sent.stage === 'reconciliation') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 1,
+    if (sent.stage === 'reconciliation') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 2,
       stage: sent.stage, parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId,
-      findings: [], unresolvedCandidateKeys: [] })));
-    if (sent.stage === 'verification') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 1,
+      findings: [], unresolved: [] })));
+    if (sent.stage === 'verification') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 2,
       stage: sent.stage, parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId, findings: [] })));
-    json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 1, stage: 'subsystem-discovery',
+    json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 2, stage: 'subsystem-discovery',
       parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId, systemKey: sent.context.subjectSystemKey,
-      subdivisionAssessment: { rationale: 'One responsibility; no useful split', confidence: 0.4,
-        uncertainty: ['Limited implementation'] }, nodes: [] })));
+      subdivisionAssessment: { confidence: 0.4,
+        ambiguityCodes: ['insufficient-evidence'] }, nodes: [] })));
   });
   try {
     const provider = new LmStudioSynthesisProvider({ endpoint: server.endpoint, contextWindowTokens: 16384 });
     await provider.discoverModels(); provider.selectModel(modelId); await provider.probe();
     assert.equal((await provider.capabilities()).maxConcurrentGenerations, 1);
-    const request: SynthesisStageRequest = { schemaVersion: 1, stage: 'subsystem-discovery', stageVersion: 1,
+    assert.ok(DEFAULT_SYNTHESIS_TIMEOUT_MS >= 600_000);
+    assert.equal('synthesize' in provider, false);
+    const request: SynthesisStageRequest = { schemaVersion: 1, stage: 'subsystem-discovery', stageVersion: 2,
       parentPacketFingerprint: packet.inputFingerprint, view: createArchitectureEvidenceView(packet, ['framework:1']),
-      context: { systems: [{ candidateKey: 'candidate:app', kind: 'system', name: 'App', purpose: 'Serve',
-        boundaryRationale: 'Registered service', confidence: 0.8, uncertainty: [], evidenceRefs: ['framework:1'] }],
+      context: { systems: [{ candidateKey: 'candidate:app', kind: 'system', name: 'App', responsibility: 'Serve',
+        confidence: 0.8, ambiguityCodes: [], evidenceRefs: ['framework:1'] }],
         subjectSystemKey: 'candidate:app', subtrees: [], targetCandidateKeys: [] } };
     const result = await provider.runStage(request) as { systemKey: string; nodes: unknown[] };
     assert.equal(result.systemKey, 'candidate:app'); assert.deepEqual(result.nodes, []);
     assert.equal(server.requests.at(-1)!.body.response_format.json_schema.name, 'subsystem_discovery');
+    const nodeSchema = server.requests.at(-1)!.body.response_format.json_schema.schema.properties.nodes.items;
+    assert.equal(nodeSchema.additionalProperties, false);
+    assert.deepEqual(nodeSchema.required, ['candidateKey', 'kind', 'parentCandidateKey', 'name', 'responsibility',
+      'confidence', 'ambiguityCodes', 'evidenceRefs', 'ownershipEvidenceRefs']);
     assert.match(server.requests.at(-1)!.body.messages[0].content, /may span several packages/);
     assert.match(SUBSYSTEM_DISCOVERY_INSTRUCTION, /one package may contain several Components/i);
     assert.deepEqual(server.requests.slice(1, 3).map(r => r.body.response_format.json_schema.name), ['readiness', 'readiness']);
-    const subtree = { ...result as object, schemaVersion: 1 as const, stageVersion: 1 as const,
+    const subtree = { ...result as object, schemaVersion: 1 as const, stageVersion: 2 as const,
       stage: 'subsystem-discovery' as const, parentPacketFingerprint: packet.inputFingerprint,
       viewId: request.view.viewId, systemKey: 'candidate:app', nodes: [],
-      subdivisionAssessment: { rationale: 'No split', confidence: 0.4, uncertainty: [] } };
+      subdivisionAssessment: { confidence: 0.4, ambiguityCodes: [] } };
     const reconciliation: SynthesisStageRequest = { ...request, stage: 'reconciliation',
       context: { ...request.context, subjectSystemKey: null, subtrees: [subtree] } };
     await provider.runStage(reconciliation);
     const verification: SynthesisStageRequest = { ...reconciliation, stage: 'verification',
       context: { ...reconciliation.context, targetCandidateKeys: ['candidate:app'],
-        boundaryQuestion: 'Does the service belong to this System?' } };
+        boundaryCode: 'boundary-overlap' } };
     await provider.runStage(verification);
     assert.deepEqual(server.requests.slice(-2).map(r => r.body.response_format.json_schema.name), ['reconciliation', 'verification']);
     assert.match(server.requests.at(-2)!.body.messages[0].content, /cross-System/i);
-    assert.match(server.requests.at(-1)!.body.messages[0].content, /boundaryQuestion/);
+    assert.match(server.requests.at(-1)!.body.messages[0].content, /boundaryCode/);
   } finally { await server.close(); }
 });
 
-test('discovery -> synthetic probe -> synthetic warm -> compact facts; refs resolve against exact packet', async () => {
-  const server = await mockServer(normalReply);
-  try {
-    const provider = await configured(server.endpoint);
-    assert.equal(provider.selectedModel, modelId);
-    assert.deepEqual(await provider.synthesize(packet), proposal);
-    assert.deepEqual(await provider.synthesize(packet), proposal);
-    assert.deepEqual(server.requests.map(r => r.path), ['/v1/models', '/v1/chat/completions', '/v1/chat/completions', '/v1/chat/completions', '/v1/chat/completions']);
-    assert.deepEqual(server.requests.slice(1).map(r => r.body.response_format.json_schema.name), ['readiness', 'readiness', 'architecture_proposal', 'architecture_proposal']);
-    assert.ok(server.requests.slice(1, 3).every(r => !JSON.stringify(r.body).includes(secret) && r.body.response_format.json_schema.strict));
-    assert.ok(server.requests.slice(3).every(r => {
-      const sent = JSON.parse(r.body.messages[1].content);
-      return sent.items.length === packet.items.length && sent.items[0].ref === 'e1' &&
-        sent.items[0].kind === 'framework' && sent.paths[sent.items[0].path] === packet.items[0].path &&
-        !r.body.messages[1].content.includes('physical:1');
-    }));
-    assert.ok(server.requests.slice(1).every(r => r.body.model === modelId));
-    assert.deepEqual(server.requests[3].body.response_format.json_schema.schema.required, [
-      'schemaVersion', 'summary', 'needsMoreEvidence', 'nodes', 'unassignedEvidenceRefs', 'openQuestions', 'evidenceRequests',
-    ]);
-  } finally { await server.close(); }
-});
-
-test('large source-backed packets retain every fact within a bounded local-model input', async () => {
-  assert.ok(DEFAULT_SYNTHESIS_TIMEOUT_MS >= 600_000, 'local synthesis must allow full-packet generation time');
-  const large: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'large', items: Array.from({ length: 426 }, (_, i) => ({
-    id: `fact-${i}-${'f'.repeat(64)}`, kind: 'framework' as const, path: `packages/p${i % 12}/src/backend.ts`,
-    sourceEvidenceIds: [`source-${i}-${'s'.repeat(64)}`], framework: 'theia', producer: 'theia-inversify',
-    producerVersion: '1', concept: 'rpc-handler', name: `Service${i}`,
-  })) };
-  const server = await mockServer(normalReply);
-  try {
-    const provider = await configured(server.endpoint);
-    const result = await provider.synthesize(large);
-    assert.equal(result.nodes[0].evidenceRefs[0], large.items[0].id);
-    const sent = server.requests[3].body.messages[1].content;
-    assert.equal(JSON.parse(sent).items.length, 426);
-    assert.ok(sent.length < 60000, `compact input was ${sent.length} bytes`);
-    assert.ok(JSON.stringify(large).length > 100000);
-  } finally { await server.close(); }
-});
-
-test('high-signal topology precedes lower-level facts without changing hard-reference validation', async () => {
-  const mixed: ArchitectureEvidencePacket = { ...packet, items: [packet.items[0],
-    { id: 'topology:1', kind: 'topology', path: 'package.json', sourceEvidenceIds: [], scope: 'workspace', name: 'Dope' }] };
-  const server = await mockServer(normalReply);
-  try {
-    const provider = await configured(server.endpoint);
-    const result = await provider.synthesize(mixed);
-    const sent = JSON.parse(server.requests[3].body.messages[1].content);
-    assert.equal(sent.items[0].kind, 'topology');
-    assert.equal(sent.items[1].kind, 'framework');
-    assert.equal(result.nodes[0].evidenceRefs[0], 'topology:1');
-  } finally { await server.close(); }
-});
-
-test('warm-up failure blocks packet submission, including retry until probe succeeds', async () => {
-  let readiness = 0;
-  const server = await mockServer((request, response) => {
-    if (request.body?.response_format.json_schema.name === 'readiness' && ++readiness === 2) return json(response, { error: 'unloaded' }, 503);
-    normalReply(request, response);
-  });
-  try {
-    const provider = await configured(server.endpoint);
-    await assert.rejects(provider.synthesize(packet), /HTTP 503/);
-    assert.equal(server.requests.length, 3);
-    assert.ok(server.requests.every(r => !JSON.stringify(r.body ?? '').includes(secret)));
-    await assert.rejects(provider.synthesize(packet), /probe required/);
-    await provider.probe();
-    assert.deepEqual(await provider.synthesize(packet), proposal);
-    assert.deepEqual(server.requests.slice(3).map(r => r.body.response_format.json_schema.name), ['readiness', 'readiness', 'architecture_proposal']);
-  } finally { await server.close(); }
-});
-
-test('probe rejects unavailable models and malformed structured readiness without project evidence', async () => {
-  const server = await mockServer((request, response) => {
-    if (request.path === '/v1/models') return normalReply(request, response);
-    json(response, completion('{"ready":false}'));
-  });
-  try {
-    const provider = new LmStudioSynthesisProvider({ endpoint: server.endpoint });
-    await provider.discoverModels();
-    assert.throws(() => provider.selectModel('not-loaded'), /unavailable/);
-    provider.selectModel(modelId);
-    await assert.rejects(provider.probe(), /readiness response/);
-    await assert.rejects(provider.synthesize(packet), /probe required/);
-    assert.deepEqual(server.requests.map(r => r.path), ['/v1/models', '/v1/chat/completions']);
-    assert.ok(server.requests.every(r => !JSON.stringify(r.body ?? '').includes(secret)));
-  } finally { await server.close(); }
-});
-
-test('explicit unload, reconnect and model change each invalidate warm readiness', async () => {
-  const server = await mockServer(normalReply);
-  try {
-    const provider = await configured(server.endpoint);
-    await provider.synthesize(packet);
-    provider.invalidateWarmState();
-    await provider.synthesize(packet);
-    await provider.discoverModels();
-    await assert.rejects(provider.synthesize(packet), /probe required/);
-    await provider.probe();
-    await provider.synthesize(packet);
-    provider.selectModel('another-model');
-    await assert.rejects(provider.synthesize(packet), /probe required/);
-    await provider.probe();
-    await provider.synthesize(packet);
-    assert.deepEqual(server.requests.map(r => r.body?.response_format.json_schema.name ?? 'models'), [
-      'models', 'readiness', 'readiness', 'architecture_proposal', 'readiness', 'architecture_proposal',
-      'models', 'readiness', 'readiness', 'architecture_proposal', 'readiness', 'readiness', 'architecture_proposal',
-    ]);
-    assert.equal(server.requests.at(-1)!.body.model, 'another-model');
-  } finally { await server.close(); }
+test('staged adapter rejects malformed JSON and refusal after synthetic readiness', async () => {
+  for (const [reply, error] of [[completion('{'), /Invalid system-discovery JSON/],
+    [{ choices: [{ message: { refusal: 'No' } }] }, /refused/] ] as const) {
+    const server = await mockServer((request, response) => {
+      if (request.path === '/v1/models' || request.body.response_format.json_schema.name === 'readiness')
+        return normalReply(request, response);
+      json(response, reply);
+    });
+    try {
+      const provider = new LmStudioSynthesisProvider({ endpoint: server.endpoint, contextWindowTokens: 16384 });
+      await provider.discoverModels(); provider.selectModel(modelId); await provider.probe();
+      const request: SynthesisStageRequest = { schemaVersion: 1, stageVersion: 2, stage: 'system-discovery',
+        parentPacketFingerprint: packet.inputFingerprint, view: createArchitectureEvidenceView(packet, ['framework:1']),
+        context: { systems: [], subjectSystemKey: null, subtrees: [], targetCandidateKeys: [] } };
+      await assert.rejects(provider.runStage(request), error);
+      assert.deepEqual(server.requests.slice(1, 3).map(r => r.body.response_format.json_schema.name), ['readiness', 'readiness']);
+      assert.ok(server.requests.slice(1, 3).every(r => !JSON.stringify(r.body).includes(secret)));
+    } finally { await server.close(); }
+  }
 });
 
 test('endpoint and token validation rejects credentials and keeps diagnostics redacted', async () => {
@@ -252,30 +153,4 @@ test('timeout, network, HTTP and invalid JSON failures stay visible without pack
   });
   try { await assert.rejects(new LmStudioSynthesisProvider({ endpoint: invalid.endpoint }).discoverModels(), /HTTP JSON/); }
   finally { await invalid.close(); }
-});
-
-test('malformed, schema-invalid, fabricated-ref and refused proposals fail after warm-up', async () => {
-  const cases = [
-    { content: '{', error: /malformed JSON/ },
-    { content: JSON.stringify({ ...proposal, extra: true }), error: /fields/ },
-    { content: JSON.stringify({ ...proposal, nodes: [{ ...proposal.nodes[0], evidenceRefs: ['fabricated'] }] }), error: /unknown/ },
-  ];
-  for (const scenario of cases) {
-    const server = await mockServer((request, response) => {
-      if (request.body?.response_format.json_schema.name === 'architecture_proposal') return json(response, completion(scenario.content));
-      normalReply(request, response);
-    });
-    try {
-      const provider = await configured(server.endpoint);
-      await assert.rejects(provider.synthesize(packet), scenario.error);
-      assert.equal(server.requests.length, 4);
-      assert.ok(server.requests.slice(1, 3).every(r => !JSON.stringify(r.body).includes(secret)));
-    } finally { await server.close(); }
-  }
-  const refused = await mockServer((request, response) => {
-    if (request.body?.response_format.json_schema.name === 'architecture_proposal') return json(response, { choices: [{ message: { refusal: 'No' } }] });
-    normalReply(request, response);
-  });
-  try { await assert.rejects((await configured(refused.endpoint)).synthesize(packet), /refused/); }
-  finally { await refused.close(); }
 });

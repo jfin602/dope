@@ -107,23 +107,21 @@ test('evidence requests are bounded, typed and path targeted', () => {
 const capability: SynthesisCapabilities = { modelLabel: 'local model', contextWindowTokens: 1000, maxInputTokens: 900,
   reservedInstructionTokens: 100, reservedOutputTokens: 200, reservedOverheadTokens: 50, tokenEstimate: 'conservative' };
 const view = createArchitectureEvidenceView(packet, ['entry', 'package']);
-const systemCandidate: SystemCandidate = { candidateKey: 'candidate:app', kind: 'system', name: 'App', purpose: 'Serve users',
-  boundaryRationale: 'The application owns request handling', confidence: 0.8, uncertainty: [], evidenceRefs: ['entry'] };
+const systemCandidate: SystemCandidate = { candidateKey: 'candidate:app', kind: 'system', name: 'App', responsibility: 'Serve users',
+  confidence: 0.8, ambiguityCodes: [], evidenceRefs: ['entry'] };
 const context = (systems: SystemCandidate[] = [], subjectSystemKey: string | null = null,
   subtrees: SubsystemDiscoveryResult[] = [], targetCandidateKeys: string[] = []) =>
-  ({ systems, subjectSystemKey, subtrees, targetCandidateKeys });
+  ({ systems, subjectSystemKey, subtrees, targetCandidateKeys, ...(targetCandidateKeys.length ? { boundaryCode: 'boundary-overlap' as const } : {}) });
 const request = (stage: SynthesisStageRequest['stage'], stageContext = context()): SynthesisStageRequest =>
-  ({ schemaVersion: 1, stage, stageVersion: 1, parentPacketFingerprint: packet.inputFingerprint, view, context: stageContext });
+  ({ schemaVersion: 1, stage, stageVersion: 2, parentPacketFingerprint: packet.inputFingerprint, view, context: stageContext });
 const result = (stage: SynthesisStageRequest['stage'], extra: object) =>
-  ({ schemaVersion: 1, stageVersion: 1, parentPacketFingerprint: packet.inputFingerprint, viewId: view.viewId, stage, ...extra });
+  ({ schemaVersion: 1, stageVersion: 2, parentPacketFingerprint: packet.inputFingerprint, viewId: view.viewId, stage, ...extra });
 const subtree = result('subsystem-discovery', { systemKey: systemCandidate.candidateKey,
-  subdivisionAssessment: { rationale: 'Request serving has a meaningful boundary', confidence: 0.7, uncertainty: [] }, nodes: [
+  subdivisionAssessment: { confidence: 0.7, ambiguityCodes: [] }, nodes: [
   { candidateKey: 'candidate:server', kind: 'subsystem', parentCandidateKey: systemCandidate.candidateKey,
-    name: 'Server', purpose: 'Serve requests', rationale: 'Owns request handling', siblingDistinction: 'Request service boundary',
-    confidence: 0.7, uncertainty: ['Entry role may overlap'], evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] },
+    name: 'Server', responsibility: 'Serve requests', confidence: 0.7, ambiguityCodes: ['insufficient-evidence'], evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] },
   { candidateKey: 'candidate:main', kind: 'component', parentCandidateKey: 'candidate:server',
-    name: 'Main', purpose: 'Start server', rationale: 'Owns startup', siblingDistinction: 'Startup unit',
-    confidence: 1, uncertainty: [], evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] },
+    name: 'Main', responsibility: 'Start server', confidence: 1, ambiguityCodes: [], evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] },
 ] }) as SubsystemDiscoveryResult;
 test('capabilities reserve context and reject unsafe or malformed estimates', async () => {
   assert.equal(usableEvidenceTokens(capability), 650);
@@ -157,12 +155,16 @@ test('stage requests and outputs enforce stage, context, evidence and temporary 
   assert.deepEqual(parseSynthesisStageResult(discovered, discovery, packet), discovered);
   assert.equal(synthesisStageResultSchemas['system-discovery'].additionalProperties, false);
   for (const bad of [
-    { ...discovered, stageVersion: 2 }, { ...discovered, viewId: 'wrong' },
+    { ...discovered, stageVersion: 1 }, { ...discovered, viewId: 'wrong' },
     result('system-discovery', { systems: [systemCandidate, systemCandidate] }),
     result('system-discovery', { systems: [{ ...systemCandidate, candidateKey: 'app' }] }),
     result('system-discovery', { systems: [{ ...systemCandidate, evidenceRefs: ['fabricated'] }] }),
     result('system-discovery', { systems: [{ ...systemCandidate, confidence: NaN }] }),
-    result('system-discovery', { systems: [{ ...systemCandidate, uncertainty: ['x', 'x'] }] }),
+    result('system-discovery', { systems: [{ ...systemCandidate, ambiguityCodes: ['insufficient-evidence', 'insufficient-evidence'] }] }),
+    result('system-discovery', { systems: [{ ...systemCandidate, ambiguityCodes: ['invented'] }] }),
+    result('system-discovery', { systems: [{ ...systemCandidate, responsibility: 'x'.repeat(161) }] }),
+    result('system-discovery', { systems: [{ ...systemCandidate, responsibility: 'Serve\nusers' }] }),
+    result('system-discovery', { systems: [{ ...systemCandidate, boundaryRationale: 'prose' }] }),
     { ...discovered, canonicalId: 'app' },
   ]) assert.throws(() => parseSynthesisStageResult(bad, discovery, packet));
   assert.throws(() => validateSynthesisStageRequest({ ...discovery, stage: 'unknown' as any }, packet));
@@ -180,7 +182,7 @@ test('System Challenge covers every source and validates keep, merge, split and 
   const third = { ...systemCandidate, candidateKey: 'candidate:electron' };
   const challenged = request('system-challenge', context([systemCandidate, second, third]));
   const decision = (action: string, sourceKeys: string[], systems: SystemCandidate[]) =>
-    ({ action, sourceKeys, systems, rationale: 'Boundary evidence', evidenceRefs: ['entry'] });
+    ({ action, sourceKeys, systems, evidenceRefs: ['entry'] });
   const keep = decision('keep', ['candidate:app'], [systemCandidate]);
   const merge = decision('merge', ['candidate:browser', 'candidate:electron'],
     [{ ...systemCandidate, candidateKey: 'candidate:desktop' }]);
@@ -197,6 +199,7 @@ test('System Challenge covers every source and validates keep, merge, split and 
     [keep, decision('reject', ['candidate:browser'], [second]), decision('reject', ['candidate:electron'], [])],
     [keep, decision('reject', ['candidate:browser'], []), decision('reject', ['candidate:missing'], [])],
     [keep, { ...merge, evidenceRefs: ['unknown'] }],
+    [keep, { ...merge, rationale: 'prose' }],
   ]) assert.throws(() => parseSynthesisStageResult(result('system-challenge', { decisions }), challenged, packet));
 });
 
@@ -208,18 +211,32 @@ test('per-System trees, reconciliation, verification and final assembly preserve
     [{ ...subtree.nodes[0], kind: 'component' }],
     [subtree.nodes[0], { ...subtree.nodes[1], candidateKey: subtree.nodes[0].candidateKey }],
     [{ ...subtree.nodes[0], evidenceRefs: ['unknown'] }],
+    [{ ...subtree.nodes[0], rationale: 'prose' }],
+    [{ ...subtree.nodes[0], ambiguityCodes: ['made-up'] }],
   ]) assert.throws(() => parseSynthesisStageResult({ ...subtree, nodes }, perSystem, packet));
+  assert.throws(() => parseSynthesisStageResult({ ...subtree,
+    subdivisionAssessment: { ...subtree.subdivisionAssessment, rationale: 'prose' } }, perSystem, packet));
   const reconciliation = result('reconciliation', { findings: [{ candidateKeys: ['candidate:server'], evidenceRefs: ['entry'],
-    status: 'uncertain', message: 'Check boundary' }], unresolvedCandidateKeys: ['candidate:server'] });
+    status: 'uncertain', code: 'boundary-overlap' }], unresolved: [{ candidateKey: 'candidate:server', code: 'boundary-overlap' }] });
   const reconRequest = request('reconciliation', context([systemCandidate], null, [subtree]));
   assert.deepEqual(parseSynthesisStageResult(reconciliation, reconRequest, packet), reconciliation);
+  for (const finding of [{ ...reconciliation.findings[0], message: 'prose' },
+    { ...reconciliation.findings[0], code: 'made-up' },
+    { ...reconciliation.findings[0], evidenceRefs: ['fabricated'] }])
+    assert.throws(() => parseSynthesisStageResult({ ...reconciliation, findings: [finding] }, reconRequest, packet));
+  for (const unresolved of [[{ candidateKey: 'candidate:server', code: 'invented' }],
+    [{ candidateKey: 'candidate:missing', code: 'boundary-overlap' }],
+    [{ candidateKey: 'candidate:server', code: 'boundary-overlap', rationale: 'prose' }]])
+    assert.throws(() => parseSynthesisStageResult({ ...reconciliation, unresolved }, reconRequest, packet));
   const anotherSystem = { ...systemCandidate, candidateKey: 'candidate:another' };
   assert.throws(() => validateSynthesisStageRequest(request('reconciliation',
     context([systemCandidate, anotherSystem], null, [subtree, subtree])), packet), /duplicate/);
   const verification = result('verification', { findings: [{ candidateKeys: ['candidate:server'], evidenceRefs: ['entry'],
-    status: 'supported', message: 'Boundary supported' }] });
+    status: 'supported', code: 'boundary-overlap' }] });
   assert.deepEqual(parseSynthesisStageResult(verification,
     request('verification', context([systemCandidate], null, [subtree], ['candidate:server'])), packet), verification);
+  assert.throws(() => parseSynthesisStageResult({ ...verification, findings: [{ ...verification.findings[0], code: 'weak-support' }] },
+    request('verification', context([systemCandidate], null, [subtree], ['candidate:server'])), packet));
   assert.throws(() => parseSynthesisStageResult({ ...verification, findings: [{ ...verification.findings[0],
     candidateKeys: ['candidate:main'] }] }, request('verification', context([systemCandidate], null, [subtree], ['candidate:server'])), packet));
   const assembly = { parentPacketFingerprint: packet.inputFingerprint, summary: 'App', systems: [systemCandidate],
@@ -228,6 +245,10 @@ test('per-System trees, reconciliation, verification and final assembly preserve
   assert.deepEqual(proposal.nodes.map(node => node.proposalKey), ['proposal:stage-1', 'proposal:stage-2', 'proposal:stage-3']);
   assert.equal(proposal.nodes[0].parentProposalKey, null);
   assert.equal(proposal.nodes[2].parentProposalKey, 'proposal:stage-2');
+  assert.match(proposal.nodes[2].rationale, /Parent: Server/);
+  assert.match(proposal.nodes[0].rationale, /main\.ts/);
+  assert.match(proposal.openQuestions.join(' '), /boundary overlap.*main\.ts/);
+  assert.match(proposal.openQuestions.join(' '), /insufficient evidence/);
   assert.ok(proposal.nodes.every(node => !('id' in node) && !node.proposalKey.includes('candidate:')));
   assert.throws(() => assembleArchitectureProposal({ ...assembly, parentPacketFingerprint: 'other' }, packet));
   assert.throws(() => assembleArchitectureProposal({ ...assembly, systems: [{ ...systemCandidate, evidenceRefs: ['unknown'] }] }, packet));

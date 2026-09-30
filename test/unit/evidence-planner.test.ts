@@ -6,7 +6,8 @@ import type { ArchitectureEvidenceItem, ArchitectureEvidencePacket, SynthesisCap
 
 const context = (systems: SystemCandidate[] = [], subjectSystemKey: string | null = null,
   targetCandidateKeys: string[] = []): SynthesisStageContext =>
-  ({ systems, subjectSystemKey, subtrees: [], targetCandidateKeys });
+  ({ systems, subjectSystemKey, subtrees: [], targetCandidateKeys,
+    ...(targetCandidateKeys.length ? { boundaryCode: 'boundary-overlap' as const } : {}) });
 const capability = (ceiling: number): SynthesisCapabilities => ({ modelLabel: 'controlled provider',
   contextWindowTokens: ceiling + 30, maxInputTokens: ceiling + 20, reservedInstructionTokens: 10,
   reservedOutputTokens: 10, reservedOverheadTokens: 10, tokenEstimate: 'exact' });
@@ -31,8 +32,8 @@ const facts: ArchitectureEvidenceItem[] = [
 ];
 const packet: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'packet:controlled',
   sourceFingerprint: 'source:controlled', items: facts };
-const system: SystemCandidate = { candidateKey: 'candidate:app', kind: 'system', name: 'App', purpose: 'Serve',
-  boundaryRationale: 'Entrypoint and public exports define the application', confidence: 0.8, uncertainty: [], evidenceRefs: ['start', 'public'] };
+const system: SystemCandidate = { candidateKey: 'candidate:app', kind: 'system', name: 'App', responsibility: 'Serve',
+  confidence: 0.8, ambiguityCodes: [], evidenceRefs: ['start', 'public'] };
 
 test('global skeleton is stable, bounded, whole, source-backed, and prioritizes production signals', async () => {
   const before = structuredClone(packet);
@@ -68,9 +69,9 @@ test('minimal skeleton fits exactly when possible and fails clearly below that',
 });
 
 test('later stages use candidate refs and packet relationships, never arbitrary path requests', async () => {
-  const subtree = { schemaVersion: 1 as const, stage: 'subsystem-discovery' as const, stageVersion: 1 as const,
+  const subtree = { schemaVersion: 1 as const, stage: 'subsystem-discovery' as const, stageVersion: 2 as const,
     parentPacketFingerprint: packet.inputFingerprint, viewId: 'view:prior', systemKey: system.candidateKey, nodes: [],
-    subdivisionAssessment: { rationale: 'No useful split', confidence: 0.3, uncertainty: ['Limited evidence'] } };
+    subdivisionAssessment: { confidence: 0.3, ambiguityCodes: ['insufficient-evidence'] } };
   for (const [stage, ctx] of [
     ['system-challenge', context([system])], ['subsystem-discovery', context([system], system.candidateKey)],
     ['verification', context([system], null, [system.candidateKey])],
