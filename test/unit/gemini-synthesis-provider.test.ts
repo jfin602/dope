@@ -68,6 +68,7 @@ test('Gemini SDK applies the API key, selected model, compact schema and provide
   assert.ok(calls.every(call => new Headers(call.init.headers).get('x-goog-api-key') === key));
   const body = JSON.parse(String(calls[1].init.body));
   assert.equal(body.generationConfig.responseMimeType, 'application/json');
+  assert.equal(body.generationConfig.maxOutputTokens, 32768);
   const schema = body.generationConfig.responseJsonSchema;
   assert.deepEqual(schema.properties.stage.enum, ['system-discovery']);
   assert.deepEqual(schema.properties.stageVersion.enum, [2]);
@@ -146,6 +147,17 @@ test('Gemini normalizes absent usage and sanitizes malformed response and JSON',
       assert.equal(executed.usage.inputTokens, undefined);
     } else await assert.rejects(provider.runStage(request), /Invalid Gemini stage JSON/);
   }
+});
+
+test('Gemini reports stage truncation without exposing response text', async () => {
+  const provider = await prepared({ apiKey: key, fetch: async url => json(
+    String(url).endsWith(':generateContent') ? { ...completion(key), candidates: [{
+      ...completion(key).candidates[0], finishReason: 'MAX_TOKENS' }] } : model) });
+  await assert.rejects(provider.runStage(request), error => {
+    assert.match((error as Error).message, /Gemini stage output truncated at token limit/);
+    assert.ok(!String(error).includes(key));
+    return true;
+  });
 });
 
 test('Gemini configuration, auth, quota, upstream and arbitrary errors never expose the key', async () => {

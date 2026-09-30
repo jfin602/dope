@@ -17,6 +17,15 @@ import { GeminiSynthesisProvider } from './gemini-synthesis-provider';
 const geminiCredentialService = 'Dope Gemini';
 const geminiCredentialAccount = 'AI Studio API key';
 
+function geminiAnalysisError(error: unknown): Error {
+    const message = error instanceof Error ? error.message : '';
+    if (/^Invalid hierarchical synthesis: [A-Za-z0-9 .\[\]/-]+$/.test(message) ||
+        ['Invalid Gemini stage JSON', 'Gemini stage output truncated at token limit'].includes(message) ||
+        /^Gemini (synthesis cancelled or timed out|synthesis request failed|SDK or transport type error|response JSON error|authentication failed \(HTTP 40[13]\)|quota or rate limit exceeded \(HTTP 429\)|upstream service failed \(HTTP 5\d\d\)|request rejected \(HTTP 4\d\d\))$/.test(message))
+        return new Error(`Gemini analysis failed: ${message}`);
+    return new Error('Gemini analysis failed. Review setup and retry.');
+}
+
 export class SoftwareMapBackend implements SoftwareMapService {
     private root?: string;
     private handle?: string;
@@ -260,7 +269,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
                     message: `Analysis failed during ${currentStage.replaceAll('-', ' ')}. Review setup and retry.`,
                     subject: currentStage });
             }
-            throw provider.kind === 'gemini' && this.run === run ? new Error('Gemini analysis failed. Review setup and retry.') : error;
+            throw provider.kind === 'gemini' && this.run === run ? geminiAnalysisError(error) : error;
         }
     }
     async review(projectHandle: string): Promise<ArchitectureReview | undefined> {

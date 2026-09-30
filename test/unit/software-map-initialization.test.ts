@@ -345,6 +345,17 @@ test('Gemini key survives backend restart in the machine credential store, outsi
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('Gemini stage exposes only fixed safe failure diagnostics', async () => {
+  const root = await fixture();
+  const provider = { ...fakeProvider(() => { throw new Error('Gemini request rejected (HTTP 400)'); }), kind: 'gemini' as const };
+  const service = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), provider);
+  try {
+    const handle = await attach(service, root);
+    await assert.rejects(service.startInitialization(handle), /Gemini analysis failed: Gemini request rejected \(HTTP 400\)/);
+    assert.equal((await readdir(root)).includes('.dope'), false);
+  } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
 test('failure can retry; cancel and project switch discard late stage results', async () => {
   const a = await fixture(); const b = await fixture();
   const events: { handle: string; event: AnalysisProgressEvent }[] = [];

@@ -138,7 +138,7 @@ export class GeminiSynthesisProvider {
             request.stage === 'verification' ? VERIFICATION_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION;
         const schema = geminiStageSchema(synthesisStageResultSchemas[request.stage]);
         const body = { model, contents: input, config: { systemInstruction: instruction,
-            responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0, maxOutputTokens: 4096 } };
+            responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0, maxOutputTokens: 32768 } };
         const timeout = AbortSignal.timeout(this.timeoutMs);
         const abortSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
         let response;
@@ -147,6 +147,7 @@ export class GeminiSynthesisProvider {
                 config: { ...body.config, abortSignal } });
         } catch (error) { throw sanitized(error, abortSignal.aborted); }
         if (abortSignal.aborted) throw sanitized(undefined, true);
+        if (response.candidates?.[0]?.finishReason === 'MAX_TOKENS') throw new Error('Gemini stage output truncated at token limit');
         let output: unknown;
         let content: string;
         try {
