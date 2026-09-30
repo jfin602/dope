@@ -95,7 +95,10 @@ test('Gemini connection probe sends only synthetic readiness and sanitizes failu
   assert.ok(!calls[0].includes(key));
   const bad = await prepared({ apiKey: key, fetch: async url => json(
     String(url).endsWith(':generateContent') ? completion(key) : model) });
-  await assert.rejects(bad.probe(), error => !String(error).includes(key));
+  await assert.rejects(bad.probe(), error => {
+    assert.match(String(error), /Gemini readiness: Invalid readiness response/);
+    return !String(error).includes(key);
+  });
 });
 
 test('failed selected model stays failed until a different model is manually selected', async () => {
@@ -152,6 +155,7 @@ test('Gemini configuration, auth, quota, upstream and arbitrary errors never exp
     const provider = await prepared({ apiKey: key, fetch: async () => json({ error: { code: status,
       message: `${key} rejected` } }, status) });
     await assert.rejects(provider.capabilities(), error => {
+      assert.match((error as Error).message, /Gemini model metadata:/);
       assert.match((error as Error).message, new RegExp(message));
       assert.ok(!String(error).includes(key));
       return true;

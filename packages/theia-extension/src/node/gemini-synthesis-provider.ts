@@ -36,6 +36,8 @@ function sanitized(error: unknown, aborted: boolean): Error {
     if (status === 429) return new Error('Gemini quota or rate limit exceeded (HTTP 429)');
     if (typeof status === 'number' && status >= 500) return new Error(`Gemini upstream service failed (HTTP ${status})`);
     if (typeof status === 'number' && status >= 400) return new Error(`Gemini request rejected (HTTP ${status})`);
+    if (error instanceof TypeError) return new Error('Gemini SDK or transport type error');
+    if (error instanceof SyntaxError) return new Error('Gemini response JSON error');
     return new Error('Gemini synthesis request failed');
 }
 
@@ -90,8 +92,8 @@ export class GeminiSynthesisProvider {
     /** Synthetic structured-output check; repository evidence is never used. */
     async probe(): Promise<void> {
         const model = this.requireModel();
+        await this.capabilities();
         try {
-            await this.capabilities();
             const response = await this.client.models.generateContent({ model,
                 contents: 'Return readiness for this synthetic request.', config: {
                     systemInstruction: 'Return only {"ready":true}.', responseMimeType: 'application/json',
@@ -101,7 +103,7 @@ export class GeminiSynthesisProvider {
             let ready: unknown;
             try { ready = JSON.parse(response.text ?? '')?.ready; } catch { throw new Error('Invalid readiness response'); }
             if (ready !== true) throw new Error('Invalid readiness response');
-        } catch (error) { throw sanitized(error, false); }
+        } catch (error) { throw new Error(`Gemini readiness: ${sanitized(error, false).message}`); }
     }
 
     async capabilities(): Promise<SynthesisCapabilities> {
@@ -118,7 +120,7 @@ export class GeminiSynthesisProvider {
                 reservedOutputTokens: 4096, reservedOverheadTokens: 1024,
                 tokenEstimate: 'conservative', maxConcurrentGenerations: 1 };
             return this.capability;
-        } catch (error) { throw sanitized(error, false); }
+        } catch (error) { throw new Error(`Gemini model metadata: ${sanitized(error, false).message}`); }
     }
 
     /** Local byte estimate avoids countTokens calls in the evidence planner's search loop. */
