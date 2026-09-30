@@ -1,0 +1,151 @@
+TASK: Correction 4 / P2 — Separate Subsystem Discovery, Subsystem Challenge and Component Discovery
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Replace the combined lower-hierarchy synthesis pass with bounded level-by-level provider-independent stages: discover Subsystems, challenge those Subsystems, then discover Components only under stabilized Subsystems.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0008-0014, current architecture/product/roadmap/storage authority, owner-closed Gemini evidence, this correction assessment/plan/README, and exact successful P1 result/source.
+
+Require successful exact P1 predecessor, package exactly `0.4.6`, and clean intended Git state.
+
+STAGE VERSION
+
+Advance synthesis stage/prompt/cache identity because the lower-stage protocol changes materially.
+
+Do not preserve stage-v2 combined Subsystem/Component behavior through compatibility adapters.
+
+The full Dope parser remains authoritative for Local and Gemini.
+
+NEW LOWER-HIERARCHY FLOW
+
+Implement provider-independent stages:
+
+1. `subsystem-discovery`
+   - input: one challenged System + bounded evidence/responsibility signals;
+   - output: Subsystem candidates only;
+   - each candidate has temporary ID, System parent, name, bounded responsibility, confidence, ambiguity codes, evidence refs and direct ownership/responsibility refs as required by the compact contract.
+
+2. `subsystem-challenge`
+   - input: all initial Subsystems for one System plus bounded counter/cross-layer evidence;
+   - explicit keep / merge / split / reject semantics;
+   - every source Subsystem candidate covered exactly once;
+   - challenged output contains only Subsystems under the same System.
+
+3. `component-discovery`
+   - input: one stabilized Subsystem + bounded responsibility-focused evidence;
+   - output: Components only;
+   - every Component parent is the exact challenged Subsystem;
+   - Components may span files/packages/source areas where evidence supports that responsibility.
+
+No stage may invent canonical IDs.
+
+SUBSYSTEM QUALITY SEMANTICS
+
+Subsystem Discovery and Challenge should positively seek **enduring responsibilities** that may cross:
+- presentation/UI;
+- HTTP/API;
+- service/repository/state;
+- worker/job execution;
+- delivery/provider boundaries.
+
+Subsystem Challenge must explicitly inspect whether a proposed boundary is primarily a technical plane such as:
+- client / server;
+- frontend / backend;
+- HTTP;
+- persistence/database/repository;
+- framework;
+- worker/process;
+- package/directory.
+
+These are challenge signals, not forbidden words.
+
+A technical-plane Subsystem survives if direct evidence shows that the plane itself owns an independently meaningful responsibility. For example, an asynchronous execution platform may be legitimate.
+
+COMPACT CONTRACT
+
+Keep strict compact JSON.
+
+Do not reintroduce rationale essays, free-form uncertainty or chain-of-thought.
+
+Use typed issue/ambiguity codes. Add bounded codes only when downstream logic genuinely needs them, for example a technical-layer/weak-responsibility distinction if existing codes are insufficient.
+
+All refs must resolve to the parent packet and correct bounded view.
+
+PLANNER
+
+Extend `planArchitectureEvidence` for:
+- Subsystem Challenge counter evidence across source areas;
+- per-Subsystem Component Discovery;
+- P1 responsibility signals.
+
+A challenged Subsystem must not be scoped solely by one folder just because its initial evidence lived there.
+
+Keep calls bounded and deterministic.
+
+PROVIDER ADAPTERS
+
+Update shared Local instructions and Gemini instruction routing/schema projection for the new stage set.
+
+No provider-specific architecture semantics.
+
+Gemini and Local must validate through the same full Dope stage parser.
+
+PRIMITIVES / HELPERS
+
+Refactor or replace the old combined `per-system-discovery` implementation cleanly.
+
+It is acceptable to introduce focused modules such as:
+- subsystem-discovery;
+- subsystem-challenge;
+- component-discovery.
+
+Do not leave a second live combined protocol behind.
+
+P2 does not need to finish the large orchestration/UI transition; stage primitives/contracts must be testable independently and ready for P3 wiring.
+
+PERMANENT TESTS
+
+Add controlled fixtures proving:
+- one responsibility spanning client + server + worker becomes one Subsystem rather than three technical tiers;
+- an initial Frontend/Backend split can be merged/split/rejected into responsibility-oriented Subsystems;
+- a legitimate execution-platform Subsystem survives challenge;
+- challenge mapping rejects missing/duplicate/conflicting dispositions;
+- fabricated refs and foreign System parents fail;
+- Component parent escape fails;
+- Components are discovered only after challenged Subsystem identity;
+- same inputs produce stable planner/stage identity;
+- Local and Gemini schema paths share the same semantics.
+
+Wire new test files into root `test:product`.
+
+FOCUSED VALIDATION ONLY
+
+Run focused stage/planner/provider tests, package build/typecheck and `git diff --check`.
+
+Do not run:
+- live provider synthesis;
+- full `npm run check`;
+- restart matrix;
+- browser qualification;
+- Electron package/native launch.
+
+FINAL RESPONSE
+
+Report:
+- new stage/prompt version;
+- exact new stage/result contracts;
+- old combined-stage disposition;
+- Subsystem Challenge semantics;
+- Component descent rules;
+- focused tests/checks;
+- unchanged `0.4.6`;
+- readiness for P3.
