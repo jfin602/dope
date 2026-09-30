@@ -488,7 +488,7 @@ Owner closeout: P4 is Not Green on architecture quality and P5 will not run. The
 
 ## Mandatory pre-Phase-5 correction — `c4-synth-coverage-review`
 
-Status: **APPROVED / PROMPT STACK READY — mandatory next correction**
+Status: **APPROVED / MANDATORY NEXT CORRECTION — prompt workflow not yet applied**
 
 Version semantics: unchanged package version `0.4.6`. Activation source is pushed P4 record commit `4a887ecebc546f9944adf54890143827623e008c`.
 
