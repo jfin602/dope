@@ -1,6 +1,6 @@
 # Correction 4 — Gemini Provider + Compact Shared sMap Pipeline
 
-Status: **APPROVED / PROMPT STACK READY — execute from hierarchical P7 implementation baseline**
+Status: **OWNER-CLOSED / NOT QUALIFIED — terminal evidence source `8ea34ae1300a387ac63aad9462ae649ac78a9605`; routed to `c4-synth-improvements`**
 Correction folder: `c4-smap-gemini-provider`
 Required unchanged version: `0.4.6`
 Predecessor: `c4-smap-hierarchical-synthesis` implementation through P7; reachable P7 commit `66f023f717afd63433d442015b575edf049ae1b6`; predecessor P8/P9 superseded/unexecuted by ADR 0013
@@ -121,3 +121,14 @@ Green requires:
 - unchanged `0.4.6`.
 
 After Green closeout, route to `c4-smap-storage`, not directly to Phase 5.
+
+
+## Owner closeout disposition
+
+On 2026-09-30 the owner closed this correction for sequencing using the pushed Gemini-only P4 debugging evidence.
+
+The architecture-quality gate remains Not Green. The planned full Local/Gemini comparison and formal P5 prompt are not executed as qualification gates for this correction.
+
+Historical evidence remains truthful; see `closeout.md`.
+
+Do not reopen this correction. The next mandatory work is `c4-synth-improvements`.
