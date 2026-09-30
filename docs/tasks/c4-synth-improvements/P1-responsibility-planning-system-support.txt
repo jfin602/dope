@@ -1,0 +1,136 @@
+TASK: Correction 4 / P1 — Responsibility-oriented evidence planning and System support
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Improve the shared deterministic evidence planner and System support rules so synthesis sees cross-layer software responsibilities instead of being steered primarily by repository layout, while preserving the complete ArchitectureEvidencePacket as evidence authority.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0008-0014, current ARCHITECTURE/PRODUCT-MODEL/roadmap/storage authority, `c4-smap-gemini-provider/closeout.md`, pushed P4 Gemini evidence, this correction assessment/plan/README, and exact current planner/System contracts/prompts/tests.
+
+Require:
+- activation source `8ea34ae1300a387ac63aad9462ae649ac78a9605` reachable;
+- package exactly `0.4.6`;
+- clean intended Git state;
+- old hierarchical P8/P9 remain unexecuted;
+- closed Gemini-provider correction is not reopened.
+
+DIAGNOSTIC BASELINE
+
+Preserve in the task result the known benchmark failure:
+- one top-level Adaptive SEO System was plausible;
+- System support was thin and rooted in package.json start-script evidence;
+- lower hierarchy became Backend/Frontend technical tiers;
+- the real fix must remain generic rather than encode Adaptive SEO answer names.
+
+RESPONSIBILITY SIGNALS
+
+Extend deterministic evidence planning with rebuildable provider-independent responsibility-oriented metadata.
+
+A responsibility signal may group existing evidence by generic cross-layer cues such as:
+- recurring normalized semantic concepts across source areas;
+- public/HTTP contracts and the implementation that serves them;
+- jobs/worker handlers and the behavior/state they operate on;
+- explicit state/repository ownership connected to higher-level behavior;
+- external delivery/integration boundaries;
+- framework registrations tied to meaningful application services;
+- dependency communities that connect the same semantic responsibility across presentation/API/persistence/worker planes.
+
+Every signal must:
+- be deterministic for identical packet/planner inputs;
+- carry a stable derived identity;
+- cite only existing parent packet evidence refs;
+- preserve source provenance;
+- remain planning metadata, never physical/canonical architecture;
+- contain bounded compact fields only;
+- be safe to include in provider stage context without free-form reasoning.
+
+Do not:
+- read project architecture docs to create signals;
+- hard-code benchmark terms such as Feed, Delivery, Integration, Opportunity, GA4 or Ahrefs;
+- treat filenames/directories as architecture authority;
+- create an embedding/vector/LLM preprocessing dependency.
+
+PLANNER BEHAVIOR
+
+Retain whole-item bounded evidence selection.
+
+Improve System and per-System planning so source-area diversity provides coverage without making `src/server` and `src/client` the dominant conceptual partition.
+
+A model-facing view should be able to see that one responsibility spans several source areas when deterministic evidence supports that relationship.
+
+Keep token budgets provider-derived and bounded.
+
+SYSTEM RESPONSIBILITY SUPPORT
+
+Strengthen provider-independent System validation/planning.
+
+Root manifests, start scripts, package topology, configuration and framework facts may establish context but must not be sufficient by themselves to establish a System responsibility.
+
+Implement a compact provider-independent way to distinguish direct responsibility support from contextual/boundary support, or an equivalent deterministic validator rule.
+
+Requirements:
+- every surviving System must cite at least one direct production-behavior fact that materially supports its responsibility;
+- System evidence still resolves to the parent packet;
+- no provider-specific evidence semantics;
+- existing test/documentation-only negative guards remain;
+- one System is valid when the evidence supports one coherent product responsibility.
+
+SYSTEM DISCOVERY / CHALLENGE PROMPTS
+
+Update the shared instruction semantics, not only Gemini.
+
+System Discovery should identify independently meaningful responsibilities and may return one System for one coherent product.
+
+System Challenge must explicitly test a one-System candidate for **umbrella collapse**:
+- does the candidate merely name the repository/product while hiding multiple independently meaningful System responsibilities?
+- do runtime/process/state/external contract boundaries support a split?
+
+But do not force a split. A cohesive one-System repository must survive challenge when evidence supports it.
+
+Do not use a target count.
+
+FIXTURES / NEGATIVE GUARDS
+
+Add permanent controlled cases proving:
+- one cohesive product remains one System;
+- multiple independent Systems in one repository remain separable;
+- a generic repository/product umbrella candidate can be split when evidence supports independent responsibilities;
+- frontend/backend directories alone do not imply separate Systems;
+- root manifest/start-script-only responsibility support fails closed;
+- responsibility signals are deterministic, provenance-valid and non-authoritative;
+- no benchmark-specific answer terms are embedded in production planner policy.
+
+FOCUSED VALIDATION ONLY
+
+Run the smallest relevant planner/System/provider-instruction tests and required package build/typecheck.
+
+Update root `test:product` if new test files are added.
+
+Run `git diff --check`.
+
+Do not run:
+- live Gemini or Local synthesis;
+- full `npm run check`;
+- restart matrix;
+- Electron packaging/native launch;
+- browser qualification.
+
+FINAL RESPONSE
+
+Report:
+- responsibility-signal contract and derivation rules;
+- how planning changed without creating deterministic architecture;
+- new System direct-support rule;
+- one-System umbrella challenge behavior;
+- controlled fixture results;
+- focused checks;
+- unchanged `0.4.6`;
+- readiness for P2.
