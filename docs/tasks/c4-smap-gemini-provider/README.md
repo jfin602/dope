@@ -53,7 +53,7 @@ Local and Gemini:
 - receive no provider-specific architecture contract;
 - never silently fall back to one another.
 
-Gemini uses the Gemini Developer API / AI Studio key path. A key may come from `GEMINI_API_KEY` or session-only entry. Never persist or expose the secret.
+Gemini uses the Gemini Developer API / AI Studio key path. A key may come from `GEMINI_API_KEY` or masked entry. Per the developer's later request, Dope saves a supplied key in this machine's credential store after model discovery succeeds. Never expose the secret or write it to project data, preferences, logs, or evidence.
 
 ## Measurement rule
 
@@ -110,7 +110,7 @@ Green requires:
 - compact strict intermediate contracts with no surplus prose;
 - same contracts and validators for Local/Gemini;
 - explicitly selected and successfully probed Gemini generation model through a real AI Studio-key path;
-- secret non-persistence/non-leakage;
+- no plaintext/project secret persistence or leakage; machine credential-store persistence for a supplied key;
 - explicit collapsible Local/Gemini setup;
 - no silent fallback;
 - comparable per-stage token/time telemetry;
