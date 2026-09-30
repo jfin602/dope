@@ -18,7 +18,7 @@ Add **Search Deeper** to every pending System and Subsystem so the developer can
 
 PREFLIGHT
 
-Read BOOT/AGENTS, ADR 0010-0014, current architecture/product/roadmap/workflow, successful P1-P3 results, and this correction assessment/plan/README.
+Read BOOT/AGENTS, ADR 0010-0015, current architecture/product/roadmap/workflow, successful P1-P3 results, and this correction assessment/plan/README.
 
 Inspect exact current review/backend/service/controller/widget state ownership before editing.
 
@@ -45,7 +45,7 @@ It must bind:
 - exact parent evidence packet identity;
 - relevant Observed implementation evidence;
 - uncovered/cross-boundary coverage cues;
-- relevant Documented README/doc context;
+- relevant Documented bootstrap/README/doc context, including `MODULES.md` only when it belongs to the current pending review's source context;
 - bounded provider/stage semantics.
 
 Targeted calls must be distinguishable in telemetry/attempt records.
@@ -62,7 +62,7 @@ For a Subsystem:
 - refinement may keep/rename/refine/split that Subsystem and its Components inside the same parent System;
 - it cannot replace siblings or move content across unrelated Systems without explicit developer editing afterward.
 
-Every proposed implementation boundary still needs source-backed Observed support. Docs remain orientation/support only.
+Every proposed implementation boundary still needs source-backed Observed support. Docs remain orientation/support only. Search Deeper must not treat a newly edited `MODULES.md` as an implicit canonical update or silently restart the review from external document state.
 
 PREVIEW / STALENESS
 
