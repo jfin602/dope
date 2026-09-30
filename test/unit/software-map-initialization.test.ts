@@ -250,33 +250,53 @@ test('Gemini environment and session setup remain in memory, fail closed, and ne
   const keys: string[] = [];
   const calls: string[] = [];
   const events: AnalysisProgressEvent[] = [];
+  let service: SoftwareMapBackend;
+  let handle: string;
   const makeGemini = (key: string) => {
     keys.push(key);
-    return { kind: 'gemini', probe: async () => { calls.push('probe'); },
-      capabilities: async () => ({ modelLabel: 'gemini-3.8-flash', contextWindowTokens: 100000,
+    let selected = '';
+    return { kind: 'gemini', discoverModels: async () => { selected = ''; return ['gemini-3.6-flash', 'gemini-3.8-flash']; },
+      selectModel: (id: string) => { selected = id; }, probe: async () => { calls.push(`probe:${selected}`); },
+      capabilities: async () => ({ modelLabel: selected, contextWindowTokens: 100000,
         maxInputTokens: 90000, reservedInstructionTokens: 1000, reservedOutputTokens: 2000,
         reservedOverheadTokens: 1000, tokenEstimate: 'conservative' }),
       estimateTokens: async (text: string) => text.length,
-      runStage: async () => { calls.push('gemini'); throw new Error(`raw provider error ${key}`); } } as any;
+      runStage: async () => {
+        calls.push(`gemini:${selected}`);
+        await assert.rejects(service.selectSynthesisModel(handle, 'gemini-3.8-flash'), /analysis is active/);
+        throw new Error(`raw provider error ${key}`);
+      } } as any;
   };
   try {
     process.env.GEMINI_API_KEY = 'environment-secret';
-    const service = new SoftwareMapBackend(new SoftwareMapIndex(new TypeScriptAnalyzer()),
+    service = new SoftwareMapBackend(new SoftwareMapIndex(new TypeScriptAnalyzer()),
       { notifySoftwareMapChanged() {}, notifySoftwareMapAnalysisProgress(_handle, event) { events.push(event); } },
       undefined, makeGemini);
-    const handle = await attach(service, root);
+    handle = await attach(service, root);
     assert.deepEqual(await service.synthesisEnvironment(handle), { geminiKeyAvailable: true });
-    assert.deepEqual(await service.configureSynthesis(handle, { kind: 'gemini' }), { models: [] });
+    assert.deepEqual(await service.configureSynthesis(handle, { kind: 'gemini' }),
+      { models: ['gemini-3.6-flash', 'gemini-3.8-flash'] });
     assert.deepEqual(keys, ['environment-secret']);
     assert.equal(await service.synthesisReady(handle), false);
+    await service.selectSynthesisModel(handle, 'gemini-3.6-flash');
     await service.probeSynthesis(handle);
     assert.equal(await service.synthesisReady(handle), true);
+    await service.selectSynthesisModel(handle, 'gemini-3.8-flash');
+    assert.equal(await service.synthesisReady(handle), false);
+    await service.selectSynthesisModel(handle, 'gemini-3.6-flash');
+    await service.probeSynthesis(handle);
     await assert.rejects(service.startInitialization(handle), /Gemini analysis failed/);
-    assert.deepEqual(calls, ['probe', 'gemini']);
+    assert.deepEqual(calls, ['probe:gemini-3.6-flash', 'probe:gemini-3.6-flash', 'gemini:gemini-3.6-flash']);
+    assert.ok(JSON.stringify(events).includes('gemini-3.6-flash'));
     assert.equal(JSON.stringify(events).includes('environment-secret'), false);
     assert.equal((await readdir(root)).includes('.dope'), false);
     await service.configureSynthesis(handle, { kind: 'gemini', apiKey: 'session-secret' });
     assert.deepEqual(keys, ['environment-secret', 'session-secret']);
+    assert.equal(await service.synthesisReady(handle), false);
+    await service.selectSynthesisModel(handle, 'gemini-3.8-flash');
+    await service.probeSynthesis(handle);
+    assert.equal(await service.synthesisReady(handle), true);
+    assert.deepEqual(await service.refreshSynthesisModels(handle), { models: ['gemini-3.6-flash', 'gemini-3.8-flash'] });
     assert.equal(await service.synthesisReady(handle), false);
     assert.equal(JSON.stringify(await service.synthesisEnvironment(handle)).includes('secret'), false);
     assert.equal(JSON.stringify([...((service as any).synthesisCache.results as Map<string, unknown>).keys()]).includes('session-secret'), false);

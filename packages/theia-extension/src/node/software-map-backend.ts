@@ -105,6 +105,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
     }
     async configureSynthesis(projectHandle: string, options: SynthesisSetup): Promise<SynthesisSetupResult> {
         this.active(projectHandle);
+        if (this.phase === 'analyzing') throw new Error('Synthesis analysis is active');
         this.clearProvider();
         const run = this.run;
         if (options.kind === 'local') {
@@ -122,25 +123,39 @@ export class SoftwareMapBackend implements SoftwareMapService {
         let provider: GeminiSynthesisProvider;
         try { provider = this.makeGemini(key); }
         catch { throw new Error('Gemini configuration failed'); }
+        const models = await provider.discoverModels();
         this.active(projectHandle);
         if (run !== this.run) throw new Error('Superseded synthesis setup');
         this.geminiProvider = provider;
         this.provider = provider;
-        return { models: [] };
+        return { models };
+    }
+    async refreshSynthesisModels(projectHandle: string): Promise<SynthesisSetupResult> {
+        this.active(projectHandle);
+        if (this.phase === 'analyzing') throw new Error('Synthesis analysis is active');
+        if (!this.geminiProvider) throw new Error('Gemini is not configured');
+        this.geminiProbed = false;
+        const run = ++this.run;
+        const models = await this.geminiProvider.discoverModels();
+        this.active(projectHandle);
+        if (run !== this.run) throw new Error('Superseded synthesis setup');
+        return { models };
     }
     async selectSynthesisModel(projectHandle: string, modelId: string): Promise<void> {
         this.active(projectHandle);
-        if (!this.localProvider) throw new Error('Synthesis provider is not configured');
-        this.localProvider.selectModel(modelId);
+        if (this.phase === 'analyzing') throw new Error('Synthesis analysis is active');
+        if (this.localProvider) this.localProvider.selectModel(modelId);
+        else if (this.geminiProvider) { ++this.run; this.geminiProbed = false; this.geminiProvider.selectModel(modelId); }
+        else throw new Error('Synthesis provider is not configured');
     }
     async probeSynthesis(projectHandle: string): Promise<void> {
         this.active(projectHandle);
+        if (this.phase === 'analyzing') throw new Error('Synthesis analysis is active');
         const run = this.run;
         if (this.localProvider) await this.localProvider.probe();
         else if (this.geminiProvider) {
             this.geminiProbed = false;
-            try { await this.geminiProvider.probe(); }
-            catch { throw new Error('Gemini connection test failed'); }
+            await this.geminiProvider.probe();
         } else throw new Error('Synthesis provider is not configured');
         this.active(projectHandle);
         if (run !== this.run) throw new Error('Superseded synthesis setup');

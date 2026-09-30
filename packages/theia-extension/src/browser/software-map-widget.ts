@@ -153,18 +153,31 @@ export class SoftwareMapWidget extends BaseWidget {
         const gemini = this.element('details');
         gemini.open = this.geminiSetupOpen;
         gemini.ontoggle = () => { this.geminiSetupOpen = gemini.open; };
-        gemini.append(this.element('summary', 'Gemini 3.8 Flash'),
+        gemini.append(this.element('summary', 'Gemini'),
             this.element('p', 'Cloud synthesis. When Gemini is selected, bounded repository evidence used for synthesis is sent to Google’s Gemini API.'),
             this.element('p', model.geminiEnvironmentKeyAvailable ? 'GEMINI_API_KEY detected in backend environment.' : 'No backend GEMINI_API_KEY detected. Enter an AI Studio API key for this session.'));
         gemini.append(this.field(model.geminiEnvironmentKeyAvailable ? 'Optional AI Studio API key for this session' : 'AI Studio API key',
             model.geminiKey, value => model.changeGeminiKey(value), false, true));
-        const geminiProbe = this.button('Test Gemini connection', () => {
-            model.chooseProvider('gemini');
-            void model.probeGemini();
-        });
-        geminiProbe.disabled = model.setupBusy;
-        gemini.append(geminiProbe, this.element('p', model.providerKind === 'gemini' && model.setupReady ? 'Gemini structured-output probe passed.' : 'Test before analysis.'));
-        const geminiStart = this.button('Analyze with Gemini', () => void model.synthesize('gemini'));
+        const refreshGemini = this.button('Refresh Gemini models', () => void model.discoverGemini());
+        refreshGemini.disabled = model.setupBusy;
+        gemini.append(refreshGemini);
+        const geminiLabel = this.element('label', 'Gemini model');
+        const geminiSelect = this.element('select');
+        for (const id of model.geminiModels) {
+            const option = this.element('option', id);
+            option.value = id;
+            option.selected = id === model.geminiModel;
+            geminiSelect.append(option);
+        }
+        geminiSelect.disabled = model.setupBusy || !model.geminiModels.length;
+        geminiSelect.onchange = () => void model.changeGeminiModel(geminiSelect.value);
+        geminiLabel.append(geminiSelect);
+        gemini.append(geminiLabel);
+        const geminiProbe = this.button('Test selected model', () => void model.probeGemini());
+        geminiProbe.disabled = model.setupBusy || !model.geminiModel || !model.geminiModels.includes(model.geminiModel);
+        gemini.append(geminiProbe, this.element('p', model.providerKind === 'gemini' && model.setupReady ?
+            `${model.geminiModel} ready.` : model.geminiModel ? `${model.geminiModel} requires a successful test.` : 'Discover models before analysis.'));
+        const geminiStart = this.button(`Analyze Project with ${model.geminiModel || 'Gemini'}`, () => void model.synthesize('gemini'));
         geminiStart.disabled = model.providerKind !== 'gemini' || !model.setupReady || model.setupBusy;
         gemini.append(geminiStart);
         const cancel = this.button('Cancel', () => void model.cancel());

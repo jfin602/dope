@@ -10,7 +10,7 @@ Theia: `1.75.0`; Electron: `42.8.1`; Node: 24
 This correction does two deliberately coupled things:
 
 1. remove prose-heavy model-to-model state from hierarchy-first sMap synthesis and replace it with strict compact provider-independent intermediate JSON; and
-2. add Gemini 3.8 Flash through AI Studio API keys as an explicit provider beside Local, then compare both providers on the same corrected pipeline before any aggressive Local-specific optimization.
+2. add Gemini through AI Studio API keys as an explicit provider beside Local, then compare both providers on the same corrected pipeline before any aggressive Local-specific optimization. P2 initially fixed the model to 3.8 Flash; the bounded one-off after P3 adds discovery, explicit selection and an exact-model probe for P4.
 
 ## Stack
 
@@ -109,7 +109,7 @@ No:
 Green requires:
 - compact strict intermediate contracts with no surplus prose;
 - same contracts and validators for Local/Gemini;
-- Gemini 3.8 Flash real AI Studio-key path;
+- explicitly selected and successfully probed Gemini generation model through a real AI Studio-key path;
 - secret non-persistence/non-leakage;
 - explicit collapsible Local/Gemini setup;
 - no silent fallback;

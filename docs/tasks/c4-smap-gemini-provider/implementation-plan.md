@@ -211,6 +211,7 @@ No live full synthesis, restart matrix, AppImage or full `npm run check` in P3.
 ## P4 — Real same-pipeline Local/Gemini comparison + consolidated qualification
 
 Browser and real providers required.
+The bounded post-P3 model-selection one-off supersedes P2's fixed Gemini 3.8 Flash assumption for P4. Discover available generation models, explicitly select and successfully probe one, then record that exact model ID throughout the Gemini run. No automatic fallback.
 
 Benchmark:
 - use the exact clean Adaptive SEO benchmark root and pinned SHA recorded by predecessor hierarchical P8 evidence;

@@ -4,7 +4,6 @@ import type { SynthesisCapabilities, SynthesisStageExecution, SynthesisStageRequ
 import { RECONCILIATION_INSTRUCTION, SUBSYSTEM_DISCOVERY_INSTRUCTION, SYSTEM_CHALLENGE_INSTRUCTION,
     SYSTEM_DISCOVERY_INSTRUCTION, VERIFICATION_INSTRUCTION } from './lmstudio-synthesis-provider';
 
-export const GEMINI_SYNTHESIS_MODEL = 'gemini-3.8-flash';
 const DEFAULT_TIMEOUT_MS = 900_000;
 const schemaKeywords = new Set(['type', 'enum', 'items', 'minItems', 'maxItems', 'minimum', 'maximum',
     'properties', 'additionalProperties', 'required', 'anyOf', 'oneOf']);
@@ -32,9 +31,9 @@ function sanitized(error: unknown, aborted: boolean): Error {
         (error as { name?: unknown } | null)?.name === 'TimeoutError')
         return new Error('Gemini synthesis cancelled or timed out');
     const status = (error as { status?: unknown } | null)?.status;
-    if (status === 401 || status === 403) return new Error('Gemini authentication failed');
-    if (status === 429) return new Error('Gemini quota or rate limit exceeded');
-    if (typeof status === 'number' && status >= 500) return new Error('Gemini upstream service failed');
+    if (status === 401 || status === 403) return new Error(`Gemini authentication failed (HTTP ${status})`);
+    if (status === 429) return new Error('Gemini quota or rate limit exceeded (HTTP 429)');
+    if (typeof status === 'number' && status >= 500) return new Error(`Gemini upstream service failed (HTTP ${status})`);
     return new Error('Gemini synthesis request failed');
 }
 
@@ -43,6 +42,8 @@ export class GeminiSynthesisProvider {
     private readonly client: GoogleGenAI;
     private readonly timeoutMs: number;
     private capability?: SynthesisCapabilities;
+    private models: string[] = [];
+    private model?: string;
 
     constructor(options: { apiKey: string; timeoutMs?: number; fetch?: typeof globalThis.fetch }) {
         if (typeof options.apiKey !== 'string' || !options.apiKey.trim() || /\s/.test(options.apiKey))
@@ -54,11 +55,42 @@ export class GeminiSynthesisProvider {
             ...(options.fetch ? { httpOptions: { fetch: options.fetch } } : {}) });
     }
 
+    async discoverModels(): Promise<string[]> {
+        this.models = [];
+        this.model = undefined;
+        this.capability = undefined;
+        try {
+            const pager = await this.client.models.list({ config: { httpOptions: { timeout: this.timeoutMs } } });
+            const models: string[] = [];
+            for await (const item of pager) {
+                const id = item.name?.replace(/^models\//, '');
+                if (id && /^gemini-/i.test(id) && !/(?:embedding|image|audio|tts|live|robotics|computer-use)/i.test(id) &&
+                    item.supportedActions?.includes('generateContent')) models.push(id);
+            }
+            this.models = [...new Set(models)].sort();
+            return this.models;
+        } catch (error) { throw sanitized(error, false); }
+    }
+
+    selectModel(modelId: string): void {
+        if (!this.models.includes(modelId)) throw new Error('Select a discovered Gemini model');
+        this.model = modelId;
+        this.capability = undefined;
+    }
+
+    get selectedModel(): string | undefined { return this.model; }
+
+    private requireModel(): string {
+        if (!this.model) throw new Error('Select a Gemini model');
+        return this.model;
+    }
+
     /** Synthetic structured-output check; repository evidence is never used. */
     async probe(): Promise<void> {
+        const model = this.requireModel();
         try {
             await this.capabilities();
-            const response = await this.client.models.generateContent({ model: GEMINI_SYNTHESIS_MODEL,
+            const response = await this.client.models.generateContent({ model,
                 contents: 'Return readiness for this synthetic request.', config: {
                     systemInstruction: 'Return only {"ready":true}.', responseMimeType: 'application/json',
                     responseJsonSchema: { type: 'object', properties: { ready: { type: 'boolean', enum: [true] } },
@@ -70,13 +102,14 @@ export class GeminiSynthesisProvider {
 
     async capabilities(): Promise<SynthesisCapabilities> {
         if (this.capability) return this.capability;
+        const selectedModel = this.requireModel();
         try {
-            const model = await this.client.models.get({ model: GEMINI_SYNTHESIS_MODEL,
+            const model = await this.client.models.get({ model: selectedModel,
                 config: { httpOptions: { timeout: this.timeoutMs } } });
             const limit = model.inputTokenLimit;
             if (!Number.isSafeInteger(limit) || !limit || limit < 8192) throw new Error('Invalid model capacity');
             // Keep the model's large context as headroom; planner requests use a small fraction of its input limit.
-            this.capability = { modelLabel: GEMINI_SYNTHESIS_MODEL, contextWindowTokens: limit,
+            this.capability = { modelLabel: selectedModel, contextWindowTokens: limit,
                 maxInputTokens: Math.max(8192, Math.floor(limit / 32)), reservedInstructionTokens: 2048,
                 reservedOutputTokens: 4096, reservedOverheadTokens: 1024,
                 tokenEstimate: 'conservative', maxConcurrentGenerations: 1 };
@@ -89,6 +122,7 @@ export class GeminiSynthesisProvider {
 
     async runStage(request: SynthesisStageRequest, signal?: AbortSignal): Promise<SynthesisStageExecution> {
         if (signal?.aborted) throw sanitized(undefined, true);
+        const model = this.requireModel();
         const capability = await this.capabilities();
         const input = JSON.stringify(request);
         await assertSynthesisInputBudget(this, capability, input);
@@ -97,7 +131,7 @@ export class GeminiSynthesisProvider {
             request.stage === 'reconciliation' ? RECONCILIATION_INSTRUCTION :
             request.stage === 'verification' ? VERIFICATION_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION;
         const schema = geminiStageSchema(synthesisStageResultSchemas[request.stage]);
-        const body = { model: GEMINI_SYNTHESIS_MODEL, contents: input, config: { systemInstruction: instruction,
+        const body = { model, contents: input, config: { systemInstruction: instruction,
             responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0, maxOutputTokens: 4096 } };
         const timeout = AbortSignal.timeout(this.timeoutMs);
         const abortSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
@@ -118,7 +152,7 @@ export class GeminiSynthesisProvider {
         const inputTokens = count(usage?.promptTokenCount);
         const outputTokens = count(usage?.candidatesTokenCount);
         const totalTokens = count(usage?.totalTokenCount);
-        return { output, usage: { providerKind: 'gemini', modelLabel: GEMINI_SYNTHESIS_MODEL,
+        return { output, usage: { providerKind: 'gemini', modelLabel: model,
             requestBytes: Buffer.byteLength(input), outputBytes: Buffer.byteLength(content),
             ...(inputTokens === undefined ? {} : { inputTokens }),
             ...(outputTokens === undefined ? {} : { outputTokens }),

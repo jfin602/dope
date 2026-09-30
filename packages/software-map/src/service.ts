@@ -61,6 +61,7 @@ export interface SoftwareMapService {
     attach(folderUri: string): Promise<{ projectHandle: string; status: SoftwareMapStatus }>;
     synthesisEnvironment(projectHandle: string): Promise<{ geminiKeyAvailable: boolean }>;
     configureSynthesis(projectHandle: string, options: SynthesisSetup): Promise<SynthesisSetupResult>;
+    refreshSynthesisModels(projectHandle: string): Promise<SynthesisSetupResult>;
     clearSynthesis(projectHandle: string): Promise<void>;
     selectSynthesisModel(projectHandle: string, modelId: string): Promise<void>;
     probeSynthesis(projectHandle: string): Promise<void>;

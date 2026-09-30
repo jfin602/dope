@@ -9,7 +9,7 @@ VERSIONING
 
 GOAL
 
-Qualify the exact P3 candidate through one controlled Local run and one controlled Gemini 3.8 Flash run on the same pinned benchmark/pipeline, directly inspect architecture quality and UI/security behavior, collect comparable timing/token evidence, then pay the full regression/restart/package cost once.
+Qualify the exact P3 candidate plus the bounded Gemini model-selection one-off through one controlled Local run and one controlled run with the explicitly selected and successfully probed Gemini model on the same pinned benchmark/pipeline. Directly inspect architecture quality and UI/security behavior, collect comparable timing/token evidence, then pay the full regression/restart/package cost once.
 
 PREFLIGHT
 
@@ -34,7 +34,7 @@ BASELINE / COMPARISON CONTROL
 Before each run:
 - restore benchmark to exact pinned SHA/clean state;
 - verify push remains disabled;
-- use the exact same Dope P3 candidate;
+- use the exact same Dope candidate including the Gemini model-selection one-off;
 - ensure provider cache identity cannot reuse the other provider's model output;
 - record provider/runtime/model setup.
 
@@ -83,11 +83,11 @@ Through the real sMap UI:
 - expand/configure Gemini;
 - verify cloud disclosure;
 - verify environment-key detected or enter the session key without exposing it;
-- test Gemini readiness;
+- refresh available generation models, explicitly select one, and test that exact model's readiness;
 - start Gemini analysis;
 - observe progress and complete the run.
 
-Record the same metrics as Local using actual Gemini provider usage when available.
+Record the exact Gemini model ID selected, probed, and used at every stage. Record the same metrics as Local using actual Gemini provider usage when available. A failed model remains failed until the developer explicitly selects and probes another; do not cycle models automatically.
 
 Do not use a second repository or a different evidence packet to make Gemini look better/worse.
 
@@ -132,6 +132,7 @@ Directly prove:
 - no Local -> Gemini or Gemini -> Local fallback;
 - Local probe/warm-up still works;
 - Gemini readiness works;
+- changing or refreshing the Gemini model invalidates readiness, and restart requires rediscovery and a new probe;
 - cancellation and retry remain usable;
 - switching provider/root/project rejects stale results;
 - existing/manual architecture remains usable without provider where expected;
