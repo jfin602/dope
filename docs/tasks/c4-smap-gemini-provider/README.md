@@ -1,9 +1,9 @@
 # Correction 4 — Gemini Provider + Compact Shared sMap Pipeline
 
-Status: **APPROVED / PROMPT STACK READY — execute after `c4-smap-hierarchical-synthesis` truthful closeout**
+Status: **APPROVED / PROMPT STACK READY — execute from hierarchical P7 implementation baseline**
 Correction folder: `c4-smap-gemini-provider`
 Required unchanged version: `0.4.6`
-Predecessor: `c4-smap-hierarchical-synthesis` after truthful closeout
+Predecessor: `c4-smap-hierarchical-synthesis` implementation through P7; reachable P7 commit `66f023f717afd63433d442015b575edf049ae1b6`; predecessor P8/P9 superseded/unexecuted by ADR 0013
 Authority: ADR 0013; ADR 0004 and ADR 0009-0012 where not amended
 Theia: `1.75.0`; Electron: `42.8.1`; Node: 24
 
