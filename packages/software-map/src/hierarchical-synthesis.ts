@@ -551,6 +551,10 @@ export interface AnalysisProgressEvent {
     completedUnits?: number;
     totalUnits?: number;
     providerModelLabel?: string;
+    providerKind?: SynthesisProvider['kind'];
+    usage?: SynthesisStageUsage;
+    callDurationMs?: number;
+    reused?: boolean;
     attempt?: number;
 }
 const progressStages: AnalysisProgressStage[] = ['collecting-evidence', 'planning-evidence', 'building-skeleton',
@@ -558,7 +562,7 @@ const progressStages: AnalysisProgressStage[] = ['collecting-evidence', 'plannin
     'preparing-review', 'completed', 'failed', 'cancelled'];
 export function parseAnalysisProgressEvent(input: unknown): AnalysisProgressEvent {
     const data = record(input, 'progress');
-    const allowed = ['stage', 'status', 'elapsedMs', 'stageElapsedMs', 'message', 'callPurpose', 'subject', 'completedUnits', 'totalUnits', 'providerModelLabel', 'attempt'];
+    const allowed = ['stage', 'status', 'elapsedMs', 'stageElapsedMs', 'message', 'callPurpose', 'subject', 'completedUnits', 'totalUnits', 'providerModelLabel', 'providerKind', 'usage', 'callDurationMs', 'reused', 'attempt'];
     if (Object.keys(data).some(key => !allowed.includes(key)) ||
         !['stage', 'status', 'elapsedMs', 'message'].every(key => Object.hasOwn(data, key))) invalid('progress fields');
     if (!progressStages.includes(data.stage as AnalysisProgressStage) ||
@@ -577,5 +581,17 @@ export function parseAnalysisProgressEvent(input: unknown): AnalysisProgressEven
     };
     safeText(data.message, 'progress message', 240);
     for (const key of ['subject', 'providerModelLabel'] as const) if (data[key] !== undefined) safeText(data[key], `progress ${key}`, 120);
+    if (data.providerKind !== undefined && !['local', 'gemini'].includes(data.providerKind as string)) invalid('progress provider');
+    if (data.callDurationMs !== undefined && (typeof data.callDurationMs !== 'number' || !Number.isFinite(data.callDurationMs) || data.callDurationMs < 0)) invalid('progress duration');
+    if (data.reused !== undefined && typeof data.reused !== 'boolean') invalid('progress reuse');
+    if (data.usage !== undefined) {
+        const usage = record(data.usage, 'progress usage');
+        if (Object.keys(usage).some(key => !['providerKind', 'modelLabel', 'requestBytes', 'outputBytes', 'inputTokens', 'outputTokens', 'totalTokens', 'tokenMeasurement'].includes(key)) ||
+            usage.providerKind !== data.providerKind || usage.modelLabel !== data.providerModelLabel ||
+            !['provider-reported', 'tokenizer', 'estimated', 'unavailable'].includes(usage.tokenMeasurement as string)) invalid('progress usage');
+        safeText(usage.modelLabel, 'progress usage model', 120);
+        for (const key of ['requestBytes', 'outputBytes', 'inputTokens', 'outputTokens', 'totalTokens'])
+            if (usage[key] !== undefined && (!Number.isSafeInteger(usage[key]) || (usage[key] as number) < 0)) invalid('progress usage');
+    }
     return data as unknown as AnalysisProgressEvent;
 }

@@ -54,6 +54,20 @@ export class GeminiSynthesisProvider {
             ...(options.fetch ? { httpOptions: { fetch: options.fetch } } : {}) });
     }
 
+    /** Synthetic structured-output check; repository evidence is never used. */
+    async probe(): Promise<void> {
+        try {
+            await this.capabilities();
+            const response = await this.client.models.generateContent({ model: GEMINI_SYNTHESIS_MODEL,
+                contents: 'Return readiness for this synthetic request.', config: {
+                    systemInstruction: 'Return only {"ready":true}.', responseMimeType: 'application/json',
+                    responseJsonSchema: { type: 'object', properties: { ready: { type: 'boolean', enum: [true] } },
+                        required: ['ready'], additionalProperties: false }, maxOutputTokens: 16,
+                    abortSignal: AbortSignal.timeout(this.timeoutMs) } });
+            if (JSON.parse(response.text ?? '')?.ready !== true) throw new Error('Invalid readiness response');
+        } catch (error) { throw sanitized(error, false); }
+    }
+
     async capabilities(): Promise<SynthesisCapabilities> {
         if (this.capability) return this.capability;
         try {

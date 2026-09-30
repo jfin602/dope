@@ -33,6 +33,8 @@ export class SoftwareMapWidget extends BaseWidget {
     private readonly controls = document.createElement('section');
     private readonly expanded = new Set<string>();
     private readonly progressClock = document.createElement('span');
+    private localSetupOpen = true;
+    private geminiSetupOpen = false;
     private readonly clockTimer: ReturnType<typeof setInterval>;
 
     constructor(connect: () => SoftwareMapConnection, private readonly workspaces: WorkspaceService, private readonly opener: OpenerService,
@@ -99,8 +101,8 @@ export class SoftwareMapWidget extends BaseWidget {
             this.controls.append(this.button('Analyze Project', () => model.begin()));
             this.controls.append(this.element('p', 'Software Map is uninitialized. Analyze Project is available whenever you are ready.'));
         } else if (model.flow === 'offer') {
-            this.controls.append(this.element('h3', 'Analyze Project?'), this.element('p', 'Choose local synthesis, an existing declaration, or manual architecture.'));
-            const setup = this.button('Set up local synthesis', () => void model.setup());
+            this.controls.append(this.element('h3', 'Analyze Project?'), this.element('p', 'Choose a synthesis provider, an existing declaration, or manual architecture.'));
+            const setup = this.button('Set up synthesis', () => void model.setup());
             setup.disabled = model.setupBusy;
             this.controls.append(setup);
             if (model.initialization.declarationPresent) {
@@ -120,12 +122,16 @@ export class SoftwareMapWidget extends BaseWidget {
             this.controls.append(this.button('Cancel analysis', () => void model.cancel()));
             return;
         }
-        this.controls.append(this.element('h3', 'Local synthesis setup'),
-            this.element('p', 'LM Studio compatible endpoint. Discovery and capability probing use no project evidence.'));
-        this.controls.append(this.field('Endpoint', model.endpoint, value => model.changeEndpoint(value)));
-        this.controls.append(this.field('Loaded model context tokens', String(model.contextWindowTokens), value => model.changeContextTokens(value)));
-        this.controls.append(this.field('Optional session token', model.token, value => model.changeToken(value), false, true));
-        this.controls.append(this.button('Discover models', () => void model.discover()));
+        this.controls.append(this.element('h3', 'Synthesis setup'));
+        const local = this.element('details');
+        local.open = this.localSetupOpen;
+        local.ontoggle = () => { this.localSetupOpen = local.open; };
+        local.append(this.element('summary', 'Local model'),
+            this.element('p', 'Runs through your local LM Studio compatible endpoint. Discovery and capability probing use no project evidence.'));
+        local.append(this.field('Endpoint', model.endpoint, value => model.changeEndpoint(value)));
+        local.append(this.field('Loaded context tokens', String(model.contextWindowTokens), value => model.changeContextTokens(value)));
+        local.append(this.field('Optional session token', model.token, value => model.changeToken(value), false, true));
+        local.append(this.button('Discover models', () => void model.discover()));
         const label = this.element('label', 'Model');
         const select = this.element('select');
         for (const id of model.models) {
@@ -136,15 +142,33 @@ export class SoftwareMapWidget extends BaseWidget {
         }
         select.onchange = () => model.changeModel(select.value);
         label.append(select);
-        this.controls.append(label);
+        local.append(label);
         const probe = this.button('Run structured-output capability probe', () => void model.probe());
         probe.disabled = model.setupBusy || !model.model;
-        this.controls.append(probe, this.element('p', model.setupReady ? 'Structured-output probe passed. Model ready.' :
+        local.append(probe, this.element('p', model.providerKind === 'local' && model.setupReady ? 'Structured-output probe passed. Model ready.' :
             model.setupBusy ? 'Checking local model…' : 'Run the probe before analysis.'));
-        const start = this.button('Analyze Project with selected model', () => void model.synthesize());
-        start.disabled = !model.setupReady || model.setupBusy;
+        const start = this.button('Analyze with Local', () => void model.synthesize('local'));
+        start.disabled = model.providerKind !== 'local' || !model.setupReady || model.setupBusy;
+        local.append(start);
+        const gemini = this.element('details');
+        gemini.open = this.geminiSetupOpen;
+        gemini.ontoggle = () => { this.geminiSetupOpen = gemini.open; };
+        gemini.append(this.element('summary', 'Gemini 3.8 Flash'),
+            this.element('p', 'Cloud synthesis. When Gemini is selected, bounded repository evidence used for synthesis is sent to Google’s Gemini API.'),
+            this.element('p', model.geminiEnvironmentKeyAvailable ? 'GEMINI_API_KEY detected in backend environment.' : 'No backend GEMINI_API_KEY detected. Enter an AI Studio API key for this session.'));
+        gemini.append(this.field(model.geminiEnvironmentKeyAvailable ? 'Optional AI Studio API key for this session' : 'AI Studio API key',
+            model.geminiKey, value => model.changeGeminiKey(value), false, true));
+        const geminiProbe = this.button('Test Gemini connection', () => {
+            model.chooseProvider('gemini');
+            void model.probeGemini();
+        });
+        geminiProbe.disabled = model.setupBusy;
+        gemini.append(geminiProbe, this.element('p', model.providerKind === 'gemini' && model.setupReady ? 'Gemini structured-output probe passed.' : 'Test before analysis.'));
+        const geminiStart = this.button('Analyze with Gemini', () => void model.synthesize('gemini'));
+        geminiStart.disabled = model.providerKind !== 'gemini' || !model.setupReady || model.setupBusy;
+        gemini.append(geminiStart);
         const cancel = this.button('Cancel', () => void model.cancel());
-        this.controls.append(start, cancel);
+        this.controls.append(local, gemini, cancel);
         if (model.progressEvents.length) this.renderProgress();
     }
     private renderProgress(): void {
@@ -166,6 +190,18 @@ export class SoftwareMapWidget extends BaseWidget {
             if (work?.callPurpose && current.stage !== 'failed' && current.stage !== 'cancelled') report.append(this.element('p',
                 `Model call: ${work.callPurpose === 'model-warm-up' ? 'Preparing selected model' :
                     analysisStages.find(item => item.stage === work.callPurpose)?.title ?? work.callPurpose}`));
+            if (work?.providerKind && work.providerModelLabel) report.append(this.element('p',
+                `${work.providerKind === 'local' ? 'Local' : 'Gemini'} · ${work.providerModelLabel}`));
+            const calls = events.filter(event => event.callDurationMs !== undefined);
+            if (calls.length) {
+                const list = this.element('ul');
+                for (const call of calls) {
+                    const usage = call.usage;
+                    list.append(this.element('li', `${call.stage}${call.subject ? ` · ${call.subject}` : ''}: ${Math.round(call.callDurationMs!)} ms${call.reused ? ' · reused cache' : ''}` +
+                        (usage ? ` · Tokens (${usage.tokenMeasurement}): input ${usage.inputTokens ?? 'unavailable'}, output ${usage.outputTokens ?? 'unavailable'}, total ${usage.totalTokens ?? 'unavailable'} · request ${usage.requestBytes} bytes, output ${usage.outputBytes} bytes` : '')));
+                }
+                report.append(list);
+            }
             if (work?.totalUnits !== undefined) report.append(this.element('p',
                 `${work.completedUnits ?? 0}/${work.totalUnits} ${work.stage === 'subsystem-discovery' ? 'Systems' : 'checks'}`));
             if (current.status === 'failed' || current.status === 'retrying' || current.status === 'cancelled')

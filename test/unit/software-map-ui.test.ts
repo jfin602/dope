@@ -27,14 +27,17 @@ function connection() {
   let analyzed = 0;
   let configured = 0;
   let accepted = 0;
+  const configurations: any[] = [];
   return {
-    get analyzed() { return analyzed; }, get configured() { return configured; }, get accepted() { return accepted; },
+    get analyzed() { return analyzed; }, get configured() { return configured; }, get accepted() { return accepted; }, configurations,
     attachPending: attach, analyzePending: analyze, statusPending: statusRequest, hierarchyPending: hierarchy, violationsPending: violations, relationshipsPending: relationships, relationshipEdgesPending: relationshipEdges, evidencePending: evidence,
     setClient(value: any) { client = value; }, event(value: any) { client?.notifySoftwareMapChanged(value); },
     progress(handle: string, value: any) { client?.notifySoftwareMapAnalysisProgress(handle, value); },
     attach() { return attach.promise; }, analyze() { analyzed++; return analyze.promise; },
     initializationStatus() { return Promise.resolve({ state: 'uninitialized', declarationPresent: false, declarationFingerprint: 'absent' }); },
-    configureSynthesis() { configured++; return Promise.resolve(['other-model', 'Qwen3-Coder-30B-A3B-Instruct']); },
+    synthesisEnvironment() { return Promise.resolve({ geminiKeyAvailable: false }); },
+    clearSynthesis() { return Promise.resolve(); },
+    configureSynthesis(_handle: string, options: any) { configured++; configurations.push(options); return Promise.resolve({ models: options.kind === 'local' ? ['other-model', 'Qwen3-Coder-30B-A3B-Instruct'] : [] }); },
     selectSynthesisModel() { return Promise.resolve(); }, probeSynthesis() { return Promise.resolve(); },
     synthesisReady() { return Promise.resolve(false); },
     startInitialization() { return Promise.resolve({ reviewId: 'review', packet: { items: [] }, proposal: { nodes: [], openQuestions: [], unassignedEvidenceRefs: [] }, draft: [] }); },
@@ -106,13 +109,14 @@ test('local setup prefers Qwen and stores endpoint/model only as application sta
   const controller = new SoftwareMapController(() => c, () => {}, { getData: async () => undefined, setData: async (...args: any[]) => { writes.push(args); } });
   const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
   await controller.setup();
+  await controller.discover();
   assert.equal(controller.model, 'Qwen3-Coder-30B-A3B-Instruct');
   assert.equal(c.configured, 1);
   assert.deepEqual(writes, []);
   await controller.probe();
   assert.equal(controller.setupReady, true);
   assert.equal(writes[0][0], 'dope.smap.synthesis');
-  assert.deepEqual(writes[0][1], { endpoint: 'http://127.0.0.1:1234/v1', model: 'Qwen3-Coder-30B-A3B-Instruct' });
+  assert.deepEqual(writes[0][1], { kind: 'local', endpoint: 'http://127.0.0.1:1234/v1', model: 'Qwen3-Coder-30B-A3B-Instruct' });
   assert.equal(c.analyzed, 0);
   controller.changeContextTokens('32768');
   await controller.probe();
@@ -122,6 +126,53 @@ test('local setup prefers Qwen and stores endpoint/model only as application sta
   await controller.probe();
   assert.equal(controller.setupReady, true);
   assert.equal(c.configured, 2);
+  controller.dispose();
+});
+
+test('Gemini setup uses only Gemini, drops session key, and switching clears readiness', async () => {
+  const c = connection();
+  const writes: any[] = [];
+  c.synthesisEnvironment = () => Promise.resolve({ geminiKeyAvailable: true });
+  const controller = new SoftwareMapController(() => c, () => {}, {
+    getData: async () => undefined, setData: async (...args: any[]) => { writes.push(args); }
+  });
+  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  await controller.setup();
+  assert.equal(controller.geminiEnvironmentKeyAvailable, true);
+  controller.changeGeminiKey('session-secret');
+  controller.chooseProvider('gemini');
+  await controller.probeGemini();
+  assert.equal(controller.setupReady, true);
+  assert.equal(controller.geminiKey, '');
+  assert.deepEqual(c.configurations, [{ kind: 'gemini', apiKey: 'session-secret' }]);
+  assert.equal(JSON.stringify(writes).includes('session-secret'), false);
+  assert.deepEqual(writes[0][1], { kind: 'gemini', endpoint: controller.endpoint, model: '' });
+  controller.chooseProvider('local');
+  assert.equal(controller.setupReady, false);
+  await controller.synthesize('gemini');
+  assert.equal(controller.review, undefined);
+  await controller.discover();
+  assert.equal(c.configurations.at(-1).kind, 'local');
+  controller.dispose();
+});
+
+test('Gemini failure preserves retry without Local fallback or secret in UI error', async () => {
+  const c = connection();
+  c.probeSynthesis = () => Promise.reject(new Error('Gemini connection test failed'));
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  await controller.setup();
+  controller.chooseProvider('gemini');
+  controller.changeGeminiKey('session-secret');
+  await controller.probeGemini();
+  assert.equal(controller.setupReady, false);
+  assert.equal(controller.geminiKey, '');
+  assert.equal(c.configurations.length, 1);
+  assert.equal(c.configurations[0].kind, 'gemini');
+  assert.equal(controller.error.includes('session-secret'), false);
+  c.probeSynthesis = () => Promise.resolve();
+  await controller.probeGemini();
+  assert.equal(controller.setupReady, true);
   controller.dispose();
 });
 
@@ -199,9 +250,10 @@ test('setup/probe failures keep recovery controls usable and do not mark readine
   const controller = new SoftwareMapController(() => c, () => {});
   const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
   await controller.setup();
+  await controller.discover();
   assert.match(controller.error, /runtime offline/);
   assert.equal(controller.setupBusy, false);
-  c.configureSynthesis = () => Promise.resolve(['model']);
+  c.configureSynthesis = () => Promise.resolve({ models: ['model'] });
   await controller.discover();
   assert.equal(controller.error, '');
   c.probeSynthesis = () => Promise.reject(new Error('structured output unsupported'));
@@ -284,6 +336,20 @@ test('widget keeps explanation separate from hard facts and labels keyboard cont
   assert.match(css, /dope-smap-view input:focus-visible/);
   assert.match(css, /var\(--theia-input-background\)/);
   assert.match(css, /var\(--theia-editor-background\)/);
+  assert.match(widget, /this\.element\('details'\)/);
+  assert.match(widget, /localSetupOpen/);
+  assert.match(widget, /geminiSetupOpen/);
+  assert.match(widget, /'Local model'/);
+  assert.match(widget, /'Gemini 3\.8 Flash'/);
+  assert.match(widget, /bounded repository evidence used for synthesis is sent to Google/);
+  assert.match(widget, /'Test Gemini connection'/);
+  assert.match(widget, /'Analyze with Gemini'/);
+  assert.match(widget, /'Analyze with Local'/);
+  assert.match(widget, /model\.geminiKey, value => model\.changeGeminiKey\(value\), false, true/);
+  assert.match(widget, /Tokens \(\$\{usage\.tokenMeasurement\}\)/);
+  assert.match(widget, /work\.providerKind/);
+  assert.match(widget, /work\.providerModelLabel/);
+  assert.match(widget, /events\.filter\(event => event\.callDurationMs !== undefined\)/);
 });
 
 test('attach reconciles analysis completed before handle was available', async () => {

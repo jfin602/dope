@@ -189,8 +189,8 @@ test('project handle and review token isolate roots', async () => {
     const reviewA = await service.startInitialization(handleA);
     const handleB = await attach(service, b);
     await assert.rejects(service.acceptReview(handleA, reviewA.reviewId, reviewA.draft), /Invalid/);
-    const reviewB = await service.startInitialization(handleB);
-    await assert.rejects(service.acceptReview(handleB, reviewA.reviewId, reviewB.draft), /matching/);
+    await assert.rejects(service.startInitialization(handleB), /not ready/);
+    await assert.rejects(service.acceptReview(handleB, reviewA.reviewId, reviewA.draft), /matching/);
     await service.cancelInitialization(handleB);
     assert.equal((await service.initializationStatus(handleB)).state, 'uninitialized');
     assert.equal((await readdir(a)).includes('.dope'), false);
@@ -236,10 +236,62 @@ test('backend reports ordered hierarchy, known counts and measured time before t
     assert.ok(events.every((event, i) => event.elapsedMs >= 0 && event.stageElapsedMs! >= 0 &&
       (i === 0 || event.elapsedMs >= events[i - 1].elapsedMs)));
     assert.ok(events.some(event => event.callPurpose === 'system-discovery' && event.providerModelLabel === 'fixture-model'));
+    assert.ok(events.some(event => event.providerKind === 'local' && event.providerModelLabel === 'fixture-model' &&
+      event.usage?.tokenMeasurement === 'unavailable' && event.callDurationMs !== undefined));
     assert.ok(!JSON.stringify(events).match(/prompt|chain.of.thought|percentage/i));
     assert.equal((await readdir(root)).includes('.dope'), false);
     service.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('Gemini environment and session setup remain in memory, fail closed, and never fall back', async () => {
+  const root = await fixture();
+  const previous = process.env.GEMINI_API_KEY;
+  const keys: string[] = [];
+  const calls: string[] = [];
+  const events: AnalysisProgressEvent[] = [];
+  const makeGemini = (key: string) => {
+    keys.push(key);
+    return { kind: 'gemini', probe: async () => { calls.push('probe'); },
+      capabilities: async () => ({ modelLabel: 'gemini-3.8-flash', contextWindowTokens: 100000,
+        maxInputTokens: 90000, reservedInstructionTokens: 1000, reservedOutputTokens: 2000,
+        reservedOverheadTokens: 1000, tokenEstimate: 'conservative' }),
+      estimateTokens: async (text: string) => text.length,
+      runStage: async () => { calls.push('gemini'); throw new Error(`raw provider error ${key}`); } } as any;
+  };
+  try {
+    process.env.GEMINI_API_KEY = 'environment-secret';
+    const service = new SoftwareMapBackend(new SoftwareMapIndex(new TypeScriptAnalyzer()),
+      { notifySoftwareMapChanged() {}, notifySoftwareMapAnalysisProgress(_handle, event) { events.push(event); } },
+      undefined, makeGemini);
+    const handle = await attach(service, root);
+    assert.deepEqual(await service.synthesisEnvironment(handle), { geminiKeyAvailable: true });
+    assert.deepEqual(await service.configureSynthesis(handle, { kind: 'gemini' }), { models: [] });
+    assert.deepEqual(keys, ['environment-secret']);
+    assert.equal(await service.synthesisReady(handle), false);
+    await service.probeSynthesis(handle);
+    assert.equal(await service.synthesisReady(handle), true);
+    await assert.rejects(service.startInitialization(handle), /Gemini analysis failed/);
+    assert.deepEqual(calls, ['probe', 'gemini']);
+    assert.equal(JSON.stringify(events).includes('environment-secret'), false);
+    assert.equal((await readdir(root)).includes('.dope'), false);
+    await service.configureSynthesis(handle, { kind: 'gemini', apiKey: 'session-secret' });
+    assert.deepEqual(keys, ['environment-secret', 'session-secret']);
+    assert.equal(await service.synthesisReady(handle), false);
+    assert.equal(JSON.stringify(await service.synthesisEnvironment(handle)).includes('secret'), false);
+    assert.equal(JSON.stringify([...((service as any).synthesisCache.results as Map<string, unknown>).keys()]).includes('session-secret'), false);
+    ((service as any).synthesisCache.results as Map<string, unknown>).set('retained-provider', { provider: keys });
+    await service.clearSynthesis(handle);
+    assert.equal(await service.synthesisReady(handle), false);
+    assert.equal(((service as any).synthesisCache.results as Map<string, unknown>).size, 0);
+    await service.configureSynthesis(handle, { kind: 'gemini' });
+    await service.attach(pathToFileURL(root).href);
+    assert.equal(await service.synthesisReady(handle), false);
+    service.dispose();
+  } finally {
+    if (previous === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = previous;
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('failure can retry; cancel and project switch discard late stage results', async () => {

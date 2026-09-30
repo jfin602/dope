@@ -1,5 +1,5 @@
 import { parseArchitecture, parseAnalysisProgressEvent } from '@dope/software-map';
-import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent } from '@dope/software-map';
+import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup } from '@dope/software-map';
 
 export type SoftwareMapConnection = SoftwareMapService & { setClient(client: SoftwareMapClient | undefined): void };
 export interface SynthesisPreferenceStore {
@@ -8,7 +8,7 @@ export interface SynthesisPreferenceStore {
 }
 const preferenceKey = 'dope.smap.synthesis';
 const declinedThisSession = new Set<string>();
-type SynthesisChoice = { endpoint: string; model: string };
+type SynthesisChoice = { kind: 'local' | 'gemini'; endpoint: string; model: string };
 
 export function declarationFromDraft(draft: ArchitectureReviewNode[]): ArchitectureDeclaration {
     if (draft.some(node => node.kind === 'system' && node.parentProposalKey !== null)) throw new Error('Systems cannot have a parent');
@@ -50,6 +50,9 @@ export class SoftwareMapController {
     endpoint = 'http://127.0.0.1:1234/v1';
     model = '';
     token = '';
+    geminiKey = '';
+    providerKind: SynthesisSetup['kind'] = 'local';
+    geminiEnvironmentKeyAvailable = false;
     models: string[] = [];
     setupReady = false;
     setupBusy = false;
@@ -59,6 +62,7 @@ export class SoftwareMapController {
     reviewElapsedMs?: number;
     private setupRequest = 0;
     private configuredSetup?: string;
+    private clearingSetup?: Promise<void>;
     private nextKey = 0;
     private connection?: SoftwareMapConnection;
     private handle?: string;
@@ -105,10 +109,13 @@ export class SoftwareMapController {
         this.setupReady = false;
         this.setupBusy = false;
         this.configuredSetup = undefined;
+        this.clearingSetup = undefined;
         this.progressEvents = [];
         this.analysisStartedAt = undefined;
         this.reviewElapsedMs = undefined;
         this.token = '';
+        this.geminiKey = '';
+        this.geminiEnvironmentKeyAvailable = false;
         this.loading = !!workspace;
         this.changed();
         if (!workspace) return;
@@ -178,13 +185,18 @@ export class SoftwareMapController {
             if (project !== this.project || request !== this.setupRequest) return;
             this.endpoint = choice?.endpoint || this.endpoint;
             this.model = choice?.model || '';
-            await this.discover();
+            this.providerKind = choice?.kind === 'gemini' ? 'gemini' : 'local';
+            const environment = await this.connection!.synthesisEnvironment(this.handle!);
+            if (project !== this.project || request !== this.setupRequest) return;
+            this.geminiEnvironmentKeyAvailable = environment.geminiKeyAvailable;
         } catch (error) {
             if (project === this.project && request === this.setupRequest) { this.error = String(error); this.changed(); }
         }
     }
     async discover(): Promise<void> {
         if (!this.connection || !this.handle) return;
+        this.providerKind = 'local';
+        this.geminiKey = '';
         const project = this.project;
         const request = ++this.setupRequest;
         const connection = this.connection;
@@ -196,11 +208,16 @@ export class SoftwareMapController {
         this.error = '';
         this.changed();
         try {
-            const models = await connection.configureSynthesis(handle, { endpoint: this.endpoint,
-                contextWindowTokens: this.contextWindowTokens, ...(this.token ? { token: this.token } : {}) });
+            await this.clearingSetup;
             if (project !== this.project || request !== this.setupRequest) return;
+            const configured = connection.configureSynthesis(handle, { kind: 'local', endpoint: this.endpoint,
+                contextWindowTokens: this.contextWindowTokens, ...(this.token ? { token: this.token } : {}) });
+            this.token = '';
+            const result = await configured;
+            if (project !== this.project || request !== this.setupRequest) return;
+            const models = result.models;
             this.models = models;
-            this.configuredSetup = JSON.stringify([this.endpoint, this.token, this.contextWindowTokens]);
+            this.configuredSetup = JSON.stringify([this.endpoint, this.contextWindowTokens]);
             this.model = models.includes(this.model) ? this.model : models.find(id => /qwen3[-_. ]coder[-_. ]30b[-_. ]a3b[-_. ]instruct/i.test(id)) ?? models[0] ?? '';
         } catch (error) {
             if (project === this.project && request === this.setupRequest) this.error = String(error);
@@ -208,13 +225,30 @@ export class SoftwareMapController {
             if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.changed(); }
         }
     }
-    changeEndpoint(value: string): void { this.endpoint = value; this.setupReady = false; ++this.setupRequest; }
-    changeModel(value: string): void { this.model = value; this.setupReady = false; ++this.setupRequest; }
-    changeToken(value: string): void { this.token = value; this.setupReady = false; ++this.setupRequest; }
+    private invalidateSetup(): void {
+        const hadSetup = this.setupReady || this.configuredSetup !== undefined;
+        this.setupReady = false; this.configuredSetup = undefined; ++this.setupRequest;
+        if (hadSetup && this.connection && this.handle) {
+            const connection = this.connection, handle = this.handle;
+            this.clearingSetup = (this.clearingSetup ?? Promise.resolve()).then(() => connection.clearSynthesis(handle)).catch(() => {});
+        }
+        this.changed();
+    }
+    chooseProvider(kind: SynthesisSetup['kind']): void {
+        if (this.providerKind === kind) return;
+        this.providerKind = kind;
+        this.token = '';
+        if (kind !== 'gemini') this.geminiKey = '';
+        this.invalidateSetup();
+    }
+    changeEndpoint(value: string): void { this.endpoint = value; this.invalidateSetup(); }
+    changeModel(value: string): void { this.model = value; this.setupReady = false; ++this.setupRequest; this.changed(); }
+    changeToken(value: string): void { this.token = value; this.invalidateSetup(); }
+    changeGeminiKey(value: string): void { this.geminiKey = value; this.invalidateSetup(); }
     changeContextTokens(value: string): void {
         const tokens = Number(value);
         this.contextWindowTokens = Number.isSafeInteger(tokens) ? tokens : 0;
-        this.setupReady = false; ++this.setupRequest;
+        this.invalidateSetup();
     }
     analysisElapsedMs(): number {
         const reported = this.progressEvents.at(-1)?.elapsedMs ?? 0;
@@ -222,8 +256,8 @@ export class SoftwareMapController {
             ? Math.max(reported, Date.now() - this.analysisStartedAt) : this.reviewElapsedMs ?? reported;
     }
     async probe(): Promise<void> {
-        if (!this.connection || !this.handle || !this.model || !this.models.includes(this.model)) return;
-        if (this.configuredSetup !== JSON.stringify([this.endpoint, this.token, this.contextWindowTokens])) {
+        if (!this.connection || !this.handle || this.providerKind !== 'local' || !this.model || !this.models.includes(this.model)) return;
+        if (this.configuredSetup !== JSON.stringify([this.endpoint, this.contextWindowTokens])) {
             this.error = 'Discover models again after changing connection or context settings.';
             this.setupReady = false;
             this.changed();
@@ -236,11 +270,13 @@ export class SoftwareMapController {
         this.error = '';
         this.changed();
         try {
+            await this.clearingSetup;
+            if (project !== this.project || request !== this.setupRequest) return;
             await this.connection.selectSynthesisModel(this.handle, this.model);
             if (project !== this.project || request !== this.setupRequest) return;
             await this.connection.probeSynthesis(this.handle);
             if (project !== this.project || request !== this.setupRequest) return;
-            await this.preferences?.setData(preferenceKey, { endpoint: this.endpoint, model: this.model });
+            await this.preferences?.setData(preferenceKey, { kind: 'local', endpoint: this.endpoint, model: this.model });
             if (project !== this.project || request !== this.setupRequest) return;
             this.setupReady = true;
         } catch (error) {
@@ -249,8 +285,30 @@ export class SoftwareMapController {
             if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.changed(); }
         }
     }
-    async synthesize(): Promise<void> {
-        if (!this.setupReady || !this.connection || !this.handle) return;
+    async probeGemini(): Promise<void> {
+        if (!this.connection || !this.handle || this.providerKind !== 'gemini') return;
+        const project = this.project, request = ++this.setupRequest;
+        const connection = this.connection, handle = this.handle;
+        this.setupBusy = true; this.setupReady = false; this.error = ''; this.changed();
+        try {
+            await this.clearingSetup;
+            if (project !== this.project || request !== this.setupRequest) return;
+            const configured = connection.configureSynthesis(handle, { kind: 'gemini', ...(this.geminiKey ? { apiKey: this.geminiKey } : {}) });
+            this.geminiKey = '';
+            await configured;
+            if (project !== this.project || request !== this.setupRequest) return;
+            await connection.probeSynthesis(handle);
+            if (project !== this.project || request !== this.setupRequest) return;
+            this.setupReady = true;
+            await this.preferences?.setData(preferenceKey, { kind: 'gemini', endpoint: this.endpoint, model: this.model });
+        } catch (error) {
+            if (project === this.project && request === this.setupRequest) this.error = String(error);
+        } finally {
+            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.changed(); }
+        }
+    }
+    async synthesize(kind: SynthesisSetup['kind'] = this.providerKind): Promise<void> {
+        if (kind !== this.providerKind || !this.setupReady || !this.connection || !this.handle) return;
         const project = this.project;
         const request = ++this.setupRequest;
         this.setupBusy = true;
@@ -357,7 +415,8 @@ export class SoftwareMapController {
         try {
             if (connection && handle) await connection.cancelInitialization(handle);
             if (project !== this.project || request !== this.setupRequest) return;
-            this.review = undefined; this.draft = []; this.setupReady = false; this.flow = wasAnalyzing ? 'setup' : 'none'; this.token = '';
+            if (connection && handle) await connection.clearSynthesis(handle);
+            this.review = undefined; this.draft = []; this.setupReady = false; this.flow = wasAnalyzing ? 'setup' : 'none'; this.token = ''; this.geminiKey = '';
             this.analysisStartedAt = undefined;
             if (this.initialization?.state !== 'initialized' && this.initialization) this.initialization = { ...this.initialization, state: 'uninitialized' };
         } catch (error) {

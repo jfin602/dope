@@ -54,9 +54,14 @@ export interface ArchitectureReview {
     proposal: ArchitectureProposal;
     draft: ArchitectureReviewNode[];
 }
+export type SynthesisSetup = { kind: 'local'; endpoint?: string; token?: string; contextWindowTokens?: number } |
+    { kind: 'gemini'; apiKey?: string };
+export interface SynthesisSetupResult { models: string[] }
 export interface SoftwareMapService {
     attach(folderUri: string): Promise<{ projectHandle: string; status: SoftwareMapStatus }>;
-    configureSynthesis(projectHandle: string, options: { endpoint?: string; token?: string; contextWindowTokens?: number }): Promise<string[]>;
+    synthesisEnvironment(projectHandle: string): Promise<{ geminiKeyAvailable: boolean }>;
+    configureSynthesis(projectHandle: string, options: SynthesisSetup): Promise<SynthesisSetupResult>;
+    clearSynthesis(projectHandle: string): Promise<void>;
     selectSynthesisModel(projectHandle: string, modelId: string): Promise<void>;
     probeSynthesis(projectHandle: string): Promise<void>;
     synthesisReady(projectHandle: string): Promise<boolean>;

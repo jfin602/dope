@@ -206,13 +206,13 @@ export class HierarchicalSynthesisOrchestrator {
                 firstCall = false;
                 if (this.beforeFirstCall) {
                     emit(stage, 'started', 'Preparing selected model', { callPurpose: 'model-warm-up',
-                        providerModelLabel: capability.modelLabel });
+                        providerKind: this.provider.kind, providerModelLabel: capability.modelLabel });
                     await this.beforeFirstCall();
                     this.checkpoint();
                 }
             }
             emit(stage, 'started', `Analyzing ${stage.replaceAll('-', ' ')}`, { subject, ...units,
-                callPurpose: stage, providerModelLabel: capability.modelLabel, attempt: 1 });
+                callPurpose: stage, providerKind: this.provider.kind, providerModelLabel: capability.modelLabel, attempt: 1 });
             let executed;
             const callStart = performance.now();
             try { executed = await this.cache.run(plan.request, packet, this.provider, identity, this.promptVersion, this.checkpoint); }
@@ -229,6 +229,9 @@ export class HierarchicalSynthesisOrchestrator {
                 subject: context.subjectSystemKey ?? undefined, durationMs: executed.durationMs, reused: executed.reused,
                 providerKind: this.provider.kind, modelLabel: capability.modelLabel, status: 'completed', attempt: 1,
                 usage: executed.usage });
+            emit(stage, 'started', 'Model call complete', { subject, ...units, callPurpose: stage,
+                providerKind: this.provider.kind, providerModelLabel: capability.modelLabel,
+                callDurationMs: executed.durationMs, reused: executed.reused, usage: executed.usage });
             if (stage === 'subsystem-discovery') subsystemCompleted++;
             if (stage === 'verification') verificationCompleted++;
             emit(stage, stage === 'subsystem-discovery' && subsystemCompleted < subsystemTotal! ||

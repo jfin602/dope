@@ -9,8 +9,9 @@ import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseAnaly
     HierarchicalSynthesisOrchestrator, SynthesisStageCache } from '@dope/software-map';
 import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, SoftwareMapPageRequest, GraphRelationship, SoftwareMapRelationshipRequest,
     PhysicalMapSnapshot, SoftwareMapClient, SoftwareMapService, ArchitectureEvidencePacket, ArchitectureReview, ArchitectureReviewNode,
-    ArchitectureDeclaration, SoftwareMapInitializationStatus, SynthesisProvider, AnalysisProgressEvent } from '@dope/software-map';
+    ArchitectureDeclaration, SoftwareMapInitializationStatus, SynthesisProvider, SynthesisSetup, SynthesisSetupResult, AnalysisProgressEvent } from '@dope/software-map';
 import { LmStudioSynthesisProvider } from './lmstudio-synthesis-provider';
+import { GeminiSynthesisProvider } from './gemini-synthesis-provider';
 
 export class SoftwareMapBackend implements SoftwareMapService {
     private root?: string;
@@ -25,6 +26,8 @@ export class SoftwareMapBackend implements SoftwareMapService {
     private readonly synthesisCache = new SynthesisStageCache();
     private analysisStarted?: number;
     private localProvider?: LmStudioSynthesisProvider;
+    private geminiProvider?: GeminiSynthesisProvider;
+    private geminiProbed = false;
     private readonly unlisten: () => void;
     private idleStatus() {
         return { generation: 0, publishedGeneration: 0, state: 'idle' as const,
@@ -33,7 +36,8 @@ export class SoftwareMapBackend implements SoftwareMapService {
     }
 
     constructor(private readonly index: SoftwareMapIndex, private readonly client: SoftwareMapClient,
-        provider?: SynthesisProvider) {
+        provider?: SynthesisProvider,
+        private readonly makeGemini = (apiKey: string) => new GeminiSynthesisProvider({ apiKey })) {
         this.provider = provider;
         this.unlisten = index.onChange((root, status) => {
             if (!this.disposed && this.initialized && root === this.root) client.notifySoftwareMapChanged(status);
@@ -46,12 +50,16 @@ export class SoftwareMapBackend implements SoftwareMapService {
         const root = await canonicalLocalRoot(folderUri);
         if (this.disposed || request !== this.attaching) throw new Error('Superseded Software Map attachment');
         if (this.root !== root || !this.handle) {
+            if (this.handle) this.clearProvider();
             this.handle = randomUUID();
             this.run++;
             this.phase = undefined;
             this.pending = undefined;
-            this.provider = this.localProvider ? undefined : this.provider;
             this.localProvider = undefined;
+            this.geminiProvider = undefined;
+            this.geminiProbed = false;
+        } else {
+            this.clearProvider();
         }
         this.root = root;
         this.initialized = (await readInitialization(root)).initialized;
@@ -76,14 +84,49 @@ export class SoftwareMapBackend implements SoftwareMapService {
         return { generation: snapshot.metadata.generation, total: items.length, items: items.slice(offset, offset + limit) };
     }
 
-    async configureSynthesis(projectHandle: string, options: { endpoint?: string; token?: string; contextWindowTokens?: number }): Promise<string[]> {
+    private clearProvider(): void {
+        this.run++;
+        this.phase = undefined;
+        this.pending = undefined;
+        this.analysisStarted = undefined;
+        this.provider = undefined;
+        this.localProvider = undefined;
+        this.geminiProvider = undefined;
+        this.geminiProbed = false;
+        this.synthesisCache.clear();
+    }
+    async clearSynthesis(projectHandle: string): Promise<void> {
         this.active(projectHandle);
-        const provider = new LmStudioSynthesisProvider(options);
-        const models = await provider.discoverModels();
+        this.clearProvider();
+    }
+    async synthesisEnvironment(projectHandle: string): Promise<{ geminiKeyAvailable: boolean }> {
         this.active(projectHandle);
-        this.localProvider = provider;
+        return { geminiKeyAvailable: !!process.env.GEMINI_API_KEY?.trim() };
+    }
+    async configureSynthesis(projectHandle: string, options: SynthesisSetup): Promise<SynthesisSetupResult> {
+        this.active(projectHandle);
+        this.clearProvider();
+        const run = this.run;
+        if (options.kind === 'local') {
+            const provider = new LmStudioSynthesisProvider(options);
+            const models = await provider.discoverModels();
+            this.active(projectHandle);
+            if (run !== this.run) throw new Error('Superseded synthesis setup');
+            this.localProvider = provider;
+            this.provider = provider;
+            return { models };
+        }
+        if (options.kind !== 'gemini') throw new Error('Invalid synthesis provider');
+        const key = options.apiKey?.trim() || process.env.GEMINI_API_KEY?.trim();
+        if (!key) throw new Error('Gemini API key required');
+        let provider: GeminiSynthesisProvider;
+        try { provider = this.makeGemini(key); }
+        catch { throw new Error('Gemini configuration failed'); }
+        this.active(projectHandle);
+        if (run !== this.run) throw new Error('Superseded synthesis setup');
+        this.geminiProvider = provider;
         this.provider = provider;
-        return models;
+        return { models: [] };
     }
     async selectSynthesisModel(projectHandle: string, modelId: string): Promise<void> {
         this.active(projectHandle);
@@ -92,13 +135,20 @@ export class SoftwareMapBackend implements SoftwareMapService {
     }
     async probeSynthesis(projectHandle: string): Promise<void> {
         this.active(projectHandle);
-        if (!this.localProvider) throw new Error('Synthesis provider is not configured');
-        await this.localProvider.probe();
+        const run = this.run;
+        if (this.localProvider) await this.localProvider.probe();
+        else if (this.geminiProvider) {
+            this.geminiProbed = false;
+            try { await this.geminiProvider.probe(); }
+            catch { throw new Error('Gemini connection test failed'); }
+        } else throw new Error('Synthesis provider is not configured');
         this.active(projectHandle);
+        if (run !== this.run) throw new Error('Superseded synthesis setup');
+        if (this.geminiProvider) this.geminiProbed = true;
     }
     async synthesisReady(projectHandle: string): Promise<boolean> {
         this.active(projectHandle);
-        return !!this.provider && (!this.localProvider || this.localProvider.isProbed);
+        return !!this.provider && (this.localProvider?.isProbed ?? (this.geminiProvider ? this.geminiProbed : true));
     }
     async initializationStatus(projectHandle: string): Promise<SoftwareMapInitializationStatus> {
         const root = this.active(projectHandle);
@@ -113,7 +163,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
     async startInitialization(projectHandle: string): Promise<ArchitectureReview> {
         const root = this.active(projectHandle);
         if ((await readInitialization(root)).initialized || this.phase) throw new Error('Software Map initialization is already active');
-        if (!this.provider) throw new Error('Synthesis provider is not configured');
+        if (!this.provider || !(await this.synthesisReady(projectHandle))) throw new Error('Synthesis provider is not ready');
         const provider = this.provider;
         const run = ++this.run;
         const started = performance.now();
@@ -141,7 +191,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
             emit({ stage: 'collecting-evidence', status: 'completed', elapsedMs: 0, message: 'Repository evidence collected' });
             const localProvider = this.localProvider;
             const orchestrator = new HierarchicalSynthesisOrchestrator(provider,
-                localProvider?.endpoint ?? 'configured-provider', undefined, undefined, emit,
+                localProvider?.endpoint ?? provider.kind, undefined, undefined, emit,
                 () => this.still(projectHandle, root, run), localProvider ? () => localProvider.warmUp() : undefined,
                 this.synthesisCache);
             const { proposal } = await orchestrator.analyze(packet);
@@ -174,7 +224,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
                     message: `Analysis failed during ${currentStage.replaceAll('-', ' ')}. Review setup and retry.`,
                     subject: currentStage });
             }
-            throw error;
+            throw provider.kind === 'gemini' && this.run === run ? new Error('Gemini analysis failed. Review setup and retry.') : error;
         }
     }
     async review(projectHandle: string): Promise<ArchitectureReview | undefined> {
@@ -305,5 +355,5 @@ export class SoftwareMapBackend implements SoftwareMapService {
         if (!local || local === '..' || local.startsWith(`..${sep}`)) throw new Error('Unsafe Software Map source path');
         return { uri: pathToFileURL(canonical).href, path: evidence.path, span: evidence.span };
     }
-    dispose(): void { if (!this.disposed) { this.disposed = true; this.run++; this.pending = undefined; this.unlisten(); } }
+    dispose(): void { if (!this.disposed) { this.disposed = true; this.clearProvider(); this.unlisten(); } }
 }

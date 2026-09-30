@@ -54,6 +54,25 @@ test('Gemini SDK applies the API key, fixed model, compact schema and provider u
   assert.equal(JSON.stringify(body).includes(key), false);
 });
 
+test('Gemini connection probe sends only synthetic readiness and sanitizes failure', async () => {
+  const calls: string[] = [];
+  const fetch: typeof globalThis.fetch = async (url, init) => {
+    if (!String(url).endsWith(':generateContent')) return json(model);
+    const body = JSON.parse(String(init?.body));
+    calls.push(JSON.stringify(body));
+    return json(completion('{"ready":true}'));
+  };
+  const provider = new GeminiSynthesisProvider({ apiKey: key, fetch });
+  await provider.probe();
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].includes('synthetic request'));
+  assert.ok(!calls[0].includes(packet.inputFingerprint));
+  assert.ok(!calls[0].includes(key));
+  const bad = new GeminiSynthesisProvider({ apiKey: key, fetch: async url => json(
+    String(url).endsWith(':generateContent') ? completion(key) : model) });
+  await assert.rejects(bad.probe(), error => !String(error).includes(key));
+});
+
 test('schema projection retains supported constraints and full Dope validation rejects surplus output', async () => {
   assert.deepEqual(geminiStageSchema({ type: 'string', const: 'yes', minLength: 2 }),
     { type: 'string', enum: ['yes'] });
