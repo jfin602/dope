@@ -128,7 +128,7 @@ The repository's `.dope/` directory is the required persistence boundary:
 
 Repository + `.dope/` must be sufficient to recover durable sMap state. Theia workspace storage, application preferences, provider sessions, LM Studio state, global Dope databases and machine-local caches may improve UX or performance but cannot be required to reconstruct project truth or determine initialization.
 
-Provider endpoint/model selection remains user/application state, not project state. External caches are allowed only when fully disposable and reconstructible from repository evidence plus project-local `.dope/`.
+Provider endpoint/model selection remains user/application state, not project state. Provider credentials are secret application/runtime state and must never be written into `.dope/`, derived sMap evidence/proposals, progress events, cache identities or ordinary preference storage. External caches are allowed only when fully disposable and reconstructible from repository evidence plus project-local `.dope/`.
 
 The active `c4-smap-synth` P6-P8 prompts remain frozen while they execute. This persistence rule does not retroactively alter those prompts. A bounded post-c4 storage correction at unchanged `0.4.6` must reconcile the implementation to this boundary before Product Phase 5 activation.
 
@@ -143,7 +143,9 @@ First-class compatibility requirements include:
 
 The durable boundary is Dope's Model Runtime and capability contract.
 
-Provider adapters translate provider-specific requests, streaming, tool formats, response identifiers, reasoning controls, context handles, and errors into Dope-owned contracts.
+Provider adapters translate provider-specific requests, streaming, tool formats, response identifiers, reasoning controls, context handles, token-usage metadata and errors into Dope-owned contracts.
+
+For sMap synthesis specifically, Local and Gemini are explicit user-selected adapters over the same Dope-owned hierarchy-stage contracts. Provider selection must never alter canonical Software Map semantics, and failure must never silently route repository evidence to another provider.
 
 Do not spread provider-name conditionals through product/domain code.
 
@@ -273,13 +275,17 @@ ADR 0010 amends the initial discovery path for uninitialized brownfield projects
 
 The forward flow first builds a compact repository-global skeleton, performs repository-global System Discovery, explicitly challenges candidate Systems for merge/split/rejection, then descends per System into Subsystem/Component refinement before cross-System reconciliation and targeted uncertainty verification. The complete ArchitectureEvidencePacket remains the deterministic evidence authority; model-facing slices preserve parent evidence IDs/provenance and remain bounded by provider/model capability.
 
-The LLM output is a proposal/candidate class, never physical fact or canonical architecture. Intermediate stage outputs remain derived candidates. Every final proposal node uses a temporary `proposalKey`, numeric 0..1 `confidence`, architectural `rationale`, machine-verifiable `evidenceRefs` into the complete parent packet, and human-readable `evidence` explanations for the UI. Dope validates schema, hierarchy and references before review. Human-readable evidence cannot substitute for evidenceRefs, and proposal keys cannot silently become canonical IDs. The developer may correct the proposal and explicitly accepts the canonical architecture.
+The LLM output is a proposal/candidate class, never physical fact or canonical architecture. Intermediate provider stages use strict compact Dope-owned JSON rather than free-form prose: temporary candidate identity, kind/name/parent, short bounded responsibility, evidence/ownership refs, confidence, typed ambiguity or unresolved codes, typed candidate relationships and unresolved items. Provider-generated rationale essays, sibling-distinction prose, free-form uncertainty and reconciliation messages do not belong in the cross-stage protocol. Local and Gemini consume and produce the same schemas.
+
+Final review remains human-readable without making prose part of the provider data bus. Assembly/presentation may derive concise explanations from typed findings and deterministic evidence; a separate narrative model call is not required. Every final proposal node still uses a temporary `proposalKey`, numeric 0..1 `confidence` and machine-verifiable `evidenceRefs` into the complete parent packet. Human-readable explanation cannot substitute for evidenceRefs, and proposal keys cannot silently become canonical IDs. The developer may correct the proposal and explicitly accepts the canonical architecture.
 
 Manual/greenfield architecture remains available with no model configured. A developer may define canonical architecture before code exists, after which deterministic analysis realizes or reports drift against it.
 
-Architecture synthesis orchestration emits provider-independent progress events for user-visible stages such as evidence collection, architecture skeleton preparation, System Discovery, System Challenge, per-System Subsystem Discovery, reconciliation and targeted verification. The UI shows current stage/call purpose, applicable subject, known unit counts, elapsed time and failures/retries; it does not expose hidden chain-of-thought or fabricate precise completion percentages when remaining work is unknown.
+Architecture synthesis orchestration emits provider-independent progress events for user-visible stages such as evidence collection, architecture skeleton preparation, System Discovery, System Challenge, per-System Subsystem Discovery, reconciliation and targeted verification. The UI shows current stage/call purpose, applicable subject, selected provider/model, known unit counts, elapsed time and failures/retries; it does not expose hidden chain-of-thought or fabricate precise completion percentages when remaining work is unknown.
 
-The current local Qwen qualification setup uses a 65,536-token loaded context as headroom. Context capacity is a provider capability, not a Software Map constant or request-size target. The initial Dope-on-Dope analysis has an eight-minute end-to-end qualification objective. Eight minutes is not a runtime timeout: slower runs continue to completion for quality/timing evidence but are Not Green on performance.
+The same orchestration records comparable per-stage telemetry independent of provider: wall-clock duration, request/output bytes, cache reuse and input/output/total token usage when available, with an explicit measurement source such as provider-reported, tokenizer, estimated or unavailable. Provider adapters may report usage but do not own timing semantics. Estimated Local usage must not be presented as exact merely to match Gemini telemetry.
+
+The current local Qwen qualification setup uses a 65,536-token loaded context as headroom. Context capacity is a provider capability, not a Software Map constant or request-size target. Gemini 3.8 Flash is introduced as an explicit cloud comparison/provider path through the Gemini Developer API using AI Studio API keys, without replacing Local or changing Software Map contracts. Before Local-specific chunking/compression heuristics are added, both providers are compared against the same compact shared hierarchy pipeline so remaining bottlenecks can be attributed rather than guessed. The initial Dope-on-Dope analysis has an eight-minute end-to-end qualification objective. Eight minutes is not a runtime timeout: slower runs continue to completion for quality/timing evidence but are Not Green on performance.
 
 ### Code Analysis
 

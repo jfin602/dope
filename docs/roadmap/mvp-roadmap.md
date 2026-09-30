@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: `c4-smap-synth` / `c4-architecture-discovery` is OWNER-CLOSED / NOT QUALIFIED at terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0`; mandatory `c4-smap-hierarchical-synthesis` is now active/ready at unchanged `0.4.6`, then bounded `c4-smap-storage` at unchanged `0.4.6` before Phase 5; Product Phase 4 remains QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
+Current stage: `c4-smap-synth` / `c4-architecture-discovery` is OWNER-CLOSED / NOT QUALIFIED at terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0`; mandatory `c4-smap-hierarchical-synthesis` is active at unchanged `0.4.6`. After it closes truthfully, mandatory `c4-smap-gemini-provider` runs at unchanged `0.4.6`, followed by bounded `c4-smap-storage` at unchanged `0.4.6` before Phase 5; Product Phase 4 remains QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -19,6 +19,7 @@ Theia
 -> Physical Map
 -> sMap initialization + architecture synthesis + developer-authority correction
 -> hierarchy-first sMap synthesis + visible progress + quality/performance qualification
+-> compact shared synthesis contracts + explicit Local/Gemini providers + controlled provider comparison
 -> enforce project-local sMap persistence
 -> Visual Software Planning
 -> AI Presence
@@ -42,6 +43,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Product Phase 4 — Physical Map | Dope maps Dope. Its lower-level semantic relationships, declared boundaries and evidence-backed current-state graph can be explored. |
 | Correction c4 — Architecture Discovery | Dope initializes Dope's sMap deliberately. Deterministic evidence feeds bounded LLM architecture synthesis, the developer corrects/accepts Systems/Subsystems/Components, and implementation realization/drift is visible. |
 | Correction c4-hierarchical — sMap Synthesis | Dope discovers Dope's Systems through a repository-global discovery/challenge pass, descends per System into Subsystems/Components, shows live analysis-stage progress, and qualifies architecture quality plus the <=8-minute initial-analysis objective without an eight-minute hard timeout. |
+| Correction c4-gemini — Shared sMap Provider Pipeline | Dope uses compact strict provider-independent intermediate JSON, exposes Local and Gemini as explicit user-selected synthesis paths, records comparable per-stage timing/token telemetry, and compares both providers on the same corrected pipeline before Local-specific optimization. |
 | Correction c4-storage — sMap Persistence | Dope proves that durable Software Map state travels with the repository under project-local `.dope/`, while machine-local state remains disposable or preference-only. |
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
@@ -389,13 +391,76 @@ Minimum qualification:
 
 Exit condition:
 
-At unchanged `0.4.6`, hierarchy-first bounded synthesis produces materially credible architecture on the Dope repository, source provenance remains intact across all stages, the user can see meaningful live analysis progress, model requests respect provider-derived budgets, and the initial qualification workload is Green only when it completes in eight minutes or less without sacrificing architecture quality. Only then may `c4-smap-storage` execute.
+At unchanged `0.4.6`, hierarchy-first bounded synthesis produces materially credible architecture on the Dope repository, source provenance remains intact across all stages, the user can see meaningful live analysis progress, model requests respect provider-derived budgets, and the initial qualification workload is Green only when it completes in eight minutes or less without sacrificing architecture quality. After `c4-smap-hierarchical-synthesis` closes truthfully, route to mandatory `c4-smap-gemini-provider`. That correction is allowed and required even if the local-Qwen architecture-quality or <=8-minute gate is Not Green, because it corrects the shared intermediate protocol and distinguishes synthesis-design cost from provider/model/runtime cost. `c4-smap-storage` remains blocked until `c4-smap-gemini-provider` closes Green.
+
+## Mandatory pre-Phase-5 correction — `c4-smap-gemini-provider`
+
+Status: **QUEUED / APPROVED — execute after `c4-smap-hierarchical-synthesis` closes truthfully**
+
+Version semantics: unchanged package version `0.4.6`. This is a bounded Phase 4 correction. It does not reopen or relabel Product Phase 4 qualification and must not advance Phase 5 versioning.
+
+Authority: ADR 0013, with ADR 0004 provider independence, ADR 0009/0010 developer/evidence authority, ADR 0011 local reference path and ADR 0012 hierarchy-first synthesis retained where not amended.
+
+Purpose:
+Correct the shared hierarchy-first provider protocol before optimizing any one model, add Gemini 3.8 Flash through AI Studio API keys as the first cloud synthesis adapter, and generate comparable evidence showing whether remaining sMap latency/quality problems are caused primarily by the synthesis design or by the local model/runtime.
+
+Required behavior:
+- keep the canonical Software Map and ArchitectureProposal contracts provider-neutral;
+- keep the complete deterministic ArchitectureEvidencePacket as evidence authority and all model-facing views as bounded derived projections with original provenance refs;
+- revise every model-facing intermediate synthesis stage to use strict, compact Dope-owned JSON whose contents are limited to what downstream stages require;
+- intermediate state may carry stage/version/packet/view identity, temporary candidate IDs, node kind/name/parent, short bounded responsibility, evidence and ownership refs, confidence, typed ambiguity/unresolved codes, typed candidate relationships and unresolved items;
+- remove prose-heavy intermediate rationale/explanation fields such as boundary rationale, sibling distinction, free-form uncertainty and reconciliation messages from the cross-stage provider protocol;
+- derive user-facing review explanations deterministically from typed findings/evidence where possible rather than transporting model essays between stages; do not add a separate narrative LLM pass merely to rewrite compact state;
+- Local and Gemini must implement the same provider-independent stage request/result schemas and validation rules;
+- add Gemini 3.8 Flash through the Gemini Developer API / AI Studio API-key path behind a replaceable adapter; Google/provider-native request/response types must not enter `@dope/software-map`;
+- expose explicit, independently collapsible **Local model** and **Gemini 3.8 Flash** setup sections in the sMap Analyze Project flow;
+- selecting Gemini must clearly disclose that the bounded repository evidence used for synthesis leaves the machine; selecting Local continues through the configured local endpoint;
+- provider selection is explicit. Never silently fall back Local -> Gemini or Gemini -> Local;
+- Gemini API keys may come from backend `GEMINI_API_KEY` or an explicit session entry, but secrets are never project state and must not be written to `.dope/`, StorageService/preferences, logs, progress events, cache keys, evidence/proposal data or user-visible raw errors;
+- preserve Local LM Studio support and its existing capability/probe/warm-up safety behavior;
+- instrument every provider stage call with comparable provider-independent telemetry: stage/subject, provider/model, wall-clock duration, request/output bytes, input/output/total token usage when reported, measurement source/quality (provider-reported/tokenizer/estimated/unavailable), cache reuse and retry/error state;
+- provider-independent orchestration measures timing; adapters may supply usage metadata but cannot redefine stage semantics;
+- do not pretend conservative Local token estimates are exact Gemini token counts;
+- do not add aggressive Local-specific chunking, compression, prompt shortcuts or alternate stage semantics in this correction before the controlled comparison;
+- qualify Local and Gemini against the same repository commit, deterministic evidence/planner version, stage order, compact contracts, evidence-selection rules, validation/reconciliation bounds and acceptance rules;
+- record enough evidence to distinguish at least synthesis-design cost, provider/model capability and local runtime/inference cost;
+- keep developer review/correction/explicit acceptance as the only transition to canonical architecture.
+
+Testing discipline:
+- P1-P3 use focused permanent unit/integration tests and only the minimum build/typecheck needed to catch changes on their surfaces;
+- defer repeated full `npm run check`, restart matrices, Electron packaging/native launch, browser dogfooding and live end-to-end provider runs until the final qualification prompt unless a focused failure demonstrates a cross-cutting defect;
+- P4 performs the real Local/Gemini comparison and the consolidated expensive regression/packaging/browser qualification once;
+- P5 is evidence-only closeout and must not rerun live synthesis merely to replace missing evidence.
+
+Minimum qualification:
+- compact intermediate schemas reject surplus prose and invalid/fabricated refs while preserving every fact required by downstream stages;
+- Local and Gemini execute the same stage contracts with no provider-specific architecture semantics;
+- real Gemini configuration works through an AI Studio key without persisting/leaking the key;
+- real Local and Gemini runs use the same corrected pipeline and benchmark source;
+- each run records stage/call timing, request/output size and token usage/measurement source;
+- final proposals remain source-backed and materially reviewable;
+- the comparison records System/Subsystem/Component quality, unresolved items, total call count, provider-call time, deterministic/planning time and end-to-end elapsed time;
+- Local remains functional after Gemini is added;
+- no silent provider fallback occurs;
+- full final repository checks, restart/project isolation and required browser/Electron qualification pass on the exact candidate;
+- project version remains `0.4.6`.
+
+Interpretation rule:
+- similar architecture with much slower Local calls points primarily to local model/runtime cost;
+- good Gemini architecture and materially poorer Local architecture from equivalent inputs points primarily to model capability;
+- both providers remaining slow/oversized points back toward shared synthesis design/evidence planning;
+- both improving materially after compact-contract correction is evidence that the previous prose-heavy intermediate protocol was itself a bottleneck.
+These are diagnostic evidence categories, not excuses to weaken architecture-quality gates.
+
+Exit condition:
+
+At unchanged `0.4.6`, the hierarchy-first sMap pipeline exchanges compact strict provider-neutral intermediate JSON, explicit Local and Gemini 3.8 Flash paths are usable without secret leakage or silent fallback, comparable timing/token telemetry exists for every stage, and a controlled same-pipeline comparison establishes actionable evidence for later Local optimization. Only then may `c4-smap-storage` execute.
 
 ## Mandatory pre-Phase-5 correction — `c4-smap-storage`
 
 Status: **QUEUED — execute only after `c4-smap-hierarchical-synthesis` closes Green**
 
-Version semantics: bounded correction at unchanged package version `0.4.6`. It executes only after `c4-smap-hierarchical-synthesis` closes Green.
+Version semantics: bounded correction at unchanged package version `0.4.6`. It executes only after `c4-smap-gemini-provider` closes Green.
 
 Purpose:
 Make the Software Map portable with the project by enforcing project-local persistence as an architectural invariant.
@@ -412,7 +477,7 @@ Required contract:
 
 Qualification must include a permanent regression guard for the persistence-boundary defect class and controlled copy/reopen/restart evidence showing that durable sMap state follows repository + `.dope/` without reliance on hidden machine-local state.
 
-The owner closed `c4-smap-synth` Not Qualified after P7 architecture-quality evidence; its P8 success closeout was not used to advance Phase 5. `c4-smap-hierarchical-synthesis` is now mandatory, followed by `c4-smap-storage`, before any Phase 5 activation.
+The owner closed `c4-smap-synth` Not Qualified after P7 architecture-quality evidence; its P8 success closeout was not used to advance Phase 5. `c4-smap-hierarchical-synthesis` closes first, then mandatory `c4-smap-gemini-provider` corrects and compares the shared provider pipeline, followed by `c4-smap-storage`, before any Phase 5 activation.
 
 Exit condition:
 
