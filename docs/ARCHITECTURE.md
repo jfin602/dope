@@ -111,7 +111,7 @@ For a project whose sMap has never been initialized, Dope offers an explicit Ana
 
 The Software Map application/domain layer distinguishes at least `uninitialized -> analyzing -> review_required -> initialized`. Initialization state is not equivalent to the existence of `.dope/architecture.json`.
 
-For an existing project, accepted initialization follows: deterministic evidence collection -> provider/runtime readiness -> deterministic evidence planning/global skeleton -> System Discovery -> System Challenge -> per-System Subsystem/Component refinement -> reconciliation/targeted verification -> validated ArchitectureProposal -> developer review/correction -> explicit acceptance -> canonical architecture. Before acceptance, generated structure is proposal state only.
+For an existing project, accepted initialization follows: deterministic evidence collection -> provider/runtime readiness -> deterministic evidence planning/global skeleton + responsibility signals -> System Discovery -> System Challenge -> per-System Subsystem Discovery -> Subsystem Challenge -> per-Subsystem Component Discovery -> reconciliation/targeted verification -> validated ArchitectureProposal -> developer review/correction -> explicit acceptance -> canonical architecture. Before acceptance, generated structure is proposal state only.
 
 Provider/runtime readiness includes a synthetic structured-output capability probe when configuring a model and an explicit warm-up immediately before the first real synthesis request that may submit project evidence. Probe and warm-up requests contain no project evidence. If warm-up fails, the ArchitectureEvidencePacket is not submitted.
 
@@ -267,17 +267,19 @@ Deterministic analyzers produce the ArchitectureEvidencePacket from repository, 
 - dependency cohesion/direction, package/workspace boundaries, public contracts/exports, framework registration and runtime boundaries;
 - finer cohesive implementation groups and explicit framework/service structure.
 
-No single signal, especially folder layout, automatically defines architecture. Evidence remains inspectable without AI.
+No single signal, especially folder layout, client/server separation, framework layer, runtime process or package topology, automatically defines architecture. Architecture boundaries should express enduring software responsibilities. Evidence remains inspectable without AI.
 
 The synthesis layer consumes deterministic bounded views of that packet and ultimately produces a strict Dope-owned ArchitectureProposal. AI interprets evidence; it does not create evidence.
 
 ADR 0010 amends the initial discovery path for uninitialized brownfield projects. ADR 0012 further requires hierarchy-first orchestration because architecture-scale quality—especially System discovery—cannot be treated as a side effect of one large synthesis call.
 
-The forward flow first builds a compact repository-global skeleton, performs repository-global System Discovery, explicitly challenges candidate Systems for merge/split/rejection, then descends per System into Subsystem/Component refinement before cross-System reconciliation and targeted uncertainty verification. The complete ArchitectureEvidencePacket remains the deterministic evidence authority; model-facing slices preserve parent evidence IDs/provenance and remain bounded by provider/model capability.
+The forward flow first builds a compact repository-global skeleton plus deterministic responsibility signals, performs repository-global System Discovery, explicitly challenges candidate Systems for merge/split/rejection, then establishes Subsystems inside each System, challenges those Subsystem boundaries, and only then descends into Components before cross-hierarchy reconciliation and targeted uncertainty verification. The complete ArchitectureEvidencePacket remains the deterministic evidence authority; responsibility signals and model-facing slices are rebuildable planning metadata that preserve parent evidence IDs/provenance and remain bounded by provider/model capability.
 
 The LLM output is a proposal/candidate class, never physical fact or canonical architecture. Intermediate provider stages use strict compact Dope-owned JSON rather than free-form prose: temporary candidate identity, kind/name/parent, short bounded responsibility, evidence/ownership refs, confidence, typed ambiguity or unresolved codes, typed candidate relationships and unresolved items. Provider-generated rationale essays, sibling-distinction prose, free-form uncertainty and reconciliation messages do not belong in the cross-stage protocol. Local and Gemini consume and produce the same schemas.
 
 Final review remains human-readable without making prose part of the provider data bus. Assembly/presentation may derive concise explanations from typed findings and deterministic evidence; a separate narrative model call is not required. Every final proposal node still uses a temporary `proposalKey`, numeric 0..1 `confidence` and machine-verifiable `evidenceRefs` into the complete parent packet. Human-readable explanation cannot substitute for evidenceRefs, and proposal keys cannot silently become canonical IDs. The developer may correct the proposal and explicitly accepts the canonical architecture.
+
+Initial architecture proposals are reviewed in an editor-like center workspace hierarchy rather than a single stacked form. The left sMap sidebar owns setup/progress/status/navigation; the center review presents an indented System -> Subsystem -> Component tree with focused node details/evidence and developer correction controls. This is a Phase 4 proposal-review surface, not the Phase 5 visual Physical Map/Planning Map canvas.
 
 Manual/greenfield architecture remains available with no model configured. A developer may define canonical architecture before code exists, after which deterministic analysis realizes or reports drift against it.
 
