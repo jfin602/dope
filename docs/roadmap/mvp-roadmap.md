@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 4 remains QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`. `c4-smap-synth`, `c4-smap-gemini-provider`, and `c4-synth-improvements` are OWNER-CLOSED / NOT QUALIFIED history; `c4-synth-improvements` stopped after P4 and P5 will not run. Mandatory `c4-synth-coverage-review` is now the active/queued Phase 4 correction at unchanged `0.4.6`. A fresh provider-comparison correction and then `c4-smap-storage` remain required before Phase 5.
+Current stage: Product Phase 4 remains QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`. `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are OWNER-CLOSED / NOT QUALIFIED history. `c4-synth-coverage-review` stopped during P6 and is owner-closed at pushed source `c059f67a5fd85c81183ba09044e550462c9000a1`; P7 will not run. Its implemented synthesis/review capability is accepted as the sequencing baseline without relabeling the correction Green. The fresh provider-comparison correction is deferred off the pre-Phase-5 critical path. `c4-smap-storage` is now the sole remaining mandatory Phase 4 correction at unchanged `0.4.6`.
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -21,7 +21,7 @@ Theia
 -> hierarchy-first sMap synthesis + visible progress + quality/performance qualification
 -> compact shared synthesis contracts + explicit Local/Gemini providers
 -> responsibility-oriented sMap synthesis + hierarchical review
--> fresh Local/Gemini provider comparison
+-> coverage diagnostics + iterative branch review
 -> enforce project-local sMap persistence
 -> Visual Software Planning
 -> AI Presence
@@ -47,9 +47,9 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c4-hierarchical — sMap Synthesis | Dope discovers Dope's Systems through a repository-global discovery/challenge pass, descends per System into Subsystems/Components, shows live analysis-stage progress, and qualifies architecture quality plus the <=8-minute initial-analysis objective without an eight-minute hard timeout. |
 | Correction c4-gemini — Shared sMap Provider Pipeline | Owner-closed Not Qualified after Gemini-only debugging: compact contracts/provider integration landed, but responsibility decomposition remained weak and the planned full provider comparison did not run. |
 | Correction c4-synth-improvements — Responsibility-oriented Synthesis | OWNER-CLOSED / NOT QUALIFIED after P4. Responsibility naming and center review improved, but major implemented responsibilities remained omitted/merged; P5 is not run. |
-| Correction c4-synth-coverage-review — Coverage + Iterative Review | Dope combines root README orientation with deterministic architecture evidence, recovers omitted responsibilities, explains empty Component descent, retains complete provider-attempt telemetry, and lets the developer Search Deeper on one System/Subsystem without discarding the rest of the review. |
-| Correction c4-provider-comparison — Provider Qualification | A fresh bounded Local/Gemini comparison runs only after the shared synthesis design is Green. |
-| Correction c4-storage — sMap Persistence | Dope proves that durable Software Map state travels with the repository under project-local `.dope/`, while machine-local state remains disposable or preference-only. |
+| Correction c4-synth-coverage-review — Coverage + Iterative Review | OWNER-CLOSED / NOT QUALIFIED after stopped P6. The useful coverage/review implementation remains the accepted baseline; P7 is unexecuted and residual depth/qualification gaps remain explicit. |
+| Deferred provider comparison | Removed from the pre-Phase-5 critical path without being relabeled Green; reconsider only when later provider optimization or AI Presence needs controlled comparison evidence. |
+| Correction c4-storage — sMap Persistence | ACTIVE / MANDATORY NEXT. Dope proves that durable Software Map state travels with the repository under project-local `.dope/`, while machine-local state remains disposable or preference-only. |
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
@@ -488,7 +488,7 @@ Owner closeout: P4 is Not Green on architecture quality and P5 will not run. The
 
 ## Mandatory pre-Phase-5 correction — `c4-synth-coverage-review`
 
-Status: **APPROVED / PROMPT STACK READY — MANDATORY NEXT CORRECTION**
+Status: **OWNER-CLOSED / NOT QUALIFIED AFTER STOPPED P6 — IMPLEMENTED BASELINE RETAINED**
 
 Version semantics: unchanged package version `0.4.6`. Activation source is pushed P4 record commit `4a887ecebc546f9944adf54890143827623e008c`.
 
@@ -512,20 +512,22 @@ This correction must:
 - qualify architecture coverage on Adaptive SEO, Dope and a smaller structurally clear repository/fixture, including MODULES+README, README-only, no-bootstrap-doc and stale/conflicting-documentation controls;
 - preserve provider independence, developer authority, bounded synthesis and the Phase 4/5 boundary.
 
-Green routes to the fresh provider-comparison correction below. It does not directly activate storage or Phase 5.
+Owner disposition on 2026-09-30: P6 was stopped and pushed at `c059f67a5fd85c81183ba09044e550462c9000a1`. The final Adaptive SEO replay was substantially closer and under eight minutes, but zero useful Components, unresolved coverage and incomplete multi-target/final validation evidence keep the correction Not Qualified. P7 will not run. The owner accepts this implementation as the synthesis/review baseline for sequencing.
+
+Routing now goes directly to `c4-smap-storage`. This does not relabel coverage Green and does not activate Phase 5.
 
 ## Mandatory pre-Phase-5 correction — `c4-smap-provider-comparison`
 
-Status: **QUEUED / NOT YET PLANNED — execute only after `c4-synth-coverage-review` closes Green**
+Status: **DEFERRED / REMOVED FROM PRE-PHASE-5 CRITICAL PATH**
 
 Purpose:
-Run the controlled Local/Gemini comparison against the corrected shared synthesis pipeline so remaining model/runtime differences can be measured without contaminating architecture semantics.
+Retain the option for a future controlled Local/Gemini comparison when provider optimization or Phase 6 AI Presence actually needs comparative evidence.
 
-This is a fresh correction. It must not rewrite or reopen the closed `c4-smap-gemini-provider` history.
+This correction is not executed as a prerequisite for storage or Phase 5, is not relabeled Green, and must not rewrite or reopen the closed `c4-smap-gemini-provider` history.
 
 ## Mandatory pre-Phase-5 correction — `c4-smap-storage`
 
-Status: **QUEUED — execute only after `c4-synth-coverage-review` and fresh `c4-smap-provider-comparison` close Green**
+Status: **ACTIVE / MANDATORY NEXT CORRECTION — sole remaining pre-Phase-5 gate**
 
 Version semantics: bounded correction at unchanged package version `0.4.6`. The closed Not Green `c4-smap-gemini-provider` is historical evidence and is not reopened.
 
@@ -544,11 +546,11 @@ Required contract:
 
 Qualification must include a permanent regression guard for the persistence-boundary defect class and controlled copy/reopen/restart evidence showing that durable sMap state follows repository + `.dope/` without reliance on hidden machine-local state.
 
-The owner closed `c4-smap-synth` Not Qualified after P7 architecture-quality evidence. Hierarchical P8/P9 will not run. `c4-smap-gemini-provider` is also owner-closed Not Qualified after Gemini-only debugging. The owner closed `c4-synth-improvements` Not Qualified after P4. Mandatory `c4-synth-coverage-review` must now establish coverage-oriented architecture quality and iterative branch review, followed by a fresh provider comparison and then `c4-smap-storage`, before any Phase 5 activation.
+The owner closed `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` Not Qualified while retaining their useful implementation and truthful evidence. The provider-comparison idea is deferred. `c4-smap-storage` is the sole remaining pre-Phase-5 gate. The storage correction should prove the existing small persistence model rather than persist rebuildable synthesis/Physical Map artifacts.
 
 Exit condition:
 
-At unchanged `0.4.6`, durable sMap state is demonstrably project-local, versioned, recoverable and portable; no machine-local application/provider/cache state is required to reconstruct project truth; regression coverage prevents required sMap persistence from escaping `.dope/`. Only then may Product Phase 5 receive a fresh `/docs-review`.
+At unchanged `0.4.6`, durable sMap state is demonstrably project-local, versioned, recoverable and portable; no machine-local application/provider/cache state is required to reconstruct project truth; regression coverage prevents required sMap persistence from escaping `.dope/`; and Dope itself carries a valid accepted `.dope/smap.json` marker for its tracked canonical architecture. Storage Green routes directly to a fresh Product Phase 5 `/docs-review`.
 
 ## Product Phase 5 — Visual Software Planning
 
