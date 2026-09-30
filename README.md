@@ -24,6 +24,18 @@ Run `npm run test:restart` on Linux with Xvfb and `zip` to exercise Electron wor
 
 Read BOOT.md before substantial repository-aware work.
 
+## Local Linux installation
+
+On Linux Mint, run `npm run install:local` from this repository. It packages the current Electron source, copies the AppImage into `~/.local/opt/dope/releases/<build-id>/`, and atomically points `~/.local/opt/dope/current` at it. The source checkout stays separate. Restart Dope to use the new build.
+
+The menu launcher is `~/.local/share/applications/dope.desktop`; search for **Dope** in the Mint menu, then right-click it and choose **Add to panel** (or **Add to favorites**). Its command always uses `current/Dope.AppImage`, so it needs no update when builds change.
+
+- `npm run list-builds` shows the active build and deployment history.
+- `npm run rollback:local -- <build-id>` activates a retained release. Restart Dope afterward.
+- `node scripts/local-install.mjs install --artifact /path/to/Dope.AppImage --note "reason"` installs an already packaged artifact without rebuilding. Use the normal command for a fresh build.
+
+Each build retains `build.json` beside its AppImage. `~/.local/opt/dope/history.jsonl` is append-only and records version, UTC time, Git commit, branch, clean/dirty state, source and installed artifact paths, activation result, and optional notes. `BUILD-HISTORY.md` in the same directory is the readable summary. A failed activation leaves `current` pointing at the previous build. Previous releases remain available for rollback.
+
 ## Core docs
 
 - docs/VISION.md
