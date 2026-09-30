@@ -1,6 +1,6 @@
 # Correction 4 — sMap Coverage + Iterative Review
 
-Status: **APPROVED / PROMPT STACK READY**
+Status: **OWNER-CLOSED / NOT QUALIFIED AFTER STOPPED P6 — P7 UNEXECUTED**
 Correction folder: `c4-synth-coverage-review`
 Required unchanged version: `0.4.6`
 Activation source: `4a887ecebc546f9944adf54890143827623e008c`
@@ -9,6 +9,18 @@ Assessment: `77e379f9f7e86d17c69f35b5304802d2054b0268`
 Plan: `416dbc7ec42357e3dbca8e6d547a0782b167cbdd`
 Predecessor: owner-closed / Not Qualified `c4-synth-improvements`
 Authority: ADR 0015 plus ADR 0014 as amended 2026-09-30 and ADR 0008-0013 where not amended
+
+## Owner disposition — 2026-09-30
+
+The owner closes this correction after stopped P6 at pushed source `c059f67a5fd85c81183ba09044e550462c9000a1`.
+
+This correction is **Not Qualified** and is not relabeled Green. P7 will not run. P5's direct browser review evidence and P6's partial multi-repository evidence remain authoritative historical records.
+
+The final Adaptive SEO replay reached review in at most 445 seconds and was materially closer to the intended responsibility architecture, but it still produced zero useful Components, left 38 source-backed cues unresolved, omitted/weakly captured material implementation, and did not complete the planned Dope/small-target/final regression/package/native qualification. Those gaps remain explicit.
+
+The implemented provider-attempt retention, document authority, coverage/recovery machinery, typed empty descent and branch-local Search Deeper remain the accepted synthesis/review baseline for sequencing.
+
+Next mandatory work is `c4-smap-storage`. The fresh provider comparison is deferred off the pre-Phase-5 critical path.
 
 ## Purpose
 
@@ -30,7 +42,7 @@ The initial repository-global synthesis now resolves an optional root `MODULES.m
 | P4 | branch-local Search Deeper integration | T2 | no |
 | P5 | direct center-review correctness qualification | T3 | browser |
 | P6 | multi-repository live architecture qualification + consolidated expensive validation | T3 | browser + Gemini |
-| P7 | evidence-only correction closeout | T3 audit | no new live runs |
+| P7 | **unexecuted historical prompt**; owner closeout supersedes it | — | no |
 
 All prompts use `GPT-6 Sol High` and keep package version exactly `0.4.6`.
 
@@ -63,6 +75,6 @@ Green does not require exact names/counts. It requires material implemented resp
 
 ## Routing
 
-If P7 closes Green, route to a fresh bounded `c4-smap-provider-comparison` correction, then `c4-smap-storage`.
+Route directly to `c4-smap-storage` at unchanged `0.4.6`.
 
-Do not reopen closed corrections and do not activate Phase 5 early.
+The provider-comparison idea is deferred, not Green. Do not reopen this correction, do not execute P7 as qualification, and do not activate Phase 5 until storage closes Green.
