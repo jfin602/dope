@@ -281,8 +281,8 @@ No correction prompt increments package versions.
 
 If P3 closes Green:
 - storage correction is qualified;
-- Phase 4's final pre-Phase-5 gate is clear;
-- route directly to a fresh Product Phase 5 `/docs-review`.
+- the next planned step is a bounded Dope visual-identity alignment that matches the app color system to the existing logo while preserving dark-first/theme-override contracts;
+- after that alignment is complete, route to a fresh Product Phase 5 `/docs-review`.
 
 If a storage invariant remains Not Green:
 - identify one narrow correction;
