@@ -396,7 +396,7 @@ Minimum qualification:
 
 Exit condition:
 
-The implementation through P7 remains the historical hierarchy-first baseline. ADR 0013/0014 supersede the unexecuted hierarchical P8/P9 qualification/closeout prompts; they will not run, their evidence must not be invented, and this correction is not relabeled Green. `c4-smap-gemini-provider` later produced Not Green Gemini architecture evidence and is now owner-closed. Current routing is through mandatory `c4-synth-improvements`, then a fresh provider comparison, then `c4-smap-storage`.
+The implementation through P7 remains the historical hierarchy-first baseline. ADR 0013/0014 supersede the unexecuted hierarchical P8/P9 qualification/closeout prompts; they will not run, their evidence must not be invented, and this correction is not relabeled Green. `c4-smap-gemini-provider` later produced Not Green Gemini architecture evidence and is now owner-closed. Current routing is through mandatory `c4-synth-coverage-review`, then a fresh provider comparison, then `c4-smap-storage`.
 
 ## Mandatory pre-Phase-5 correction — `c4-smap-gemini-provider`
 
@@ -463,14 +463,15 @@ Owner closeout disposition: provider integration, compact contracts and Gemini d
 
 ## Mandatory pre-Phase-5 correction — `c4-synth-improvements`
 
-Status: **APPROVED / QUEUED at unchanged `0.4.6`**
+Status: **OWNER-CLOSED / NOT QUALIFIED AFTER P4 — P5 UNEXECUTED**
 
 Activation source: `8ea34ae1300a387ac63aad9462ae649ac78a9605`.
+Pushed P4 record: `4a887ecebc546f9944adf54890143827623e008c`.
 
 Authority: ADR 0014.
 
 Purpose:
-Correct the shared synthesis algorithm so Systems/Subsystems/Components represent source-backed software responsibilities rather than repository layout, frontend/backend tiers or framework/runtime structure.
+This historical correction improved responsibility-oriented decomposition and center review, but P4 still found material architecture coverage gaps.
 
 Required scope:
 - deterministic responsibility-oriented planning signals with provenance;
@@ -483,7 +484,7 @@ Required scope:
 - <=8-minute objective retained;
 - no benchmark-specific answer vocabulary and no Local-specific optimization.
 
-Green routes to a fresh bounded Local/Gemini provider-comparison correction. The old `c4-smap-gemini-provider` remains closed.
+Owner closeout: P4 is Not Green on architecture quality and P5 will not run. The mandatory successor is `c4-synth-coverage-review`; the old `c4-smap-gemini-provider` remains closed.
 
 ## Mandatory pre-Phase-5 correction — `c4-synth-coverage-review`
 

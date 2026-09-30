@@ -106,11 +106,7 @@ The owner closes `c4-smap-gemini-provider` Not Qualified at source `8ea34ae1300a
 
 The older `c4-smap-hierarchical-synthesis` P8/P9 prompts remain superseded and will not be run.
 
-Mandatory next correction:
-
-`c4-synth-improvements` at unchanged `0.4.6`.
-
-After `c4-synth-improvements` closes Green, run a fresh bounded provider-comparison correction rather than reopening the closed `c4-smap-gemini-provider` history. Project-local sMap storage remains blocked until the corrected shared pipeline has both architecture-quality evidence and provider-comparison evidence.
+At ADR adoption, the mandatory next correction was `c4-synth-improvements` at unchanged `0.4.6`. That sequencing is now historical and is superseded by the 2026-09-30 amendment below: `c4-synth-improvements` is owner-closed Not Qualified after P4, and the current mandatory correction is `c4-synth-coverage-review`. A fresh provider-comparison correction and project-local sMap storage remain later gates.
 
 ## Consequences
 
