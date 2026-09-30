@@ -13,7 +13,7 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** The hierarchy/provider corrections remain Phase 4 follow-on work. `c4-smap-synth`, `c4-smap-gemini-provider`, and now `c4-synth-improvements` are preserved as owner-closed **Not Qualified** history. `c4-synth-improvements` stopped after P4: the real `gemini-3.8-flash` run reached center review within 302.8 seconds, but architecture coverage was materially incomplete. Its P5 will not run. The current mandatory gate is `c4-synth-coverage-review` at unchanged `0.4.6`; only after it closes Green may the fresh provider-comparison correction run, followed by `c4-smap-storage` before Phase 5.
+**Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** The architecture-discovery follow-ons are retained as truthful Phase 4 history. `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are owner-closed **Not Qualified**. The owner closed `c4-synth-coverage-review` after its stopped P6 at pushed source `c059f67a5fd85c81183ba09044e550462c9000a1`: the final Adaptive SEO replay was materially closer and met the <=8-minute objective, but Component depth/coverage and several qualification controls remained incomplete. P7 will not run. The implemented synthesis/review capability is accepted as the bounded baseline without being relabeled Green. The fresh provider-comparison correction is deferred off the pre-Phase-5 critical path. The sole remaining mandatory gate is `c4-smap-storage` at unchanged `0.4.6`; storage Green routes to a fresh Product Phase 5 `/docs-review`.
 
 **ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first bootstrap; ADR 0012 governs hierarchy-first synthesis/progress/performance; ADR 0013 governs compact shared provider contracts; ADR 0014, including its September 30 coverage/review amendment, governs responsibility-oriented decomposition, coverage recovery, Component-descent diagnostics, and branch-local review refinement; ADR 0015 governs optional root `MODULES.md` as a bootstrap architecture seed while preserving `.dope/architecture.json` as the sole canonical architecture after acceptance.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. The developer owns canonical System / Subsystem / Component identity. General Phase 6 AI Presence and the Phase 5 visual planning canvas remain out of scope.
 
@@ -96,6 +96,7 @@ Foundation Spike 0 — qualify Theia
 -> Phase 4 — Physical Map
 -> correction c4 — architecture discovery + developer authority
 -> correction c4-hierarchical — hierarchy-first sMap synthesis + visible progress
+-> correction c4-coverage — coverage diagnostics + iterative branch review
 -> correction c4-storage — project-local sMap persistence
 -> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
@@ -235,19 +236,27 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 Do not activate or author Product Phase 5 implementation work yet.
 
-Execute correction `c4-synth-coverage-review` at unchanged package version `0.4.6`, from pushed P4 record source `4a887ecebc546f9944adf54890143827623e008c`.
+Execute correction `c4-smap-storage` at unchanged package version `0.4.6` from the pushed owner-close baseline `c059f67a5fd85c81183ba09044e550462c9000a1`.
+
+This is a deliberately bounded portability correction, not a new persistence subsystem. The existing implementation already has the core contract: project-local `.dope/architecture.json` for canonical architecture, `.dope/smap.json` for accepted initialization, safe/fail-closed file handling, and transient in-memory physical/synthesis state.
 
 The correction must:
-- retain every provider-call attempt, including failures/retries/final calls, with safe stage/subject/provider/model/timing/usage/retry/consumption telemetry;
-- diagnose and bound the initial Gemini transport/type failure instead of relying on manual retry;
-- strengthen generic source-backed responsibility cues without benchmark-specific vocabulary;
-- make Subsystem Challenge recover substantial responsibilities absent from initial discovery, not merely transform candidates that already exist;
-- produce an inspectable coverage ledger from deterministic source-backed cues through challenged hierarchy;
-- require typed Component-descent disposition when a Subsystem yields no Components;
-- add branch-local **Search Deeper** for every System and Subsystem in center review, using the current edited branch and explicit proposal Accept/Reject while preserving unrelated review work;
-- directly qualify valid acceptance, merge/split-equivalent correction, Search Deeper, source navigation, and project switching in the browser;
-- qualify architecture coverage on Adaptive SEO, Dope, and a smaller structurally clear repository/fixture without using architecture references as synthesis input;
-- preserve the <=8-minute per-analysis objective as a quality/performance gate rather than a runtime cancellation;
-- keep package version `0.4.6`, provider independence, developer authority, Phase 5 visual planning, general AI Presence, tools/mutation/delegation, and canonical storage boundaries unchanged.
+- prove repository + project-local `.dope/` is sufficient to recover durable Software Map truth after backend restart and when copied/opened at a different filesystem root;
+- preserve exact canonical architecture IDs/containment and rebuild derived Physical Map state from current source/config plus canonical architecture;
+- prove deletion/absence of machine-local synthesis/provider/cache state cannot change initialized state or canonical truth;
+- keep provider/model preferences, credentials, presentation state, review drafts, evidence packets, physical snapshots, coverage ledgers, synthesis attempts/cache and Search Deeper previews non-project/transient unless a concrete defect proves persistence is required;
+- prove a repository opened without its `.dope/` state does not inherit initialization from another root;
+- preserve project isolation plus existing malformed/mismatched/symlink fail-closed behavior;
+- initialize Dope's existing tracked `.dope/architecture.json` through the real acceptance path so the repository carries a valid `.dope/smap.json` dogfood marker;
+- add/retain a permanent regression guard for the project-local persistence boundary;
+- keep package version `0.4.6`;
+- avoid live provider benchmarking, broad synthesis retuning, Phase 5 canvas/work ontology, general AI Presence, or persistence of rebuildable derived artifacts.
 
-After `c4-synth-coverage-review` closes Green, execute a fresh bounded provider-comparison correction. Only after that comparison and `c4-smap-storage` close Green may Phase 5 receive a fresh `/docs-review`.
+Use a streamlined three-prompt stack:
+1. P1 — persistence-boundary audit plus only necessary repair and focused guards;
+2. P2 — short copy/reopen/restart portability qualification plus Dope dogfood initialization;
+3. P3 — evidence-only closeout.
+
+P2 is intentionally narrow. Do not spend time on Local/Gemini comparison, multi-repository architecture scoring, AppImage/native packaging, or full browser qualification unless P1 materially changes code that makes such evidence necessary.
+
+If `c4-smap-storage` closes Green, route directly to a fresh Product Phase 5 `/docs-review`. The deferred provider-comparison idea may be revived later only if provider optimization/AI Presence work actually needs it.
