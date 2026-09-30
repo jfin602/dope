@@ -156,7 +156,7 @@ const shortName = { ...nonempty, maxLength: 80 } as const;
 const shortResponsibility = { ...nonempty, maxLength: 160 } as const;
 export const SYNTHESIS_ISSUE_CODES = ['insufficient-evidence', 'unclear-subdivision', 'boundary-overlap',
     'ownership-conflict', 'weak-support', 'cross-system-dependency', 'outside-system',
-    'duplicate-responsibility', 'same-source-region'] as const;
+    'duplicate-responsibility', 'same-source-region', 'cross-subsystem-dependency', 'technical-layer-boundary'] as const;
 export type SynthesisIssueCode = typeof SYNTHESIS_ISSUE_CODES[number];
 const issueCodes = { type: 'array', items: { enum: SYNTHESIS_ISSUE_CODES }, uniqueItems: true } as const;
 export type SynthesisStage = 'system-discovery' | 'system-challenge' | 'subsystem-discovery' | 'subsystem-challenge' |

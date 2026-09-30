@@ -6,7 +6,7 @@ import { CommonMenus } from '@theia/core/lib/browser/common-menus';
 import URI from '@theia/core/lib/common/uri';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
-import type { ArchitectureEvidenceItem, Evidence, GraphNode, GraphRelationship, AnalysisProgressStage } from '@dope/software-map';
+import type { Evidence, GraphNode, GraphRelationship, AnalysisProgressStage } from '@dope/software-map';
 import { SoftwareMapConnection, SoftwareMapController } from './software-map-controller';
 import './dope.css';
 
@@ -17,6 +17,8 @@ const analysisStages: { stage: AnalysisProgressStage; title: string }[] = [
     { stage: 'system-discovery', title: 'Discovering Systems' },
     { stage: 'system-challenge', title: 'Challenging System boundaries' },
     { stage: 'subsystem-discovery', title: 'Discovering Subsystems' },
+    { stage: 'subsystem-challenge', title: 'Challenging Subsystem boundaries' },
+    { stage: 'component-discovery', title: 'Discovering Components' },
     { stage: 'reconciliation', title: 'Reconciling architecture' },
     { stage: 'verification', title: 'Verifying uncertain boundaries' },
     { stage: 'preparing-review', title: 'Preparing sMap for review' },
@@ -24,6 +26,8 @@ const analysisStages: { stage: AnalysisProgressStage; title: string }[] = [
 
 export class SoftwareMapWidget extends BaseWidget {
     readonly controller: SoftwareMapController;
+    private readonly changeListener;
+    private openedReviewId?: string;
     private readonly rootsListener;
     private workspaceRequest = 0;
     private readonly status = document.createElement('p');
@@ -37,8 +41,8 @@ export class SoftwareMapWidget extends BaseWidget {
     private geminiSetupOpen = false;
     private readonly clockTimer: ReturnType<typeof setInterval>;
 
-    constructor(connect: () => SoftwareMapConnection, private readonly workspaces: WorkspaceService, private readonly opener: OpenerService,
-        preferences?: StorageService) {
+    constructor(controller: SoftwareMapController, private readonly workspaces: WorkspaceService, private readonly opener: OpenerService,
+        private readonly openReview: () => Promise<void>) {
         super();
         this.id = SOFTWARE_MAP_ID;
         this.title.label = 'sMap';
@@ -48,7 +52,13 @@ export class SoftwareMapWidget extends BaseWidget {
         this.addClass('dope-spike-view');
         this.addClass('dope-smap-view');
         this.node.tabIndex = 0;
-        this.controller = new SoftwareMapController(connect, () => this.render(), preferences);
+        this.controller = controller;
+        this.changeListener = controller.onChange(() => {
+            this.render();
+            const id = controller.flow === 'review' ? controller.review?.reviewId : undefined;
+            if (id && id !== this.openedReviewId) { this.openedReviewId = id; void this.openReview(); }
+            if (!id) this.openedReviewId = undefined;
+        });
         const heading = document.createElement('h2');
         heading.textContent = 'Software Map';
         this.status.setAttribute('role', 'status');
@@ -199,7 +209,7 @@ export class SoftwareMapWidget extends BaseWidget {
         report.append(this.progressClock);
         if (current) {
             const currentTitle = analysisStages.find(item => item.stage === active)?.title ?? current.message;
-            report.append(this.element('p', `${currentTitle}${work?.subject && work.stage === 'subsystem-discovery' ? ` — ${work.subject}` : ''}`));
+            report.append(this.element('p', `${currentTitle}${work?.subject && ['subsystem-discovery', 'subsystem-challenge', 'component-discovery'].includes(work.stage) ? ` — ${work.subject}` : ''}`));
             if (work?.callPurpose && current.stage !== 'failed' && current.stage !== 'cancelled') report.append(this.element('p',
                 `Model call: ${work.callPurpose === 'model-warm-up' ? 'Preparing selected model' :
                     analysisStages.find(item => item.stage === work.callPurpose)?.title ?? work.callPurpose}`));
@@ -216,7 +226,7 @@ export class SoftwareMapWidget extends BaseWidget {
                 report.append(list);
             }
             if (work?.totalUnits !== undefined) report.append(this.element('p',
-                `${work.completedUnits ?? 0}/${work.totalUnits} ${work.stage === 'subsystem-discovery' ? 'Systems' : 'checks'}`));
+                `${work.completedUnits ?? 0}/${work.totalUnits} ${work.stage === 'component-discovery' ? 'Subsystems' : 'Systems'}`));
             if (current.status === 'failed' || current.status === 'retrying' || current.status === 'cancelled')
                 report.append(this.element('p', current.message));
             if (current.status === 'failed') report.append(this.element('p', this.controller.setupReady ?
@@ -234,54 +244,11 @@ export class SoftwareMapWidget extends BaseWidget {
     private renderReview(): void {
         const review = this.controller.review;
         if (!review) return;
-        this.controls.append(this.element('h3', 'Review proposed architecture'),
-            this.element('p', `Analysis ready for review in ${(this.controller.analysisElapsedMs() / 1000).toFixed(1)}s.`),
-            this.element('p', review.proposal.summary));
-        const byKey = new Map(review.proposal.nodes.map(node => [node.proposalKey, node]));
-        const facts = new Map(review.packet.items.map(item => [item.id, item]));
-        const list = this.element('ul');
-        const render = (parent: string | null, target: HTMLUListElement) => {
-            for (const draft of this.controller.draft.filter(node => node.parentProposalKey === parent)) {
-                const proposal = byKey.get(draft.proposalKey);
-                const row = this.element('li');
-                row.append(this.element('h4', `${draft.kind}: ${draft.name || '(unnamed)'}`), this.element('p', draft.purpose));
-                if (proposal) {
-                    row.append(this.element('p', `Confidence: ${proposal.confidence.toFixed(2)} (synthesis confidence, not probability)`),
-                        this.element('p', `Rationale: ${proposal.rationale}`), this.element('h4', 'Evidence explanation'));
-                    for (const statement of proposal.evidence) row.append(this.element('p', statement));
-                    row.append(this.element('h4', 'Source-backed evidence'));
-                    for (const ref of proposal.evidenceRefs) this.renderPacketFact(ref, facts.get(ref), row);
-                } else row.append(this.element('p', 'Developer-added boundary; no model evidence.'));
-                const children = this.element('ul'); render(draft.proposalKey, children);
-                row.append(children); target.append(row);
-            }
-        };
-        render(null, list);
-        this.controls.append(list, this.element('h4', 'Open questions'));
-        if (review.proposal.openQuestions.length) {
-            const questions = this.element('ul');
-            for (const question of review.proposal.openQuestions) questions.append(this.element('li', question));
-            this.controls.append(questions);
-        } else this.controls.append(this.element('p', 'None reported.'));
-        this.controls.append(this.element('h4', 'Unassigned source-backed evidence'));
-        if (!review.proposal.unassignedEvidenceRefs.length) this.controls.append(this.element('p', 'None reported.'));
-        for (const ref of review.proposal.unassignedEvidenceRefs) this.renderPacketFact(ref, facts.get(ref), this.controls);
-        this.renderDraft('Correct and accept architecture');
-    }
-    private renderPacketFact(ref: string, item: ArchitectureEvidenceItem | undefined, target: HTMLElement): void {
-        if (!item) { target.append(this.element('p', `Unavailable packet fact ${ref}`)); return; }
-        const fact = this.element('div');
-        fact.className = 'dope-smap-fact';
-        fact.append(this.element('p', `${item.kind} · ${item.path} · ${ref}`),
-            this.element('small', `Deterministic fact: ${JSON.stringify(item)} · source evidence IDs: ${item.sourceEvidenceIds.join(', ') || 'none'}`));
-        fact.append(this.button(`Open source for ${ref}`, () => void this.openReviewSource(ref)));
-        target.append(fact);
-    }
-    private async openReviewSource(ref: string): Promise<void> {
-        try {
-            const location = await this.controller.reviewSource(ref);
-            if (location && !this.isDisposed) await open(this.opener, new URI(location.uri));
-        } catch (error) { this.status.textContent = `Source navigation failed: ${String(error)}`; }
+        this.controls.append(this.element('h3', 'Architecture review ready'),
+            this.element('p', review.proposal.summary),
+            this.element('p', `${this.controller.draft.filter(node => node.kind === 'system').length} Systems · ${this.controller.draft.filter(node => node.kind === 'subsystem').length} Subsystems · ${this.controller.draft.filter(node => node.kind === 'component').length} Components`),
+            this.button('Open Architecture Review', () => void this.openReview()),
+            this.button('Decline review', () => void this.controller.cancel()));
     }
     private renderDraft(title: string): void {
         const model = this.controller;
@@ -335,7 +302,8 @@ export class SoftwareMapWidget extends BaseWidget {
         this.status.textContent = !model.workspace ? 'Open one local project folder to inspect its Software Map.' :
             model.error ? `Error: ${model.error}` :
             model.loading ? `Analyzing or loading generation ${status?.generation ?? '…'}; previous results hidden.` :
-            model.initialization?.state !== 'initialized' ? model.initialization?.state === 'analyzing' ? 'Software Map analysis in progress.' : 'Software Map is uninitialized.' :
+            model.initialization?.state !== 'initialized' ? model.initialization?.state === 'analyzing' ? 'Software Map analysis in progress.' :
+                model.initialization?.state === 'review_required' ? 'Architecture review pending.' : 'Software Map is uninitialized.' :
             !status || status.state === 'idle' ? 'Ready to refresh. No derived graph is loaded.' :
             status.state === 'failed' ? `Analysis failed at generation ${status.generation}.` :
             `Generation ${status.publishedGeneration} · ${status.analysis.completeness} · ${model.nodes.length} nodes · ${model.violations.length} violations`;
@@ -472,7 +440,7 @@ export class SoftwareMapWidget extends BaseWidget {
         clearInterval(this.clockTimer);
         ++this.workspaceRequest;
         this.rootsListener.dispose();
-        this.controller.dispose();
+        this.changeListener.dispose();
         super.dispose();
     }
 }

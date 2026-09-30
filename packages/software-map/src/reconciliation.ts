@@ -7,7 +7,7 @@ import type { ReconciliationResult, SubsystemCandidate, SubsystemDiscoveryResult
     SynthesisStage, SynthesisStageContext, SynthesisStageRequest, SynthesisStageResult, SystemCandidate,
     SystemChallengeResult, SystemDiscoveryResult, VerificationResult, SynthesisIssueCode } from './hierarchical-synthesis';
 
-export const SYNTHESIS_PROMPT_VERSION = 3;
+export const SYNTHESIS_PROMPT_VERSION = 4;
 export const MAX_VERIFICATION_CALLS = 2;
 export const MAX_VERIFICATION_TARGETS = 4;
 export const MAX_EVIDENCE_REFINEMENT_ROUNDS = 2;
@@ -136,6 +136,35 @@ export function detectReconciliationConflicts(packet: ArchitectureEvidencePacket
         add(claim.keys, [ref], 'ownership-conflict');
     for (const claim of pathClaims.values()) if (new Set(claim.systems).size > 1 && new Set(claim.refs).size > 1)
         add(claim.keys, claim.refs, 'same-source-region');
+    // Compare peers only: a parent and its child may legitimately cite the same source fact.
+    const peers = new Map<string, typeof nodes>();
+    for (const entry of nodes) {
+        const peerKey = `${entry.systemKey}:${entry.node.kind}:${entry.node.parentCandidateKey}`;
+        const group = peers.get(peerKey) ?? [];
+        group.push(entry);
+        peers.set(peerKey, group);
+    }
+    for (const group of peers.values()) for (let i = 0; i < group.length; i++) for (let j = i + 1; j < group.length; j++) {
+        const a = group[i].node, b = group[j].node;
+        const shared = a.ownershipEvidenceRefs.filter(ref => b.ownershipEvidenceRefs.includes(ref));
+        if (shared.length) add([a.candidateKey, b.candidateKey], shared, 'ownership-conflict');
+        if (a.responsibility.toLowerCase() === b.responsibility.toLowerCase())
+            add([a.candidateKey, b.candidateKey], [...a.evidenceRefs, ...b.evidenceRefs], 'duplicate-responsibility');
+        if (a.kind === 'subsystem' && b.kind === 'subsystem') {
+            const aPaths = new Set(a.ownershipEvidenceRefs.map(ref => refs.get(ref)?.path));
+            const bPaths = new Set(b.ownershipEvidenceRefs.map(ref => refs.get(ref)?.path));
+            const dependencies = packet.items.filter(item => item.kind === 'dependency' &&
+                (aPaths.has(item.path) && bPaths.has(item.targetPath) || bPaths.has(item.path) && aPaths.has(item.targetPath)));
+            if (dependencies.length) add([a.candidateKey, b.candidateKey], dependencies.slice(0, 4).map(item => item.id),
+                'cross-subsystem-dependency');
+        }
+    }
+    for (const { node } of nodes) if (node.kind === 'subsystem' &&
+        /^(front.?end|back.?end|client|server|database|repository|worker|http|framework|package)(\s|$)/i.test(node.name) &&
+        !node.ownershipEvidenceRefs.some(ref => {
+            const item = refs.get(ref);
+            return item && isProductionEvidencePath(item.path) && item.sourceEvidenceIds.length > 0;
+        })) add([node.candidateKey], node.evidenceRefs, 'technical-layer-boundary');
     for (let i = 0; i < systems.length; i++) for (let j = i + 1; j < systems.length; j++) {
         const a = systems[i], b = systems[j];
         const shared = a.evidenceRefs.filter(ref => b.evidenceRefs.includes(ref));
@@ -184,14 +213,20 @@ export class HierarchicalSynthesisOrchestrator {
         this.checkpoint();
         const identity = `${this.provider.kind}:${this.providerIdentity}:${capability.modelLabel}`;
         let subsystemCompleted = 0;
+        let subsystemChallengeCompleted = 0;
+        let componentCompleted = 0;
+        let componentTotal = 0;
         let subsystemTotal: number | undefined;
         let verificationCompleted = 0;
         let verificationTotal: number | undefined;
         let firstCall = true;
         const run = async (stage: SynthesisStage, context: SynthesisStageContext) => {
-            const subject = ['subsystem-discovery', 'subsystem-challenge', 'component-discovery'].includes(stage) ? context.systems.find(system => system.candidateKey === context.subjectSystemKey)
-                ?.name.replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 120) : undefined;
+            const subjectName = stage === 'component-discovery' ? context.subsystems.find(subsystem => subsystem.candidateKey === context.subjectSubsystemKey)?.name :
+                ['subsystem-discovery', 'subsystem-challenge'].includes(stage) ? context.systems.find(system => system.candidateKey === context.subjectSystemKey)?.name : undefined;
+            const subject = subjectName?.replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 120);
             const units = stage === 'subsystem-discovery' ? { completedUnits: subsystemCompleted, totalUnits: subsystemTotal } :
+                stage === 'subsystem-challenge' ? { completedUnits: subsystemChallengeCompleted, totalUnits: subsystemTotal } :
+                stage === 'component-discovery' ? { completedUnits: componentCompleted, totalUnits: componentTotal } :
                 stage === 'verification' ? { completedUnits: verificationCompleted, totalUnits: verificationTotal } : {};
             if (stage === 'system-discovery') emit('building-skeleton', 'started', 'Building architecture skeleton');
             else emit(stage, 'started', stage === 'subsystem-discovery' ? 'Discovering Subsystems' : stage.replaceAll('-', ' '), { subject, ...units });
@@ -202,7 +237,7 @@ export class HierarchicalSynthesisOrchestrator {
                 emit('building-skeleton', 'completed', 'Architecture skeleton ready');
                 emit(stage, 'started', 'Discovering Systems');
             }
-            record({ operation: 'planning', stage, subject: context.subjectSystemKey ?? undefined,
+            record({ operation: 'planning', stage, subject: context.subjectSubsystemKey ?? context.subjectSystemKey ?? undefined,
                 durationMs: performance.now() - start, reused: false });
             if (firstCall) {
                 firstCall = false;
@@ -220,7 +255,7 @@ export class HierarchicalSynthesisOrchestrator {
             try { executed = await this.cache.run(plan.request, packet, this.provider, identity, this.promptVersion, this.checkpoint); }
             catch (error) {
                 record({ operation: stage === 'verification' ? 'verification-call' : 'stage-call', stage,
-                    subject: context.subjectSystemKey ?? undefined,
+                    subject: context.subjectSubsystemKey ?? context.subjectSystemKey ?? undefined,
                     durationMs: error instanceof StageResultFailure ? error.durationMs : performance.now() - callStart,
                     reused: false, providerKind: this.provider.kind, modelLabel: capability.modelLabel,
                     status: 'failed', attempt: 1, usage: error instanceof StageResultFailure ? error.usage : undefined });
@@ -228,18 +263,24 @@ export class HierarchicalSynthesisOrchestrator {
             }
             this.checkpoint();
             record({ operation: stage === 'verification' ? 'verification-call' : 'stage-call', stage,
-                subject: context.subjectSystemKey ?? undefined, durationMs: executed.durationMs, reused: executed.reused,
+                subject: context.subjectSubsystemKey ?? context.subjectSystemKey ?? undefined, durationMs: executed.durationMs, reused: executed.reused,
                 providerKind: this.provider.kind, modelLabel: capability.modelLabel, status: 'completed', attempt: 1,
                 usage: executed.usage });
             emit(stage, 'started', 'Model call complete', { subject, ...units, callPurpose: stage,
                 providerKind: this.provider.kind, providerModelLabel: capability.modelLabel,
                 callDurationMs: executed.durationMs, reused: executed.reused, usage: executed.usage });
             if (stage === 'subsystem-discovery') subsystemCompleted++;
+            if (stage === 'subsystem-challenge') subsystemChallengeCompleted++;
+            if (stage === 'component-discovery') componentCompleted++;
             if (stage === 'verification') verificationCompleted++;
             emit(stage, stage === 'subsystem-discovery' && subsystemCompleted < subsystemTotal! ||
+                stage === 'subsystem-challenge' && subsystemChallengeCompleted < subsystemTotal! ||
+                stage === 'component-discovery' && componentCompleted < componentTotal ||
                 stage === 'verification' ? 'started' : 'completed',
                 `${stage.replaceAll('-', ' ')} ${stage === 'verification' ? 'check complete' : 'complete'}`, { subject,
                 ...(stage === 'subsystem-discovery' ? { completedUnits: subsystemCompleted, totalUnits: subsystemTotal } :
+                    stage === 'subsystem-challenge' ? { completedUnits: subsystemChallengeCompleted, totalUnits: subsystemTotal } :
+                    stage === 'component-discovery' ? { completedUnits: componentCompleted, totalUnits: componentTotal } :
                     stage === 'verification' ? { completedUnits: verificationCompleted, totalUnits: verificationTotal } : {}) });
             return { plan, result: executed.result };
         };
@@ -264,6 +305,7 @@ export class HierarchicalSynthesisOrchestrator {
                 discovered.subsystems))).result as SubsystemChallengeResult;
             const subsystems = challenged.decisions.flatMap(decision => decision.subsystems);
             const nodes: SystemSubtree['nodes'] = [...subsystems];
+            componentCompleted = 0; componentTotal = subsystems.length;
             for (const subsystem of subsystems) {
                 const components = (await run('component-discovery', context(systems, [], system.candidateKey, [],
                     subsystems, subsystem.candidateKey, challenged))).result as ComponentDiscoveryResult;

@@ -28,6 +28,13 @@ export function declarationFromDraft(draft: ArchitectureReviewNode[]): Architect
 }
 
 export class SoftwareMapController {
+    private readonly listeners = new Set<() => void>();
+    onChange(listener: () => void): { dispose(): void } {
+        this.listeners.add(listener);
+        return { dispose: () => { this.listeners.delete(listener); } };
+    }
+    private notify(): void { this.changed(); for (const listener of this.listeners) listener(); }
+    draftChanged(): void { this.notify(); }
     workspace?: string;
     status?: SoftwareMapStatus;
     nodes: GraphNode[] = [];
@@ -122,7 +129,7 @@ export class SoftwareMapController {
         this.geminiKey = '';
         this.geminiEnvironmentKeyAvailable = false;
         this.loading = !!workspace;
-        this.changed();
+        this.notify();
         if (!workspace) return;
         try {
             const connection = this.connect();
@@ -134,7 +141,7 @@ export class SoftwareMapController {
                 const previous = this.progressEvents.at(-1);
                 if (previous && event.elapsedMs < previous.elapsedMs) return;
                 this.progressEvents.push(event);
-                this.changed();
+                this.notify();
             }, notifySoftwareMapChanged: status => {
                 if (this.disposed || project !== this.project || !this.handle || status.generation < (this.status?.generation ?? 0) ||
                     status.generation === this.status?.generation && this.status.state === 'ready' && status.state === 'analyzing') return;
@@ -146,7 +153,7 @@ export class SoftwareMapController {
                     this.violations = [];
                     this.clearDetails();
                     this.loading = status.state === 'analyzing';
-                    this.changed();
+                    this.notify();
                 } else if (status.state === 'ready') void this.load(status);
             } });
             const attached = await connection.attach(workspace);
@@ -154,28 +161,33 @@ export class SoftwareMapController {
             this.handle = attached.projectHandle;
             this.status = attached.status;
             this.loading = false;
-            this.changed();
+            this.notify();
             const latest = attached.status.state === 'analyzing' ? await connection.status(attached.projectHandle) : attached.status;
             if (this.disposed || project !== this.project) return;
             if (attached.status.state === 'analyzing' && this.status?.state === 'ready' && this.status.generation >= latest.generation) return;
             this.status = latest;
             if (latest.state === 'ready') await this.load(latest);
-            else if (latest.state === 'analyzing') { this.loading = true; this.changed(); }
+            else if (latest.state === 'analyzing') { this.loading = true; this.notify(); }
             if (this.disposed || project !== this.project) return;
             this.initialization = await connection.initializationStatus(attached.projectHandle);
             if (this.disposed || project !== this.project) return;
+            if (this.initialization.state === 'review_required') {
+                const review = await connection.review(attached.projectHandle);
+                if (this.disposed || project !== this.project) return;
+                if (review) { this.review = review; this.draft = structuredClone(review.draft); this.flow = 'review'; }
+            }
             if (this.initialization.state === 'uninitialized' && !declinedThisSession.has(workspace)) this.flow = 'offer';
-            this.changed();
+            this.notify();
         } catch (error) {
-            if (!this.disposed && project === this.project) { this.error = String(error); this.loading = false; this.changed(); }
+            if (!this.disposed && project === this.project) { this.error = String(error); this.loading = false; this.notify(); }
         }
     }
-    begin(): void { if (this.initialization?.state === 'uninitialized') { this.flow = 'offer'; this.error = ''; this.changed(); } }
+    begin(): void { if (this.initialization?.state === 'uninitialized') { this.flow = 'offer'; this.error = ''; this.notify(); } }
     decline(): void {
         if (this.workspace) declinedThisSession.add(this.workspace);
         this.flow = 'none';
         this.error = '';
-        this.changed();
+        this.notify();
     }
     async setup(): Promise<void> {
         if (!this.handle || !this.connection) return;
@@ -184,7 +196,7 @@ export class SoftwareMapController {
         this.flow = 'setup';
         this.setupReady = false;
         this.error = '';
-        this.changed();
+        this.notify();
         try {
             const choice = await this.preferences?.getData<SynthesisChoice>(preferenceKey);
             if (project !== this.project || request !== this.setupRequest) return;
@@ -196,7 +208,7 @@ export class SoftwareMapController {
             if (project !== this.project || request !== this.setupRequest) return;
             this.geminiEnvironmentKeyAvailable = environment.geminiKeyAvailable;
         } catch (error) {
-            if (project === this.project && request === this.setupRequest) { this.error = String(error); this.changed(); }
+            if (project === this.project && request === this.setupRequest) { this.error = String(error); this.notify(); }
         }
     }
     async discover(): Promise<void> {
@@ -212,7 +224,7 @@ export class SoftwareMapController {
         this.models = [];
         this.configuredSetup = undefined;
         this.error = '';
-        this.changed();
+        this.notify();
         try {
             await this.clearingSetup;
             if (project !== this.project || request !== this.setupRequest) return;
@@ -228,7 +240,7 @@ export class SoftwareMapController {
         } catch (error) {
             if (project === this.project && request === this.setupRequest) this.error = String(error);
         } finally {
-            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.changed(); }
+            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
         }
     }
     private invalidateSetup(): void {
@@ -238,7 +250,7 @@ export class SoftwareMapController {
             const connection = this.connection, handle = this.handle;
             this.clearingSetup = (this.clearingSetup ?? Promise.resolve()).then(() => connection.clearSynthesis(handle)).catch(() => {});
         }
-        this.changed();
+        this.notify();
     }
     chooseProvider(kind: SynthesisSetup['kind']): void {
         if (this.providerKind === kind) return;
@@ -248,7 +260,7 @@ export class SoftwareMapController {
         this.invalidateSetup();
     }
     changeEndpoint(value: string): void { this.endpoint = value; this.invalidateSetup(); }
-    changeModel(value: string): void { this.model = value; this.setupReady = false; ++this.setupRequest; this.changed(); }
+    changeModel(value: string): void { this.model = value; this.setupReady = false; ++this.setupRequest; this.notify(); }
     changeToken(value: string): void { this.token = value; this.invalidateSetup(); }
     changeGeminiKey(value: string): void { this.geminiKey = value; this.geminiModels = []; this.invalidateSetup(); }
     async changeGeminiModel(value: string): Promise<void> {
@@ -256,17 +268,17 @@ export class SoftwareMapController {
         this.geminiModel = value;
         this.setupReady = false;
         const project = this.project, request = ++this.setupRequest;
-        this.setupBusy = true; this.error = ''; this.changed();
+        this.setupBusy = true; this.error = ''; this.notify();
         try { await this.connection.selectSynthesisModel(this.handle, value); }
         catch (error) { if (project === this.project && request === this.setupRequest) this.error = String(error); }
-        finally { if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.changed(); } }
+        finally { if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); } }
     }
     async discoverGemini(): Promise<void> {
         if (!this.connection || !this.handle) return;
         this.chooseProvider('gemini');
         const project = this.project, request = ++this.setupRequest;
         const connection = this.connection, handle = this.handle;
-        this.setupBusy = true; this.setupReady = false; this.geminiModels = []; this.error = ''; this.changed();
+        this.setupBusy = true; this.setupReady = false; this.geminiModels = []; this.error = ''; this.notify();
         try {
             await this.clearingSetup;
             if (project !== this.project || request !== this.setupRequest) return;
@@ -283,7 +295,7 @@ export class SoftwareMapController {
         } catch (error) {
             if (project === this.project && request === this.setupRequest) this.error = String(error);
         } finally {
-            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.changed(); }
+            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
         }
     }
     changeContextTokens(value: string): void {
@@ -301,7 +313,7 @@ export class SoftwareMapController {
         if (this.configuredSetup !== JSON.stringify([this.endpoint, this.contextWindowTokens])) {
             this.error = 'Discover models again after changing connection or context settings.';
             this.setupReady = false;
-            this.changed();
+            this.notify();
             return;
         }
         const project = this.project;
@@ -309,7 +321,7 @@ export class SoftwareMapController {
         this.setupBusy = true;
         this.setupReady = false;
         this.error = '';
-        this.changed();
+        this.notify();
         try {
             await this.clearingSetup;
             if (project !== this.project || request !== this.setupRequest) return;
@@ -323,7 +335,7 @@ export class SoftwareMapController {
         } catch (error) {
             if (project === this.project && request === this.setupRequest) this.error = String(error);
         } finally {
-            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.changed(); }
+            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
         }
     }
     async probeGemini(): Promise<void> {
@@ -331,7 +343,7 @@ export class SoftwareMapController {
             !this.geminiModels.includes(this.geminiModel)) return;
         const project = this.project, request = ++this.setupRequest;
         const connection = this.connection, handle = this.handle;
-        this.setupBusy = true; this.setupReady = false; this.error = ''; this.changed();
+        this.setupBusy = true; this.setupReady = false; this.error = ''; this.notify();
         try {
             await this.clearingSetup;
             if (project !== this.project || request !== this.setupRequest) return;
@@ -345,7 +357,7 @@ export class SoftwareMapController {
         } catch (error) {
             if (project === this.project && request === this.setupRequest) this.error = `${this.geminiModel}: ${String(error)}`;
         } finally {
-            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.changed(); }
+            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
         }
     }
     async synthesize(kind: SynthesisSetup['kind'] = this.providerKind): Promise<void> {
@@ -360,7 +372,7 @@ export class SoftwareMapController {
         this.review = undefined;
         this.draft = [];
         this.error = '';
-        this.changed();
+        this.notify();
         try {
             const review = await this.connection.startInitialization(this.handle);
             if (project !== this.project || request !== this.setupRequest) return;
@@ -369,6 +381,7 @@ export class SoftwareMapController {
             this.draft = structuredClone(review.draft);
             if (this.initialization) this.initialization = { ...this.initialization, state: 'review_required' };
             this.flow = 'review';
+            this.notify();
         } catch (error) {
             if (project === this.project && request === this.setupRequest) {
                 this.review = undefined; this.draft = [];
@@ -379,7 +392,7 @@ export class SoftwareMapController {
                 this.error = String(error);
             }
         } finally {
-            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.changed(); }
+            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
         }
     }
     manual(): void {
@@ -391,7 +404,7 @@ export class SoftwareMapController {
     }
     add(kind: ArchitectureReviewNode['kind'], parentProposalKey: string | null = null): void {
         this.draft.push({ proposalKey: `draft:${++this.nextKey}`, kind, id: '', name: '', purpose: '', parentProposalKey, roots: [] });
-        this.changed();
+        this.notify();
     }
     remove(key: string): void {
         const removed = new Set([key]);
@@ -400,7 +413,7 @@ export class SoftwareMapController {
             for (const node of this.draft) if (node.parentProposalKey && removed.has(node.parentProposalKey) && !removed.has(node.proposalKey)) { removed.add(node.proposalKey); changed = true; }
         }
         this.draft = this.draft.filter(node => !removed.has(node.proposalKey));
-        this.changed();
+        this.notify();
     }
     draftError(): string | undefined {
         try { declarationFromDraft(this.draft); return undefined; } catch (error) { return String(error); }
@@ -411,7 +424,7 @@ export class SoftwareMapController {
         const request = ++this.setupRequest;
         this.setupBusy = true;
         this.error = '';
-        this.changed();
+        this.notify();
         try {
             const status = this.review && this.flow === 'review'
                 ? await this.connection.acceptReview(this.handle, this.review.reviewId, this.draft)
@@ -424,7 +437,7 @@ export class SoftwareMapController {
         } catch (error) {
             if (project === this.project && request === this.setupRequest) this.error = String(error);
         } finally {
-            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.changed(); }
+            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
         }
     }
     async useExisting(): Promise<void> {
@@ -433,7 +446,7 @@ export class SoftwareMapController {
         const request = ++this.setupRequest;
         this.setupBusy = true;
         this.error = '';
-        this.changed();
+        this.notify();
         try {
             const status = await this.connection.acceptExisting(this.handle, this.initialization.declarationFingerprint);
             if (project !== this.project || request !== this.setupRequest) return;
@@ -443,7 +456,7 @@ export class SoftwareMapController {
         } catch (error) {
             if (project === this.project && request === this.setupRequest) this.error = String(error);
         } finally {
-            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.changed(); }
+            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
         }
     }
     async cancel(): Promise<void> {
@@ -452,7 +465,7 @@ export class SoftwareMapController {
         const request = ++this.setupRequest;
         this.setupBusy = true;
         this.error = '';
-        this.changed();
+        this.notify();
         try {
             if (connection && handle) await connection.cancelInitialization(handle);
             if (project !== this.project || request !== this.setupRequest) return;
@@ -463,7 +476,7 @@ export class SoftwareMapController {
         } catch (error) {
             if (project === this.project && request === this.setupRequest) this.error = String(error);
         } finally {
-            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.changed(); }
+            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
         }
     }
     async reviewSource(ref: string) {
@@ -487,16 +500,16 @@ export class SoftwareMapController {
         this.clearDetails();
         this.loading = true;
         this.error = '';
-        this.changed();
+        this.notify();
         try {
             const status = await this.connection.analyze(this.handle);
             if (!this.current(project, request)) return;
             this.status = status;
             this.loading = false;
-            this.changed();
+            this.notify();
             if (status.state === 'ready') await this.load(status);
         } catch (error) {
-            if (this.current(project, request)) { this.error = String(error); this.loading = false; this.changed(); }
+            if (this.current(project, request)) { this.error = String(error); this.loading = false; this.notify(); }
         }
     }
     private async pages<T>(fetch: (offset: number) => Promise<SoftwareMapPage<T>>, generation: number): Promise<T[]> {
@@ -519,7 +532,7 @@ export class SoftwareMapController {
         this.nodes = [];
         this.violations = [];
         this.clearDetails();
-        this.changed();
+        this.notify();
         try {
             const [nodes, violations] = await Promise.all([
                 this.pages(offset => connection.hierarchy({ projectHandle: handle, descendants: true, offset, limit: 200 }), generation),
@@ -530,11 +543,11 @@ export class SoftwareMapController {
             this.violations = violations;
             this.loading = false;
             this.error = '';
-            this.changed();
+            this.notify();
             if (this.selectedId && nodes.some(node => node.id === this.selectedId)) await this.select(this.selectedId);
             else this.selectedId = undefined;
         } catch (error) {
-            if (this.current(project, request)) { this.error = String(error); this.loading = false; this.changed(); }
+            if (this.current(project, request)) { this.error = String(error); this.loading = false; this.notify(); }
         }
     }
     private clearDetails(): void {
@@ -558,7 +571,7 @@ export class SoftwareMapController {
         const handle = this.handle;
         this.selectedId = id;
         this.clearDetails();
-        this.changed();
+        this.notify();
         try {
             const [incoming, outgoing] = await Promise.all((['incoming', 'outgoing'] as const).map(direction =>
                 this.pages(offset => connection.relationships({ projectHandle: handle, nodeId: id, direction, scope: 'all', offset, limit: 200 }), generation)));
@@ -569,9 +582,9 @@ export class SoftwareMapController {
             this.incoming = incoming;
             this.outgoing = outgoing;
             this.evidence = evidence;
-            this.changed();
+            this.notify();
         } catch (error) {
-            if (this.current(project, request) && detail === this.detailRequest) { this.error = String(error); this.changed(); }
+            if (this.current(project, request) && detail === this.detailRequest) { this.error = String(error); this.notify(); }
         }
     }
     private async evidenceFor(ids: string[], connection: SoftwareMapConnection, handle: string, generation: number): Promise<Evidence[]> {
@@ -590,7 +603,7 @@ export class SoftwareMapController {
         this.selectedId = undefined;
         this.clearDetails();
         this.selectedViolation = violation;
-        this.changed();
+        this.notify();
         try {
             const batches = [];
             for (let i = 0; i < violation.originRelationshipIds.length; i += 200) {
@@ -601,9 +614,9 @@ export class SoftwareMapController {
             if (!this.current(project, request) || detail !== this.detailRequest || !this.published(generation)) return;
             this.offending = offending;
             this.evidence = evidence;
-            this.changed();
+            this.notify();
         } catch (error) {
-            if (this.current(project, request) && detail === this.detailRequest) { this.error = String(error); this.changed(); }
+            if (this.current(project, request) && detail === this.detailRequest) { this.error = String(error); this.notify(); }
         }
     }
     async origins(edge: GraphRelationship): Promise<void> {
@@ -618,7 +631,7 @@ export class SoftwareMapController {
         this.selectedAggregateId = edge.id;
         this.originEdges = [];
         this.originEvidence = [];
-        this.changed();
+        this.notify();
         try {
             const batches = [];
             for (let i = 0; i < edge.originRelationshipIds.length; i += 200) {
@@ -631,9 +644,9 @@ export class SoftwareMapController {
             if (!this.current(project, request) || detail !== this.detailRequest || origin !== this.originRequest || !this.published(generation)) return;
             this.originEdges = edges;
             this.originEvidence = evidence;
-            this.changed();
+            this.notify();
         } catch (error) {
-            if (this.current(project, request) && origin === this.originRequest) { this.error = String(error); this.changed(); }
+            if (this.current(project, request) && origin === this.originRequest) { this.error = String(error); this.notify(); }
         }
     }
     async source(evidenceId: string) {

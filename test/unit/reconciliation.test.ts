@@ -55,6 +55,18 @@ test('deterministic audit catches cross-System duplicate ownership, overlapping 
   ]), /escaped/);
 });
 
+test('challenged Subsystem peers expose direct ownership and dependency conflicts', () => {
+  const first = tree('candidate:a', 'a').nodes[0];
+  const second = { ...first, candidateKey: 'candidate:a.other', name: 'Other', responsibility: 'Other behavior',
+    evidenceRefs: ['a', 'b'], ownershipEvidenceRefs: ['a', 'b'] };
+  const findings = detectReconciliationConflicts(packet, [system('a', 'a')],
+    [{ systemKey: 'candidate:a', nodes: [first, second] }]);
+  assert.ok(findings.some(f => f.code === 'ownership-conflict' && f.candidateKeys.includes(second.candidateKey)));
+  const separated = { ...second, ownershipEvidenceRefs: ['b'], evidenceRefs: ['b'] };
+  assert.ok(detectReconciliationConflicts(packet, [system('a', 'a')],
+    [{ systemKey: 'candidate:a', nodes: [first, separated] }]).some(f => f.code === 'cross-subsystem-dependency'));
+});
+
 test('stage reuse requires exact packet, view, scope, prompt and provider identity', async () => {
   const cache = new SynthesisStageCache();
   let calls = 0;

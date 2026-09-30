@@ -357,41 +357,25 @@ test('failed cancel keeps review available for retry', async () => {
   controller.dispose();
 });
 
-test('widget keeps explanation separate from hard facts and labels keyboard controls with theme colors', () => {
-  const widget = readFileSync(new URL('../../packages/theia-extension/src/browser/software-map-widget.ts', import.meta.url), 'utf8');
+test('review has one controller, center hierarchy, focused detail and explicit accept', () => {
+  const sidebar = readFileSync(new URL('../../packages/theia-extension/src/browser/software-map-widget.ts', import.meta.url), 'utf8');
+  const editor = readFileSync(new URL('../../packages/theia-extension/src/browser/software-map-review-widget.ts', import.meta.url), 'utf8');
+  const wiring = readFileSync(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
-  assert.match(widget, /'Evidence explanation'/);
-  assert.match(widget, /'Source-backed evidence'/);
-  assert.match(widget, /renderPacketFact\(ref, facts\.get\(ref\), row\)/);
-  assert.match(widget, /'Open questions'/);
-  assert.match(widget, /'Unassigned source-backed evidence'/);
-  assert.match(widget, /'Canonical ID'/);
-  assert.match(widget, /'Parent boundary'/);
-  assert.match(widget, /'Implementation roots/);
-  assert.match(widget, /'Not now'/);
-  assert.match(widget, /'Use existing architecture'/);
-  assert.match(widget, /setAttribute\('aria-label'/);
-  assert.match(widget, /\.focus\(\)/);
-  assert.match(css, /dope-smap-view input:focus-visible/);
-  assert.match(css, /var\(--theia-input-background\)/);
-  assert.match(css, /var\(--theia-editor-background\)/);
-  assert.match(widget, /this\.element\('details'\)/);
-  assert.match(widget, /localSetupOpen/);
-  assert.match(widget, /geminiSetupOpen/);
-  assert.match(widget, /'Local model'/);
-  assert.match(widget, /'Gemini'/);
-  assert.match(widget, /bounded repository evidence used for synthesis is sent to Google/);
-  assert.match(widget, /'Refresh Gemini models'/);
-  assert.match(widget, /'Test selected model'/);
-  assert.match(widget, /Analyze Project with/);
-  assert.match(widget, /for \(const id of model\.geminiModels\)/);
-  assert.match(widget, /geminiSelect\.onchange = \(\) => void model\.changeGeminiModel\(geminiSelect\.value\)/);
-  assert.match(widget, /'Analyze with Local'/);
-  assert.match(widget, /model\.geminiKey, value => model\.changeGeminiKey\(value\), false, true/);
-  assert.match(widget, /Tokens \(\$\{usage\.tokenMeasurement\}\)/);
-  assert.match(widget, /work\.providerKind/);
-  assert.match(widget, /work\.providerModelLabel/);
-  assert.match(widget, /events\.filter\(event => event\.callDurationMs !== undefined\)/);
+  assert.match(sidebar, /Open Architecture Review/);
+  assert.doesNotMatch(sidebar.slice(sidebar.indexOf('private renderReview()'), sidebar.indexOf('private renderDraft(')), /fieldset|renderPacketFact/);
+  assert.match(wiring, /bind\(SoftwareMapController\).*inSingletonScope\(\)/s);
+  assert.match(wiring, /area: 'main'/);
+  assert.match(editor, /this\.controller\.draft/);
+  assert.match(editor, /list\(node\.proposalKey\)/);
+  assert.match(editor, /aria-current/);
+  assert.match(editor, /find\(node => node\.proposalKey === this\.selectedKey\)/);
+  assert.match(editor, /this\.renderDetail\(selected, detail\)/);
+  assert.match(editor, /reviewSource\(ref\)/);
+  assert.match(editor, /Accept architecture/);
+  assert.match(editor, /Advanced: canonical ID and implementation roots/);
+  assert.match(css, /dope-smap-review-layout/);
+  assert.match(css, /var\(--theia-list-activeSelectionBackground\)/);
 });
 
 test('attach reconciles analysis completed before handle was available', async () => {
