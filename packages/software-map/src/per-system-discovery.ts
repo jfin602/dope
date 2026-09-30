@@ -34,7 +34,7 @@ export async function discoverPerSystemSubtrees(packet: ArchitectureEvidencePack
                     subtrees: [], targetCandidateKeys: [] };
                 const plan = await planArchitectureEvidence(packet, 'subsystem-discovery', context, capability, provider);
                 const raw = await provider.runStage(plan.request);
-                const result = parseSynthesisStageResult(raw, plan.request, packet) as SubsystemDiscoveryResult;
+                const result = parseSynthesisStageResult(raw.output, plan.request, packet) as SubsystemDiscoveryResult;
                 passes[index] = { plan, result };
             } catch (error) { stopped = true; throw error; }
         }

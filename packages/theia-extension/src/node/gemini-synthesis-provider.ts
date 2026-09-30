@@ -1,0 +1,115 @@
+import { GoogleGenAI } from '@google/genai';
+import { assertSynthesisInputBudget, synthesisStageResultSchemas } from '@dope/software-map';
+import type { SynthesisCapabilities, SynthesisStageExecution, SynthesisStageRequest } from '@dope/software-map';
+import { RECONCILIATION_INSTRUCTION, SUBSYSTEM_DISCOVERY_INSTRUCTION, SYSTEM_CHALLENGE_INSTRUCTION,
+    SYSTEM_DISCOVERY_INSTRUCTION, VERIFICATION_INSTRUCTION } from './lmstudio-synthesis-provider';
+
+export const GEMINI_SYNTHESIS_MODEL = 'gemini-3.8-flash';
+const DEFAULT_TIMEOUT_MS = 900_000;
+const schemaKeywords = new Set(['type', 'enum', 'items', 'minItems', 'maxItems', 'minimum', 'maximum',
+    'properties', 'additionalProperties', 'required', 'anyOf', 'oneOf']);
+
+/** Gemini accepts only part of JSON Schema. Dope's complete result parser remains authoritative. */
+export function geminiStageSchema(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(geminiStageSchema);
+    if (!value || typeof value !== 'object') return value;
+    const projected: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value)) {
+        if (key === 'const') projected.enum = [child];
+        else if (key === 'properties' && child && typeof child === 'object' && !Array.isArray(child))
+            projected.properties = Object.fromEntries(Object.entries(child).map(([name, property]) => [name, geminiStageSchema(property)]));
+        else if (schemaKeywords.has(key)) projected[key] = geminiStageSchema(child);
+    }
+    return projected;
+}
+
+function count(value: unknown): number | undefined {
+    return Number.isSafeInteger(value) && (value as number) >= 0 ? value as number : undefined;
+}
+
+function sanitized(error: unknown, aborted: boolean): Error {
+    if (aborted || (error as { name?: unknown } | null)?.name === 'AbortError' ||
+        (error as { name?: unknown } | null)?.name === 'TimeoutError')
+        return new Error('Gemini synthesis cancelled or timed out');
+    const status = (error as { status?: unknown } | null)?.status;
+    if (status === 401 || status === 403) return new Error('Gemini authentication failed');
+    if (status === 429) return new Error('Gemini quota or rate limit exceeded');
+    if (typeof status === 'number' && status >= 500) return new Error('Gemini upstream service failed');
+    return new Error('Gemini synthesis request failed');
+}
+
+export class GeminiSynthesisProvider {
+    readonly kind = 'gemini' as const;
+    private readonly client: GoogleGenAI;
+    private readonly timeoutMs: number;
+    private capability?: SynthesisCapabilities;
+
+    constructor(options: { apiKey: string; timeoutMs?: number; fetch?: typeof globalThis.fetch }) {
+        if (typeof options.apiKey !== 'string' || !options.apiKey.trim() || /\s/.test(options.apiKey))
+            throw new Error('Invalid Gemini API key');
+        if (options.timeoutMs !== undefined && (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs < 1))
+            throw new Error('Invalid Gemini synthesis timeout');
+        this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+        this.client = new GoogleGenAI({ apiKey: options.apiKey,
+            ...(options.fetch ? { httpOptions: { fetch: options.fetch } } : {}) });
+    }
+
+    async capabilities(): Promise<SynthesisCapabilities> {
+        if (this.capability) return this.capability;
+        try {
+            const model = await this.client.models.get({ model: GEMINI_SYNTHESIS_MODEL,
+                config: { httpOptions: { timeout: this.timeoutMs } } });
+            const limit = model.inputTokenLimit;
+            if (!Number.isSafeInteger(limit) || !limit || limit < 8192) throw new Error('Invalid model capacity');
+            // Keep the model's large context as headroom; planner requests use a small fraction of its input limit.
+            this.capability = { modelLabel: GEMINI_SYNTHESIS_MODEL, contextWindowTokens: limit,
+                maxInputTokens: Math.max(8192, Math.floor(limit / 32)), reservedInstructionTokens: 2048,
+                reservedOutputTokens: 4096, reservedOverheadTokens: 1024,
+                tokenEstimate: 'conservative', maxConcurrentGenerations: 1 };
+            return this.capability;
+        } catch (error) { throw sanitized(error, false); }
+    }
+
+    /** Local byte estimate avoids countTokens calls in the evidence planner's search loop. */
+    async estimateTokens(input: string): Promise<number> { return Buffer.byteLength(input); }
+
+    async runStage(request: SynthesisStageRequest, signal?: AbortSignal): Promise<SynthesisStageExecution> {
+        if (signal?.aborted) throw sanitized(undefined, true);
+        const capability = await this.capabilities();
+        const input = JSON.stringify(request);
+        await assertSynthesisInputBudget(this, capability, input);
+        const instruction = request.stage === 'system-challenge' ? SYSTEM_CHALLENGE_INSTRUCTION :
+            request.stage === 'subsystem-discovery' ? SUBSYSTEM_DISCOVERY_INSTRUCTION :
+            request.stage === 'reconciliation' ? RECONCILIATION_INSTRUCTION :
+            request.stage === 'verification' ? VERIFICATION_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION;
+        const schema = geminiStageSchema(synthesisStageResultSchemas[request.stage]);
+        const body = { model: GEMINI_SYNTHESIS_MODEL, contents: input, config: { systemInstruction: instruction,
+            responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0, maxOutputTokens: 4096 } };
+        const timeout = AbortSignal.timeout(this.timeoutMs);
+        const abortSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
+        let response;
+        try {
+            response = await this.client.models.generateContent({ ...body,
+                config: { ...body.config, abortSignal } });
+        } catch (error) { throw sanitized(error, abortSignal.aborted); }
+        if (abortSignal.aborted) throw sanitized(undefined, true);
+        let output: unknown;
+        let content: string;
+        try {
+            content = response.text!;
+            if (typeof content !== 'string' || !content.trim()) throw new Error('Empty response');
+            output = JSON.parse(content);
+        } catch { throw new Error('Invalid Gemini stage JSON'); }
+        const usage = response.usageMetadata;
+        const inputTokens = count(usage?.promptTokenCount);
+        const outputTokens = count(usage?.candidatesTokenCount);
+        const totalTokens = count(usage?.totalTokenCount);
+        return { output, usage: { providerKind: 'gemini', modelLabel: GEMINI_SYNTHESIS_MODEL,
+            requestBytes: Buffer.byteLength(input), outputBytes: Buffer.byteLength(content),
+            ...(inputTokens === undefined ? {} : { inputTokens }),
+            ...(outputTokens === undefined ? {} : { outputTokens }),
+            ...(totalTokens === undefined ? {} : { totalTokens }),
+            tokenMeasurement: inputTokens !== undefined || outputTokens !== undefined || totalTokens !== undefined
+                ? 'provider-reported' : 'unavailable' } };
+    }
+}

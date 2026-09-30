@@ -37,6 +37,9 @@ const capability = (parallel?: number) => ({ modelLabel: 'fixture', contextWindo
   ...(parallel === undefined ? {} : { maxConcurrentGenerations: parallel }) });
 const stage = (request: SynthesisStageRequest, body: object) => ({ schemaVersion: 1, stageVersion: 2,
   stage: request.stage, viewId: request.view.viewId, parentPacketFingerprint: request.parentPacketFingerprint, ...body });
+const executed = (request: SynthesisStageRequest, body: object) => ({ output: stage(request, body),
+  usage: { providerKind: 'local' as const, modelLabel: 'fixture', requestBytes: 1, outputBytes: 1,
+    tokenMeasurement: 'unavailable' as const } });
 async function challenged(provider: SynthesisProvider) {
   const context = { systems, subjectSystemKey: null, subtrees: [], targetCandidateKeys: [] };
   const plan = await planArchitectureEvidence(packet, 'system-challenge', context, await provider.capabilities(), provider);
@@ -45,11 +48,11 @@ async function challenged(provider: SynthesisProvider) {
   return { plan, result: parseSynthesisStageResult(result, plan.request, packet) as SystemChallengeResult, systems };
 }
 const provider = (parallel?: number, onCall?: (request: SynthesisStageRequest) => Promise<void>,
-  nodes = catalogNodes): SynthesisProvider => ({ capabilities: async () => capability(parallel),
+  nodes = catalogNodes): SynthesisProvider => ({ kind: 'local', capabilities: async () => capability(parallel),
   estimateTokens: async input => input.length,
   runStage: async request => {
     await onCall?.(request);
-    return stage(request, { systemKey: request.context.subjectSystemKey,
+    return executed(request, { systemKey: request.context.subjectSystemKey,
       subdivisionAssessment: request.context.subjectSystemKey === catalog.candidateKey
         ? { confidence: 0.8, ambiguityCodes: [] }
         : { confidence: 0.3, ambiguityCodes: ['insufficient-evidence'] },
@@ -116,7 +119,7 @@ test('shared direct ownership claims are marked for P6 and cross-System keys can
   challenge.result.decisions[1].systems[0] = sharedSearch;
   const searchNode = node('search-data', 'subsystem', search.candidateKey, ['catalog-b']);
   const adapter: SynthesisProvider = { ...base, runStage: async request => request.context.subjectSystemKey === search.candidateKey
-    ? stage(request, { systemKey: search.candidateKey,
+    ? executed(request, { systemKey: search.candidateKey,
       subdivisionAssessment: { confidence: 0.4, ambiguityCodes: ['insufficient-evidence'] },
       nodes: [searchNode] }) : base.runStage(request) };
   const result = await discoverPerSystemSubtrees(packet, challenge, adapter);
@@ -125,7 +128,7 @@ test('shared direct ownership claims are marked for P6 and cross-System keys can
     candidateKeys: ['candidate:catalog-data', 'candidate:search-data'] }]);
   const duplicate = { ...adapter, runStage: async (request: SynthesisStageRequest) =>
     request.context.subjectSystemKey === search.candidateKey
-      ? stage(request, { systemKey: search.candidateKey,
+      ? executed(request, { systemKey: search.candidateKey,
         subdivisionAssessment: { confidence: 0.4, ambiguityCodes: [] },
         nodes: [{ ...searchNode, candidateKey: 'candidate:catalog-data' }] }) : base.runStage(request) };
   await assert.rejects(discoverPerSystemSubtrees(packet, challenge, duplicate), /Duplicate cross-System candidate identity/);

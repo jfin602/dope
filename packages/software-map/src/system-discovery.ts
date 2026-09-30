@@ -11,6 +11,6 @@ export async function discoverCandidateSystems(packet: ArchitectureEvidencePacke
     const plan = await planArchitectureEvidence(packet, 'system-discovery', context,
         await provider.capabilities(), provider);
     const response = await provider.runStage(plan.request);
-    const result = parseSynthesisStageResult(response, plan.request, packet);
+    const result = parseSynthesisStageResult(response.output, plan.request, packet);
     return { plan, result: result as SystemDiscoveryResult };
 }

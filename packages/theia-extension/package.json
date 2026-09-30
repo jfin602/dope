@@ -18,11 +18,12 @@
     }
   ],
   "dependencies": {
+    "@dope/code-analysis": "0.4.6",
+    "@dope/code-analysis-typescript": "0.4.6",
     "@dope/contracts": "0.4.6",
     "@dope/project-intelligence": "0.4.6",
     "@dope/software-map": "0.4.6",
-    "@dope/code-analysis": "0.4.6",
-    "@dope/code-analysis-typescript": "0.4.6",
+    "@google/genai": "2.24.0",
     "@theia/core": "1.75.0",
     "@theia/filesystem": "1.75.0",
     "@theia/navigator": "1.75.0",

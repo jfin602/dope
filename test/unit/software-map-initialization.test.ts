@@ -25,7 +25,11 @@ async function fixture() {
 }
 const stageResult = (request: SynthesisStageRequest, fields: object) => ({ schemaVersion: 1, stageVersion: 2,
   stage: request.stage, parentPacketFingerprint: request.parentPacketFingerprint, viewId: request.view.viewId, ...fields });
+const execution = (request: SynthesisStageRequest, fields: object) => ({ output: stageResult(request, fields),
+  usage: { providerKind: 'local' as const, modelLabel: 'fixture-model', requestBytes: 1, outputBytes: 1,
+    tokenMeasurement: 'unavailable' as const } });
 const fakeProvider = (observe?: (request: SynthesisStageRequest) => Promise<void> | void): SynthesisProvider => ({
+  kind: 'local',
   capabilities: async () => ({ modelLabel: 'fixture-model', contextWindowTokens: 100000, maxInputTokens: 90000,
     reservedInstructionTokens: 1000, reservedOutputTokens: 2000, reservedOverheadTokens: 1000, tokenEstimate: 'conservative' }),
   estimateTokens: async text => text.length,
@@ -35,19 +39,19 @@ const fakeProvider = (observe?: (request: SynthesisStageRequest) => Promise<void
       const ref = request.view.items.find(item => item.kind === 'semantic' && item.sourceEvidenceIds.length)?.id ??
         request.view.items.find(item => item.kind === 'entrypoint' && item.sourceEvidenceIds.length)?.id;
       assert.ok(ref);
-      return stageResult(request, { systems: [{ candidateKey: 'candidate:app', kind: 'system', name: 'App', responsibility: 'App',
+      return execution(request, { systems: [{ candidateKey: 'candidate:app', kind: 'system', name: 'App', responsibility: 'App',
         confidence: .8, ambiguityCodes: [], evidenceRefs: [ref] }] });
     }
-    if (request.stage === 'system-challenge') return stageResult(request, { decisions: [{ action: 'keep',
+    if (request.stage === 'system-challenge') return execution(request, { decisions: [{ action: 'keep',
       sourceKeys: ['candidate:app'], systems: request.context.systems, evidenceRefs: request.context.systems[0].evidenceRefs }] });
     if (request.stage === 'subsystem-discovery') {
       const ref = request.context.systems[0].evidenceRefs[0];
-      return stageResult(request, { systemKey: request.context.subjectSystemKey, nodes: [{ candidateKey: 'candidate:api',
+      return execution(request, { systemKey: request.context.subjectSystemKey, nodes: [{ candidateKey: 'candidate:api',
         kind: 'subsystem', parentCandidateKey: 'candidate:app', name: 'API', responsibility: 'API', confidence: .8, ambiguityCodes: [], evidenceRefs: [ref], ownershipEvidenceRefs: [ref] }],
         subdivisionAssessment: { confidence: .8, ambiguityCodes: [] } });
     }
-    if (request.stage === 'reconciliation') return stageResult(request, { findings: [], unresolved: [] });
-    return stageResult(request, { findings: [] });
+    if (request.stage === 'reconciliation') return execution(request, { findings: [], unresolved: [] });
+    return execution(request, { findings: [] });
   },
 });
 const backend = (index: SoftwareMapIndex, provider?: SynthesisProvider, client: SoftwareMapClient = { notifySoftwareMapChanged() {} }) =>

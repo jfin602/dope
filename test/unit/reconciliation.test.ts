@@ -33,6 +33,9 @@ const request = (stage: SynthesisStageRequest['stage'], fingerprint = packet.inp
 });
 const response = (req: SynthesisStageRequest, extra: object) => ({ schemaVersion: 1, stageVersion: 2,
   stage: req.stage, parentPacketFingerprint: req.parentPacketFingerprint, viewId: req.view.viewId, ...extra });
+const executed = (req: SynthesisStageRequest, extra: object) => ({ output: response(req, extra),
+  usage: { providerKind: 'local' as const, modelLabel: 'model', requestBytes: 12, outputBytes: 8,
+    inputTokens: 12, tokenMeasurement: 'estimated' as const } });
 
 test('deterministic audit catches cross-System duplicate ownership, overlapping support and dependencies', () => {
   const sharedSystems = systems.map(s => ({ ...s, evidenceRefs: [...s.evidenceRefs, 'shared'] }));
@@ -54,11 +57,16 @@ test('deterministic audit catches cross-System duplicate ownership, overlapping 
 test('stage reuse requires exact packet, view, scope, prompt and provider identity', async () => {
   const cache = new SynthesisStageCache();
   let calls = 0;
-  const provider = { runStage: async (req: SynthesisStageRequest) => { calls++; return response(req, { systems: [system('a', 'a')] }); } } as SynthesisProvider;
+  const provider = { kind: 'local', runStage: async (req: SynthesisStageRequest) => { calls++; return executed(req, { systems: [system('a', 'a')] }); } } as SynthesisProvider;
   const first = request('system-discovery');
   const firstRun = await cache.run(first, packet, provider, 'provider/model', 1);
   assert.equal(firstRun.reused, false);
-  assert.equal((await cache.run(first, packet, provider, 'provider/model', 1)).reused, true);
+  assert.deepEqual(firstRun.usage, executed(first, {}).usage);
+  assert.ok(firstRun.durationMs >= 0);
+  const reused = await cache.run(first, packet, provider, 'provider/model', 1);
+  assert.equal(reused.reused, true);
+  assert.equal(reused.durationMs, 0);
+  assert.equal(reused.usage, undefined);
   assert.equal(calls, 1);
   assert.notEqual(stageWorkIdentity(first, 'provider/model', 1), stageWorkIdentity(first, 'provider/model', 2));
   assert.notEqual(stageWorkIdentity(first, 'provider/model', 1), stageWorkIdentity(first, 'other/model', 1));
@@ -102,29 +110,63 @@ test('failed stage has zero automatic retries and is never cached', async () => 
   assert.equal(calls, 2);
 });
 
+test('failed provider calls retain duration and status without fabricated token spend', async () => {
+  const timings: { status?: string; durationMs: number; usage?: unknown; providerKind?: string; modelLabel?: string }[] = [];
+  const provider: SynthesisProvider = { kind: 'local',
+    capabilities: async () => ({ modelLabel: 'model', contextWindowTokens: 100000, maxInputTokens: 90000,
+      reservedInstructionTokens: 1000, reservedOutputTokens: 2000, reservedOverheadTokens: 1000,
+      tokenEstimate: 'conservative' }),
+    estimateTokens: async input => input.length,
+    runStage: async () => { throw new Error('provider failed'); } };
+  await assert.rejects(new HierarchicalSynthesisOrchestrator(provider, 'fixture', undefined,
+    timing => timings.push(timing)).analyze(packet), /provider failed/);
+  assert.equal(timings.at(-1)?.status, 'failed');
+  assert.equal(timings.at(-1)?.providerKind, 'local');
+  assert.equal(timings.at(-1)?.modelLabel, 'model');
+  assert.equal(timings.at(-1)?.usage, undefined);
+  assert.ok(timings.at(-1)!.durationMs >= 0);
+});
+
+test('rejected stage JSON still accounts for provider-reported usage', async () => {
+  const timings: { status?: string; usage?: { inputTokens?: number }; durationMs: number }[] = [];
+  const provider: SynthesisProvider = { kind: 'local',
+    capabilities: async () => ({ modelLabel: 'model', contextWindowTokens: 100000, maxInputTokens: 90000,
+      reservedInstructionTokens: 1000, reservedOutputTokens: 2000, reservedOverheadTokens: 1000,
+      tokenEstimate: 'conservative' }),
+    estimateTokens: async input => input.length,
+    runStage: async req => ({ ...executed(req, { systems: [{ ...system('a', 'a'), rationale: 'surplus' }] }),
+      usage: { ...executed(req, {}).usage, inputTokens: 31, tokenMeasurement: 'provider-reported' } }) };
+  await assert.rejects(new HierarchicalSynthesisOrchestrator(provider, 'fixture', undefined,
+    timing => timings.push(timing)).analyze(packet), /fields/);
+  assert.equal(timings.at(-1)?.status, 'failed');
+  assert.equal(timings.at(-1)?.usage?.inputTokens, 31);
+  assert.ok(timings.at(-1)!.durationMs >= 0);
+});
+
 test('orchestrator caps targeted verification, preserves uncertainty and assembles full-packet refs', async () => {
   const calls: string[] = [];
   const overlappingSystems = systems.map(s => ({ ...s, evidenceRefs: [...s.evidenceRefs, 'shared'] }));
   const provider: SynthesisProvider = {
+    kind: 'local',
     capabilities: async () => ({ modelLabel: 'model', contextWindowTokens: 100000, maxInputTokens: 90000,
       reservedInstructionTokens: 1000, reservedOutputTokens: 2000, reservedOverheadTokens: 1000, tokenEstimate: 'conservative' }),
     estimateTokens: async input => input.length,
     runStage: async req => {
       calls.push(req.stage);
       switch (req.stage) {
-        case 'system-discovery': return response(req, { systems: overlappingSystems });
-        case 'system-challenge': return response(req, { decisions: overlappingSystems.map(s => ({ action: 'keep', sourceKeys: [s.candidateKey],
+        case 'system-discovery': return executed(req, { systems: overlappingSystems });
+        case 'system-challenge': return executed(req, { decisions: overlappingSystems.map(s => ({ action: 'keep', sourceKeys: [s.candidateKey],
           systems: [s], evidenceRefs: s.evidenceRefs })) });
-        case 'subsystem-discovery': return response(req, { systemKey: req.context.subjectSystemKey,
+        case 'subsystem-discovery': return executed(req, { systemKey: req.context.subjectSystemKey,
           nodes: tree(req.context.subjectSystemKey!, req.context.subjectSystemKey === 'candidate:a' ? 'a' : 'b', 'shared').nodes,
           subdivisionAssessment: { confidence: 0.8, ambiguityCodes: [] } });
-        case 'reconciliation': return response(req, { findings: [{ candidateKeys: ['candidate:a', 'candidate:b'],
+        case 'reconciliation': return executed(req, { findings: [{ candidateKeys: ['candidate:a', 'candidate:b'],
           evidenceRefs: ['cross'], status: 'uncertain', code: 'boundary-overlap' }],
           unresolved: [{ candidateKey: 'candidate:a', code: 'boundary-overlap' }, { candidateKey: 'candidate:b', code: 'boundary-overlap' }] });
         case 'verification':
           assert.ok(req.context.boundaryCode);
           assert.ok(req.view.items.length <= 24);
-          return response(req, { findings: [{ candidateKeys: req.context.targetCandidateKeys,
+          return executed(req, { findings: [{ candidateKeys: req.context.targetCandidateKeys,
             evidenceRefs: [req.view.items[0].id], status: 'uncertain', code: req.context.boundaryCode }] });
       }
     },
@@ -141,6 +183,8 @@ test('orchestrator caps targeted verification, preserves uncertainty and assembl
   const repeated = await orchestrator.analyze(packet);
   assert.equal(calls.length, firstCallCount);
   assert.ok(repeated.timings.filter(t => t.operation === 'stage-call').every(t => t.reused));
+  assert.ok(analyzed.timings.filter(t => t.operation === 'stage-call').every(t => t.usage?.modelLabel === 'model'));
+  assert.ok(repeated.timings.filter(t => t.operation === 'stage-call').every(t => t.durationMs === 0 && !t.usage));
   assert.throws(() => parseArchitectureProposal({ ...analyzed.proposal, nodes: analyzed.proposal.nodes.map((n, i) =>
     i === 1 ? { ...n, parentProposalKey: analyzed.proposal.nodes[2].proposalKey } : n) }, packet), /parent/);
 });
@@ -150,17 +194,18 @@ test('clear boundaries skip reconciliation and verification model calls', async 
     items: packet.items.filter(item => item.id !== 'cross' && item.id !== 'shared') };
   const calls: string[] = [];
   const provider: SynthesisProvider = {
+    kind: 'local',
     capabilities: async () => ({ modelLabel: 'model', contextWindowTokens: 100000, maxInputTokens: 90000,
       reservedInstructionTokens: 1000, reservedOutputTokens: 2000, reservedOverheadTokens: 1000, tokenEstimate: 'conservative' }),
     estimateTokens: async input => input.length,
     runStage: async req => {
       calls.push(req.stage);
-      if (req.stage === 'system-discovery') return response(req, { systems });
-      if (req.stage === 'system-challenge') return response(req, { decisions: systems.map(s => ({ action: 'keep',
+      if (req.stage === 'system-discovery') return executed(req, { systems });
+      if (req.stage === 'system-challenge') return executed(req, { decisions: systems.map(s => ({ action: 'keep',
         sourceKeys: [s.candidateKey], systems: [s], evidenceRefs: s.evidenceRefs })) });
       if (req.stage === 'subsystem-discovery') {
         const ref = req.context.subjectSystemKey === 'candidate:a' ? 'a' : 'b';
-        return response(req, { systemKey: req.context.subjectSystemKey, nodes: tree(req.context.subjectSystemKey!, ref).nodes,
+        return executed(req, { systemKey: req.context.subjectSystemKey, nodes: tree(req.context.subjectSystemKey!, ref).nodes,
           subdivisionAssessment: { confidence: 0.8, ambiguityCodes: [] } });
       }
       throw new Error(`Unexpected ${req.stage}`);

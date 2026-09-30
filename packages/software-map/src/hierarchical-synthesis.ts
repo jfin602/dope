@@ -15,10 +15,22 @@ export interface SynthesisCapabilities {
     maxConcurrentGenerations?: number;
 }
 export interface SynthesisProvider {
+    readonly kind: 'local' | 'gemini';
     capabilities(): Promise<SynthesisCapabilities>;
     estimateTokens(input: string): Promise<number>;
-    runStage(request: SynthesisStageRequest): Promise<unknown>;
+    runStage(request: SynthesisStageRequest, signal?: AbortSignal): Promise<SynthesisStageExecution>;
 }
+export interface SynthesisStageUsage {
+    providerKind: 'local' | 'gemini';
+    modelLabel: string;
+    requestBytes: number;
+    outputBytes: number;
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+    tokenMeasurement: 'provider-reported' | 'tokenizer' | 'estimated' | 'unavailable';
+}
+export interface SynthesisStageExecution { output: unknown; usage: SynthesisStageUsage }
 export function usableEvidenceTokens(capability: SynthesisCapabilities): number {
     const capabilityFields = ['modelLabel', 'contextWindowTokens', 'maxInputTokens', 'reservedInstructionTokens',
         'reservedOutputTokens', 'reservedOverheadTokens', 'tokenEstimate'];

@@ -59,11 +59,14 @@ const stageResult = (request: SynthesisStageRequest, body: Record<string, unknow
   stageVersion: 2, stage: request.stage, parentPacketFingerprint: request.parentPacketFingerprint,
   viewId: request.view.viewId, ...body });
 const provider = (decisions: ChallengeDecision[] = corrected, calls: SynthesisStageRequest[] = []): SynthesisProvider => ({
+  kind: 'local',
   capabilities: async () => capability,
   estimateTokens: async input => new TextEncoder().encode(input).length,
   runStage: async request => {
     calls.push(request);
-    return stageResult(request, request.stage === 'system-discovery' ? { systems: firstPass } : { decisions });
+    return { output: stageResult(request, request.stage === 'system-discovery' ? { systems: firstPass } : { decisions }),
+      usage: { providerKind: 'local', modelLabel: 'fixture-provider', requestBytes: 1, outputBytes: 1,
+        tokenMeasurement: 'unavailable' } };
   },
 });
 

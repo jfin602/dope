@@ -33,6 +33,9 @@ function json(response: ServerResponse, value: unknown, status = 200) {
   response.end(JSON.stringify(value));
 }
 const completion = (content: unknown) => ({ choices: [{ message: { content } }] });
+const stageRequest = (): SynthesisStageRequest => ({ schemaVersion: 1, stage: 'system-discovery', stageVersion: 2,
+  parentPacketFingerprint: packet.inputFingerprint, view: createArchitectureEvidenceView(packet, ['framework:1']),
+  context: { systems: [], subjectSystemKey: null, subtrees: [], targetCandidateKeys: [] } });
 function normalReply(request: Request, response: ServerResponse) {
   if (request.path === '/v1/models') return json(response, { data: [{ id: 'another-model' }, { id: modelId }] });
   if (request.body.response_format.json_schema.name === 'readiness') return json(response, completion('{"ready":true}'));
@@ -64,7 +67,8 @@ test('local adapter runs one structured per-System call and declares serial gene
       context: { systems: [{ candidateKey: 'candidate:app', kind: 'system', name: 'App', responsibility: 'Serve',
         confidence: 0.8, ambiguityCodes: [], evidenceRefs: ['framework:1'] }],
         subjectSystemKey: 'candidate:app', subtrees: [], targetCandidateKeys: [] } };
-    const result = await provider.runStage(request) as { systemKey: string; nodes: unknown[] };
+    const execution = await provider.runStage(request);
+    const result = execution.output as { systemKey: string; nodes: unknown[] };
     assert.equal(result.systemKey, 'candidate:app'); assert.deepEqual(result.nodes, []);
     assert.equal(server.requests.at(-1)!.body.response_format.json_schema.name, 'subsystem_discovery');
     const nodeSchema = server.requests.at(-1)!.body.response_format.json_schema.schema.properties.nodes.items;
@@ -110,6 +114,37 @@ test('staged adapter rejects malformed JSON and refusal after synthetic readines
       assert.ok(server.requests.slice(1, 3).every(r => !JSON.stringify(r.body).includes(secret)));
     } finally { await server.close(); }
   }
+});
+
+test('local usage distinguishes provider counts from conservative input estimate', async () => {
+  let reported: 'complete' | 'absent' | 'empty' = 'complete';
+  const server = await mockServer((request, response) => {
+    if (request.path === '/v1/models' || request.body.response_format.json_schema.name === 'readiness')
+      return normalReply(request, response);
+    json(response, { ...completion(JSON.stringify({ schemaVersion: 1, stageVersion: 2,
+      stage: 'system-discovery', parentPacketFingerprint: packet.inputFingerprint,
+      viewId: stageRequest().view.viewId, systems: [] })),
+      ...(reported === 'complete' ? { usage: { prompt_tokens: 17, completion_tokens: 9, total_tokens: 26 } } :
+        reported === 'empty' ? { usage: {} } : {}) });
+  });
+  try {
+    const provider = new LmStudioSynthesisProvider({ endpoint: server.endpoint, contextWindowTokens: 16384 });
+    await provider.discoverModels(); provider.selectModel(modelId); await provider.probe();
+    const request = stageRequest();
+    const fresh = await provider.runStage(request);
+    assert.deepEqual(fresh.usage, { providerKind: 'local', modelLabel: modelId,
+      requestBytes: Buffer.byteLength(JSON.stringify(request)),
+      outputBytes: Buffer.byteLength(JSON.stringify(fresh.output)), inputTokens: 17,
+      outputTokens: 9, totalTokens: 26, tokenMeasurement: 'provider-reported' });
+    reported = 'absent';
+    const estimated = await provider.runStage(request);
+    assert.equal(estimated.usage.tokenMeasurement, 'estimated');
+    assert.equal(estimated.usage.inputTokens, Buffer.byteLength(JSON.stringify(request)));
+    assert.equal(estimated.usage.outputTokens, undefined);
+    assert.equal(estimated.usage.totalTokens, undefined);
+    reported = 'empty';
+    assert.equal((await provider.runStage(request)).usage.inputTokens, Buffer.byteLength(JSON.stringify(request)));
+  } finally { await server.close(); }
 });
 
 test('endpoint and token validation rejects credentials and keeps diagnostics redacted', async () => {

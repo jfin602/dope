@@ -22,7 +22,7 @@ export async function challengeCandidateSystems(packet: ArchitectureEvidencePack
     const plan = await planArchitectureEvidence(packet, 'system-challenge', context,
         await provider.capabilities(), provider);
     const response = await provider.runStage(plan.request);
-    const result = parseSynthesisStageResult(response, plan.request, packet) as SystemChallengeResult;
+    const result = parseSynthesisStageResult(response.output, plan.request, packet) as SystemChallengeResult;
     return { plan, result, systems: result.decisions.flatMap(decision => decision.systems),
         mapping: result.decisions.flatMap(decision => decision.sourceKeys.map(sourceCandidateKey => ({
             sourceCandidateKey, action: decision.action,

@@ -1,5 +1,5 @@
 import { assertSynthesisInputBudget, synthesisStageResultSchemas } from '@dope/software-map';
-import type { SynthesisCapabilities, SynthesisStageRequest } from '@dope/software-map';
+import type { SynthesisCapabilities, SynthesisStageRequest, SynthesisStageExecution } from '@dope/software-map';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
@@ -30,6 +30,7 @@ export function preferredSynthesisModel(models: readonly string[]): string | und
 }
 
 export class LmStudioSynthesisProvider {
+    readonly kind = 'local' as const;
     readonly endpoint: string;
     private readonly token?: string;
     private readonly timeoutMs: number;
@@ -120,7 +121,7 @@ export class LmStudioSynthesisProvider {
         await this.ensureWarm(model);
     }
 
-    async runStage(request: SynthesisStageRequest): Promise<unknown> {
+    async runStage(request: SynthesisStageRequest): Promise<SynthesisStageExecution> {
         const model = this.requireModel();
         if (!this.probed) throw new Error('Synthesis capability probe required');
         const capability = await this.capabilities();
@@ -138,7 +139,23 @@ export class LmStudioSynthesisProvider {
                     stage === 'reconciliation' ? RECONCILIATION_INSTRUCTION :
                     stage === 'verification' ? VERIFICATION_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION, input);
             if (generation !== this.generation || model !== this.modelId) throw new Error('Synthesis connection changed');
-            try { return JSON.parse(this.content(response)); }
+            try {
+                const content = this.content(response);
+                const requestBytes = Buffer.byteLength(input);
+                const reported = (response as { usage?: { prompt_tokens?: unknown; completion_tokens?: unknown;
+                    total_tokens?: unknown } }).usage;
+                const count = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0 ? value as number : undefined;
+                const inputTokens = count(reported?.prompt_tokens);
+                const outputTokens = count(reported?.completion_tokens);
+                const totalTokens = count(reported?.total_tokens);
+                const hasReported = inputTokens !== undefined || outputTokens !== undefined || totalTokens !== undefined;
+                return { output: JSON.parse(content), usage: { providerKind: 'local', modelLabel: model,
+                    requestBytes, outputBytes: Buffer.byteLength(content),
+                    ...(hasReported ? (inputTokens === undefined ? {} : { inputTokens }) : { inputTokens: requestBytes }),
+                    ...(outputTokens === undefined ? {} : { outputTokens }),
+                    ...(totalTokens === undefined ? {} : { totalTokens }),
+                    tokenMeasurement: hasReported ? 'provider-reported' : 'estimated' } };
+            }
             catch (error) { if (error instanceof SyntaxError) throw new Error(`Invalid ${stage} JSON`); throw error; }
         } catch (error) {
             this.invalidateWarmState();
