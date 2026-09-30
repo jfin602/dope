@@ -1,0 +1,109 @@
+TASK: Correction 4 / P5 — Center-review and Search Deeper browser qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+VALIDATION TIER / EXECUTION BUDGET
+- Tier: **T3 — Direct browser qualification**.
+- This prompt may exceed the ordinary implementation budget because direct GUI evidence is its purpose.
+- Do not run the later multi-repository live synthesis or packaging matrix here.
+
+GOAL
+
+Directly qualify the pending architecture review workflow, including developer correction, valid explicit acceptance, evidence navigation, project switching and branch-local Search Deeper preview/Accept/Reject.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0008-0014, current architecture/product/roadmap/workflow, successful P1-P4 results, and this correction assessment/plan/README.
+
+Require:
+- exact P4 predecessor;
+- package `0.4.6`;
+- clean intended Git state;
+- a controlled project/proposal capable of exercising all review operations without contaminating benchmark canonical state.
+
+Run cheap focused review guards before opening the browser.
+
+DIRECT REVIEW MATRIX
+
+Prove in the actual browser workbench:
+1. pending review opens in the center editor;
+2. hierarchy is readable as System -> Subsystem -> Component;
+3. selected-node detail shows one focused editor;
+4. Observed / Documented / Inferred support is distinguishable;
+5. implementation evidence opens the correct source;
+6. document evidence opens the correct repository document;
+7. rename works;
+8. add/remove/reparent works;
+9. a merge/split-equivalent correction is practically achievable with the available controls;
+10. invalid draft blocks final acceptance;
+11. a valid corrected draft can be explicitly accepted;
+12. canonical state changes only after that explicit acceptance.
+
+SEARCH DEEPER MATRIX
+
+Prove:
+- every System and Subsystem has Search Deeper;
+- Component does not;
+- targeted analysis starts from current manual edits, not original proposal;
+- only the target shows busy/error state;
+- preview does not mutate current draft;
+- Reject leaves the draft unchanged;
+- Accept replaces only the target branch;
+- unrelated Systems/Subystems/Components/manual edits remain unchanged;
+- System target can refine descendants within that System;
+- Subsystem target stays inside the same parent System;
+- stale target result is rejected after a target edit;
+- Search Deeper remains available after earlier manual edits;
+- targeted provider calls are separately identifiable in attempt telemetry.
+
+PROJECT SWITCH / STALE STATE
+
+During a pending review and during/after a targeted operation:
+- switch to another project/root;
+- prove old review/preview/progress/result cannot appear in the new project;
+- switch back as appropriate and verify coherent state according to current non-persistent review contract.
+
+Do not infer this from unit tests; capture direct browser behavior.
+
+REPAIRS
+
+If direct browser evidence exposes a concrete review defect, P5 may make the smallest repair.
+
+For every repair:
+- add a focused permanent regression;
+- rerun only the smallest browser step invalidated by the repair plus the focused test;
+- do not broaden architecture semantics.
+
+EVIDENCE FILE
+
+Write `docs/tasks/c4-synth-coverage-review/P5-review-qualification-evidence.md`.
+
+Record:
+- exact candidate SHA/version;
+- browser app/build identity;
+- controlled project identity;
+- review matrix result;
+- Search Deeper matrix result;
+- navigation evidence;
+- project-switch evidence;
+- any repairs/replays;
+- remaining Evidence Gaps.
+
+T3 VALIDATION
+
+Run only:
+- focused review/Search Deeper permanent guards;
+- browser build/start evidence required for this matrix;
+- `npm run codex:phase:validate -- c4-synth-coverage-review` if available;
+- `git diff --check`.
+
+Defer live multi-repository synthesis, full `npm run check`, restart, packaging and native launch to P6.
+
+FINAL RESPONSE
+
+Report exact candidate, review matrix, Search Deeper matrix, explicit acceptance result, navigation, project switching, repairs, focused checks, residual gaps and readiness for P6.

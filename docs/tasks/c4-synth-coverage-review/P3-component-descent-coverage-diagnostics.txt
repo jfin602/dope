@@ -1,0 +1,106 @@
+TASK: Correction 4 / P3 — Typed Component descent and coverage diagnostics
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+VALIDATION TIER / EXECUTION BUDGET
+- Tier: **T1 — Focused implementation validation**.
+- Target <=8 minutes; 15-minute hard budget.
+
+GOAL
+
+Make every empty Component Discovery result explicit, typed and reviewable, and carry unresolved descent/coverage information through reconciliation without inventing fake Components.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0012-0014, current architecture/roadmap/workflow, exact successful P1-P2 results, and this correction assessment/plan/README.
+
+Inspect current Component Discovery schema/validator, subtree assembly, reconciliation, final proposal assembly and focused tests.
+
+Require package exactly `0.4.6`.
+
+ZERO-COMPONENT CONTRACT
+
+When Component Discovery returns no Components, require exactly one compact typed disposition equivalent to:
+- `leaf-responsibility`;
+- `insufficient-evidence`;
+- `responsibility-belongs-elsewhere`;
+- `no-stable-component-boundary`.
+
+Use strict provider-independent schema.
+
+Every zero result must:
+- identify the exact challenged parent Subsystem/System;
+- cite valid parent/source evidence refs;
+- preserve packet/view identity;
+- provide compact typed data rather than prose-heavy rationale.
+
+A non-empty Component result must not claim an incompatible zero disposition.
+
+Do not force a Component simply to avoid an empty result.
+
+PROPAGATION
+
+Carry zero-descent disposition through:
+- local subtree assembly;
+- coverage ledger;
+- reconciliation/verification;
+- final open questions/review diagnostics where applicable.
+
+Semantics:
+- `leaf-responsibility` = defensible terminal Subsystem, not an error;
+- `insufficient-evidence` = unresolved and visible;
+- `responsibility-belongs-elsewhere` = challenge/reconciliation attention;
+- `no-stable-component-boundary` = explicit architectural uncertainty, not fake subdivision.
+
+Documentation-only support cannot upgrade an unresolved disposition into a proven leaf.
+
+COVERAGE INTEGRATION
+
+Before final review, every substantial coverage cue associated with a challenged Subsystem must be explainable by:
+- represented Component/boundary;
+- typed leaf/no-stable-boundary disposition;
+- recovery/mapping;
+- unresolved diagnostic.
+
+Do not convert this into a coverage percentage or target-count threshold.
+
+PROVIDER INSTRUCTIONS
+
+Update shared provider prompts/contracts so Local and Gemini use identical disposition semantics.
+
+The model should prefer a truthful typed empty result over generic Components like "service", "controller", "database" or folder mirrors with weak evidence.
+
+TESTS
+
+Add focused permanent cases for:
+- legitimate leaf Subsystem with zero Components;
+- insufficient evidence;
+- belongs-elsewhere disposition;
+- no stable Component boundary;
+- invalid missing disposition on empty result;
+- invalid disposition with non-empty Components;
+- fabricated/wrong-parent evidence refs rejected;
+- unresolved dispositions reach reconciliation/review;
+- coverage ledger records the disposition;
+- documentation-only evidence cannot satisfy parent implementation support.
+
+FOCUSED VALIDATION
+
+Run only changed subsystem/reconciliation/synthesis tests, affected package build/typecheck, `git diff --check`, and unchanged-version checks.
+
+No live providers/browser/full check/restart/package work.
+
+FINAL RESPONSE
+
+Report:
+- exact disposition enum/shape;
+- propagation behavior;
+- coverage integration;
+- focused tests;
+- unchanged `0.4.6`;
+- readiness for P4.

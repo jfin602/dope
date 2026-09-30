@@ -1,0 +1,178 @@
+TASK: Correction 4 / P6 — Multi-repository synthesis quality and final candidate qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+VALIDATION TIER / EXECUTION BUDGET
+- Tier: **T3 — Live-provider / multi-repository / release-style qualification**.
+- This prompt is intentionally exempt from the ordinary 15-minute ceiling.
+- Fail fast with focused guards, then run expensive final-candidate validation once after the last repair.
+
+GOAL
+
+Qualify the corrected shared synthesis pipeline across Adaptive SEO, Dope and a smaller structurally clear target, including README/document behavior, coverage/recovery, Component-descent diagnostics, complete call-attempt telemetry and <=8-minute review-ready performance, then run the consolidated expensive regression/restart/package/native gate once.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0008-0014, current architecture/product/roadmap/workflow, successful P1-P5 results, P5 evidence, and this correction assessment/plan/README.
+
+Require:
+- exact successful P5 predecessor;
+- package `0.4.6`;
+- clean intended Dope Git state;
+- explicitly selected and successfully probed Gemini model; record exact model ID;
+- no production/customer credentials;
+- no architecture expected-answer docs supplied to synthesis.
+
+TARGET A — ADAPTIVE SEO
+
+Use pinned benchmark:
+- root `~/dev/adaptive-seo-dope-p8`;
+- repository `jfin602/adaptive-seo`;
+- SHA `0b26a25107be7d8dfb2210bc7258ccac8603197e`;
+- push disabled.
+
+Repository-owned root README/current ordinary docs are allowed under ADR 0014.
+
+Independent developer architecture/reference material used for scoring remains forbidden until the generated hierarchy is frozen.
+
+TARGET B — DOPE
+
+Use a clean uncontaminated Dope benchmark root/snapshot at the exact candidate source.
+
+Do not feed:
+- `.dope/architecture.json` canonical expected architecture;
+- `docs/tasks/**`;
+- qualification/evidence/closeout artifacts;
+- generated prompts;
+- other excluded answer-key material.
+
+Current ordinary root README/accepted architecture docs are legitimate repository context under the implemented document classifier.
+
+TARGET C — SMALL STRUCTURALLY CLEAR TARGET
+
+Use one smaller repository or controlled repository fixture with enough real implementation structure to expose over-segmentation and omitted responsibility.
+
+Its expected architecture/reference is consulted only after freeze.
+
+DOCUMENTATION CONTROLS
+
+Across the three targets and/or dedicated controlled variants, directly prove:
+1. useful root README is included as bounded initial orientation;
+2. missing README does not block or materially break synthesis;
+3. stale/conflicting README/docs do not become Observed physical truth;
+4. implementation absent from docs remains discoverable;
+5. historical/qualification/answer-key docs are excluded;
+6. oversized README policy is deterministic if exercised;
+7. changed README/doc context changes affected request/cache identity.
+
+REAL GEMINI RUNS
+
+For every controlled initial analysis:
+- use the exact selected/probed Gemini model;
+- run the same shared stage semantics;
+- record root README orientation state/size/truncation;
+- record documentation evidence counts/classes;
+- record deterministic packet/planner/coverage identities;
+- record every provider call attempt, including failures/retries and consumed-output state;
+- record System Discovery/Challenge;
+- record Subsystem Discovery/Challenge including recovered Subsystems;
+- record Component Discovery including typed empty dispositions;
+- record reconciliation/verification;
+- record coverage ledger;
+- freeze final generated hierarchy;
+- record review-ready elapsed time.
+
+The <=8-minute clock starts at Analyze Project and ends when validated center review is rendered/ready.
+
+Eight minutes is a quality/performance gate, never an automatic cancellation timeout.
+
+FREEZE THEN COMPARE
+
+Only after each hierarchy is frozen may the qualification agent consult independent expected architecture/reference material.
+
+For each target record:
+- major implemented responsibilities captured;
+- material responsibilities omitted/collapsed;
+- recovered responsibilities and evidence;
+- unresolved coverage cues;
+- technical-layer false boundaries;
+- defensible technical boundaries;
+- typed zero-Component dispositions;
+- Component usefulness;
+- documentation/implementation conflicts;
+- final architecture-quality disposition.
+
+Do not require exact names or counts.
+
+ARCHITECTURE GREEN
+
+A target is Green only when:
+- major implemented responsibilities are represented or explicitly unresolved;
+- coverage ledger does not silently lose substantial source-backed cues;
+- recovered boundaries are source-backed;
+- documentation-only claims are not promoted to physical truth;
+- empty Component descent is typed/defensible;
+- technical-layer decomposition does not dominate without evidence;
+- every final evidence ref resolves correctly;
+- review-ready elapsed is <=8 minutes.
+
+A fast but materially incomplete hierarchy is Not Green.
+
+REPAIRS
+
+P6 may make only concrete bounded defects exposed by qualification.
+
+Every repair requires:
+- focused permanent regression;
+- immediate smallest proving test;
+- replay only affected target/measurement;
+- final expensive validation delayed until after the last repair.
+
+Do not tune prompts with Adaptive SEO-specific vocabulary or expected names.
+
+EVIDENCE FILE
+
+Write `docs/tasks/c4-synth-coverage-review/P6-multi-repository-qualification-evidence.md`.
+
+Include:
+- exact Dope candidate;
+- exact target roots/SHAs;
+- exact Gemini model;
+- README/document-input summary;
+- coverage-ledger summary;
+- complete provider-attempt telemetry;
+- stage results/recovery/descent dispositions;
+- frozen hierarchies;
+- post-freeze comparisons;
+- <=8-minute results;
+- repairs/replays;
+- P5 review evidence reference;
+- final validation/package/native results;
+- residual Evidence Gaps.
+
+CONSOLIDATED FINAL-CANDIDATE VALIDATION
+
+After the last product repair, run once:
+- focused correction guards;
+- `npm run check`;
+- `npm run test:restart`;
+- `npm run codex:phase:validate -- c4-synth-coverage-review`;
+- unchanged-version/no-root-lock/Theia/Electron/internal-reference checks;
+- build/inspect Linux AppImage including path/mode/size/SHA-256/embedded version;
+- native launch/readiness/controlled close where environment permits;
+- `git diff --check`.
+
+Do not rerun broad checks/package/native merely for reassurance after they pass. Repeat only evidence invalidated by a later repair.
+
+Restore benchmark roots to their required clean states and prove push remains disabled where required.
+
+Do not run the deferred Local/Gemini provider-comparison correction here.
+
+FINAL RESPONSE
+
+Report exact candidate/model/targets, documentation controls, attempt telemetry, coverage/recovery, typed Component descents, each frozen hierarchy and post-freeze architecture-quality disposition, <=8-minute results, final checks/restart/package/native status, residual gaps and readiness for P7.
