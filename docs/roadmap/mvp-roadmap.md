@@ -23,6 +23,7 @@ Theia
 -> responsibility-oriented sMap synthesis + hierarchical review
 -> coverage diagnostics + iterative branch review
 -> enforce project-local sMap persistence
+-> align app color system to the Dope logo
 -> Visual Software Planning
 -> AI Presence
 -> Scoped Delegation
@@ -50,6 +51,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c4-synth-coverage-review — Coverage + Iterative Review | OWNER-CLOSED / NOT QUALIFIED after stopped P6. The useful coverage/review implementation remains the accepted baseline; P7 is unexecuted and residual depth/qualification gaps remain explicit. |
 | Deferred provider comparison | Removed from the pre-Phase-5 critical path without being relabeled Green; reconsider only when later provider optimization or AI Presence needs controlled comparison evidence. |
 | Correction c4-storage — sMap Persistence | ACTIVE / MANDATORY NEXT. Dope proves that durable Software Map state travels with the repository under project-local `.dope/`, while machine-local state remains disposable or preference-only. |
+| Visual identity alignment — Logo palette | After storage, align Dope's app color system to the existing Dope logo before building the visual-map experience. Keep this bounded to palette/tokens and affected Dope-owned UI surfaces; preserve dark-first behavior and user theme override rather than turning it into a broad redesign. |
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
@@ -550,7 +552,25 @@ The owner closed `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improveme
 
 Exit condition:
 
-At unchanged `0.4.6`, durable sMap state is demonstrably project-local, versioned, recoverable and portable; no machine-local application/provider/cache state is required to reconstruct project truth; regression coverage prevents required sMap persistence from escaping `.dope/`; and Dope itself carries a valid accepted `.dope/smap.json` marker for its tracked canonical architecture. Storage Green routes directly to a fresh Product Phase 5 `/docs-review`.
+At unchanged `0.4.6`, durable sMap state is demonstrably project-local, versioned, recoverable and portable; no machine-local application/provider/cache state is required to reconstruct project truth; regression coverage prevents required sMap persistence from escaping `.dope/`; and Dope itself carries a valid accepted `.dope/smap.json` marker for its tracked canonical architecture. Storage Green routes next to the bounded visual-identity alignment below.
+
+## Pre-Phase-5 visual identity alignment — Dope logo palette
+
+Purpose:
+
+Bring Dope's application color system into visual alignment with the existing Dope logo before the visual Software Map/Planning Map experience is built.
+
+Scope:
+- derive the application palette/tokens from the existing logo rather than inventing a separate visual identity;
+- update Dope-owned workbench surfaces and accents that currently conflict with that palette;
+- keep the change primarily color/token/theme work, not a layout, interaction or component redesign;
+- preserve the dark-first default;
+- preserve user-selected light/custom theme behavior where current product contracts require it;
+- do not begin the Phase 5 visual-map canvas, planning ontology or graph interactions in this step.
+
+Exit condition:
+
+The app and logo read as one coherent product identity without reducing readability or breaking supported theme override behavior. Completion routes to a fresh Product Phase 5 `/docs-review`.
 
 ## Product Phase 5 — Visual Software Planning
 
