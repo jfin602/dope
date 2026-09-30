@@ -395,7 +395,7 @@ Minimum qualification:
 
 Exit condition:
 
-At unchanged `0.4.6`, hierarchy-first bounded synthesis produces materially credible architecture on the Dope repository, source provenance remains intact across all stages, the user can see meaningful live analysis progress, model requests respect provider-derived budgets, and the initial qualification workload is Green only when it completes in eight minutes or less without sacrificing architecture quality. ADR 0013 supersedes the unexecuted hierarchical P8/P9 qualification/closeout prompts. The P1-P7 implementation baseline is sufficient to start mandatory `c4-smap-gemini-provider`; do not invent P8/P9 evidence or relabel the hierarchical correction Green. The Gemini correction now owns the real same-pipeline Local/Gemini qualification and evidence-only closeout. `c4-smap-storage` remains blocked until `c4-smap-gemini-provider` closes Green.
+The implementation through P7 remains the historical hierarchy-first baseline. ADR 0013/0014 supersede the unexecuted hierarchical P8/P9 qualification/closeout prompts; they will not run, their evidence must not be invented, and this correction is not relabeled Green. `c4-smap-gemini-provider` later produced Not Green Gemini architecture evidence and is now owner-closed. Current routing is through mandatory `c4-synth-improvements`, then a fresh provider comparison, then `c4-smap-storage`.
 
 ## Mandatory pre-Phase-5 correction — `c4-smap-gemini-provider`
 
