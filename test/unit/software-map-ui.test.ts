@@ -31,10 +31,12 @@ function connection() {
     get analyzed() { return analyzed; }, get configured() { return configured; }, get accepted() { return accepted; },
     attachPending: attach, analyzePending: analyze, statusPending: statusRequest, hierarchyPending: hierarchy, violationsPending: violations, relationshipsPending: relationships, relationshipEdgesPending: relationshipEdges, evidencePending: evidence,
     setClient(value: any) { client = value; }, event(value: any) { client?.notifySoftwareMapChanged(value); },
+    progress(handle: string, value: any) { client?.notifySoftwareMapAnalysisProgress(handle, value); },
     attach() { return attach.promise; }, analyze() { analyzed++; return analyze.promise; },
     initializationStatus() { return Promise.resolve({ state: 'uninitialized', declarationPresent: false, declarationFingerprint: 'absent' }); },
     configureSynthesis() { configured++; return Promise.resolve(['other-model', 'Qwen3-Coder-30B-A3B-Instruct']); },
     selectSynthesisModel() { return Promise.resolve(); }, probeSynthesis() { return Promise.resolve(); },
+    synthesisReady() { return Promise.resolve(false); },
     startInitialization() { return Promise.resolve({ reviewId: 'review', packet: { items: [] }, proposal: { nodes: [], openQuestions: [], unassignedEvidenceRefs: [] }, draft: [] }); },
     cancelInitialization() { return Promise.resolve(); },
     acceptManual() { accepted++; return Promise.resolve(idle); },
@@ -112,6 +114,14 @@ test('local setup prefers Qwen and stores endpoint/model only as application sta
   assert.equal(writes[0][0], 'dope.smap.synthesis');
   assert.deepEqual(writes[0][1], { endpoint: 'http://127.0.0.1:1234/v1', model: 'Qwen3-Coder-30B-A3B-Instruct' });
   assert.equal(c.analyzed, 0);
+  controller.changeContextTokens('32768');
+  await controller.probe();
+  assert.match(controller.error, /Discover models again/);
+  assert.equal(controller.setupReady, false);
+  await controller.discover();
+  await controller.probe();
+  assert.equal(controller.setupReady, true);
+  assert.equal(c.configured, 2);
   controller.dispose();
 });
 
@@ -159,6 +169,30 @@ test('stale model discovery and proposal cannot render into a new project', asyn
   controller.dispose();
 });
 
+test('controller accepts only current project progress and measures review delivery from Analyze invocation', async () => {
+  const a = connection(), b = connection();
+  const pending = deferred();
+  a.startInitialization = () => pending.promise;
+  let count = 0;
+  const controller = new SoftwareMapController(() => ++count === 1 ? a : b, () => {});
+  const attachA = controller.attach('file:///A'); a.attachPending.resolve({ projectHandle: 'a', status: idle }); await attachA;
+  controller.setupReady = true;
+  const analysis = controller.synthesize();
+  const event = { stage: 'subsystem-discovery', status: 'started', elapsedMs: 10, stageElapsedMs: 2,
+    message: 'Discovering Subsystems', subject: 'App', completedUnits: 0, totalUnits: 2 };
+  a.progress('wrong', event);
+  assert.equal(controller.progressEvents.length, 0);
+  a.progress('a', event);
+  assert.equal(controller.progressEvents.length, 1);
+  assert.ok(controller.analysisElapsedMs() >= 10);
+  const attachB = controller.attach('file:///B'); b.attachPending.resolve({ projectHandle: 'b', status: idle }); await attachB;
+  a.progress('a', { ...event, message: 'raw prompt: hidden chain-of-thought' });
+  pending.resolve({ reviewId: 'stale', draft: [] }); await analysis;
+  assert.equal(controller.progressEvents.length, 0);
+  assert.equal(controller.review, undefined);
+  controller.dispose();
+});
+
 test('setup/probe failures keep recovery controls usable and do not mark readiness', async () => {
   const c = connection();
   c.configureSynthesis = () => Promise.reject(new Error('runtime offline'));
@@ -181,6 +215,20 @@ test('setup/probe failures keep recovery controls usable and do not mark readine
   await controller.synthesize();
   assert.match(controller.error, /warm-up failed/);
   assert.equal(controller.setupReady, false);
+  assert.equal(controller.initialization.state, 'uninitialized');
+  controller.dispose();
+});
+
+test('retry retains a successful probe when analysis fails without provider readiness loss', async () => {
+  const c = connection();
+  c.synthesisReady = () => Promise.resolve(true);
+  c.startInitialization = () => Promise.reject(new Error('proposal validation failed'));
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  controller.setupReady = true;
+  await controller.synthesize();
+  assert.equal(controller.setupReady, true);
+  assert.match(controller.error, /proposal validation failed/);
   assert.equal(controller.initialization.state, 'uninitialized');
   controller.dispose();
 });

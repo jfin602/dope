@@ -2,6 +2,7 @@ import { assembleArchitectureProposal, parseSynthesisStageResult, SYNTHESIS_STAG
 import { planArchitectureEvidence } from './evidence-planner';
 import { isProductionEvidencePath, validateArchitectureEvidencePacket } from './synthesis';
 import type { ArchitectureEvidencePacket, ArchitectureProposal } from './synthesis';
+import type { AnalysisProgressEvent } from './hierarchical-synthesis';
 import type { ReconciliationResult, SubsystemDiscoveryResult, SynthesisFinding, SynthesisProvider,
     SynthesisStage, SynthesisStageContext, SynthesisStageRequest, SynthesisStageResult, SystemCandidate,
     SystemChallengeResult, SystemDiscoveryResult, VerificationResult } from './hierarchical-synthesis';
@@ -41,7 +42,8 @@ export class SynthesisStageCache {
         if (!Number.isSafeInteger(maximum) || maximum < 1) throw new Error('Invalid synthesis cache bound');
     }
     async run(request: SynthesisStageRequest, packet: ArchitectureEvidencePacket, provider: SynthesisProvider,
-        providerIdentity: string, promptVersion = SYNTHESIS_PROMPT_VERSION): Promise<{ result: SynthesisStageResult; reused: boolean; durationMs: number }> {
+        providerIdentity: string, promptVersion = SYNTHESIS_PROMPT_VERSION,
+        checkpoint: () => void = () => {}): Promise<{ result: SynthesisStageResult; reused: boolean; durationMs: number }> {
         const identity = stageWorkIdentity(request, providerIdentity, promptVersion);
         const cached = this.results.get(identity);
         if (cached && cached.provider === provider) {
@@ -51,7 +53,10 @@ export class SynthesisStageCache {
             } catch { this.results.delete(identity); }
         }
         const start = performance.now();
-        const result = parseSynthesisStageResult(await provider.runStage(request), request, packet);
+        const raw = await provider.runStage(request);
+        checkpoint();
+        const result = parseSynthesisStageResult(raw, request, packet);
+        checkpoint();
         this.results.set(identity, { provider, result: structuredClone(result) });
         if (this.results.size > this.maximum) this.results.delete(this.results.keys().next().value!);
         return { result, reused: false, durationMs: performance.now() - start };
@@ -135,25 +140,73 @@ export function detectReconciliationConflicts(packet: ArchitectureEvidencePacket
 }
 
 export class HierarchicalSynthesisOrchestrator {
-    readonly cache = new SynthesisStageCache();
+    readonly cache: SynthesisStageCache;
     constructor(private readonly provider: SynthesisProvider, private readonly providerIdentity: string,
         private readonly promptVersion = SYNTHESIS_PROMPT_VERSION,
-        private readonly onTiming?: (timing: SynthesisTiming) => void) {}
+        private readonly onTiming?: (timing: SynthesisTiming) => void,
+        private readonly onProgress?: (event: AnalysisProgressEvent) => void,
+        private readonly checkpoint: () => void = () => {},
+        private readonly beforeFirstCall?: () => Promise<void>, cache?: SynthesisStageCache) {
+        this.cache = cache ?? new SynthesisStageCache();
+    }
 
     async analyze(packet: ArchitectureEvidencePacket): Promise<HierarchicalAnalysis> {
         validateArchitectureEvidencePacket(packet);
+        this.checkpoint();
+        const analysisStart = performance.now();
+        const emit = (stage: AnalysisProgressEvent['stage'], status: AnalysisProgressEvent['status'], message: string,
+            extra: Partial<AnalysisProgressEvent> = {}) => {
+            this.checkpoint();
+            this.onProgress?.({ stage, status, message, elapsedMs: Math.max(0, Math.floor(performance.now() - analysisStart)), ...extra });
+        };
         const timings: SynthesisTiming[] = [];
         const record = (timing: SynthesisTiming): void => { timings.push(timing); this.onTiming?.(timing); };
         const capability = await this.provider.capabilities();
+        this.checkpoint();
         const identity = `${this.providerIdentity}:${capability.modelLabel}`;
+        let subsystemCompleted = 0;
+        let subsystemTotal: number | undefined;
+        let verificationCompleted = 0;
+        let verificationTotal: number | undefined;
+        let firstCall = true;
         const run = async (stage: SynthesisStage, context: SynthesisStageContext) => {
+            const subject = stage === 'subsystem-discovery' ? context.systems.find(system => system.candidateKey === context.subjectSystemKey)
+                ?.name.replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 120) : undefined;
+            const units = stage === 'subsystem-discovery' ? { completedUnits: subsystemCompleted, totalUnits: subsystemTotal } :
+                stage === 'verification' ? { completedUnits: verificationCompleted, totalUnits: verificationTotal } : {};
+            if (stage === 'system-discovery') emit('building-skeleton', 'started', 'Building architecture skeleton');
+            else emit(stage, 'started', stage === 'subsystem-discovery' ? 'Discovering Subsystems' : stage.replaceAll('-', ' '), { subject, ...units });
             const start = performance.now();
             const plan = await planArchitectureEvidence(packet, stage, context, capability, this.provider);
+            this.checkpoint();
+            if (stage === 'system-discovery') {
+                emit('building-skeleton', 'completed', 'Architecture skeleton ready');
+                emit(stage, 'started', 'Discovering Systems');
+            }
             record({ operation: 'planning', stage, subject: context.subjectSystemKey ?? undefined,
                 durationMs: performance.now() - start, reused: false });
-            const executed = await this.cache.run(plan.request, packet, this.provider, identity, this.promptVersion);
+            if (firstCall) {
+                firstCall = false;
+                if (this.beforeFirstCall) {
+                    emit(stage, 'started', 'Preparing selected model', { callPurpose: 'model-warm-up',
+                        providerModelLabel: capability.modelLabel });
+                    await this.beforeFirstCall();
+                    this.checkpoint();
+                }
+            }
+            emit(stage, 'started', `Analyzing ${stage.replaceAll('-', ' ')}`, { subject, ...units,
+                callPurpose: stage, providerModelLabel: capability.modelLabel, attempt: 1 });
+            const executed = await this.cache.run(plan.request, packet, this.provider, identity, this.promptVersion, this.checkpoint);
+            this.checkpoint();
             record({ operation: stage === 'verification' ? 'verification-call' : 'stage-call', stage,
                 subject: context.subjectSystemKey ?? undefined, durationMs: executed.durationMs, reused: executed.reused });
+            if (stage === 'subsystem-discovery') subsystemCompleted++;
+            if (stage === 'verification') verificationCompleted++;
+            emit(stage, stage === 'subsystem-discovery' && subsystemCompleted < subsystemTotal! ||
+                stage === 'verification' ? 'started' : 'completed',
+                `${stage.replaceAll('-', ' ')} ${stage === 'verification' ? 'check complete' : 'complete'}`, { subject,
+                ...(stage === 'subsystem-discovery' ? { completedUnits: subsystemCompleted, totalUnits: subsystemTotal } :
+                    stage === 'verification' ? { completedUnits: verificationCompleted, totalUnits: verificationTotal } : {}) });
             return { plan, result: executed.result };
         };
         const context = (systems: SystemCandidate[] = [], subtrees: SubsystemDiscoveryResult[] = [],
@@ -166,6 +219,7 @@ export class HierarchicalSynthesisOrchestrator {
         const challenge = challenged.result as SystemChallengeResult;
         const systems = challenge.decisions.flatMap(decision => decision.systems);
         if (!systems.length) throw new Error('System Challenge rejected every System');
+        subsystemTotal = systems.length;
         const subtrees: SubsystemDiscoveryResult[] = [];
         // Serial is the safe default; P5's separately exported scheduler retains explicit provider concurrency support.
         for (const system of systems) {
@@ -178,6 +232,10 @@ export class HierarchicalSynthesisOrchestrator {
             ? (await run('reconciliation', context(systems, subtrees))).result as ReconciliationResult
             : { schemaVersion: 1, stageVersion: SYNTHESIS_STAGE_VERSION, parentPacketFingerprint: packet.inputFingerprint,
                 viewId: 'deterministic:no-conflicts', stage: 'reconciliation' as const, findings: [], unresolvedCandidateKeys: [] };
+        if (!structural.length && reconciliation.viewId === 'deterministic:no-conflicts') {
+            emit('reconciliation', 'started', 'Reconciling architecture');
+            emit('reconciliation', 'completed', 'No cross-System conflicts found');
+        }
         const findings = [...structural, ...reconciliation.findings];
         const pendingFindings = findings.filter(item => item.status !== 'supported');
         const unresolved = unique([...reconciliation.unresolvedCandidateKeys,
@@ -186,6 +244,8 @@ export class HierarchicalSynthesisOrchestrator {
         const groups = pendingFindings.filter(item => item.candidateKeys.length <= MAX_VERIFICATION_TARGETS &&
             item.candidateKeys.some(key => unresolved.includes(key)))
             .slice(0, MAX_VERIFICATION_CALLS);
+        verificationTotal = groups.length;
+        if (!groups.length) emit('verification', 'started', 'Verifying uncertain boundaries', { completedUnits: 0, totalUnits: 0 });
         for (const group of groups) {
             const targetKeys = new Set(group.candidateKeys);
             const scopedTrees = subtrees.filter(tree => tree.nodes.some(node => targetKeys.has(node.candidateKey)))
@@ -202,6 +262,8 @@ export class HierarchicalSynthesisOrchestrator {
                 group.candidateKeys.every(key => verification.findings.some(item => item.candidateKeys.includes(key))))
                 pendingFindings.splice(pendingFindings.indexOf(group), 1);
         }
+        emit('verification', 'completed', 'Boundary verification complete',
+            { completedUnits: verificationCompleted, totalUnits: groups.length });
         const unresolvedWithoutFinding = reconciliation.unresolvedCandidateKeys.filter(key =>
             !findings.some(item => item.candidateKeys.includes(key)));
         const finalReconciliation: ReconciliationResult = { ...reconciliation, findings: pendingFindings,
@@ -210,6 +272,7 @@ export class HierarchicalSynthesisOrchestrator {
         const proposal = assembleArchitectureProposal({ parentPacketFingerprint: packet.inputFingerprint,
             summary: `Architecture proposal with ${systems.length} challenged System${systems.length === 1 ? '' : 's'}.`,
             systems, subtrees, reconciliation: finalReconciliation, verifications }, packet);
+        this.checkpoint();
         record({ operation: 'assembly', durationMs: performance.now() - start, reused: false });
         return { proposal, timings, findings, verificationCalls: verifications.length };
     }

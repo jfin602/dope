@@ -56,9 +56,10 @@ export interface ArchitectureReview {
 }
 export interface SoftwareMapService {
     attach(folderUri: string): Promise<{ projectHandle: string; status: SoftwareMapStatus }>;
-    configureSynthesis(projectHandle: string, options: { endpoint?: string; token?: string }): Promise<string[]>;
+    configureSynthesis(projectHandle: string, options: { endpoint?: string; token?: string; contextWindowTokens?: number }): Promise<string[]>;
     selectSynthesisModel(projectHandle: string, modelId: string): Promise<void>;
     probeSynthesis(projectHandle: string): Promise<void>;
+    synthesisReady(projectHandle: string): Promise<boolean>;
     initializationStatus(projectHandle: string): Promise<SoftwareMapInitializationStatus>;
     startInitialization(projectHandle: string): Promise<ArchitectureReview>;
     review(projectHandle: string): Promise<ArchitectureReview | undefined>;

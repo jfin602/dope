@@ -5,11 +5,11 @@ import { pathToFileURL } from 'node:url';
 import { canonicalLocalRoot } from '@dope/code-analysis/lib/node/architecture-file';
 import { readInitialization, acceptInitialization } from '@dope/code-analysis/lib/node/smap-initialization-file';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
-import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseArchitectureProposal,
-    MAX_EVIDENCE_REFINEMENT_ROUNDS } from '@dope/software-map';
+import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseAnalysisProgressEvent,
+    HierarchicalSynthesisOrchestrator, SynthesisStageCache } from '@dope/software-map';
 import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, SoftwareMapPageRequest, GraphRelationship, SoftwareMapRelationshipRequest,
     PhysicalMapSnapshot, SoftwareMapClient, SoftwareMapService, ArchitectureEvidencePacket, ArchitectureReview, ArchitectureReviewNode,
-    ArchitectureDeclaration, SoftwareMapInitializationStatus } from '@dope/software-map';
+    ArchitectureDeclaration, SoftwareMapInitializationStatus, SynthesisProvider, AnalysisProgressEvent } from '@dope/software-map';
 import { LmStudioSynthesisProvider } from './lmstudio-synthesis-provider';
 
 export class SoftwareMapBackend implements SoftwareMapService {
@@ -21,8 +21,9 @@ export class SoftwareMapBackend implements SoftwareMapService {
     private run = 0;
     private phase: 'analyzing' | 'review_required' | undefined;
     private pending?: ArchitectureReview & { fingerprint: string };
-    // Existing bootstrap route stays local until P7 replaces initialization orchestration.
-    private provider?: { synthesize(packet: ArchitectureEvidencePacket): Promise<unknown> };
+    private provider?: SynthesisProvider;
+    private readonly synthesisCache = new SynthesisStageCache();
+    private analysisStarted?: number;
     private localProvider?: LmStudioSynthesisProvider;
     private readonly unlisten: () => void;
     private idleStatus() {
@@ -31,8 +32,8 @@ export class SoftwareMapBackend implements SoftwareMapService {
             reusedSourceFiles: 0 };
     }
 
-    constructor(private readonly index: SoftwareMapIndex, client: SoftwareMapClient,
-        provider?: { synthesize(packet: ArchitectureEvidencePacket): Promise<unknown> }) {
+    constructor(private readonly index: SoftwareMapIndex, private readonly client: SoftwareMapClient,
+        provider?: SynthesisProvider) {
         this.provider = provider;
         this.unlisten = index.onChange((root, status) => {
             if (!this.disposed && this.initialized && root === this.root) client.notifySoftwareMapChanged(status);
@@ -75,7 +76,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
         return { generation: snapshot.metadata.generation, total: items.length, items: items.slice(offset, offset + limit) };
     }
 
-    async configureSynthesis(projectHandle: string, options: { endpoint?: string; token?: string }): Promise<string[]> {
+    async configureSynthesis(projectHandle: string, options: { endpoint?: string; token?: string; contextWindowTokens?: number }): Promise<string[]> {
         this.active(projectHandle);
         const provider = new LmStudioSynthesisProvider(options);
         const models = await provider.discoverModels();
@@ -95,6 +96,10 @@ export class SoftwareMapBackend implements SoftwareMapService {
         await this.localProvider.probe();
         this.active(projectHandle);
     }
+    async synthesisReady(projectHandle: string): Promise<boolean> {
+        this.active(projectHandle);
+        return !!this.provider && (!this.localProvider || this.localProvider.isProbed);
+    }
     async initializationStatus(projectHandle: string): Promise<SoftwareMapInitializationStatus> {
         const root = this.active(projectHandle);
         const state = await readInitialization(root);
@@ -111,23 +116,39 @@ export class SoftwareMapBackend implements SoftwareMapService {
         if (!this.provider) throw new Error('Synthesis provider is not configured');
         const provider = this.provider;
         const run = ++this.run;
+        const started = performance.now();
+        this.analysisStarted = started;
+        const stageStarted = new Map<AnalysisProgressEvent['stage'], number>();
+        let currentStage: AnalysisProgressEvent['stage'] = 'collecting-evidence';
+        let lastElapsed = 0;
+        const emit = (event: AnalysisProgressEvent): void => {
+            this.still(projectHandle, root, run);
+            const now = performance.now();
+            if (event.status === 'started' && !stageStarted.has(event.stage)) stageStarted.set(event.stage, now);
+            currentStage = event.stage;
+            const elapsedMs = Math.max(lastElapsed, Math.floor(now - started));
+            lastElapsed = elapsedMs;
+            this.client.notifySoftwareMapAnalysisProgress?.(projectHandle, parseAnalysisProgressEvent({ ...event,
+                elapsedMs, stageElapsedMs: Math.max(0, Math.floor(now - (stageStarted.get(event.stage) ?? now))) }));
+        };
         this.phase = 'analyzing';
         this.pending = undefined;
         try {
+            emit({ stage: 'collecting-evidence', status: 'started', elapsedMs: 0, message: 'Collecting repository evidence' });
             const fingerprint = (await readInitialization(root)).declarationFingerprint;
-            let packet = await this.index.collectEvidence(root);
+            const packet = await this.index.collectEvidence(root);
             this.still(projectHandle, root, run);
-            let proposal;
-            for (let round = 0; round <= MAX_EVIDENCE_REFINEMENT_ROUNDS; round++) {
-                proposal = parseArchitectureProposal(await provider.synthesize(packet), packet);
-                this.still(projectHandle, root, run);
-                if (!proposal.needsMoreEvidence) break;
-                if (round === MAX_EVIDENCE_REFINEMENT_ROUNDS) throw new Error('Architecture evidence refinement limit reached');
-                packet = await this.index.refineEvidence(root, packet, proposal.evidenceRequests);
-                this.still(projectHandle, root, run);
-            }
+            emit({ stage: 'collecting-evidence', status: 'completed', elapsedMs: 0, message: 'Repository evidence collected' });
+            const localProvider = this.localProvider;
+            const orchestrator = new HierarchicalSynthesisOrchestrator(provider,
+                localProvider?.endpoint ?? 'configured-provider', undefined, undefined, emit,
+                () => this.still(projectHandle, root, run), localProvider ? () => localProvider.warmUp() : undefined,
+                this.synthesisCache);
+            const { proposal } = await orchestrator.analyze(packet);
+            this.still(projectHandle, root, run);
+            emit({ stage: 'preparing-review', status: 'started', elapsedMs: 0, message: 'Preparing sMap for review' });
             if ((await readInitialization(root)).declarationFingerprint !== fingerprint) throw new Error('Stale Software Map architecture declaration');
-            const draft: ArchitectureReviewNode[] = proposal!.nodes.map(node => {
+            const draft: ArchitectureReviewNode[] = proposal.nodes.map(node => {
                 const roots = new Set<string>();
                 for (const ref of node.evidenceRefs) {
                     const item = packet.items.find(item => item.id === ref)!;
@@ -139,11 +160,20 @@ export class SoftwareMapBackend implements SoftwareMapService {
             });
             this.still(projectHandle, root, run);
             const reviewId = randomUUID();
-            this.pending = { reviewId, packet, proposal: proposal!, draft, fingerprint };
+            this.pending = { reviewId, packet, proposal, draft, fingerprint };
             this.phase = 'review_required';
-            return structuredClone({ reviewId, packet, proposal: proposal!, draft });
+            this.analysisStarted = undefined;
+            emit({ stage: 'preparing-review', status: 'completed', elapsedMs: 0, message: 'Validated review ready' });
+            emit({ stage: 'completed', status: 'completed', elapsedMs: 0, message: 'Analysis complete' });
+            return structuredClone({ reviewId, packet, proposal, draft });
         } catch (error) {
-            if (this.run === run) { this.phase = undefined; this.pending = undefined; }
+            if (this.run === run) {
+                this.phase = undefined; this.pending = undefined;
+                this.analysisStarted = undefined;
+                emit({ stage: 'failed', status: 'failed', elapsedMs: 0,
+                    message: `Analysis failed during ${currentStage.replaceAll('-', ' ')}. Review setup and retry.`,
+                    subject: currentStage });
+            }
             throw error;
         }
     }
@@ -168,7 +198,11 @@ export class SoftwareMapBackend implements SoftwareMapService {
     }
     async cancelInitialization(projectHandle: string): Promise<void> {
         this.active(projectHandle);
+        if (this.phase === 'analyzing') this.client.notifySoftwareMapAnalysisProgress?.(projectHandle,
+            parseAnalysisProgressEvent({ stage: 'cancelled', status: 'cancelled', elapsedMs: Math.max(0, Math.floor(performance.now() - (this.analysisStarted ?? performance.now()))),
+                message: 'Analysis cancelled' }));
         this.run++;
+        this.analysisStarted = undefined;
         this.phase = undefined;
         this.pending = undefined;
     }

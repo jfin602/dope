@@ -119,10 +119,13 @@ test('warm failure blocks evidence; reconnect and model change require new probe
   const server = await serverFor(request => result(request, [candidate('workbench', 'Workbench', ['workbench'])]), true);
   try {
     const provider = await configured(server.endpoint);
+    assert.equal(provider.isProbed, true);
     await assert.rejects(discoverCandidateSystems(oneResponsibility, provider), /HTTP 503/);
+    assert.equal(provider.isProbed, false);
     assert.equal(server.calls.filter(call => call.body?.response_format.json_schema.name === 'system_discovery').length, 0);
     await assert.rejects(discoverCandidateSystems(oneResponsibility, provider), /probe required/);
     await provider.probe();
+    assert.equal(provider.isProbed, true);
     await discoverCandidateSystems(oneResponsibility, provider);
     await provider.discoverModels();
     await assert.rejects(discoverCandidateSystems(oneResponsibility, provider), /probe required/);

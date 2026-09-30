@@ -494,7 +494,9 @@ export interface AnalysisProgressEvent {
     stage: AnalysisProgressStage;
     status: AnalysisProgressStatus;
     elapsedMs: number;
+    stageElapsedMs?: number;
     message: string;
+    callPurpose?: SynthesisStage | 'model-warm-up';
     subject?: string;
     completedUnits?: number;
     totalUnits?: number;
@@ -506,14 +508,15 @@ const progressStages: AnalysisProgressStage[] = ['collecting-evidence', 'plannin
     'preparing-review', 'completed', 'failed', 'cancelled'];
 export function parseAnalysisProgressEvent(input: unknown): AnalysisProgressEvent {
     const data = record(input, 'progress');
-    const allowed = ['stage', 'status', 'elapsedMs', 'message', 'subject', 'completedUnits', 'totalUnits', 'providerModelLabel', 'attempt'];
+    const allowed = ['stage', 'status', 'elapsedMs', 'stageElapsedMs', 'message', 'callPurpose', 'subject', 'completedUnits', 'totalUnits', 'providerModelLabel', 'attempt'];
     if (Object.keys(data).some(key => !allowed.includes(key)) ||
         !['stage', 'status', 'elapsedMs', 'message'].every(key => Object.hasOwn(data, key))) invalid('progress fields');
     if (!progressStages.includes(data.stage as AnalysisProgressStage) ||
         !['started', 'completed', 'retrying', 'failed', 'cancelled'].includes(data.status as string)) invalid('progress stage/status');
     if (data.stage === 'completed' && data.status !== 'completed' || data.stage === 'failed' && data.status !== 'failed' ||
         data.stage === 'cancelled' && data.status !== 'cancelled') invalid('terminal progress status');
-    for (const key of ['elapsedMs', 'completedUnits', 'totalUnits', 'attempt'] as const) {
+    if (data.callPurpose !== undefined && ![...progressStages, 'model-warm-up'].includes(data.callPurpose as string)) invalid('progress call purpose');
+    for (const key of ['elapsedMs', 'stageElapsedMs', 'completedUnits', 'totalUnits', 'attempt'] as const) {
         const value = data[key];
         if (value !== undefined && (!Number.isSafeInteger(value) || (value as number) < (key === 'attempt' ? 1 : 0))) invalid(`progress ${key}`);
     }

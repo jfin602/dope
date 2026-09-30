@@ -1,5 +1,5 @@
-import { parseArchitecture } from '@dope/software-map';
-import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus } from '@dope/software-map';
+import { parseArchitecture, parseAnalysisProgressEvent } from '@dope/software-map';
+import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent } from '@dope/software-map';
 
 export type SoftwareMapConnection = SoftwareMapService & { setClient(client: SoftwareMapClient | undefined): void };
 export interface SynthesisPreferenceStore {
@@ -53,7 +53,12 @@ export class SoftwareMapController {
     models: string[] = [];
     setupReady = false;
     setupBusy = false;
+    contextWindowTokens = 65536;
+    progressEvents: AnalysisProgressEvent[] = [];
+    private analysisStartedAt?: number;
+    reviewElapsedMs?: number;
     private setupRequest = 0;
+    private configuredSetup?: string;
     private nextKey = 0;
     private connection?: SoftwareMapConnection;
     private handle?: string;
@@ -99,6 +104,10 @@ export class SoftwareMapController {
         this.models = [];
         this.setupReady = false;
         this.setupBusy = false;
+        this.configuredSetup = undefined;
+        this.progressEvents = [];
+        this.analysisStartedAt = undefined;
+        this.reviewElapsedMs = undefined;
         this.token = '';
         this.loading = !!workspace;
         this.changed();
@@ -106,7 +115,15 @@ export class SoftwareMapController {
         try {
             const connection = this.connect();
             this.connection = connection;
-            connection.setClient({ notifySoftwareMapChanged: status => {
+            connection.setClient({ notifySoftwareMapAnalysisProgress: (handle, raw) => {
+                if (this.disposed || project !== this.project || handle !== this.handle ||
+                    !this.analysisStartedAt) return;
+                const event = parseAnalysisProgressEvent(raw);
+                const previous = this.progressEvents.at(-1);
+                if (previous && event.elapsedMs < previous.elapsedMs) return;
+                this.progressEvents.push(event);
+                this.changed();
+            }, notifySoftwareMapChanged: status => {
                 if (this.disposed || project !== this.project || !this.handle || status.generation < (this.status?.generation ?? 0) ||
                     status.generation === this.status?.generation && this.status.state === 'ready' && status.state === 'analyzing') return;
                 this.status = status;
@@ -175,12 +192,15 @@ export class SoftwareMapController {
         this.setupBusy = true;
         this.setupReady = false;
         this.models = [];
+        this.configuredSetup = undefined;
         this.error = '';
         this.changed();
         try {
-            const models = await connection.configureSynthesis(handle, { endpoint: this.endpoint, ...(this.token ? { token: this.token } : {}) });
+            const models = await connection.configureSynthesis(handle, { endpoint: this.endpoint,
+                contextWindowTokens: this.contextWindowTokens, ...(this.token ? { token: this.token } : {}) });
             if (project !== this.project || request !== this.setupRequest) return;
             this.models = models;
+            this.configuredSetup = JSON.stringify([this.endpoint, this.token, this.contextWindowTokens]);
             this.model = models.includes(this.model) ? this.model : models.find(id => /qwen3[-_. ]coder[-_. ]30b[-_. ]a3b[-_. ]instruct/i.test(id)) ?? models[0] ?? '';
         } catch (error) {
             if (project === this.project && request === this.setupRequest) this.error = String(error);
@@ -191,8 +211,24 @@ export class SoftwareMapController {
     changeEndpoint(value: string): void { this.endpoint = value; this.setupReady = false; ++this.setupRequest; }
     changeModel(value: string): void { this.model = value; this.setupReady = false; ++this.setupRequest; }
     changeToken(value: string): void { this.token = value; this.setupReady = false; ++this.setupRequest; }
+    changeContextTokens(value: string): void {
+        const tokens = Number(value);
+        this.contextWindowTokens = Number.isSafeInteger(tokens) ? tokens : 0;
+        this.setupReady = false; ++this.setupRequest;
+    }
+    analysisElapsedMs(): number {
+        const reported = this.progressEvents.at(-1)?.elapsedMs ?? 0;
+        return this.analysisStartedAt && this.initialization?.state === 'analyzing'
+            ? Math.max(reported, Date.now() - this.analysisStartedAt) : this.reviewElapsedMs ?? reported;
+    }
     async probe(): Promise<void> {
         if (!this.connection || !this.handle || !this.model || !this.models.includes(this.model)) return;
+        if (this.configuredSetup !== JSON.stringify([this.endpoint, this.token, this.contextWindowTokens])) {
+            this.error = 'Discover models again after changing connection or context settings.';
+            this.setupReady = false;
+            this.changed();
+            return;
+        }
         const project = this.project;
         const request = ++this.setupRequest;
         this.setupBusy = true;
@@ -219,19 +255,28 @@ export class SoftwareMapController {
         const request = ++this.setupRequest;
         this.setupBusy = true;
         if (this.initialization) this.initialization = { ...this.initialization, state: 'analyzing' };
+        this.analysisStartedAt = Date.now();
+        this.reviewElapsedMs = undefined;
+        this.progressEvents = [];
+        this.review = undefined;
+        this.draft = [];
         this.error = '';
         this.changed();
         try {
             const review = await this.connection.startInitialization(this.handle);
             if (project !== this.project || request !== this.setupRequest) return;
+            this.reviewElapsedMs = Date.now() - this.analysisStartedAt!;
             this.review = review;
             this.draft = structuredClone(review.draft);
             if (this.initialization) this.initialization = { ...this.initialization, state: 'review_required' };
             this.flow = 'review';
         } catch (error) {
             if (project === this.project && request === this.setupRequest) {
+                this.review = undefined; this.draft = [];
                 if (this.initialization) this.initialization = { ...this.initialization, state: 'uninitialized' };
-                this.setupReady = false;
+                try { this.setupReady = await this.connection.synthesisReady(this.handle); }
+                catch { this.setupReady = false; }
+                if (project !== this.project || request !== this.setupRequest) return;
                 this.error = String(error);
             }
         } finally {
@@ -304,6 +349,7 @@ export class SoftwareMapController {
     }
     async cancel(): Promise<void> {
         const connection = this.connection, handle = this.handle, project = this.project;
+        const wasAnalyzing = this.initialization?.state === 'analyzing';
         const request = ++this.setupRequest;
         this.setupBusy = true;
         this.error = '';
@@ -311,7 +357,8 @@ export class SoftwareMapController {
         try {
             if (connection && handle) await connection.cancelInitialization(handle);
             if (project !== this.project || request !== this.setupRequest) return;
-            this.review = undefined; this.draft = []; this.setupReady = false; this.flow = 'none'; this.token = '';
+            this.review = undefined; this.draft = []; this.setupReady = false; this.flow = wasAnalyzing ? 'setup' : 'none'; this.token = '';
+            this.analysisStartedAt = undefined;
             if (this.initialization?.state !== 'initialized' && this.initialization) this.initialization = { ...this.initialization, state: 'uninitialized' };
         } catch (error) {
             if (project === this.project && request === this.setupRequest) this.error = String(error);

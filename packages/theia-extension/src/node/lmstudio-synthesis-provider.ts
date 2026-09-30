@@ -62,6 +62,7 @@ export class LmStudioSynthesisProvider {
     }
 
     get selectedModel(): string | undefined { return this.modelId; }
+    get isProbed(): boolean { return this.probed; }
 
     /** Calling discovery again represents a reconnect and invalidates readiness. */
     async discoverModels(): Promise<string[]> {
@@ -118,6 +119,13 @@ export class LmStudioSynthesisProvider {
 
     /** Conservative fallback for the local adapter; a provider tokenizer can replace this. */
     async estimateTokens(input: string): Promise<number> { return new TextEncoder().encode(input).length; }
+
+    /** A synthetic readiness request; no repository evidence is sent until this succeeds. */
+    async warmUp(): Promise<void> {
+        const model = this.requireModel();
+        if (!this.probed) throw new Error('Synthesis capability probe required');
+        await this.ensureWarm(model);
+    }
 
     async runStage(request: SynthesisStageRequest): Promise<unknown> {
         const model = this.requireModel();
