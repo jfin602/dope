@@ -293,3 +293,20 @@ Phase 4 does not implement:
 Using the actual Dope repository with no model provider configured, the developer can inspect an evidence-backed current-state model organized by Systems/Subsystems/Components, trace representative relationships to deterministic source evidence, identify representative declared-boundary violations and navigate to the responsible source through a bounded inspection UI.
 
 The resulting contracts are renderer-independent and provider-independent, and the extracted graph remains rebuildable derived state.
+
+## September 30, 2026 — coverage and iterative-review amendment
+
+The responsibility-oriented implementation in `c4-synth-improvements` improved the real Adaptive SEO result but did not qualify architecture coverage. Its P4 run reached center review within 302.8 seconds, yet substantial implemented responsibilities were absent/merged and three proposed Subsystems had no Components. The owner closes that correction Not Qualified without running P5.
+
+Mandatory next work is `c4-synth-coverage-review` at unchanged `0.4.6`.
+
+Phase 4 review now additionally requires a **Search Deeper** action on every System and Subsystem. Search Deeper is bounded architecture discovery, not Phase 5 planning:
+- it analyzes the current edited review branch plus source-backed evidence;
+- it deliberately expands beyond evidence already used for that branch;
+- it proposes a replacement/refinement for only the selected branch;
+- it never silently mutates siblings, ancestors, or unrelated developer edits;
+- the proposal is previewed and requires explicit Accept/Reject;
+- rejected proposals leave the draft unchanged;
+- targeted provider calls remain separately observable in telemetry.
+
+Coverage/retry/diagnostic details are governed by ADR 0014's September 30 amendment. A fresh provider comparison and project-local sMap storage remain subsequent gates before Phase 5.

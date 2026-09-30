@@ -1,6 +1,6 @@
 # Correction 4 Implementation Plan — Responsibility-oriented sMap Synthesis
 
-Status: **APPROVED / READY**
+Status: **OWNER-CLOSED / NOT QUALIFIED — HISTORICAL PLAN; P5 UNEXECUTED**
 Correction folder: `c4-synth-improvements`
 Required unchanged package version: `0.4.6`
 Activation source: `8ea34ae1300a387ac63aad9462ae649ac78a9605`
@@ -154,3 +154,9 @@ If Green, route to a new bounded provider-comparison correction. Do not reopen `
 ## Non-goals
 
 No Adaptive SEO-specific domain dictionary in synthesis, no forced boundary counts, no architecture docs as model input, no aggressive Local optimization, no provider ensemble/mixing, no general AI Presence and no Phase 5 visual planning canvas.
+
+## Owner close amendment — 2026-09-30
+
+Execution stopped after P4 by owner decision. P4 is Not Green on architecture quality; P5 is cancelled and unexecuted. Preserve this plan as historical intent rather than rewriting it to match later work.
+
+The mandatory successor is `c4-synth-coverage-review` at unchanged `0.4.6`, governed by ADR 0014's September 30 amendment.

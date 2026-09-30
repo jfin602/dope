@@ -120,3 +120,91 @@ After `c4-synth-improvements` closes Green, run a fresh bounded provider-compari
 - Technical-layer decompositions such as Frontend/Backend become challenge targets rather than accepted defaults.
 - Additional bounded model calls are accepted when they materially improve architecture quality; the <=8-minute objective remains the performance guard.
 - Proposal review becomes readable as a hierarchy without pulling the Phase 5 visual planning canvas forward.
+
+## 2026-09-30 amendment — coverage recovery, descent diagnostics and branch-local review refinement
+
+### Evidence from `c4-synth-improvements` P4
+
+A controlled real `gemini-3.8-flash` run against the pinned Adaptive SEO benchmark reached center review within **302.8 seconds**, satisfying the eight-minute objective for that run. The result improved on the earlier Frontend/Backend decomposition, but architecture quality remained Not Green.
+
+The frozen proposal contained one System, five responsibility-named Subsystems and four Components. Three Subsystems had no Components. Independent post-freeze comparison showed substantial implemented responsibilities were absent or collapsed, including tenant/project control, collection/feed output, provider synchronization, worker execution, Feed Digest and delivery detail. The run also exposed incomplete call retention: twelve model calls occurred but only eleven call records remained visible. The first controlled attempt failed with a sanitized Gemini transport/type error and required manual retry.
+
+The owner therefore closes `c4-synth-improvements` early after P4 as **Not Qualified**. Its P5 closeout prompt will not run and no missing Green evidence may be inferred.
+
+### Source-backed coverage is explicit
+
+Responsibility planning must prioritize source-backed domain behavior over generic cross-area vocabulary. Generic recurrence such as error/message/route-like terms must not crowd out stronger service, state, worker, provider, delivery, public-contract or domain-module evidence merely because the generic term appears in more source areas.
+
+The deterministic evidence packet remains authority. Derived responsibility/coverage cues remain rebuildable planning metadata with parent evidence refs; they never become architecture truth.
+
+Before final review, Dope maintains an inspectable coverage ledger from deterministic responsibility cues to the challenged hierarchy. A substantial cue may be:
+- represented by a surviving boundary;
+- carried through a merge/split/recovery mapping;
+- unresolved.
+
+The ledger is diagnostic state, not canonical architecture and not a benchmark answer key.
+
+### Subsystem Challenge may recover omitted responsibilities
+
+Keep/merge/split/reject over existing candidates is insufficient when Subsystem Discovery failed to propose an important responsibility at all.
+
+Subsystem Challenge therefore gains a bounded provider-independent recovery mechanism. It must still disposition every discovery candidate exactly once, but it may additionally propose a new Subsystem when source-backed coverage evidence demonstrates a substantial responsibility absent from the discovery set.
+
+Recovered boundaries require the same evidence/provenance validation as ordinary candidates. No target count or repository-specific domain dictionary is allowed.
+
+### Empty Component descent is a typed result
+
+Component Discovery may legitimately return no Components, but empty descent is never silent.
+
+A zero-Component result must carry a compact typed disposition equivalent to:
+- leaf responsibility;
+- insufficient evidence;
+- responsibility belongs elsewhere;
+- no stable Component boundary.
+
+The disposition cites parent evidence. Unresolved/insufficient/misplaced cases remain visible to reconciliation/review and architecture-quality qualification. A leaf disposition does not force fake Components.
+
+### Provider-call attempts are retained completely
+
+Qualification telemetry records every attempted provider call, not only successful stage outputs. Records identify stage/subject, provider/model, attempt/retry relationship, duration, safe failure class, usage when available, cache reuse where applicable and whether an output was consumed.
+
+A bounded automatic retry may be used only for explicitly classified transient transport/upstream failures. It repeats the same stage/request/model, never silently changes providers/models, remains visible, and is capped. Invalid architecture/schema/content results are not hidden by retry.
+
+Provider telemetry is operational/derived state, not canonical project state and never contains credentials or raw secret-bearing errors.
+
+### Center review supports branch-local Search Deeper
+
+Every System and Subsystem in pending center review exposes **Search Deeper**.
+
+Search Deeper:
+- starts from the **current edited review branch**, not the original model proposal;
+- gathers the selected branch's evidence and deterministically expands into relevant uncovered/cross-boundary evidence;
+- runs only bounded targeted synthesis for that branch;
+- may refine a System and its descendants, or refine/split a selected Subsystem and its Components within the same parent System;
+- produces a preview proposal instead of mutating the draft immediately;
+- requires explicit Accept or Reject;
+- preserves all unrelated Systems, Subsystems, Components and manual edits;
+- rejects stale branch proposals when the target branch changed after analysis began;
+- remains available after manual edits and before final architecture acceptance;
+- labels targeted calls separately in telemetry.
+
+Search Deeper is an iterative architecture-discovery/review capability. It is not a Phase 5 Planning Map, general chat/Agent Runtime, or autonomous unbounded recursion.
+
+### Qualification broadens beyond one benchmark
+
+Adaptive SEO remains a useful benchmark but cannot be the sole quality oracle.
+
+`c4-synth-coverage-review` must qualify the shared pipeline on:
+- pinned Adaptive SEO;
+- Dope itself through an uncontaminated benchmark root;
+- one smaller structurally clear repository or controlled repository fixture capable of exposing over-segmentation.
+
+Architecture references may be used only after each generated hierarchy is frozen. Green requires material implemented responsibilities to be represented or explicitly unresolved without forcing exact names/counts. The <=8-minute objective remains a per-controlled-analysis performance gate, not a timeout.
+
+### Sequencing
+
+Mandatory next correction:
+
+`c4-synth-coverage-review` at unchanged `0.4.6`.
+
+If it closes Green, run a fresh bounded provider-comparison correction. Then run `c4-smap-storage`. Product Phase 5 remains blocked until those gates close Green.

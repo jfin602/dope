@@ -277,3 +277,22 @@ A closeout audits evidence and decides whether the bounded gate qualifies.
 Foundation Spike 0 closeout decides whether Theia qualifies as the substrate.
 
 It does not owner-close future product phases or qualify future model/provider integration.
+
+## September 30, 2026 — synthesis coverage/review correction gate
+
+The owner closes `c4-synth-improvements` early after P4 as **Not Qualified**. P4's real Gemini run and package/restart/native evidence remain valid evidence; P5 is cancelled and must not be treated as executed or Green.
+
+The mandatory current correction is `c4-synth-coverage-review` at unchanged `0.4.6`.
+
+Its implementation/qualification sequence is:
+1. provider-attempt telemetry and bounded Gemini retry reliability;
+2. source-backed coverage planning plus recovery of responsibilities omitted by initial Subsystem Discovery;
+3. typed Component-descent and coverage diagnostics;
+4. branch-local center-review **Search Deeper** for Systems and Subsystems;
+5. direct browser review correctness qualification;
+6. multi-repository synthesis-quality qualification plus consolidated expensive validation;
+7. evidence-only closeout.
+
+Ordinary implementation prompts continue to follow the <=8-minute target / 10-minute soft ceiling / 15-minute hard budget. Browser/live-provider/multi-repository qualification may exceed that ordinary prompt budget when explicitly assigned T3 work. The synthesis performance gate remains <=8 minutes per controlled initial analysis; it is never implemented as an automatic cancellation timeout.
+
+If `c4-synth-coverage-review` closes Green, route next to a fresh provider-comparison correction, then `c4-smap-storage`. Do not reopen closed correction histories or activate Phase 5 early.

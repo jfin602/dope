@@ -1,6 +1,6 @@
 # Correction 4 Prompt Assessment — Responsibility-oriented sMap Synthesis
 
-Status: **APPROVED / READY**
+Status: **OWNER-CLOSED / NOT QUALIFIED — HISTORICAL ASSESSMENT; P5 UNEXECUTED**
 Correction folder: `c4-synth-improvements`
 Required unchanged package version: `0.4.6`
 Activation source: `8ea34ae1300a387ac63aad9462ae649ac78a9605`
@@ -200,3 +200,9 @@ Audit exact P4 evidence and route Green to a fresh provider-comparison correctio
 The five-prompt stack is appropriate.
 
 Green means the shared pipeline can generate a materially credible responsibility-oriented Adaptive SEO hierarchy through Gemini within the <=8-minute objective, with provenance intact and a readable center-editor developer review. It does not require a specific System/Subsystem count or exact reference names.
+
+## Owner close amendment — 2026-09-30
+
+The five-prompt plan is historical. P1-P3 completed; P4 produced direct Not Green architecture evidence; P5 is cancelled and unexecuted by owner decision.
+
+Do not use this assessment to route to provider comparison. Current routing is through mandatory `c4-synth-coverage-review`.
