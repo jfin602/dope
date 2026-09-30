@@ -219,8 +219,24 @@ Architecture references may be used only after each generated hierarchy is froze
 
 ### Sequencing
 
-Mandatory next correction:
+Historical route at amendment adoption:
 
 `c4-synth-coverage-review` at unchanged `0.4.6`.
 
-If it closes Green, run a fresh bounded provider-comparison correction. Then run `c4-smap-storage`. Product Phase 5 remains blocked until those gates close Green.
+The correction implemented its bounded coverage/review work through P5. P6 was stopped by the developer and pushed at `c059f67a5fd85c81183ba09044e550462c9000a1`; P7 is unexecuted.
+
+## 2026-09-30 owner sequencing amendment — accept synthesis baseline, finish storage
+
+The owner closes `c4-synth-coverage-review` as **Not Qualified** after stopped P6. This is a sequencing disposition, not a Green audit. Its final Adaptive SEO replay reached center review within 445 seconds and produced a materially more useful responsibility hierarchy, but zero useful Components, unresolved source-backed cues, incomplete Dope/small-target qualification and skipped final aggregate/package/native validation remain explicit gaps.
+
+The owner accepts the implemented synthesis/review capability as the bounded baseline so visual-map work is not delayed by diminishing-return benchmark tuning. P7 will not run and missing evidence must not be inferred.
+
+The fresh Local/Gemini provider-comparison correction is deferred off the pre-Phase-5 critical path. It is neither executed nor relabeled Green. It may be revived later when provider optimization or AI Presence creates a concrete need for comparative evidence.
+
+Mandatory next correction:
+
+`c4-smap-storage` at unchanged `0.4.6`.
+
+Storage is intentionally narrow. Existing `.dope/architecture.json` and `.dope/smap.json` contracts should be proven/repaired rather than replaced. Rebuildable evidence packets, Physical Map snapshots/indexes, review drafts, coverage ledgers, provider attempts/caches and targeted-refinement previews remain transient unless a concrete defect requires project persistence.
+
+Storage Green routes directly to a fresh Product Phase 5 `/docs-review`.
