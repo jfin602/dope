@@ -104,16 +104,28 @@ export interface CoverageLedgerEntry {
     evidenceRefs: string[];
     status: 'represented' | 'mapped' | 'unresolved';
     candidateKeys: string[];
+    componentDescents: ComponentDescentDisposition[];
 }
 /** Diagnostic only: a document can annotate a cue, never create or cover one. */
 export function buildCoverageLedger(packet: ArchitectureEvidencePacket, subtrees: readonly SystemSubtree[],
     recoveredKeys: ReadonlySet<string> = new Set()): CoverageLedgerEntry[] {
     const nodes = subtrees.flatMap(tree => tree.nodes.filter(node => node.kind === 'subsystem'));
+    const components = subtrees.flatMap(tree => tree.nodes.filter(node => node.kind === 'component'));
+    const descents = subtrees.flatMap(tree => tree.componentDescents ?? []);
     return deriveResponsibilitySignals(packet.items).map(cue => {
-        const matching = nodes.filter(node => cue.evidenceRefs.some(ref => node.ownershipEvidenceRefs.includes(ref)));
+        const matching = nodes.filter(node => cue.evidenceRefs.some(ref => node.ownershipEvidenceRefs.includes(ref) ||
+            components.some(child => child.parentCandidateKey === node.candidateKey && child.ownershipEvidenceRefs.includes(ref))));
+        const covered = matching.filter(node => {
+            const disposition = descents.find(item => item.subsystemKey === node.candidateKey);
+            return components.some(child => child.parentCandidateKey === node.candidateKey &&
+                cue.evidenceRefs.some(ref => child.ownershipEvidenceRefs.includes(ref))) ||
+                disposition && ['leaf-responsibility', 'no-stable-component-boundary'].includes(disposition.kind) &&
+                cue.evidenceRefs.some(ref => disposition.evidenceRefs.includes(ref));
+        });
         return { cueKey: cue.key, concept: cue.concept, evidenceRefs: cue.evidenceRefs,
-            status: matching.length ? matching.some(node => recoveredKeys.has(node.candidateKey)) ? 'mapped' : 'represented' : 'unresolved',
-            candidateKeys: matching.map(node => node.candidateKey) };
+            status: covered.length ? covered.some(node => recoveredKeys.has(node.candidateKey)) ? 'mapped' : 'represented' : 'unresolved',
+            candidateKeys: matching.map(node => node.candidateKey),
+            componentDescents: descents.filter(item => matching.some(node => node.candidateKey === item.subsystemKey)) };
     });
 }
 export const evidenceSourceArea = (path: string): string => {
@@ -250,8 +262,18 @@ export interface SubtreeCandidate {
 }
 export type SubsystemCandidate = SubtreeCandidate & { kind: 'subsystem' };
 export type ComponentCandidate = SubtreeCandidate & { kind: 'component' };
+export const COMPONENT_DESCENT_KINDS = ['leaf-responsibility', 'insufficient-evidence',
+    'responsibility-belongs-elsewhere', 'no-stable-component-boundary'] as const;
+export interface ComponentDescentDisposition {
+    kind: typeof COMPONENT_DESCENT_KINDS[number];
+    systemKey: string;
+    subsystemKey: string;
+    evidenceRefs: string[];
+    parentPacketFingerprint: string;
+    viewId: string;
+}
 /** Local assembly of challenged Subsystems and their Components; never a provider result. */
-export interface SystemSubtree { systemKey: string; nodes: SubtreeCandidate[] }
+export interface SystemSubtree { systemKey: string; nodes: SubtreeCandidate[]; componentDescents?: ComponentDescentDisposition[] }
 export type ChallengeDecision = {
     action: 'keep' | 'merge' | 'split' | 'reject';
     sourceKeys: string[];
@@ -310,6 +332,7 @@ export interface SubsystemChallengeResult extends StageResultBase {
 }
 export interface ComponentDiscoveryResult extends StageResultBase {
     stage: 'component-discovery'; systemKey: string; subsystemKey: string; components: ComponentCandidate[];
+    disposition?: ComponentDescentDisposition;
 }
 export interface ReconciliationResult extends StageResultBase { stage: 'reconciliation'; findings: SynthesisFinding[]; unresolved: UnresolvedCandidate[] }
 export interface VerificationResult extends StageResultBase { stage: 'verification'; findings: SynthesisFinding[] }
@@ -363,6 +386,10 @@ export const synthesisStageResultSchemas = {
     'component-discovery': { type: 'object', additionalProperties: false,
         required: ['schemaVersion', 'stageVersion', 'parentPacketFingerprint', 'viewId', 'stage', 'systemKey', 'subsystemKey', 'components'],
         properties: { ...base, stage: { const: 'component-discovery' }, systemKey: nonempty, subsystemKey: nonempty,
+            disposition: { type: 'object', additionalProperties: false,
+                required: ['kind', 'systemKey', 'subsystemKey', 'evidenceRefs', 'parentPacketFingerprint', 'viewId'],
+                properties: { kind: { enum: COMPONENT_DESCENT_KINDS }, systemKey: nonempty, subsystemKey: nonempty,
+                    evidenceRefs: { ...refs, minItems: 1 }, parentPacketFingerprint: nonempty, viewId: nonempty } },
             components: { type: 'array', items: { ...subtreeNode, properties: { ...subtreeNode.properties, kind: { const: 'component' } } } } } },
     reconciliation: { type: 'object', additionalProperties: false,
         required: ['schemaVersion', 'stageVersion', 'parentPacketFingerprint', 'viewId', 'stage', 'findings', 'unresolved'],
@@ -455,8 +482,24 @@ function lowerNodes(values: unknown, kind: 'subsystem' | 'component', parent: st
     strings(nodes.map(node => node.candidateKey), `${at} candidate keys`);
     return nodes;
 }
+function validateDescent(value: unknown, systemKey: string, parent: SubsystemCandidate,
+    allowed: Set<string>, packet: ArchitectureEvidencePacket, viewId: string): ComponentDescentDisposition {
+    exact(value, synthesisStageResultSchemas['component-discovery'].properties.disposition.required, 'Component disposition');
+    const item = value as ComponentDescentDisposition;
+    if (!COMPONENT_DESCENT_KINDS.includes(item.kind) || item.systemKey !== systemKey ||
+        item.subsystemKey !== parent.candidateKey || item.parentPacketFingerprint !== packet.inputFingerprint ||
+        item.viewId !== viewId) invalid('Component disposition parent/identity/kind');
+    evidence(item.evidenceRefs, allowed, 'Component disposition evidence');
+    if (!item.evidenceRefs.some(ref => {
+        const fact = packet.items.find(candidate => candidate.id === ref)!;
+        return parent.ownershipEvidenceRefs.includes(ref) && (item.kind !== 'leaf-responsibility' ||
+            !/\.(?:md|mdx)$/i.test(fact.path) && isDirectSystemResponsibilityEvidence(fact));
+    }))
+        invalid('Component disposition requires parent implementation evidence');
+    return item;
+}
 function subtree(value: SystemSubtree, systemKey: string, allowed: Set<string>, packet: ArchitectureEvidencePacket, at: string): void {
-    exact(value, ['systemKey', 'nodes'], at);
+    exact(value, ['systemKey', 'nodes', ...(value.componentDescents === undefined ? [] : ['componentDescents'])], at);
     if (value.systemKey !== systemKey || !Array.isArray(value.nodes)) invalid(`${at} System/nodes`);
     const subsystems = value.nodes.filter(node => node.kind === 'subsystem');
     lowerNodes(subsystems, 'subsystem', systemKey, allowed, packet, `${at}.subsystems`);
@@ -464,6 +507,16 @@ function subtree(value: SystemSubtree, systemKey: string, allowed: Set<string>, 
         node.parentCandidateKey === subsystem.candidateKey), 'component', subsystem.candidateKey, allowed, packet, `${at}.components`);
     if (value.nodes.some(node => node.kind !== 'subsystem' && node.kind !== 'component' ||
         node.kind === 'component' && !subsystems.some(parent => parent.candidateKey === node.parentCandidateKey))) invalid(`${at} parent`);
+    if (value.componentDescents !== undefined) {
+        if (!Array.isArray(value.componentDescents)) invalid(`${at} descents`);
+        strings(value.componentDescents.map(item => item.subsystemKey), `${at} descent keys`);
+        for (const descent of value.componentDescents) {
+            const parent = subsystems.find(node => node.candidateKey === descent.subsystemKey);
+            if (!parent || value.nodes.some(node => node.kind === 'component' && node.parentCandidateKey === parent.candidateKey))
+                invalid(`${at} descent parent/components`);
+            validateDescent(descent, systemKey, parent as SubsystemCandidate, allowed, packet, descent.viewId);
+        }
+    }
     strings(value.nodes.map(node => node.candidateKey), `${at} candidate keys`);
 }
 function candidateIndex(context: SynthesisStageContext): Set<string> {
@@ -549,7 +602,8 @@ export function parseSynthesisStageResult(input: unknown, request: SynthesisStag
     validateSynthesisStageRequest(request, packet);
     const data = record(input, 'result');
     const schema = synthesisStageResultSchemas[request.stage];
-    exact(data, [...schema.required, ...(request.stage === 'subsystem-challenge' && data.recovered !== undefined ? ['recovered'] : [])], 'result');
+    exact(data, [...schema.required, ...(request.stage === 'subsystem-challenge' && data.recovered !== undefined ? ['recovered'] : []),
+        ...(request.stage === 'component-discovery' && data.disposition !== undefined ? ['disposition'] : [])], 'result');
     if (data.schemaVersion !== 1 || data.stageVersion !== SYNTHESIS_STAGE_VERSION || data.stage !== request.stage ||
         data.parentPacketFingerprint !== packet.inputFingerprint || data.viewId !== request.view.viewId) invalid('result stage/identity');
     const allowed = new Set(request.view.items.map(item => item.id));
@@ -632,6 +686,11 @@ export function parseSynthesisStageResult(input: unknown, request: SynthesisStag
         if (data.systemKey !== request.context.subjectSystemKey || data.subsystemKey !== request.context.subjectSubsystemKey)
             invalid('Component Discovery parent');
         const nodes = lowerNodes(data.components, 'component', data.subsystemKey as string, allowed, packet, 'result components');
+        if (!nodes.length !== (data.disposition !== undefined)) invalid('Component Discovery empty result disposition');
+        if (data.disposition !== undefined) {
+            const parent = request.context.subsystems.find(item => item.candidateKey === data.subsystemKey)!;
+            validateDescent(data.disposition, data.systemKey as string, parent, allowed, packet, request.view.viewId);
+        }
         if (nodes.some(node => request.context.systems.some(system => system.candidateKey === node.candidateKey) ||
             request.context.subsystems.some(subsystem => subsystem.candidateKey === node.candidateKey))) invalid('Component key reuses ancestor');
     } else {

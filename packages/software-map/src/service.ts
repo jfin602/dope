@@ -55,6 +55,7 @@ export interface ArchitectureReview {
     proposal: ArchitectureProposal;
     draft: ArchitectureReviewNode[];
     coverageLedger?: import('./hierarchical-synthesis').CoverageLedgerEntry[];
+    componentDescents?: import('./hierarchical-synthesis').ComponentDescentDisposition[];
 }
 export type SynthesisSetup = { kind: 'local'; endpoint?: string; token?: string; contextWindowTokens?: number } |
     { kind: 'gemini'; apiKey?: string };

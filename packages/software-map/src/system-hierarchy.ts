@@ -40,5 +40,6 @@ export async function discoverSystemHierarchy(packet: ArchitectureEvidencePacket
             { plan: EvidencePlan; result: ComponentDiscoveryResult });
     }
     return { discovery, challenge, components, tree: { systemKey,
-        nodes: [...subsystems, ...components.flatMap(pass => pass.result.components)] } };
+        nodes: [...subsystems, ...components.flatMap(pass => pass.result.components)],
+        componentDescents: components.flatMap(pass => pass.result.disposition ? [pass.result.disposition] : []) } };
 }

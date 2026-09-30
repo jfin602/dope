@@ -8,7 +8,7 @@ import type { ReconciliationResult, SubsystemCandidate, SubsystemDiscoveryResult
     SynthesisStage, SynthesisStageContext, SynthesisStageRequest, SynthesisStageResult, SystemCandidate,
     SystemChallengeResult, SystemDiscoveryResult, VerificationResult, SynthesisIssueCode } from './hierarchical-synthesis';
 
-export const SYNTHESIS_PROMPT_VERSION = 5;
+export const SYNTHESIS_PROMPT_VERSION = 6;
 export const MAX_VERIFICATION_CALLS = 2;
 export const MAX_VERIFICATION_TARGETS = 4;
 export const MAX_EVIDENCE_REFINEMENT_ROUNDS = 2;
@@ -32,6 +32,7 @@ export interface HierarchicalAnalysis {
     findings: SynthesisFinding[];
     verificationCalls: number;
     coverageLedger: import('./hierarchical-synthesis').CoverageLedgerEntry[];
+    componentDescents: import('./hierarchical-synthesis').ComponentDescentDisposition[];
 }
 
 /** Exact serialized identity avoids hash collisions; cached values are always revalidated against the parent packet. */
@@ -372,17 +373,24 @@ export class HierarchicalSynthesisOrchestrator {
                 ...(challenged.recovered ?? []).map(item => item.subsystem)];
             for (const item of challenged.recovered ?? []) recoveredKeys.add(item.subsystem.candidateKey);
             const nodes: SystemSubtree['nodes'] = [...subsystems];
+            const componentDescents: NonNullable<SystemSubtree['componentDescents']> = [];
             componentCompleted = 0; componentTotal = subsystems.length;
             for (const subsystem of subsystems) {
                 const components = (await run('component-discovery', context(systems, [], system.candidateKey, [],
                     subsystems, subsystem.candidateKey, challenged))).result as ComponentDiscoveryResult;
                 nodes.push(...components.components);
+                if (components.disposition) componentDescents.push(components.disposition);
             }
-            subtrees.push({ systemKey: system.candidateKey, nodes });
+            subtrees.push({ systemKey: system.candidateKey, nodes, componentDescents });
         }
         const structural = detectReconciliationConflicts(packet, systems, subtrees);
+        const descentFindings: SynthesisFinding[] = subtrees.flatMap(tree => (tree.componentDescents ?? [])
+            .filter(item => item.kind !== 'leaf-responsibility').map(item => ({
+                candidateKeys: [item.subsystemKey], evidenceRefs: item.evidenceRefs, status: 'uncertain' as const,
+                code: item.kind === 'insufficient-evidence' ? 'insufficient-evidence' as const :
+                    item.kind === 'responsibility-belongs-elsewhere' ? 'outside-system' as const : 'unclear-subdivision' as const })));
         const reconciliation: ReconciliationResult = structural.length || systems.some(system => system.ambiguityCodes.length) ||
-            subtrees.some(tree => tree.nodes.some(node => node.ambiguityCodes.length))
+            descentFindings.length || subtrees.some(tree => tree.nodes.some(node => node.ambiguityCodes.length))
             ? (await run('reconciliation', context(systems, subtrees))).result as ReconciliationResult
             : { schemaVersion: 1, stageVersion: SYNTHESIS_STAGE_VERSION, parentPacketFingerprint: packet.inputFingerprint,
                 viewId: 'deterministic:no-conflicts', stage: 'reconciliation' as const, findings: [], unresolved: [] };
@@ -390,12 +398,12 @@ export class HierarchicalSynthesisOrchestrator {
             emit('reconciliation', 'started', 'Reconciling architecture');
             emit('reconciliation', 'completed', 'No cross-System conflicts found');
         }
-        const findings = [...structural, ...reconciliation.findings];
+        const findings = [...structural, ...reconciliation.findings, ...descentFindings];
         const pendingFindings = findings.filter(item => item.status !== 'supported');
         const unresolved = unique([...reconciliation.unresolved.map(item => item.candidateKey),
             ...pendingFindings.flatMap(item => item.candidateKeys)]);
         const verifications: VerificationResult[] = [];
-        const groups = pendingFindings.filter(item => item.candidateKeys.length <= MAX_VERIFICATION_TARGETS &&
+        const groups = pendingFindings.filter(item => !descentFindings.includes(item) && item.candidateKeys.length <= MAX_VERIFICATION_TARGETS &&
             item.candidateKeys.some(key => unresolved.includes(key)))
             .slice(0, MAX_VERIFICATION_CALLS);
         verificationTotal = groups.length;
@@ -404,7 +412,8 @@ export class HierarchicalSynthesisOrchestrator {
             const targetKeys = new Set(group.candidateKeys);
             const scopedTrees = subtrees.filter(tree => tree.nodes.some(node => targetKeys.has(node.candidateKey)))
                 .map(tree => ({ ...tree, nodes: tree.nodes.filter(node => targetKeys.has(node.candidateKey) ||
-                    tree.nodes.some(child => targetKeys.has(child.candidateKey) && child.parentCandidateKey === node.candidateKey)) }));
+                    tree.nodes.some(child => targetKeys.has(child.candidateKey) && child.parentCandidateKey === node.candidateKey)),
+                    componentDescents: tree.componentDescents?.filter(item => targetKeys.has(item.subsystemKey)) }));
             const scopedSystems = systems.filter(system => targetKeys.has(system.candidateKey) ||
                 scopedTrees.some(tree => tree.systemKey === system.candidateKey));
             const verificationContext = { ...context(scopedSystems, scopedTrees, null, group.candidateKeys),
@@ -435,6 +444,7 @@ export class HierarchicalSynthesisOrchestrator {
         this.checkpoint();
         record({ operation: 'assembly', durationMs: performance.now() - start, reused: false });
         return { proposal, timings, findings, verificationCalls: verifications.length,
-            coverageLedger: buildCoverageLedger(packet, subtrees, recoveredKeys) };
+            coverageLedger: buildCoverageLedger(packet, subtrees, recoveredKeys),
+            componentDescents: subtrees.flatMap(tree => tree.componentDescents ?? []) };
     }
 }

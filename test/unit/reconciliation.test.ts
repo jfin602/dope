@@ -233,7 +233,11 @@ test('orchestrator caps targeted verification, preserves uncertainty and assembl
           decisions: req.context.subsystems.map(node => ({ action: 'keep', sourceKeys: [node.candidateKey],
             subsystems: [node], evidenceRefs: node.evidenceRefs })) });
         case 'component-discovery': return executed(req, { systemKey: req.context.subjectSystemKey,
-          subsystemKey: req.context.subjectSubsystemKey, components: [] });
+          subsystemKey: req.context.subjectSubsystemKey, components: [],
+          disposition: { kind: 'insufficient-evidence', systemKey: req.context.subjectSystemKey,
+            subsystemKey: req.context.subjectSubsystemKey, evidenceRefs: req.context.subsystems.find(node =>
+              node.candidateKey === req.context.subjectSubsystemKey)!.ownershipEvidenceRefs.slice(0, 1),
+            parentPacketFingerprint: req.parentPacketFingerprint, viewId: req.view.viewId } });
         case 'reconciliation': return executed(req, { findings: [{ candidateKeys: ['candidate:a', 'candidate:b'],
           evidenceRefs: ['cross'], status: 'uncertain', code: 'boundary-overlap' }],
           unresolved: [{ candidateKey: 'candidate:a', code: 'boundary-overlap' }, { candidateKey: 'candidate:b', code: 'boundary-overlap' }] });
@@ -285,7 +289,11 @@ test('clear boundaries skip reconciliation and verification model calls', async 
         decisions: req.context.subsystems.map(node => ({ action: 'keep', sourceKeys: [node.candidateKey],
           subsystems: [node], evidenceRefs: node.evidenceRefs })) });
       if (req.stage === 'component-discovery') return executed(req, { systemKey: req.context.subjectSystemKey,
-        subsystemKey: req.context.subjectSubsystemKey, components: [] });
+        subsystemKey: req.context.subjectSubsystemKey, components: [],
+        disposition: { kind: 'leaf-responsibility', systemKey: req.context.subjectSystemKey,
+          subsystemKey: req.context.subjectSubsystemKey, evidenceRefs: req.context.subsystems.find(node =>
+            node.candidateKey === req.context.subjectSubsystemKey)!.ownershipEvidenceRefs.slice(0, 1),
+          parentPacketFingerprint: req.parentPacketFingerprint, viewId: req.view.viewId } });
       throw new Error(`Unexpected ${req.stage}`);
     },
   };
@@ -294,4 +302,50 @@ test('clear boundaries skip reconciliation and verification model calls', async 
   assert.deepEqual(analyzed.proposal.openQuestions, []);
   assert.deepEqual(calls, ['system-discovery', 'system-challenge', 'subsystem-discovery', 'subsystem-challenge',
     'component-discovery', 'subsystem-discovery', 'subsystem-challenge', 'component-discovery']);
+});
+
+test('typed zero descents survive reconciliation, coverage and final review without invented Components', async () => {
+  const clean: ArchitectureEvidencePacket = { ...packet, inputFingerprint: 'descent',
+    items: packet.items.filter(item => item.id === 'a' || item.id === 'b') };
+  for (const kind of ['leaf-responsibility', 'insufficient-evidence', 'responsibility-belongs-elsewhere',
+    'no-stable-component-boundary'] as const) {
+    let reconciled = false;
+    const provider: SynthesisProvider = { kind: 'local',
+      capabilities: async () => ({ modelLabel: 'model', contextWindowTokens: 100000, maxInputTokens: 90000,
+        reservedInstructionTokens: 1000, reservedOutputTokens: 2000, reservedOverheadTokens: 1000,
+        tokenEstimate: 'conservative' }),
+      estimateTokens: async input => input.length,
+      runStage: async req => {
+        if (req.stage === 'system-discovery') return executed(req, { systems });
+        if (req.stage === 'system-challenge') return executed(req, { decisions: systems.map(item => ({
+          action: 'keep', sourceKeys: [item.candidateKey], systems: [item], evidenceRefs: item.evidenceRefs })) });
+        if (req.stage === 'subsystem-discovery') return executed(req, { systemKey: req.context.subjectSystemKey,
+          subsystems: tree(req.context.subjectSystemKey!, req.context.subjectSystemKey === 'candidate:a' ? 'a' : 'b').nodes });
+        if (req.stage === 'subsystem-challenge') return executed(req, { systemKey: req.context.subjectSystemKey,
+          decisions: req.context.subsystems.map(item => ({ action: 'keep', sourceKeys: [item.candidateKey],
+            subsystems: [item], evidenceRefs: item.evidenceRefs })) });
+        if (req.stage === 'component-discovery') return executed(req, { systemKey: req.context.subjectSystemKey,
+          subsystemKey: req.context.subjectSubsystemKey, components: [],
+          disposition: { kind: req.context.subjectSystemKey === 'candidate:a' ? kind : 'leaf-responsibility',
+            systemKey: req.context.subjectSystemKey, subsystemKey: req.context.subjectSubsystemKey,
+            evidenceRefs: req.context.subsystems[0].ownershipEvidenceRefs,
+            parentPacketFingerprint: req.parentPacketFingerprint, viewId: req.view.viewId } });
+        if (req.stage === 'reconciliation') {
+          reconciled = true;
+          assert.ok(req.context.subtrees.some(item => item.componentDescents?.some(descent => descent.kind === kind)));
+          return executed(req, { findings: [], unresolved: [] });
+        }
+        throw new Error(`Unexpected ${req.stage}`);
+      },
+    };
+    const analyzed = await new HierarchicalSynthesisOrchestrator(provider, `descent:${kind}`).analyze(clean);
+    assert.equal(reconciled, kind !== 'leaf-responsibility');
+    assert.equal(analyzed.proposal.nodes.some(node => node.kind === 'component'), false);
+    assert.ok(analyzed.coverageLedger.some(item => item.componentDescents.some(descent => descent.kind === kind)));
+    if (kind === 'leaf-responsibility') assert.deepEqual(analyzed.proposal.openQuestions, []);
+    else {
+      assert.ok(analyzed.proposal.openQuestions.some(question => question.includes('sub')));
+      assert.ok(analyzed.findings.some(item => item.candidateKeys.includes('candidate:a.sub')));
+    }
+  }
 });

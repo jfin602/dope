@@ -246,7 +246,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
                 localProvider?.endpoint ?? provider.kind, undefined, undefined, emit,
                 () => this.still(projectHandle, root, run), localProvider ? () => localProvider.warmUp() : undefined,
                 this.synthesisCache);
-            const { proposal, coverageLedger } = await orchestrator.analyze(packet);
+            const { proposal, coverageLedger, componentDescents } = await orchestrator.analyze(packet);
             this.still(projectHandle, root, run);
             emit({ stage: 'preparing-review', status: 'started', elapsedMs: 0, message: 'Preparing sMap for review' });
             if ((await readInitialization(root)).declarationFingerprint !== fingerprint) throw new Error('Stale Software Map architecture declaration');
@@ -262,12 +262,12 @@ export class SoftwareMapBackend implements SoftwareMapService {
             });
             this.still(projectHandle, root, run);
             const reviewId = randomUUID();
-            this.pending = { reviewId, packet, proposal, draft, coverageLedger, fingerprint };
+            this.pending = { reviewId, packet, proposal, draft, coverageLedger, componentDescents, fingerprint };
             this.phase = 'review_required';
             this.analysisStarted = undefined;
             emit({ stage: 'preparing-review', status: 'completed', elapsedMs: 0, message: 'Validated review ready' });
             emit({ stage: 'completed', status: 'completed', elapsedMs: 0, message: 'Analysis complete' });
-            return structuredClone({ reviewId, packet, proposal, draft });
+            return structuredClone({ reviewId, packet, proposal, draft, coverageLedger, componentDescents });
         } catch (error) {
             if (this.run === run) {
                 this.phase = undefined; this.pending = undefined;
@@ -282,8 +282,8 @@ export class SoftwareMapBackend implements SoftwareMapService {
     async review(projectHandle: string): Promise<ArchitectureReview | undefined> {
         this.active(projectHandle);
         if (!this.pending) return undefined;
-        const { reviewId, packet, proposal, draft, coverageLedger } = this.pending;
-        return structuredClone({ reviewId, packet, proposal, draft, coverageLedger });
+        const { reviewId, packet, proposal, draft, coverageLedger, componentDescents } = this.pending;
+        return structuredClone({ reviewId, packet, proposal, draft, coverageLedger, componentDescents });
     }
     async resolveReviewSource(projectHandle: string, reviewId: string, evidenceRef: string) {
         const root = this.active(projectHandle);

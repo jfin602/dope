@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { discoverSystemHierarchy, planArchitectureEvidence, parseSynthesisStageResult,
-  stageWorkIdentity, synthesisStageResultSchemas } from '../../packages/software-map/lib/index.js';
+  stageWorkIdentity, synthesisStageResultSchemas, buildCoverageLedger,
+  assembleArchitectureProposal } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidencePacket, SubsystemCandidate, SynthesisProvider, SynthesisStageContext,
   SynthesisStageRequest, SystemCandidate } from '../../packages/software-map/lib/index.js';
 
@@ -137,4 +138,64 @@ test('Component parent escape and old combined result fail closed', async () => 
     nodes: [frontend, component], subdivisionAssessment: { confidence: .8, ambiguityCodes: [] } }), discovery.request, packet));
   await assert.rejects(planArchitectureEvidence(packet, 'component-discovery', context([orders], orders.candidateKey),
     capability, counter), /challenged Subsystem/);
+});
+
+test('empty Component descent requires one source-backed typed disposition for its exact parent and view', async () => {
+  const challengePlan = await planArchitectureEvidence(packet, 'subsystem-challenge', context([frontend, backend, platform]), capability, counter);
+  const challengedBy = parseSynthesisStageResult(result(challengePlan.request,
+    { systemKey: system.candidateKey, decisions }), challengePlan.request, packet);
+  assert.equal(challengedBy.stage, 'subsystem-challenge');
+  const plan = await planArchitectureEvidence(packet, 'component-discovery',
+    { ...context([orders, platform], orders.candidateKey), challengedBy }, capability, counter);
+  const fields = { systemKey: system.candidateKey, subsystemKey: orders.candidateKey, components: [] };
+  const disposition = { kind: 'leaf-responsibility', systemKey: system.candidateKey,
+    subsystemKey: orders.candidateKey, evidenceRefs: ['server'],
+    parentPacketFingerprint: packet.inputFingerprint, viewId: plan.request.view.viewId };
+  assert.throws(() => parseSynthesisStageResult(result(plan.request, fields), plan.request, packet), /disposition/);
+  for (const kind of ['leaf-responsibility', 'insufficient-evidence', 'responsibility-belongs-elsewhere',
+    'no-stable-component-boundary']) {
+    const descent = { ...disposition, kind };
+    assert.equal((parseSynthesisStageResult(result(plan.request, { ...fields, disposition: descent }),
+      plan.request, packet) as any).disposition.kind, kind);
+    const ledger = buildCoverageLedger(packet, [{ systemKey: system.candidateKey, nodes: [orders],
+      componentDescents: [descent as any] }]);
+    assert.ok(ledger.some(item => item.componentDescents.some(descent => descent.kind === kind) &&
+      item.candidateKeys.includes(orders.candidateKey)));
+    if (kind === 'insufficient-evidence' || kind === 'responsibility-belongs-elsewhere')
+      assert.ok(ledger.some(item => item.componentDescents.some(descent => descent.kind === kind) && item.status === 'unresolved'));
+    else assert.ok(ledger.some(item => item.componentDescents.some(descent => descent.kind === kind) &&
+      item.status === 'represented'));
+  }
+  for (const bad of [
+    { ...disposition, subsystemKey: platform.candidateKey },
+    { ...disposition, systemKey: 'candidate:foreign' },
+    { ...disposition, viewId: 'view:foreign' },
+    { ...disposition, evidenceRefs: ['fabricated'] },
+    { ...disposition, evidenceRefs: ['platform'] },
+    { ...disposition, evidenceRefs: ['other'] },
+    { ...disposition, evidenceRefs: ['server'], rationale: 'unsupported prose' },
+  ]) assert.throws(() => parseSynthesisStageResult(result(plan.request, { ...fields, disposition: bad }), plan.request, packet));
+  assert.throws(() => parseSynthesisStageResult(result(plan.request, { ...fields,
+    components: [{ candidateKey: 'candidate:unit', kind: 'component', parentCandidateKey: orders.candidateKey,
+      name: 'Unit', responsibility: 'Process orders', confidence: .8, ambiguityCodes: [],
+      evidenceRefs: ['server'], ownershipEvidenceRefs: ['server'] }], disposition }), plan.request, packet), /disposition/);
+  const documented = { ...packet, documents: [{ path: 'MODULES.md', class: 'modules-seed' as const,
+    authority: 'Documented' as const, status: 'accepted' as const, sha256: 'a'.repeat(64), bytes: 6,
+    truncated: false, content: 'Orders are a leaf Subsystem' }] };
+  assert.throws(() => parseSynthesisStageResult(result(plan.request, { ...fields,
+    disposition: { ...disposition, evidenceRefs: ['MODULES.md'] } }), plan.request, packet));
+  const unproven = buildCoverageLedger(documented, [{ systemKey: system.candidateKey, nodes: [orders],
+    componentDescents: [{ ...disposition, kind: 'insufficient-evidence' }] }]);
+  assert.ok(unproven.some(item => item.status === 'unresolved' &&
+    item.componentDescents.some(descent => descent.kind === 'insufficient-evidence')));
+  const forged = { ...documented, items: [...documented.items, { id: 'modules', kind: 'semantic' as const,
+    path: 'MODULES.md', symbol: 'Orders', relation: 'class:exported', sourceEvidenceIds: ['source:modules'] }] };
+  const docParent = subsystem('documented', ['modules']);
+  assert.throws(() => assembleArchitectureProposal({ parentPacketFingerprint: forged.inputFingerprint,
+    summary: 'Documented architecture', systems: [system], subtrees: [{ systemKey: system.candidateKey,
+      nodes: [docParent], componentDescents: [{ ...disposition, subsystemKey: docParent.candidateKey,
+        evidenceRefs: ['modules'] }] }],
+    reconciliation: { schemaVersion: 1, stageVersion: 3, stage: 'reconciliation',
+      parentPacketFingerprint: forged.inputFingerprint, viewId: 'view:fixture', findings: [], unresolved: [] },
+    verifications: [] }, forged), /parent implementation evidence/);
 });

@@ -57,7 +57,11 @@ test('local adapter runs one structured per-System call and declares serial gene
         sourceKeys: [node.candidateKey], subsystems: [node], evidenceRefs: node.evidenceRefs })) })));
     if (sent.stage === 'component-discovery') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 3,
       stage: sent.stage, parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId,
-      systemKey: sent.context.subjectSystemKey, subsystemKey: sent.context.subjectSubsystemKey, components: [] })));
+      systemKey: sent.context.subjectSystemKey, subsystemKey: sent.context.subjectSubsystemKey, components: [],
+      disposition: { kind: 'leaf-responsibility', systemKey: sent.context.subjectSystemKey,
+        subsystemKey: sent.context.subjectSubsystemKey, evidenceRefs: sent.context.subsystems.find(node =>
+          node.candidateKey === sent.context.subjectSubsystemKey)!.ownershipEvidenceRefs.slice(0, 1),
+        parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId } })));
     json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 3, stage: 'subsystem-discovery',
       parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId, systemKey: sent.context.subjectSystemKey,
       subsystems: [] })));

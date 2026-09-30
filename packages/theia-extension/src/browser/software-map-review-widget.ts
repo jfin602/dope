@@ -93,6 +93,13 @@ export class SoftwareMapReviewWidget extends BaseWidget {
                 coverage.append(this.button(item?.path ?? ref, () => void this.openSource(ref)));
             }
         }
+        for (const descent of review.componentDescents ?? []) {
+            coverage.append(this.element('p', `${descent.subsystemKey}: ${descent.kind}`));
+            for (const ref of descent.evidenceRefs) {
+                const item = review.packet.items.find(fact => fact.id === ref);
+                coverage.append(this.button(item?.path ?? ref, () => void this.openSource(ref)));
+            }
+        }
         const layout = this.element('div'); layout.className = 'dope-smap-review-layout';
         const tree = this.element('nav'); tree.setAttribute('aria-label', 'Architecture hierarchy');
         tree.append(this.element('h3', 'Proposed hierarchy'));

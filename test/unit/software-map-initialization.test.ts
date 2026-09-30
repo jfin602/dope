@@ -54,7 +54,11 @@ const fakeProvider = (observe?: (request: SynthesisStageRequest) => Promise<void
       decisions: request.context.subsystems.map(node => ({ action: 'keep', sourceKeys: [node.candidateKey],
         subsystems: [node], evidenceRefs: node.evidenceRefs })) });
     if (request.stage === 'component-discovery') return execution(request, { systemKey: request.context.subjectSystemKey,
-      subsystemKey: request.context.subjectSubsystemKey, components: [] });
+      subsystemKey: request.context.subjectSubsystemKey, components: [],
+      disposition: { kind: 'leaf-responsibility', systemKey: request.context.subjectSystemKey,
+        subsystemKey: request.context.subjectSubsystemKey, evidenceRefs: request.context.subsystems.find(node =>
+          node.candidateKey === request.context.subjectSubsystemKey)!.ownershipEvidenceRefs.slice(0, 1),
+        parentPacketFingerprint: request.parentPacketFingerprint, viewId: request.view.viewId } });
     if (request.stage === 'reconciliation') return execution(request, { findings: [], unresolved: [] });
     return execution(request, { findings: [] });
   },
@@ -130,6 +134,8 @@ test('generated review stays transient, rejects invalid/stale drafts, then accep
     const handle = await attach(service, root);
     const review = await service.startInitialization(handle);
     assert.equal((await service.initializationStatus(handle)).state, 'review_required');
+    assert.ok(review.componentDescents?.some(item => item.kind === 'leaf-responsibility'));
+    assert.deepEqual((await service.review(handle))?.componentDescents, review.componentDescents);
     const sourceFact = review.packet.items.find((item: any) => item.path === 'src/api/a.ts');
     assert.ok(sourceFact);
     assert.equal((await service.resolveReviewSource(handle, review.reviewId, sourceFact.id))?.path, 'src/api/a.ts');
