@@ -69,4 +69,4 @@ Use one controlled repository/fixture:
 
 Green means durable Software Map truth demonstrably follows repository + `.dope/`, not machine-local state, with focused regression protection and Dope itself carrying a valid accepted marker.
 
-Then route directly to a fresh Product Phase 5 `/docs-review`.
+Then route to the bounded Dope logo-palette/application-color alignment step. After that visual-identity alignment is complete, route to a fresh Product Phase 5 `/docs-review`.
