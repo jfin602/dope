@@ -1,6 +1,6 @@
 # Correction 4 — sMap Synthesis Improvements
 
-Status: **APPROVED / QUEUED**
+Status: **APPROVED / PROMPT STACK READY**
 Correction folder: `c4-synth-improvements`
 Required unchanged version: `0.4.6`
 Activation source: `8ea34ae1300a387ac63aad9462ae649ac78a9605`
@@ -17,13 +17,15 @@ The Adaptive SEO Gemini result is diagnostic evidence, not an answer key:
 - Backend/Frontend Subsystems are materially weak;
 - stronger responsibilities span client/server/worker/persistence/delivery boundaries.
 
-## Intended stack
+## Stack
 
-1. responsibility-oriented deterministic planning + stronger System support;
-2. Subsystem-only discovery + bounded Subsystem Challenge + Component descent;
-3. orchestration/reconciliation updates + center-editor tree review;
-4. real Gemini Adaptive SEO requalification and consolidated expensive checks;
-5. evidence-only closeout.
+| Prompt | Work | Model | Browser/live provider |
+| --- | --- | --- | --- |
+| P1 | responsibility-oriented deterministic planning + stronger System support | GPT-6 Sol High | no |
+| P2 | Subsystem-only discovery + Subsystem Challenge + Component descent | GPT-6 Sol High | no |
+| P3 | hierarchy orchestration/reconciliation + center-editor review | GPT-6 Sol High | no |
+| P4 | real Gemini Adaptive SEO responsibility-hierarchy qualification + consolidated expensive checks | GPT-6 Sol High | yes |
+| P5 | evidence-only closeout | GPT-6 Sol High | no live reruns |
 
 All prompts keep package version exactly `0.4.6`.
 
