@@ -116,7 +116,7 @@ ROUTING
 
 If every mandatory gate is Green:
 - close `c4-smap-storage` Green/Qualified;
-- route directly to a fresh Product Phase 5 `/docs-review`.
+- route to the bounded Dope logo-palette/application-color alignment step; after that is complete, route to a fresh Product Phase 5 `/docs-review`.
 
 If any mandatory gate is Not Green/Evidence Gap:
 - keep Phase 5 blocked;
