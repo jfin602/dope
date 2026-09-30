@@ -67,4 +67,4 @@ Green requires:
 - restart/package/project isolation remain coherent;
 - version remains `0.4.6`.
 
-After Green closeout, route to `c4-smap-storage`, not directly to Phase 5.
+ADR 0013 supersedes this stack's unexecuted P8/P9 qualification/closeout route. From the completed P7 implementation baseline, route to `c4-smap-gemini-provider`; only that successor's Green closeout may route to `c4-smap-storage`.
