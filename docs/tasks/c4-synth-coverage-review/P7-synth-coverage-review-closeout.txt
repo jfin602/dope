@@ -18,7 +18,7 @@ Perform an evidence-only closeout of `c4-synth-coverage-review` and decide wheth
 
 PREFLIGHT
 
-Read BOOT/AGENTS, ADR 0008-0014, current architecture/product/roadmap/workflow, this correction assessment/plan/README, every P1-P6 prompt/result, P5 review evidence and P6 multi-repository evidence.
+Read BOOT/AGENTS, ADR 0008-0015, current architecture/product/roadmap/workflow, this correction assessment/plan/README, every P1-P6 prompt/result, P5 review evidence and P6 multi-repository evidence.
 
 Require:
 - exact P6 candidate identity;
@@ -39,13 +39,20 @@ A. **Provider attempt retention and retry**
 - invalid JSON/schema/content is not hidden by retry;
 - no secret/raw error leakage.
 
-B. **README/document authority**
-- root README is direct bounded initial orientation when present;
+B. **MODULES/README bootstrap and document authority**
+- root MODULES is the preferred optional Documented architecture seed when present;
+- MODULES + README preserves README as secondary orientation;
+- missing MODULES + README exposes recommendation + Continue with README and succeeds;
+- neither file exposes recommendation + Analyze repository anyway and succeeds;
+- portable Prepare this repository for Dope prompt is bounded to MODULES creation/no application-code edits;
+- root README remains bounded project orientation;
 - absence is supported;
 - oversized policy/cache identity is deterministic;
 - broader docs carry provenance/classification;
 - Observed / Documented / Inferred remain distinct;
 - documentation-only claims cannot establish physical boundaries;
+- conflicting MODULES cannot suppress source-backed implementation;
+- after explicit acceptance `.dope/architecture.json` remains canonical and ordinary refresh does not silently re-import later MODULES edits;
 - historical/qualification/answer-key material is excluded.
 
 C. **Coverage planner / ledger**
@@ -109,7 +116,8 @@ J. **Regression / restart / package / phase boundary**
 - package remained `0.4.6`;
 - no root package-lock;
 - provider comparison/storage/Phase 5 were not pulled forward;
-- no Local-only architecture semantics, provider ensemble, general Agent Runtime or benchmark dictionary was introduced.
+- no Local-only architecture semantics, provider ensemble, general Agent Runtime or benchmark dictionary was introduced;
+- no automatic MODULES/canonical bidirectional synchronization was introduced.
 
 CLOSEOUT INTEGRITY CHECKS
 
@@ -129,7 +137,7 @@ Write `docs/tasks/c4-synth-coverage-review/closeout.md` containing:
 - exact candidate/package;
 - A-J gate table;
 - provider attempt/retry summary;
-- README/document evidence result;
+- MODULES/README/bootstrap-document evidence and no-drift handoff result;
 - coverage/recovery summary;
 - typed Component-descent summary;
 - Search Deeper/browser result;
