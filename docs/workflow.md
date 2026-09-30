@@ -282,17 +282,19 @@ It does not owner-close future product phases or qualify future model/provider i
 
 The owner closes `c4-synth-improvements` early after P4 as **Not Qualified**. P4's real Gemini run and package/restart/native evidence remain valid evidence; P5 is cancelled and must not be treated as executed or Green.
 
-The mandatory current correction is `c4-synth-coverage-review` at unchanged `0.4.6`.
+The successor `c4-synth-coverage-review` implemented provider-attempt retention/retry handling, MODULES/README document authority, coverage diagnostics/recovery, typed zero-Component dispositions, and branch-local **Search Deeper**, then directly qualified the center review in P5. P6 was stopped at the developer's request and pushed as `c059f67a5fd85c81183ba09044e550462c9000a1`.
 
-Its implementation/qualification sequence is:
-1. provider-attempt telemetry and bounded Gemini retry reliability;
-2. source-backed coverage planning plus recovery of responsibilities omitted by initial Subsystem Discovery;
-3. typed Component-descent and coverage diagnostics;
-4. branch-local center-review **Search Deeper** for Systems and Subsystems;
-5. direct browser review correctness qualification;
-6. multi-repository synthesis-quality qualification plus consolidated expensive validation;
-7. evidence-only closeout.
+The owner closes `c4-synth-coverage-review` as **Not Qualified** after P6. P7 is unexecuted and remains historical. The owner accepts the implemented synthesis/review capability as the baseline for sequencing without converting missing evidence to Green. The final Adaptive SEO replay met the <=8-minute objective and produced materially more useful responsibility boundaries, while zero useful Components, unresolved coverage, incomplete Dope/small-fixture qualification and skipped aggregate/package/native checks remain explicit gaps.
 
-Ordinary implementation prompts continue to follow the <=8-minute target / 10-minute soft ceiling / 15-minute hard budget. Browser/live-provider/multi-repository qualification may exceed that ordinary prompt budget when explicitly assigned T3 work. The synthesis performance gate remains <=8 minutes per controlled initial analysis; it is never implemented as an automatic cancellation timeout.
+The previously queued fresh Local/Gemini provider-comparison correction is **deferred off the pre-Phase-5 critical path**. It is not Green and is not executed by this sequencing decision. It may be reconsidered later when provider optimization or AI Presence requires controlled comparative evidence.
 
-If `c4-synth-coverage-review` closes Green, route next to a fresh provider-comparison correction, then `c4-smap-storage`. Do not reopen closed correction histories or activate Phase 5 early.
+The mandatory current correction is `c4-smap-storage` at unchanged `0.4.6`.
+
+Its streamlined sequence is:
+1. persistence-boundary audit plus only necessary bounded repair/permanent regression guards;
+2. short copy/reopen/restart portability qualification plus Dope dogfood initialization;
+3. evidence-only closeout.
+
+P2 should prove the storage invariant directly rather than repeating synthesis qualification: initialize a controlled repository, restart, copy/open it at a different root, discard machine-local state, rebuild derived Physical Map state, prove a copy without `.dope/` is uninitialized, prove project isolation/fail-closed corrupt state, and initialize Dope's existing canonical declaration through the real acceptance path. Do not run live provider comparison, multi-repository architecture scoring, AppImage/native packaging or broad browser qualification unless a P1 repair materially makes that evidence necessary.
+
+If `c4-smap-storage` closes Green, route directly to a fresh Product Phase 5 `/docs-review`. Do not reopen closed synthesis corrections merely to improve scores before visual-map work.
