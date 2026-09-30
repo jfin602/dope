@@ -1,0 +1,73 @@
+TASK: Correction 4 / P5 — Direct browser qualification of center review and Search Deeper
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Keep project version exactly `0.4.6`.
+
+VALIDATION TIER
+- **T3 — Direct browser/live-provider qualification**.
+- This gate may exceed the ordinary implementation prompt budget.
+- Do not run full aggregate/restart/package validation; P6 owns that consolidated cost.
+
+GOAL
+
+Directly prove the review behavior that predecessor P4 did not: valid acceptance, practical merge/split correction, project isolation, and branch-local Search Deeper accept/reject/preservation.
+
+PREFLIGHT
+
+Read successful P4 result/source, correction authority, predecessor P4 evidence and exact browser setup.
+
+Use a disposable controlled benchmark/root. Prefer the pinned Adaptive SEO benchmark or a clean copy/worktree whose final state can be restored. Record exact source SHA/status and selected/probed Gemini model.
+
+Do not use architecture-reference docs as model input.
+
+BROWSER MATRIX
+
+Through the actual workbench, reach a real pending center architecture review and directly prove:
+
+1. review opens/reopens in center workspace and sidebar remains status/navigation;
+2. tree levels/select detail/source navigation work;
+3. rename/add/remove/reparent work;
+4. perform a practical merge/split-equivalent correction;
+5. invalid draft blocks final acceptance;
+6. a valid corrected draft can be explicitly accepted in disposable state;
+7. Search Deeper on a **System** produces a targeted preview;
+8. reject one targeted preview and prove the draft/other branches are unchanged;
+9. Search Deeper on a **Subsystem** after a manual edit uses the edited branch;
+10. accept one targeted preview and prove only the target branch changed;
+11. unrelated manual edits survive accepted targeted replacement;
+12. stale target-branch protection: mutate target after proposal generation and prove old proposal cannot overwrite it;
+13. switch project/root while review or targeted work is pending and prove old review/result cannot leak;
+14. targeted calls appear separately in retained telemetry with all attempts present.
+
+Use screenshots/structured evidence where the existing qualification workflow supports it. Do not expose API keys/raw prompts.
+
+PERFORMANCE
+
+Record initial review-ready time and each Search Deeper elapsed time, but P5's Green decision is review correctness. P6 owns final multi-repository performance/architecture qualification.
+
+REPAIRS
+
+A concrete browser defect may be repaired only with a focused permanent regression. Rerun only invalidated browser evidence. If product source changes, record the resulting candidate so P6 uses the exact final candidate.
+
+EVIDENCE FILE
+
+Write `docs/tasks/c4-synth-coverage-review/P5-review-search-deeper-evidence.md` with:
+- exact candidate/root/model;
+- browser matrix;
+- before/after branch snapshots for accept/reject;
+- project-switch evidence;
+- targeted call telemetry;
+- repairs/replays;
+- residual gaps.
+
+FOCUSED CHECKS
+
+After any repair, run its focused tests and `git diff --check`. Do not run `npm run check`, restart matrix or AppImage packaging here.
+
+FINAL RESPONSE
+
+Report exact candidate/model/root, review matrix, Search Deeper System/Subsystem results, preservation/stale/project-switch results, telemetry completeness, repairs, focused checks, residual gaps, readiness for P6.

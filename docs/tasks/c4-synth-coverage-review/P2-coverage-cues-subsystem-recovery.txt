@@ -1,0 +1,93 @@
+TASK: Correction 4 / P2 — Make responsibility coverage source-backed and let Subsystem Challenge recover omissions
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Keep project version exactly `0.4.6`.
+
+VALIDATION TIER
+- **T1 — Focused implementation validation**.
+
+GOAL
+
+Correct the coverage failure exposed by Adaptive SEO without encoding its answer: generic recurring words consumed bounded responsibility-signal slots, and Subsystem Challenge could only transform discovered candidates rather than recover a substantial responsibility that discovery omitted.
+
+PREFLIGHT
+
+Read exact successful P1 source/result plus BOOT/AGENTS, ADR 0012-0014, predecessor P4 evidence, correction assessment/plan/README, current planner/stage contracts/provider instructions/tests.
+
+COVERAGE CUES
+
+Refine deterministic responsibility/coverage cue derivation.
+
+Requirements:
+- source-backed, deterministic, bounded and rebuildable from the parent packet;
+- preserve exact evidence refs/provenance;
+- favor meaningful production behavior, public contracts, state/data ownership attached to behavior, workers/jobs, provider/integration/delivery boundaries, framework application registrations and coherent dependency neighborhoods;
+- penalize low-information vocabulary whose recurrence alone is not architectural;
+- do not use a benchmark-specific domain dictionary or hidden architecture docs;
+- do not mechanically blacklist a technical word when evidence makes it meaningful;
+- keep cues as planning metadata, never architecture.
+
+Use generic fixtures where terms analogous to error/message/routes are frequent but a lower-frequency domain responsibility has stronger coherent evidence.
+
+SUBSYSTEM COVERAGE BEFORE CHALLENGE
+
+Compute which strong deterministic coverage cues are not represented by the initial Subsystem candidates' evidence/ownership refs.
+
+Pass only bounded cue IDs/evidence needed by Subsystem Challenge.
+
+SUBSYSTEM RECOVERY CONTRACT
+
+Advance view/stage/prompt/cache versions as required.
+
+Preserve exact-once keep/merge/split/reject disposition for every discovered Subsystem.
+
+Add a separate compact **recovery** output (or equivalent explicit action) that can introduce a new Subsystem when:
+- a strong source-backed coverage cue is absent from discovery;
+- the recovered candidate is under the same challenged System;
+- its evidence resolves to the parent packet/current bounded view;
+- it passes the same direct-support/parent/candidate-key rules as ordinary Subsystems.
+
+Recovery must not be a loophole for arbitrary extra candidates. Tie every recovered candidate to one or more previously uncovered cue IDs.
+
+No target Subsystem count.
+
+COVERAGE LEDGER
+
+Add deterministic diagnostic assembly that maps strong cue IDs to one of:
+- represented by surviving candidate(s);
+- transformed/recovered through challenge mapping;
+- unresolved.
+
+Do not add free-form model essays. Keep merge/split/recovery provenance compact and inspectable.
+
+The ledger is not canonical architecture and may not be used as automatic acceptance authority.
+
+PROVIDER INSTRUCTIONS
+
+Update shared Local/Gemini semantics identically:
+- Challenge asks what substantial implemented responsibilities are absent from the discovery set;
+- it may recover them only through the validated recovery contract;
+- technical tiers remain evidence questions, not banned words.
+
+PERMANENT TESTS
+
+Prove:
+- generic high-frequency vocabulary cannot crowd out stronger source-backed responsibility cues solely by area count;
+- identical packet -> identical ordered cues/ledger;
+- cue refs all resolve to parent evidence;
+- an omitted responsibility can be recovered at challenge;
+- recovered candidate without uncovered cue support fails closed;
+- exact-once discovered-candidate challenge coverage still holds;
+- one cohesive Subsystem set can produce zero recoveries;
+- no Adaptive SEO-specific answer vocabulary exists in production policy;
+- Local/Gemini use one schema/semantic contract.
+
+Run only focused planner/challenge/provider tests, affected package build/typecheck and `git diff --check`.
+
+FINAL RESPONSE
+
+Report new planner/view/stage/prompt versions, cue scoring/selection semantics, recovery contract, coverage ledger states, focused tests, unchanged `0.4.6`, readiness for P3.

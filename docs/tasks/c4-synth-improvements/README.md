@@ -1,68 +1,47 @@
 # Correction 4 — sMap Synthesis Improvements
 
-Status: **APPROVED / PROMPT STACK READY**
+Status: **OWNER-CLOSED / NOT QUALIFIED AFTER P4**
 Correction folder: `c4-synth-improvements`
 Required unchanged version: `0.4.6`
 Activation source: `8ea34ae1300a387ac63aad9462ae649ac78a9605`
-Predecessor: owner-closed / Not Qualified `c4-smap-gemini-provider`
+Pushed P4 record: `4a887ecebc546f9944adf54890143827623e008c`
 Authority: ADR 0014 plus ADR 0008-0013 where not amended
-Theia: `1.75.0`; Electron: `42.8.1`; Node: 24
 
-## Purpose
+## Owner disposition — 2026-09-30
 
-Correct the shared sMap synthesis design so the hierarchy represents software responsibilities rather than reproducing repository layout or frontend/backend technical tiers.
+The owner closes this correction early after P4.
 
-The Adaptive SEO Gemini result is diagnostic evidence, not an answer key:
-- one top-level System is plausible;
-- Backend/Frontend Subsystems are materially weak;
-- stronger responsibilities span client/server/worker/persistence/delivery boundaries.
+P1-P3 remain completed implementation work. P4 completed the real Gemini/browser qualification and produced `P4-responsibility-synthesis-evidence.md`. P4 is **Not Green on architecture quality**.
 
-## Stack
+P5 will **not** run. Its existing prompt remains historical/unexecuted and must not be treated as closeout evidence.
 
-| Prompt | Work | Model | Browser/live provider |
-| --- | --- | --- | --- |
-| P1 | responsibility-oriented deterministic planning + stronger System support | GPT-6 Sol High | no |
-| P2 | Subsystem-only discovery + Subsystem Challenge + Component descent | GPT-6 Sol High | no |
-| P3 | hierarchy orchestration/reconciliation + center-editor review | GPT-6 Sol High | no |
-| P4 | real Gemini Adaptive SEO responsibility-hierarchy qualification + consolidated expensive checks | GPT-6 Sol High | yes |
-| P5 | evidence-only closeout | GPT-6 Sol High | no live reruns |
+## What P4 established
 
-All prompts keep package version exactly `0.4.6`.
+- selected/probed real `gemini-3.8-flash`;
+- center review reached in at most **302.8 seconds**, satisfying the <=8-minute objective for that run;
+- one coherent System and five responsibility-named Subsystems avoided the earlier Frontend/Backend-only failure;
+- center hierarchy review, source navigation, add/rename/reparent/remove and invalid-acceptance blocking worked;
+- machine credential persistence survived backend restart after the bounded notification repair;
+- `npm run check`, restart tests, phase validation, Linux AppImage packaging and native launch/readiness passed on the recorded candidate.
 
-## Core invariants
+## Why it is Not Qualified
 
-> Architecture follows responsibility, not folder/runtime topology.
+The frozen Adaptive SEO hierarchy remained materially incomplete:
+- tenant/project control was omitted/collapsed;
+- collection and Feed output responsibilities were omitted/collapsed;
+- provider synchronization/integrations were omitted/collapsed;
+- workers/jobs and Feed Digest were omitted/collapsed;
+- delivery detail was incomplete;
+- three of five Subsystems had no Components and no explicit descent diagnosis.
 
-> Deterministic responsibility signals guide synthesis but never become architecture authority.
+Telemetry also lost the final verification-call record: twelve model calls occurred while only eleven call records remained visible. The first controlled attempt failed with `Gemini SDK or transport type error` and required manual retry.
 
-> Establish one hierarchy level before descending to the next.
-
-> Developer review and explicit acceptance remain the only canonical transition.
-
-## Qualification reference
-
-Pinned benchmark:
-- root: `~/dev/adaptive-seo-dope-p8`
-- source: `jfin602/adaptive-seo`
-- SHA: `0b26a25107be7d8dfb2210bc7258ccac8603197e`
-- push remains disabled.
-
-A credible result may contain one Adaptive SEO System. Green does **not** require a particular count or exact names.
-
-Green does require meaningful Subsystems/Components that reflect source-backed responsibilities crossing technical layers where appropriate.
-
-## Review UX target
-
-The review opens in the center editor area as an indented hierarchy tree. The left sMap sidebar remains setup/progress/navigation.
-
-Selecting a tree node exposes its editable detail/evidence. Do not render the entire proposal as one giant repeated form stack.
-
-This is not the Phase 5 visual map canvas.
-
-## Scope guard
-
-No benchmark-specific hard-coded domain names, no fixed System/Subsystem count, no hidden architecture-doc answer key, no aggressive Local-specific chunking/compression, no mixed-provider voting/debate, no general Agent Runtime, and no Phase 5 Planning Map canvas.
+Valid live acceptance, merge/split-equivalent correction and project-switch isolation were not directly proved.
 
 ## Routing
 
-If Green, route to a fresh bounded provider-comparison qualification before `c4-smap-storage`. Do not reopen the closed `c4-smap-gemini-provider` correction.
+Mandatory next correction: **`c4-synth-coverage-review`** at unchanged `0.4.6`.
+
+That correction owns coverage recovery, empty-descent diagnostics, complete call-attempt telemetry/retry reliability and branch-local **Search Deeper** review.
+
+If it closes Green, route to a fresh bounded provider-comparison correction, then `c4-smap-storage`. Phase 5 remains blocked.

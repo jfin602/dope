@@ -1,0 +1,137 @@
+TASK: Correction 4 / P4 — Add branch-local Search Deeper to System and Subsystem review
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Keep project version exactly `0.4.6`.
+
+VALIDATION TIER / EXECUTION BUDGET
+- Tier: **T2 — Integration validation**.
+- Target <=8 minutes; hard budget 15 minutes.
+- P5 owns direct browser/live-provider qualification.
+
+GOAL
+
+Add **Search Deeper** to every System and Subsystem in the center architecture review so a developer can re-investigate one weak branch while preserving the rest of a good synthesis/review draft.
+
+PREFLIGHT
+
+Read successful P3 result/source, ADR 0014 amendment, current service/backend/controller/review widget/provider stage planner, project-switch guards and relevant tests.
+
+PRODUCT CONTRACT
+
+For every pending review System/Subsystem:
+- show a `Search Deeper` action in the selected-node detail;
+- analysis starts from the **current edited branch**, not the original proposal;
+- source-backed evidence is expanded beyond evidence already attached to the branch;
+- result is a **preview proposal**, not an immediate mutation;
+- developer explicitly **Accepts** or **Rejects** the targeted proposal;
+- Reject leaves the current draft byte-for-byte/structurally unchanged;
+- Accept changes only the selected branch replacement boundary and descendants;
+- unrelated branches and manual edits survive;
+- feature works after rename/reparent/purpose/root edits and before final architecture acceptance.
+
+TARGET SEMANTICS
+
+**System target**
+- may refine the System's visible name/purpose/evidence support and rediscover its Subsystems/Components;
+- cannot create/delete/change another System.
+
+**Subsystem target**
+- may refine the selected Subsystem or propose a split of that selected branch into multiple Subsystems under the same parent System;
+- may rediscover Components for resulting Subsystem branch(es);
+- cannot change another existing sibling Subsystem except by inserting validated split replacements for the selected target.
+
+Do not allow a targeted result to escape its parent scope.
+
+CURRENT-DRAFT INPUT
+
+The backend currently retains the original review while the controller owns manual draft edits. Introduce an explicit validated request carrying the current draft or selected current-branch snapshot.
+
+Do not infer edits from the original model proposal.
+
+Temporary synthesis candidates for edited/developer-added nodes may use:
+- current name/purpose/roots;
+- original proposal evidence where the proposalKey still maps;
+- source-backed evidence resolved from roots/current branch;
+- relevant P2 coverage cues and dependency neighborhood.
+
+Canonical ID validity is not required merely to search deeper; final Accept architecture rules remain unchanged.
+
+EVIDENCE EXPANSION
+
+Targeted planning must deliberately look beyond the branch's already-used refs:
+- uncovered strong coverage cues relevant to branch responsibility/roots;
+- dependencies crossing the branch boundary;
+- related production semantic/framework/state/worker/provider/delivery evidence;
+- bounded counter-evidence capable of showing misplaced responsibility.
+
+Remain deterministic and bounded. No architecture-doc answer key.
+
+TARGETED MINI-PIPELINE
+
+Reuse shared stage semantics where practical rather than inventing a second architecture engine.
+
+Expected bounded shape:
+- System: scoped Subsystem Discovery -> Challenge/recovery -> Component descent;
+- Subsystem: scoped challenge/refinement of the selected branch -> Component descent for resulting branch(es).
+
+Do not run repository-global System Discovery for a Subsystem search.
+
+TARGETED PROPOSAL STATE
+
+Create a typed review-scoped proposal identity containing:
+- review ID;
+- target proposal key/kind/parent;
+- base target-branch fingerprint;
+- proposed replacement nodes/evidence diagnostics;
+- targeted attempt telemetry.
+
+Keep at most the bounded pending proposal state needed for the active review.
+
+Acceptance must verify the target branch has not changed since analysis began. If it changed, fail stale rather than overwrite newer work. Unrelated branch changes may be preserved when target fingerprint remains valid.
+
+SEARCH-DEEPER TELEMETRY
+
+Tag targeted provider attempts distinctly from initial synthesis while retaining ordinary stage/provider/model/usage/retry fields.
+
+No raw prompts/chain-of-thought/secrets.
+
+CONTROLLER / UI
+
+Use the existing shared `SoftwareMapController`/review authority.
+
+Show:
+- Search Deeper busy/status for selected branch;
+- concise preview difference/tree;
+- Accept deeper result;
+- Reject deeper result;
+- safe retry after failure.
+
+Do not create a second controller, independent review draft, graphical Phase 5 canvas or chat surface.
+
+PERMANENT TESTS
+
+Prove:
+- current manually edited branch is what backend receives;
+- System search cannot modify another System;
+- Subsystem search cannot escape parent System;
+- reject leaves draft unchanged;
+- accept replaces only target branch;
+- unrelated manual edits survive accepted replacement;
+- target edit during analysis makes proposal stale;
+- developer-added branch can be searched with source-backed roots/evidence;
+- project/root switch discards late targeted results;
+- targeted calls are separately tagged in retained telemetry;
+- invalid final architecture still cannot be accepted;
+- source navigation remains intact.
+
+T2 VALIDATION
+
+Run focused service/backend/controller/review-widget/search tests, affected package build/typecheck and `git diff --check`. No live Gemini/browser/restart/package work.
+
+FINAL RESPONSE
+
+Report request/proposal contracts, targeted evidence expansion, mini-pipeline, stale/preservation rules, UI behavior, telemetry tagging, focused checks, unchanged `0.4.6`, readiness for P5.

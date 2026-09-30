@@ -1,0 +1,83 @@
+TASK: Correction 4 / P1 — Retain every provider attempt and make Gemini retry reliability explicit
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Keep project version exactly `0.4.6`.
+
+VALIDATION TIER / EXECUTION BUDGET
+- Tier: **T2 — Integration validation**.
+- Target <=8 minutes; 10-minute soft ceiling; 15-minute hard budget.
+- Do not run live Gemini, browser qualification, restart matrix or packaging.
+
+GOAL
+
+Fix the observability/reliability defect exposed by predecessor P4: twelve provider calls occurred but only eleven call records survived review transition, and the first controlled Gemini attempt failed with a generic SDK/transport TypeError that required a manual retry.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0012-0014, predecessor closeout + P4 evidence, this correction assessment/plan/README, and current:
+- `packages/software-map/src/reconciliation.ts`;
+- `hierarchical-synthesis.ts`;
+- `service.ts`;
+- Theia software-map backend/controller;
+- Local/Gemini providers;
+- synthesis/provider/backend/UI tests.
+
+Require activation source `4a887ecebc546f9944adf54890143827623e008c` reachable, package `0.4.6`, clean intended tree.
+
+IMPLEMENTATION
+
+1. **Provider-attempt contract**
+   - Add a provider-independent compact attempt record owned by orchestration/application telemetry, not canonical Software Map state.
+   - Every actual generation attempt gets one record, including failed attempts and final calls.
+   - Record: stage/call purpose, subject when applicable, provider/model, attempt ordinal, retry relationship, call duration, status, safe failure class when failed, usage/bytes/tokens when available, reuse where meaningful, and whether returned output was consumed.
+   - Planning/assembly timings remain distinguishable from provider attempts.
+
+2. **Retention**
+   - `HierarchicalAnalysis.timings`/attempt data must not be discarded when `SoftwareMapBackend.startInitialization()` takes only the proposal.
+   - Retain complete run telemetry when review opens.
+   - Retain failed-run telemetry until the next explicit run/setup reset so direct qualification can inspect it.
+   - Expose a typed service/read path suitable for UI/evidence capture.
+   - Do not persist operational telemetry into `.dope/architecture.json`, future canonical sMap state, preferences or credentials.
+
+3. **Safe failure typing**
+   - Replace the undifferentiated Gemini TypeError path with a safe typed failure classification that still never exposes API key/raw provider payload.
+   - Distinguish at least cancelled/timeout, auth, quota/rate limit, upstream 5xx, transport/network/type, request 4xx, malformed/truncated content and validation/schema failure at the layer that actually knows it.
+   - Preserve user-safe error messages.
+
+4. **Bounded retry**
+   - Enable at most **one** automatic retry for explicitly approved transient transport/upstream classes.
+   - Retry the exact same stage/request/model/provider.
+   - Emit/retain attempt 1 failure and attempt 2 outcome; never overwrite attempt 1.
+   - Do not retry auth, invalid request, malformed structured output, parser/schema rejection, architecture validation failure, cancellation or stale-project supersession.
+   - No silent model/provider fallback.
+   - Keep delay bounded and testable; do not build a general retry framework.
+
+5. **Progress**
+   - Existing compact progress may show retry state, but the durable run record is the qualification source of truth.
+   - Search-Deeper-specific telemetry is deferred to P4; design the attempt contract so a later scope/purpose tag can distinguish targeted review calls without breaking it.
+
+PERMANENT TESTS
+
+Prove:
+- 12 simulated calls -> 12 retained attempt records after review transition;
+- failed first attempt + successful allowed retry -> two records with retry relationship and only attempt 2 consumed;
+- non-retryable validation/content failure remains one attempt;
+- final verification call remains inspectable after review opens;
+- failed-run telemetry remains inspectable until reset/new run;
+- cancellation/project supersession does not retry;
+- secrets/raw provider text never enter records/errors;
+- Local remains compatible and no provider fallback occurs.
+
+Update root `test:product` only if a new test file is added.
+
+T2 VALIDATION
+
+Run changed provider/orchestrator/backend/service tests, affected workspace build/typecheck and `git diff --check`. Do not run root `npm run check` for reassurance.
+
+FINAL RESPONSE
+
+Report attempt-record contract, retention lifetime/read path, retryable classes/cap, initial transport-type diagnosis if reproducible from code/tests, focused checks, unchanged `0.4.6`, and readiness for P2.

@@ -1,0 +1,123 @@
+TASK: Correction 4 / P6 — Multi-repository synthesis coverage qualification and consolidated final validation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Keep project version exactly `0.4.6`.
+
+VALIDATION TIER
+- **T3 — Multi-repository architecture/release qualification**.
+- Intentionally exempt from ordinary 15-minute implementation ceiling.
+- Fail fast with focused guards; run consolidated aggregate/restart/package validation only once after the last repair.
+
+GOAL
+
+Qualify the exact final candidate against structurally different repositories so architecture quality is not an Adaptive SEO one-off, while preserving complete call-attempt evidence and the <=8-minute per-analysis objective.
+
+PREFLIGHT
+
+Read exact P5 candidate/evidence and all correction authority.
+
+Use one explicitly discovered/selected/probed Gemini generation model for all controlled runs. Record exact ID. No Local comparison in this correction.
+
+QUALIFICATION SET
+
+1. **Adaptive SEO**
+   - exact repository `jfin602/adaptive-seo`;
+   - exact SHA `0b26a25107be7d8dfb2210bc7258ccac8603197e`;
+   - clean, no canonical test sMap input, push disabled.
+
+2. **Dope**
+   - exact final P5 candidate;
+   - use a clean uncontaminated benchmark root/worktree so existing architecture declarations/review state cannot seed initial synthesis.
+
+3. **Small repository**
+   - choose and record one available smaller structurally clear repository before synthesis begins.
+   - It must be capable of exposing over-segmentation; do not choose it after seeing model output.
+   - If no suitable real repository is locally available, use a committed controlled repository fixture and record that limitation rather than inventing external evidence.
+
+REFERENCE CONTAMINATION GUARD
+
+For each repository, freeze the generated hierarchy before reading developer architecture references intended for comparison.
+
+Source code/runtime/build evidence may be used by normal deterministic collection. Do not inject architecture docs/expected names as hidden prompt input.
+
+CAPTURE PER REPOSITORY
+
+Record:
+- exact root/SHA/clean state;
+- packet/source fingerprint and item counts;
+- planner/view/stage/prompt versions;
+- ordered responsibility/coverage cues;
+- initial Systems + System Challenge;
+- initial Subsystems + Challenge keep/merge/split/reject/recovery;
+- coverage ledger before/after challenge;
+- Component results + typed descent dispositions;
+- reconciliation/verification findings;
+- complete frozen hierarchy;
+- every provider attempt including retries/final calls;
+- total provider-call/planning/assembly time;
+- review-ready elapsed;
+- cache reuse;
+- post-freeze independent source/architecture comparison.
+
+QUALITY GATE
+
+Green does **not** require exact reference names/counts.
+
+For each repository:
+- substantial implemented responsibilities are represented or explicitly unresolved;
+- generic cue noise does not dominate bounded coverage;
+- unsupported Frontend/Backend/Client/Server-style tiering is not the primary architecture;
+- no substantial branch has unexplained empty Component descent;
+- recovered responsibilities are source-backed and not gratuitous;
+- the smaller repository is not obviously over-segmented;
+- all refs/provenance remain valid;
+- developer authority is unchanged.
+
+A material omitted responsibility makes that repository Not Green even if schemas/refs are valid.
+
+PERFORMANCE GATE
+
+Each controlled initial analysis must reach validated review in <=8 minutes for Green on performance.
+
+Eight minutes is not a timeout. Slower runs continue for evidence and are Not Green on that gate.
+
+RETRY/TELEMETRY GATE
+
+Attempt count in retained telemetry must equal actual generation attempts. Retry relationship/failure class/consumed outcome must be inspectable. No manual retry should be required for a classified transient failure that the bounded policy covers.
+
+REPAIRS
+
+P6 may repair a concrete general defect, never a benchmark-specific answer.
+
+Every repair requires a focused regression. Replay only repositories/evidence invalidated by that repair. After the last repair, freeze the final candidate.
+
+CONSOLIDATED FINAL VALIDATION — ONCE
+
+On the exact final candidate:
+- focused correction guards;
+- `npm run check`;
+- `npm run test:restart`;
+- `npm run codex:phase:validate -- c4-synth-coverage-review`;
+- package/version/no-root-lock/Theia/Electron/internal-reference checks;
+- `npm run package:linux`;
+- record AppImage path/mode/size/SHA-256/embedded version;
+- native launch/readiness/controlled close where environment permits;
+- `git diff --check`.
+
+Do not rerun passing expensive gates unless a later repair can invalidate them.
+
+RESTORE BENCHMARKS
+
+Restore every benchmark to its exact clean pre-run state. Do not leave canonical `.dope/` test state. Preserve disabled push where required.
+
+EVIDENCE FILE
+
+Write `docs/tasks/c4-synth-coverage-review/P6-multi-repository-coverage-evidence.md` containing all repository matrices, frozen trees, post-freeze comparisons, telemetry/performance, repairs, consolidated validation and residual gaps.
+
+FINAL RESPONSE
+
+Report exact candidate/model, per-repository architecture-quality/performance disposition, coverage/recovery/descent findings, complete-attempt result, final checks/package/native result, restoration, residual gaps and readiness for P7.

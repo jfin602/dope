@@ -1,0 +1,83 @@
+TASK: Correction 4 / P3 — Explain empty Component descent and carry coverage gaps into reconciliation/review
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Keep project version exactly `0.4.6`.
+
+VALIDATION TIER / EXECUTION BUDGET
+- Tier: **T2 — Integration validation**.
+- Target <=8 minutes; hard budget 15 minutes.
+- No live provider/browser/package qualification.
+
+GOAL
+
+Make lower-level incompleteness explicit. A Subsystem may legitimately have no Components, but `components: []` must no longer hide whether it is a true leaf, under-evidenced, misplaced or lacking a stable Component boundary.
+
+PREFLIGHT
+
+Read successful P2 result/source and current Component Discovery, reconciliation, assembly, review/service contracts and tests.
+
+TYPED DESCENT DISPOSITION
+
+Advance stage/prompt/cache identity if required.
+
+Every Component Discovery result carries a compact descent disposition.
+
+Required semantics:
+- nonempty Component output => status equivalent to `components-found`;
+- empty output => exactly one typed reason equivalent to:
+  - `leaf-responsibility`;
+  - `insufficient-evidence`;
+  - `belongs-elsewhere`;
+  - `no-stable-boundary`.
+- cite source-backed evidence supporting the disposition;
+- no free-form rationale essay;
+- parser/schema validates status against component count;
+- no fake Component is required merely to avoid emptiness.
+
+RECONCILIATION / COVERAGE
+
+Carry P2 coverage ledger plus descent diagnostics into `HierarchicalAnalysis` and pending review diagnostics.
+
+Rules:
+- unresolved coverage stays visible;
+- insufficient-evidence / belongs-elsewhere empty descent becomes a reconciliation/review concern;
+- leaf/no-stable-boundary may remain valid when evidence supports it;
+- deterministic logic may flag inconsistency but must not invent architecture or silently rewrite nodes;
+- bounded verification may target these concerns within existing limits.
+
+Add compact issue codes only when downstream logic needs them.
+
+REVIEW DATA
+
+Extend review data enough that the center editor can show a selected branch's coverage/descent warning and later P4 can target Search Deeper.
+
+Do not redesign the UI in this prompt.
+
+TELEMETRY
+
+Ensure P1 attempt retention still covers all new/changed stage behavior and no final call is lost.
+
+PERMANENT TESTS
+
+Prove:
+- empty Component result without disposition fails;
+- `components-found` with zero Components fails;
+- empty leaf is accepted without forcing Components;
+- insufficient/misplaced empty descent surfaces as unresolved review/reconciliation state;
+- no-stable-boundary is distinct from insufficient evidence;
+- coverage gaps survive assembly into review diagnostics;
+- final evidence refs resolve to the parent packet;
+- verification remains bounded;
+- existing populated Component descent still works.
+
+T2 VALIDATION
+
+Run focused stage/reconciliation/assembly/backend/review-data tests, affected package build/typecheck, correction phase validation if cheap, and `git diff --check`.
+
+FINAL RESPONSE
+
+Report descent contract/statuses, reconciliation treatment, review diagnostics, focused checks, unchanged `0.4.6`, readiness for P4.

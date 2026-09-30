@@ -1,0 +1,127 @@
+TASK: Correction 4 / P7 — sMap synthesis coverage + iterative review closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Keep project version exactly `0.4.6`.
+
+VALIDATION TIER
+- **T3 — Evidence-only closeout**.
+- Do not rerun live models/browser/restart/package evidence already established on the exact final P6 candidate.
+
+GOAL
+
+Audit `c4-synth-coverage-review` using exact P5/P6 evidence and decide whether the correction qualifies.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0008-0014, predecessor closeout, this correction assessment/plan/README, P1-P6 prompts/results and P5/P6 evidence.
+
+Require exact final P6 candidate identity and package `0.4.6`.
+
+AUDIT GATES
+
+Disposition every gate Green / Not Green / Evidence Gap.
+
+A. **Provider reliability + complete attempt telemetry**
+- every actual generation attempt retained;
+- final calls survive review transition;
+- retry relationship/failure classes/consumed output visible;
+- bounded retry only for approved transient classes;
+- no secret/raw-provider leakage or silent fallback.
+
+B. **Source-backed coverage planning**
+- cues deterministic/provenance-valid;
+- generic recurrence cannot dominate solely by area frequency;
+- no benchmark-specific answer dictionary;
+- coverage metadata remains non-canonical.
+
+C. **Subsystem recovery**
+- every discovered candidate disposed exactly once;
+- absent substantial responsibility can be recovered through explicit validated contract;
+- recovery tied to uncovered source-backed cues;
+- no target count/arbitrary additions.
+
+D. **Component descent diagnostics**
+- zero-Component results always typed/evidenced;
+- leaf/no-stable cases do not force fake nodes;
+- insufficient/misplaced cases remain visible;
+- populated descent still validates.
+
+E. **Reconciliation / coverage ledger / provenance**
+- represented/transformed-or-recovered/unresolved coverage inspectable;
+- reconciliation does not silently rewrite;
+- bounded verification;
+- every final ref resolves to parent packet.
+
+F. **Search Deeper branch authority**
+- every System/Subsystem exposes targeted search;
+- current edited branch used;
+- evidence expands beyond already-used refs;
+- preview before mutation;
+- Accept/Reject explicit;
+- rejected result leaves draft unchanged;
+- accepted result preserves unrelated edits;
+- stale branch/project results fail closed;
+- targeted calls separately tagged.
+
+G. **Direct browser review**
+- valid acceptance;
+- invalid blocking;
+- merge/split-equivalent correction;
+- source navigation;
+- System and Subsystem Search Deeper accept/reject;
+- project switching/reopen behavior.
+
+H. **Multi-repository architecture quality**
+- Adaptive SEO, Dope and small benchmark all have frozen/post-freeze comparison evidence;
+- major implemented responsibilities represented or explicit unresolved;
+- unsupported technical-tier decomposition absent;
+- no material unexplained empty descent;
+- small benchmark not obviously over-segmented.
+
+I. **Performance**
+- each controlled initial analysis <=8 minutes for Green;
+- no eight-minute runtime cancellation;
+- Search Deeper timing recorded separately.
+
+J. **Regression/restart/package/version/phase boundary**
+- exact P6 final candidate passed required aggregate/restart/package/native gates;
+- version `0.4.6`;
+- no root package-lock;
+- closed correction histories not reopened;
+- no Local-specific optimization, provider ensemble, general Agent Runtime or Phase 5 Planning Map.
+
+CLOSEOUT CHECKS
+
+Rerun only cheap integrity checks if needed:
+- `npm run codex:phase:validate -- c4-synth-coverage-review`;
+- unchanged-version/source-identity checks;
+- `git diff --check`.
+
+Do not rerun live Gemini, browser dogfooding, `npm run check`, restart matrix or AppImage packaging merely to replace missing evidence. Missing mandatory evidence is an Evidence Gap.
+
+DOCUMENTATION
+
+Write `docs/tasks/c4-synth-coverage-review/closeout.md` with exact candidate/model/repositories, A-J table, final hierarchies/coverage summaries, Search Deeper matrix, attempt/retry summary, timing, package/restart result, residual gaps and qualification decision.
+
+Update this correction README status truthfully.
+
+ROUTING
+
+If every mandatory gate is Green:
+- route to a **fresh bounded provider-comparison correction**;
+- do not reopen `c4-smap-gemini-provider` or `c4-synth-improvements`;
+- keep `c4-smap-storage` blocked until provider comparison closes Green;
+- keep Phase 5 blocked until storage closes Green.
+
+If any mandatory gate is Not Green/Evidence Gap:
+- preserve evidence;
+- identify the narrow next correction;
+- provider comparison/storage/Phase 5 remain blocked.
+
+FINAL RESPONSE
+
+Report exact closeout candidate, A-J disposition, per-repository architecture/performance result, Search Deeper result, telemetry/retry result, checks/package/restart status, residual gaps and routing decision.
