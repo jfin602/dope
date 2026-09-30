@@ -1,0 +1,183 @@
+TASK: Correction 4 / P3 — Wire responsibility hierarchy and move proposal review into a center editor
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.4.6`.
+
+GOAL
+
+Wire the P1/P2 responsibility-oriented hierarchy through orchestration/reconciliation/progress and replace the unreadable left-sidebar stacked proposal form with a dedicated center-editor hierarchy review while preserving one coherent review authority.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0008-0014, current architecture/product/roadmap/storage authority, this correction assessment/plan/README, exact P1/P2 results/source, and current:
+- synthesis orchestrator/reconciliation;
+- SoftwareMap service/backend;
+- SoftwareMap controller;
+- SoftwareMapWidget;
+- frontend module/widget contribution wiring;
+- UI/initialization/restart tests.
+
+Require successful exact P2 predecessor, package exactly `0.4.6`, and clean intended Git state.
+
+ORCHESTRATION
+
+Replace the old lower-hierarchy sequence with:
+
+System Discovery
+-> System Challenge
+-> for each challenged System: Subsystem Discovery
+-> for each System: Subsystem Challenge
+-> for each challenged Subsystem: Component Discovery
+-> reconciliation
+-> bounded verification
+-> final proposal assembly.
+
+No unbounded recursion.
+
+Update:
+- progress stage union/events;
+- call purpose;
+- known unit counts;
+- cache/work identity;
+- timings;
+- final proposal assembly;
+- cancellation/checkpoints;
+- root/project supersession safety.
+
+Telemetry remains provider-independent and includes exact stage/provider/model/usage data.
+
+RECONCILIATION
+
+Refactor reconciliation for stabilized System -> challenged Subsystem -> Component hierarchy.
+
+Audit:
+- duplicate/overlapping direct ownership;
+- parent escape;
+- cross-System ownership;
+- cross-Subsystem ownership where relevant;
+- weak support;
+- technical-layer-only boundary uncertainty when deterministically detectable without turning path words into architecture authority;
+- dependency/relationship conflicts.
+
+Reconciliation reports findings and bounded verification targets. It does not silently rewrite the hierarchy.
+
+CENTER REVIEW EDITOR
+
+The current review is rendered inside the left `SoftwareMapWidget` and then repeats one full fieldset per node. Replace that review experience.
+
+Create a dedicated editor-like center-area review widget/contribution using supported Theia public seams.
+
+Expected product behavior:
+
+**Left sMap sidebar**
+- Analyze Project setup;
+- Local/Gemini provider configuration;
+- analysis progress;
+- status/errors;
+- when review exists, concise summary + **Open Architecture Review** action.
+
+**Center workspace review**
+- title such as `sMap Architecture Review`;
+- indented System -> Subsystem -> Component tree;
+- clear visual distinction between levels;
+- selected node state;
+- one focused detail editor for the selected node;
+- confidence/evidence/ambiguity summary;
+- source-backed evidence navigation;
+- developer correction controls;
+- final Accept architecture action;
+- Cancel/decline/retry semantics where appropriate.
+
+When analysis reaches `review_required`, open/reveal the center review editor automatically. If the developer closes it while review remains pending, the sidebar action must reopen the same review.
+
+ONE REVIEW AUTHORITY
+
+Do not create two independent Software Map attachments/controllers that can race.
+
+Refactor presentation state as needed so sidebar and center review share:
+- the same attached project handle;
+- the same reviewId;
+- the same draft;
+- the same backend review;
+- the same stale/root/request guards.
+
+There must be one acceptance path and one canonical draft authority.
+
+A review from an old project/root must never appear in the new project's center editor.
+
+DEVELOPER CORRECTION UX
+
+Preserve or improve:
+- rename;
+- add System/Subsystem/Component;
+- remove node and descendants;
+- reparent under a valid parent;
+- merge/split-equivalent correction through bounded editing actions;
+- edit purpose/responsibility;
+- inspect/open evidence;
+- explicit acceptance only when draft validation passes.
+
+Canonical ID:
+- generate/suggest deterministically from developer-visible name where safe or retain editable support;
+- move it to secondary/Advanced UI;
+- it must not dominate the main tree/detail view.
+
+Implementation roots:
+- summarize count/coverage in the main detail;
+- raw editable roots may live under Advanced;
+- preserve validation and existing acceptance behavior.
+
+Do not introduce a graphical diagram, node canvas, Planning Map or Phase 5 transformations.
+
+ACCESSIBILITY / THEME
+
+Keep keyboard navigation and semantic labels.
+
+Use Theia theme tokens/current dark-first styling rather than hard-coded visual assumptions.
+
+FOCUSED TESTS
+
+Add/expand permanent tests proving:
+- exact new stage order and per-System/per-Subsystem bounded calls;
+- cancellation during new stages;
+- project/root switch discards late results;
+- reconciliation consumes challenged Subsystems;
+- review_required opens/reveals center editor;
+- sidebar no longer renders the giant full proposal form;
+- tree indentation/parent structure is represented semantically in DOM;
+- selecting a node shows only its detail editor;
+- edits update the single shared draft;
+- reopen returns to same pending review;
+- stale project review cannot leak;
+- evidence opens source;
+- explicit accept remains sole canonical transition;
+- manual/existing architecture flows still work.
+
+Wire any new files into root `test:product`.
+
+FOCUSED VALIDATION ONLY
+
+Run focused orchestration/backend/UI tests, required build/typecheck and `git diff --check`.
+
+Do not run:
+- real Gemini/Local synthesis;
+- full `npm run check`;
+- restart matrix;
+- AppImage/native qualification;
+- broad browser dogfooding.
+
+FINAL RESPONSE
+
+Report:
+- exact live stage order;
+- reconciliation changes;
+- center editor architecture and shared-state design;
+- sidebar behavior;
+- developer editing/acceptance behavior;
+- focused tests/checks;
+- unchanged `0.4.6`;
+- readiness for P4.
