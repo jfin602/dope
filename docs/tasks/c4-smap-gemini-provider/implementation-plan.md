@@ -3,7 +3,7 @@
 Status: **APPROVED / READY**
 Correction folder: `c4-smap-gemini-provider`
 Required unchanged package version: `0.4.6`
-Predecessor: `c4-smap-hierarchical-synthesis` after truthful closeout
+Predecessor: `c4-smap-hierarchical-synthesis` implementation through P7 at reachable commit `66f023f717afd63433d442015b575edf049ae1b6`; P8/P9 superseded/unexecuted under ADR 0013
 Authority: ADR 0013 plus ADR 0004/0009-0012 where not amended
 
 ## Source trace
@@ -25,12 +25,12 @@ Read:
 - BOOT.md and AGENTS.md;
 - ADR 0004 and ADR 0009-0013;
 - current ARCHITECTURE, PRODUCT-MODEL, project-overview, roadmap and software-map-storage;
-- exact `c4-smap-hierarchical-synthesis` closeout/candidate/evidence;
+- reachable hierarchical P7 implementation commit `66f023f717afd63433d442015b575edf049ae1b6` and exact P1-P7 implementation history/results; read predecessor P8 prompt only as the approved benchmark specification, not as completed evidence;
 - this correction assessment/plan/README;
 - all earlier prompts/results in this correction.
 
 Require:
-- predecessor closed truthfully; do not reopen/relabel it;
+- hierarchical P7 implementation commit `66f023f717afd63433d442015b575edf049ae1b6` is reachable; P8/P9 are not prerequisites and must remain truthfully unexecuted/superseded;
 - package exactly `0.4.6`;
 - clean intended Git state apart from runner-owned changes;
 - Node 24;
