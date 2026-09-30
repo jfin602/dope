@@ -171,3 +171,12 @@ New order:
 - Provider comparison becomes meaningful because architecture semantics stay constant.
 - Per-stage token/time evidence can distinguish design, model and runtime bottlenecks.
 - Local-specific optimization is deferred until the comparison identifies what actually needs optimization.
+
+
+## 2026-09-30 sequencing amendment
+
+ADR 0014 records the first real Gemini benchmark result and supersedes ADR 0013's assumption that the provider comparison should complete before shared synthesis quality is corrected.
+
+The owner closed `c4-smap-gemini-provider` Not Qualified at `8ea34ae1300a387ac63aad9462ae649ac78a9605`. The correction's implemented provider/telemetry work remains valid, but its planned full Local/Gemini comparison and formal P5 audit are not run.
+
+Mandatory next work is `c4-synth-improvements`. A later provider comparison, if still required, is a fresh correction against the corrected shared pipeline.
