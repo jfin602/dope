@@ -120,7 +120,7 @@ Green requires:
 - final browser/restart/package/repository checks;
 - unchanged `0.4.6`.
 
-After Green closeout, route to `c4-smap-storage`, not directly to Phase 5.
+Historical intended route only: the correction did not reach Green. Owner-close routing is `c4-synth-improvements`; do not run the abandoned P4/P5 qualification path or route directly to storage.
 
 
 ## Owner closeout disposition
