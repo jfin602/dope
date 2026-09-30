@@ -1,10 +1,13 @@
 # Correction 4 — sMap Project-Local Persistence
 
-Status: **APPROVED / DOCS AUTHORITY READY — MANDATORY NEXT CORRECTION**
+Status: **APPROVED / PROMPT STACK READY — MANDATORY NEXT CORRECTION**
 Correction folder: `c4-smap-storage`
 Required unchanged version: `0.4.6`
 Activation source: `c059f67a5fd85c81183ba09044e550462c9000a1`
 Predecessor: owner-closed / Not Qualified `c4-synth-coverage-review`
+Assessment: `b438c58d5b8b5cfe237230f61386a72c8211956a`
+Plan: `6a2f7200bce741fd559cbd0b8a22f342f8a859a0`
+Prompts: P1 `2ee3f477688affc8186f46fc7d58a8a6be792307`; P2 `033a415e66caecaac2a43bc7df4b2d48b3b1f045`; P3 `22e30b2cf34c1a76268413e2c6a2d6e6b4ebca61`
 Authority: `docs/software-map-storage.md`, ADR 0014 owner sequencing amendment, ADR 0008-0015 where not amended
 
 ## Purpose
