@@ -2,7 +2,7 @@
 
 You have agentic access to an existing software repository.
 
-Your task is to independently examine the repository, determine its durable software architecture, and create or update a root-level `MODULES.md` that can be used as an architecture seed by Dope.
+Your task is to independently examine the repository, determine the durable architecture of the software product, library, framework, service, or tool that the repository primarily exists to deliver, and create or update a root-level `MODULES.md` that can be used as an architecture seed by Dope.
 
 This task is repository-generic. Do not assume any particular language, framework, repository layout, application type, deployment model, architecture style, or number of Systems or Subsystems.
 
@@ -93,7 +93,35 @@ A technical boundary may still be architectural when the evidence supports that 
 
 Prefer responsibility-oriented boundaries over directory-oriented boundaries.
 
-## 3. Do not force architecture counts
+## 3. Scope the delivered software, not repository-development machinery
+
+Model the architecture of the software the repository primarily exists to build and deliver.
+
+Do not promote repository-development machinery into Systems or Subsystems merely because it contains substantial code. By default, exclude things such as:
+
+- CI/CD plumbing;
+- build scripts;
+- release automation;
+- test harnesses and qualification infrastructure;
+- repository maintenance utilities;
+- documentation tooling;
+- code-generation helpers;
+- prompt/task runners;
+- local developer convenience tooling.
+
+Include such machinery only when one of these is true:
+
+- the repository itself primarily exists to deliver that tooling;
+- the tooling is a first-class shipped capability of the product;
+- the tooling owns an indispensable runtime responsibility of the delivered software.
+
+Ask:
+
+> If this repository were packaged and delivered to its intended user, is this responsibility part of the software they are actually receiving or relying on?
+
+If the answer is no, treat it as repository support rather than product architecture.
+
+## 4. Do not force architecture counts
 
 There is no expected number of Systems or Subsystems.
 
@@ -107,9 +135,13 @@ A repository may legitimately contain:
 
 Do not split architecture merely to make the hierarchy look more detailed.
 
+A System does not need a Subsystem merely to satisfy the System -> Subsystem shape. If a System has no meaningful subordinate responsibility boundary, leave it without Subsystems.
+
+Never create a one-to-one Subsystem that merely renames, restates, or wraps the parent System's responsibility.
+
 Do not merge materially independent responsibilities merely to make it look simpler.
 
-## 4. Distinguish Systems from Subsystems
+## 5. Distinguish Systems from Subsystems
 
 Use **System** for a major coherent software/product/runtime responsibility that can reasonably be understood as a substantial whole.
 
@@ -128,7 +160,7 @@ Ask of each candidate Subsystem:
 - Why is it a meaningful boundary rather than merely an implementation grouping?
 - Does it belong inside this parent System?
 
-## 5. Trace responsibilities across technical layers
+## 6. Trace responsibilities across technical layers
 
 A single architectural responsibility may span:
 
@@ -144,7 +176,7 @@ Do not split one responsibility into separate architectural Subsystems merely be
 
 Conversely, do not combine unrelated responsibilities merely because they share a framework, package, process, database, or directory.
 
-## 6. Challenge your first interpretation
+## 7. Challenge your first interpretation
 
 Before finalizing `MODULES.md`, perform a deliberate architecture challenge.
 
@@ -167,20 +199,35 @@ Also search specifically for substantial implementation areas that are not repre
 
 Revise the hierarchy when the evidence warrants it.
 
-## 7. Preserve uncertainty
+## 8. Preserve uncertainty
 
 Do not invent certainty.
 
-If the repository does not provide enough evidence to establish a boundary confidently:
+If the repository does not provide enough evidence to establish an architectural boundary confidently:
 
 - state the uncertainty;
 - identify the competing interpretations;
 - cite the relevant paths or evidence;
 - choose the least-assumptive representation when a hierarchy is still necessary.
 
+The `Architectural uncertainties` section is only for unresolved questions about responsibility boundaries, ownership, containment, or major architectural relationships.
+
+Do not put ordinary repository-state or housekeeping concerns there, such as:
+
+- initialization state;
+- migration status;
+- missing markers or metadata;
+- pending cleanup;
+- version drift;
+- validation status;
+- uncommitted work;
+- operational TODOs.
+
+Those may be useful observations during investigation, but they are not architectural uncertainties unless they materially change responsibility boundaries.
+
 Do not manufacture architecture simply to eliminate ambiguity.
 
-## 8. Existing MODULES.md is not unquestionable
+## 9. Existing MODULES.md is not unquestionable
 
 If a root `MODULES.md` already exists:
 
@@ -193,7 +240,7 @@ If a root `MODULES.md` already exists:
 
 Do not blindly reproduce the existing file.
 
-## 9. Do not modify the application
+## 10. Do not modify the application
 
 Your only intended repository modification is the root-level:
 
@@ -256,9 +303,11 @@ It describes durable responsibility boundaries, not a complete code inventory.
 
 ## Architectural uncertainties
 
-Only include this section when meaningful uncertainty remains.
+Only include this section when meaningful architectural uncertainty remains about responsibility boundaries, ownership, containment, or major relationships.
 
-- **<Boundary or responsibility>:** <What is uncertain, what evidence supports each interpretation, and what should be verified later.>
+Do not use this section for repository initialization, migration, validation, cleanup, versioning, or other operational state.
+
+- **<Boundary or responsibility>:** <What is architecturally uncertain, what evidence supports each interpretation, and what should be verified later.>
 ```
 
 Adapt the number of Systems and Subsystems to the repository.
@@ -434,19 +483,21 @@ Use `Architectural uncertainties` for meaningful unresolved intent rather than i
 
 Before saving `MODULES.md`, verify all of the following:
 
-1. Every System represents a meaningful durable responsibility.
-2. Every Subsystem represents a meaningful responsibility inside its parent System.
-3. The hierarchy is not merely a copy of the directory tree.
-4. Frontend/backend/client/server/framework layers were not promoted automatically.
-5. Major implemented responsibilities are not obviously missing.
-6. Cross-layer responsibilities were followed across their implementation.
-7. No architecture count was forced.
-8. Existing documentation was verified rather than blindly trusted.
-9. Primary paths actually exist and support the stated responsibility.
-10. Uncertainty is stated rather than hidden.
-11. The document remains concise enough to serve as initial architecture context.
-12. No Components/classes/functions/files were exhaustively cataloged.
-13. No file other than root `MODULES.md` was modified.
+1. Every System represents a meaningful durable responsibility of the software the repository primarily exists to deliver.
+2. Repository-development machinery was excluded unless it is itself the product, a first-class shipped capability, or an indispensable runtime responsibility.
+3. Every Subsystem represents a meaningful responsibility inside its parent System.
+4. No one-to-one Subsystem merely restates or wraps its parent System.
+5. The hierarchy is not merely a copy of the directory tree.
+6. Frontend/backend/client/server/framework layers were not promoted automatically.
+7. Major implemented product responsibilities are not obviously missing.
+8. Cross-layer responsibilities were followed across their implementation.
+9. No architecture count was forced.
+10. Existing documentation was verified rather than blindly trusted.
+11. Primary paths actually exist and support the stated responsibility.
+12. Architectural uncertainty is stated rather than hidden, and operational/repository-state concerns were not mislabeled as architecture uncertainty.
+13. The document remains concise enough to serve as initial architecture context.
+14. No Components/classes/functions/files were exhaustively cataloged.
+15. No file other than root `MODULES.md` was modified.
 
 If any of these fail, investigate further and revise before finishing.
 
