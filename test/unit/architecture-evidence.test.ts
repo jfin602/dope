@@ -80,10 +80,27 @@ test('root bootstrap and eligible docs stay documented, bounded and invalidate s
     assert.equal(first.documents?.[2].status, 'unknown');
     assert.ok(first.documents?.every(doc => /^[a-f0-9]{64}$/.test(doc.sha256)));
     assert.ok(first.items.every(item => item.path !== 'MODULES.md' && item.path !== 'README.md'));
+    assert.throws(() => parseArchitectureProposal({ schemaVersion: 1, summary: 'Document-only boundary', needsMoreEvidence: false,
+      nodes: [{ proposalKey: 'proposal:docs', kind: 'system', name: 'Docs', purpose: 'Docs', parentProposalKey: null,
+        confidence: .8, rationale: 'MODULES claim', evidenceRefs: ['MODULES.md'], evidence: ['Document'] }],
+      unassignedEvidenceRefs: [], openQuestions: [], evidenceRequests: [] }, first), /unknown/);
     await writeFile(join(root, 'MODULES.md'), '# Changed');
     const changed = await index.collectEvidence(root);
     assert.notEqual(changed.inputFingerprint, first.inputFingerprint);
     assert.equal(changed.sourceFingerprint, first.sourceFingerprint);
+    await writeFile(join(root, 'README.md'), 'New project orientation '.repeat(1000));
+    const readmeChanged = await index.collectEvidence(root);
+    assert.notEqual(readmeChanged.inputFingerprint, changed.inputFingerprint);
+    await writeFile(join(root, 'docs/ARCHITECTURE.md'), 'Status: Accepted\nChanged responsibility');
+    const docsChanged = await index.collectEvidence(root);
+    assert.notEqual(docsChanged.inputFingerprint, readmeChanged.inputFingerprint);
+    await rm(join(root, 'MODULES.md'));
+    const readmeOnly = await index.collectEvidence(root);
+    assert.deepEqual(readmeOnly.documents?.map(doc => doc.path), ['README.md', 'docs/ARCHITECTURE.md']);
+    await rm(join(root, 'README.md'));
+    const docsOnly = await index.collectEvidence(root);
+    assert.deepEqual(docsOnly.documents?.map(doc => doc.path), ['docs/ARCHITECTURE.md']);
+    assert.equal(docsOnly.sourceFingerprint, first.sourceFingerprint);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

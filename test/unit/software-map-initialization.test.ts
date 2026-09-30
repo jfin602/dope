@@ -71,6 +71,11 @@ test('attach/status, decline, failure and cancel leave an uninitialized project 
     const index = new SoftwareMapIndex({ analyze: path => { analyses++; return analyzer.analyze(path); }, inputPaths: path => analyzer.inputPaths(path) });
     const service = backend(index, fakeProvider(() => { throw new Error('provider failed'); }));
     const handle = await attach(service, root);
+    assert.deepEqual((await service.initializationStatus(handle)).bootstrap, { modules: false, readme: false });
+    await writeFile(join(root, 'README.md'), '# Orientation');
+    assert.deepEqual((await service.initializationStatus(handle)).bootstrap, { modules: false, readme: true });
+    await writeFile(join(root, 'MODULES.md'), '# Architecture intent');
+    assert.deepEqual((await service.initializationStatus(handle)).bootstrap, { modules: true, readme: true });
     assert.equal((await service.initializationStatus(handle)).state, 'uninitialized');
     assert.equal(analyses, 0);
     assert.equal(index.snapshot(root), undefined);
@@ -143,6 +148,10 @@ test('generated review stays transient, rejects invalid/stale drafts, then accep
     assert.equal((await service.initializationStatus(handle)).state, 'review_required');
     await rm(join(root, '.dope/architecture.json'));
     assert.equal((await service.acceptReview(handle, review.reviewId, draft)).state, 'ready');
+    const acceptedArchitecture = await readFile(join(root, '.dope/architecture.json'), 'utf8');
+    await writeFile(join(root, 'MODULES.md'), '# Changed architecture intent');
+    await service.analyze(handle);
+    assert.equal(await readFile(join(root, '.dope/architecture.json'), 'utf8'), acceptedArchitecture);
     assert.equal((await service.initializationStatus(handle)).state, 'initialized');
     assert.equal((await service.review(handle)), undefined);
     assert.equal(await service.resolveReviewSource(handle, review.reviewId, sourceFact.id), undefined);
