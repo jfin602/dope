@@ -98,6 +98,7 @@ Foundation Spike 0 — qualify Theia
 -> correction c4-hierarchical — hierarchy-first sMap synthesis + visible progress
 -> correction c4-coverage — coverage diagnostics + iterative branch review
 -> correction c4-storage — project-local sMap persistence
+-> visual identity alignment — match app palette to Dope logo
 -> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
 -> Phase 7 — Scoped Delegation
@@ -259,4 +260,4 @@ Use a streamlined three-prompt stack:
 
 P2 is intentionally narrow. Do not spend time on Local/Gemini comparison, multi-repository architecture scoring, AppImage/native packaging, or full browser qualification unless P1 materially changes code that makes such evidence necessary.
 
-If `c4-smap-storage` closes Green, route directly to a fresh Product Phase 5 `/docs-review`. The deferred provider-comparison idea may be revived later only if provider optimization/AI Presence work actually needs it.
+If `c4-smap-storage` closes Green, the next planned step is a bounded visual-identity alignment that matches Dope's application palette to the existing logo while preserving dark-first behavior and supported theme overrides. After that alignment is complete, route to a fresh Product Phase 5 `/docs-review`. The deferred provider-comparison idea may be revived later only if provider optimization/AI Presence work actually needs it.
