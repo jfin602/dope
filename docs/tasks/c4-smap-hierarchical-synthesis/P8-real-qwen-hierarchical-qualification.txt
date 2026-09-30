@@ -9,7 +9,9 @@ VERSIONING
 
 GOAL
 
-Directly qualify the exact P7 candidate on the real Dope repository through the real local LM Studio + Qwen3-Coder-30B-A3B-Instruct hierarchical path, proving architecture quality, live progress, provider-budget safety and the <=8-minute initial-analysis objective without an eight-minute hard timeout.
+Directly qualify the exact P7 candidate against the dedicated Adaptive SEO brownfield benchmark clone at `~/dev/adaptive-seo-dope-p8` through the real local LM Studio + Qwen3-Coder-30B-A3B-Instruct hierarchical path, proving architecture quality, live progress, provider-budget safety and the <=8-minute initial-analysis objective without an eight-minute hard timeout.
+
+Adaptive SEO is the primary architecture-quality target for this qualification because it is a mature modular application whose architectural responsibilities cross client/server/worker/data/delivery boundaries rather than mirroring Dope's package names. Do not substitute the developer's live Adaptive SEO checkout.
 
 This is a qualification prompt. Repairs are allowed only when direct evidence exposes a concrete defect or measurable bottleneck; every repair requires permanent regression coverage and replay of affected evidence.
 
@@ -19,8 +21,15 @@ Read BOOT/AGENTS, ADR 0009-0012, current Software Map/storage authority, predece
 
 Require:
 - exact successful P7 handoff;
-- package `0.4.6`;
-- clean intended Git state;
+- Dope package `0.4.6`;
+- clean intended Dope Git state;
+- benchmark root exactly `~/dev/adaptive-seo-dope-p8`;
+- benchmark repository identity `jfin602/adaptive-seo`;
+- benchmark HEAD exactly `0b26a25107be7d8dfb2210bc7258ccac8603197e`;
+- benchmark working tree clean before controlled test-state changes;
+- benchmark `origin` fetch URL resolves to `git@github.com:jfin602/adaptive-seo.git`;
+- benchmark `origin` push URL is exactly `DISABLED` and no other push-capable remote is configured;
+- no `.env`, copied deployment secrets or other live credentials are present in the benchmark clone;
 - local LM Studio reachable;
 - Qwen3-Coder-30B-A3B-Instruct reference family available;
 - qualification model loaded/configured for **65,536 context**.
@@ -29,20 +38,40 @@ Record actual endpoint mode and exact model ID. If runtime metadata exposes load
 
 Do not silently substitute a cloud provider or another model family.
 
-CONTROLLED REAL-DOPE STATE
+DEDICATED BENCHMARK ZONE
 
-Record:
+`~/dev/adaptive-seo-dope-p8` is the reusable Dope architecture-qualification zone going forward.
+
+For this and later qualification runs:
+- do not analyze or mutate the developer's live Adaptive SEO checkout;
+- do not silently `git pull`, merge, rebase or advance the benchmark clone;
+- treat the pinned source commit as part of the benchmark identity;
+- if a future benchmark refresh is intentionally approved, record the new source SHA explicitly before using it;
+- keep push disabled;
+- do not add production/staging credentials to the clone;
+- changes made by Dope during qualification are disposable test state, not Adaptive SEO development work.
+
+Adaptive SEO's architecture docs, contracts, decisions, BOOT/AGENTS and other developer-authored architecture declarations are retained in the clone because this is a real brownfield repository, but they must not be supplied to synthesis as an answer key. During the synthesis run, architecture conclusions must come from deterministic production-oriented repository evidence. Only after the generated hierarchy is frozen may the qualification agent inspect those documents as an independent developer-owned comparison/reference.
+
+CONTROLLED BENCHMARK STATE
+
+Record for `~/dev/adaptive-seo-dope-p8`:
+- absolute root path;
 - Git status;
+- exact HEAD SHA;
+- fetch/push remote configuration;
+- whether `.dope/` exists;
 - exact `.dope/architecture.json` bytes/hash if present;
 - exact `.dope/smap.json` bytes/hash if present.
 
-Use controlled reversible state to exercise the uninitialized brownfield path without feeding the existing canonical architecture into deterministic physical evidence or synthesis as an answer key.
+Exercise the uninitialized brownfield path in the benchmark clone. If prior benchmark `.dope/` state exists, capture it first and then clear only the controlled benchmark state needed to reproduce an uninitialized run. Do not use any existing canonical architecture as synthesis input.
 
-Restore controlled project files byte-for-byte unless this prompt explicitly establishes and records a deliberate accepted qualification state, then restore before completion if required by the runner/evidence convention.
+The benchmark clone is intentionally disposable. After all required acceptance/correction/failure evidence is captured, restore tracked benchmark files to exact commit `0b26a25107be7d8dfb2210bc7258ccac8603197e`, remove qualification-created `.dope/` state, and prove the benchmark working tree is clean with push still disabled. Do not alter the pinned benchmark commit during P8.
 
 SETUP BEFORE PERFORMANCE CLOCK
 
-Using the real browser workbench:
+Using the real browser workbench opened on `~/dev/adaptive-seo-dope-p8`:
+- prove the active workspace/root is the benchmark clone, not the live Adaptive SEO checkout or the Dope repository;
 - enter Analyze Project flow;
 - configure/detect LM Studio;
 - discover/select the actual Qwen reference model;
@@ -97,8 +126,8 @@ Record the initial P3 System candidates and challenged P4 result.
 
 System quality must establish:
 - candidates correspond to major independently meaningful responsibilities;
-- Browser/Electron application variants are not separate Systems merely because they are variants;
-- ordinary packages/directories/frameworks/persistence utilities are not promoted without architectural justification;
+- `src/client` and `src/server` are not separate Systems merely because they are top-level implementation areas;
+- ordinary directories, Express/React/Vite/PostgreSQL framework boundaries, route groupings, database utilities and other implementation structure are not promoted without architectural justification;
 - System Challenge actually evaluates/changes weak boundaries when warranted;
 - resulting Systems have distinct, understandable purposes;
 - evidence supporting each System is directly relevant and production-oriented;
@@ -111,7 +140,7 @@ Subsystem/Component quality must establish:
 - children remain under coherent parent Systems;
 - no obvious duplicate ownership/cross-System contradiction survives final reconciliation without being surfaced.
 
-Do not require an exact match to the preexisting canonical declaration. After synthesis is complete, that declaration may be used as one developer-owned comparison/reference during human review, never as hidden synthesis input.
+Do not require an exact match to Adaptive SEO's developer-authored architecture. After synthesis is complete and the generated hierarchy is frozen, compare it against `docs/architecture/system-architecture.md`, relevant contracts/decisions and developer judgment as independent references. Those documents must never be hidden synthesis input or used to patch the result before the initial architecture-quality assessment is recorded.
 
 If material System boundaries are wrong, the architecture-quality gate is Not Green even when all JSON/refs are valid.
 
@@ -166,9 +195,12 @@ EVIDENCE
 Create `docs/tasks/c4-smap-hierarchical-synthesis/P8-hierarchical-smap-evidence.md`.
 
 Include:
-- exact source/candidate identity;
+- exact Dope source/candidate identity;
+- benchmark path, repository identity and pinned Adaptive SEO SHA;
+- proof that benchmark fetch remains enabled and push remains disabled;
+- proof that no live credentials were used;
 - runtime/model/context configuration;
-- Git/project-state preflight/restoration;
+- Dope Git state plus benchmark preflight/restoration;
 - packet/planner summary;
 - stage-by-stage progress/timing table;
 - per-call token/budget/timing table;
@@ -189,6 +221,6 @@ Run focused hierarchical tests, `npm run check`, `npm run test:restart`, `npm ru
 
 FINAL RESPONSE
 
-Report exact candidate, actual Qwen/runtime identity, total/stage/call timing, request budgets, initial/challenged/final architecture, quality gate, progress UI observations, developer-authority proof, package/restart result, restored state, repairs and residual gaps.
+Report exact Dope candidate, exact Adaptive SEO benchmark root/SHA, push-disable proof, actual Qwen/runtime identity, total/stage/call timing, request budgets, initial/challenged/final architecture, post-hoc comparison against Adaptive SEO's developer-owned architecture, quality gate, progress UI observations, developer-authority proof, package/restart result, clean benchmark restoration, repairs and residual gaps.
 
 State readiness for P9 only when the evidence is complete enough for an evidence-only audit; a >8-minute run may proceed to P9 as evidence but cannot be called Green on performance.
