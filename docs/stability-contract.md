@@ -40,8 +40,8 @@ Agent State, Agent Runtime, model/provider execution, tool authority, AI mutatio
 
 ## States
 
-- Implementation complete — intended behavior exists and required focused/broad automated validation ran.
-- Stability qualified — applicable integrated framework/model/tool/persistence/UI evidence is Green.
+- Implementation complete — intended behavior exists and the validation tier assigned to that implementation prompt is Green.
+- Stability qualified — applicable integrated framework/model/tool/persistence/UI evidence required by the qualification gate is Green.
 
 Evidence outcomes:
 - Green
@@ -309,7 +309,7 @@ A browser-hosted P5 pass is sufficient when it directly exercises the real Theia
 
 ## Corrections
 
-Every correction must reproduce/characterize the defect, repair it, add a permanent regression guard where executable, rerun affected broader qualification, and preserve historical failure evidence.
+Every correction must reproduce/characterize the defect, repair it, add an appropriate permanent regression guard where executable, prove the repair with focused validation, and preserve historical failure evidence. Broader affected-system evidence is assigned to an explicit T2/T3 gate unless the repair itself crosses boundaries that require immediate integration evidence.
 
 ## Foundation Spike 0 success
 

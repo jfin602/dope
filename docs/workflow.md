@@ -28,13 +28,19 @@ Do not jump from a substantial idea directly to implementation prompts.
 
 Owns task decomposition, preserved behavior, dependencies, prompt order, deferred work, risks, model routing, and required evidence.
 
+For every executable prompt, classify validation as T1, T2 or T3. Design stacks so expensive evidence is concentrated into explicit integration/qualification gates rather than repeated after every implementation step. Ordinary implementation prompts should target <=8 minutes and be split when coherent implementation plus T1 validation is unlikely to fit inside 15 minutes.
+
 ### /prompt-plan
 
 Inspects actual source/tests and traces producers/consumers, state ownership, framework adapters, authority boundaries, persistence, UI/domain seams, likely files, failure modes, and validation.
 
+Identify the smallest affected test surface from actual producers, consumers and package boundaries. Separate focused implementation evidence from evidence that can only be established at integration/qualification. Identify expensive commands and justify any required T2/T3 execution.
+
 ### /prompt-write
 
 Distills the accepted plan into the smallest precise execution brief.
+
+Include only validation commands justified by the accepted tier. Do not append `npm run check`, `npm test`, restart, packaging or all-build commands as boilerplate. State deferred qualification evidence when relevant, and keep ordinary executable prompts small enough for the <=8-minute target / 15-minute budget.
 
 Do not copy planning analysis wholesale.
 
@@ -64,6 +70,56 @@ Use of Codex/GPT-6 Sol in the development workflow must never be interpreted as 
 ## Planning philosophy
 
 > Plan richly; prompt sparsely; validate rigorously.
+
+## Execution-time and validation discipline
+
+Routine implementation prompts target **<=8 minutes** wall time, have a **10-minute soft ceiling**, and a **15-minute hard execution budget**. The budget covers inspection, implementation, focused validation and final reporting.
+
+Qualification, dedicated integration gates, browser/manual evidence gates, packaging qualification and closeout audits may exceed the ordinary implementation budget when their approved purpose genuinely requires it.
+
+An implementation prompt approaching its budget must not start another expensive broad validation step merely for reassurance. Preserve completed work, run the smallest remaining validation necessary for the changed surface, and defer explicitly identified broader evidence to the designated integration/qualification gate.
+
+Runtime limits must never be satisfied by weakening correctness, deleting required tests, concealing failures or claiming unexecuted evidence.
+
+### Validation tiers
+
+**T1 — Focused implementation validation** is the default for ordinary implementation prompts.
+
+Run:
+- tests added or changed by the prompt;
+- focused tests covering directly affected behavior;
+- affected-package/domain typecheck where applicable;
+- an affected build only when compilation/output boundaries changed;
+- cheap permanent architecture/regression guards applicable to the change;
+- `git diff --check` and required repository/version coherence checks.
+
+Do not run `npm test`, `npm run check`, all builds, packaging, restart or broad unrelated suites by default.
+
+**T2 — Integration validation** is used only at an explicitly planned integration prompt or when the change crosses multiple existing subsystem/package boundaries.
+
+Run T1 plus the affected multi-package/integration suites, appropriate aggregate product tests, and relevant build/restart evidence when the changed behavior requires it. T2 is not the default merely because a task is a correction.
+
+**T3 — Qualification / release validation** is reserved for explicitly identified qualification, release, packaging, browser/native evidence and closeout gates.
+
+This is where full aggregate validation belongs, including `npm test` / `npm run check` when applicable, browser/Electron builds, restart/process evidence, packaging/native launch, direct GUI evidence, broader matrices and final candidate qualification.
+
+### Validation escalation
+
+Start at the lowest sufficient tier.
+
+Escalate only when:
+- the approved prompt is explicitly an integration/qualification gate;
+- focused evidence exposes a plausible cross-cutting regression;
+- a changed public/shared contract materially affects broader consumers;
+- the applicable stability contract requires integrated evidence for the specific claim being made.
+
+Record why escalation occurred.
+
+Passing broad validation earlier in the same prompt must not be rerun after an unrelated edit unless that edit could invalidate it. After a focused repair, rerun the smallest test capable of proving the repair, then repeat only broader evidence actually invalidated by the repair.
+
+Permanent regression guards should normally be cheap and focused. A regression guard does not imply whole-product qualification on every prompt.
+
+These rules apply prospectively to newly authored executable prompts. Completed/historical prompts remain unchanged. A not-yet-executed stack is revised under this policy only when explicitly reviewed/regenerated; do not silently rewrite an active execution contract.
 
 ## Phase runner
 
@@ -164,7 +220,7 @@ Browser-required prompts are manual handoff points.
 
 Use c<phase>-<slug> for bounded repairs.
 
-A correction keeps the current package version unchanged, repairs the defect, installs permanent executable regression coverage, runs broader affected-system validation, and preserves historical failure evidence.
+A correction keeps the current package version unchanged, repairs the defect, installs permanent executable regression coverage, proves the repair at its assigned validation tier, and preserves historical failure evidence. Broader affected-system qualification belongs in an explicit T2/T3 gate unless the repair itself crosses boundaries that require immediate integration evidence.
 
 A later pass does not erase an unexplained earlier failure.
 
@@ -201,6 +257,8 @@ Every substantial task should answer:
 ## Test-command truth
 
 Current aggregate commands:
+
+The existence of an aggregate command does not make it the default validation command for an implementation prompt. Use aggregate commands only when the assigned validation tier justifies them.
 - `npm run test:runner` exercises the phase-runner regression suite.
 - `npm run test:baseline` checks Theia/version/composition invariants.
 - `npm run test:product` builds the Dope extension packages and runs current Project Mind/product unit suites.

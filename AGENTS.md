@@ -20,7 +20,7 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 4. Identify affected systems/subsystems/components where architecture authority exists, then trace affected producers, consumers, state owners, and presentation adapters. Until the Physical Map exists for the target, state intended boundaries explicitly rather than inventing Software Map evidence.
 5. Identify behavior and architectural boundaries the current authority explicitly preserves. Do not treat an earlier internal phase as a compatibility contract by default.
 6. Choose the smallest safe implementation boundary.
-7. Define focused tests plus broader regression coverage.
+7. Define focused implementation validation and separately identify broader integration/qualification evidence. Do not execute broader evidence in an ordinary implementation prompt unless its assigned validation tier requires it.
 8. Identify only the persistence, authority, process, filesystem, network, provider, UI, and framework failure modes applicable to capabilities that exist in the current phase.
 9. Separate product/domain logic from Theia UI integration and provider-specific code.
 10. Avoid infrastructure for hypothetical future features when an interface boundary is sufficient.
@@ -134,6 +134,19 @@ New executable task stacks use explicit GPT-6 Sol labels:
 - GPT-6 Sol XHigh only exceptionally.
 
 Do not author new Terra prompts. Do not silently remap old model labels.
+
+### Execution and validation discipline
+
+New executable prompts must follow the validation tiers in `docs/workflow.md`:
+- T1 focused validation is the default for ordinary implementation;
+- T2 is explicit affected-system integration;
+- T3 is qualification/release/manual/package evidence.
+
+Ordinary implementation prompts target <=8 minutes, have a 10-minute soft ceiling, and a 15-minute hard execution budget. Do not broaden validation merely to consume confidence margin. If the approved work plus T1 validation cannot reasonably fit, split the work during planning rather than turning one implementation prompt into a qualification pass.
+
+Do not rerun a passing broad suite after every repair. Rerun the smallest test capable of proving the repair, then repeat only broader evidence the repair could have invalidated.
+
+Permanent regression guards should normally be cheap and focused. A permanent guard does not imply whole-product qualification on every prompt.
 
 Every correction stack must include a permanent regression guard for the defect class while that behavior remains authoritative. For `c3-remove-planning-instruments`, the permanent guard is negative: current production/package wiring must not reintroduce the removed Planning service/view/mode/storage or `@dope/planning` dependency. Historical docs may still contain those names. When an entire pre-stability subsystem is deliberately superseded, obsolete tests may be removed with the old implementation rather than fossilizing the replaced architecture.
 
