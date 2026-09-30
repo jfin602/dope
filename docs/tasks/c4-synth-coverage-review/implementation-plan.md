@@ -5,13 +5,13 @@ Correction folder: `c4-synth-coverage-review`
 Required unchanged package version: `0.4.6`
 Activation source: `4a887ecebc546f9944adf54890143827623e008c`
 Assessment source: `77e379f9f7e86d17c69f35b5304802d2054b0268`
-Authority: ADR 0014 as amended 2026-09-30 plus ADR 0008-0013 where not amended
+Authority: ADR 0015 plus ADR 0014 as amended 2026-09-30 and ADR 0008-0013 where not amended
 
 ## Preflight for every prompt
 
 Read:
 - `BOOT.md` / `AGENTS.md`;
-- ADR 0008-0014;
+- ADR 0008-0015;
 - current `ARCHITECTURE.md`, `PRODUCT-MODEL.md`, roadmap and workflow;
 - `docs/tasks/c4-synth-improvements/README.md`, P4 evidence and closeout/disposition;
 - this correction assessment/plan/README;
@@ -89,18 +89,31 @@ T1 only:
 
 No live provider/browser/restart/package work.
 
-## P2 — README/document evidence, coverage planner and omitted-responsibility recovery
+## P2 — MODULES/README bootstrap, document evidence, coverage planner and omitted-responsibility recovery
 
 ### Goal
 
-Give initial synthesis the repository's own orientation cheaply, add broader documentation as non-authoritative evidence, improve responsibility coverage, and let Subsystem Challenge recover an important responsibility that discovery omitted.
+Give initial synthesis a portable architecture-specific bootstrap when available, preserve README/repository-only fallbacks, add broader documentation as non-authoritative evidence, improve responsibility coverage, and let Subsystem Challenge recover an important responsibility that discovery omitted.
+
+### MODULES bootstrap and onboarding
+
+At uninitialized-project analysis entry:
+- detect only root `MODULES.md` for the preferred architecture-seed channel;
+- if present, include it as strong **Documented** System -> Subsystem intent beside deterministic repository evidence;
+- keep root `README.md`, when present, as secondary project-orientation context;
+- if `MODULES.md` is absent and README exists, recommend creating `MODULES.md` but offer immediate **Continue with README**;
+- if neither exists, recommend creating `MODULES.md` but offer **Analyze repository anyway**;
+- no documentation file is mandatory;
+- expose a portable **Prepare this repository for Dope** prompt/copy path bounded to creating root `MODULES.md` without modifying application code.
+
+`MODULES.md` may guide naming/grouping/candidates but cannot independently prove implemented architecture. Its content/hash/budget/selection participates in affected request/cache identity. After explicit final acceptance, `.dope/architecture.json` is canonical and routine refresh must not silently re-import later `MODULES.md` edits. Automatic bidirectional synchronization is out of scope.
 
 ### Root README path
 
 At evidence collection/planning time:
 - discover only the project-root `README.md` for the direct initial-orientation channel;
 - read it safely under project containment/symlink rules;
-- send it directly only to repository-global initial System Discovery/Challenge context as labeled project orientation;
+- send it directly only to repository-global initial System Discovery/Challenge context as labeled project orientation, secondary to `MODULES.md` when both exist;
 - use the complete README when within the approved deterministic budget;
 - when oversized, apply deterministic documented truncation/excerpt behavior and expose that state;
 - absence is normal and must not fail analysis;
@@ -180,6 +193,12 @@ No target Subsystem count.
 ### Fixtures
 
 Prove:
+- root `MODULES.md` is detected and used as preferred documented architecture seed without becoming Observed/canonical truth;
+- MODULES + README preserves MODULES as architecture seed and README as secondary orientation;
+- missing MODULES + README exposes the recommendation and **Continue with README** path;
+- missing MODULES + missing README exposes the recommendation and **Analyze repository anyway** path;
+- the portable **Prepare this repository for Dope** prompt is bounded to creating `MODULES.md` and does not authorize application-code edits;
+- conflicting/stale MODULES remains Documented and cannot override source-backed physical evidence;
 - useful root README improves orientation but cannot establish unsupported architecture;
 - missing README is normal;
 - stale/conflicting README/docs stay Documented/unresolved;
@@ -253,7 +272,7 @@ Introduce a provider-independent targeted-analysis contract that identifies:
 - parent System context where needed;
 - relevant implementation evidence;
 - uncovered/cross-boundary coverage cues;
-- relevant README/document context;
+- relevant selected bootstrap/document context, including `MODULES.md` only as Documented input when it belongs to the current review;
 - bounded target semantics.
 
 Search Deeper must not become an open-ended agent loop.
@@ -318,7 +337,11 @@ Directly prove the review workflow independent of the later multi-repository arc
 
 ### Browser matrix
 
-Using a controlled project/proposal:
+Using controlled uninitialized projects plus a controlled pending proposal:
+- prove MODULES+README detection uses MODULES as preferred seed and README as secondary orientation;
+- prove README-only onboarding recommends MODULES and **Continue with README** proceeds;
+- prove no-bootstrap-doc onboarding recommends MODULES and **Analyze repository anyway** proceeds;
+- prove the **Prepare this repository for Dope** prompt/copy affordance is available from the recommendation path;
 - open pending center review;
 - hierarchy is readable;
 - select nodes and inspect Observed/Documented/Inferred support;
@@ -376,6 +399,10 @@ Use one explicitly selected/probed real Gemini model for controlled qualificatio
 ### Documentation qualification
 
 Across targets/fixtures prove:
+- useful MODULES architecture seed plus README secondary orientation;
+- conflicting MODULES does not become Observed truth or suppress source-backed implementation;
+- README-only continuation;
+- no-bootstrap-doc continuation;
 - useful README orientation;
 - no README;
 - stale/conflicting docs;
@@ -434,7 +461,7 @@ Use cheap deterministic integrity checks only.
 
 Disposition at least:
 A. provider attempt/retry reliability;
-B. README/document evidence authority;
+B. MODULES/README bootstrap and document evidence authority;
 C. coverage planner/ledger;
 D. omitted-responsibility recovery;
 E. Component descent diagnostics;
@@ -453,6 +480,7 @@ If all mandatory gates Green, route to fresh `c4-smap-provider-comparison`. Othe
 - no Adaptive SEO answer dictionary;
 - no forced System/Subsystem/Component count;
 - no documentation as physical/canonical truth;
+- no automatic MODULES <-> `.dope/architecture.json` synchronization or silent post-acceptance MODULES re-import;
 - no independent benchmark architecture references before freeze;
 - no provider voting/debate or mixed-provider architecture;
 - no aggressive Local-only semantics;

@@ -497,6 +497,11 @@ Predecessor disposition: `c4-synth-improvements` is OWNER-CLOSED / NOT QUALIFIED
 This correction must:
 - retain every provider-call attempt and bound retryable Gemini transport/upstream recovery;
 - prioritize generic source-backed responsibility evidence over noisy cross-area vocabulary;
+- detect optional root `MODULES.md` as the preferred initial architecture seed, with root `README.md` retained as secondary orientation;
+- when `MODULES.md` is absent, recommend creating it while preserving **Continue with README** or repository-only analysis paths so documentation is never mandatory;
+- provide a portable **Prepare this repository for Dope** prompt contract that creates `MODULES.md` without modifying application code;
+- treat `MODULES.md` as strong Documented intent only: verify it against deterministic evidence, keep disagreements visible, and hand canonical authority to `.dope/architecture.json` only after explicit acceptance;
+- do not continuously synchronize `MODULES.md` with canonical architecture or silently re-import later edits;
 - send root `README.md` directly with the initial repository-global deterministic synthesis view when present, under a deterministic size budget;
 - add eligible broader repository docs as provenance-bearing supporting evidence while distinguishing Observed / Documented / Inferred support and excluding historical/qualification/expected-answer material by default;
 - make Subsystem Challenge recover substantial responsibilities omitted by discovery;
@@ -504,7 +509,7 @@ This correction must:
 - require typed zero-Component descent dispositions;
 - add branch-local Search Deeper with preview/Accept/Reject for every System and Subsystem;
 - directly prove review correction/acceptance/project switching in the browser;
-- qualify architecture coverage on Adaptive SEO, Dope and a smaller structurally clear repository/fixture, including useful-README, missing-README and stale/conflicting-documentation controls;
+- qualify architecture coverage on Adaptive SEO, Dope and a smaller structurally clear repository/fixture, including MODULES+README, README-only, no-bootstrap-doc and stale/conflicting-documentation controls;
 - preserve provider independence, developer authority, bounded synthesis and the Phase 4/5 boundary.
 
 Green routes to the fresh provider-comparison correction below. It does not directly activate storage or Phase 5.

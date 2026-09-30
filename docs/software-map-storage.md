@@ -40,6 +40,14 @@ If repeated prompting is suppressed after a decline, that suppression is present
 
 Until resumable review drafts are deliberately specified, failure or cancellation before explicit acceptance returns the sMap to uninitialized.
 
+### Bootstrap documents are not canonical storage
+
+Root `MODULES.md` is an optional portable bootstrap architecture seed for an uninitialized project. Root `README.md` is project-orientation context. Neither file is canonical Software Map storage.
+
+When `MODULES.md` exists, initial synthesis may treat it as strong **Documented** architecture intent and verify it against deterministic repository evidence. When it is absent, onboarding may recommend creating it while still allowing README-backed or repository-only analysis.
+
+After explicit acceptance, `.dope/architecture.json` remains the durable canonical architecture authority. Routine refresh/re-analysis must not silently import later `MODULES.md` edits into canonical architecture. Any future comparison/import/export between `MODULES.md` and canonical state must be explicit and developer-reviewed; automatic bidirectional synchronization is not part of the storage contract.
+
 ## Detected architecture and Physical Map
 
 Deterministic repository, semantic, framework and later runtime analyzers produce rebuildable evidence and architecture signals. For initial brownfield initialization, a bounded hierarchy-first LLM synthesis workflow interprets deterministic evidence views into proposed System / Subsystem / Component structure while preserving references to the complete parent evidence packet.

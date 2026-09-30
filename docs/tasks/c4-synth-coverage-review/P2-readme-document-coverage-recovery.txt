@@ -1,4 +1,4 @@
-TASK: Correction 4 / P2 — README/document evidence, coverage ledger and omitted-responsibility recovery
+TASK: Correction 4 / P2 — MODULES/README bootstrap, document evidence, coverage ledger and omitted-responsibility recovery
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
@@ -14,11 +14,11 @@ VALIDATION TIER / EXECUTION BUDGET
 
 GOAL
 
-Give initial repository-global synthesis the project's own root README as bounded orientation, add broader eligible documentation as provenance-bearing non-authoritative support, make source-backed coverage inspectable, and let Subsystem Challenge recover a substantial responsibility omitted by discovery.
+Add the optional root `MODULES.md` bootstrap architecture seed and three-state onboarding flow, preserve README/repository-only fallbacks, add broader eligible documentation as provenance-bearing non-authoritative support, make source-backed coverage inspectable, and let Subsystem Challenge recover a substantial responsibility omitted by discovery.
 
 PREFLIGHT
 
-Read BOOT/AGENTS, ADR 0010-0014 including the README/document amendment, current architecture/product/roadmap/workflow, P1 result, and this correction assessment/plan/README.
+Read BOOT/AGENTS, ADR 0010-0015 including the MODULES/README bootstrap contract, current architecture/product/roadmap/workflow, P1 result, and this correction assessment/plan/README.
 
 Inspect current:
 - ArchitectureEvidencePacket/evidence item contracts;
@@ -30,12 +30,39 @@ Inspect current:
 
 Require exact successful P1 predecessor and package `0.4.6`.
 
+MODULES BOOTSTRAP / ONBOARDING
+
+Add a provider-independent optional root `MODULES.md` architecture-seed input for uninitialized projects.
+
+Detection/choice behavior:
+- inspect only project-root `MODULES.md` for this preferred seed channel;
+- if present, use it automatically as strong **Documented** architecture intent beside deterministic repository evidence;
+- when README also exists, keep README as secondary project orientation;
+- if MODULES is absent but root README exists, present a recommendation to create MODULES and an immediate **Continue with README** action;
+- if neither exists, present the MODULES recommendation and an immediate **Analyze repository anyway** action;
+- no documentation file is required and declining creation must not block analysis.
+
+MODULES content should be treated as System -> Subsystem architecture intent: purpose, responsibilities, primary paths, major dependencies and explicit uncertainty. Do not require it to enumerate Components/files/classes/functions.
+
+Safely resolve/read it under existing containment/symlink rules. Apply a deterministic bounded content policy and expose presence/size/truncation state. MODULES selection/content/hash/budget must participate in affected request/cache identity.
+
+Authority:
+- MODULES is **Documented**, never **Observed**;
+- it may guide naming, grouping, candidate boundaries and verification priorities;
+- conflicting source/framework/runtime evidence remains visible and can override the proposal's interpretation of current implementation;
+- MODULES alone cannot establish a physical boundary or recovered Subsystem;
+- after explicit architecture acceptance, `.dope/architecture.json` remains canonical;
+- routine refresh/re-analysis must not silently re-import later MODULES edits;
+- do not implement automatic MODULES/canonical bidirectional synchronization in this correction.
+
+Expose a portable **Prepare this repository for Dope** prompt/copy affordance from the recommendation path. Its content must instruct another AI coding environment to analyze the actual repository and create only a root `MODULES.md` describing System -> Subsystem purpose/responsibilities/primary paths/major dependencies, use repo/docs/package/runtime/import/build/infra/test evidence, preserve uncertainty, avoid exhaustive implementation enumeration, and not modify application code.
+
 ROOT README ORIENTATION
 
 Add a provider-independent project-orientation input for the root `README.md`:
 - only the project-root README belongs in this direct orientation channel;
 - safely resolve/read under existing project containment/symlink rules;
-- include it directly in initial repository-global System Discovery context, and System Challenge where needed to preserve orientation;
+- include it directly in initial repository-global System Discovery context, and System Challenge where needed to preserve orientation; when MODULES is present, README remains secondary orientation rather than the architecture seed;
 - label it as project orientation, never direct physical evidence;
 - complete README when it fits the deterministic orientation budget;
 - deterministic documented truncation/excerpt + visible `truncated` state when oversized;
@@ -50,7 +77,7 @@ DOCUMENTATION EVIDENCE
 
 Add the smallest explicit deterministic documentation support type/contract needed to preserve **Documented** claims separately from Observed implementation evidence.
 
-Eligible discovery may include:
+Treat root `MODULES.md` as the dedicated bootstrap architecture-seed document rather than rediscovering it as an undifferentiated broader-doc item. Eligible broader discovery may include:
 - accepted architecture/decision/contract docs;
 - package/service READMEs;
 - deployment/runbooks/operations docs;
@@ -131,7 +158,8 @@ PROVIDER INSTRUCTIONS
 Update shared Local/Gemini semantics together.
 
 Tell the model:
-- root README is orientation, not proof;
+- root MODULES is strong documented architecture intent, not proof or canonical truth;
+- root README is secondary orientation, not proof;
 - documented claims must be corroborated for implemented boundaries;
 - challenge may recover one or more source-backed omitted responsibilities when coverage warrants it;
 - unresolved is preferable to unsupported invention.
@@ -141,17 +169,24 @@ No Adaptive SEO-specific names.
 FIXTURES / REGRESSIONS
 
 Prove:
-1. useful README is present in initial global context and helps naming/orientation without becoming direct evidence;
-2. missing README succeeds;
-3. oversized README uses deterministic budget/truncation and cache identity;
-4. stale/conflicting docs remain Documented/unresolved;
-5. implementation absent from docs can still be covered/discovered;
-6. historical task/qualification answer material is excluded;
-7. document support has deterministic provenance/source navigation metadata;
-8. strong source-backed coverage cues outrank noisy generic recurrence;
-9. challenge can recover an omitted source-backed Subsystem;
-10. documentation-only recovery fails closed;
-11. changed README/doc inputs invalidate affected synthesis cache identity.
+1. root MODULES is detected and present in initial global context as Documented architecture intent, not direct evidence/canonical state;
+2. MODULES + README uses MODULES as preferred architecture seed and README as secondary orientation;
+3. missing MODULES + README exposes recommendation + **Continue with README** and succeeds;
+4. missing MODULES + missing README exposes recommendation + **Analyze repository anyway** and succeeds;
+5. portable **Prepare this repository for Dope** prompt is available and bounded to MODULES creation/no application-code edits;
+6. stale/conflicting MODULES remains Documented and cannot override source-backed current implementation;
+7. accepted canonical architecture is not silently changed by later MODULES edits/ordinary refresh;
+8. useful README is present in initial global context and helps naming/orientation without becoming direct evidence;
+9. missing README succeeds;
+10. oversized README uses deterministic budget/truncation and cache identity;
+11. stale/conflicting docs remain Documented/unresolved;
+12. implementation absent from docs can still be covered/discovered;
+13. historical task/qualification answer material is excluded;
+14. document support has deterministic provenance/source navigation metadata;
+15. strong source-backed coverage cues outrank noisy generic recurrence;
+16. challenge can recover an omitted source-backed Subsystem;
+17. documentation-only recovery fails closed;
+18. changed MODULES/README/doc inputs invalidate affected synthesis cache identity.
 
 Update `test:product` only if adding test files.
 
@@ -168,6 +203,7 @@ Do not run live providers, browser qualification, full `npm run check`, restart,
 FINAL RESPONSE
 
 Report:
+- MODULES detection/onboarding/authority/cache contract and bootstrap prompt;
 - README orientation contract/budget;
 - documentation evidence/exclusion rules;
 - Observed/Documented/Inferred representation;
