@@ -88,9 +88,20 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
     const refs = scopeRefs(stage, context);
     if ([...refs].some(ref => !physical(byId.get(ref)!))) throw new Error('Evidence planner candidate scope references project declarations');
     const related = [...refs].map(ref => byId.get(ref)!).filter(Boolean);
+    const candidateGroups = new Set(related.map(item => group(item.path)));
+    const linkedGroups = new Set(candidateGroups);
+    if (stage === 'system-challenge') {
+        for (const item of packet.items) if (item.kind === 'dependency' &&
+            (candidateGroups.has(group(item.path)) || candidateGroups.has(group(item.targetPath)))) {
+            linkedGroups.add(group(item.path)); linkedGroups.add(group(item.targetPath));
+        }
+    }
     const eligible = (item: ArchitectureEvidenceItem): boolean => {
         if (!physical(item)) return false;
-        if (stage === 'system-discovery' || stage === 'system-challenge' || stage === 'reconciliation') return true;
+        if (stage === 'system-discovery' || stage === 'reconciliation') return true;
+        if (stage === 'system-challenge') return refs.has(item.id) ||
+            item.kind === 'topology' && item.scope === 'workspace' || linkedGroups.has(group(item.path)) ||
+            item.kind === 'dependency' && linkedGroups.has(group(item.targetPath));
         if (refs.has(item.id)) return true;
         return related.some(seed => sameArea(item.path, seed.path) ||
             item.kind === 'dependency' && (sameArea(item.targetPath, seed.path) ||
@@ -116,7 +127,11 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
         if (topology) mandatory.push(topology);
         if (entrypoint) mandatory.push(entrypoint);
         if (!mandatory.length && base.length) mandatory.push(ordered(base)[0]);
-    } else if (stage === 'system-challenge' || stage === 'reconciliation') {
+    } else if (stage === 'system-challenge') {
+        // The independent challenge must see every fact P3 cited, even when that
+        // leaves less room for counter evidence. Fail if the bounded call cannot fit.
+        mandatory.push(...ordered([...refs].map(ref => byId.get(ref)!).filter(Boolean)));
+    } else if (stage === 'reconciliation') {
         for (const system of context.systems) {
             const first = ordered(system.evidenceRefs.map(ref => byId.get(ref)!).filter(Boolean))[0];
             if (first) mandatory.push(first);
@@ -142,9 +157,14 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
     }
     if (!mandatory.length && await estimate([]) > budget) throw new Error(`Evidence planner ${stage} context exceeds input budget`);
     const scoped = packet.items.filter(eligible);
+    const crossCandidate = (item: ArchitectureEvidenceItem): boolean => item.kind === 'dependency' &&
+        group(item.path) !== group(item.targetPath) &&
+        (candidateGroups.has(group(item.path)) || candidateGroups.has(group(item.targetPath)));
     const priority = (item: ArchitectureEvidenceItem) => (refs.has(item.id) ? 1000 : 0) + rank(item) +
+        (stage === 'system-challenge' && crossCandidate(item) ? 100 : 0) +
         (stage === 'reconciliation' && item.kind === 'dependency' && group(item.path) !== group(item.targetPath) ? 25 : 0);
-    const stageCategories: Category[] = stage === 'reconciliation'
+    const stageCategories: Category[] = stage === 'system-challenge'
+        ? ['dependency', 'entrypoint', 'framework', 'semantic', 'topology', 'configuration'] : stage === 'reconciliation'
         ? ['dependency', 'entrypoint', 'framework', 'topology', 'configuration', 'semantic'] : categories;
     for (const category of stageCategories) {
         const candidates = scoped.filter(item => item.kind === category).sort((a, b) =>
@@ -175,6 +195,7 @@ export async function planArchitectureEvidence(packet: ArchitectureEvidencePacke
         return `${description[category]}: ${counts.get(category)} whole facts`;
     });
     if (refs.size) selectionReasons.push(`candidate scope: ${refs.size} parent evidence refs`);
+    if (stage === 'system-challenge') selectionReasons.push('cross-candidate dependencies, entrypoints, framework ownership and production counter-signals');
     return { plannerVersion: EVIDENCE_PLANNER_VERSION,
         planId: digest([EVIDENCE_PLANNER_VERSION, stage, SYNTHESIS_STAGE_VERSION, packet.inputFingerprint,
             context, capability, request.view.viewId]), request, includedEvidenceRefs, omittedEvidenceRefs,

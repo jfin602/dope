@@ -316,6 +316,7 @@ export function parseSynthesisStageResult(input: unknown, request: SynthesisStag
         if (!Array.isArray(data.decisions)) invalid('decisions');
         const source = new Set(request.context.systems.map(item => item.candidateKey));
         const seen: string[] = []; const output: string[] = [];
+        const byId = new Map(request.view.items.map(item => [item.id, item]));
         for (const [i, raw] of data.decisions.entries()) {
             const at = `decisions[${i}]`;
             exact(raw, ['action', 'sourceKeys', 'systems', 'rationale', 'evidenceRefs'], at);
@@ -332,6 +333,14 @@ export function parseSynthesisStageResult(input: unknown, request: SynthesisStag
                 decision.action === 'reject' && sourceKeys.length === 1 && produced.length === 0;
             if (!validShape) invalid(`${at} merge/split/keep/reject shape`);
             label(decision.rationale, `${at}.rationale`); evidence(decision.evidenceRefs, allowed, `${at}.evidenceRefs`);
+            for (const [j, candidate] of produced.entries()) {
+                if (!candidate.evidenceRefs.some(ref => {
+                    const item = byId.get(ref)!;
+                    return isProductionEvidencePath(item.path) && item.kind !== 'topology' && item.kind !== 'configuration' &&
+                        (item.sourceEvidenceIds.length > 0 || item.kind === 'entrypoint' ||
+                            item.kind === 'framework' && item.concept === 'manifest-extension');
+                })) invalid(`${at}.systems[${j}] lacks directly source-backed production behavior`);
+            }
         }
         strings(seen, 'challenge source keys'); strings(output, 'challenge output keys');
         if (seen.length !== source.size) invalid('incomplete challenge coverage');

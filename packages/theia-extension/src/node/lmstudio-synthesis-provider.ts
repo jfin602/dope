@@ -15,6 +15,9 @@ export const SYSTEM_DISCOVERY_INSTRUCTION = `Discover candidate Systems from the
 A System is a major independently meaningful software, runtime or product responsibility with a coherent architectural boundary and enough owned behavior to contain lower-level structure.
 A directory, package, framework, UI panel, persistence mechanism, Browser variant or Electron variant is not a System merely because it is separately named or deployed. Multiple packages can serve one System; one repository can contain multiple Systems. Do not force a target count.
 Return only candidate Systems. Do not infer or emit Subsystems or Components, and do not generate canonical architecture IDs. Each candidate needs a temporary candidateKey, name, purpose, boundaryRationale explaining the responsibility and boundary signals, confidence, uncertainty or counter-signals, and directly relevant evidenceRefs from this view. Test fixtures or generated files cannot be the sole support for a production System. Use only supplied evidence IDs; do not invent facts, request filesystem access, or use tools. The complete parent packet is retained by Dope for validation. Return only the strict JSON stage result, including the supplied stage/version, parentPacketFingerprint and viewId.`;
+export const SYSTEM_CHALLENGE_INSTRUCTION = `Independently challenge the supplied first-pass System candidates using their cited facts and the bounded deterministic counter and cross-boundary evidence view. Produce an explicit disposition for every input candidate. A System owns a major independent responsibility with enough behavior for lower-level structure; a package, Browser or Electron application shell, transport/runtime variant, persistence mechanism, framework integration, or UI surface alone does not establish one.
+For each candidate or candidate group choose exactly one action: keep one candidate with its existing temporary key; merge two or more candidates into one corrected candidate with a new temporary key; split one candidate into two or more corrected candidates with new temporary keys; or reject one candidate with no output System. No candidate may appear in more than one decision. For every decision explain why the boundary holds or changes and cite evidenceRefs from this view. Every resulting System must cite directly relevant source-backed production behavior; test/example/generated facts alone are insufficient. Keep candidate keys temporary; never use canonical architecture IDs.
+Actively test whether each candidate owns an independent responsibility, whether candidates jointly implement one responsibility, whether a broad candidate hides separate responsibilities, and whether dependency direction, entrypoints, framework registrations, ownership or counter-evidence undermine the initial boundaries. Do not assume the first pass is correct. Do not force a target System count. Use only supplied facts; do not invent evidence, access files, or use tools. Return only strict JSON for the system-challenge stage with decisions, supplied stage/version, parentPacketFingerprint and viewId. Do not emit Subsystems, Components or a final architecture proposal.`;
 
 export function normalizeSynthesisEndpoint(value = DEFAULT_ENDPOINT): string {
     let url: URL;
@@ -112,7 +115,7 @@ export class LmStudioSynthesisProvider {
     async estimateTokens(input: string): Promise<number> { return new TextEncoder().encode(input).length; }
 
     async runStage(request: SynthesisStageRequest): Promise<unknown> {
-        if (request.stage !== 'system-discovery') throw new Error('Unsupported synthesis stage');
+        if (request.stage !== 'system-discovery' && request.stage !== 'system-challenge') throw new Error('Unsupported synthesis stage');
         const model = this.requireModel();
         if (!this.probed) throw new Error('Synthesis capability probe required');
         const capability = await this.capabilities();
@@ -123,11 +126,13 @@ export class LmStudioSynthesisProvider {
         if (generation !== this.generation || model !== this.modelId || !this.probed)
             throw new Error('Synthesis connection changed before stage submission');
         try {
-            const response = await this.chat(model, synthesisStageResultSchemas['system-discovery'],
-                'system_discovery', SYSTEM_DISCOVERY_INSTRUCTION, input);
+            const challenge = request.stage === 'system-challenge';
+            const response = await this.chat(model, synthesisStageResultSchemas[request.stage],
+                challenge ? 'system_challenge' : 'system_discovery',
+                challenge ? SYSTEM_CHALLENGE_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION, input);
             if (generation !== this.generation || model !== this.modelId) throw new Error('Synthesis connection changed');
             try { return JSON.parse(this.content(response)); }
-            catch (error) { if (error instanceof SyntaxError) throw new Error('Invalid System Discovery JSON'); throw error; }
+            catch (error) { if (error instanceof SyntaxError) throw new Error(`Invalid ${challenge ? 'System Challenge' : 'System Discovery'} JSON`); throw error; }
         } catch (error) {
             this.invalidateWarmState();
             throw error;
