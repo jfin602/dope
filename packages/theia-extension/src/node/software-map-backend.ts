@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { realpath } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import type { KeyStoreService } from '@theia/core/lib/common/key-store';
 import { canonicalLocalRoot } from '@dope/code-analysis/lib/node/architecture-file';
 import { readInitialization, acceptInitialization } from '@dope/code-analysis/lib/node/smap-initialization-file';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
@@ -12,6 +13,9 @@ import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, Softw
     ArchitectureDeclaration, SoftwareMapInitializationStatus, SynthesisProvider, SynthesisSetup, SynthesisSetupResult, AnalysisProgressEvent } from '@dope/software-map';
 import { LmStudioSynthesisProvider } from './lmstudio-synthesis-provider';
 import { GeminiSynthesisProvider } from './gemini-synthesis-provider';
+
+const geminiCredentialService = 'Dope Gemini';
+const geminiCredentialAccount = 'AI Studio API key';
 
 export class SoftwareMapBackend implements SoftwareMapService {
     private root?: string;
@@ -37,7 +41,8 @@ export class SoftwareMapBackend implements SoftwareMapService {
 
     constructor(private readonly index: SoftwareMapIndex, private readonly client: SoftwareMapClient,
         provider?: SynthesisProvider,
-        private readonly makeGemini = (apiKey: string) => new GeminiSynthesisProvider({ apiKey })) {
+        private readonly makeGemini = (apiKey: string) => new GeminiSynthesisProvider({ apiKey }),
+        private readonly credentials?: Pick<KeyStoreService, 'getPassword' | 'setPassword'>) {
         this.provider = provider;
         this.unlisten = index.onChange((root, status) => {
             if (!this.disposed && this.initialized && root === this.root) client.notifySoftwareMapChanged(status);
@@ -101,7 +106,11 @@ export class SoftwareMapBackend implements SoftwareMapService {
     }
     async synthesisEnvironment(projectHandle: string): Promise<{ geminiKeyAvailable: boolean }> {
         this.active(projectHandle);
-        return { geminiKeyAvailable: !!process.env.GEMINI_API_KEY?.trim() };
+        let storedKey: string | undefined;
+        try { storedKey = await this.credentials?.getPassword(geminiCredentialService, geminiCredentialAccount); }
+        catch { throw new Error('Could not access Gemini credential store'); }
+        this.active(projectHandle);
+        return { geminiKeyAvailable: !!(storedKey || process.env.GEMINI_API_KEY?.trim()) };
     }
     async configureSynthesis(projectHandle: string, options: SynthesisSetup): Promise<SynthesisSetupResult> {
         this.active(projectHandle);
@@ -118,7 +127,13 @@ export class SoftwareMapBackend implements SoftwareMapService {
             return { models };
         }
         if (options.kind !== 'gemini') throw new Error('Invalid synthesis provider');
-        const key = options.apiKey?.trim() || process.env.GEMINI_API_KEY?.trim();
+        const suppliedKey = options.apiKey?.trim();
+        let storedKey: string | undefined;
+        if (!suppliedKey) {
+            try { storedKey = await this.credentials?.getPassword(geminiCredentialService, geminiCredentialAccount); }
+            catch { throw new Error('Could not access Gemini credential store'); }
+        }
+        const key = suppliedKey || storedKey || process.env.GEMINI_API_KEY?.trim();
         if (!key) throw new Error('Gemini API key required');
         let provider: GeminiSynthesisProvider;
         try { provider = this.makeGemini(key); }
@@ -126,6 +141,12 @@ export class SoftwareMapBackend implements SoftwareMapService {
         const models = await provider.discoverModels();
         this.active(projectHandle);
         if (run !== this.run) throw new Error('Superseded synthesis setup');
+        if (suppliedKey && this.credentials) {
+            try { await this.credentials.setPassword(geminiCredentialService, geminiCredentialAccount, suppliedKey); }
+            catch { throw new Error('Could not save Gemini API key in credential store'); }
+            this.active(projectHandle);
+            if (run !== this.run) throw new Error('Superseded synthesis setup');
+        }
         this.geminiProvider = provider;
         this.provider = provider;
         return { models };

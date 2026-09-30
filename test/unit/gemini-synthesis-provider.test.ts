@@ -90,6 +90,7 @@ test('Gemini connection probe sends only synthetic readiness and sanitizes failu
   await provider.probe();
   assert.equal(calls.length, 1);
   assert.ok(calls[0].includes('synthetic request'));
+  assert.ok(JSON.parse(calls[0]).generationConfig.maxOutputTokens >= 1024);
   assert.ok(!calls[0].includes('"enum":[true]'));
   assert.ok(!calls[0].includes(packet.inputFingerprint));
   assert.ok(!calls[0].includes(key));

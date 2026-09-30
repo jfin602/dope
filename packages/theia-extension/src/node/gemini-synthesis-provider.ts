@@ -98,7 +98,7 @@ export class GeminiSynthesisProvider {
                 contents: 'Return readiness for this synthetic request.', config: {
                     systemInstruction: 'Return only {"ready":true}.', responseMimeType: 'application/json',
                     responseJsonSchema: { type: 'object', properties: { ready: { type: 'boolean' } },
-                        required: ['ready'], additionalProperties: false }, maxOutputTokens: 16,
+                        required: ['ready'], additionalProperties: false }, maxOutputTokens: 1024,
                     abortSignal: AbortSignal.timeout(this.timeoutMs) } });
             let ready: unknown;
             try { ready = JSON.parse(response.text ?? '')?.ready; } catch { throw new Error('Invalid readiness response'); }

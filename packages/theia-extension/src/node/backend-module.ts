@@ -1,5 +1,6 @@
 import { ContainerModule } from '@theia/core/shared/inversify';
 import { ConnectionHandler, RpcConnectionHandler } from '@theia/core/lib/common';
+import { KeyStoreService } from '@theia/core/lib/common/key-store';
 import { NoteClient, noteServicePath } from '@dope/contracts/lib/note-service';
 import { NoteBackend } from './note-backend';
 import { NoteStore } from './note-store';
@@ -17,7 +18,8 @@ export default new ContainerModule(bind => {
     bind(ProjectMindStore).toSelf().inSingletonScope();
     bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<SoftwareMapClient>(softwareMapServicePath, client => {
-        const backend = new SoftwareMapBackend(context.container.get(SoftwareMapIndex), client);
+        const backend = new SoftwareMapBackend(context.container.get(SoftwareMapIndex), client, undefined, undefined,
+            context.container.get(KeyStoreService));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

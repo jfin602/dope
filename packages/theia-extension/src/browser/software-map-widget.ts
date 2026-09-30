@@ -155,8 +155,8 @@ export class SoftwareMapWidget extends BaseWidget {
         gemini.ontoggle = () => { this.geminiSetupOpen = gemini.open; };
         gemini.append(this.element('summary', 'Gemini'),
             this.element('p', 'Cloud synthesis. When Gemini is selected, bounded repository evidence used for synthesis is sent to Google’s Gemini API.'),
-            this.element('p', model.geminiEnvironmentKeyAvailable ? 'GEMINI_API_KEY detected in backend environment.' : 'No backend GEMINI_API_KEY detected. Enter an AI Studio API key for this session.'));
-        gemini.append(this.field(model.geminiEnvironmentKeyAvailable ? 'Optional AI Studio API key for this session' : 'AI Studio API key',
+            this.element('p', model.geminiEnvironmentKeyAvailable ? 'Gemini API key available on this machine.' : 'Enter an AI Studio API key. Dope saves it in this machine’s credential store after model discovery succeeds.'));
+        gemini.append(this.field(model.geminiEnvironmentKeyAvailable ? 'Optional replacement AI Studio API key' : 'AI Studio API key',
             model.geminiKey, value => model.changeGeminiKey(value), false, true));
         const refreshGemini = this.button('Refresh Gemini models', () => void model.discoverGemini());
         refreshGemini.disabled = model.setupBusy;

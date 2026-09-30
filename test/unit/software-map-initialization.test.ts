@@ -314,6 +314,37 @@ test('Gemini environment and session setup remain in memory, fail closed, and ne
   }
 });
 
+test('Gemini key survives backend restart in the machine credential store, outside project state', async () => {
+  const root = await fixture();
+  const stored = new Map<string, string>();
+  const keys: string[] = [];
+  const credentials = {
+    getPassword: async (service: string, account: string) => stored.get(`${service}:${account}`),
+    setPassword: async (service: string, account: string, value: string) => { stored.set(`${service}:${account}`, value); }
+  };
+  const makeGemini = (key: string) => {
+    keys.push(key);
+    return { discoverModels: async () => ['gemini-3.8-flash'] } as any;
+  };
+  try {
+    const index = new SoftwareMapIndex(new TypeScriptAnalyzer());
+    const client = { notifySoftwareMapChanged() {} };
+    const first = new SoftwareMapBackend(index, client, undefined, makeGemini, credentials);
+    const firstHandle = await attach(first, root);
+    assert.deepEqual(await first.synthesisEnvironment(firstHandle), { geminiKeyAvailable: false });
+    await first.configureSynthesis(firstHandle, { kind: 'gemini', apiKey: 'saved-fixture-key' });
+    assert.deepEqual(await first.synthesisEnvironment(firstHandle), { geminiKeyAvailable: true });
+    first.dispose();
+    const restarted = new SoftwareMapBackend(index, client, undefined, makeGemini, credentials);
+    const restartedHandle = await attach(restarted, root);
+    assert.deepEqual(await restarted.configureSynthesis(restartedHandle, { kind: 'gemini' }),
+      { models: ['gemini-3.8-flash'] });
+    assert.deepEqual(keys, ['saved-fixture-key', 'saved-fixture-key']);
+    assert.equal((await readdir(root)).includes('.dope'), false);
+    restarted.dispose();
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('failure can retry; cancel and project switch discard late stage results', async () => {
   const a = await fixture(); const b = await fixture();
   const events: { handle: string; event: AnalysisProgressEvent }[] = [];
