@@ -60,11 +60,14 @@ They collect and normalize facts such as:
 - framework registrations;
 - routes, jobs, schemas and service/DI structure where explicit extractors support them;
 - source locations and provenance;
+- repository-document claims with source classification/currentness when deterministic document extraction supports them;
 - later recorded runtime observations.
 
 These facts may identify strong architecture signals, but they do not by themselves become developer-owned Systems, Subsystems or Components.
 
 The deterministic result is a Dope-owned **ArchitectureEvidencePacket**. The packet is valid and inspectable without AI. Every evidence item has a stable packet-local evidence identifier plus the source/provenance and normalized facts required for Dope to verify it independently.
+
+Implementation/runtime facts and repository-document claims remain distinct support classes. Documentation may guide naming, responsibility discovery and follow-up evidence collection, but a documented claim does not independently establish current implemented System / Subsystem / Component truth. Synthesis/review must preserve the distinction between **Observed** implementation support, **Documented** repository claims and **Inferred** architectural interpretation.
 
 > **AI interprets evidence; it does not create evidence. The Architecture Evidence Packet is deterministic and independently verifiable without AI.**
 
@@ -72,7 +75,7 @@ The deterministic result is a Dope-owned **ArchitectureEvidencePacket**. The pac
 
 The synthesis boundary uses two separate provider-independent JSON contracts.
 
-**ArchitectureEvidencePacket** is produced by deterministic analyzers before any model request. It contains normalized, source-backed evidence and stable evidence identifiers. The model may consume the packet but cannot add to it, modify it or manufacture additional evidence identifiers.
+**ArchitectureEvidencePacket** is produced by deterministic analyzers before any model request. It contains normalized, provenance-backed implementation/runtime evidence and, when enabled, deterministic repository-document claim evidence with stable evidence identifiers. The model may consume the packet but cannot add to it, modify it or manufacture additional evidence identifiers.
 
 **ArchitectureProposal** is the final provider-independent structured interpretation over one logical ArchitectureEvidencePacket. ADR 0012 permits that interpretation to be produced through multiple bounded, deterministic evidence slices and intermediate candidate stages rather than requiring one monolithic model request. Final evidence references still resolve against the parent packet. Its v1 response shape contains:
 - `schemaVersion`;

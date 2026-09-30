@@ -42,6 +42,26 @@ Responsibility signals are planning metadata only. They do not establish archite
 
 Signal extraction must remain generic. Do not encode Adaptive SEO-specific expected names such as Feed, Delivery, Integrations or Opportunities as architecture answers.
 
+### Root README orientation and documentation evidence
+
+The initial repository-global synthesis should receive the project's root `README.md` directly alongside the deterministic global architecture view and responsibility signals when the README exists. The README is labeled **project orientation**, not physical truth: it supplies the project's own purpose, domain vocabulary and stated responsibilities before System Discovery begins.
+
+Use the complete root README when it fits the bounded initial-synthesis budget. If it is abnormally large, apply a deterministic documented size budget/excerpt policy and report that truncation; do not add a preparatory LLM summarization pass. Absence of a root README must not block synthesis.
+
+Broader architecture-relevant repository documentation may be deterministically discovered and represented as provenance-bearing documentation evidence, including:
+- accepted architecture/decision records and architecture contracts;
+- package/service READMEs;
+- deployment/runbooks and operational docs;
+- API/protocol/configuration docs;
+- textual/Mermaid architecture descriptions;
+- developer guidance where it materially describes current software responsibility.
+
+Every documentation evidence item preserves its source path, deterministic document classification/currentness when knowable, bounded claim/content and parent provenance. Documentation authority is contextual, not canonical: accepted/current architecture docs and package/service READMEs are generally stronger discovery signals than roadmaps/design proposals, while historical task prompts, qualification evidence, closeouts, generated agent artifacts and benchmark answer material are excluded from synthesis by default.
+
+A documentation-only claim may create a naming hint, candidate, open question, coverage cue or follow-up evidence request, but it cannot independently establish current implemented architecture. Unsupported or conflicting documentation remains visibly **Documented** rather than being silently promoted to **Observed** implementation support.
+
+For qualification, a benchmark repository's own ordinary README/docs are legitimate repository context. Independent developer architecture references or expected-answer documents used to judge the frozen result remain forbidden synthesis input.
+
 ### System support distinguishes context from responsibility
 
 Repository manifests, start scripts, framework/configuration facts and workspace topology may establish repository/runtime context but cannot by themselves establish a System responsibility boundary.
@@ -52,8 +72,8 @@ A proposed System must include direct production behavior evidence supporting it
 
 The hierarchy-first workflow becomes:
 
-1. deterministic evidence collection;
-2. deterministic global skeleton + responsibility signals;
+1. deterministic evidence collection, including eligible repository-document claims;
+2. deterministic global skeleton + responsibility signals + root README project orientation when present;
 3. System Discovery;
 4. System Challenge;
 5. per-System Subsystem Discovery;
@@ -174,7 +194,7 @@ Every System and Subsystem in pending center review exposes **Search Deeper**.
 
 Search Deeper:
 - starts from the **current edited review branch**, not the original model proposal;
-- gathers the selected branch's evidence and deterministically expands into relevant uncovered/cross-boundary evidence;
+- gathers the selected branch's evidence and deterministically expands into relevant uncovered/cross-boundary evidence plus relevant repository-document claims/README context;
 - runs only bounded targeted synthesis for that branch;
 - may refine a System and its descendants, or refine/split a selected Subsystem and its Components within the same parent System;
 - produces a preview proposal instead of mutating the draft immediately;
@@ -195,7 +215,7 @@ Adaptive SEO remains a useful benchmark but cannot be the sole quality oracle.
 - Dope itself through an uncontaminated benchmark root;
 - one smaller structurally clear repository or controlled repository fixture capable of exposing over-segmentation.
 
-Architecture references may be used only after each generated hierarchy is frozen. Green requires material implemented responsibilities to be represented or explicitly unresolved without forcing exact names/counts. The <=8-minute objective remains a per-controlled-analysis performance gate, not a timeout.
+Architecture references may be used only after each generated hierarchy is frozen. A benchmark repository's own ordinary root README/current docs may be synthesis input under the documentation rules above; independent expected architecture/reference material remains post-freeze only. Green requires material implemented responsibilities to be represented or explicitly unresolved without forcing exact names/counts. Qualification must include useful-README, absent-README, stale/conflicting-documentation and implementation-not-mentioned-in-docs cases. The <=8-minute objective remains a per-controlled-analysis performance gate, not a timeout.
 
 ### Sequencing
 

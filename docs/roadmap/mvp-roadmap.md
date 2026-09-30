@@ -47,7 +47,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c4-hierarchical — sMap Synthesis | Dope discovers Dope's Systems through a repository-global discovery/challenge pass, descends per System into Subsystems/Components, shows live analysis-stage progress, and qualifies architecture quality plus the <=8-minute initial-analysis objective without an eight-minute hard timeout. |
 | Correction c4-gemini — Shared sMap Provider Pipeline | Owner-closed Not Qualified after Gemini-only debugging: compact contracts/provider integration landed, but responsibility decomposition remained weak and the planned full provider comparison did not run. |
 | Correction c4-synth-improvements — Responsibility-oriented Synthesis | OWNER-CLOSED / NOT QUALIFIED after P4. Responsibility naming and center review improved, but major implemented responsibilities remained omitted/merged; P5 is not run. |
-| Correction c4-synth-coverage-review — Coverage + Iterative Review | Dope recovers omitted responsibilities, explains empty Component descent, retains complete provider-attempt telemetry, and lets the developer Search Deeper on one System/Subsystem without discarding the rest of the review. |
+| Correction c4-synth-coverage-review — Coverage + Iterative Review | Dope combines root README orientation with deterministic architecture evidence, recovers omitted responsibilities, explains empty Component descent, retains complete provider-attempt telemetry, and lets the developer Search Deeper on one System/Subsystem without discarding the rest of the review. |
 | Correction c4-provider-comparison — Provider Qualification | A fresh bounded Local/Gemini comparison runs only after the shared synthesis design is Green. |
 | Correction c4-storage — sMap Persistence | Dope proves that durable Software Map state travels with the repository under project-local `.dope/`, while machine-local state remains disposable or preference-only. |
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
@@ -497,12 +497,14 @@ Predecessor disposition: `c4-synth-improvements` is OWNER-CLOSED / NOT QUALIFIED
 This correction must:
 - retain every provider-call attempt and bound retryable Gemini transport/upstream recovery;
 - prioritize generic source-backed responsibility evidence over noisy cross-area vocabulary;
+- send root `README.md` directly with the initial repository-global deterministic synthesis view when present, under a deterministic size budget;
+- add eligible broader repository docs as provenance-bearing supporting evidence while distinguishing Observed / Documented / Inferred support and excluding historical/qualification/expected-answer material by default;
 - make Subsystem Challenge recover substantial responsibilities omitted by discovery;
 - carry an inspectable coverage ledger into qualification;
 - require typed zero-Component descent dispositions;
 - add branch-local Search Deeper with preview/Accept/Reject for every System and Subsystem;
 - directly prove review correction/acceptance/project switching in the browser;
-- qualify architecture coverage on Adaptive SEO, Dope and a smaller structurally clear repository/fixture;
+- qualify architecture coverage on Adaptive SEO, Dope and a smaller structurally clear repository/fixture, including useful-README, missing-README and stale/conflicting-documentation controls;
 - preserve provider independence, developer authority, bounded synthesis and the Phase 4/5 boundary.
 
 Green routes to the fresh provider-comparison correction below. It does not directly activate storage or Phase 5.
