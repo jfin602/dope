@@ -1,5 +1,6 @@
 import { ArchitectureEvidenceItem, ArchitectureEvidencePacket, ArchitectureProposal, ProposedArchitectureNode,
-    validateArchitectureEvidencePacket, parseArchitectureProposal, isProductionEvidencePath } from './synthesis';
+    validateArchitectureEvidencePacket, parseArchitectureProposal, isProductionEvidencePath,
+    isDirectSystemResponsibilityEvidence } from './synthesis';
 
 /** The adapter supplies model-specific limits and a conservative estimate when exact counting is unavailable. */
 export interface SynthesisCapabilities {
@@ -60,15 +61,61 @@ export async function assertSynthesisInputBudget(provider: Pick<SynthesisProvide
     return count;
 }
 
-export const SYNTHESIS_VIEW_VERSION = 1;
+export const SYNTHESIS_VIEW_VERSION = 2;
+export interface ResponsibilitySignal {
+    /** Rebuildable view-local planning identity, never an architecture identity. */
+    key: string;
+    concept: string;
+    evidenceRefs: string[];
+    sourceAreas: string[];
+}
+export const evidenceSourceArea = (path: string): string => {
+    const parts = path.split('/');
+    const area = parts[0] === 'packages' || parts[0] === 'apps' || parts[0] === 'src'
+        ? parts.slice(0, 2).join('/') : parts[0];
+    return area.length <= 80 ? area : `${area.slice(0, 48)}:${digest(area).slice(-16)}`;
+};
+const genericConcepts = new Set(['application', 'backend', 'client', 'component', 'config', 'controller',
+    'create', 'data', 'default', 'delete', 'fetch', 'find', 'frontend', 'handler', 'index', 'input',
+    'interface', 'json', 'list', 'load', 'main', 'module', 'output', 'page', 'provider', 'read',
+    'repository', 'request', 'response', 'result', 'route', 'save', 'server', 'service', 'state',
+    'store', 'type', 'update', 'util', 'view', 'worker', 'write']);
+/** Only recurring source-backed behavior terms across source areas; no inferred ownership. */
+export function deriveResponsibilitySignals(items: readonly ArchitectureEvidenceItem[]): ResponsibilitySignal[] {
+    const concepts = new Map<string, ArchitectureEvidenceItem[]>();
+    for (const item of items) {
+        if (!isDirectSystemResponsibilityEvidence(item) && !(item.kind === 'framework' &&
+            isProductionEvidencePath(item.path) && item.sourceEvidenceIds.length > 0 &&
+            item.concept !== 'manifest-extension' && item.concept !== 'container-module' && item.concept !== 'import')) continue;
+        const names = item.kind === 'semantic' ? [item.symbol] : item.kind === 'framework' ? [item.name, item.target ?? ''] : [];
+        const words = new Set(names.flatMap(name => name.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+            .split(/[^A-Za-z0-9]+/).map(word => word.toLowerCase())
+            .filter(word => word.length >= 4 && word.length <= 32 && !genericConcepts.has(word))));
+        for (const word of words) {
+            if (!concepts.has(word)) concepts.set(word, []);
+            concepts.get(word)!.push(item);
+        }
+    }
+    return [...concepts].flatMap(([concept, facts]) => {
+        const ordered = [...facts].sort((a, b) => evidenceSourceArea(a.path).localeCompare(evidenceSourceArea(b.path)) ||
+            a.path.localeCompare(b.path) || a.id.localeCompare(b.id));
+        const areas = [...new Set(ordered.map(item => evidenceSourceArea(item.path)))];
+        if (areas.length < 2) return [];
+        const selected = areas.slice(0, 4).flatMap(area => ordered.filter(item => evidenceSourceArea(item.path) === area).slice(0, 2));
+        return [{ key: digest([concept, selected.map(item => item.id)]).replace('view:v1:', 'signal:v1:'), concept,
+            evidenceRefs: selected.map(item => item.id).sort(), sourceAreas: areas.slice(0, 4) }];
+    }).sort((a, b) => b.sourceAreas.length - a.sourceAreas.length || a.concept.localeCompare(b.concept)).slice(0, 12);
+}
 export interface ArchitectureEvidenceView {
     schemaVersion: 1;
-    viewVersion: 1;
+    viewVersion: 2;
     /** Fingerprint of the entire deterministic packet, including refinements. */
     parentPacketFingerprint: string;
     /** Hash of version, parent fingerprint, and the complete selected evidence items. */
     viewId: string;
     items: ArchitectureEvidenceItem[];
+    /** Derived hints, never parent evidence or canonical architecture. */
+    responsibilitySignals: ResponsibilitySignal[];
 }
 // View IDs are cache keys, never evidence authority. Exact item equality is checked separately.
 const digest = (value: unknown) => {
@@ -88,16 +135,19 @@ export function createArchitectureEvidenceView(packet: ArchitectureEvidencePacke
         return item;
     });
     const ordered = [...items].sort((a, b) => a.id.localeCompare(b.id));
+    const responsibilitySignals = deriveResponsibilitySignals(ordered);
     return { schemaVersion: 1, viewVersion: SYNTHESIS_VIEW_VERSION, parentPacketFingerprint: packet.inputFingerprint,
-        viewId: digest([SYNTHESIS_VIEW_VERSION, packet.inputFingerprint, ordered]), items: structuredClone(ordered) };
+        viewId: digest([SYNTHESIS_VIEW_VERSION, packet.inputFingerprint, ordered, responsibilitySignals]),
+        items: structuredClone(ordered), responsibilitySignals };
 }
 export function validateArchitectureEvidenceView(view: ArchitectureEvidenceView, packet: ArchitectureEvidencePacket): void {
     validateArchitectureEvidencePacket(packet);
-    exact(view, ['schemaVersion', 'viewVersion', 'parentPacketFingerprint', 'viewId', 'items'], 'view');
+    exact(view, ['schemaVersion', 'viewVersion', 'parentPacketFingerprint', 'viewId', 'items', 'responsibilitySignals'], 'view');
     if (view.schemaVersion !== 1 || view.viewVersion !== SYNTHESIS_VIEW_VERSION ||
         view.parentPacketFingerprint !== packet.inputFingerprint || !Array.isArray(view.items)) invalid('view identity');
     const expected = createArchitectureEvidenceView(packet, view.items.map(item => item?.id));
-    if (view.viewId !== expected.viewId || JSON.stringify(view.items) !== JSON.stringify(expected.items)) invalid('view items or identity');
+    if (view.viewId !== expected.viewId || JSON.stringify(view.items) !== JSON.stringify(expected.items) ||
+        JSON.stringify(view.responsibilitySignals) !== JSON.stringify(expected.responsibilitySignals)) invalid('view items, signals or identity');
 }
 
 export const SYNTHESIS_STAGE_VERSION = 2;
@@ -370,16 +420,14 @@ export function parseSynthesisStageResult(input: unknown, request: SynthesisStag
     const allowed = new Set(request.view.items.map(item => item.id));
     if (request.stage === 'system-discovery') {
         const discovered = systems(data.systems, allowed, 'result systems');
-        const byId = new Map(request.view.items.map(item => [item.id, item]));
         for (const [index, candidate] of discovered.entries()) {
-            if (!candidate.evidenceRefs.some(ref => isProductionEvidencePath(byId.get(ref)!.path)))
-                invalid(`result systems[${index}] lacks production evidence`);
+            if (!candidate.evidenceRefs.some(ref => isDirectSystemResponsibilityEvidence(packet.items.find(item => item.id === ref)!)))
+                invalid(`result systems[${index}] lacks direct production evidence for responsibility`);
         }
     } else if (request.stage === 'system-challenge') {
         if (!Array.isArray(data.decisions)) invalid('decisions');
         const source = new Set(request.context.systems.map(item => item.candidateKey));
         const seen: string[] = []; const output: string[] = [];
-        const byId = new Map(request.view.items.map(item => [item.id, item]));
         for (const [i, raw] of data.decisions.entries()) {
             const at = `decisions[${i}]`;
             exact(raw, ['action', 'sourceKeys', 'systems', 'evidenceRefs'], at);
@@ -397,12 +445,8 @@ export function parseSynthesisStageResult(input: unknown, request: SynthesisStag
             if (!validShape) invalid(`${at} merge/split/keep/reject shape`);
             evidence(decision.evidenceRefs, allowed, `${at}.evidenceRefs`);
             for (const [j, candidate] of produced.entries()) {
-                if (!candidate.evidenceRefs.some(ref => {
-                    const item = byId.get(ref)!;
-                    return isProductionEvidencePath(item.path) && item.kind !== 'topology' && item.kind !== 'configuration' &&
-                        (item.sourceEvidenceIds.length > 0 || item.kind === 'entrypoint' ||
-                            item.kind === 'framework' && item.concept === 'manifest-extension');
-                })) invalid(`${at}.systems[${j}] lacks directly source-backed production behavior`);
+                if (!candidate.evidenceRefs.some(ref => isDirectSystemResponsibilityEvidence(packet.items.find(item => item.id === ref)!)))
+                    invalid(`${at}.systems[${j}] lacks directly source-backed production behavior`);
             }
         }
         strings(seen, 'challenge source keys'); strings(output, 'challenge output keys');
@@ -466,6 +510,9 @@ export function assembleArchitectureProposal(input: ArchitectureProposalAssembly
     label(input.summary, 'assembly summary');
     const allowed = new Set(packet.items.map(item => item.id));
     systems(input.systems, allowed, 'assembly systems');
+    for (const candidate of input.systems) if (!candidate.evidenceRefs.some(ref =>
+        isDirectSystemResponsibilityEvidence(packet.items.find(item => item.id === ref)!)))
+        invalid('assembly System lacks direct production responsibility evidence');
     if (!Array.isArray(input.subtrees) || input.subtrees.length !== input.systems.length) invalid('assembly subtrees');
     const allKeys = [...input.systems.map(item => item.candidateKey)];
     for (const [i, tree] of input.subtrees.entries()) {

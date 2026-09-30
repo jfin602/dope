@@ -4,6 +4,7 @@ import { createArchitectureEvidenceView, parseSynthesisStageResult } from '../..
 import type { ArchitectureEvidencePacket, SynthesisStageRequest } from '../../packages/software-map/lib/index.js';
 import { GeminiSynthesisProvider, geminiStageSchema } from
   '../../packages/theia-extension/lib/node/gemini-synthesis-provider.js';
+import { SYSTEM_DISCOVERY_INSTRUCTION } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
 
 const key = 'synthetic-test-secret';
 const packet: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'gemini-fixture', items: [
@@ -67,9 +68,8 @@ test('Gemini SDK applies the API key, selected model, compact schema and provide
   assert.ok(calls.every(call => call.url.includes(`/models/${modelId}`)));
   assert.ok(calls.every(call => new Headers(call.init.headers).get('x-goog-api-key') === key));
   const body = JSON.parse(String(calls[1].init.body));
-  assert.match(body.systemInstruction.parts[0].text, /candidateKey.*candidate:api/);
-  assert.match(body.systemInstruction.parts[0].text, /single-product repository may be one System/);
-  assert.match(body.systemInstruction.parts[0].text, /ownershipEvidenceRefs.*never cite topology/);
+  assert.equal(body.systemInstruction.parts[0].text, SYSTEM_DISCOVERY_INSTRUCTION);
+  assert.match(body.systemInstruction.parts[0].text, /One cohesive product may be one System/);
   assert.equal(body.generationConfig.responseMimeType, 'application/json');
   assert.equal(body.generationConfig.maxOutputTokens, 32768);
   const schema = body.generationConfig.responseJsonSchema;

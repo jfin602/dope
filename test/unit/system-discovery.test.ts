@@ -108,10 +108,41 @@ test('strict stage result rejects lower hierarchy, fabricated refs and fixture-o
     try {
       await assert.rejects(discoverCandidateSystems(oneResponsibility, await configured(server.endpoint)),
         mode === 'subsystem' ? /kind/ : mode === 'component' ? /fields/ :
-          mode === 'fixture' ? /production evidence/ : /unknown/);
+          mode === 'fixture' ? /unknown|production evidence/ : /unknown/);
       assert.equal(server.calls.filter(call => call.body?.response_format.json_schema.name === 'system_discovery').length, 1);
     } finally { await server.close(); }
   }
+});
+
+test('root manifest and start script are context, not direct System responsibility', async () => {
+  const manifest: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'manifest-only', items: [
+    { id: 'root', kind: 'topology', path: 'package.json', name: 'App', scope: 'workspace', sourceEvidenceIds: [] },
+    { id: 'start', kind: 'entrypoint', path: 'package.json', role: 'script:start:node app.js', sourceEvidenceIds: ['manifest:start'] },
+  ] };
+  const server = await serverFor(request => result(request, [candidate('app', 'App', ['root', 'start'])]));
+  try {
+    await assert.rejects(discoverCandidateSystems(manifest, await configured(server.endpoint)), /direct production evidence/);
+    assert.match(SYSTEM_DISCOVERY_INSTRUCTION, /One cohesive product may be one System/);
+    assert.match(SYSTEM_DISCOVERY_INSTRUCTION, /start scripts provide context/);
+  } finally { await server.close(); }
+  const registration: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'registration-only', items: [
+    { id: 'binding', kind: 'framework', path: 'src/container.ts', framework: 'DI', producer: 'fixture',
+      producerVersion: '1', concept: 'di-registration', name: 'AppService', target: 'AppService',
+      sourceEvidenceIds: ['physical:binding'] },
+  ] };
+  const frameworkServer = await serverFor(request => result(request, [candidate('app', 'App', ['binding'])]));
+  try {
+    await assert.rejects(discoverCandidateSystems(registration, await configured(frameworkServer.endpoint)),
+      /direct production evidence/);
+  } finally { await frameworkServer.close(); }
+  const documentation: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'docs-only', items: [
+    semantic('guide', 'docs/guide.ts', 'DocumentedApp'),
+  ] };
+  const docsServer = await serverFor(request => result(request, [candidate('app', 'App', ['guide'])]));
+  try {
+    await assert.rejects(discoverCandidateSystems(documentation, await configured(docsServer.endpoint)),
+      /unknown|direct production evidence/);
+  } finally { await docsServer.close(); }
 });
 
 test('warm failure blocks evidence; reconnect and model change require new probe and warm-up', async () => {

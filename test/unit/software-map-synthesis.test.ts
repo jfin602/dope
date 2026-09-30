@@ -144,7 +144,7 @@ test('views retain whole parent items, deterministic identity and exact source r
   assert.throws(() => createArchitectureEvidenceView(packet, ['fabricated']), /unknown/);
   assert.throws(() => validateArchitectureEvidenceView({ ...view, items: [{ ...view.items[0], path: 'other.ts' }, view.items[1]] }, packet));
   assert.throws(() => validateArchitectureEvidenceView(view, { ...packet, inputFingerprint: 'changed' }));
-  assert.throws(() => validateArchitectureEvidenceView({ ...view, viewVersion: 2 as 1 }, packet));
+  assert.throws(() => validateArchitectureEvidenceView({ ...view, viewVersion: 1 as 2 }, packet));
 });
 
 test('stage requests and outputs enforce stage, context, evidence and temporary identity', () => {

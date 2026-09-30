@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { planArchitectureEvidence, validateSynthesisStageRequest } from '../../packages/software-map/lib/index.js';
+import { deriveResponsibilitySignals, planArchitectureEvidence, validateArchitectureEvidenceView,
+  validateSynthesisStageRequest } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidenceItem, ArchitectureEvidencePacket, SynthesisCapabilities,
   SynthesisStageContext, SystemCandidate } from '../../packages/software-map/lib/index.js';
 
@@ -114,4 +116,44 @@ test('root manifest System scope includes production source behavior for Subsyst
   assert.ok(plan.includedEvidenceRefs.includes('client-0'));
   assert.ok(plan.includedEvidenceRefs.includes('worker'));
   assert.ok(!plan.includedEvidenceRefs.includes('test'));
+});
+
+test('cross-area responsibility cues are deterministic, bounded, source-backed and non-authoritative', async () => {
+  const crossArea: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'cross-area', items: [
+    item('root', 'topology', 'package.json'), item('start', 'entrypoint', 'package.json'),
+    { ...item('client', 'semantic', 'src/client/orders.ts'), symbol: 'OrderSummary' },
+    { ...item('server', 'semantic', 'src/server/orders.ts'), symbol: 'OrderController' },
+    { ...item('worker', 'semantic', 'src/worker/orders.ts'), symbol: 'OrderProcessor' },
+    item('noise', 'semantic', 'test/orders.test.ts'),
+  ] as ArchitectureEvidenceItem[] };
+  const original = structuredClone(crossArea);
+  const first = await planArchitectureEvidence(crossArea, 'system-discovery', context(), capability(1800), counter);
+  const second = await planArchitectureEvidence(crossArea, 'system-discovery', context(), capability(1800), counter);
+  assert.deepEqual(first, second);
+  assert.deepEqual(crossArea, original);
+  const signal = first.request.view.responsibilitySignals.find(value => value.concept === 'order');
+  assert.ok(signal);
+  assert.deepEqual(signal.evidenceRefs, ['client', 'server', 'worker']);
+  assert.deepEqual(signal.sourceAreas, ['src/client', 'src/server', 'src/worker']);
+  assert.ok(signal.key.startsWith('signal:v1:'));
+  assert.deepEqual(deriveResponsibilitySignals(first.request.view.items), first.request.view.responsibilitySignals);
+  assert.ok(signal.evidenceRefs.every(ref => first.includedEvidenceRefs.includes(ref)));
+  assert.ok(first.request.view.items.every(fact => crossArea.items.some(parent => parent.id === fact.id)));
+  assert.ok(!JSON.stringify(first.request).includes('test/orders.test.ts'));
+  validateArchitectureEvidenceView(first.request.view, crossArea);
+  assert.throws(() => validateArchitectureEvidenceView({ ...first.request.view,
+    responsibilitySignals: [{ ...signal, evidenceRefs: ['fabricated'] }] }, crossArea), /signals/);
+  assert.equal('systems' in first.request.view, false);
+  assert.equal('ownership' in signal, false);
+  const scoped = await planArchitectureEvidence(crossArea, 'subsystem-discovery',
+    context([{ ...system, evidenceRefs: ['server'] }], system.candidateKey), capability(1800), counter);
+  assert.ok(scoped.includedEvidenceRefs.includes('server'));
+  assert.ok(scoped.includedEvidenceRefs.includes('client'));
+  assert.ok(scoped.request.view.responsibilitySignals.some(value => value.concept === 'order'));
+});
+
+test('production planner policy contains no benchmark answer vocabulary', () => {
+  const policy = readFileSync(new URL('../../packages/software-map/src/evidence-planner.ts', import.meta.url), 'utf8') +
+    readFileSync(new URL('../../packages/software-map/src/hierarchical-synthesis.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(policy, /\b(?:Feed|Delivery|Integration|Opportunity|GA4|Ahrefs)\b/i);
 });

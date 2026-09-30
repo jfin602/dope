@@ -20,8 +20,15 @@ export interface ArchitectureEvidencePacket {
 
 /** Test and generated source can inform a boundary, but cannot alone establish a production System. */
 export const isProductionEvidencePath = (path: string): boolean =>
-    !/(^|\/)(test|tests|fixtures|examples?|generated|__tests__|__fixtures__|dist|build|coverage)(\/|$)|(?:\.test|\.spec)\.[^/]+$/.test(path) &&
+    !/(^|\/)(test|tests|fixtures|examples?|docs|documentation|generated|__tests__|__fixtures__|dist|build|coverage)(\/|$)|(?:\.test|\.spec)\.[^/]+$/.test(path) &&
     !path.startsWith('.dope/');
+
+/** Context facts describe deployment; direct facts describe source-backed production behavior. */
+export const isDirectSystemResponsibilityEvidence = (item: ArchitectureEvidenceItem): boolean =>
+    isProductionEvidencePath(item.path) && item.sourceEvidenceIds.length > 0 &&
+    !/(^|\/)(package\.json|[^/]+\.config\.[^/]+)$/.test(item.path) &&
+    (item.kind === 'semantic' || item.kind === 'framework' && /(?:^|-)(?:handler|route|job)(?:$|-)/.test(item.concept) ||
+        item.kind === 'entrypoint');
 
 /** This lifecycle is distinct from Physical Map indexing status and declaration-file presence. */
 export type SoftwareMapInitializationState = 'uninitialized' | 'analyzing' | 'review_required' | 'initialized';

@@ -167,3 +167,61 @@ test('local provider sends independent structured challenge call after discovery
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
 });
+
+test('one cohesive responsibility survives, an umbrella splits, and technical directories can merge', async () => {
+  const cases = [
+    { name: 'cohesive', facts: [fact('client-order', 'semantic', 'src/frontend/orders.ts'),
+      fact('server-order', 'semantic', 'src/backend/orders.ts')],
+      discovered: [candidate('orders', ['client-order', 'server-order'])], action: 'keep',
+      output: [candidate('orders', ['client-order', 'server-order'])] },
+    { name: 'umbrella', facts: [fact('orders', 'semantic', 'src/orders/handler.ts'),
+      fact('billing', 'semantic', 'src/billing/processor.ts')],
+      discovered: [candidate('product', ['orders', 'billing'])], action: 'split',
+      output: [candidate('orders', ['orders']), candidate('billing', ['billing'])] },
+    { name: 'technical-tiers', facts: [fact('client-order', 'semantic', 'src/frontend/orders.ts'),
+      fact('server-order', 'semantic', 'src/backend/orders.ts')],
+      discovered: [candidate('frontend', ['client-order']), candidate('backend', ['server-order'])], action: 'merge',
+      output: [candidate('orders', ['client-order', 'server-order'])] },
+  ] as const;
+  for (const scenario of cases) {
+    const controlled: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: scenario.name,
+      items: [{ id: 'root', kind: 'topology', path: 'package.json', name: 'Product', scope: 'workspace', sourceEvidenceIds: [] },
+        ...scenario.facts] as ArchitectureEvidencePacket['items'] };
+    const seen: SynthesisStageRequest[] = [];
+    const adapter: SynthesisProvider = { ...provider(), runStage: async request => {
+      seen.push(request);
+      const body = request.stage === 'system-discovery' ? { systems: scenario.discovered } :
+        { decisions: [{ action: scenario.action, sourceKeys: scenario.discovered.map(value => value.candidateKey),
+          systems: scenario.output, evidenceRefs: scenario.facts.map(value => value.id) }] };
+      return { output: stageResult(request, body), usage: { providerKind: 'local', modelLabel: 'fixture-provider',
+        requestBytes: 1, outputBytes: 1, tokenMeasurement: 'unavailable' } };
+    } };
+    const discovery = await discoverCandidateSystems(controlled, adapter);
+    const challenged = await challengeCandidateSystems(controlled, discovery, adapter);
+    assert.deepEqual(challenged.systems.map(value => value.candidateKey), scenario.output.map(value => value.candidateKey));
+    assert.equal(challenged.mapping[0].action, scenario.action);
+    assert.ok(seen[1].view.items.some(value => value.id === scenario.facts[0].id));
+    assert.ok(seen[1].view.items.some(value => value.id === scenario.facts[scenario.facts.length - 1].id));
+  }
+  assert.match(SYSTEM_CHALLENGE_INSTRUCTION, /umbrella collapse/);
+  assert.match(SYSTEM_CHALLENGE_INSTRUCTION, /runtime, process, state and external contract/);
+  assert.match(SYSTEM_CHALLENGE_INSTRUCTION, /keep one when behavior forms one coherent responsibility/);
+});
+
+test('System Challenge rejects a surviving System supported only by root start-script context', async () => {
+  const controlled: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'challenge-root-only', items: [
+    { id: 'root', kind: 'topology', path: 'package.json', name: 'Product', scope: 'workspace', sourceEvidenceIds: [] },
+    { id: 'start', kind: 'entrypoint', path: 'package.json', role: 'script:start:node app.js', sourceEvidenceIds: ['manifest:start'] },
+    fact('behavior', 'semantic', 'src/app.ts'),
+  ] };
+  const adapter: SynthesisProvider = { ...provider(), runStage: async request => ({
+    output: stageResult(request, request.stage === 'system-discovery'
+      ? { systems: [candidate('app', ['behavior', 'start'])] }
+      : { decisions: [{ action: 'keep', sourceKeys: ['candidate:app'], systems: [candidate('app', ['root', 'start'])],
+        evidenceRefs: ['root', 'start'] }] }),
+    usage: { providerKind: 'local', modelLabel: 'fixture-provider', requestBytes: 1, outputBytes: 1,
+      tokenMeasurement: 'unavailable' },
+  }) };
+  const discovery = await discoverCandidateSystems(controlled, adapter);
+  await assert.rejects(challengeCandidateSystems(controlled, discovery, adapter), /directly source-backed production behavior/);
+});
