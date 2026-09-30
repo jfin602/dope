@@ -138,7 +138,7 @@ export class GeminiSynthesisProvider {
             request.stage === 'reconciliation' ? RECONCILIATION_INSTRUCTION :
             request.stage === 'verification' ? VERIFICATION_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION;
         const schema = geminiStageSchema(synthesisStageResultSchemas[request.stage]);
-        const body = { model, contents: input, config: { systemInstruction: `${instruction} Every candidateKey and parentCandidateKey must match ^candidate:[A-Za-z0-9._-]+$ (for example, candidate:api).`,
+        const body = { model, contents: input, config: { systemInstruction: `${instruction} Every candidateKey and parentCandidateKey must match ^candidate:[A-Za-z0-9._-]+$ (for example, candidate:api). For ownershipEvidenceRefs, use only direct production behavior items; never cite topology, configuration, dependency, test or documentation items as ownership.`,
             responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0, maxOutputTokens: 32768 } };
         const timeout = AbortSignal.timeout(this.timeoutMs);
         const abortSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
