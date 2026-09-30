@@ -3,11 +3,11 @@ import { planArchitectureEvidence } from './evidence-planner';
 import { isProductionEvidencePath, validateArchitectureEvidencePacket } from './synthesis';
 import type { ArchitectureEvidencePacket, ArchitectureProposal } from './synthesis';
 import type { AnalysisProgressEvent } from './hierarchical-synthesis';
-import type { ReconciliationResult, SubsystemDiscoveryResult, SynthesisFinding, SynthesisProvider,
+import type { ReconciliationResult, SubsystemCandidate, SubsystemDiscoveryResult, SubsystemChallengeResult, ComponentDiscoveryResult, SystemSubtree, SynthesisFinding, SynthesisProvider,
     SynthesisStage, SynthesisStageContext, SynthesisStageRequest, SynthesisStageResult, SystemCandidate,
     SystemChallengeResult, SystemDiscoveryResult, VerificationResult, SynthesisIssueCode } from './hierarchical-synthesis';
 
-export const SYNTHESIS_PROMPT_VERSION = 2;
+export const SYNTHESIS_PROMPT_VERSION = 3;
 export const MAX_VERIFICATION_CALLS = 2;
 export const MAX_VERIFICATION_TARGETS = 4;
 export const MAX_EVIDENCE_REFINEMENT_ROUNDS = 2;
@@ -89,7 +89,7 @@ const area = (path: string): string => {
 
 /** Deterministic structural audit. Findings are proposal uncertainty, never physical facts or canonical ownership. */
 export function detectReconciliationConflicts(packet: ArchitectureEvidencePacket, systems: SystemCandidate[],
-    subtrees: SubsystemDiscoveryResult[]): SynthesisFinding[] {
+    subtrees: SystemSubtree[]): SynthesisFinding[] {
     validateArchitectureEvidencePacket(packet);
     const refs = new Map(packet.items.map(item => [item.id, item]));
     const systemKeys = new Set(systems.map(system => system.candidateKey));
@@ -189,7 +189,7 @@ export class HierarchicalSynthesisOrchestrator {
         let verificationTotal: number | undefined;
         let firstCall = true;
         const run = async (stage: SynthesisStage, context: SynthesisStageContext) => {
-            const subject = stage === 'subsystem-discovery' ? context.systems.find(system => system.candidateKey === context.subjectSystemKey)
+            const subject = ['subsystem-discovery', 'subsystem-challenge', 'component-discovery'].includes(stage) ? context.systems.find(system => system.candidateKey === context.subjectSystemKey)
                 ?.name.replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 120) : undefined;
             const units = stage === 'subsystem-discovery' ? { completedUnits: subsystemCompleted, totalUnits: subsystemTotal } :
                 stage === 'verification' ? { completedUnits: verificationCompleted, totalUnits: verificationTotal } : {};
@@ -243,9 +243,12 @@ export class HierarchicalSynthesisOrchestrator {
                     stage === 'verification' ? { completedUnits: verificationCompleted, totalUnits: verificationTotal } : {}) });
             return { plan, result: executed.result };
         };
-        const context = (systems: SystemCandidate[] = [], subtrees: SubsystemDiscoveryResult[] = [],
-            subjectSystemKey: string | null = null, targetCandidateKeys: string[] = []): SynthesisStageContext =>
-            ({ systems, subtrees, subjectSystemKey, targetCandidateKeys });
+        const context = (systems: SystemCandidate[] = [], subtrees: SystemSubtree[] = [],
+            subjectSystemKey: string | null = null, targetCandidateKeys: string[] = [],
+            subsystems: SubsystemCandidate[] = [], subjectSubsystemKey: string | null = null,
+            challengedBy?: SubsystemChallengeResult): SynthesisStageContext =>
+            ({ systems, subtrees, subjectSystemKey, targetCandidateKeys, subsystems, subjectSubsystemKey,
+                ...(challengedBy ? { challengedBy } : {}) });
         const discovered = await run('system-discovery', context());
         const first = discovered.result as SystemDiscoveryResult;
         if (!first.systems.length) throw new Error('System Discovery produced no Systems to challenge');
@@ -254,15 +257,23 @@ export class HierarchicalSynthesisOrchestrator {
         const systems = challenge.decisions.flatMap(decision => decision.systems);
         if (!systems.length) throw new Error('System Challenge rejected every System');
         subsystemTotal = systems.length;
-        const subtrees: SubsystemDiscoveryResult[] = [];
-        // Serial is the safe default; P5's separately exported scheduler retains explicit provider concurrency support.
+        const subtrees: SystemSubtree[] = [];
         for (const system of systems) {
-            const pass = await run('subsystem-discovery', context(systems, [], system.candidateKey));
-            subtrees.push(pass.result as SubsystemDiscoveryResult);
+            const discovered = (await run('subsystem-discovery', context(systems, [], system.candidateKey))).result as SubsystemDiscoveryResult;
+            const challenged = (await run('subsystem-challenge', context(systems, [], system.candidateKey, [],
+                discovered.subsystems))).result as SubsystemChallengeResult;
+            const subsystems = challenged.decisions.flatMap(decision => decision.subsystems);
+            const nodes: SystemSubtree['nodes'] = [...subsystems];
+            for (const subsystem of subsystems) {
+                const components = (await run('component-discovery', context(systems, [], system.candidateKey, [],
+                    subsystems, subsystem.candidateKey, challenged))).result as ComponentDiscoveryResult;
+                nodes.push(...components.components);
+            }
+            subtrees.push({ systemKey: system.candidateKey, nodes });
         }
         const structural = detectReconciliationConflicts(packet, systems, subtrees);
         const reconciliation: ReconciliationResult = structural.length || systems.some(system => system.ambiguityCodes.length) ||
-            subtrees.some(tree => tree.subdivisionAssessment.ambiguityCodes.length || tree.nodes.some(node => node.ambiguityCodes.length))
+            subtrees.some(tree => tree.nodes.some(node => node.ambiguityCodes.length))
             ? (await run('reconciliation', context(systems, subtrees))).result as ReconciliationResult
             : { schemaVersion: 1, stageVersion: SYNTHESIS_STAGE_VERSION, parentPacketFingerprint: packet.inputFingerprint,
                 viewId: 'deterministic:no-conflicts', stage: 'reconciliation' as const, findings: [], unresolved: [] };

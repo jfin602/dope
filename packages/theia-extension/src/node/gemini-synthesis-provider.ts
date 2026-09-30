@@ -1,7 +1,8 @@
 import { GoogleGenAI } from '@google/genai';
 import { assertSynthesisInputBudget, synthesisStageResultSchemas } from '@dope/software-map';
 import type { SynthesisCapabilities, SynthesisStageExecution, SynthesisStageRequest } from '@dope/software-map';
-import { RECONCILIATION_INSTRUCTION, SUBSYSTEM_DISCOVERY_INSTRUCTION, SYSTEM_CHALLENGE_INSTRUCTION,
+import { COMPONENT_DISCOVERY_INSTRUCTION, RECONCILIATION_INSTRUCTION, SUBSYSTEM_CHALLENGE_INSTRUCTION,
+    SUBSYSTEM_DISCOVERY_INSTRUCTION, SYSTEM_CHALLENGE_INSTRUCTION,
     SYSTEM_DISCOVERY_INSTRUCTION, VERIFICATION_INSTRUCTION } from './lmstudio-synthesis-provider';
 
 const DEFAULT_TIMEOUT_MS = 900_000;
@@ -135,6 +136,8 @@ export class GeminiSynthesisProvider {
         await assertSynthesisInputBudget(this, capability, input);
         const instruction = request.stage === 'system-challenge' ? SYSTEM_CHALLENGE_INSTRUCTION :
             request.stage === 'subsystem-discovery' ? SUBSYSTEM_DISCOVERY_INSTRUCTION :
+            request.stage === 'subsystem-challenge' ? SUBSYSTEM_CHALLENGE_INSTRUCTION :
+            request.stage === 'component-discovery' ? COMPONENT_DISCOVERY_INSTRUCTION :
             request.stage === 'reconciliation' ? RECONCILIATION_INSTRUCTION :
             request.stage === 'verification' ? VERIFICATION_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION;
         const schema = geminiStageSchema(synthesisStageResultSchemas[request.stage]);

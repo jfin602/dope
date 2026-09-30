@@ -23,7 +23,7 @@ async function fixture() {
   await writeFile(join(root, 'src/secret/s.ts'), 'export const secret = 1;\n');
   return root;
 }
-const stageResult = (request: SynthesisStageRequest, fields: object) => ({ schemaVersion: 1, stageVersion: 2,
+const stageResult = (request: SynthesisStageRequest, fields: object) => ({ schemaVersion: 1, stageVersion: 3,
   stage: request.stage, parentPacketFingerprint: request.parentPacketFingerprint, viewId: request.view.viewId, ...fields });
 const execution = (request: SynthesisStageRequest, fields: object) => ({ output: stageResult(request, fields),
   usage: { providerKind: 'local' as const, modelLabel: 'fixture-model', requestBytes: 1, outputBytes: 1,
@@ -46,10 +46,15 @@ const fakeProvider = (observe?: (request: SynthesisStageRequest) => Promise<void
       sourceKeys: ['candidate:app'], systems: request.context.systems, evidenceRefs: request.context.systems[0].evidenceRefs }] });
     if (request.stage === 'subsystem-discovery') {
       const ref = request.context.systems[0].evidenceRefs[0];
-      return execution(request, { systemKey: request.context.subjectSystemKey, nodes: [{ candidateKey: 'candidate:api',
+      return execution(request, { systemKey: request.context.subjectSystemKey, subsystems: [{ candidateKey: 'candidate:api',
         kind: 'subsystem', parentCandidateKey: 'candidate:app', name: 'API', responsibility: 'API', confidence: .8, ambiguityCodes: [], evidenceRefs: [ref], ownershipEvidenceRefs: [ref] }],
-        subdivisionAssessment: { confidence: .8, ambiguityCodes: [] } });
+        });
     }
+    if (request.stage === 'subsystem-challenge') return execution(request, { systemKey: request.context.subjectSystemKey,
+      decisions: request.context.subsystems.map(node => ({ action: 'keep', sourceKeys: [node.candidateKey],
+        subsystems: [node], evidenceRefs: node.evidenceRefs })) });
+    if (request.stage === 'component-discovery') return execution(request, { systemKey: request.context.subjectSystemKey,
+      subsystemKey: request.context.subjectSubsystemKey, components: [] });
     if (request.stage === 'reconciliation') return execution(request, { findings: [], unresolved: [] });
     return execution(request, { findings: [] });
   },
@@ -227,7 +232,8 @@ test('backend reports ordered hierarchy, known counts and measured time before t
     assert.ok(review.draft.length > 0);
     const starts = events.filter(event => event.status === 'started' && !event.callPurpose).map(event => event.stage);
     assert.deepEqual([...new Set(starts)], ['collecting-evidence', 'building-skeleton', 'system-discovery',
-      'system-challenge', 'subsystem-discovery', 'reconciliation', 'verification', 'preparing-review']);
+      'system-challenge', 'subsystem-discovery', 'subsystem-challenge', 'component-discovery',
+      'reconciliation', 'verification', 'preparing-review']);
     assert.deepEqual(events.slice(-2).map(event => event.stage), ['preparing-review', 'completed']);
     const subtree = events.filter(event => event.stage === 'subsystem-discovery');
     assert.ok(subtree.some(event => event.subject === 'App' && event.completedUnits === 0 && event.totalUnits === 1));

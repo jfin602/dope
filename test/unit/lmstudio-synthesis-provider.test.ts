@@ -33,9 +33,9 @@ function json(response: ServerResponse, value: unknown, status = 200) {
   response.end(JSON.stringify(value));
 }
 const completion = (content: unknown) => ({ choices: [{ message: { content } }] });
-const stageRequest = (): SynthesisStageRequest => ({ schemaVersion: 1, stage: 'system-discovery', stageVersion: 2,
+const stageRequest = (): SynthesisStageRequest => ({ schemaVersion: 1, stage: 'system-discovery', stageVersion: 3,
   parentPacketFingerprint: packet.inputFingerprint, view: createArchitectureEvidenceView(packet, ['framework:1']),
-  context: { systems: [], subjectSystemKey: null, subtrees: [], targetCandidateKeys: [] } });
+  context: { systems: [], subjectSystemKey: null, subsystems: [], subjectSubsystemKey: null, subtrees: [], targetCandidateKeys: [] } });
 function normalReply(request: Request, response: ServerResponse) {
   if (request.path === '/v1/models') return json(response, { data: [{ id: 'another-model' }, { id: modelId }] });
   if (request.body.response_format.json_schema.name === 'readiness') return json(response, completion('{"ready":true}'));
@@ -46,15 +46,21 @@ test('local adapter runs one structured per-System call and declares serial gene
     if (request.path === '/v1/models') return normalReply(request, response);
     if (request.body.response_format.json_schema.name === 'readiness') return json(response, completion('{"ready":true}'));
     const sent = JSON.parse(request.body.messages[1].content) as SynthesisStageRequest;
-    if (sent.stage === 'reconciliation') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 2,
+    if (sent.stage === 'reconciliation') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 3,
       stage: sent.stage, parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId,
       findings: [], unresolved: [] })));
-    if (sent.stage === 'verification') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 2,
+    if (sent.stage === 'verification') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 3,
       stage: sent.stage, parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId, findings: [] })));
-    json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 2, stage: 'subsystem-discovery',
+    if (sent.stage === 'subsystem-challenge') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 3,
+      stage: sent.stage, parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId,
+      systemKey: sent.context.subjectSystemKey, decisions: sent.context.subsystems.map(node => ({ action: 'keep',
+        sourceKeys: [node.candidateKey], subsystems: [node], evidenceRefs: node.evidenceRefs })) })));
+    if (sent.stage === 'component-discovery') return json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 3,
+      stage: sent.stage, parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId,
+      systemKey: sent.context.subjectSystemKey, subsystemKey: sent.context.subjectSubsystemKey, components: [] })));
+    json(response, completion(JSON.stringify({ schemaVersion: 1, stageVersion: 3, stage: 'subsystem-discovery',
       parentPacketFingerprint: sent.parentPacketFingerprint, viewId: sent.view.viewId, systemKey: sent.context.subjectSystemKey,
-      subdivisionAssessment: { confidence: 0.4,
-        ambiguityCodes: ['insufficient-evidence'] }, nodes: [] })));
+      subsystems: [] })));
   });
   try {
     const provider = new LmStudioSynthesisProvider({ endpoint: server.endpoint, contextWindowTokens: 16384 });
@@ -62,28 +68,38 @@ test('local adapter runs one structured per-System call and declares serial gene
     assert.equal((await provider.capabilities()).maxConcurrentGenerations, 1);
     assert.ok(DEFAULT_SYNTHESIS_TIMEOUT_MS >= 600_000);
     assert.equal('synthesize' in provider, false);
-    const request: SynthesisStageRequest = { schemaVersion: 1, stage: 'subsystem-discovery', stageVersion: 2,
+    const request: SynthesisStageRequest = { schemaVersion: 1, stage: 'subsystem-discovery', stageVersion: 3,
       parentPacketFingerprint: packet.inputFingerprint, view: createArchitectureEvidenceView(packet, ['framework:1']),
       context: { systems: [{ candidateKey: 'candidate:app', kind: 'system', name: 'App', responsibility: 'Serve',
         confidence: 0.8, ambiguityCodes: [], evidenceRefs: ['framework:1'] }],
-        subjectSystemKey: 'candidate:app', subtrees: [], targetCandidateKeys: [] } };
+        subjectSystemKey: 'candidate:app', subsystems: [], subjectSubsystemKey: null, subtrees: [], targetCandidateKeys: [] } };
     const execution = await provider.runStage(request);
-    const result = execution.output as { systemKey: string; nodes: unknown[] };
-    assert.equal(result.systemKey, 'candidate:app'); assert.deepEqual(result.nodes, []);
+    const result = execution.output as { systemKey: string; subsystems: unknown[] };
+    assert.equal(result.systemKey, 'candidate:app'); assert.deepEqual(result.subsystems, []);
     assert.equal(server.requests.at(-1)!.body.response_format.json_schema.name, 'subsystem_discovery');
-    const nodeSchema = server.requests.at(-1)!.body.response_format.json_schema.schema.properties.nodes.items;
+    const nodeSchema = server.requests.at(-1)!.body.response_format.json_schema.schema.properties.subsystems.items;
     assert.equal(nodeSchema.additionalProperties, false);
     assert.deepEqual(nodeSchema.required, ['candidateKey', 'kind', 'parentCandidateKey', 'name', 'responsibility',
       'confidence', 'ambiguityCodes', 'evidenceRefs', 'ownershipEvidenceRefs']);
-    assert.match(server.requests.at(-1)!.body.messages[0].content, /may span several packages/);
-    assert.match(SUBSYSTEM_DISCOVERY_INSTRUCTION, /one package may contain several Components/i);
+    assert.match(server.requests.at(-1)!.body.messages[0].content, /may cross UI, HTTP\/API/);
+    assert.match(SUBSYSTEM_DISCOVERY_INSTRUCTION, /Discover Subsystems only/i);
+    const lower = { candidateKey: 'candidate:api', kind: 'subsystem' as const, parentCandidateKey: 'candidate:app',
+      name: 'API', responsibility: 'Serve', confidence: .8, ambiguityCodes: [],
+      evidenceRefs: ['framework:1'], ownershipEvidenceRefs: ['framework:1'] };
+    const challengeRequest: SynthesisStageRequest = { ...request, stage: 'subsystem-challenge',
+      context: { ...request.context, subsystems: [lower] } };
+    const challengeOutput = (await provider.runStage(challengeRequest)).output as any;
+    assert.equal(server.requests.at(-1)!.body.response_format.json_schema.name, 'subsystem_challenge');
+    assert.match(server.requests.at(-1)!.body.messages[0].content, /technical-plane/i);
+    const componentRequest: SynthesisStageRequest = { ...request, stage: 'component-discovery',
+      context: { ...challengeRequest.context, subjectSubsystemKey: lower.candidateKey, challengedBy: challengeOutput } };
+    await provider.runStage(componentRequest);
+    assert.equal(server.requests.at(-1)!.body.response_format.json_schema.name, 'component_discovery');
+    assert.match(server.requests.at(-1)!.body.messages[0].content, /exact challenged/i);
     assert.deepEqual(server.requests.slice(1, 3).map(r => r.body.response_format.json_schema.name), ['readiness', 'readiness']);
-    const subtree = { ...result as object, schemaVersion: 1 as const, stageVersion: 2 as const,
-      stage: 'subsystem-discovery' as const, parentPacketFingerprint: packet.inputFingerprint,
-      viewId: request.view.viewId, systemKey: 'candidate:app', nodes: [],
-      subdivisionAssessment: { confidence: 0.4, ambiguityCodes: [] } };
+    const subtree = { systemKey: 'candidate:app', nodes: [] };
     const reconciliation: SynthesisStageRequest = { ...request, stage: 'reconciliation',
-      context: { ...request.context, subjectSystemKey: null, subtrees: [subtree] } };
+      context: { ...request.context, subjectSystemKey: null, subsystems: [], subjectSubsystemKey: null, subtrees: [subtree] } };
     await provider.runStage(reconciliation);
     const verification: SynthesisStageRequest = { ...reconciliation, stage: 'verification',
       context: { ...reconciliation.context, targetCandidateKeys: ['candidate:app'],
@@ -106,9 +122,9 @@ test('staged adapter rejects malformed JSON and refusal after synthetic readines
     try {
       const provider = new LmStudioSynthesisProvider({ endpoint: server.endpoint, contextWindowTokens: 16384 });
       await provider.discoverModels(); provider.selectModel(modelId); await provider.probe();
-      const request: SynthesisStageRequest = { schemaVersion: 1, stageVersion: 2, stage: 'system-discovery',
+      const request: SynthesisStageRequest = { schemaVersion: 1, stageVersion: 3, stage: 'system-discovery',
         parentPacketFingerprint: packet.inputFingerprint, view: createArchitectureEvidenceView(packet, ['framework:1']),
-        context: { systems: [], subjectSystemKey: null, subtrees: [], targetCandidateKeys: [] } };
+        context: { systems: [], subjectSystemKey: null, subsystems: [], subjectSubsystemKey: null, subtrees: [], targetCandidateKeys: [] } };
       await assert.rejects(provider.runStage(request), error);
       assert.deepEqual(server.requests.slice(1, 3).map(r => r.body.response_format.json_schema.name), ['readiness', 'readiness']);
       assert.ok(server.requests.slice(1, 3).every(r => !JSON.stringify(r.body).includes(secret)));
@@ -121,7 +137,7 @@ test('local usage distinguishes provider counts from conservative input estimate
   const server = await mockServer((request, response) => {
     if (request.path === '/v1/models' || request.body.response_format.json_schema.name === 'readiness')
       return normalReply(request, response);
-    json(response, { ...completion(JSON.stringify({ schemaVersion: 1, stageVersion: 2,
+    json(response, { ...completion(JSON.stringify({ schemaVersion: 1, stageVersion: 3,
       stage: 'system-discovery', parentPacketFingerprint: packet.inputFingerprint,
       viewId: stageRequest().view.viewId, systems: [] })),
       ...(reported === 'complete' ? { usage: { prompt_tokens: 17, completion_tokens: 9, total_tokens: 26 } } :

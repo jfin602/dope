@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createArchitectureEvidenceView, detectReconciliationConflicts, HierarchicalSynthesisOrchestrator,
   parseArchitectureProposal, planArchitectureEvidence, SynthesisStageCache, stageWorkIdentity,
   MAX_VERIFICATION_CALLS } from '../../packages/software-map/lib/index.js';
-import type { ArchitectureEvidencePacket, SynthesisProvider, SynthesisStageRequest, SubsystemDiscoveryResult,
+import type { ArchitectureEvidencePacket, SynthesisProvider, SynthesisStageRequest, SystemSubtree,
   SystemCandidate } from '../../packages/software-map/lib/index.js';
 
 const packet: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'packet-a', items: [
@@ -19,19 +19,18 @@ const system = (id: string, ref: string): SystemCandidate => ({ candidateKey: `c
   name: id, responsibility: `${id} responsibility`, confidence: 0.8,
   ambiguityCodes: [], evidenceRefs: [ref] });
 const systems = [system('a', 'a'), system('b', 'b')];
-const tree = (systemKey: string, ref: string, ownership = ref): SubsystemDiscoveryResult => ({
-  schemaVersion: 1, stageVersion: 2, stage: 'subsystem-discovery', parentPacketFingerprint: packet.inputFingerprint,
-  viewId: `view:${systemKey}`, systemKey, subdivisionAssessment: { confidence: 0.8, ambiguityCodes: [] },
+const tree = (systemKey: string, ref: string, ownership = ref): SystemSubtree => ({
+  systemKey,
   nodes: [{ candidateKey: `${systemKey}.sub`, kind: 'subsystem', parentCandidateKey: systemKey, name: `${systemKey} sub`,
     responsibility: 'Own behavior', confidence: 0.8,
     ambiguityCodes: [], evidenceRefs: [ref, ...(ownership === ref ? [] : [ownership])], ownershipEvidenceRefs: [ownership] }],
 });
-const context = { systems: [], subtrees: [], subjectSystemKey: null, targetCandidateKeys: [] };
+const context = { systems: [], subtrees: [], subjectSystemKey: null, subsystems: [], subjectSubsystemKey: null, targetCandidateKeys: [] };
 const request = (stage: SynthesisStageRequest['stage'], fingerprint = packet.inputFingerprint): SynthesisStageRequest => ({
-  schemaVersion: 1, stageVersion: 2, stage, parentPacketFingerprint: fingerprint,
+  schemaVersion: 1, stageVersion: 3, stage, parentPacketFingerprint: fingerprint,
   view: createArchitectureEvidenceView({ ...packet, inputFingerprint: fingerprint }, ['top', 'a', 'b', 'shared', 'cross']), context,
 });
-const response = (req: SynthesisStageRequest, extra: object) => ({ schemaVersion: 1, stageVersion: 2,
+const response = (req: SynthesisStageRequest, extra: object) => ({ schemaVersion: 1, stageVersion: 3,
   stage: req.stage, parentPacketFingerprint: req.parentPacketFingerprint, viewId: req.view.viewId, ...extra });
 const executed = (req: SynthesisStageRequest, extra: object) => ({ output: response(req, extra),
   usage: { providerKind: 'local' as const, modelLabel: 'model', requestBytes: 12, outputBytes: 8,
@@ -95,7 +94,7 @@ test('targeted verification view remains small over a larger complete packet', a
     reservedInstructionTokens: 1000, reservedOutputTokens: 2000, reservedOverheadTokens: 1000,
     tokenEstimate: 'conservative' as const };
   const plan = await planArchitectureEvidence(large, 'verification', { systems: [system('a', 'a')], subtrees: [],
-    subjectSystemKey: null, targetCandidateKeys: ['candidate:a'], boundaryCode: 'boundary-overlap' },
+    subjectSystemKey: null, subsystems: [], subjectSubsystemKey: null, targetCandidateKeys: ['candidate:a'], boundaryCode: 'boundary-overlap' },
   capability, { estimateTokens: async input => input.length });
   assert.ok(plan.request.view.items.length <= 24);
   assert.ok(plan.request.view.items.some(item => item.id === 'a'));
@@ -160,8 +159,12 @@ test('orchestrator caps targeted verification, preserves uncertainty and assembl
         case 'system-challenge': return executed(req, { decisions: overlappingSystems.map(s => ({ action: 'keep', sourceKeys: [s.candidateKey],
           systems: [s], evidenceRefs: s.evidenceRefs })) });
         case 'subsystem-discovery': return executed(req, { systemKey: req.context.subjectSystemKey,
-          nodes: tree(req.context.subjectSystemKey!, req.context.subjectSystemKey === 'candidate:a' ? 'a' : 'b', 'shared').nodes,
-          subdivisionAssessment: { confidence: 0.8, ambiguityCodes: [] } });
+          subsystems: tree(req.context.subjectSystemKey!, req.context.subjectSystemKey === 'candidate:a' ? 'a' : 'b', 'shared').nodes });
+        case 'subsystem-challenge': return executed(req, { systemKey: req.context.subjectSystemKey,
+          decisions: req.context.subsystems.map(node => ({ action: 'keep', sourceKeys: [node.candidateKey],
+            subsystems: [node], evidenceRefs: node.evidenceRefs })) });
+        case 'component-discovery': return executed(req, { systemKey: req.context.subjectSystemKey,
+          subsystemKey: req.context.subjectSubsystemKey, components: [] });
         case 'reconciliation': return executed(req, { findings: [{ candidateKeys: ['candidate:a', 'candidate:b'],
           evidenceRefs: ['cross'], status: 'uncertain', code: 'boundary-overlap' }],
           unresolved: [{ candidateKey: 'candidate:a', code: 'boundary-overlap' }, { candidateKey: 'candidate:b', code: 'boundary-overlap' }] });
@@ -207,14 +210,19 @@ test('clear boundaries skip reconciliation and verification model calls', async 
         sourceKeys: [s.candidateKey], systems: [s], evidenceRefs: s.evidenceRefs })) });
       if (req.stage === 'subsystem-discovery') {
         const ref = req.context.subjectSystemKey === 'candidate:a' ? 'a' : 'b';
-        return executed(req, { systemKey: req.context.subjectSystemKey, nodes: tree(req.context.subjectSystemKey!, ref).nodes,
-          subdivisionAssessment: { confidence: 0.8, ambiguityCodes: [] } });
+        return executed(req, { systemKey: req.context.subjectSystemKey, subsystems: tree(req.context.subjectSystemKey!, ref).nodes });
       }
+      if (req.stage === 'subsystem-challenge') return executed(req, { systemKey: req.context.subjectSystemKey,
+        decisions: req.context.subsystems.map(node => ({ action: 'keep', sourceKeys: [node.candidateKey],
+          subsystems: [node], evidenceRefs: node.evidenceRefs })) });
+      if (req.stage === 'component-discovery') return executed(req, { systemKey: req.context.subjectSystemKey,
+        subsystemKey: req.context.subjectSubsystemKey, components: [] });
       throw new Error(`Unexpected ${req.stage}`);
     },
   };
   const analyzed = await new HierarchicalSynthesisOrchestrator(provider, 'fixture').analyze(clean);
   assert.equal(analyzed.verificationCalls, 0);
   assert.deepEqual(analyzed.proposal.openQuestions, []);
-  assert.deepEqual(calls, ['system-discovery', 'system-challenge', 'subsystem-discovery', 'subsystem-discovery']);
+  assert.deepEqual(calls, ['system-discovery', 'system-challenge', 'subsystem-discovery', 'subsystem-challenge',
+    'component-discovery', 'subsystem-discovery', 'subsystem-challenge', 'component-discovery']);
 });

@@ -56,7 +56,7 @@ const capability = { modelLabel: 'fixture-provider', contextWindowTokens: 65536,
   reservedInstructionTokens: 1000, reservedOutputTokens: 2000, reservedOverheadTokens: 500,
   tokenEstimate: 'conservative' as const };
 const stageResult = (request: SynthesisStageRequest, body: Record<string, unknown>) => ({ schemaVersion: 1,
-  stageVersion: 2, stage: request.stage, parentPacketFingerprint: request.parentPacketFingerprint,
+  stageVersion: 3, stage: request.stage, parentPacketFingerprint: request.parentPacketFingerprint,
   viewId: request.view.viewId, ...body });
 const provider = (decisions: ChallengeDecision[] = corrected, calls: SynthesisStageRequest[] = []): SynthesisProvider => ({
   kind: 'local',
@@ -121,7 +121,7 @@ test('contradictory or unsupported decisions fail closed', async () => {
 });
 
 test('challenge planning requires all cited facts and remains bounded', async () => {
-  const context = { systems: firstPass, subjectSystemKey: null, subtrees: [], targetCandidateKeys: [] };
+  const context = { systems: firstPass, subjectSystemKey: null, subsystems: [], subjectSubsystemKey: null, subtrees: [], targetCandidateKeys: [] };
   const adapter = provider();
   const plan = await planArchitectureEvidence(packet, 'system-challenge', context, capability, adapter);
   assert.ok(plan.inputTokens <= plan.inputBudgetTokens);

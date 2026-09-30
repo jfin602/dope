@@ -1,19 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createArchitectureEvidenceView, parseSynthesisStageResult } from '../../packages/software-map/lib/index.js';
+import { createArchitectureEvidenceView, parseSynthesisStageResult, synthesisStageResultSchemas } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidencePacket, SynthesisStageRequest } from '../../packages/software-map/lib/index.js';
 import { GeminiSynthesisProvider, geminiStageSchema } from
   '../../packages/theia-extension/lib/node/gemini-synthesis-provider.js';
-import { SYSTEM_DISCOVERY_INSTRUCTION } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
+import { COMPONENT_DISCOVERY_INSTRUCTION, SUBSYSTEM_CHALLENGE_INSTRUCTION, SUBSYSTEM_DISCOVERY_INSTRUCTION,
+  SYSTEM_DISCOVERY_INSTRUCTION } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
 
 const key = 'synthetic-test-secret';
 const packet: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'gemini-fixture', items: [
   { id: 'entry', kind: 'entrypoint', path: 'src/café.ts', sourceEvidenceIds: ['physical:entry'], role: 'server' },
 ] };
-const request: SynthesisStageRequest = { schemaVersion: 1, stageVersion: 2, stage: 'system-discovery',
+const request: SynthesisStageRequest = { schemaVersion: 1, stageVersion: 3, stage: 'system-discovery',
   parentPacketFingerprint: packet.inputFingerprint, view: createArchitectureEvidenceView(packet, ['entry']),
-  context: { systems: [], subtrees: [], subjectSystemKey: null, targetCandidateKeys: [] } };
-const output = { schemaVersion: 1, stageVersion: 2, stage: 'system-discovery',
+  context: { systems: [], subtrees: [], subjectSystemKey: null, subsystems: [], subjectSubsystemKey: null, targetCandidateKeys: [] } };
+const output = { schemaVersion: 1, stageVersion: 3, stage: 'system-discovery',
   parentPacketFingerprint: packet.inputFingerprint, viewId: request.view.viewId,
   systems: [{ candidateKey: 'candidate:server', kind: 'system', name: 'Server', responsibility: 'Serve café requests',
     confidence: 0.8, ambiguityCodes: [], evidenceRefs: ['entry'] }] };
@@ -74,7 +75,7 @@ test('Gemini SDK applies the API key, selected model, compact schema and provide
   assert.equal(body.generationConfig.maxOutputTokens, 32768);
   const schema = body.generationConfig.responseJsonSchema;
   assert.deepEqual(schema.properties.stage.enum, ['system-discovery']);
-  assert.deepEqual(schema.properties.stageVersion.enum, [2]);
+  assert.deepEqual(schema.properties.stageVersion.enum, [3]);
   assert.equal(schema.additionalProperties, false);
   assert.deepEqual(schema.properties.systems.items.required,
     ['candidateKey', 'kind', 'name', 'responsibility', 'confidence', 'ambiguityCodes', 'evidenceRefs']);
@@ -174,6 +175,46 @@ test('Gemini reconciliation instructs one unresolved entry per candidate', async
   } });
   await provider.runStage({ ...request, stage: 'reconciliation' });
   assert.match(instruction, /Each unresolved candidateKey may appear only once/);
+});
+
+test('Local instructions and Gemini schemas route the same three compact lower stages through Dope validation', async () => {
+  const system = { ...output.systems[0], candidateKey: 'candidate:app' };
+  const subsystem = { candidateKey: 'candidate:api', kind: 'subsystem', parentCandidateKey: system.candidateKey,
+    name: 'API', responsibility: 'Serve requests', confidence: .8, ambiguityCodes: [],
+    evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] };
+  const discovery: SynthesisStageRequest = { ...request, stage: 'subsystem-discovery',
+    context: { ...request.context, systems: [system], subjectSystemKey: system.candidateKey } };
+  const challenge: SynthesisStageRequest = { ...discovery, stage: 'subsystem-challenge',
+    context: { ...discovery.context, subsystems: [subsystem] } };
+  const challengeResult = { ...output, stage: 'subsystem-challenge', viewId: request.view.viewId,
+    systemKey: system.candidateKey, decisions: [{ action: 'keep', sourceKeys: [subsystem.candidateKey],
+      subsystems: [subsystem], evidenceRefs: ['entry'] }] };
+  delete (challengeResult as { systems?: unknown }).systems;
+  const component: SynthesisStageRequest = { ...challenge, stage: 'component-discovery',
+    context: { ...challenge.context, subjectSubsystemKey: subsystem.candidateKey, challengedBy: challengeResult as any } };
+  const stages = [
+    [discovery, { systemKey: system.candidateKey, subsystems: [subsystem] }, SUBSYSTEM_DISCOVERY_INSTRUCTION],
+    [challenge, { systemKey: system.candidateKey, decisions: challengeResult.decisions }, SUBSYSTEM_CHALLENGE_INSTRUCTION],
+    [component, { systemKey: system.candidateKey, subsystemKey: subsystem.candidateKey, components: [{ ...subsystem,
+      candidateKey: 'candidate:handler', kind: 'component', parentCandidateKey: subsystem.candidateKey }] },
+      COMPONENT_DISCOVERY_INSTRUCTION],
+  ] as const;
+  for (const [stageRequest, fields, instruction] of stages) {
+    let body: any;
+    const response = { schemaVersion: 1, stageVersion: 3, stage: stageRequest.stage,
+      parentPacketFingerprint: packet.inputFingerprint, viewId: stageRequest.view.viewId, ...fields };
+    const provider = await prepared({ apiKey: key, fetch: async (url, init) => {
+      if (!String(url).endsWith(':generateContent')) return json(model);
+      body = JSON.parse(String(init?.body));
+      return json(completion(JSON.stringify(response)));
+    } });
+    const executed = await provider.runStage(stageRequest);
+    assert.equal(body.systemInstruction.parts[0].text, instruction);
+    assert.deepEqual(body.generationConfig.responseJsonSchema,
+      geminiStageSchema(synthesisStageResultSchemas[stageRequest.stage]));
+    assert.deepEqual(parseSynthesisStageResult(executed.output, stageRequest, packet), response);
+    assert.throws(() => parseSynthesisStageResult({ ...executed.output as object, rationale: 'essay' }, stageRequest, packet));
+  }
 });
 
 test('Gemini configuration, auth, quota, upstream and arbitrary errors never expose the key', async () => {

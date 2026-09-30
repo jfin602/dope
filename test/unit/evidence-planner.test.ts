@@ -8,7 +8,7 @@ import type { ArchitectureEvidenceItem, ArchitectureEvidencePacket, SynthesisCap
 
 const context = (systems: SystemCandidate[] = [], subjectSystemKey: string | null = null,
   targetCandidateKeys: string[] = []): SynthesisStageContext =>
-  ({ systems, subjectSystemKey, subtrees: [], targetCandidateKeys,
+  ({ systems, subjectSystemKey, subsystems: [], subjectSubsystemKey: null, subtrees: [], targetCandidateKeys,
     ...(targetCandidateKeys.length ? { boundaryCode: 'boundary-overlap' as const } : {}) });
 const capability = (ceiling: number): SynthesisCapabilities => ({ modelLabel: 'controlled provider',
   contextWindowTokens: ceiling + 30, maxInputTokens: ceiling + 20, reservedInstructionTokens: 10,
@@ -71,9 +71,7 @@ test('minimal skeleton fits exactly when possible and fails clearly below that',
 });
 
 test('later stages use candidate refs and packet relationships, never arbitrary path requests', async () => {
-  const subtree = { schemaVersion: 1 as const, stage: 'subsystem-discovery' as const, stageVersion: 2 as const,
-    parentPacketFingerprint: packet.inputFingerprint, viewId: 'view:prior', systemKey: system.candidateKey, nodes: [],
-    subdivisionAssessment: { confidence: 0.3, ambiguityCodes: ['insufficient-evidence'] } };
+  const subtree = { systemKey: system.candidateKey, nodes: [] };
   for (const [stage, ctx] of [
     ['system-challenge', context([system])], ['subsystem-discovery', context([system], system.candidateKey)],
     ['verification', context([system], null, [system.candidateKey])],

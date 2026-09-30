@@ -150,7 +150,7 @@ export function validateArchitectureEvidenceView(view: ArchitectureEvidenceView,
         JSON.stringify(view.responsibilitySignals) !== JSON.stringify(expected.responsibilitySignals)) invalid('view items, signals or identity');
 }
 
-export const SYNTHESIS_STAGE_VERSION = 2;
+export const SYNTHESIS_STAGE_VERSION = 3;
 const nonempty = { type: 'string', minLength: 1 } as const;
 const shortName = { ...nonempty, maxLength: 80 } as const;
 const shortResponsibility = { ...nonempty, maxLength: 160 } as const;
@@ -159,7 +159,8 @@ export const SYNTHESIS_ISSUE_CODES = ['insufficient-evidence', 'unclear-subdivis
     'duplicate-responsibility', 'same-source-region'] as const;
 export type SynthesisIssueCode = typeof SYNTHESIS_ISSUE_CODES[number];
 const issueCodes = { type: 'array', items: { enum: SYNTHESIS_ISSUE_CODES }, uniqueItems: true } as const;
-export type SynthesisStage = 'system-discovery' | 'system-challenge' | 'subsystem-discovery' | 'reconciliation' | 'verification';
+export type SynthesisStage = 'system-discovery' | 'system-challenge' | 'subsystem-discovery' | 'subsystem-challenge' |
+    'component-discovery' | 'reconciliation' | 'verification';
 export interface SystemCandidate {
     candidateKey: string;
     kind: 'system';
@@ -181,12 +182,18 @@ export interface SubtreeCandidate {
     /** Direct implementation facts claimed by this node, a subset of evidenceRefs. */
     ownershipEvidenceRefs: string[];
 }
+export type SubsystemCandidate = SubtreeCandidate & { kind: 'subsystem' };
+export type ComponentCandidate = SubtreeCandidate & { kind: 'component' };
+/** Local assembly of challenged Subsystems and their Components; never a provider result. */
+export interface SystemSubtree { systemKey: string; nodes: SubtreeCandidate[] }
 export type ChallengeDecision = {
     action: 'keep' | 'merge' | 'split' | 'reject';
     sourceKeys: string[];
     systems: SystemCandidate[];
     evidenceRefs: string[];
 };
+export type SubsystemChallengeDecision = { action: ChallengeDecision['action']; sourceKeys: string[];
+    subsystems: SubsystemCandidate[]; evidenceRefs: string[] };
 export interface SynthesisFinding {
     candidateKeys: string[];
     evidenceRefs: string[];
@@ -199,8 +206,13 @@ export interface SynthesisStageContext {
     systems: SystemCandidate[];
     /** Required for per-System discovery. */
     subjectSystemKey: string | null;
+    /** Initial candidates for challenge, challenged candidates for Component descent. */
+    subsystems: SubsystemCandidate[];
+    subjectSubsystemKey: string | null;
+    /** Required for Component descent; identifies the validated challenge output being descended. */
+    challengedBy?: SubsystemChallengeResult;
     /** Required for reconciliation and verification. */
-    subtrees: SubsystemDiscoveryResult[];
+    subtrees: SystemSubtree[];
     /** Only targeted verification may supply candidate targets. */
     targetCandidateKeys: string[];
     /** Typed issue for targeted verification; omitted outside verification. */
@@ -209,7 +221,7 @@ export interface SynthesisStageContext {
 export interface SynthesisStageRequest {
     schemaVersion: 1;
     stage: SynthesisStage;
-    stageVersion: 2;
+    stageVersion: 3;
     parentPacketFingerprint: string;
     view: ArchitectureEvidenceView;
     context: SynthesisStageContext;
@@ -217,20 +229,25 @@ export interface SynthesisStageRequest {
 export const synthesisStageRequestSchema = { type: 'object', additionalProperties: false,
     required: ['schemaVersion', 'stage', 'stageVersion', 'parentPacketFingerprint', 'view', 'context'],
     properties: { schemaVersion: { const: 1 }, stage: { enum: ['system-discovery', 'system-challenge',
-        'subsystem-discovery', 'reconciliation', 'verification'] }, stageVersion: { const: 2 },
+        'subsystem-discovery', 'subsystem-challenge', 'component-discovery', 'reconciliation', 'verification'] }, stageVersion: { const: 3 },
         parentPacketFingerprint: nonempty, view: { type: 'object' }, context: { type: 'object' } },
 } as const;
-interface StageResultBase { schemaVersion: 1; stageVersion: 2; parentPacketFingerprint: string; viewId: string }
+interface StageResultBase { schemaVersion: 1; stageVersion: 3; parentPacketFingerprint: string; viewId: string }
 export interface SystemDiscoveryResult extends StageResultBase { stage: 'system-discovery'; systems: SystemCandidate[] }
 export interface SystemChallengeResult extends StageResultBase { stage: 'system-challenge'; decisions: ChallengeDecision[] }
 export interface SubsystemDiscoveryResult extends StageResultBase {
-    stage: 'subsystem-discovery'; systemKey: string; nodes: SubtreeCandidate[];
-    subdivisionAssessment: { confidence: number; ambiguityCodes: SynthesisIssueCode[] };
+    stage: 'subsystem-discovery'; systemKey: string; subsystems: SubsystemCandidate[];
+}
+export interface SubsystemChallengeResult extends StageResultBase {
+    stage: 'subsystem-challenge'; systemKey: string; decisions: SubsystemChallengeDecision[];
+}
+export interface ComponentDiscoveryResult extends StageResultBase {
+    stage: 'component-discovery'; systemKey: string; subsystemKey: string; components: ComponentCandidate[];
 }
 export interface ReconciliationResult extends StageResultBase { stage: 'reconciliation'; findings: SynthesisFinding[]; unresolved: UnresolvedCandidate[] }
 export interface VerificationResult extends StageResultBase { stage: 'verification'; findings: SynthesisFinding[] }
 export type SynthesisStageResult = SystemDiscoveryResult | SystemChallengeResult | SubsystemDiscoveryResult |
-    ReconciliationResult | VerificationResult;
+    SubsystemChallengeResult | ComponentDiscoveryResult | ReconciliationResult | VerificationResult;
 
 /** Provider JSON schemas reject surplus fields; domain validators additionally resolve cross-stage references. */
 const refs = { type: 'array', items: nonempty, uniqueItems: true } as const;
@@ -250,7 +267,7 @@ const finding = { type: 'object', additionalProperties: false,
     required: ['candidateKeys', 'evidenceRefs', 'status', 'code'],
     properties: { candidateKeys: { ...refs, minItems: 1 }, evidenceRefs: { ...refs, minItems: 1 },
         status: { enum: ['supported', 'uncertain', 'contradicted'] }, code: { enum: SYNTHESIS_ISSUE_CODES } } } as const;
-const base = { schemaVersion: { const: 1 }, stageVersion: { const: 2 }, parentPacketFingerprint: nonempty, viewId: nonempty } as const;
+const base = { schemaVersion: { const: 1 }, stageVersion: { const: 3 }, parentPacketFingerprint: nonempty, viewId: nonempty } as const;
 const schema = (stage: SynthesisStage, name: string, property: unknown) => ({ type: 'object', additionalProperties: false,
     required: ['schemaVersion', 'stageVersion', 'parentPacketFingerprint', 'viewId', 'stage', name],
     properties: { ...base, stage: { const: stage }, [name]: property } });
@@ -262,11 +279,21 @@ export const synthesisStageResultSchemas = {
             systems: { type: 'array', items: candidate }, evidenceRefs: { ...refs, minItems: 1 },
         } } }),
     'subsystem-discovery': { type: 'object', additionalProperties: false,
-        required: ['schemaVersion', 'stageVersion', 'parentPacketFingerprint', 'viewId', 'stage', 'systemKey', 'nodes', 'subdivisionAssessment'],
-        properties: { ...base, stage: { const: 'subsystem-discovery' }, systemKey: nonempty, nodes: { type: 'array', items: subtreeNode },
-            subdivisionAssessment: { type: 'object', additionalProperties: false,
-                required: ['confidence', 'ambiguityCodes'], properties: {
-                    confidence: candidate.properties.confidence, ambiguityCodes: issueCodes } } } },
+        required: ['schemaVersion', 'stageVersion', 'parentPacketFingerprint', 'viewId', 'stage', 'systemKey', 'subsystems'],
+        properties: { ...base, stage: { const: 'subsystem-discovery' }, systemKey: nonempty,
+            subsystems: { type: 'array', items: { ...subtreeNode, properties: { ...subtreeNode.properties, kind: { const: 'subsystem' } } } } } },
+    'subsystem-challenge': { type: 'object', additionalProperties: false,
+        required: ['schemaVersion', 'stageVersion', 'parentPacketFingerprint', 'viewId', 'stage', 'systemKey', 'decisions'],
+        properties: { ...base, stage: { const: 'subsystem-challenge' }, systemKey: nonempty,
+            decisions: { type: 'array', items: { type: 'object', additionalProperties: false,
+                required: ['action', 'sourceKeys', 'subsystems', 'evidenceRefs'], properties: {
+                    action: { enum: ['keep', 'merge', 'split', 'reject'] }, sourceKeys: { ...refs, minItems: 1 },
+                    subsystems: { type: 'array', items: { ...subtreeNode, properties: { ...subtreeNode.properties, kind: { const: 'subsystem' } } } },
+                    evidenceRefs: { ...refs, minItems: 1 } } } } } },
+    'component-discovery': { type: 'object', additionalProperties: false,
+        required: ['schemaVersion', 'stageVersion', 'parentPacketFingerprint', 'viewId', 'stage', 'systemKey', 'subsystemKey', 'components'],
+        properties: { ...base, stage: { const: 'component-discovery' }, systemKey: nonempty, subsystemKey: nonempty,
+            components: { type: 'array', items: { ...subtreeNode, properties: { ...subtreeNode.properties, kind: { const: 'component' } } } } } },
     reconciliation: { type: 'object', additionalProperties: false,
         required: ['schemaVersion', 'stageVersion', 'parentPacketFingerprint', 'viewId', 'stage', 'findings', 'unresolved'],
         properties: { ...base, stage: { const: 'reconciliation' }, findings: { type: 'array', items: finding },
@@ -332,33 +359,42 @@ function systems(values: unknown, allowed: Set<string>, at: string): SystemCandi
     strings(result.map(item => item.candidateKey), `${at} keys`);
     return result;
 }
-function subtree(value: unknown, systemKey: string, allowed: Set<string>, at: string): SubsystemDiscoveryResult {
-    const data = record(value, at);
-    if (data.systemKey !== systemKey || !Array.isArray(data.nodes)) invalid(`${at}.systemKey or nodes`);
-    exact(data.subdivisionAssessment, ['confidence', 'ambiguityCodes'], `${at}.subdivisionAssessment`);
-    const assessment = data.subdivisionAssessment as SubsystemDiscoveryResult['subdivisionAssessment'];
-    confidence(assessment.confidence, `${at}.subdivisionAssessment.confidence`);
-    codes(assessment.ambiguityCodes, `${at}.subdivisionAssessment.ambiguityCodes`);
-    const nodes = data.nodes.map((raw, i) => {
-        const where = `${at}.nodes[${i}]`;
+function lowerNodes(values: unknown, kind: 'subsystem' | 'component', parent: string,
+    allowed: Set<string>, packet: ArchitectureEvidencePacket, at: string): SubtreeCandidate[] {
+    if (!Array.isArray(values)) invalid(at);
+    const facts = new Map(packet.items.map(item => [item.id, item]));
+    const nodes = values.map((raw, i) => {
+        const where = `${at}[${i}]`;
         exact(raw, subtreeNode.required, where);
         const node = raw as SubtreeCandidate;
-        key(node.candidateKey, `${where}.candidateKey`); key(node.parentCandidateKey, `${where}.parentCandidateKey`);
-        if (node.kind !== 'subsystem' && node.kind !== 'component') invalid(`${where}.kind`);
+        key(node.candidateKey, `${where}.candidateKey`);
+        if (node.kind !== kind || node.parentCandidateKey !== parent || node.candidateKey === parent) invalid(`${where} parent/kind`);
         shortLabel(node.name, `${where}.name`, 80);
         shortLabel(node.responsibility, `${where}.responsibility`, 160);
         confidence(node.confidence, `${where}.confidence`); codes(node.ambiguityCodes, `${where}.ambiguityCodes`);
         evidence(node.evidenceRefs, allowed, `${where}.evidenceRefs`);
         evidence(node.ownershipEvidenceRefs, allowed, `${where}.ownershipEvidenceRefs`);
-        if (node.ownershipEvidenceRefs.some(ref => !node.evidenceRefs.includes(ref))) invalid(`${where} ownership outside evidence`);
+        if (node.ownershipEvidenceRefs.some(ref => {
+            const fact = facts.get(ref)!;
+            return !node.evidenceRefs.includes(ref) || !isProductionEvidencePath(fact.path) ||
+                !fact.sourceEvidenceIds.length || !(fact.kind === 'semantic' || fact.kind === 'entrypoint' ||
+                    fact.kind === 'framework' && !['import', 'container-module', 'manifest-extension'].includes(fact.concept));
+        })) invalid(`${where} ownership requires direct production behavior`);
         return node;
     });
     strings(nodes.map(node => node.candidateKey), `${at} candidate keys`);
-    if (nodes.some(node => node.candidateKey === systemKey)) invalid(`${at} reuses System key`);
-    const kinds = new Map<string, string>([[systemKey, 'system'], ...nodes.map(node => [node.candidateKey, node.kind] as const)]);
-    for (const node of nodes) if (kinds.get(node.parentCandidateKey) !== (node.kind === 'subsystem' ? 'system' : 'subsystem')) invalid(`${at} parent`);
-    if (!nodes.some(node => node.kind === 'subsystem') && nodes.length) invalid(`${at} components without Subsystem`);
-    return data as unknown as SubsystemDiscoveryResult;
+    return nodes;
+}
+function subtree(value: SystemSubtree, systemKey: string, allowed: Set<string>, packet: ArchitectureEvidencePacket, at: string): void {
+    exact(value, ['systemKey', 'nodes'], at);
+    if (value.systemKey !== systemKey || !Array.isArray(value.nodes)) invalid(`${at} System/nodes`);
+    const subsystems = value.nodes.filter(node => node.kind === 'subsystem');
+    lowerNodes(subsystems, 'subsystem', systemKey, allowed, packet, `${at}.subsystems`);
+    for (const subsystem of subsystems) lowerNodes(value.nodes.filter(node => node.kind === 'component' &&
+        node.parentCandidateKey === subsystem.candidateKey), 'component', subsystem.candidateKey, allowed, packet, `${at}.components`);
+    if (value.nodes.some(node => node.kind !== 'subsystem' && node.kind !== 'component' ||
+        node.kind === 'component' && !subsystems.some(parent => parent.candidateKey === node.parentCandidateKey))) invalid(`${at} parent`);
+    strings(value.nodes.map(node => node.candidateKey), `${at} candidate keys`);
 }
 function candidateIndex(context: SynthesisStageContext): Set<string> {
     const keys = [...context.systems.map(item => item.candidateKey), ...context.subtrees.flatMap(tree => tree.nodes.map(item => item.candidateKey))];
@@ -371,19 +407,18 @@ export function validateSynthesisStageRequest(request: SynthesisStageRequest, pa
         !Object.hasOwn(synthesisStageResultSchemas, request.stage)) invalid('request stage/version');
     validateArchitectureEvidenceView(request.view, packet);
     if (request.parentPacketFingerprint !== packet.inputFingerprint) invalid('request parent packet');
-    exact(request.context, request.context.boundaryCode === undefined ?
-        ['systems', 'subjectSystemKey', 'subtrees', 'targetCandidateKeys'] :
-        ['systems', 'subjectSystemKey', 'subtrees', 'targetCandidateKeys', 'boundaryCode'], 'request context');
+    exact(request.context, ['systems', 'subjectSystemKey', 'subsystems', 'subjectSubsystemKey', 'subtrees',
+        'targetCandidateKeys', ...(request.context.challengedBy === undefined ? [] : ['challengedBy']),
+        ...(request.context.boundaryCode === undefined ? [] : ['boundaryCode'])], 'request context');
     const allRefs = new Set(packet.items.map(item => item.id));
     systems(request.context.systems, allRefs, 'request systems');
+    if (!Array.isArray(request.context.subsystems)) invalid('request subsystems');
+    strings(request.context.subsystems.map(item => item.candidateKey), 'request subsystem keys');
+    for (const node of request.context.subsystems) lowerNodes([node], 'subsystem', node.parentCandidateKey, allRefs, packet, 'request subsystem');
     if (!Array.isArray(request.context.subtrees)) invalid('request subtrees');
     for (const [i, tree] of request.context.subtrees.entries()) {
-        exact(tree, synthesisStageResultSchemas['subsystem-discovery'].required, `request subtree[${i}]`);
-        if (tree.stage !== 'subsystem-discovery' || tree.stageVersion !== SYNTHESIS_STAGE_VERSION || tree.schemaVersion !== 1 ||
-            tree.parentPacketFingerprint !== packet.inputFingerprint) invalid('request subtree identity');
-        label(tree.viewId, 'request subtree view identity');
         if (!request.context.systems.some(item => item.candidateKey === tree.systemKey)) invalid('request subtree System');
-        subtree(tree, tree.systemKey, allRefs, `request subtree[${i}]`);
+        subtree(tree, tree.systemKey, allRefs, packet, `request subtree[${i}]`);
     }
     strings(request.context.subtrees.map(tree => tree.systemKey), 'request subtree System keys');
     const keys = candidateIndex(request.context);
@@ -391,22 +426,50 @@ export function validateSynthesisStageRequest(request: SynthesisStageRequest, pa
     if (targets.some(item => !keys.has(item))) invalid('unknown request target');
     const subject = request.context.subjectSystemKey;
     if (subject !== null) key(subject, 'request subject');
+    const subsystemSubject = request.context.subjectSubsystemKey;
+    if (subsystemSubject !== null) key(subsystemSubject, 'request Subsystem subject');
     if (request.context.boundaryCode !== undefined) {
         if (request.stage !== 'verification') invalid('question outside verification');
         if (!SYNTHESIS_ISSUE_CODES.includes(request.context.boundaryCode)) invalid('verification code');
     }
+    if (request.context.challengedBy !== undefined) {
+        if (request.stage !== 'component-discovery') invalid('challenge output outside Component Discovery');
+        const challenge = request.context.challengedBy;
+        exact(challenge, synthesisStageResultSchemas['subsystem-challenge'].required, 'request challenge output');
+        if (challenge.stage !== 'subsystem-challenge' || challenge.schemaVersion !== 1 ||
+            challenge.stageVersion !== SYNTHESIS_STAGE_VERSION || challenge.parentPacketFingerprint !== packet.inputFingerprint ||
+            challenge.systemKey !== subject || !challenge.viewId || !Array.isArray(challenge.decisions)) invalid('request challenge identity');
+        for (const [i, decision] of challenge.decisions.entries()) {
+            exact(decision, ['action', 'sourceKeys', 'subsystems', 'evidenceRefs'], `request challenge decision[${i}]`);
+            evidence(decision.evidenceRefs, allRefs, `request challenge decision[${i}].evidenceRefs`);
+            strings(decision.sourceKeys, `request challenge decision[${i}].sourceKeys`, 1);
+        }
+        if (JSON.stringify(challenge.decisions.flatMap(decision => decision.subsystems)) !== JSON.stringify(request.context.subsystems))
+            invalid('request challenged Subsystem set');
+    }
     switch (request.stage) {
         case 'system-discovery':
-            if (request.context.systems.length || request.context.subtrees.length || targets.length || subject !== null) invalid('discovery context'); break;
+            if (request.context.systems.length || request.context.subsystems.length || request.context.subtrees.length || targets.length || subject !== null || subsystemSubject !== null) invalid('discovery context'); break;
         case 'system-challenge':
-            if (!request.context.systems.length || request.context.subtrees.length || targets.length || subject !== null) invalid('challenge context'); break;
+            if (!request.context.systems.length || request.context.subsystems.length || request.context.subtrees.length || targets.length || subject !== null || subsystemSubject !== null) invalid('challenge context'); break;
         case 'subsystem-discovery':
-            if (!request.context.systems.some(item => item.candidateKey === subject) || request.context.subtrees.length || targets.length) invalid('subsystem context'); break;
+            if (!request.context.systems.some(item => item.candidateKey === subject) || request.context.subsystems.length ||
+                request.context.subtrees.length || targets.length || subsystemSubject !== null) invalid('subsystem context'); break;
+        case 'subsystem-challenge':
+            if (!request.context.systems.some(item => item.candidateKey === subject) ||
+                request.context.subsystems.some(item => item.parentCandidateKey !== subject) || request.context.subtrees.length ||
+                targets.length || subsystemSubject !== null) invalid('Subsystem Challenge context'); break;
+        case 'component-discovery':
+            if (!request.context.systems.some(item => item.candidateKey === subject) ||
+                !request.context.challengedBy ||
+                request.context.subsystems.some(item => item.parentCandidateKey !== subject) ||
+                !request.context.subsystems.some(item => item.candidateKey === subsystemSubject && item.parentCandidateKey === subject) ||
+                request.context.subtrees.length || targets.length) invalid('Component Discovery requires challenged Subsystem'); break;
         case 'reconciliation':
-            if (!request.context.systems.length || subject !== null || targets.length ||
+            if (!request.context.systems.length || request.context.subsystems.length || subject !== null || subsystemSubject !== null || targets.length ||
                 request.context.subtrees.length !== request.context.systems.length) invalid('reconciliation context'); break;
         case 'verification':
-            if (!request.context.systems.length || subject !== null || !targets.length || !request.context.boundaryCode) invalid('verification context'); break;
+            if (!request.context.systems.length || request.context.subsystems.length || subject !== null || subsystemSubject !== null || !targets.length || !request.context.boundaryCode) invalid('verification context'); break;
     }
 }
 export function parseSynthesisStageResult(input: unknown, request: SynthesisStageRequest,
@@ -452,17 +515,37 @@ export function parseSynthesisStageResult(input: unknown, request: SynthesisStag
         strings(seen, 'challenge source keys'); strings(output, 'challenge output keys');
         if (seen.length !== source.size) invalid('incomplete challenge coverage');
     } else if (request.stage === 'subsystem-discovery') {
-        const tree = subtree(data, request.context.subjectSystemKey!, allowed, 'result');
-        const otherRefs = new Set(request.context.systems.filter(system => system.candidateKey !== tree.systemKey)
-            .flatMap(system => system.evidenceRefs));
-        const byId = new Map(request.view.items.map(item => [item.id, item]));
-        for (const node of tree.nodes) for (const ref of node.ownershipEvidenceRefs) {
-            const fact = byId.get(ref)!;
-            if (otherRefs.has(ref) && !request.context.systems.find(system => system.candidateKey === tree.systemKey)!.evidenceRefs.includes(ref))
-                invalid('ownership claims another System supporting fact');
-            if (!isProductionEvidencePath(fact.path) || fact.kind === 'topology' || fact.kind === 'configuration' ||
-                fact.kind === 'dependency') invalid('ownership requires direct production behavior');
+        if (data.systemKey !== request.context.subjectSystemKey) invalid('Subsystem Discovery System');
+        const nodes = lowerNodes(data.subsystems, 'subsystem', data.systemKey as string, allowed, packet, 'result subsystems');
+        if (nodes.some(node => request.context.systems.some(system => system.candidateKey === node.candidateKey))) invalid('Subsystem key reuses System key');
+    } else if (request.stage === 'subsystem-challenge') {
+        if (data.systemKey !== request.context.subjectSystemKey || !Array.isArray(data.decisions)) invalid('Subsystem Challenge System/decisions');
+        const source = new Set(request.context.subsystems.map(item => item.candidateKey));
+        const seen: string[] = [], output: string[] = [];
+        for (const [i, raw] of data.decisions.entries()) {
+            const at = `decisions[${i}]`;
+            exact(raw, ['action', 'sourceKeys', 'subsystems', 'evidenceRefs'], at);
+            const decision = raw as SubsystemChallengeDecision;
+            const keys = strings(decision.sourceKeys, `${at}.sourceKeys`, 1);
+            if (keys.some(item => !source.has(item))) invalid(`${at} unknown source`);
+            seen.push(...keys);
+            const produced = lowerNodes(decision.subsystems, 'subsystem', data.systemKey as string, allowed, packet, `${at}.subsystems`);
+            output.push(...produced.map(item => item.candidateKey));
+            const shape = decision.action === 'keep' && keys.length === 1 && produced.length === 1 && produced[0].candidateKey === keys[0] ||
+                decision.action === 'merge' && keys.length >= 2 && produced.length === 1 && !source.has(produced[0].candidateKey) ||
+                decision.action === 'split' && keys.length === 1 && produced.length >= 2 && produced.every(item => !source.has(item.candidateKey)) ||
+                decision.action === 'reject' && keys.length === 1 && produced.length === 0;
+            if (!shape) invalid(`${at} merge/split/keep/reject shape`);
+            evidence(decision.evidenceRefs, allowed, `${at}.evidenceRefs`);
         }
+        strings(seen, 'Subsystem Challenge source keys'); strings(output, 'Subsystem Challenge output keys');
+        if (seen.length !== source.size || output.some(item => request.context.systems.some(system => system.candidateKey === item))) invalid('Subsystem Challenge coverage/key');
+    } else if (request.stage === 'component-discovery') {
+        if (data.systemKey !== request.context.subjectSystemKey || data.subsystemKey !== request.context.subjectSubsystemKey)
+            invalid('Component Discovery parent');
+        const nodes = lowerNodes(data.components, 'component', data.subsystemKey as string, allowed, packet, 'result components');
+        if (nodes.some(node => request.context.systems.some(system => system.candidateKey === node.candidateKey) ||
+            request.context.subsystems.some(subsystem => subsystem.candidateKey === node.candidateKey))) invalid('Component key reuses ancestor');
     } else {
         if (!Array.isArray(data.findings)) invalid('findings');
         const known = candidateIndex(request.context);
@@ -497,7 +580,7 @@ export interface ArchitectureProposalAssemblyInput {
     parentPacketFingerprint: string;
     summary: string;
     systems: SystemCandidate[];
-    subtrees: SubsystemDiscoveryResult[];
+    subtrees: SystemSubtree[];
     reconciliation: ReconciliationResult;
     verifications: VerificationResult[];
 }
@@ -516,9 +599,8 @@ export function assembleArchitectureProposal(input: ArchitectureProposalAssembly
     if (!Array.isArray(input.subtrees) || input.subtrees.length !== input.systems.length) invalid('assembly subtrees');
     const allKeys = [...input.systems.map(item => item.candidateKey)];
     for (const [i, tree] of input.subtrees.entries()) {
-        if (!input.systems.some(item => item.candidateKey === tree.systemKey) || tree.stage !== 'subsystem-discovery' ||
-            tree.schemaVersion !== 1 || tree.stageVersion !== SYNTHESIS_STAGE_VERSION || tree.parentPacketFingerprint !== packet.inputFingerprint) invalid('assembly subtree identity');
-        subtree(tree, tree.systemKey, allowed, `assembly subtree[${i}]`);
+        if (!input.systems.some(item => item.candidateKey === tree.systemKey)) invalid('assembly subtree identity');
+        subtree(tree, tree.systemKey, allowed, packet, `assembly subtree[${i}]`);
         allKeys.push(...tree.nodes.map(item => item.candidateKey));
     }
     strings(allKeys, 'assembly candidate keys');
@@ -574,9 +656,6 @@ export function assembleArchitectureProposal(input: ArchitectureProposalAssembly
     for (const item of candidates) for (const code of item.ambiguityCodes)
         if (!resolved.has(`${item.candidateKey}:${code}`))
             questions.push(`${item.name}: review ${explain(code)} (${item.evidenceRefs.map(ref => packet.items.find(fact => fact.id === ref)!.path).join(', ')}).`);
-    for (const tree of input.subtrees) for (const code of tree.subdivisionAssessment.ambiguityCodes)
-        if (!resolved.has(`${tree.systemKey}:${code}`))
-            questions.push(`${input.systems.find(system => system.candidateKey === tree.systemKey)!.name}: review subdivision ${explain(code)}.`);
     const explained = new Set(openFindings.flatMap(item => item.candidateKeys));
     for (const item of input.reconciliation.unresolved) if (!explained.has(item.candidateKey))
         questions.push(`${candidates.find(candidate => candidate.candidateKey === item.candidateKey)?.name ?? item.candidateKey}: review ${explain(item.code)}.`);
@@ -605,7 +684,7 @@ export interface AnalysisProgressEvent {
     attempt?: number;
 }
 const progressStages: AnalysisProgressStage[] = ['collecting-evidence', 'planning-evidence', 'building-skeleton',
-    'system-discovery', 'system-challenge', 'subsystem-discovery', 'reconciliation', 'verification',
+    'system-discovery', 'system-challenge', 'subsystem-discovery', 'subsystem-challenge', 'component-discovery', 'reconciliation', 'verification',
     'preparing-review', 'completed', 'failed', 'cancelled'];
 export function parseAnalysisProgressEvent(input: unknown): AnalysisProgressEvent {
     const data = record(input, 'progress');

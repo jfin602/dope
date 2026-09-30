@@ -51,7 +51,7 @@ async function serverFor(reply: (request: SynthesisStageRequest) => unknown, war
 }
 const candidate = (key: string, name: string, refs: string[]) => ({ candidateKey: `candidate:${key}`, kind: 'system', name,
   responsibility: `Own ${name} behavior`, confidence: 0.8, ambiguityCodes: [], evidenceRefs: refs });
-const result = (request: SynthesisStageRequest, systems: unknown[]) => ({ schemaVersion: 1, stageVersion: 2,
+const result = (request: SynthesisStageRequest, systems: unknown[]) => ({ schemaVersion: 1, stageVersion: 3,
   stage: 'system-discovery', parentPacketFingerprint: request.parentPacketFingerprint, viewId: request.view.viewId, systems });
 async function configured(endpoint: string) {
   const provider = new LmStudioSynthesisProvider({ endpoint, contextWindowTokens: 32768 });

@@ -17,7 +17,7 @@ export async function challengeCandidateSystems(packet: ArchitectureEvidencePack
     Promise<{ plan: EvidencePlan; result: SystemChallengeResult; systems: SystemCandidate[]; mapping: ChallengedSystemMapping[] }> {
     if (discovery.plan.request.stage !== 'system-discovery') throw new Error('System Challenge requires System Discovery');
     const verified = parseSynthesisStageResult(discovery.result, discovery.plan.request, packet) as SystemDiscoveryResult;
-    const context: SynthesisStageContext = { systems: verified.systems, subjectSystemKey: null,
+    const context: SynthesisStageContext = { systems: verified.systems, subjectSystemKey: null, subsystems: [], subjectSubsystemKey: null,
         subtrees: [], targetCandidateKeys: [] };
     const plan = await planArchitectureEvidence(packet, 'system-challenge', context,
         await provider.capabilities(), provider);

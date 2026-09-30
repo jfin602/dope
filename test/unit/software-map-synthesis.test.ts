@@ -8,7 +8,7 @@ import {
   parseAnalysisProgressEvent, synthesisStageRequestSchema,
 } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidencePacket, ArchitectureProposal, SoftwareMapInitializationState,
-  SynthesisCapabilities, SynthesisStageRequest, SystemCandidate, SubsystemDiscoveryResult } from '../../packages/software-map/lib/index.js';
+  SynthesisCapabilities, SynthesisStageRequest, SystemCandidate, SystemSubtree } from '../../packages/software-map/lib/index.js';
 
 const packet: ArchitectureEvidencePacket = {
   schemaVersion: 1, inputFingerprint: 'source@1', items: [
@@ -110,19 +110,18 @@ const view = createArchitectureEvidenceView(packet, ['entry', 'package']);
 const systemCandidate: SystemCandidate = { candidateKey: 'candidate:app', kind: 'system', name: 'App', responsibility: 'Serve users',
   confidence: 0.8, ambiguityCodes: [], evidenceRefs: ['entry'] };
 const context = (systems: SystemCandidate[] = [], subjectSystemKey: string | null = null,
-  subtrees: SubsystemDiscoveryResult[] = [], targetCandidateKeys: string[] = []) =>
-  ({ systems, subjectSystemKey, subtrees, targetCandidateKeys, ...(targetCandidateKeys.length ? { boundaryCode: 'boundary-overlap' as const } : {}) });
+  subtrees: SystemSubtree[] = [], targetCandidateKeys: string[] = []) =>
+  ({ systems, subjectSystemKey, subsystems: [], subjectSubsystemKey: null, subtrees, targetCandidateKeys, ...(targetCandidateKeys.length ? { boundaryCode: 'boundary-overlap' as const } : {}) });
 const request = (stage: SynthesisStageRequest['stage'], stageContext = context()): SynthesisStageRequest =>
-  ({ schemaVersion: 1, stage, stageVersion: 2, parentPacketFingerprint: packet.inputFingerprint, view, context: stageContext });
+  ({ schemaVersion: 1, stage, stageVersion: 3, parentPacketFingerprint: packet.inputFingerprint, view, context: stageContext });
 const result = (stage: SynthesisStageRequest['stage'], extra: object) =>
-  ({ schemaVersion: 1, stageVersion: 2, parentPacketFingerprint: packet.inputFingerprint, viewId: view.viewId, stage, ...extra });
-const subtree = result('subsystem-discovery', { systemKey: systemCandidate.candidateKey,
-  subdivisionAssessment: { confidence: 0.7, ambiguityCodes: [] }, nodes: [
-  { candidateKey: 'candidate:server', kind: 'subsystem', parentCandidateKey: systemCandidate.candidateKey,
-    name: 'Server', responsibility: 'Serve requests', confidence: 0.7, ambiguityCodes: ['insufficient-evidence'], evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] },
-  { candidateKey: 'candidate:main', kind: 'component', parentCandidateKey: 'candidate:server',
-    name: 'Main', responsibility: 'Start server', confidence: 1, ambiguityCodes: [], evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] },
-] }) as SubsystemDiscoveryResult;
+  ({ schemaVersion: 1, stageVersion: 3, parentPacketFingerprint: packet.inputFingerprint, viewId: view.viewId, stage, ...extra });
+const subsystem = { candidateKey: 'candidate:server', kind: 'subsystem' as const, parentCandidateKey: systemCandidate.candidateKey,
+  name: 'Server', responsibility: 'Serve requests', confidence: 0.7, ambiguityCodes: ['insufficient-evidence' as const],
+  evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] };
+const component = { candidateKey: 'candidate:main', kind: 'component' as const, parentCandidateKey: subsystem.candidateKey,
+  name: 'Main', responsibility: 'Start server', confidence: 1, ambiguityCodes: [], evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] };
+const subtree: SystemSubtree = { systemKey: systemCandidate.candidateKey, nodes: [subsystem, component] };
 test('capabilities reserve context and reject unsafe or malformed estimates', async () => {
   assert.equal(usableEvidenceTokens(capability), 650);
   assert.equal(await assertSynthesisInputBudget({ estimateTokens: async () => 650 }, capability, 'input'), 650);
@@ -205,17 +204,22 @@ test('System Challenge covers every source and validates keep, merge, split and 
 
 test('per-System trees, reconciliation, verification and final assembly preserve parent relationships', () => {
   const perSystem = request('subsystem-discovery', context([systemCandidate], systemCandidate.candidateKey));
-  assert.deepEqual(parseSynthesisStageResult(subtree, perSystem, packet), subtree);
-  for (const nodes of [
-    [{ ...subtree.nodes[0], parentCandidateKey: 'candidate:missing' }],
-    [{ ...subtree.nodes[0], kind: 'component' }],
-    [subtree.nodes[0], { ...subtree.nodes[1], candidateKey: subtree.nodes[0].candidateKey }],
-    [{ ...subtree.nodes[0], evidenceRefs: ['unknown'] }],
-    [{ ...subtree.nodes[0], rationale: 'prose' }],
-    [{ ...subtree.nodes[0], ambiguityCodes: ['made-up'] }],
-  ]) assert.throws(() => parseSynthesisStageResult({ ...subtree, nodes }, perSystem, packet));
-  assert.throws(() => parseSynthesisStageResult({ ...subtree,
-    subdivisionAssessment: { ...subtree.subdivisionAssessment, rationale: 'prose' } }, perSystem, packet));
+  const discovered = result('subsystem-discovery', { systemKey: systemCandidate.candidateKey, subsystems: [subsystem] });
+  assert.deepEqual(parseSynthesisStageResult(discovered, perSystem, packet), discovered);
+  for (const subsystems of [
+    [{ ...subsystem, parentCandidateKey: 'candidate:missing' }], [{ ...subsystem, kind: 'component' }],
+    [subsystem, subsystem], [{ ...subsystem, evidenceRefs: ['unknown'] }], [{ ...subsystem, rationale: 'prose' }],
+  ]) assert.throws(() => parseSynthesisStageResult({ ...discovered, subsystems }, perSystem, packet));
+  const challenge = request('subsystem-challenge', { ...context([systemCandidate], systemCandidate.candidateKey), subsystems: [subsystem] });
+  const challenged = result('subsystem-challenge', { systemKey: systemCandidate.candidateKey,
+    decisions: [{ action: 'keep', sourceKeys: [subsystem.candidateKey], subsystems: [subsystem], evidenceRefs: ['entry'] }] });
+  assert.deepEqual(parseSynthesisStageResult(challenged, challenge, packet), challenged);
+  const componentRequest = request('component-discovery', { ...context([systemCandidate], systemCandidate.candidateKey),
+    subsystems: [subsystem], subjectSubsystemKey: subsystem.candidateKey, challengedBy: challenged });
+  const components = result('component-discovery', { systemKey: systemCandidate.candidateKey,
+    subsystemKey: subsystem.candidateKey, components: [component] });
+  assert.deepEqual(parseSynthesisStageResult(components, componentRequest, packet), components);
+  assert.throws(() => parseSynthesisStageResult({ ...components, components: [{ ...component, parentCandidateKey: systemCandidate.candidateKey }] }, componentRequest, packet));
   const reconciliation = result('reconciliation', { findings: [{ candidateKeys: ['candidate:server'], evidenceRefs: ['entry'],
     status: 'uncertain', code: 'boundary-overlap' }], unresolved: [{ candidateKey: 'candidate:server', code: 'boundary-overlap' }] });
   const reconRequest = request('reconciliation', context([systemCandidate], null, [subtree]));
