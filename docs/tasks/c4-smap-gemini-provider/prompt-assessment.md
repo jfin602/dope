@@ -3,7 +3,7 @@
 Status: **APPROVED / READY**
 Correction folder: `c4-smap-gemini-provider`
 Required unchanged package version: `0.4.6`
-Predecessor: `c4-smap-hierarchical-synthesis` after truthful closeout
+Predecessor: `c4-smap-hierarchical-synthesis` implementation through P7 at reachable commit `66f023f717afd63433d442015b575edf049ae1b6`; P8/P9 intentionally superseded/unexecuted by ADR 0013
 Authority: ADR 0013; ADR 0004 and ADR 0009-0012 where not amended; current BOOT/AGENTS/ARCHITECTURE/PRODUCT-MODEL/project-overview/roadmap/software-map-storage
 Reference providers: Local LM Studio/Qwen and Gemini 3.8 Flash through the Gemini Developer API / AI Studio API key path
 
@@ -222,7 +222,7 @@ Audit the exact P4 candidate/evidence and route Green to `c4-smap-storage`.
 
 ## Qualification decision
 
-The prompt stack is ready to author now but may execute only after `c4-smap-hierarchical-synthesis` closes truthfully.
+The prompt stack may execute from the existing hierarchical P7 implementation baseline. Do not require or manufacture hierarchical P8/P9 results; those qualification/closeout prompts are superseded by this correction's P4/P5 under ADR 0013.
 
 Success requires:
 1. the shared pipeline exchanges strict compact provider-independent intermediate JSON;
