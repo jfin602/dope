@@ -17,7 +17,7 @@ Make every empty Component Discovery result explicit, typed and reviewable, and 
 
 PREFLIGHT
 
-Read BOOT/AGENTS, ADR 0012-0014, current architecture/roadmap/workflow, exact successful P1-P2 results, and this correction assessment/plan/README.
+Read BOOT/AGENTS, ADR 0012-0015, current architecture/roadmap/workflow, exact successful P1-P2 results, and this correction assessment/plan/README.
 
 Inspect current Component Discovery schema/validator, subtree assembly, reconciliation, final proposal assembly and focused tests.
 
@@ -57,7 +57,7 @@ Semantics:
 - `responsibility-belongs-elsewhere` = challenge/reconciliation attention;
 - `no-stable-component-boundary` = explicit architectural uncertainty, not fake subdivision.
 
-Documentation-only support cannot upgrade an unresolved disposition into a proven leaf.
+Documentation-only support, including `MODULES.md`, cannot upgrade an unresolved disposition into a proven leaf.
 
 COVERAGE INTEGRATION
 
