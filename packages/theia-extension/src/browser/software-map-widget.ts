@@ -220,7 +220,7 @@ export class SoftwareMapWidget extends BaseWidget {
                 const list = this.element('ul');
                 for (const call of calls) {
                     const usage = call.usage;
-                    list.append(this.element('li', `${call.stage}${call.subject ? ` · ${call.subject}` : ''}: ${Math.round(call.callDurationMs!)} ms${call.reused ? ' · reused cache' : ''}` +
+                    list.append(this.element('li', `${call.stage}${call.subject ? ` · ${call.subject}` : ''}${call.attempt ? ` · attempt ${call.attempt}` : ''}: ${Math.round(call.callDurationMs!)} ms${call.reused ? ' · reused cache' : ''}${call.status === 'retrying' ? ' · retrying' : call.status === 'failed' ? ' · failed' : ''}` +
                         (usage ? ` · Tokens (${usage.tokenMeasurement}): input ${usage.inputTokens ?? 'unavailable'}, output ${usage.outputTokens ?? 'unavailable'}, total ${usage.totalTokens ?? 'unavailable'} · request ${usage.requestBytes} bytes, output ${usage.outputBytes} bytes` : '')));
                 }
                 report.append(list);

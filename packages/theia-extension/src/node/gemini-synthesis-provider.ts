@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { assertSynthesisInputBudget, synthesisStageResultSchemas } from '@dope/software-map';
+import { assertSynthesisInputBudget, synthesisStageResultSchemas, SynthesisProviderFailure } from '@dope/software-map';
 import type { SynthesisCapabilities, SynthesisStageExecution, SynthesisStageRequest } from '@dope/software-map';
 import { COMPONENT_DISCOVERY_INSTRUCTION, RECONCILIATION_INSTRUCTION, SUBSYSTEM_CHALLENGE_INSTRUCTION,
     SUBSYSTEM_DISCOVERY_INSTRUCTION, SYSTEM_CHALLENGE_INSTRUCTION,
@@ -31,16 +31,19 @@ function count(value: unknown): number | undefined {
 function sanitized(error: unknown, aborted: boolean): Error {
     if (aborted || (error as { name?: unknown } | null)?.name === 'AbortError' ||
         (error as { name?: unknown } | null)?.name === 'TimeoutError')
-        return new Error('Gemini synthesis cancelled or timed out');
+        return new SynthesisProviderFailure('Gemini synthesis cancelled or timed out', 'cancelled');
     const status = (error as { status?: unknown } | null)?.status;
     if (error instanceof Error && ['Invalid model capacity', 'Invalid readiness response'].includes(error.message)) return error;
-    if (status === 401 || status === 403) return new Error(`Gemini authentication failed (HTTP ${status})`);
-    if (status === 429) return new Error('Gemini quota or rate limit exceeded (HTTP 429)');
-    if (typeof status === 'number' && status >= 500) return new Error(`Gemini upstream service failed (HTTP ${status})`);
-    if (typeof status === 'number' && status >= 400) return new Error(`Gemini request rejected (HTTP ${status})`);
-    if (error instanceof TypeError) return new Error('Gemini SDK or transport type error');
-    if (error instanceof SyntaxError) return new Error('Gemini response JSON error');
-    return new Error('Gemini synthesis request failed');
+    if (status === 401 || status === 403)
+        return new SynthesisProviderFailure(`Gemini authentication failed (HTTP ${status})`, 'authentication');
+    if (status === 429) return new SynthesisProviderFailure('Gemini quota or rate limit exceeded (HTTP 429)', 'nonretryable-provider');
+    if (typeof status === 'number' && status >= 500 && status <= 599)
+        return new SynthesisProviderFailure(`Gemini upstream service failed (HTTP ${status})`, 'transient-upstream');
+    if (typeof status === 'number' && status >= 400)
+        return new SynthesisProviderFailure(`Gemini request rejected (HTTP ${status})`, 'nonretryable-provider');
+    if (error instanceof TypeError) return new SynthesisProviderFailure('Gemini SDK or transport type error', 'transient-transport');
+    if (error instanceof SyntaxError) return new SynthesisProviderFailure('Gemini response JSON error', 'invalid-json');
+    return new SynthesisProviderFailure('Gemini synthesis request failed', 'nonretryable-provider');
 }
 
 export class GeminiSynthesisProvider {
@@ -151,14 +154,15 @@ export class GeminiSynthesisProvider {
                 config: { ...body.config, abortSignal } });
         } catch (error) { throw sanitized(error, abortSignal.aborted); }
         if (abortSignal.aborted) throw sanitized(undefined, true);
-        if (response.candidates?.[0]?.finishReason === 'MAX_TOKENS') throw new Error('Gemini stage output truncated at token limit');
+        if (response.candidates?.[0]?.finishReason === 'MAX_TOKENS')
+            throw new SynthesisProviderFailure('Gemini stage output truncated at token limit', 'invalid-json');
         let output: unknown;
         let content: string;
         try {
             content = response.text!;
             if (typeof content !== 'string' || !content.trim()) throw new Error('Empty response');
             output = JSON.parse(content);
-        } catch { throw new Error('Invalid Gemini stage JSON'); }
+        } catch { throw new SynthesisProviderFailure('Invalid Gemini stage JSON', 'invalid-json'); }
         const usage = response.usageMetadata;
         const inputTokens = count(usage?.promptTokenCount);
         const outputTokens = count(usage?.candidatesTokenCount);

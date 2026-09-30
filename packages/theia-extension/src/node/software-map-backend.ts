@@ -196,6 +196,10 @@ export class SoftwareMapBackend implements SoftwareMapService {
         this.active(projectHandle);
         return !!this.provider && (this.localProvider?.isProbed ?? (this.geminiProvider ? this.geminiProbed : true));
     }
+    async synthesisAttempts(projectHandle: string) {
+        this.active(projectHandle);
+        return this.synthesisCache.attempts();
+    }
     async initializationStatus(projectHandle: string): Promise<SoftwareMapInitializationStatus> {
         const root = this.active(projectHandle);
         const state = await readInitialization(root);

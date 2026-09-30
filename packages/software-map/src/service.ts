@@ -1,7 +1,7 @@
 import type { AnalysisStatus, ArchitectureViolation, Evidence, GraphNode, GraphRelationship, RelationshipKind } from './contracts';
 import type { ArchitectureDeclaration } from './contracts';
 import type { ArchitectureEvidencePacket, ArchitectureProposal, ProposedArchitectureKind } from './synthesis';
-import type { AnalysisProgressEvent } from './hierarchical-synthesis';
+import type { AnalysisProgressEvent, SynthesisCallAttempt } from './hierarchical-synthesis';
 
 export const softwareMapServicePath = '/services/dope/software-map';
 export const SoftwareMapService = Symbol('SoftwareMapService');
@@ -66,6 +66,7 @@ export interface SoftwareMapService {
     selectSynthesisModel(projectHandle: string, modelId: string): Promise<void>;
     probeSynthesis(projectHandle: string): Promise<void>;
     synthesisReady(projectHandle: string): Promise<boolean>;
+    synthesisAttempts(projectHandle: string): Promise<SynthesisCallAttempt[]>;
     initializationStatus(projectHandle: string): Promise<SoftwareMapInitializationStatus>;
     startInitialization(projectHandle: string): Promise<ArchitectureReview>;
     review(projectHandle: string): Promise<ArchitectureReview | undefined>;

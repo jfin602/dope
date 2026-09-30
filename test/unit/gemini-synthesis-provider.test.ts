@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createArchitectureEvidenceView, parseSynthesisStageResult, synthesisStageResultSchemas } from '../../packages/software-map/lib/index.js';
+import { createArchitectureEvidenceView, parseSynthesisStageResult, synthesisStageResultSchemas,
+  SynthesisProviderFailure } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidencePacket, SynthesisStageRequest } from '../../packages/software-map/lib/index.js';
 import { GeminiSynthesisProvider, geminiStageSchema } from
   '../../packages/theia-extension/lib/node/gemini-synthesis-provider.js';
@@ -151,7 +152,10 @@ test('Gemini normalizes absent usage and sanitizes malformed response and JSON',
       const executed = await provider.runStage(request);
       assert.equal(executed.usage.tokenMeasurement, 'unavailable');
       assert.equal(executed.usage.inputTokens, undefined);
-    } else await assert.rejects(provider.runStage(request), /Invalid Gemini stage JSON/);
+    } else await assert.rejects(provider.runStage(request), error => {
+      assert.equal((error as SynthesisProviderFailure).failureClass, 'invalid-json');
+      return /Invalid Gemini stage JSON/.test(String(error));
+    });
   }
 });
 
@@ -254,6 +258,22 @@ test('Gemini stage cancellation and timeout are sanitized', async () => {
     await assert.rejects(provider.runStage(request, controller.signal), error => {
       assert.match((error as Error).message, /cancelled or timed out/);
       assert.ok(!String(error).includes(key));
+      return true;
+    });
+  }
+});
+
+test('Gemini marks only sanitized stage transport and upstream failures retryable', async () => {
+  for (const [response, failureClass] of [
+    [() => { throw new TypeError(key); }, 'transient-transport'],
+    [() => json({ error: { code: 503, message: key } }, 503), 'transient-upstream'],
+    [() => json({ error: { code: 401, message: key } }, 401), 'authentication'],
+  ] as const) {
+    const provider = await prepared({ apiKey: key, fetch: async url =>
+      String(url).endsWith(':generateContent') ? response() : json(model) });
+    await assert.rejects(provider.runStage(request), error => {
+      assert.equal(error instanceof SynthesisProviderFailure ? error.failureClass : undefined, failureClass);
+      assert.equal(String(error).includes(key), false);
       return true;
     });
   }

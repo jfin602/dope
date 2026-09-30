@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createArchitectureEvidenceView, detectReconciliationConflicts, HierarchicalSynthesisOrchestrator,
   parseArchitectureProposal, planArchitectureEvidence, SynthesisStageCache, stageWorkIdentity,
-  MAX_VERIFICATION_CALLS } from '../../packages/software-map/lib/index.js';
+  MAX_VERIFICATION_CALLS, MAX_GEMINI_ATTEMPTS, SynthesisProviderFailure } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidencePacket, SynthesisProvider, SynthesisStageRequest, SystemSubtree,
   SystemCandidate } from '../../packages/software-map/lib/index.js';
 
@@ -76,11 +76,14 @@ test('stage reuse requires exact packet, view, scope, prompt and provider identi
   assert.equal(firstRun.reused, false);
   assert.deepEqual(firstRun.usage, executed(first, {}).usage);
   assert.ok(firstRun.durationMs >= 0);
+  assert.equal(cache.attempts().length, 1);
+  assert.equal(cache.attempts()[0].consumed, true);
   const reused = await cache.run(first, packet, provider, 'provider/model', 1);
   assert.equal(reused.reused, true);
   assert.equal(reused.durationMs, 0);
   assert.equal(reused.usage, undefined);
   assert.equal(calls, 1);
+  assert.equal(cache.attempts().length, 1);
   assert.notEqual(stageWorkIdentity(first, 'provider/model', 1), stageWorkIdentity(first, 'provider/model', 2));
   assert.notEqual(stageWorkIdentity(first, 'provider/model', 1), stageWorkIdentity(first, 'other/model', 1));
   assert.notEqual(stageWorkIdentity(first, 'provider/model', 1), stageWorkIdentity({ ...first,
@@ -121,6 +124,60 @@ test('failed stage has zero automatic retries and is never cached', async () => 
   assert.equal(calls, 1);
   await assert.rejects(cache.run(request('system-discovery'), packet, provider, 'provider/model'), /provider failed/);
   assert.equal(calls, 2);
+});
+
+test('Gemini transient retry retains failed and consumed attempts with exact request/model identity', async () => {
+  const cache = new SynthesisStageCache();
+  const req = request('system-discovery');
+  const seen: SynthesisStageRequest[] = [];
+  const projected: string[] = [];
+  const provider = { kind: 'gemini', runStage: async (input: SynthesisStageRequest) => {
+    seen.push(input);
+    if (seen.length === 1) throw new SynthesisProviderFailure('safe transport failure', 'transient-transport');
+    return { ...executed(input, { systems: [system('a', 'a')] }),
+      usage: { ...executed(input, {}).usage, providerKind: 'gemini' as const, modelLabel: 'gemini-fixed' } };
+  } } as SynthesisProvider;
+  await cache.run(req, packet, provider, 'gemini/model', 1, () => {}, item => projected.push(item.attemptId), 'gemini-fixed');
+  const attempts = cache.attempts();
+  assert.equal(attempts.length, 2);
+  assert.deepEqual(projected, attempts.map(item => item.attemptId));
+  assert.deepEqual(attempts.map(item => item.consumed), [false, true]);
+  assert.equal(attempts[0].failureClass, 'transient-transport');
+  assert.equal(attempts[0].tokenMeasurement, 'unavailable');
+  assert.equal(attempts[1].retryOf, attempts[0].attemptId);
+  assert.equal(attempts[0].callId, attempts[1].callId);
+  assert.ok(attempts.every(item => item.providerKind === 'gemini' && item.modelLabel === 'gemini-fixed' &&
+    item.requestBytes === Buffer.byteLength(JSON.stringify(req)) && item.durationMs >= 0));
+  assert.equal(seen[0], seen[1]);
+  assert.equal(JSON.stringify(attempts).includes('safe transport failure'), false);
+  projected.length = 0;
+  assert.equal(cache.attempts().length, 2);
+  attempts[0].modelLabel = 'mutated';
+  assert.equal(cache.attempts()[0].modelLabel, 'gemini-fixed');
+});
+
+test('Gemini retry cap and nonretryable stage failures remain explicit', async () => {
+  const req = request('system-discovery');
+  for (const failure of ['upstream', 'invalid-json', 'schema', 'content', 'auth'] as const) {
+    const cache = new SynthesisStageCache();
+    let calls = 0;
+    const provider = { kind: 'gemini', runStage: async (input: SynthesisStageRequest) => {
+      calls++;
+      if (failure === 'upstream') throw new SynthesisProviderFailure('safe upstream', 'transient-upstream');
+      if (failure === 'invalid-json') throw new SynthesisProviderFailure('Invalid Gemini stage JSON', 'invalid-json');
+      if (failure === 'auth') throw new SynthesisProviderFailure('Gemini authentication failed (HTTP 401)', 'authentication');
+      return executed(input, { systems: [{ ...system('a', 'a'),
+        ...(failure === 'schema' ? { extra: true } : { evidenceRefs: ['fabricated'] }) }] });
+    } } as SynthesisProvider;
+    await assert.rejects(cache.run(req, packet, provider, 'gemini/model'));
+    assert.equal(calls, failure === 'upstream' ? MAX_GEMINI_ATTEMPTS : 1, failure);
+    assert.equal(cache.attempts().length, calls);
+    assert.ok(cache.attempts().every(item => !item.consumed));
+    if (failure === 'invalid-json') assert.equal(cache.attempts()[0].failureClass, 'invalid-json');
+    if (failure === 'auth') assert.equal(cache.attempts()[0].failureClass, 'authentication');
+    if (failure === 'schema' || failure === 'content')
+      assert.equal(cache.attempts()[0].failureClass, 'invalid-stage-result');
+  }
 });
 
 test('failed provider calls retain duration and status without fabricated token spend', async () => {

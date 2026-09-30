@@ -32,6 +32,34 @@ export interface SynthesisStageUsage {
     tokenMeasurement: 'provider-reported' | 'tokenizer' | 'estimated' | 'unavailable';
 }
 export interface SynthesisStageExecution { output: unknown; usage: SynthesisStageUsage }
+/** Adapter-classified, safe failure. Raw provider errors must never cross this boundary. */
+export class SynthesisProviderFailure extends Error {
+    constructor(message: string, readonly failureClass: 'transient-transport' | 'transient-upstream' |
+        'cancelled' | 'invalid-json' | 'authentication' | 'nonretryable-provider') {
+        super(message);
+    }
+}
+export interface SynthesisCallAttempt {
+    callId: string;
+    attemptId: string;
+    retryOf?: string;
+    stage: SynthesisStage;
+    subject?: string;
+    providerKind: SynthesisProvider['kind'];
+    modelLabel: string;
+    attempt: number;
+    startedAt: string;
+    durationMs: number;
+    requestBytes: number;
+    outputBytes?: number;
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+    tokenMeasurement: SynthesisStageUsage['tokenMeasurement'];
+    failureClass?: SynthesisProviderFailure['failureClass'] | 'invalid-stage-result' | 'provider-failure' | 'cancelled';
+    reused: false;
+    consumed: boolean;
+}
 export function usableEvidenceTokens(capability: SynthesisCapabilities): number {
     const capabilityFields = ['modelLabel', 'contextWindowTokens', 'maxInputTokens', 'reservedInstructionTokens',
         'reservedOutputTokens', 'reservedOverheadTokens', 'tokenEstimate'];

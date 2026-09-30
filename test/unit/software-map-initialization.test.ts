@@ -244,6 +244,11 @@ test('backend reports ordered hierarchy, known counts and measured time before t
     assert.ok(events.some(event => event.callPurpose === 'system-discovery' && event.providerModelLabel === 'fixture-model'));
     assert.ok(events.some(event => event.providerKind === 'local' && event.providerModelLabel === 'fixture-model' &&
       event.usage?.tokenMeasurement === 'unavailable' && event.callDurationMs !== undefined));
+    const attempts = await service.synthesisAttempts(handle);
+    assert.ok(attempts.length > 0 && attempts.every(item => item.consumed && item.attempt === 1 &&
+      item.providerKind === 'local' && item.modelLabel === 'fixture-model'));
+    events.length = 0;
+    assert.equal((await service.synthesisAttempts(handle)).length, attempts.length);
     assert.ok(!JSON.stringify(events).match(/prompt|chain.of.thought|percentage/i));
     assert.equal((await readdir(root)).includes('.dope'), false);
     service.dispose();
@@ -384,16 +389,17 @@ test('failure can retry; cancel and project switch discard late stage results', 
     assert.equal((await service.initializationStatus(handleA)).state, 'uninitialized');
     block = new Promise<void>(resolve => { release = resolve; });
     const pending = service.startInitialization(handleA);
-    while (events.filter(item => item.handle === handleA && item.event.callPurpose === 'system-discovery').length < 2)
+    while (events.filter(item => item.handle === handleA && item.event.message === 'Analyzing system discovery').length < 2)
       await new Promise(resolve => setTimeout(resolve, 10));
     await service.cancelInitialization(handleA);
     assert.equal(events.at(-1)?.event.stage, 'cancelled');
     release();
     await assert.rejects(pending, /Superseded/);
     assert.equal(await service.review(handleA), undefined);
+    assert.ok((await service.synthesisAttempts(handleA)).some(item => item.failureClass === 'cancelled' && !item.consumed));
     block = new Promise<void>(resolve => { release = resolve; });
     const old = service.startInitialization(handleA);
-    while (events.filter(item => item.handle === handleA && item.event.callPurpose === 'system-discovery').length < 3)
+    while (events.filter(item => item.handle === handleA && item.event.message === 'Analyzing system discovery').length < 3)
       await new Promise(resolve => setTimeout(resolve, 10));
     const handleB = await attach(service, b);
     const count = events.length;
