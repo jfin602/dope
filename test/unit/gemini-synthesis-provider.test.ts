@@ -164,6 +164,17 @@ test('Gemini reports stage truncation without exposing response text', async () 
   });
 });
 
+test('Gemini reconciliation instructs one unresolved entry per candidate', async () => {
+  let instruction = '';
+  const provider = await prepared({ apiKey: key, fetch: async (url, init) => {
+    if (!String(url).endsWith(':generateContent')) return json(model);
+    instruction = JSON.parse(String(init?.body)).systemInstruction.parts[0].text;
+    return json(completion('{}'));
+  } });
+  await provider.runStage({ ...request, stage: 'reconciliation' });
+  assert.match(instruction, /Each unresolved candidateKey may appear only once/);
+});
+
 test('Gemini configuration, auth, quota, upstream and arbitrary errors never expose the key', async () => {
   assert.throws(() => new GeminiSynthesisProvider({ apiKey: '' }), /Invalid Gemini API key/);
   assert.throws(() => new GeminiSynthesisProvider({ apiKey: `${key}\n` }), /Invalid Gemini API key/);

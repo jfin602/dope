@@ -137,8 +137,9 @@ export class GeminiSynthesisProvider {
             request.stage === 'subsystem-discovery' ? SUBSYSTEM_DISCOVERY_INSTRUCTION :
             request.stage === 'reconciliation' ? RECONCILIATION_INSTRUCTION :
             request.stage === 'verification' ? VERIFICATION_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION;
+        const reconciliationRule = request.stage === 'reconciliation' ? ' Each unresolved candidateKey may appear only once; choose one code per candidate.' : '';
         const schema = geminiStageSchema(synthesisStageResultSchemas[request.stage]);
-        const body = { model, contents: input, config: { systemInstruction: `${instruction} Every candidateKey and parentCandidateKey must match ^candidate:[A-Za-z0-9._-]+$ (for example, candidate:api). For ownershipEvidenceRefs, use only direct production behavior items; never cite topology, configuration, dependency, test or documentation items as ownership.`,
+        const body = { model, contents: input, config: { systemInstruction: `${instruction} Every candidateKey and parentCandidateKey must match ^candidate:[A-Za-z0-9._-]+$ (for example, candidate:api). For ownershipEvidenceRefs, use only direct production behavior items; never cite topology, configuration, dependency, test or documentation items as ownership.${reconciliationRule}`,
             responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0, maxOutputTokens: 32768 } };
         const timeout = AbortSignal.timeout(this.timeoutMs);
         const abortSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
