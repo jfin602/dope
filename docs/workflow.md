@@ -31,7 +31,7 @@ Treat the supplied input as a reported product/repository problem and turn it in
 - Write a complete entry from the available evidence and conversation context, normally including status, summary, observed behavior/context, expected behavior, relevant safety/authority boundaries, regression coverage, and user/developer impact when applicable.
 - Preserve the user's report as the source of the problem statement. Distinguish observed facts from suspected causes or proposed fixes, and do not invent evidence.
 - If the input is actually a product idea/general enhancement rather than a defect, route it to `/feature` instead of recording it as an issue.
-- Apply the registry update directly, report the assigned ID, and include the complete final Markdown entry exactly as written to `known-issues.md` in the response.
+- Apply the registry update directly, report the assigned ID, and include the complete final Markdown entry exactly as written to `known-issues.md` in the response as normal formatted Markdown text. Do not wrap the entry in a code block.
 
 ### /feature <input>
 
@@ -42,7 +42,7 @@ Treat the supplied input as a proposed product/repository capability and turn it
 - Write a complete entry from the supplied idea and relevant context, normally including status, summary, description/behavior, constraints or boundaries, potential uses/value, and open questions when genuinely unresolved.
 - Include enough detail that the entry can later feed `/docs-review` and implementation-prompt planning without pretending the idea is already approved architecture or implementation scope.
 - Do not invent implementation evidence or silently promote the feature into roadmap authority.
-- Apply the registry update directly, report the assigned `+ID`, and include the complete final Markdown entry exactly as written to `feature-ideas.md` in the response.
+- Apply the registry update directly, report the assigned `+ID`, and include the complete final Markdown entry exactly as written to `feature-ideas.md` in the response as normal formatted Markdown text. Do not wrap the entry in a code block.
 
 ### /resolve <ID>
 
