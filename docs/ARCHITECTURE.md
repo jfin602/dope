@@ -591,3 +591,22 @@ Dogfooding must not create stack-specific domain coupling. A design that works o
 George code may be studied or selectively borrowed only where it fits this architecture.
 
 No George API, state schema, TUI assumption, provider choice, or compatibility requirement is authoritative for Dope.
+
+
+## Unaccepted sMap review work-state boundary — ADR 0018
+
+An Architecture Review is durable **work state**, not canonical architecture.
+
+During initial sMap synthesis Dope may persist a versioned `.dope/smap-analysis.json` containing enough source-associated analysis state to reopen the exact unaccepted review. Once review begins, the developer's current working draft is the resumable object and must survive backend/app restart.
+
+Boundary rules:
+- `@dope/software-map` owns provider-independent review/draft contracts, acceptance diagnostics and strict architecture validation;
+- `@dope/code-analysis` owns safe project-local analysis-work persistence under `.dope/`;
+- `@dope/theia-extension` adapts frontend edits to typed save/revision calls and renders shared diagnostics; it does not define acceptance semantics;
+- invalid/incomplete working drafts may be persisted, but cannot be accepted until deterministic validation is clear;
+- stale writes cannot overwrite a newer persisted draft;
+- reopening a persisted review performs no provider call;
+- cancellation and successful acceptance clear the analysis-work file;
+- accepted architecture remains only `.dope/architecture.json` plus matching `.dope/smap.json`.
+
+Acceptance diagnostics are deterministic and provider-free. They enumerate all known blockers rather than making the developer repair one throw-first error at a time. Diagnostics identify implicated review nodes/paths where possible, but never choose an architectural owner or silently repair the draft.

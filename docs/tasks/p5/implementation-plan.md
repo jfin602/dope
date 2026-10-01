@@ -242,6 +242,17 @@ Preserve original target and final realized outcome as durable history.
 
 Add integrated tests proving WorkItem completion alone cannot close/reconcile a map.
 
+## P11 interruption gate — `c5-smap-acceptance-debug-loop`
+
+P11 is paused at `0.5.11` because the Adaptive SEO prerequisite sMap reached review but cannot pass the real acceptance path.
+
+Before rerunning P11:
+1. close `c5-smap-acceptance-debug-loop`, which installs only durable review/debug machinery;
+2. run the actual acceptance-debug loop separately against the preserved Adaptive SEO review until deterministic blockers are cleared and real acceptance succeeds;
+3. then resume this P11 qualification.
+
+The correction must not be counted as P11 qualification and must not advance to `0.5.12`.
+
 ## P11 — direct visual workflow qualification (`0.5.11`) — T3 / browser required
 
 Use a disposable copy of `/home/jfin/dev/adaptive-seo-dope`, including `.dope/`, as the primary mapped workspace in the actual Theia GUI. Require a usable canonical/Physical Map before the direct loop. Keep the real Adaptive SEO checkout unchanged. Use the Dope repository for host/IDE/Project Mind/sMap regression and exact-candidate builds, package and native launch; Dope's own canonical map need not qualify the visual loop.

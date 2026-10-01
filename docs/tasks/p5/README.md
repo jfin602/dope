@@ -34,6 +34,21 @@ Run implementation prompts:
 
 The runner owns P1-P10 commits and stops for P11 because direct browser GUI evidence is required. After P11 is completed and committed, resume P12 closeout from the exact qualified candidate.
 
+## P11 pause — acceptance-debug machinery gate
+
+P11 is currently paused / Not Green at `0.5.11`.
+
+The Adaptive SEO qualification workspace reached an unaccepted Architecture Review whose real acceptance path is blocked. Before continuing qualification, `c5-smap-acceptance-debug-loop` installs durable mutable review state plus deterministic acceptance diagnostics/checking.
+
+This correction is **machinery only**. It does not repair the Adaptive SEO architecture and it does not contain the later iterative debug-loop prompt.
+
+Routing:
+
+`P1-P10 -> P11 paused -> c5-smap-acceptance-debug-loop -> separate Adaptive SEO acceptance-debug loop -> resume P11 -> P12`
+
+P12/`0.5.12` is not eligible until the real Adaptive SEO architecture can be accepted and P11 completes.
+
+
 P11's first Dope-on-Dope attempt is retained as Not Green evidence. The rerun uses a disposable copy of `/home/jfin/dev/adaptive-seo-dope` with its `.dope/` state for the visual loop; Dope remains the host/regression/package fixture. Confirm usable canonical/Physical Map state before GUI qualification.
 
 ## Product boundary

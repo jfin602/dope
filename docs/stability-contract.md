@@ -346,3 +346,22 @@ Every correction must reproduce/characterize the defect, repair it, add an appro
 The spike qualifies only if the complete THEIA-SPIKE.md matrix is Green or residual gaps are explicitly classified and judged non-blocking by the owner without being relabeled Green.
 
 Hard substrate blockers cannot be waived into technical Green.
+
+
+## Unaccepted sMap review recovery and diagnostics
+
+While ADR 0018 remains authoritative, changes to Architecture Review persistence or acceptance must preserve these invariants:
+
+- a `review_required` working draft survives backend/app restart exactly enough for continued developer editing;
+- existing persisted schema-1 review runs remain readable or receive an explicit, tested compatibility path;
+- invalid review drafts can be persisted safely without becoming canonical or initialized;
+- mutable draft saves reject stale revisions rather than silently losing newer work;
+- project/root switching cannot leak or overwrite another project's review;
+- reopening/checking a persisted review does not require or invoke Local/Gemini/provider setup;
+- deterministic acceptance diagnostics report the complete known blocker set and identify conflicting nodes/paths where available;
+- UI diagnostics, offline checker results and backend acceptance preflight share the same domain rules;
+- explicit cancellation and successful acceptance remove the in-progress analysis work state;
+- acceptance continues to revalidate source/declaration staleness and uses the strict canonical architecture writer;
+- diagnostic/debug machinery must not auto-fix ownership, deduplicate roots or otherwise make architectural decisions for the developer.
+
+Permanent regression coverage must include restart restoration of an intentionally invalid draft and equality of its deterministic diagnostics before and after restart.

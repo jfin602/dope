@@ -634,3 +634,16 @@ An Idea may be captured while debugging.
 A future Research artifact may resolve a Question that updates a Decision.
 
 A Session eventually ties these together without making transcript text the source of truth.
+
+
+## Architecture Review Work State
+
+Architecture Review Work State is the developer-editable, pre-acceptance representation of a synthesized Software Map architecture proposal.
+
+It is distinct from canonical architecture, accepted initialization, Physical Map truth, provider/model session state and presentation layout.
+
+A review work state may be persisted project-locally so the developer can restart Dope and continue the same review without regenerating the sMap. It carries a stable review identity, a mutable draft revision and enough source association to reject stale acceptance.
+
+The draft is allowed to be temporarily invalid. Dope surfaces deterministic **acceptance blockers** such as invalid/duplicate IDs, invalid containment, unsafe or missing roots and ambiguous exact root ownership. Persisting a blocker does not accept it, and diagnostics never silently decide the architecture for the developer.
+
+Explicit developer acceptance remains the only transition from review work to canonical `.dope/architecture.json` plus accepted `.dope/smap.json`. Explicit cancellation discards the unaccepted work.
