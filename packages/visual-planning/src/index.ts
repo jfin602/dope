@@ -7,6 +7,13 @@ export type TransformationKind = 'add' | 'modify' | 'remove' | 'move' | 'split' 
 export type NodeKind = 'system' | 'subsystem' | 'component';
 export type Resolution = 'as-planned' | 'accepted-different' | 'deferred' | 'abandoned';
 export interface PlanningBasis { architectureRevision: number; architectureFingerprint: string; physicalInputFingerprint: string; physicalGeneration: number }
+export interface RebaseReality {
+  basis: PlanningBasis;
+  architecture: ArchitectureDeclaration;
+  physicalNodes: { id: string; kind: string; name: string; parentId?: string; path?: string; evidenceIds: string[] }[];
+  relationships: { kind: string; sourceId: string; targetId: string; evidenceIds: string[] }[];
+  sourceHashes?: Record<string, string>;
+}
 export interface PlannedNode { id: string; kind: NodeKind; parentId?: string; name: string; purpose: string; roots: string[]; allowedDependencies?: string[]; forbiddenDependencies?: string[] }
 export interface DependencyRelationship { sourceId: string; targetId: string; policy: 'allowed' | 'forbidden' }
 export interface RelationshipRedirect { from: DependencyRelationship; to: DependencyRelationship }
@@ -24,13 +31,15 @@ export interface HistoryEntry { revision: number; action: string; at: string }
 export interface PlanningMap {
   schemaVersion: 1; id: string; projectId: string; title: string; objective: string; status: MapStatus;
   revision: number; history: HistoryEntry[]; basis: PlanningBasis;
+  basisSnapshot?: RebaseReality;
   transformations: PlannedTransformation[]; workItems: WorkItem[]; branchedFrom?: string;
   editHistory?: { undo: PlannedTransformation[][]; redo: PlannedTransformation[][] };
 }
 export interface CrossMapConflict { schemaVersion: 1; mapIds: [string, string]; transformationIds: [string, string]; identityId: string; reason: 'incompatible-target' }
-export interface StaleResult { schemaVersion: 1; stale: boolean; architectureChanged: boolean; physicalChanged: boolean; affectedTransformationIds: string[]; affectedBranchIds: string[] }
-export interface RebaseConflict { transformationId: string; identityId: string; reason: 'missing' | 'identity' | 'parent' | 'contract' | 'relationship' | 'already-realized' | 'realized-differently' }
-export interface RebaseResult { schemaVersion: 1; oldBasis: PlanningBasis; currentBasis: PlanningBasis; conflicts: RebaseConflict[]; unaffectedTransformationIds: string[] }
+export type RebaseReason = 'missing' | 'identity' | 'parent' | 'contract' | 'relationship' | 'source-changed' | 'already-realized' | 'realized-differently' | 'unresolved';
+export interface RebaseConflict { transformationId: string; identityId: string; reason: RebaseReason; evidence: string[] }
+export interface StaleResult { schemaVersion: 1; stale: boolean; architectureChanged: boolean; physicalChanged: boolean; affectedTransformationIds: string[]; affectedBranchIds: string[]; conflicts: RebaseConflict[] }
+export interface RebaseResult { schemaVersion: 1; oldBasis: PlanningBasis; currentBasis: PlanningBasis; conflicts: RebaseConflict[]; unaffectedTransformationIds: string[]; oldReality?: RebaseReality; currentReality: RebaseReality }
 export type ReconciliationOutcome = 'implemented-as-planned' | 'implemented-differently' | 'not-implemented' | 'unexpected-implementation';
 export interface ReconciliationResult { schemaVersion: 1; transformationId?: string; identityId: string; outcome: ReconciliationOutcome; physicalGeneration: number; evidenceIds: string[] }
 export interface TargetProjection { nodes: PlannedNode[]; relationships: DependencyRelationship[] }
@@ -65,6 +74,26 @@ function parseBasis(v: unknown, at: string): PlanningBasis {
   const x = obj(v, at); fields(x, ['architectureRevision', 'architectureFingerprint', 'physicalInputFingerprint', 'physicalGeneration'], [], at);
   return { architectureRevision: integer(x.architectureRevision, `${at}.architectureRevision`), architectureFingerprint: str(x.architectureFingerprint, `${at}.architectureFingerprint`),
     physicalInputFingerprint: str(x.physicalInputFingerprint, `${at}.physicalInputFingerprint`), physicalGeneration: integer(x.physicalGeneration, `${at}.physicalGeneration`) };
+}
+export function parseRebaseReality(v: unknown): RebaseReality {
+  const x = obj(v, 'reality'); fields(x, ['basis', 'architecture', 'physicalNodes', 'relationships'], ['sourceHashes'], 'reality');
+  const physicalNodes = list(x.physicalNodes, (raw, at) => {
+    const n = obj(raw, at); fields(n, ['id', 'kind', 'name', 'evidenceIds'], ['parentId', 'path'], at);
+    return { id: str(n.id, `${at}.id`), kind: choice(n.kind, ['project', 'system', 'subsystem', 'component', 'code'] as const, `${at}.kind`),
+      name: str(n.name, `${at}.name`), ...(n.parentId === undefined ? {} : { parentId: str(n.parentId, `${at}.parentId`) }),
+      ...(n.path === undefined ? {} : { path: path(n.path, `${at}.path`) }), evidenceIds: strings(n.evidenceIds, `${at}.evidenceIds`) };
+  }, 'reality.physicalNodes');
+  const relationships = list(x.relationships, (raw, at) => {
+    const r = obj(raw, at); fields(r, ['kind', 'sourceId', 'targetId', 'evidenceIds'], [], at);
+    return { kind: choice(r.kind, ['contains', 'owns', 'imports', 'depends-on', 'exports', 'references', 'extends', 'implements'] as const, `${at}.kind`),
+      sourceId: str(r.sourceId, `${at}.sourceId`), targetId: str(r.targetId, `${at}.targetId`), evidenceIds: strings(r.evidenceIds, `${at}.evidenceIds`) };
+  }, 'reality.relationships');
+  if (new Set(physicalNodes.map(n => n.id)).size !== physicalNodes.length) fail('reality duplicate node');
+  const sourceHashes = x.sourceHashes === undefined ? undefined : obj(x.sourceHashes, 'reality.sourceHashes');
+  if (sourceHashes) for (const [source, hash] of Object.entries(sourceHashes))
+    if (projectPath(source) !== source || typeof hash !== 'string' || !/^[0-9a-f]{64}$/.test(hash)) fail('reality.sourceHashes');
+  return { basis: parseBasis(x.basis, 'reality.basis'), architecture: parseArchitecture(x.architecture), physicalNodes, relationships,
+    ...(sourceHashes ? { sourceHashes: sourceHashes as Record<string, string> } : {}) };
 }
 function node(v: unknown, at: string): PlannedNode {
   const x = obj(v, at); fields(x, ['id', 'kind', 'name', 'purpose', 'roots'], ['parentId', 'allowedDependencies', 'forbiddenDependencies'], at);
@@ -127,9 +156,10 @@ function acyclic(items: Array<{ id: string; dependsOn: string[] }>, at: string):
 }
 export function validateTransformationDependencies(items: PlannedTransformation[]): void { acyclic(items, 'transformations'); }
 export function parsePlanningMap(input: unknown): PlanningMap {
-  const x = obj(input, 'root'); fields(x, ['schemaVersion', 'id', 'projectId', 'title', 'objective', 'status', 'revision', 'history', 'basis', 'transformations', 'workItems'], ['branchedFrom', 'editHistory'], 'root');
+  const x = obj(input, 'root'); fields(x, ['schemaVersion', 'id', 'projectId', 'title', 'objective', 'status', 'revision', 'history', 'basis', 'transformations', 'workItems'], ['branchedFrom', 'editHistory', 'basisSnapshot'], 'root');
   if (x.schemaVersion !== 1) fail('unsupported schemaVersion');
   const basis = parseBasis(x.basis, 'basis');
+  if (x.basisSnapshot !== undefined && JSON.stringify(parseRebaseReality(x.basisSnapshot).basis) !== JSON.stringify(basis)) fail('basis snapshot mismatch');
   const history = list(x.history, (raw, at) => { const h = obj(raw, at); fields(h, ['revision', 'action', 'at'], [], at); return { revision: integer(h.revision, `${at}.revision`), action: str(h.action, `${at}.action`), at: str(h.at, `${at}.at`) }; }, 'history').sort((a, b) => a.revision - b.revision);
   const revision = integer(x.revision, 'revision');
   if (history.length && (history[history.length - 1].revision !== revision || history.some((h, i) => i && h.revision <= history[i - 1].revision))) fail('history revision');
@@ -151,7 +181,7 @@ export function parsePlanningMap(input: unknown): PlanningMap {
   const status = choice(x.status, ['draft', 'active', 'completed', 'superseded', 'archived'] as const, 'status');
   if (status === 'completed' && !canCloseOut({ transformations } as PlanningMap)) fail('unresolved closeout');
   return { schemaVersion: 1, id: id(x.id, 'id'), projectId: id(x.projectId, 'projectId'), title: str(x.title, 'title'), objective: str(x.objective, 'objective'), status, revision, history,
-    basis,
+    basis, ...(x.basisSnapshot === undefined ? {} : { basisSnapshot: parseRebaseReality(x.basisSnapshot) }),
     transformations, workItems, ...(x.branchedFrom === undefined ? {} : { branchedFrom: id(x.branchedFrom, 'branchedFrom') }),
     ...(editHistory ? { editHistory: { undo: snapshots(editHistory.undo, 'editHistory.undo'), redo: snapshots(editHistory.redo, 'editHistory.redo') } } : {}) };
 }
@@ -163,20 +193,24 @@ export function parseCrossMapConflict(input: unknown): CrossMapConflict {
     identityId: id(x.identityId, 'conflict.identityId'), reason: choice(x.reason, ['incompatible-target'] as const, 'conflict.reason') };
 }
 export function parseStaleResult(input: unknown): StaleResult {
-  const x = versioned(input, 'stale', ['stale', 'architectureChanged', 'physicalChanged', 'affectedTransformationIds', 'affectedBranchIds']);
+  const x = versioned(input, 'stale', ['stale', 'architectureChanged', 'physicalChanged', 'affectedTransformationIds', 'affectedBranchIds', 'conflicts']);
   return { schemaVersion: 1 as const, stale: bool(x.stale, 'stale.stale'), architectureChanged: bool(x.architectureChanged, 'stale.architectureChanged'),
     physicalChanged: bool(x.physicalChanged, 'stale.physicalChanged'), affectedTransformationIds: ids(x.affectedTransformationIds, 'stale.affectedTransformationIds'),
-    affectedBranchIds: ids(x.affectedBranchIds, 'stale.affectedBranchIds') };
+    affectedBranchIds: ids(x.affectedBranchIds, 'stale.affectedBranchIds'), conflicts: parseRebaseConflicts(x.conflicts) };
+}
+function parseRebaseConflicts(value: unknown): RebaseConflict[] {
+  return list(value, (v, at) => { const c = obj(v, at); fields(c, ['transformationId', 'identityId', 'reason', 'evidence'], [], at);
+    return { transformationId: id(c.transformationId, `${at}.transformationId`), identityId: str(c.identityId, `${at}.identityId`),
+      reason: choice(c.reason, ['missing', 'identity', 'parent', 'contract', 'relationship', 'source-changed', 'already-realized', 'realized-differently', 'unresolved'] as const, `${at}.reason`), evidence: strings(c.evidence, `${at}.evidence`) }; }, 'rebase.conflicts');
 }
 export function parseRebaseResult(input: unknown): RebaseResult {
-  const x = versioned(input, 'rebase', ['oldBasis', 'currentBasis', 'conflicts', 'unaffectedTransformationIds']);
-  const conflicts = list(x.conflicts, (v, at) => { const c = obj(v, at); fields(c, ['transformationId', 'identityId', 'reason'], [], at);
-    return { transformationId: id(c.transformationId, `${at}.transformationId`), identityId: id(c.identityId, `${at}.identityId`),
-      reason: choice(c.reason, ['missing', 'identity', 'parent', 'contract', 'relationship', 'already-realized', 'realized-differently'] as const, `${at}.reason`) }; }, 'rebase.conflicts');
+  const x = versioned(input, 'rebase', ['oldBasis', 'currentBasis', 'conflicts', 'unaffectedTransformationIds', 'currentReality'], ['oldReality']);
+  const conflicts = parseRebaseConflicts(x.conflicts);
   const unaffectedTransformationIds = ids(x.unaffectedTransformationIds, 'rebase.unaffectedTransformationIds');
   if (conflicts.some(c => unaffectedTransformationIds.includes(c.transformationId))) fail('rebase conflicting unaffected identity');
   return { schemaVersion: 1, oldBasis: parseBasis(x.oldBasis, 'rebase.oldBasis'), currentBasis: parseBasis(x.currentBasis, 'rebase.currentBasis'),
-    conflicts: conflicts.sort((a, b) => a.transformationId.localeCompare(b.transformationId) || a.identityId.localeCompare(b.identityId)), unaffectedTransformationIds };
+    conflicts: conflicts.sort((a, b) => a.transformationId.localeCompare(b.transformationId) || a.identityId.localeCompare(b.identityId)), unaffectedTransformationIds,
+    ...(x.oldReality === undefined ? {} : { oldReality: parseRebaseReality(x.oldReality) }), currentReality: parseRebaseReality(x.currentReality) };
 }
 export function parseReconciliationResult(input: unknown): ReconciliationResult {
   const x = versioned(input, 'reconciliation', ['identityId', 'outcome', 'physicalGeneration', 'evidenceIds'], ['transformationId']);

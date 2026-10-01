@@ -1,24 +1,58 @@
 import type { GraphNode, GraphRelationship, ArchitectureViolation } from '@dope/software-map';
-import type { PlanningMap, PlannedTransformation } from '@dope/visual-planning';
+import type { PlanningMap, PlannedTransformation, RebaseConflict, RebaseResult, StaleResult } from '@dope/visual-planning';
 import { projectPhysicalMap } from './physical-map-projection';
 import type { CanvasProjection } from './physical-map-projection';
 
 export type PlanningView = 'current' | 'target' | 'diff';
 export type PlanningIntent = 'add' | 'modify' | 'remove' | 'move' | 'relationship' | 'contract';
 export interface PlanningProjection extends CanvasProjection {
-    nodes: (CanvasProjection['nodes'][number] & { intent?: PlanningIntent })[];
-    edges: (CanvasProjection['edges'][number] & { intent?: PlanningIntent })[];
+    nodes: (CanvasProjection['nodes'][number] & { intent?: PlanningIntent; stale?: boolean; conflict?: boolean })[];
+    edges: (CanvasProjection['edges'][number] & { intent?: PlanningIntent; stale?: boolean; conflict?: boolean })[];
 }
 const intentOf = (item: PlannedTransformation): PlanningIntent => item.kind === 'redirect-relationship' ? 'relationship' :
     item.kind === 'change-contract' ? 'contract' : item.kind === 'split' || item.kind === 'merge' ? 'modify' : item.kind;
 const caption: Record<PlanningIntent, string> = { add: 'Planned addition', modify: 'Planned change', remove: 'Planned removal',
     move: 'Planned move', relationship: 'Planned relationship', contract: 'Planned contract change' };
 
+export function projectRebaseConflict(map: PlanningMap, preview: RebaseResult, conflict: RebaseConflict): { old: string; current: string; target: string } {
+    const describe = (reality: RebaseResult['currentReality'] | undefined): string => {
+        if (!reality) return 'Old graph unavailable';
+        const physical = reality.physicalNodes.find(n => n.id === conflict.identityId);
+        const canonical = reality.architecture.systems.flatMap(system => [system, ...system.subsystems.flatMap(sub => [sub, ...(sub.components ?? [])])])
+            .find(n => n.id === conflict.identityId);
+        return canonical ? `${canonical.name} · ${canonical.purpose}${physical ? ` · physical ${physical.kind}` : ' · no physical node'}` :
+            physical ? `${physical.name} · physical ${physical.kind}` : 'Absent';
+    };
+    const change = map.transformations.find(t => t.id === conflict.transformationId);
+    return { old: describe(preview.oldReality), current: describe(preview.currentReality),
+        target: change ? `${change.kind} · ${change.futureNodes.map(n => `${n.id}: ${n.name}`).join(', ') || change.redirect && `${change.redirect.from.sourceId} → ${change.redirect.to.targetId}` || 'removal'}` : 'Unknown transformation' };
+}
+
 /** A disposable canvas projection. The PlanningMap remains the only target authority. */
 export function projectPlanningMap(nodes: GraphNode[], relationships: GraphRelationship[], violations: ArchitectureViolation[],
-    map: PlanningMap, view: PlanningView, focusId?: string): PlanningProjection {
+    map: PlanningMap, view: PlanningView, focusId?: string, stale?: StaleResult): PlanningProjection {
     const current = projectPhysicalMap(nodes, relationships, violations, focusId);
-    if (view === 'current') return current;
+    const markStale = (result: PlanningProjection): PlanningProjection => {
+        if (!stale?.stale) return result;
+        const affected = new Set(stale.affectedTransformationIds);
+        const ids = new Set(stale.conflicts.map(c => c.identityId));
+        for (const change of map.transformations.filter(t => affected.has(t.id))) {
+            for (const id of change.currentIds) ids.add(id);
+            for (const future of change.futureNodes) ids.add(future.id);
+            if (change.redirect) for (const relation of [change.redirect.from, change.redirect.to]) {
+                ids.add(relation.sourceId); ids.add(relation.targetId);
+            }
+        }
+        return { ...result, nodes: result.nodes.map(node => {
+            if (!ids.has(node.id) && !stale.affectedBranchIds.includes(node.id)) return node;
+            const conflict = ids.has(node.id);
+            return { ...node, stale: true, conflict, badge: `${node.badge} · ${conflict ? '⚠ Conflict' : '⚠ Stale branch'}` };
+        }), edges: result.edges.map(edge => {
+            if (!ids.has(edge.source) && !ids.has(edge.target) && ![...affected].some(id => edge.id.endsWith(`:${id}`))) return edge;
+            return { ...edge, stale: true, conflict: true, label: `${edge.label} · ⚠ Conflict` };
+        }) };
+    };
+    if (view === 'current') return markStale(current);
     const target = new Map(nodes.map(node => [node.id, node]));
     const intent = new Map<string, Set<PlanningIntent>>();
     const adopted = new Set<string>(), adoptedRemoved = new Set<string>();
@@ -90,5 +124,5 @@ export function projectPlanningMap(nodes: GraphNode[], relationships: GraphRelat
         result.nodes.some(node => node.id === edge.source) && result.nodes.some(node => node.id === edge.target)) result.edges.push(edge);
     if (view === 'target') result.edges = result.edges.filter(edge => result.nodes.some(node => node.id === edge.source) &&
         result.nodes.some(node => node.id === edge.target));
-    return result;
+    return markStale(result);
 }

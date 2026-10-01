@@ -5,14 +5,14 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { branchMap, detectActiveConflicts, transitionMap } from '../../packages/visual-planning/lib/index.js';
 import type { GraphNode, GraphRelationship } from '../../packages/software-map/src/index.ts';
-import type { PlanningMap, PlannedTransformation } from '../../packages/visual-planning/src/index.ts';
-import type { AdoptionAcceptance, AdoptionRequest, PlanningCollection, PlanningOperation, VisualPlanningService } from '../../packages/visual-planning/src/service.ts';
+import type { PlanningMap, PlannedTransformation, RebaseResult, StaleResult } from '../../packages/visual-planning/src/index.ts';
+import type { AdoptionAcceptance, AdoptionRequest, PlanningCollection, PlanningOperation, RebaseAcceptance, RebaseRequest, VisualPlanningService } from '../../packages/visual-planning/src/service.ts';
 import type { AdoptionPreview } from '../../packages/visual-planning/src/adoption.ts';
 import type { SoftwareMapController } from '../../packages/theia-extension/src/browser/software-map-controller.ts';
 const require = createRequire(import.meta.url);
 const { PlanningMapController } = require('../../packages/theia-extension/lib/browser/planning-map-controller.js') as
   typeof import('../../packages/theia-extension/src/browser/planning-map-controller.ts');
-const { projectPlanningMap } = require('../../packages/theia-extension/lib/browser/planning-map-projection.js') as
+const { projectPlanningMap, projectRebaseConflict } = require('../../packages/theia-extension/lib/browser/planning-map-projection.js') as
   typeof import('../../packages/theia-extension/src/browser/planning-map-projection.ts');
 const { physicalMapTabId, physicalMapTabOptions } = require('../../packages/theia-extension/lib/browser/physical-map-controller.js') as
   typeof import('../../packages/theia-extension/src/browser/physical-map-controller.ts');
@@ -87,6 +87,10 @@ function harness() {
     } };
   let collection: PlanningCollection = { schemaVersion: 1, projectId: 'project', revision: 0, maps: [] };
   const service = { async attach() { return { projectHandle: 'handle', snapshot: collection }; },
+    async staleness(): Promise<StaleResult> { return { schemaVersion: 1, stale: false, architectureChanged: false, physicalChanged: false,
+      affectedTransformationIds: [], affectedBranchIds: [], conflicts: [] }; },
+    async previewRebase(_request: RebaseRequest): Promise<RebaseResult> { throw new Error('Not configured'); },
+    async acceptRebase(_request: RebaseAcceptance): Promise<PlanningCollection> { throw new Error('Not configured'); },
     async previewAdoption(_request: AdoptionRequest): Promise<AdoptionPreview> { throw new Error('Not configured'); },
     async adoptTarget(_request: AdoptionAcceptance): Promise<PlanningCollection> { throw new Error('Not configured'); },
     async read() { return collection; }, async mutate({ expectedRevision, operation }: { expectedRevision: number; operation: PlanningOperation }) {
@@ -192,4 +196,42 @@ test('late mutation after workspace switch or disposal cannot restore old planni
   assert.equal(h.controller.selected, undefined);
   h.controller.dispose();
   assert.equal(h.controller.selected, undefined);
+});
+
+test('stale map, branch, transformation and edge markers require an explicit three-way rebase', async () => {
+  const h = harness(); await tick();
+  const planning = map('plan', 'active', [changes[1], changes[4]]);
+  h.collection = { schemaVersion: 1, projectId: 'project', revision: 1, maps: [planning] };
+  const conflict = { transformationId: 'redirect', identityId: 'a', reason: 'relationship' as const, evidence: ['Changed edge'] };
+  const stale: StaleResult = { schemaVersion: 1, stale: true, architectureChanged: false, physicalChanged: true,
+    affectedTransformationIds: ['redirect'], affectedBranchIds: ['sys'], conflicts: [conflict] };
+  h.service.staleness = async () => stale;
+  await h.controller.refresh(); await tick();
+  assert.deepEqual(h.controller.stale, stale);
+  const projected = projectPlanningMap(nodes, [edge], [], planning, 'diff', undefined, stale);
+  assert.match(projected.nodes.find(n => n.id === 'sys')!.badge, /Stale branch/);
+  assert.match(projected.nodes.find(n => n.id === 'a')!.badge, /Conflict/);
+  assert.match(projected.edges.find(e => e.id === 'planned:redirect')!.label, /Conflict/);
+  const newBasis = { ...basis, physicalInputFingerprint: 'new-source', physicalGeneration: 2 };
+  h.physical.status.inputFingerprint = 'new-source'; h.physical.status.generation = 2;
+  const reality = { basis: newBasis, architecture: { schemaVersion: 1 as const, systems: [] }, physicalNodes: [], relationships: [] };
+  const rebase: RebaseResult = { schemaVersion: 1, oldBasis: basis, currentBasis: newBasis, currentReality: reality,
+    conflicts: [conflict], unaffectedTransformationIds: ['modify'] };
+  let writes = 0;
+  h.service.previewRebase = async request => { assert.equal(request.expectedRevision, 1); return rebase; };
+  h.service.acceptRebase = async request => { writes++; assert.equal(request.decisions[0].action, 'keep-target');
+    return { ...h.collection, revision: 2, maps: [{ ...planning, revision: 1, basis: newBasis }] }; };
+  await h.controller.beginRebase();
+  assert.equal(writes, 0);
+  assert.equal(h.controller.rebasePreview?.result.oldBasis.physicalGeneration, 1);
+  assert.match(projectRebaseConflict(planning, rebase, conflict).target, /redirect-relationship/);
+  h.controller.cancelRebase();
+  assert.equal(h.controller.stale?.stale, true);
+  assert.equal(h.controller.selected?.basis.physicalGeneration, 1);
+  await h.controller.beginRebase();
+  h.controller.decideRebase({ ...conflict, action: 'keep-target' });
+  await h.controller.acceptRebase();
+  assert.equal(writes, 1);
+  assert.equal(h.controller.selected?.basis.physicalGeneration, 2);
+  h.controller.dispose();
 });

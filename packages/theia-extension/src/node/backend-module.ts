@@ -22,7 +22,7 @@ export default new ContainerModule(bind => {
     bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
     bind(PlanningStore).toSelf().inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<object>(visualPlanningServicePath, client => {
-        const backend = new VisualPlanningBackend(context.container.get(PlanningStore));
+        const backend = new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

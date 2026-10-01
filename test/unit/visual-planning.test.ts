@@ -121,10 +121,12 @@ test('versioned conflict, stale, rebase and reconciliation results fail closed',
   ])[0];
   assert.deepEqual(parseCrossMapConflict(conflict), conflict);
   assert.throws(() => parseCrossMapConflict({ ...conflict, schemaVersion: 2 }), /schemaVersion/);
-  const stale = { schemaVersion: 1, stale: false, architectureChanged: false, physicalChanged: true, affectedTransformationIds: [], affectedBranchIds: [] };
+  const stale = { schemaVersion: 1, stale: true, architectureChanged: false, physicalChanged: true, affectedTransformationIds: [], affectedBranchIds: [], conflicts: [] };
   assert.deepEqual(parseStaleResult(stale), stale);
   assert.throws(() => parseStaleResult({ ...stale, extra: true }), /stale/);
-  const rebase = { schemaVersion: 1, oldBasis: basis, currentBasis: { ...basis, physicalGeneration: 4 }, conflicts: [{ transformationId: 'move-routes', identityId: 'routes', reason: 'parent' }], unaffectedTransformationIds: ['add-worker'] };
+  const currentReality = { basis: { ...basis, physicalGeneration: 4 }, architecture, physicalNodes: [], relationships: [] };
+  const rebase = { schemaVersion: 1, oldBasis: basis, currentBasis: currentReality.basis, currentReality,
+    conflicts: [{ transformationId: 'move-routes', identityId: 'routes', reason: 'parent', evidence: ['Parent changed'] }], unaffectedTransformationIds: ['add-worker'] };
   assert.deepEqual(parseRebaseResult(rebase), rebase);
   assert.throws(() => parseRebaseResult({ ...rebase, unaffectedTransformationIds: ['move-routes'] }), /conflicting unaffected/);
   const reconciliation = { schemaVersion: 1, transformationId: 'add-worker', identityId: 'worker', outcome: 'not-implemented', physicalGeneration: 4, evidenceIds: [] };

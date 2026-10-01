@@ -1,6 +1,8 @@
 import type { CrossMapConflict, MapStatus, PlannedTransformation, PlanningBasis, PlanningMap, WorkItem } from './index';
 import type { EditCommand } from './editing';
 import type { AdoptionPreview, AdoptionScope } from './adoption';
+import type { RebaseResult, StaleResult } from './index';
+import type { RebaseDecision } from './rebase';
 
 export const visualPlanningServicePath = '/services/dope/visual-planning';
 export const VisualPlanningService = Symbol('VisualPlanningService');
@@ -22,6 +24,9 @@ export interface PlanningMutation { projectHandle: string; expectedRevision: num
 export interface AdoptionRequest { projectHandle: string; mapId: string; expectedRevision: number; expectedMapRevision: number;
   expectedBasis: PlanningBasis; scope: AdoptionScope }
 export interface AdoptionAcceptance extends AdoptionRequest { acceptedChanges: AdoptionPreview['changes']; acceptedTransformationIds: string[] }
+export interface RebaseRequest { projectHandle: string; mapId: string; expectedRevision: number; expectedMapRevision: number;
+  expectedBasis: PlanningBasis; expectedCurrentBasis: PlanningBasis }
+export interface RebaseAcceptance extends RebaseRequest { decisions: RebaseDecision[] }
 export interface VisualPlanningService {
   attach(folderUri: string): Promise<{ projectHandle: string; snapshot: PlanningCollection }>;
   read(projectHandle: string): Promise<PlanningCollection>;
@@ -32,5 +37,8 @@ export interface VisualPlanningService {
     command: EditCommand, transformationId: string): Promise<PlannedTransformation>;
   previewAdoption(request: AdoptionRequest): Promise<AdoptionPreview>;
   adoptTarget(request: AdoptionAcceptance): Promise<PlanningCollection>;
+  staleness(projectHandle: string, mapId: string): Promise<StaleResult>;
+  previewRebase(request: RebaseRequest): Promise<RebaseResult>;
+  acceptRebase(request: RebaseAcceptance): Promise<PlanningCollection>;
   mutate(request: PlanningMutation): Promise<PlanningCollection>;
 }

@@ -119,6 +119,12 @@
 .dope-plan-relationship { border-style: dashed; border-width: 3px; }
 .dope-plan-edge-relationship .react-flow__edge-path { stroke-dasharray: 8 3; stroke-width: 3; }
 .dope-plan-edge-remove .react-flow__edge-path { stroke-dasharray: 3 5; opacity: .6; }
+.dope-plan-stale { outline: 2px dashed var(--theia-editorWarning-foreground); outline-offset: -5px; }
+.dope-plan-conflicted { border-style: dashed; }
+.dope-plan-edge-stale .react-flow__edge-path { stroke-dasharray: 5 3; stroke-width: 3; }
+.dope-plan-stale-summary, .dope-rebase-conflict { border-left: 3px solid var(--theia-editorWarning-foreground); padding: 4px 8px; }
+.dope-rebase-workspace { display: grid; gap: 6px; border: 1px solid var(--theia-widget-border); padding: 8px; }
+.dope-rebase-conflict { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .dope-dark {
     --dope-background: #1F1F1F;
     --dope-primary: #FF7A1A;

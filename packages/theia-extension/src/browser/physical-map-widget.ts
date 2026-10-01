@@ -8,7 +8,7 @@ import URI from '@theia/core/lib/common/uri';
 import { PhysicalMapController, physicalMapTabId, type PhysicalMapTabOptions } from './physical-map-controller';
 import type { CanvasNode } from './physical-map-projection';
 import { PlanningMapController } from './planning-map-controller';
-import { projectPlanningMap } from './planning-map-projection';
+import { projectPlanningMap, projectRebaseConflict } from './planning-map-projection';
 import { affectedArchitecture, transformationsForArchitecture } from './planning-work-projection';
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
 import type { PlannedNode, WorkItem } from '@dope/visual-planning';
@@ -16,9 +16,9 @@ import './dope.css';
 
 export const PHYSICAL_MAP_ID = 'dope-physical-map-canvas';
 
-function MapNode({ data }: { data: { item: CanvasNode & { intent?: string }; editable?: boolean } }): React.ReactElement {
+function MapNode({ data }: { data: { item: CanvasNode & { intent?: string; stale?: boolean; conflict?: boolean }; editable?: boolean } }): React.ReactElement {
     const item = data.item;
-    return React.createElement('div', { className: `dope-map-node dope-map-${item.kind} dope-map-${item.state}${item.intent ? ` dope-plan-${item.intent}` : ''}` },
+    return React.createElement('div', { className: `dope-map-node dope-map-${item.kind} dope-map-${item.state}${item.intent ? ` dope-plan-${item.intent}` : ''}${item.stale ? ' dope-plan-stale' : ''}${item.conflict ? ' dope-plan-conflicted' : ''}` },
         React.createElement('span', { className: 'dope-map-kind' }, `${item.context ? '↗ ' : ''}${item.kind}`),
         React.createElement('strong', null, item.name),
         React.createElement('small', { className: 'dope-map-badge', title: item.badge }, item.badge),
@@ -117,7 +117,7 @@ export class PhysicalMapWidget extends BaseWidget {
         if (!this.focusedTab) this.title.label = planningMode ? 'Planning Map' : 'Physical Map';
         const projection = planningMode && selectedMap ? projectPlanningMap(
             this.controller.sourceNodes, this.controller.sourceRelationships, this.controller.sourceViolations,
-            selectedMap, this.planning.view, this.controller.focusId) : this.controller.projection;
+            selectedMap, this.planning.view, this.controller.focusId, this.planning.stale) : this.controller.projection;
         this.renderPlanningBar();
         this.renderWorkPanel();
         this.breadcrumbs.replaceChildren();
@@ -142,6 +142,7 @@ export class PhysicalMapWidget extends BaseWidget {
             this.planning.error ? `Planning Map: ${this.planning.error}` :
             error ? `Physical Map: ${error}` : loading ? 'Loading Physical Map…' :
             planningMode && !selectedMap ? 'Create or select a Planning Map.' :
+            planningMode && this.planning.stale?.stale ? `⚠ Stale Planning Map · ${this.planning.stale.affectedTransformationIds.length} affected transformations · ${this.planning.stale.affectedBranchIds.length} affected branches` :
             projection.nodes.length ? `${this.controller.focusId ? 'Focused architecture' : projection.oneSystem ? 'One System overview' : 'Systems overview'} · ${projection.nodes.length} objects` :
                 'No published architecture. Initialize or refresh the Software Map in the left inspector.';
         const nodes: Node[] = projection.nodes.map(item => ({
@@ -154,7 +155,7 @@ export class PhysicalMapWidget extends BaseWidget {
         }));
         const edges: Edge[] = projection.edges.map(item => ({
             id: item.id, source: item.source, target: item.target, label: item.kind === 'dependency' ? item.label : undefined,
-            className: `dope-map-edge dope-map-edge-${item.kind} dope-map-edge-${item.state}${'intent' in item && item.intent ? ` dope-plan-edge-${item.intent}` : ''}`,
+            className: `dope-map-edge dope-map-edge-${item.kind} dope-map-edge-${item.state}${'intent' in item && item.intent ? ` dope-plan-edge-${item.intent}` : ''}${'stale' in item && item.stale ? ' dope-plan-edge-stale' : ''}`,
             type: item.kind === 'containment' ? 'straight' : 'smoothstep',
             selectable: false
         }));
@@ -252,6 +253,43 @@ export class PhysicalMapWidget extends BaseWidget {
         }, !editable);
         button('Undo', () => void this.planning.undo(), !editable || !this.planning.canUndo);
         button('Redo', () => void this.planning.redo(), !editable || !this.planning.canRedo);
+        if (this.planning.stale?.stale) {
+            const summary = document.createElement('p'); summary.className = 'dope-plan-stale-summary';
+            summary.textContent = `⚠ Stale map · branches: ${this.planning.stale.affectedBranchIds.join(', ') || 'unresolved'} · transformations: ${this.planning.stale.affectedTransformationIds.join(', ')}`;
+            bar.append(summary);
+            button('Review three-way rebase', () => void this.planning.beginRebase(), !editable);
+        }
+        if (this.planning.rebasePreview) {
+            const { result, decisions } = this.planning.rebasePreview;
+            const section = document.createElement('section'); section.className = 'dope-rebase-workspace';
+            const heading = document.createElement('h3'); heading.textContent = 'Three-way rebase'; section.append(heading);
+            for (const [title, value] of [
+                ['Old basis', `${result.oldBasis.architectureFingerprint} · Physical ${result.oldBasis.physicalGeneration}`],
+                ['Current reality', `${result.currentBasis.architectureFingerprint} · Physical ${result.currentBasis.physicalGeneration}`],
+                ['Target intent', `${this.planning.selected?.transformations.map(t => `${t.id}: ${t.kind}`).join(', ') ?? ''}`]
+            ]) { const line = document.createElement('p'); line.textContent = `${title}: ${value}`; section.append(line); }
+            const unaffected = document.createElement('p'); unaffected.textContent = `Unaffected references advance: ${result.unaffectedTransformationIds.join(', ') || 'none'}`; section.append(unaffected);
+            for (const conflict of result.conflicts) {
+                const row = document.createElement('div'); row.className = 'dope-rebase-conflict';
+                const label = document.createElement('span'); label.textContent = `⚠ ${conflict.transformationId} · ${conflict.identityId} · ${conflict.reason}: ${conflict.evidence.join('; ')}`;
+                const comparison = projectRebaseConflict(this.planning.selected!, result, conflict);
+                const threeWay = document.createElement('p'); threeWay.textContent = `Old basis: ${comparison.old} → Current reality: ${comparison.current} → Target intent: ${comparison.target}`;
+                const select = document.createElement('select'); select.setAttribute('aria-label', `Resolve ${conflict.transformationId} ${conflict.reason}`);
+                for (const [value, caption] of [['', 'Unresolved'], ['keep-target', 'Keep target intent'], ['accept-different', 'Accept different outcome'], ['replace-reference', 'Replace reference']] as const) {
+                    const option = document.createElement('option'); option.value = value; option.textContent = caption; select.append(option);
+                }
+                const replacement = document.createElement('input'); replacement.placeholder = 'Replacement canonical ID'; replacement.setAttribute('aria-label', `Replacement for ${conflict.identityId}`);
+                const prior = decisions.find(d => d.transformationId === conflict.transformationId && d.identityId === conflict.identityId && d.reason === conflict.reason);
+                select.value = prior?.action ?? ''; replacement.value = prior?.replacementId ?? '';
+                const decide = () => { if (!select.value) return; this.planning.decideRebase({ ...conflict, action: select.value as 'keep-target' | 'accept-different' | 'replace-reference',
+                    ...(select.value === 'replace-reference' ? { replacementId: replacement.value.trim() } : {}) }); };
+                select.onchange = decide; replacement.onchange = decide;
+                row.append(label, threeWay, select, replacement); section.append(row);
+            }
+            bar.append(section);
+            button('Accept rebase', () => void this.planning.acceptRebase(), !editable || decisions.length !== result.conflicts.length);
+            button('Cancel rebase · keep old basis', () => this.planning.cancelRebase());
+        }
         if (this.planning.preview) {
             const preview = document.createElement('pre');
             const change = this.planning.preview.transformation;

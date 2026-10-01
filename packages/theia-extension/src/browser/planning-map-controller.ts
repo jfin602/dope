@@ -1,5 +1,6 @@
 import { canCloseOut, detectActiveConflicts, suggestWorkItems } from '@dope/visual-planning';
-import type { CrossMapConflict, MapStatus, PlanningMap, WorkItem, WorkItemSuggestion, WorkStatus } from '@dope/visual-planning';
+import type { CrossMapConflict, MapStatus, PlanningMap, RebaseResult, StaleResult, WorkItem, WorkItemSuggestion, WorkStatus } from '@dope/visual-planning';
+import type { RebaseDecision } from '@dope/visual-planning/lib/rebase';
 import { acceptSuggestion } from '@dope/visual-planning/lib/work';
 import type { PlannedTransformation } from '@dope/visual-planning';
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
@@ -19,6 +20,7 @@ export class PlanningMapController {
     private handle?: string;
     private workspace?: string;
     private request = 0;
+    private staleRequest = 0;
     private disposed = false;
     collection?: PlanningCollection;
     selectedMapId?: string;
@@ -33,9 +35,11 @@ export class PlanningMapController {
     error = '';
     preview?: { transformation: PlannedTransformation; mapId: string; collectionRevision: number; mapRevision: number; basis: PlanningMap['basis'] };
     adoptionPreview?: { result: AdoptionPreview; mapId: string; collectionRevision: number; mapRevision: number; basis: PlanningMap['basis'] };
+    stale?: StaleResult;
+    rebasePreview?: { result: RebaseResult; mapId: string; collectionRevision: number; mapRevision: number; decisions: RebaseDecision[] };
 
     constructor(private readonly map: SoftwareMapController, private readonly connect: () => VisualPlanningService) {
-        this.mapListener = map.onChange(() => { if (this.workspace !== map.workspace) void this.attach(); });
+        this.mapListener = map.onChange(() => { if (this.workspace !== map.workspace) void this.attach(); else void this.refreshStale(); });
         void this.attach();
     }
     onChange(listener: () => void): { dispose(): void } {
@@ -56,8 +60,56 @@ export class PlanningMapController {
         if (!value && this.selected && !this.visibleMaps.includes(this.selected)) this.selectedMapId = this.visibleMaps[0]?.id;
         this.notify();
     }
-    select(id: string): void { if (this.collection?.maps.some(map => map.id === id)) { this.preview = undefined; this.adoptionPreview = undefined; this.selectedMapId = id;
-        this.selectedWorkItemId = undefined; this.selectedTransformationId = undefined; this.suggestions = undefined; this.notify(); } }
+    select(id: string): void { if (this.collection?.maps.some(map => map.id === id)) { this.preview = undefined; this.adoptionPreview = undefined; this.rebasePreview = undefined; this.stale = undefined; this.selectedMapId = id;
+        this.selectedWorkItemId = undefined; this.selectedTransformationId = undefined; this.suggestions = undefined; this.notify(); void this.refreshStale(); } }
+    async refreshStale(): Promise<void> {
+        const connection = this.connection, handle = this.handle, workspace = this.workspace, map = this.selected, request = ++this.staleRequest;
+        if (!connection || !handle || !workspace || !map || this.map.status?.state !== 'ready') { this.stale = undefined; this.notify(); return; }
+        try {
+            const stale = await connection.staleness(handle, map.id);
+            if (request !== this.staleRequest || this.disposed || this.map.workspace !== workspace || this.selected?.id !== map.id) return;
+            this.stale = stale; this.notify();
+        } catch (error) { if (request === this.staleRequest && !this.disposed) { this.stale = undefined; this.error = String(error); this.notify(); } }
+    }
+    async beginRebase(): Promise<void> {
+        const map = this.selected, collection = this.collection, connection = this.connection, handle = this.handle;
+        const workspace = this.workspace, request = ++this.request, status = this.map.status, fingerprint = this.map.initialization?.declarationFingerprint;
+        if (!this.stale?.stale || !map || !collection || !connection || !handle || !workspace || !status?.inputFingerprint || !fingerprint) return;
+        this.loading = true; this.error = ''; this.rebasePreview = undefined; this.notify();
+        try {
+            const result = await connection.previewRebase({ projectHandle: handle, mapId: map.id, expectedRevision: collection.revision,
+                expectedMapRevision: map.revision, expectedBasis: map.basis, expectedCurrentBasis: { architectureRevision: 0,
+                    architectureFingerprint: fingerprint, physicalInputFingerprint: status.inputFingerprint, physicalGeneration: status.generation } });
+            if (request !== this.request || this.disposed || this.map.workspace !== workspace) return;
+            this.rebasePreview = { result, mapId: map.id, collectionRevision: collection.revision, mapRevision: map.revision, decisions: [] };
+        } catch (error) { if (request === this.request && !this.disposed) this.error = String(error); }
+        finally { if (request === this.request && !this.disposed) { this.loading = false; this.notify(); } }
+    }
+    decideRebase(decision: RebaseDecision): void {
+        const preview = this.rebasePreview;
+        if (!preview || !preview.result.conflicts.some(c => c.transformationId === decision.transformationId &&
+            c.identityId === decision.identityId && c.reason === decision.reason)) return;
+        const same = (a: RebaseDecision, b: RebaseDecision) => a.transformationId === b.transformationId && a.identityId === b.identityId && a.reason === b.reason;
+        preview.decisions = [...preview.decisions.filter(d => !same(d, decision)),
+            ...(decision.action === 'replace-reference' && !decision.replacementId?.trim() ? [] : [decision])]; this.notify();
+    }
+    cancelRebase(): void { this.rebasePreview = undefined; this.notify(); }
+    async acceptRebase(): Promise<void> {
+        const preview = this.rebasePreview, map = this.selected, collection = this.collection, connection = this.connection;
+        const handle = this.handle, workspace = this.workspace, request = ++this.request;
+        if (!preview || !map || !collection || !connection || !handle || !workspace || preview.mapId !== map.id ||
+            preview.mapRevision !== map.revision || preview.collectionRevision !== collection.revision ||
+            preview.decisions.length !== preview.result.conflicts.length) { this.error = 'Rebase preview is unresolved or stale'; this.notify(); return; }
+        this.loading = true; this.error = ''; this.notify();
+        try {
+            const snapshot = await connection.acceptRebase({ projectHandle: handle, mapId: map.id, expectedRevision: collection.revision,
+                expectedMapRevision: map.revision, expectedBasis: preview.result.oldBasis,
+                expectedCurrentBasis: preview.result.currentBasis, decisions: preview.decisions });
+            if (request !== this.request || this.disposed || this.map.workspace !== workspace) return;
+            this.collection = snapshot; this.rebasePreview = undefined; this.stale = undefined; this.suggestions = undefined; void this.refreshStale();
+        } catch (error) { if (request === this.request && !this.disposed) this.error = String(error); }
+        finally { if (request === this.request && !this.disposed) { this.loading = false; this.notify(); } }
+    }
     get selectedWorkItem(): WorkItem | undefined { return this.selected?.workItems.find(item => item.id === this.selectedWorkItemId); }
     requestSuggestions(): void { this.suggestions = this.selected ? suggestWorkItems(this.selected) : [];
         this.acceptedSuggestionIds.clear(); this.notify(); }
@@ -126,6 +178,7 @@ export class PlanningMapController {
         const connection = this.connection, handle = this.handle, collection = this.collection, map = this.selected;
         const workspace = this.workspace, request = ++this.request;
         this.adoptionPreview = undefined;
+        this.rebasePreview = undefined;
         if (!connection || !handle || !collection || !map || !workspace || this.map.workspace !== workspace) return;
         this.loading = true; this.error = ''; this.notify();
         try {
@@ -152,7 +205,7 @@ export class PlanningMapController {
                 scope: preview.result.scope, acceptedChanges: preview.result.changes,
                 acceptedTransformationIds: [...preview.result.selectedTransformationIds, ...preview.result.includedDependentTransformationIds].sort() });
             if (request !== this.request || this.disposed || this.map.workspace !== workspace) return;
-            this.collection = snapshot; this.adoptionPreview = undefined; this.suggestions = undefined;
+            this.collection = snapshot; this.adoptionPreview = undefined; this.stale = undefined; this.suggestions = undefined;
             void this.map.attach(workspace);
         } catch (error) { if (request === this.request && !this.disposed) this.error = String(error); }
         finally { if (request === this.request && !this.disposed) { this.loading = false; this.notify(); } }
@@ -179,6 +232,8 @@ export class PlanningMapController {
         this.connection = undefined;
         this.handle = undefined;
         this.collection = undefined;
+        this.stale = undefined;
+        this.rebasePreview = undefined;
         this.selectedMapId = undefined;
         this.selectedWorkItemId = undefined;
         this.selectedTransformationId = undefined;
@@ -186,6 +241,7 @@ export class PlanningMapController {
         this.acceptedSuggestionIds.clear();
         this.preview = undefined;
         this.adoptionPreview = undefined;
+        this.rebasePreview = undefined;
         this.planningMode = false;
         this.loading = !!workspace;
         this.error = '';
@@ -198,9 +254,11 @@ export class PlanningMapController {
             this.connection = connection;
             this.handle = projectHandle;
             this.collection = snapshot;
+            this.stale = undefined;
             this.preview = undefined;
             this.adoptionPreview = undefined;
             this.selectedMapId = snapshot.maps.find(map => map.status === 'active')?.id ?? snapshot.maps.find(map => map.status === 'draft')?.id;
+            void this.refreshStale();
         } catch (error) { if (request === this.request && !this.disposed) this.error = String(error); }
         finally { if (request === this.request && !this.disposed) { this.loading = false; this.notify(); } }
     }
@@ -211,8 +269,10 @@ export class PlanningMapController {
             const snapshot = await connection.read(handle);
             if (request !== this.request || this.disposed || this.map.workspace !== workspace) return;
             this.collection = snapshot;
+            this.stale = undefined;
             this.preview = undefined;
             this.adoptionPreview = undefined;
+            this.rebasePreview = undefined;
             if (!snapshot.maps.some(map => map.id === this.selectedMapId)) this.selectedMapId = snapshot.maps.find(map => map.status === 'active')?.id ?? snapshot.maps[0]?.id;
             if (!this.selected?.workItems.some(item => item.id === this.selectedWorkItemId)) this.selectedWorkItemId = undefined;
             if (!this.selected?.transformations.some(item => item.id === this.selectedTransformationId)) this.selectedTransformationId = undefined;
@@ -220,6 +280,7 @@ export class PlanningMapController {
             this.acceptedSuggestionIds.clear();
             if (!this.showHistory && this.selected && !this.visibleMaps.includes(this.selected)) this.selectedMapId = this.visibleMaps[0]?.id;
             this.error = '';
+            void this.refreshStale();
             this.notify();
         } catch (error) { if (request === this.request && !this.disposed) { this.error = String(error); this.notify(); } }
     }
@@ -232,10 +293,12 @@ export class PlanningMapController {
             const snapshot = await connection.mutate({ projectHandle: handle, expectedRevision: collection.revision, operation });
             if (request !== this.request || this.disposed || this.map.workspace !== workspace) return;
             this.collection = snapshot;
+            this.stale = undefined;
             if (operation.type === 'put-transformation' || operation.type === 'remove-transformation' || operation.type === 'undo' || operation.type === 'redo') this.suggestions = undefined;
             if (operation.type === 'create') this.selectedMapId = operation.id;
             if (operation.type === 'duplicate') this.selectedMapId = operation.newId;
             if (!this.showHistory && this.selected && !this.visibleMaps.includes(this.selected)) this.selectedMapId = this.visibleMaps[0]?.id;
+            void this.refreshStale();
         } catch (error) {
             if (request === this.request && !this.disposed) { this.error = String(error); this.loading = false; this.notify(); }
             return;

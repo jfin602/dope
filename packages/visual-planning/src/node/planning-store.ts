@@ -14,6 +14,9 @@ import type { AdoptionAcceptance, AdoptionRequest } from '../service';
 import { planAdoption } from '../adoption';
 import type { AdoptionPreview } from '../adoption';
 import type { ArchitectureDeclaration } from '@dope/software-map';
+import { acceptRebase, previewRebase } from '../rebase';
+import type { RebaseReality } from '../index';
+import type { RebaseAcceptance } from '../service';
 
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const bad = (place: string): never => { throw new Error(`Invalid planning collection: ${place}`); };
@@ -126,7 +129,8 @@ export class PlanningStore {
     } finally { await rm(temporary, { force: true }); }
   }
 
-  async mutate(root: string, expectedRevision: number, operation: PlanningOperation, expectedProjectId?: string): Promise<PlanningCollection> {
+  async mutate(root: string, expectedRevision: number, operation: PlanningOperation, expectedProjectId?: string,
+    reality?: () => Promise<RebaseReality>): Promise<PlanningCollection> {
     if (!validRevision(expectedRevision) || !operation || typeof operation !== 'object') throw new Error('Invalid planning mutation');
     const { directory, lock } = await this.paths(root);
     let created = false;
@@ -148,8 +152,11 @@ export class PlanningStore {
       const op = operation as PlanningOperation;
       if (op.type === 'create') {
         if (maps.some(map => map.id === op.id)) throw new Error('Planning map already exists');
+        const snapshot = await reality?.();
+        if (snapshot && JSON.stringify(snapshot.basis) !== JSON.stringify(op.basis)) throw new Error('Stale Planning Map basis');
         maps.push(parsePlanningMap({ schemaVersion: 1, id: op.id, projectId, title: op.title, objective: op.objective,
           status: 'draft', revision: 0, history: [{ revision: 0, action: 'create', at: now }], basis: op.basis,
+          ...(snapshot ? { basisSnapshot: snapshot } : {}),
           transformations: [], workItems: [] }));
       } else {
         if (!('mapId' in op) || typeof op.mapId !== 'string') throw new Error('Invalid planning operation');
@@ -215,6 +222,31 @@ export class PlanningStore {
     } finally {
       const acquired = await handle.stat();
       await handle.close();
+      try { if ((await lstat(lock)).ino !== acquired.ino) throw new Error('Planning lock changed; inspect it'); await rm(lock); }
+      catch (error) { if (!absent(error)) throw error; }
+    }
+  }
+
+  async rebase(root: string, request: RebaseAcceptance, reality: () => Promise<RebaseReality>, expectedProjectId?: string): Promise<PlanningCollection> {
+    const { lock } = await this.paths(root);
+    const handle = await this.acquire(lock);
+    try {
+      const collection = await this.read(root);
+      if (expectedProjectId && collection.projectId !== expectedProjectId) throw new Error('Planning identity changed; reattach');
+      const map = collection.maps.find(item => item.id === request.mapId);
+      if (collection.revision !== request.expectedRevision || !map || map.revision !== request.expectedMapRevision ||
+        JSON.stringify(map.basis) !== JSON.stringify(request.expectedBasis)) throw new Error('Stale planning revision');
+      if (map.status !== 'draft' && map.status !== 'active') throw new Error('Planning map is closed');
+      const current = await reality();
+      if (JSON.stringify(current.basis) !== JSON.stringify(request.expectedCurrentBasis)) throw new Error('Current Software Map basis changed');
+      const preview = previewRebase(map, current);
+      const changed = acceptRebase(map, preview, request.decisions, new Date().toISOString());
+      const next = parsePlanningCollection({ ...collection, revision: collection.revision + 1,
+        maps: collection.maps.map(item => item.id === map.id ? changed : item) });
+      await this.write(root, next);
+      return next;
+    } finally {
+      const acquired = await handle.stat(); await handle.close();
       try { if ((await lstat(lock)).ino !== acquired.ino) throw new Error('Planning lock changed; inspect it'); await rm(lock); }
       catch (error) { if (!absent(error)) throw error; }
     }
