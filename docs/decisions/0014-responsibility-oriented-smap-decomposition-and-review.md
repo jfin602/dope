@@ -184,7 +184,9 @@ The disposition cites parent evidence. Unresolved/insufficient/misplaced cases r
 
 Qualification telemetry records every attempted provider call, not only successful stage outputs. Records identify stage/subject, provider/model, attempt/retry relationship, duration, safe failure class, usage when available, cache reuse where applicable and whether an output was consumed.
 
-A bounded automatic retry may be used only for explicitly classified transient transport/upstream failures. It repeats the same stage/request/model, never silently changes providers/models, remains visible, and is capped. Invalid architecture/schema/content results are not hidden by retry.
+A bounded automatic retry may be used for explicitly classified transient transport/upstream failures. One malformed structured-output result may also be retried once when the same request can safely be repeated. The retry classifier must distinguish malformed output from invalid architecture/content; when it cannot, the failure is terminal and manual retry remains available. Each failed attempt and its safe reason remains visible while the run continues; only exhausted or non-retryable failure marks the run failed. Retries repeat the same stage/request/model, never silently change providers/models, and remain capped. Architecture/content validation failures are not retried automatically.
+
+After a terminal failure, manual **Retry failed stage** is offered beside the selected model control. Changing a model requires a successful capability test before retry. The selected provider/model is explicit, and validated checkpoints retain their original provenance while only failed and dependent work is repeated. A fresh analysis remains a separate explicit action.
 
 Provider telemetry is operational/derived state, not canonical project state and never contains credentials or raw secret-bearing errors.
 

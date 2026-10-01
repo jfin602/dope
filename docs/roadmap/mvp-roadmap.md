@@ -670,6 +670,14 @@ An intentionally invalid unaccepted review can be edited, persisted, restarted a
 
 After Green closeout, use the preserved Adaptive SEO review in a **separate iterative debug loop** until the real Accept Architecture path succeeds. Then resume Phase 5 P11. P12 remains blocked until P11 is Green.
 
+## Queued Phase 5 correction — `c5-synth-observe`
+
+Status: **PLANNED / QUEUED FOR EXECUTION**. Assessment, plan and P1–P3 execution briefs are in `docs/tasks/c5-synth-observe/`. Current package baseline is `0.5.11`; this correction does not advance the package version while that baseline applies.
+
+Make synthesis progress distinguish failed call attempts and active automatic retries from a terminal failed run. Show semantic, text-labeled stage states and safe error/retry progress. Couple manual failed-stage retry to the selected and successfully tested model while preserving validated checkpoints and provider/model provenance. Add a read-only, zero-provider generation dry run that validates deterministic evidence and inspects saved failed-run state without creating a proposal or altering project files. ADR 0012/0014 and `docs/tasks/c5-synth-observe/README.md` define the bounds and three-prompt stack.
+
+This is separate from the active `c5-smap-acceptance-debug-loop` acceptance checker and does not change its closeout, the preserved Adaptive SEO review, or the P11/P12 routing above.
+
 ## Product Phase 6 — AI Presence
 
 Purpose:

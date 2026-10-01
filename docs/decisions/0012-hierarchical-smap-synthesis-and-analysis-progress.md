@@ -101,6 +101,12 @@ Safe event metadata may include stage, status, subject, completed units, total k
 
 This same event stream should support browser and Electron presentation and remain provider-independent.
 
+### Attempt status and generation-free dry run
+
+The progress UI distinguishes a failed **model-call attempt** from a failed **analysis run**. While an automatic retry is pending or active, it shows the safe failure reason, attempt number and selected model; it does not announce that analysis has stopped. A terminal run failure is shown only after retry is exhausted or no retry applies. The stage list identifies completed, current, queued and failed work using both text and semantic theme colors, with accessible contrast under user-selected themes. Errors remain concise and sanitized; raw provider errors, prompts, credentials and private reasoning are never displayed.
+
+Synthesis setup offers an explicit generation-free dry run. It reuses deterministic repository evidence collection and validation and may inspect an existing project-local failed run and its validated checkpoints. Its report distinguishes observed facts (input fingerprint, included documents/evidence, collection errors, completed and pending work) from model-dependent work it cannot test. It makes no provider or model calls, does not create an architecture proposal or review, and does not write project or synthesis state. A dry-run success is not a synthesis capability probe, a guarantee that generation will succeed, or architecture-quality evidence.
+
 ### Eight-minute initial-analysis objective
 
 The qualified initial Dope-on-Dope sMap analysis has a hard optimization objective of **8 minutes or less end to end** on the defined development qualification configuration.

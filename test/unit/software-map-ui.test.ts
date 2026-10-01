@@ -289,6 +289,11 @@ test('draft validation, manual cancellation and existing acceptance are explicit
   Object.assign(controller.draft[1], { id: 'core', name: 'Core', purpose: 'Purpose', roots: ['src'] });
   assert.equal(controller.draftError(), undefined);
   assert.equal(declarationFromDraft(controller.draft).systems[0].subsystems[0].id, 'core');
+  controller.draft[0].roots = ['src'];
+  assert.deepEqual(controller.draftDiagnostics().find((issue: any) => issue.code === 'ambiguous_root')?.proposalKeys,
+    [controller.draft[0].proposalKey, controller.draft[1].proposalKey].sort());
+  assert.match(controller.draftError(), /ambiguous_root|Ownership root/);
+  controller.draft[0].roots = [];
   await controller.cancel();
   assert.equal(c.accepted, 0);
   await controller.useExisting();
@@ -434,6 +439,8 @@ test('review has one controller, center hierarchy, focused detail and explicit a
   assert.match(editor, /this\.renderDetail\(selected, detail\)/);
   assert.match(editor, /reviewSource\(ref\)/);
   assert.match(editor, /Accept architecture/);
+  assert.match(editor, /this\.controller\.draftDiagnostics\(\)/);
+  assert.match(editor, /Acceptance blocked:/);
   assert.match(editor, /node\.kind !== 'component'[\s\S]*Search Deeper/);
   for (const label of ['Observed', 'Documented', 'Inferred', 'Accept refinement', 'Reject refinement']) assert.match(editor, new RegExp(label));
   assert.match(editor, /reviewDocument\(path\)/);

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -317,7 +318,7 @@ test('schema-1 review draft saves invalid work, rejects stale writes, and restor
     invalid[0].roots = [...invalid[1].roots];
     invalid.push({ ...invalid[0], proposalKey: 'draft:extra', id: 'extra', name: 'Added', roots: [...invalid[0].roots] });
     assert.equal(await restarted.saveReviewDraft(reopenedHandle, review.reviewId, 0, invalid), 1);
-    await assert.rejects(restarted.acceptReview(reopenedHandle, review.reviewId, invalid), /ambiguous ownership root/);
+    await assert.rejects(restarted.acceptReview(reopenedHandle, review.reviewId, invalid), /ambiguous_root/);
     await assert.rejects(restarted.saveReviewDraft(reopenedHandle, review.reviewId, 0, review.draft), /Stale/);
     await assert.rejects(restarted.saveReviewDraft(reopenedHandle, 'wrong', 1, review.draft), /matching/);
     await assert.rejects(restarted.saveReviewDraft('wrong', review.reviewId, 1, review.draft), /handle/);
@@ -355,6 +356,55 @@ test('accepted review clears saved draft work', async () => {
     assert.equal(await readSynthesisRun(root), undefined);
     assert.equal((await readInitialization(root)).initialized, true);
     first.dispose();
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('offline review checker reports text/JSON blockers and staleness without writes', async () => {
+  const root = await fixture();
+  try {
+    const service = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), fakeProvider());
+    const handle = await attach(service, root);
+    const review = await service.startInitialization(handle);
+    service.dispose();
+    const script = join(process.cwd(), 'scripts/smap-review-check.mjs');
+    const check = (...options: string[]) => spawnSync(process.execPath, [script, root, ...options], { encoding: 'utf8' });
+    const file = join(root, '.dope/smap-analysis.json');
+    const before = await readFile(file, 'utf8');
+    const good = check('--json');
+    assert.equal(good.status, 0, good.stderr);
+    assert.deepEqual(JSON.parse(good.stdout).blockers, []);
+    assert.deepEqual(JSON.parse(good.stdout).stale, []);
+    assert.equal(JSON.parse(good.stdout).revision, 0);
+    const npmCheck = spawnSync('npm', ['run', 'smap:review:check', '--', root, '--json'], { encoding: 'utf8' });
+    assert.equal(npmCheck.status, 0, npmCheck.stderr);
+    assert.match(npmCheck.stdout, /"reviewId":"/);
+    assert.equal(await readFile(file, 'utf8'), before);
+
+    const changed = JSON.parse(before);
+    changed.review.revision = 1;
+    changed.review.draft[0].roots = [...changed.review.draft[1].roots];
+    changed.review.draft[1].id = changed.review.draft[0].id;
+    await writeFile(file, JSON.stringify(changed));
+    const invalidBefore = await readFile(file, 'utf8');
+    const text = check();
+    const machine = check('--json');
+    assert.equal(text.status, 1);
+    assert.match(text.stdout, /ambiguous_root/);
+    assert.match(text.stdout, /duplicate_id/);
+    assert.match(text.stdout, /Staleness: none/);
+    assert.equal(machine.status, 1);
+    assert.equal(JSON.parse(machine.stdout).revision, 1);
+    assert.deepEqual(JSON.parse(machine.stdout).blockers.map((issue: any) => issue.code), ['ambiguous_root', 'duplicate_id']);
+    assert.equal(await readFile(file, 'utf8'), invalidBefore);
+
+    await writeFile(join(root, 'src/api/a.ts'), 'export const changed = true;\n');
+    const stale = JSON.parse(check('--json').stdout);
+    assert.deepEqual(stale.stale, ['source_changed']);
+    assert.equal(check('--json').status, 1);
+    await writeFile(join(root, '.dope/architecture.json'), `${JSON.stringify(declaration)}\n`);
+    assert.deepEqual(JSON.parse(check('--json').stdout).stale, ['declaration_changed', 'source_changed']);
+    await rm(file);
+    assert.equal(check('--json').status, 2);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

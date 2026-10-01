@@ -9,7 +9,7 @@ import { bootstrapDocumentPresence } from '@dope/code-analysis/lib/node/architec
 import { readSynthesisRun, writeSynthesisRun, clearSynthesisRun, saveSynthesisReviewDraft } from '@dope/code-analysis/lib/node/smap-analysis-file';
 import type { SavedSynthesisRun } from '@dope/code-analysis/lib/node/smap-analysis-file';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
-import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseAnalysisProgressEvent, suggestArchitectureId,
+import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseAnalysisProgressEvent, suggestArchitectureId, reviewDeclaration, reviewDiagnostics,
     HierarchicalSynthesisOrchestrator, SynthesisStageCache, planTargetedRefinement, parseTargetedRefinement } from '@dope/software-map';
 import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, SoftwareMapPageRequest, GraphRelationship, SoftwareMapRelationshipRequest,
     PhysicalMapSnapshot, SoftwareMapClient, SoftwareMapService, ArchitectureEvidencePacket, ArchitectureReview, ArchitectureReviewNode,
@@ -343,7 +343,9 @@ export class SoftwareMapBackend implements SoftwareMapService {
             await writeSynthesisRun(root, this.analysisRun, () => this.still(projectHandle, root, run));
             this.phase = 'review_required';
             this.analysisStarted = undefined;
-            emit({ stage: 'preparing-review', status: 'completed', elapsedMs: 0, message: 'Validated review ready' });
+            const blockers = reviewDiagnostics(draft).length;
+            emit({ stage: 'preparing-review', status: 'completed', elapsedMs: 0,
+                message: blockers ? `Review ready; acceptance blocked by ${blockers} issue${blockers === 1 ? '' : 's'}` : 'Review ready for acceptance' });
             emit({ stage: 'completed', status: 'completed', elapsedMs: 0, message: 'Analysis complete' });
             return structuredClone({ reviewId, revision: 0, packet, proposal, draft, coverageLedger, componentDescents });
         } catch (error) {
@@ -460,29 +462,12 @@ export class SoftwareMapBackend implements SoftwareMapService {
         this.synthesisCache.onStageStart = undefined;
         await clearSynthesisRun(root);
     }
-    private declaration(draft: ArchitectureReviewNode[]): ArchitectureDeclaration {
-        if (!Array.isArray(draft) || !draft.length) throw new Error('Invalid architecture review draft');
-        const keys = new Set(draft.map(node => node.proposalKey));
-        if (keys.size !== draft.length || draft.some(node => !['system', 'subsystem', 'component'].includes(node.kind) ||
-            typeof node.id !== 'string' || !node.id || !Array.isArray(node.roots))) throw new Error('Invalid architecture review draft');
-        const systems = draft.filter(node => node.kind === 'system').map(system => ({
-            id: system.id, name: system.name, purpose: system.purpose,
-            ...(system.roots.length ? { roots: system.roots } : {}),
-            subsystems: draft.filter(node => node.kind === 'subsystem' && node.parentProposalKey === system.proposalKey).map(subsystem => ({
-                id: subsystem.id, name: subsystem.name, purpose: subsystem.purpose, roots: subsystem.roots,
-                components: draft.filter(node => node.kind === 'component' && node.parentProposalKey === subsystem.proposalKey).map(component => ({
-                    id: component.id, name: component.name, purpose: component.purpose, roots: component.roots,
-                })),
-            })),
-        }));
-        if (draft.some(node => node.kind !== 'system' && !draft.some(parent => parent.proposalKey === node.parentProposalKey &&
-            parent.kind === (node.kind === 'subsystem' ? 'system' : 'subsystem')))) throw new Error('Invalid architecture review parent');
-        return parseArchitecture({ schemaVersion: 1, systems });
-    }
     async acceptReview(projectHandle: string, reviewId: string, draft: ArchitectureReviewNode[]) {
         const root = this.active(projectHandle);
         if (this.phase !== 'review_required' || !this.pending || reviewId !== this.pending.reviewId) throw new Error('No matching architecture review to accept');
-        const declaration = this.declaration(draft);
+        const issues = reviewDiagnostics(draft);
+        if (issues.length) throw new Error(`Invalid architecture review draft (${issues.length} blockers): ${issues.map(issue => `${issue.code}: ${issue.message}`).join('; ')}`);
+        const declaration = parseArchitecture(reviewDeclaration(draft));
         if ((await this.index.collectEvidence(root)).sourceFingerprint !== this.pending.packet.sourceFingerprint) throw new Error('Stale Software Map evidence');
         await acceptInitialization(root, this.pending.fingerprint, declaration);
         this.initialized = true;

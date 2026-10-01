@@ -119,11 +119,16 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         const detail = this.element('section'); detail.setAttribute('aria-label', 'Selected architecture boundary');
         if (selected) this.renderDetail(selected, detail);
         layout.append(tree, detail);
-        const validation = this.element('p'); validation.setAttribute('role', 'status');
+        const validation = this.element('div'); validation.setAttribute('role', 'status');
         const accept = this.button('Accept architecture', () => void this.controller.accept());
-        const error = this.controller.draftError();
-        validation.textContent = error ? `Cannot accept: ${error}` : 'Canonical architecture is valid.';
-        accept.disabled = !!error || this.controller.setupBusy;
+        const issues = this.controller.draftDiagnostics();
+        validation.append(this.element('p', issues.length ? `Acceptance blocked: ${issues.length} blocker${issues.length === 1 ? '' : 's'}` : 'Review ready for acceptance.'));
+        if (issues.length) {
+            const list = this.element('ul');
+            for (const issue of issues) list.append(this.element('li', `${issue.code}: ${issue.message}${issue.paths.length ? ` · ${issue.paths.join(', ')}` : ''}${issue.proposalKeys.length ? ` · ${issue.proposalKeys.join(', ')}` : ''}`));
+            validation.append(list);
+        }
+        accept.disabled = !!issues.length || this.controller.setupBusy;
         const actions = this.element('div'); actions.className = 'dope-smap-review-actions';
         actions.append(this.button('Add System', () => this.add('system')), validation, accept,
             this.button('Decline review', () => void this.controller.cancel()));

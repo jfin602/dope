@@ -13,6 +13,8 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 **Phase 5 P11 is PAUSED at package `0.5.11` while `c5-smap-acceptance-debug-loop` installs resumable unaccepted-review work state and deterministic acceptance diagnostics.** The motivating Adaptive SEO review is currently blocked from acceptance, but this correction is machinery-only: it must not repair that architecture, regenerate the sMap, run the iterative debug loop, complete P11, or advance P12/`0.5.12`. After the correction closes, the preserved Adaptive SEO review is debugged separately until the real acceptance path succeeds; only then does P11 resume.
 
+`c5-synth-observe` is a separately queued correction for truthful synthesis retry progress, model-coupled manual retry and a read-only generation dry run. It does not expand the active acceptance-debug machinery scope or change the P11/P12 gate. See `docs/tasks/c5-synth-observe/README.md`.
+
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 

@@ -1,4 +1,4 @@
-import { parseArchitecture, parseAnalysisProgressEvent, branchFingerprint, targetBranch, suggestArchitectureId } from '@dope/software-map';
+import { parseArchitecture, parseAnalysisProgressEvent, branchFingerprint, targetBranch, suggestArchitectureId, reviewDeclaration, reviewDiagnostics } from '@dope/software-map';
 import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
 
 export type SoftwareMapConnection = SoftwareMapService & { setClient(client: SoftwareMapClient | undefined): void };
@@ -11,20 +11,9 @@ const declinedThisSession = new Set<string>();
 type SynthesisChoice = { kind: 'local' | 'gemini'; endpoint: string; model: string; geminiModel?: string };
 
 export function declarationFromDraft(draft: ArchitectureReviewNode[]): ArchitectureDeclaration {
-    if (draft.some(node => node.kind === 'system' && node.parentProposalKey !== null)) throw new Error('Systems cannot have a parent');
-    const systems = draft.filter(node => node.kind === 'system').map(system => ({
-        id: system.id, name: system.name, purpose: system.purpose,
-        ...(system.roots.length ? { roots: system.roots } : {}),
-        subsystems: draft.filter(node => node.kind === 'subsystem' && node.parentProposalKey === system.proposalKey).map(subsystem => ({
-            id: subsystem.id, name: subsystem.name, purpose: subsystem.purpose, roots: subsystem.roots,
-            components: draft.filter(node => node.kind === 'component' && node.parentProposalKey === subsystem.proposalKey).map(component => ({
-                id: component.id, name: component.name, purpose: component.purpose, roots: component.roots
-            }))
-        }))
-    }));
-    if (draft.some(node => node.kind !== 'system' && !draft.some(parent => parent.proposalKey === node.parentProposalKey &&
-        parent.kind === (node.kind === 'subsystem' ? 'system' : 'subsystem')))) throw new Error('Every boundary needs a valid parent');
-    return parseArchitecture({ schemaVersion: 1, systems });
+    const issues = reviewDiagnostics(draft);
+    if (issues.length) throw new Error(`Invalid architecture review draft: ${issues[0].message}`);
+    return parseArchitecture(reviewDeclaration(draft));
 }
 
 export class SoftwareMapController {
@@ -524,6 +513,7 @@ export class SoftwareMapController {
     draftError(): string | undefined {
         try { declarationFromDraft(this.draft); return undefined; } catch (error) { return String(error); }
     }
+    draftDiagnostics() { return reviewDiagnostics(this.draft); }
     async accept(): Promise<void> {
         if (!this.connection || !this.handle || !this.initialization || this.draftError()) return;
         const project = this.project;
