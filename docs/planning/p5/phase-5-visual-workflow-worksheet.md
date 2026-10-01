@@ -247,7 +247,11 @@ Support explicit **bounded adoption** of a coherent target slice rather than for
 
 **Decision**
 
-TBD.
+Locked: **Adopt Target is bounded rather than whole-map only**. The developer may adopt a coherent System, Subsystem, Component branch, or selected compatible transformation set. Dope includes required dependent target changes where that is deterministic and safe, or blocks adoption until unresolved dependencies/conflicts are addressed.
+
+Before adoption, Dope shows a clear canonical-architecture diff. Adoption explicitly updates `.dope/architecture.json`; it never happens because a WorkItem completed. The developer may implement before adoption, adopt before implementation, or adopt afterward when implementation/reconciliation supports the intended architecture.
+
+Partial adoption preserves the remaining Planning Map target. The UI must clearly distinguish **adopted target** from **still-planned target** so progressive architecture decisions do not blur into one state.
 
 ---
 
