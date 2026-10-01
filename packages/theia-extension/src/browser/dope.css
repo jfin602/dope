@@ -106,6 +106,11 @@
 .dope-physical-map-canvas .react-flow__controls button { color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border-color: var(--theia-widget-border, var(--theia-input-border)); }
 .dope-planning-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
 .dope-planning-bar select, .dope-planning-bar input { color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border); padding: 5px; }
+.dope-work-panel { max-height: 210px; overflow: auto; padding: 8px 16px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
+.dope-work-panel h3, .dope-work-panel p { margin: 4px 0; }
+.dope-work-panel button { margin: 2px 4px 2px 0; }
+.dope-work-panel .dope-work-highlight { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-physical-map-canvas .dope-work-highlight { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-plan-conflict { border: 2px double var(--theia-editorWarning-foreground); padding: 4px; }
 .dope-plan-add { border-style: solid; border-width: 4px; }
 .dope-plan-modify, .dope-plan-contract { border-style: double; border-width: 4px; }

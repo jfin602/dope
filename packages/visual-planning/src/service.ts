@@ -14,6 +14,8 @@ export type PlanningOperation =
   | { type: 'remove-transformation'; mapId: string; transformationId: string }
   | { type: 'undo' | 'redo'; mapId: string; expectedMapRevision: number; expectedBasis: PlanningBasis }
   | { type: 'put-work-item'; mapId: string; workItem: WorkItem }
+  | { type: 'split-work-item'; mapId: string; sourceId: string; parts: [WorkItem, WorkItem] }
+  | { type: 'merge-work-items'; mapId: string; sourceIds: [string, string]; merged: WorkItem }
   | { type: 'remove-work-item'; mapId: string; workItemId: string };
 export interface PlanningMutation { projectHandle: string; expectedRevision: number; operation: PlanningOperation }
 export interface VisualPlanningService {

@@ -5,6 +5,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { branchMap, detectActiveConflicts, parsePlanningMap, transitionMap } from '../index';
 import { projectTarget } from '../index';
+import { mergeWorkItems, putWorkItem, splitWorkItem } from '../work';
 import { parseArchitecture } from '@dope/software-map';
 import { createHash } from 'node:crypto';
 import type { PlanningMap } from '../index';
@@ -179,7 +180,9 @@ export class PlanningStore {
               } };
               break;
             }
-            case 'put-work-item': changed = { ...map, workItems: [...map.workItems.filter(item => item.id !== op.workItem?.id), op.workItem] }; break;
+            case 'put-work-item': changed = putWorkItem(map, op.workItem); break;
+            case 'split-work-item': changed = splitWorkItem(map, op.sourceId, op.parts); break;
+            case 'merge-work-items': changed = mergeWorkItems(map, op.sourceIds, op.merged); break;
             case 'remove-work-item': changed = { ...map, workItems: map.workItems.filter(item => item.id !== op.workItemId) }; break;
             default: throw new Error('Invalid planning operation');
           }

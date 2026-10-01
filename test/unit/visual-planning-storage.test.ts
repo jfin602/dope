@@ -62,6 +62,28 @@ test('typed transformation and WorkItem mutations reject traversal and preserve 
   assert.equal((await store.read(first)).revision, 3);
 }));
 
+test('WorkItem split and merge commit atomically and reject illegal status changes', async () => fixture(async first => {
+  const store = new PlanningStore();
+  await store.mutate(first, 0, create('plan'));
+  const transformation = { id: 'add-core', kind: 'add' as const, currentIds: [], dependsOn: [],
+    futureNodes: [{ id: 'core', kind: 'system' as const, name: 'Core', purpose: 'Domain', roots: [] }] };
+  await store.mutate(first, 1, { type: 'put-transformation', mapId: 'plan', transformation });
+  const work = (id: string) => ({ id, title: id, objective: id, transformationIds: ['add-core'], dependsOn: [],
+    requirements: [], constraints: [], acceptanceCriteria: [], validationTargets: [], workingSet: [], status: 'proposed' as const });
+  await store.mutate(first, 2, { type: 'put-work-item', mapId: 'plan', workItem: work('original') });
+  await assert.rejects(store.mutate(first, 3, { type: 'put-work-item', mapId: 'plan',
+    workItem: { ...work('original'), status: 'completed', completionNotes: 'Done' } }), /Illegal WorkItem transition/);
+  assert.equal((await store.read(first)).revision, 3);
+  const split = await store.mutate(first, 3, { type: 'split-work-item', mapId: 'plan', sourceId: 'original',
+    parts: [work('left'), work('right')] });
+  assert.deepEqual(split.maps[0].workItems.map(item => item.id), ['left', 'right']);
+  await assert.rejects(store.mutate(first, 4, { type: 'merge-work-items', mapId: 'plan', sourceIds: ['left', 'right'],
+    merged: { ...work('merged'), transformationIds: ['missing'] } }), /preserve transformation/);
+  assert.equal((await store.read(first)).revision, 4);
+  const merged = await store.mutate(first, 4, { type: 'merge-work-items', mapId: 'plan', sourceIds: ['left', 'right'], merged: work('merged') });
+  assert.deepEqual(merged.maps[0].workItems.map(item => item.id), ['merged']);
+}));
+
 test('stale and simultaneous writers serialize; live and abandoned locks are handled', async () => fixture(async first => {
   const a = new PlanningStore(), b = new PlanningStore();
   await a.mutate(first, 0, create('one'));

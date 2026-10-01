@@ -9,8 +9,9 @@ import { PhysicalMapController, physicalMapTabId, type PhysicalMapTabOptions } f
 import type { CanvasNode } from './physical-map-projection';
 import { PlanningMapController } from './planning-map-controller';
 import { projectPlanningMap } from './planning-map-projection';
+import { affectedArchitecture, transformationsForArchitecture } from './planning-work-projection';
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
-import type { PlannedNode } from '@dope/visual-planning';
+import type { PlannedNode, WorkItem } from '@dope/visual-planning';
 import './dope.css';
 
 export const PHYSICAL_MAP_ID = 'dope-physical-map-canvas';
@@ -39,6 +40,7 @@ export class PhysicalMapWidget extends BaseWidget {
     private readonly tabButton = document.createElement('button');
     private readonly sourceButton = document.createElement('button');
     private readonly planningBar = document.createElement('section');
+    private readonly workPanel = document.createElement('section');
     private readonly planningListener;
     private readonly heading = document.createElement('h2');
     private readonly focusedTab: boolean;
@@ -86,7 +88,9 @@ export class PhysicalMapWidget extends BaseWidget {
         this.status.setAttribute('aria-live', 'polite');
         this.canvas.className = 'dope-physical-map-canvas';
         this.planningBar.className = 'dope-planning-bar';
-        this.node.append(bar, this.planningBar, this.breadcrumbs, this.status, this.canvas);
+        this.workPanel.className = 'dope-work-panel';
+        this.workPanel.setAttribute('aria-label', 'Planning work');
+        this.node.append(bar, this.planningBar, this.workPanel, this.breadcrumbs, this.status, this.canvas);
         this.controller = new PhysicalMapController(map, service, () => this.render(), options?.workspace, options?.focusId);
         this.planningListener = planning.onChange(() => this.render());
     }
@@ -115,6 +119,7 @@ export class PhysicalMapWidget extends BaseWidget {
             this.controller.sourceNodes, this.controller.sourceRelationships, this.controller.sourceViolations,
             selectedMap, this.planning.view, this.controller.focusId) : this.controller.projection;
         this.renderPlanningBar();
+        this.renderWorkPanel();
         this.breadcrumbs.replaceChildren();
         const overview = document.createElement('button');
         overview.textContent = 'Project';
@@ -128,6 +133,8 @@ export class PhysicalMapWidget extends BaseWidget {
             this.breadcrumbs.append(button);
         }
         const selected = this.controller.selectedId;
+        const highlighted = planningMode && selectedMap && this.planning.selectedWorkItem ?
+            new Set(affectedArchitecture(selectedMap, this.planning.selectedWorkItem.transformationIds, this.controller.sourceNodes)) : new Set<string>();
         this.focusButton.disabled = !selected || !this.controller.projectMatches;
         this.tabButton.disabled = !selected || !this.controller.projectMatches;
         this.sourceButton.disabled = !selected || !this.controller.projectMatches;
@@ -142,7 +149,7 @@ export class PhysicalMapWidget extends BaseWidget {
             parentId: item.parentId,
             data: { item, editable: planningMode && !!selectedMap }, draggable: planningMode &&
                 (item.kind === 'subsystem' || item.kind === 'component'), selectable: true, selected: item.id === selected,
-            className: item.id === selected ? 'dope-map-selected' : item.context ? 'dope-map-context' : undefined,
+            className: item.id === selected ? 'dope-map-selected' : highlighted.has(item.id) ? 'dope-work-highlight' : item.context ? 'dope-map-context' : undefined,
             style: { width: item.width, height: item.height }
         }));
         const edges: Edge[] = projection.edges.map(item => ({
@@ -153,7 +160,8 @@ export class PhysicalMapWidget extends BaseWidget {
         }));
         this.root.render(React.createElement(ReactFlow, {
             nodes, edges, nodeTypes, nodesDraggable: planningMode, nodesConnectable: planningMode, elementsSelectable: true,
-            onNodeClick: (_event: React.MouseEvent, node: Node) => this.controller.select(node.id),
+            onNodeClick: (_event: React.MouseEvent, node: Node) => { this.controller.select(node.id);
+                if (planningMode && selectedMap) this.planning.selectTransformation(transformationsForArchitecture(selectedMap, node.id, this.controller.sourceNodes)[0]); },
             onNodeDoubleClick: (_event: React.MouseEvent, node: Node) => this.controller.focus(node.id),
             onNodeDragStop: (_event: MouseEvent | TouchEvent, node: Node) => {
                 const kind = (node.data.item as CanvasNode).kind;
@@ -262,6 +270,97 @@ export class PhysicalMapWidget extends BaseWidget {
             item.textContent = `Conflict: ${conflict.identityId} (${conflict.mapIds.join(' / ')})`;
             bar.append(item);
         }
+    }
+
+    private renderWorkPanel(): void {
+        const panel = this.workPanel, map = this.planning.selected;
+        panel.replaceChildren();
+        panel.hidden = !this.planning.planningMode || !map || !this.controller.projectMatches;
+        if (panel.hidden || !map) return;
+        const button = (label: string, action: () => void, disabled = false) => {
+            const control = document.createElement('button');
+            control.type = 'button'; control.textContent = label; control.disabled = disabled || this.planning.loading;
+            control.onclick = action; panel.append(control); return control;
+        };
+        const line = (value: string) => { const element = document.createElement('p'); element.textContent = value; panel.append(element); };
+        const csv = (value: string) => value.split(',').map(item => item.trim()).filter(Boolean);
+        const edit = (field: keyof WorkItem, value: string, list = false) => {
+            const item = this.planning.selectedWorkItem;
+            if (!item) return;
+            const answer = window.prompt(`WorkItem ${field}`, value);
+            if (answer === null) return;
+            void this.planning.putWorkItem({ ...item, [field]: list ? csv(answer) : answer.trim() });
+        };
+        const heading = document.createElement('h3'); heading.textContent = 'Work'; panel.append(heading);
+        button('Suggest from transformations', () => this.planning.requestSuggestions(), !map.transformations.length);
+        this.planning.suggestions?.forEach((suggestion, index) => {
+            line(`Suggestion ${index + 1}: ${suggestion.objective} · ${suggestion.transformationIds.join(', ')} · ${suggestion.dependsOn.length ? `after ${suggestion.dependsOn.map(i => i + 1).join(', ')}` : 'parallel'}`);
+            button(`Accept suggestion ${index + 1}`, () => void this.planning.acceptSuggestion(index));
+            button(`Split suggestion ${index + 1}`, () => {
+                const first = window.prompt('First part transformation IDs, comma separated', suggestion.transformationIds.join(', '));
+                if (first === null) return;
+                const second = window.prompt('Second part transformation IDs, comma separated', suggestion.transformationIds.join(', '));
+                if (second === null) return;
+                try { this.planning.splitSuggestion(index, [csv(first), csv(second)]); }
+                catch (error) { this.status.textContent = String(error); }
+            });
+        });
+        line(`WorkItems: ${map.workItems.length}`);
+        for (const item of map.workItems) button(`${item.title} · ${item.status}${item.dependsOn.length ? ` · after ${item.dependsOn.join(', ')}` : ' · parallel'}`,
+            () => this.planning.selectWorkItem(item.id), item.id === this.planning.selectedWorkItemId);
+        line(`Transformations: ${map.transformations.map(change => change.id).join(', ') || 'none'}`);
+        for (const change of map.transformations) {
+            const control = button(`${change.id}${map.workItems.some(item => item.transformationIds.includes(change.id)) ? ' · linked' : ''}`,
+                () => this.planning.selectTransformation(change.id), change.id === this.planning.selectedTransformationId);
+            if (this.planning.selectedWorkItem?.transformationIds.includes(change.id)) control.classList.add('dope-work-highlight');
+        }
+        if (this.planning.selectedTransformationId) line(`Linked WorkItems: ${this.planning.linkedWorkItems.map(item => item.title).join(', ') || 'none'}`);
+        const item = this.planning.selectedWorkItem;
+        if (!item) return;
+        line(`Selected ${item.id} · ${item.status} · transformations ${item.transformationIds.join(', ')}`);
+        for (const field of ['title', 'objective', 'requirements', 'constraints', 'acceptanceCriteria', 'validationTargets', 'workingSet',
+            'transformationIds', 'dependsOn'] as const) {
+            const value = item[field];
+            line(`${field}: ${Array.isArray(value) ? value.join(', ') || 'none' : value}`);
+            button(`Edit ${field}`, () => edit(field, Array.isArray(value) ? value.join(', ') : value, Array.isArray(value)));
+        }
+        button('Split WorkItem', () => {
+            const first = window.prompt('First part transformation IDs, comma separated', item.transformationIds.join(', '));
+            if (first === null) return;
+            const second = window.prompt('Second part transformation IDs, comma separated', item.transformationIds.join(', '));
+            if (second === null) return;
+            const parts: [WorkItem, WorkItem] = [first, second].map((refs, index) => ({ ...item,
+                id: `work-${crypto.randomUUID()}`, title: `${item.title} ${index + 1}`, transformationIds: csv(refs), status: 'proposed',
+                completionNotes: undefined })) as [WorkItem, WorkItem];
+            void this.planning.splitWorkItem(item.id, parts);
+        }, item.status === 'completed' || item.status === 'cancelled');
+        button('Merge WorkItem', () => {
+            const otherId = window.prompt('Other WorkItem ID');
+            const other = map.workItems.find(work => work.id === otherId);
+            if (!other) return;
+            const merged: WorkItem = { ...item, id: `work-${crypto.randomUUID()}`, title: `${item.title} + ${other.title}`,
+                objective: `${item.objective}; ${other.objective}`,
+                requirements: [...new Set([...item.requirements, ...other.requirements])],
+                constraints: [...new Set([...item.constraints, ...other.constraints])],
+                acceptanceCriteria: [...new Set([...item.acceptanceCriteria, ...other.acceptanceCriteria])],
+                validationTargets: [...new Set([...item.validationTargets, ...other.validationTargets])],
+                workingSet: [...new Set([...item.workingSet, ...other.workingSet])],
+                transformationIds: [...new Set([...item.transformationIds, ...other.transformationIds])],
+                dependsOn: [...new Set([...item.dependsOn, ...other.dependsOn])].filter(id => id !== item.id && id !== other.id),
+                status: 'proposed', completionNotes: undefined };
+            void this.planning.mergeWorkItems([item.id, other.id], merged);
+        }, item.status === 'completed' || item.status === 'cancelled');
+        const transitions: Record<WorkItem['status'], WorkItem['status'][]> = {
+            proposed: ['ready', 'cancelled'], ready: ['in-progress', 'cancelled'],
+            'in-progress': ['ready', 'completed', 'cancelled'], completed: [], cancelled: []
+        };
+        for (const status of transitions[item.status]) button(`Mark ${status}`, () => {
+            const notes = status === 'completed' ? window.prompt('Completion notes (validation is tracked separately)') : undefined;
+            if (status === 'completed' && !notes?.trim()) return;
+            void this.planning.transitionWorkItem(status, notes?.trim());
+        });
+        if (item.completionNotes) line(`Completion notes: ${item.completionNotes}`);
+        if (item.status === 'completed') button('Edit completion notes', () => edit('completionNotes', item.completionNotes ?? ''));
     }
 
     private async openSource(): Promise<void> {
