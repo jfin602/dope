@@ -610,3 +610,17 @@ Boundary rules:
 - accepted architecture remains only `.dope/architecture.json` plus matching `.dope/smap.json`.
 
 Acceptance diagnostics are deterministic and provider-free. They enumerate all known blockers rather than making the developer repair one throw-first error at a time. Diagnostics identify implicated review nodes/paths where possible, but never choose an architectural owner or silently repair the draft.
+
+## Physical analysis input isolation and Planning Map basis semantics — ADR 0019
+
+Physical analysis input identity and Dope project/work state are separate domains.
+
+Language analyzers may fingerprint repository source and real build/configuration inputs, but must not recursively consume Dope-owned state beneath `.dope/` as generic source/config input. This includes Planning Maps, Project Mind files, synthesis work, initialization markers and other Dope metadata. `.dope/architecture.json` is the deliberate exception in meaning, but it enters the Software Map through the dedicated canonical declaration reader/fingerprint rather than generic JSON/config discovery.
+
+Planning Map basis has two layers:
+- **semantic basis identity:** canonical architecture revision/fingerprint plus Physical Map input fingerprint;
+- **observation identity:** the published Physical Map generation associated with a concrete snapshot.
+
+A generation increase with unchanged semantic basis means the same inputs were observed again; it is not itself a software change and must not mark a Planning Map stale. Generation remains required for exact snapshot/query/preview race guards so data from different published observations cannot be mixed.
+
+Code should use explicit semantic-basis comparison where deciding whether planning intent is stale and exact-observation comparison where validating a concrete in-flight snapshot. Do not use raw whole-object equality when the intended question is semantic staleness.

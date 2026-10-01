@@ -242,18 +242,18 @@ Preserve original target and final realized outcome as durable history.
 
 Add integrated tests proving WorkItem completion alone cannot close/reconcile a map.
 
-## P11 interruption gate — `c5-physical-map-load`
+## P11 interruption gate — `c5-planning-basis-isolation`
 
-The Adaptive SEO acceptance prerequisite is cleared. Real `acceptReview` succeeded and the preserved accepted reference must not be modified.
-
-The latest P11 rerun on `/tmp/adaptive-seo-dope-p11` is Not Green because the inspector loads the accepted hierarchy while the center Physical Map remains at **Loading Physical Map...**. The same run also retained two independent stale qualification assertions: the Phase 3 removal guard misclassifies valid Phase 5 `planning-map-*` files, and the restart suite still expects historical default theme `dark` instead of `dope-dark`.
+The accepted Adaptive SEO architecture and center Physical Map are now usable. The latest P11 rerun reached Planning Map creation and restart/copy recovery, then exposed false staleness:
+- TypeScript analyzer input discovery includes `.dope/` JSON state and therefore lets `.dope/planning-maps.json` change the Physical Map input fingerprint;
+- Planning Map stale/current checks also treat a newer Physical Map generation as semantic change even when architecture/input fingerprints are unchanged.
 
 Before rerunning P11:
-1. execute the one-off `c5-physical-map-load` Sol High repair at unchanged `0.5.11`;
-2. run only its focused implementation validation;
-3. rerun this P11 as the browser/T3 qualification gate.
+1. close `c5-planning-basis-isolation` Green at unchanged `0.5.11`;
+2. recreate `/tmp/adaptive-seo-dope-p11` from the accepted `/home/jfin/dev/adaptive-seo-dope` reference so no failed-run Planning Maps are reused;
+3. rerun this P11 as the complete browser/T3 qualification gate.
 
-The one-off repair must not be counted as P11 qualification and must not advance to `0.5.12`.
+The correction does not qualify P11 and must not advance to `0.5.12`.
 ## P11 — direct visual workflow qualification (`0.5.11`) — T3 / browser required
 
 Use `/tmp/adaptive-seo-dope-p11` as the primary mapped workspace in the actual Theia GUI. It must be a disposable copy of the accepted `/home/jfin/dev/adaptive-seo-dope`, including `.dope/`. Require a usable canonical/Physical Map in this exact `/tmp` workspace before the direct loop. Keep `/home/jfin/dev/adaptive-seo-dope` unchanged as the accepted reference. Use the Dope repository for host/IDE/Project Mind/sMap regression and exact-candidate builds, package and native launch; Dope's own canonical map need not qualify the visual loop.

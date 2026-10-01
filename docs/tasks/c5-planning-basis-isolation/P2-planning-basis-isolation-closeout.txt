@@ -1,0 +1,75 @@
+TASK: Correction 5 / P2 — Planning basis isolation closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.5.11`.
+
+EXECUTION
+- Evidence-only correction closeout.
+- Do not repair failures in this prompt.
+- Do not run P11.
+
+GOAL
+
+Audit the exact P1 candidate against ADR 0019 and decide whether the false-staleness correction is ready for a fresh P11 qualification rerun.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0019, correction README/assessment/implementation plan, exact P1 commit/result, latest P11 evidence and changed source/tests.
+
+Require package exactly `0.5.11`, P11 still Not Green and P12 unexecuted.
+
+AUDIT GATES
+
+A. `.dope` input isolation
+- representative Dope metadata files do not enter generic TypeScript source/config inputs;
+- explicit tsconfig source/reference paths beneath `.dope` cannot reintroduce them.
+
+B. Canonical architecture path
+- `.dope/architecture.json` is still reflected through the dedicated declaration fingerprint;
+- architecture mutation still changes canonical/semantic planning basis.
+
+C. Generation-neutral semantic staleness
+- unchanged reanalysis advances generation but keeps the same input fingerprint;
+- the Planning Map remains non-stale/editable with no affected branches/transformations.
+
+D. True staleness
+- real source/config mutation changes Physical Map input identity and stale state;
+- canonical architecture mutation changes architecture identity/stale state.
+
+E. Exact observation concurrency
+- generation still protects late async/paged/snapshot/preview acceptance paths where exact observation is required;
+- no global removal of generation guards occurred.
+
+F. Integrated P11 reproduction
+- analyze -> create planning store -> unchanged reanalyze -> continue edit is Green in a controlled fixture.
+
+G. Scope/version
+- no provider/synthesis changes, no Adaptive SEO migration/regeneration, no PlanningMap persistence redesign, no version advance.
+
+VALIDATION
+
+Run the exact focused P1 regression set plus:
+- `npm run codex:phase:validate -- c5-planning-basis-isolation`;
+- `git diff --check`;
+- exact `0.5.11` / no-root-lock checks.
+
+Do not run P11, `npm run check`, AppImage/native packaging or live providers.
+
+CLOSEOUT
+
+If any gate is Not Green, record it precisely and stop without repair.
+
+If all gates are Green:
+- create `docs/tasks/c5-planning-basis-isolation/closeout.md`;
+- update the correction README status/routing;
+- route next to recreating `/tmp/adaptive-seo-dope-p11` from `/home/jfin/dev/adaptive-seo-dope` and rerunning P11.
+
+P12 remains blocked until P11 itself is Green.
+
+FINAL RESPONSE
+
+Report Green / Not Green by gate, exact candidate, focused commands/results, unchanged version and P11 rerun routing.

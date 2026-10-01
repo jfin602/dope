@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 5 — Visual Software Planning is ACTIVE from baseline `0.5.0`; P1-P10 are implemented and P11 is **PAUSED / NOT GREEN at `0.5.11`** behind one-off correction `c5-physical-map-load`. The accepted Adaptive SEO sMap prerequisite is cleared; the remaining blocker is the center Physical Map loader plus two stale qualification assertions. P12 / `0.5.12` remains blocked.
+Current stage: Product Phase 5 — Visual Software Planning is ACTIVE from baseline `0.5.0`; P1-P10 are implemented and P11 is **PAUSED / NOT GREEN at `0.5.11`** behind correction `c5-planning-basis-isolation`. The accepted Adaptive SEO architecture and center Physical Map are working; current P11 is blocked by false Planning Map staleness caused by `.dope/` input contamination and generation-as-staleness semantics. P12 / `0.5.12` remains blocked.
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -55,6 +55,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Correction c5 — sMap Acceptance Debug Loop | P11 interruption at `0.5.11`: persist mutable unaccepted review work, enumerate deterministic acceptance blockers, and provide an offline checker so one generated sMap can be debugged across restarts without provider calls. This correction does not perform the actual Adaptive SEO debug loop. |
 | Correction c5 — Physical Map Load | One-off `0.5.11` repair after accepted Adaptive SEO architecture loads in the inspector but the center Physical Map remains stuck at Loading. Remove duplicate Software Map channel/attach ownership if confirmed, preserve one shared published map state, and correct stale Phase 3/theme qualification assertions. P11 remains the qualification gate. |
+| Correction c5 — Planning Basis Isolation | `0.5.11` correction after P11 reached durable Planning Maps but ordinary `.dope/planning-maps.json` persistence changed Physical Map identity and unchanged reanalysis falsely staled plans. Isolate `.dope/` from generic analysis inputs and make generation observation provenance rather than semantic staleness. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 8 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
@@ -711,6 +712,36 @@ Out of scope:
 
 Exit:
 The one-off implementation passes focused map regressions, the corrected Phase 3 guard, restart regression, affected builds and diff/version checks. Then rerun P11 on `/tmp/adaptive-seo-dope-p11`; P11 determines qualification and P12 eligibility.
+## Phase 5 interruption correction — `c5-planning-basis-isolation`
+
+Status: **APPROVED / READY FOR EXECUTION at unchanged `0.5.11`**
+
+Activation source: `2c21fcf244e42fb806ba01d27c68addc5ffb198e`.
+
+Purpose:
+Repair the Planning Map basis boundary proven by the latest P11 rerun.
+
+Required contract:
+- Dope-owned `.dope/` product/work files do not participate in generic language-analyzer source/config fingerprints;
+- `.dope/architecture.json` remains canonical input through the dedicated declaration fingerprint, not JSON/config discovery;
+- a Planning Map records `physicalGeneration` as observation provenance, but generation-only advancement with unchanged architecture/input fingerprints does not make the plan stale;
+- source/config changes still change Physical Map input identity;
+- canonical architecture changes still stale relevant Planning Maps;
+- exact generation checks remain where they protect in-flight query, snapshot, preview or acceptance races;
+- one shared semantic-basis comparison is used where the product asks whether the software meaningfully changed, while exact-observation comparison remains available for concurrency guards.
+
+Qualification routing:
+P1 implements the bounded correction with focused regressions. P2 is evidence-only correction closeout. Neither prompt runs P11. After Green closeout, recreate the disposable Adaptive SEO P11 workspace from the accepted reference and rerun P11 as the browser/T3 qualification gate.
+
+Out of scope:
+- migration of the disposable failed P11 planning store;
+- accepted Adaptive SEO architecture/sMap regeneration;
+- synthesis/provider changes;
+- automatic rebase;
+- PlanningMap persistence redesign;
+- P11/P12 execution;
+- version advance.
+
 ## Product Phase 6 — AI Presence
 
 Purpose:

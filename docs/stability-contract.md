@@ -365,3 +365,17 @@ While ADR 0018 remains authoritative, changes to Architecture Review persistence
 - diagnostic/debug machinery must not auto-fix ownership, deduplicate roots or otherwise make architectural decisions for the developer.
 
 Permanent regression coverage must include restart restoration of an intentionally invalid draft and equality of its deterministic diagnostics before and after restart.
+
+## Planning basis isolation and observation-generation stability
+
+While ADR 0019 is authoritative, Phase 5 regression coverage must prove:
+- creating or mutating `.dope/planning-maps.json` does not change the Physical Map source/config input fingerprint;
+- representative non-canonical Dope state such as `.dope/project-mind.json`, `.dope/smap-analysis.json` and `.dope/smap.json` does not become generic language-analysis input;
+- canonical `.dope/architecture.json` still changes the dedicated declaration fingerprint and therefore the canonical/physical basis appropriately;
+- unchanged reanalysis may advance Physical Map generation without marking a Planning Map stale;
+- generation-only advancement leaves `physicalChanged`, affected branches and affected transformations clear;
+- a real source/config change changes Physical Map input identity and can stale affected planning work;
+- exact generation guards still reject mixed/stale in-flight query, preview or snapshot results;
+- Planning Map editing remains available after unchanged reanalysis.
+
+A test that merely ignores all basis changes is invalid. The correction must demonstrate both sides: no false stale from Dope metadata/generation, and real stale from software/canonical input changes.

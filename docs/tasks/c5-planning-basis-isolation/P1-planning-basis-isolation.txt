@@ -1,0 +1,133 @@
+TASK: Correction 5 / P1 — Isolate Planning Map basis from Dope state and generation churn
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.5.11`.
+
+EXECUTION
+- Runner-friendly bounded implementation prompt.
+- T2 focused validation only.
+- P11 is the later qualification gate; do not run it here.
+
+GOAL
+
+Fix the two causes of false Planning Map staleness proven by P11:
+1. Dope-owned `.dope/` state entering Physical Map source/config identity;
+2. Physical Map generation being treated as semantic planning-basis change.
+
+PREFLIGHT
+
+Read:
+- BOOT.md / AGENTS.md;
+- ADR 0019 and ADR 0017;
+- current ARCHITECTURE.md / stability contract / Phase 5 docs;
+- docs/tasks/c5-planning-basis-isolation/{README.md,prompt-assessment.md,implementation-plan.md};
+- latest P11 evidence;
+- exact affected source/tests.
+
+Inspect at minimum:
+- packages/code-analysis-typescript/src/index.ts;
+- packages/code-analysis/src/node/software-map-index.ts;
+- packages/theia-extension/src/browser/planning-map-controller.ts;
+- packages/theia-extension/src/node/visual-planning-backend.ts;
+- packages/visual-planning/src/rebase.ts;
+- packages/visual-planning/src/node/planning-store.ts;
+- test/unit/code-analysis-typescript.test.ts;
+- test/unit/software-map-index-backend.test.ts;
+- test/unit/planning-rebase.test.ts;
+- test/unit/visual-planning-storage.test.ts;
+- test/unit/planning-map-ui.test.ts.
+
+Require:
+- activation source `2c21fcf244e42fb806ba01d27c68addc5ffb198e` reachable;
+- coherent `0.5.11`;
+- P11 Not Green, P12 unexecuted;
+- no Adaptive SEO accepted-reference mutation;
+- no provider/synthesis work.
+
+IMPLEMENTATION A — `.dope` INPUT ISOLATION
+
+`TypeScriptAnalyzer.inputPaths()` currently omits `.dope` from its ignored directory set and also collects JSON files as config inputs. Fix the boundary generically.
+
+Requirements:
+- exclude `.dope/` from recursive config/JSON discovery;
+- exclude `.dope/` from analyzer source inputs even if a tsconfig include/files pattern names a path beneath it;
+- reject/ignore project references or equivalent analyzer-config paths beneath `.dope/` as generic analysis inputs;
+- preserve normal repository source/config discovery outside `.dope/`;
+- do not special-case only `planning-maps.json`;
+- do not stop canonical `.dope/architecture.json` from influencing the Software Map through `readArchitecture()` / declaration fingerprint.
+
+Add focused tests covering representative `.dope/planning-maps.json`, `.dope/project-mind.json`, `.dope/smap-analysis.json`, `.dope/smap.json`, and an explicitly configured `.dope` source/reference path. Their mutation must not change analyzer source/config input identity.
+
+IMPLEMENTATION B — BASIS COMPARISON SEMANTICS
+
+Introduce explicit reusable comparison semantics rather than scattered raw whole-basis equality:
+
+- semantic basis equality compares canonical architecture revision/fingerprint and physical input fingerprint;
+- exact observation equality additionally compares physical generation.
+
+Exact names/placement may follow current domain style, but the helpers must remain presentation-independent.
+
+Use semantic equality when deciding:
+- whether a Planning Map is stale/current;
+- whether editing/undo/redo may continue after unchanged reanalysis;
+- whether generation-only refresh means `physicalChanged`;
+- whether reconciliation/closeout is invalid solely because generation advanced with identical inputs;
+- whether initial map creation races against a semantically identical reanalysis.
+
+Keep exact observation equality for genuine concurrency/race protection such as:
+- paged graph/snapshot consistency;
+- preview/accept operations tied to a concrete current observation;
+- late async result rejection;
+- any operation that would mix data from two generations.
+
+Audit all full-basis JSON equality in the planning backend/store/controller. Do not mechanically change every comparison.
+
+PERMANENT P11 REGRESSION
+
+Add a focused cross-boundary regression reproducing the failure:
+
+1. analyze a controlled initialized project; capture fingerprint A and generation 1;
+2. create a Planning Map so `.dope/planning-maps.json` appears;
+3. prove `SoftwareMapIndex.inputsCurrent()` remains true and Physical Map input fingerprint remains A;
+4. reanalyze unchanged source; generation must advance while fingerprint remains A;
+5. prove Planning Map `stale === false`, `physicalChanged === false`, and affected branches/transformations remain empty;
+6. prove a transformation preview/edit path remains available;
+7. edit a real source/config input, reanalyze and prove input fingerprint changes and appropriate stale state appears;
+8. mutate canonical architecture through a controlled fixture path and prove architecture staleness;
+9. retain a regression showing stale/late generation results are still rejected where exact observation identity matters.
+
+Do not migrate or repair the existing `/tmp/adaptive-seo-dope-p11` planning store; P11 will recreate the workspace after closeout.
+
+VALIDATION
+
+Run only:
+- affected TypeScript analyzer tests;
+- affected Software Map index/backend tests;
+- planning rebase/staleness tests;
+- visual-planning storage/backend tests;
+- planning-map controller/UI tests touched by the change;
+- affected package builds/typecheck;
+- `git diff --check`;
+- exact `0.5.11` / no-root-lock checks.
+
+Do not run:
+- P11 browser qualification;
+- root `npm run check` for reassurance;
+- AppImage/native packaging;
+- Local/Gemini/provider work.
+
+FINAL RESPONSE
+
+Report:
+- analyzer input-boundary fix;
+- semantic-vs-observation comparison design;
+- every audited basis comparison changed or deliberately retained exact, with reason;
+- permanent regression behavior;
+- exact focused commands/results;
+- changed files;
+- unchanged `0.5.11`;
+- readiness for P2 closeout.

@@ -34,19 +34,19 @@ Run implementation prompts:
 
 The runner owns P1-P10 commits and stops for P11 because direct browser GUI evidence is required. After P11 is completed and committed, resume P12 closeout from the exact qualified candidate.
 
-## P11 pause — center Physical Map correction gate
+## P11 pause — Planning basis isolation gate
 
 P11 is currently paused / Not Green at `0.5.11`.
 
-The acceptance-debug machinery is Green and the preserved Adaptive SEO architecture was successfully accepted through the real generated-review path. The latest P11 rerun on `/tmp/adaptive-seo-dope-p11` proved the accepted hierarchy appears in the inspector, but the center Physical Map remains at **Loading Physical Map...**.
+The accepted Adaptive SEO hierarchy renders in the corrected center Physical Map and Planning Maps now persist. The latest rerun found the next blocker: creation of `.dope/planning-maps.json` changed the Physical Map input fingerprint, and a subsequent unchanged reanalysis advanced generation and falsely marked both maps stale.
 
-Before rerunning P11, execute the one-off `c5-physical-map-load` Sol High repair. It is not a codex phase/correction stack and it does not qualify P11.
+`c5-planning-basis-isolation` corrects that boundary before another P11 rerun. It does not qualify P11.
 
 Routing:
 
-`P1-P10 -> acceptance prerequisite cleared -> P11 Not Green on center map -> c5-physical-map-load one-off -> rerun P11 -> P12`
+`P1-P10 -> acceptance cleared -> center map fixed -> P11 Not Green on false planning staleness -> c5-planning-basis-isolation -> fresh disposable P11 workspace -> rerun P11 -> P12`
 
-The accepted `/home/jfin/dev/adaptive-seo-dope` reference must remain unchanged. P11 continues to use `/tmp/adaptive-seo-dope-p11` for qualification. P12/`0.5.12` remains ineligible until P11 is Green.
+After the correction closes, delete/recreate `/tmp/adaptive-seo-dope-p11` from `/home/jfin/dev/adaptive-seo-dope` rather than reusing the Planning Maps created under the broken basis contract. The accepted reference remains unchanged. P12/`0.5.12` remains ineligible until P11 is Green.
 ## Product boundary
 
 Phase 5 proves the human-driven loop:
