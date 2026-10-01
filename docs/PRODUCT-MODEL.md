@@ -166,19 +166,22 @@ Before the first real synthesis request, provider/runtime orchestration performs
 
 ### Phase 5 — Visual Software Planning
 
-Design the planning/work model from the Physical Map outward rather than adapting the graph to Phase 3 Planning.
+Active from baseline `0.5.0`. Design the planning/work model from the Physical Map outward rather than adapting the graph to Phase 3 Planning.
 
 Introduce:
 - physical architecture projections with semantic zoom;
-- Planning Maps that reference physical nodes;
-- proposed graph transformations for add/modify/remove/move/split/merge/relationship changes;
-- graph-derived work decomposition, dependencies, acceptance criteria and validation targets;
-- target-versus-physical reconciliation after implementation;
+- durable Planning Maps that reference canonical/physical identities;
+- PlannedTransformations for `add`, `modify`, `remove`, `move`, `split`, `merge`, `redirect relationship` and `change contract`;
+- graph-derived WorkItems with dependencies, requirements/constraints, acceptance criteria, validation targets and working-set references;
+- explicit target adoption into canonical architecture;
+- stale-plan detection and conflict-aware explicit rebase when canonical/physical inputs change;
+- target-versus-physical reconciliation after deterministic re-analysis;
+- project-local versioned planning persistence at `.dope/planning-maps.json`;
 - a new planning/work ontology designed with no Phase 3 Planning runtime present.
 
-Phase 5 does not assume Plan -> PlanStep -> Task is the final ontology. The Phase 3 domain, `.dope/planning.json`, RPC, UI and associated tests have already been removed by the pre-Phase-4 correction. Phase 5 starts from the software graph and introduces only the work concepts the visual map workflow actually requires.
+The forward ontology is **PlanningMap -> PlannedTransformation -> WorkItem**. Phase 5 does not resurrect `Plan -> PlanStep -> Task`. The Phase 3 domain, `.dope/planning.json`, RPC, UI and associated tests remain historical and removed.
 
-Visual software planning remains useful with no model configured. A diagram is a projection of project state, not an independent source of architectural truth.
+Visual software planning remains useful with no model configured. A diagram is a projection of project state, not an independent source of architectural truth. Canvas coordinates, viewport, selection and tab/layout state are presentation state.
 
 ### Phase 6-7 — AI collaboration and delegation
 
@@ -396,15 +399,21 @@ Analysis progress is observable product state while the workflow runs: stage/cal
 
 ### PlanningMap
 
-The target/proposal map that references PhysicalMap identities. Its implementation may use graph structures internally, but the product concept is the Planning Map.
+The durable developer-owned target/proposal map that references canonical and PhysicalMap identities. Existing physical nodes are referenced, not duplicated. Proposed nodes and relationships remain visibly planned. A planned new System/Subsystem/Component may reserve an intended future canonical ID, but that ID remains target intent until explicit adoption.
 
-Existing physical nodes are referenced, not duplicated. Proposed nodes and relationships remain visibly planned.
+Each PlanningMap records stable map/project identity, title/objective/status, the canonical architecture revision/fingerprint it branched from, the Physical Map input fingerprint/generation basis it branched from, PlannedTransformations, WorkItems, and revision/history sufficient for explicit mutation/conflict handling.
+
+If the underlying canonical architecture or Physical Map basis changes, the PlanningMap becomes **stale**. Rebase is explicit and exposes conflicts such as removed targets, changed parents, replaced identities, changed dependency contracts and already-realized transformations.
+
+Planning Maps persist in versioned project-local `.dope/planning-maps.json`. Historical Phase 3 `.dope/planning.json` is not migrated or reused. Viewport, node coordinates, selection, collapsed groups, tab state and panel layout are presentation state.
+
+Editing a PlanningMap never directly mutates `.dope/architecture.json`. **Adopt Target** is an explicit developer action through the canonical architecture boundary.
 
 ### PlannedTransformation
 
-A proposed architectural change against the Physical Map.
+A proposed architectural change against the PlanningMap's referenced current/canonical basis.
 
-Initial conceptual operations include:
+Initial operations are:
 - add;
 - modify;
 - remove;
@@ -414,7 +423,15 @@ Initial conceptual operations include:
 - redirect relationship;
 - change contract.
 
-The exact executable mapping is phase-owned; the important invariant is that planning expresses transformations of reality rather than maintaining an unrelated drawing.
+A transformation retains affected current/canonical identity where applicable, proposed target state and the references needed to explain the change.
+
+### WorkItem
+
+A bounded actionable implementation unit attached to one or more PlannedTransformations.
+
+A WorkItem may contain stable identity/title/objective, transformation references, dependencies, requirements/constraints, acceptance criteria, validation targets, project-relative working-set references, status and completion notes.
+
+WorkItems are implementation planning state, not architecture authority. Editing or completing one does not silently alter the PlanningMap target, canonical architecture or Physical Map.
 
 ### Reconciliation
 
@@ -426,7 +443,7 @@ Useful outcomes include:
 - not implemented;
 - unexpected implementation discovered.
 
-Reconciliation never promotes intent into physical truth merely because a Plan or Task is marked complete.
+Reconciliation never promotes intent into physical truth merely because a WorkItem is marked complete. Useful outcomes are retained rather than auto-resolved: implemented as planned, implemented differently, not implemented, and unexpected implementation.
 
 ### ChangeSet
 
