@@ -1,0 +1,62 @@
+TASK: Phase 5 / P2 — Planning persistence, service and backend
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.5.2`.
+
+GOAL
+
+Persist Phase 5 planning truth safely in the project and expose it through a dedicated typed service/backend without enlarging the Software Map provider backend.
+
+PREFLIGHT
+
+Read all P5 authority/plans and exact P1 source/tests. Inspect ProjectMindStore, Software Map persistence/root-handle patterns, backend-module registration and current `.dope/` storage guidance.
+
+Require coherent `0.5.1` predecessor and P1 Green focused evidence.
+
+IMPLEMENT
+
+Inside the visual-planning boundary add the Node store for canonical Phase 5 planning state at exactly `.dope/planning-maps.json`.
+
+Required storage behavior:
+- strict versioned readable schema;
+- stable project identity and document revision;
+- preserve multiple Planning Maps/history;
+- expected-revision optimistic mutation;
+- atomic write/replace;
+- cross-process mutation exclusion with abandoned-lock recovery consistent with existing Dope storage patterns;
+- canonical local-root validation;
+- reject unsafe/symlinked `.dope`/file and path traversal;
+- corrupt/future schema refuses mutation without rewriting bytes;
+- project isolation;
+- copy/reopen at a new absolute root preserves semantic state;
+- missing file is a valid empty planning collection;
+- never read/migrate historical `.dope/planning.json`;
+- no presentation geometry or provider state in canonical planning bytes.
+
+Define provider-independent typed service contracts owned by `@dope/visual-planning` for attach/read/list/create/duplicate/transition/mutate planning maps, transformations and WorkItems, with expected revision and conflict queries.
+
+Add a separate Theia backend connection/service registration, expected in a focused `visual-planning-backend.ts`. Bind one canonical project root/handle per connection and reject later redirection/stale handles.
+
+Do not add planning fields/methods to `SoftwareMapBackend`.
+
+Advance all live package/app versions/internal refs coherently to `0.5.2`.
+
+TESTS
+
+Add focused storage/backend tests for empty/create/read/reopen, multiple maps, revisions, stale write rejection, simultaneous writers, abandoned lock, corrupt/future bytes, symlink/traversal containment, two-project isolation, copy-to-new-root recovery, no `.dope/planning.json` migration and invalid/disposed handles.
+
+Use explicit temporary fixtures; do not mutate the real Dope repository.
+
+Run focused visual-planning/storage/backend tests, affected typecheck/build, version/no-root-lock checks and `git diff --check`. Use a bounded affected integration test only where backend registration requires it.
+
+Do not run full package/native/direct GUI qualification.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report storage/service contracts, safety/recovery evidence, package coherence and P3 eligibility.
