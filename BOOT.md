@@ -13,9 +13,9 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** The architecture-discovery follow-ons remain truthful history. `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are owner-closed **Not Qualified** with their useful implementation retained. `c4-smap-storage` is **GREEN / QUALIFIED** at closeout commit `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`; no storage-only gaps remain. The fresh provider comparison stays deferred. The active gate is the bounded `c4-color-theme` correction at unchanged `0.4.6`; when it closes Green, route to a fresh Product Phase 5 `/docs-review`.
+**Product Phase 5 — Visual Software Planning is ACTIVE from baseline `0.5.0` at closeout transition commit `016bd8780e89081dfdb5746eae981183dc945baa`.** Product Phase 4 — Physical Map remains Qualified/Green for its approved core scope at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The architecture-discovery follow-ons remain truthful history: `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are owner-closed **Not Qualified** with useful implementation retained. `c4-smap-storage` and `c4-color-theme` are **GREEN / QUALIFIED** at unchanged `0.4.6`. The post-theme failed-analysis-state repair at `c7e0d66269d3f11fd2e31c3f94ecc7ffc843bae9` is part of the owner-accepted Phase 4 baseline. The fresh provider comparison remains deferred off the Phase 5 critical path.
 
-**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first bootstrap; ADR 0012 governs hierarchy-first synthesis/progress/performance; ADR 0013 governs compact shared provider contracts; ADR 0014 governs responsibility-oriented decomposition/review and its owner sequencing amendments; ADR 0015 governs optional root `MODULES.md` bootstrap intent; ADR 0016 governs Dope Dark visual identity and theme boundaries.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. The developer owns canonical System / Subsystem / Component identity. General Phase 6 AI Presence and the Phase 5 visual planning canvas remain out of scope.
+**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first bootstrap; ADR 0012 governs hierarchy-first synthesis/progress/performance; ADR 0013 governs compact shared provider contracts; ADR 0014 governs responsibility-oriented decomposition/review and its owner sequencing amendments; ADR 0015 governs optional root `MODULES.md` bootstrap intent; ADR 0016 governs Dope Dark visual identity and theme boundaries; ADR 0017 governs Phase 5 Planning Maps, transformations, WorkItems, target adoption, staleness/rebase and reconciliation.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. The developer owns canonical System / Subsystem / Component identity. General Phase 6 AI Presence and the Phase 5 visual planning canvas remain out of scope.
 
 Phase 2's P6 `0.2.6` evidence-only audit remains **Not Qualified**. The owner subsequently explicitly closed Phase 2 for sequencing and authorized Phase 3 from a coherent `0.3.0` baseline. This owner disposition does not relabel the P6 audit Green or erase its evidence gaps. The retained Phase 2 gaps are the initially hidden legacy-migration entry, unproved dirty same-renderer workspace switch, lack of exact `0.2.6` native artifact launch/direct native visual Project Mind use, and inherited Phase 1 gaps where applicable. See `docs/tasks/p2/closeout.md` and `docs/planning/p3/activation.md`.
 
@@ -59,6 +59,8 @@ Current authority:
 - docs/planning/p3/activation.md
 - docs/planning/p4/phase-4-plan.md
 - docs/planning/p4/activation.md
+- docs/planning/p5/phase-5-plan.md
+- docs/planning/p5/activation.md
 - docs/decisions/0004-model-provider-independence.md
 - docs/decisions/0005-progressive-self-development.md
 - docs/decisions/0006-codex-reference-ai-bootstrap.md
@@ -72,6 +74,7 @@ Current authority:
 - docs/decisions/0014-responsibility-oriented-smap-decomposition-and-review.md
 - docs/decisions/0015-modules-bootstrap-architecture-seed.md
 - docs/decisions/0016-dope-dark-visual-identity.md
+- docs/decisions/0017-visual-planning-map-and-work-model.md
 
 ## Product premise
 
