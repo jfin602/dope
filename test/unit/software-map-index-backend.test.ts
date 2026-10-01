@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -223,4 +223,69 @@ test('typed backend rebinds a connection across roots, bounds queries, resolves 
     assert.equal(updates.length, count);
     b.dispose();
   } finally { await rm(firstRoot, { recursive: true, force: true }); await rm(secondRoot, { recursive: true, force: true }); }
+});
+
+test('accepted Software Map survives copy and fresh backend while physical state rebuilds independently', async () => {
+  const original = await fixture();
+  const destination = await mkdtemp(join(tmpdir(), 'dope-map-copy-'));
+  const copied = join(destination, 'with-dope');
+  const bare = join(destination, 'without-dope');
+  const boundaries = async (service: SoftwareMapBackend, handle: string) =>
+    (await service.hierarchy({ projectHandle: handle, descendants: true })).items
+      .filter(node => ['system', 'subsystem', 'component'].includes(node.kind))
+      .map(({ id, kind, parentId }) => ({ id, kind, parentId })).sort((a, b) => a.id.localeCompare(b.id));
+  try {
+    await architecture(original);
+    const firstIndex = new SoftwareMapIndex(new TypeScriptAnalyzer());
+    const first = new SoftwareMapBackend(firstIndex, { notifySoftwareMapChanged() {} });
+    const firstHandle = (await first.attach(pathToFileURL(original).href)).projectHandle;
+    assert.equal((await first.acceptExisting(firstHandle, (await first.initializationStatus(firstHandle)).declarationFingerprint)).state, 'ready');
+    const canonical = await boundaries(first, firstHandle);
+    assert.deepEqual(canonical, [
+      { id: 'api', kind: 'subsystem', parentId: 'app' },
+      { id: 'app', kind: 'system', parentId: 'project:root' },
+      { id: 'core', kind: 'subsystem', parentId: 'app' },
+      { id: 'core-unit', kind: 'component', parentId: 'core' },
+      { id: 'handler', kind: 'component', parentId: 'api' },
+      { id: 'secret', kind: 'subsystem', parentId: 'app' },
+    ]);
+    const files = ['architecture.json', 'smap.json'];
+    const bytes = await Promise.all(files.map(file => readFile(join(original, '.dope', file))));
+    first.dispose();
+
+    await cp(original, copied, { recursive: true });
+    await cp(original, bare, { recursive: true, filter: path => path !== join(original, '.dope') });
+    const reopenedIndex = new SoftwareMapIndex(new TypeScriptAnalyzer());
+    const reopened = new SoftwareMapBackend(reopenedIndex, { notifySoftwareMapChanged() {} });
+    const copyHandle = (await reopened.attach(pathToFileURL(copied).href)).projectHandle;
+    assert.equal((await reopened.initializationStatus(copyHandle)).state, 'initialized');
+    assert.equal((await reopened.analyze(copyHandle)).state, 'ready');
+    assert.deepEqual(await boundaries(reopened, copyHandle), canonical);
+    assert.deepEqual(await Promise.all(files.map(file => readFile(join(copied, '.dope', file)))), bytes);
+    const before = reopenedIndex.snapshot(copied)!.metadata;
+    await writeFile(join(copied, 'src/core/c.ts'), 'export const core = () => 42;\n');
+    assert.equal((await reopened.analyze(copyHandle)).state, 'ready');
+    const after = reopenedIndex.snapshot(copied)!.metadata;
+    assert.ok(after.generation > before.generation);
+    assert.notEqual(after.inputFingerprint, before.inputFingerprint);
+    assert.deepEqual(await boundaries(reopened, copyHandle), canonical);
+    assert.deepEqual(await Promise.all(files.map(file => readFile(join(copied, '.dope', file)))), bytes);
+
+    const bareHandle = (await reopened.attach(pathToFileURL(bare).href)).projectHandle;
+    assert.equal((await reopened.initializationStatus(bareHandle)).state, 'uninitialized');
+    await assert.rejects(reopened.analyze(bareHandle), /not initialized/);
+    assert.equal(reopenedIndex.snapshot(bare), undefined);
+    await assert.rejects(reopened.status(copyHandle), /Invalid/);
+    reopened.dispose();
+
+    const originalIndex = new SoftwareMapIndex(new TypeScriptAnalyzer());
+    const originalBackend = new SoftwareMapBackend(originalIndex, { notifySoftwareMapChanged() {} });
+    try {
+      const handle = (await originalBackend.attach(pathToFileURL(original).href)).projectHandle;
+      assert.equal((await originalBackend.initializationStatus(handle)).state, 'initialized');
+      assert.equal((await originalBackend.analyze(handle)).state, 'ready');
+      assert.deepEqual(await boundaries(originalBackend, handle), canonical);
+      assert.deepEqual(await Promise.all(files.map(file => readFile(join(original, '.dope', file)))), bytes);
+    } finally { originalBackend.dispose(); }
+  } finally { await rm(original, { recursive: true, force: true }); await rm(destination, { recursive: true, force: true }); }
 });
