@@ -100,6 +100,24 @@
     --theia-badge-background: var(--dope-primary);
     --theia-badge-foreground: var(--dope-background);
     --theia-progressBar-background: var(--dope-primary);
+    --theia-statusBar-background: var(--dope-deep);
+    --theia-menu-selectionBackground: var(--dope-deep);
+    --theia-quickInputList-focusBackground: var(--dope-deep);
+    --theia-editorActionList-focusBackground: var(--dope-deep);
+    --theia-editorSuggestWidget-selectedBackground: var(--dope-deep);
+    --theia-inputOption-activeBorder: var(--dope-primary);
+    --theia-radio-activeBorder: var(--dope-primary);
+    --theia-sash-activeBorder: var(--dope-primary);
+    --theia-sash-hoverBorder: var(--dope-highlight);
+    --theia-pickerGroup-foreground: var(--dope-highlight);
+    --theia-notificationLink-foreground: var(--dope-highlight);
+    --theia-list-highlightForeground: var(--dope-highlight);
+    --theia-list-focusHighlightForeground: var(--dope-highlight);
+    --theia-editorSuggestWidget-highlightForeground: var(--dope-highlight);
+    --theia-editorSuggestWidget-focusHighlightForeground: var(--dope-highlight);
+    --theia-editorHoverWidget-highlightForeground: var(--dope-highlight);
+    --theia-editorLink-activeForeground: var(--dope-highlight);
+    --theia-selection-background: var(--dope-deep);
 }
 
 .dope-dark .theia-button:active,

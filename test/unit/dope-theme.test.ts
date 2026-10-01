@@ -51,6 +51,14 @@ test('locked palette is centralized and widget rules consume semantic tokens', (
     'editor-selectionBackground', 'badge-background', 'progressBar-background']) {
     assert.match(themeCss, new RegExp(`--theia-${token}:`));
   }
+  for (const token of ['statusBar-background', 'menu-selectionBackground', 'quickInputList-focusBackground',
+    'editorActionList-focusBackground', 'editorSuggestWidget-selectedBackground', 'inputOption-activeBorder',
+    'radio-activeBorder', 'sash-activeBorder', 'sash-hoverBorder', 'pickerGroup-foreground',
+    'notificationLink-foreground', 'list-highlightForeground', 'list-focusHighlightForeground',
+    'editorSuggestWidget-highlightForeground', 'editorSuggestWidget-focusHighlightForeground',
+    'editorHoverWidget-highlightForeground', 'editorLink-activeForeground', 'selection-background']) {
+    assert.match(themeCss, new RegExp(`--theia-${token}: var\\(--dope-(?:primary|highlight|deep)\\);`));
+  }
   for (const app of ['browser', 'electron']) {
     const manifest = JSON.parse(readFileSync(join(root, `apps/${app}/package.json`), 'utf8'));
     assert.equal(manifest.theia.frontend.config.defaultTheme, 'dope-dark');
