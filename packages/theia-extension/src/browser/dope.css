@@ -104,6 +104,16 @@
 .dope-physical-map-canvas .react-flow__edge-text { fill: var(--theia-editor-foreground); }
 .dope-physical-map-canvas .react-flow__edge-textbg { fill: var(--theia-editor-background); }
 .dope-physical-map-canvas .react-flow__controls button { color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border-color: var(--theia-widget-border, var(--theia-input-border)); }
+.dope-planning-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
+.dope-planning-bar select, .dope-planning-bar input { color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border); padding: 5px; }
+.dope-plan-conflict { border: 2px double var(--theia-editorWarning-foreground); padding: 4px; }
+.dope-plan-add { border-style: solid; border-width: 4px; }
+.dope-plan-modify, .dope-plan-contract { border-style: double; border-width: 4px; }
+.dope-plan-remove { border-style: dashed; opacity: .7; }
+.dope-plan-move { border-style: dotted; border-width: 4px; }
+.dope-plan-relationship { border-style: dashed; border-width: 3px; }
+.dope-plan-edge-relationship .react-flow__edge-path { stroke-dasharray: 8 3; stroke-width: 3; }
+.dope-plan-edge-remove .react-flow__edge-path { stroke-dasharray: 3 5; opacity: .6; }
 .dope-dark {
     --dope-background: #1F1F1F;
     --dope-primary: #FF7A1A;

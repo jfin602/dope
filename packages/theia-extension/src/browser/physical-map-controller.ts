@@ -30,6 +30,9 @@ export class PhysicalMapController {
     }
 
     get selectedId(): string | undefined { return this.map.selectedId; }
+    get sourceNodes(): GraphNode[] { return this.projectMatches && !this.loading ? this.map.nodes : []; }
+    get sourceRelationships(): GraphRelationship[] { return this.projectMatches && !this.loading ? this.relationships : []; }
+    get sourceViolations() { return this.projectMatches && !this.loading ? this.map.violations : []; }
     get projectMatches(): boolean { return !this.workspace || this.workspace === this.map.workspace; }
     get breadcrumbs(): GraphNode[] {
         const path: GraphNode[] = [];

@@ -7,16 +7,18 @@ import { OpenerService, open } from '@theia/core/lib/browser';
 import URI from '@theia/core/lib/common/uri';
 import { PhysicalMapController, physicalMapTabId, type PhysicalMapTabOptions } from './physical-map-controller';
 import type { CanvasNode } from './physical-map-projection';
+import { PlanningMapController } from './planning-map-controller';
+import { projectPlanningMap } from './planning-map-projection';
 import './dope.css';
 
 export const PHYSICAL_MAP_ID = 'dope-physical-map-canvas';
 
-function MapNode({ data }: { data: { item: CanvasNode } }): React.ReactElement {
+function MapNode({ data }: { data: { item: CanvasNode & { intent?: string } } }): React.ReactElement {
     const item = data.item;
-    return React.createElement('div', { className: `dope-map-node dope-map-${item.kind} dope-map-${item.state}` },
+    return React.createElement('div', { className: `dope-map-node dope-map-${item.kind} dope-map-${item.state}${item.intent ? ` dope-plan-${item.intent}` : ''}` },
         React.createElement('span', { className: 'dope-map-kind' }, `${item.context ? '↗ ' : ''}${item.kind}`),
         React.createElement('strong', null, item.name),
-        React.createElement('small', { className: 'dope-map-badge' }, item.badge));
+        React.createElement('small', { className: 'dope-map-badge', title: item.badge }, item.badge));
 }
 const nodeTypes = { architecture: MapNode };
 
@@ -31,11 +33,19 @@ export class PhysicalMapWidget extends BaseWidget {
     private readonly focusButton = document.createElement('button');
     private readonly tabButton = document.createElement('button');
     private readonly sourceButton = document.createElement('button');
+    private readonly planningBar = document.createElement('section');
+    private readonly planningListener;
+    private readonly heading = document.createElement('h2');
+    private readonly focusedTab: boolean;
+    private draftTitle = '';
+    private draftObjective = '';
 
     constructor(map: ConstructorParameters<typeof PhysicalMapController>[0], service: ConstructorParameters<typeof PhysicalMapController>[1],
         private readonly opener: OpenerService, private readonly openTab: (id: string) => Promise<void>,
+        private readonly planning: PlanningMapController,
         options?: PhysicalMapTabOptions) {
         super();
+        this.focusedTab = !!options;
         this.id = options ? physicalMapTabId(options) : PHYSICAL_MAP_ID;
         this.title.label = options ? `Map: ${options.focusId}` : 'Physical Map';
         this.title.caption = 'Physical Map — current architecture';
@@ -43,8 +53,11 @@ export class PhysicalMapWidget extends BaseWidget {
         this.title.closable = true;
         this.addClass('dope-physical-map-view');
         const bar = document.createElement('header');
-        const title = document.createElement('h2');
-        title.textContent = 'Physical Map';
+        this.heading.textContent = 'Physical Map';
+        const planningToggle = document.createElement('button');
+        planningToggle.type = 'button';
+        planningToggle.textContent = 'Planning Map';
+        planningToggle.onclick = () => this.planning.setMode(!this.planning.planningMode);
         const up = document.createElement('button');
         up.type = 'button';
         up.textContent = 'Up';
@@ -62,13 +75,15 @@ export class PhysicalMapWidget extends BaseWidget {
         fit.type = 'button';
         fit.textContent = 'Fit Architecture';
         fit.onclick = () => this.controller.fit();
-        bar.append(title, up, this.focusButton, this.tabButton, this.sourceButton, fit);
+        bar.append(this.heading, planningToggle, up, this.focusButton, this.tabButton, this.sourceButton, fit);
         this.breadcrumbs.setAttribute('aria-label', 'Map focus');
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.canvas.className = 'dope-physical-map-canvas';
-        this.node.append(bar, this.breadcrumbs, this.status, this.canvas);
+        this.planningBar.className = 'dope-planning-bar';
+        this.node.append(bar, this.planningBar, this.breadcrumbs, this.status, this.canvas);
         this.controller = new PhysicalMapController(map, service, () => this.render(), options?.workspace, options?.focusId);
+        this.planningListener = planning.onChange(() => this.render());
     }
 
     protected override onAfterAttach(msg: Message): void {
@@ -86,7 +101,15 @@ export class PhysicalMapWidget extends BaseWidget {
 
     private render(): void {
         if (!this.root) return;
-        const { projection, loading, error } = this.controller;
+        const { loading, error } = this.controller;
+        const selectedMap = this.planning.selected;
+        const planningMode = this.planning.planningMode;
+        this.heading.textContent = planningMode ? 'Planning Map' : 'Physical Map';
+        if (!this.focusedTab) this.title.label = planningMode ? 'Planning Map' : 'Physical Map';
+        const projection = planningMode && selectedMap ? projectPlanningMap(
+            this.controller.sourceNodes, this.controller.sourceRelationships, this.controller.sourceViolations,
+            selectedMap, this.planning.view, this.controller.focusId) : this.controller.projection;
+        this.renderPlanningBar();
         this.breadcrumbs.replaceChildren();
         const overview = document.createElement('button');
         overview.textContent = 'Project';
@@ -104,7 +127,9 @@ export class PhysicalMapWidget extends BaseWidget {
         this.tabButton.disabled = !selected || !this.controller.projectMatches;
         this.sourceButton.disabled = !selected || !this.controller.projectMatches;
         this.status.textContent = !this.controller.projectMatches ? 'This map tab belongs to another project.' :
+            this.planning.error ? `Planning Map: ${this.planning.error}` :
             error ? `Physical Map: ${error}` : loading ? 'Loading Physical Map…' :
+            planningMode && !selectedMap ? 'Create or select a Planning Map.' :
             projection.nodes.length ? `${this.controller.focusId ? 'Focused architecture' : projection.oneSystem ? 'One System overview' : 'Systems overview'} · ${projection.nodes.length} objects` :
                 'No published architecture. Initialize or refresh the Software Map in the left inspector.';
         const nodes: Node[] = projection.nodes.map(item => ({
@@ -116,7 +141,7 @@ export class PhysicalMapWidget extends BaseWidget {
         }));
         const edges: Edge[] = projection.edges.map(item => ({
             id: item.id, source: item.source, target: item.target, label: item.kind === 'dependency' ? item.label : undefined,
-            className: `dope-map-edge dope-map-edge-${item.kind} dope-map-edge-${item.state}`,
+            className: `dope-map-edge dope-map-edge-${item.kind} dope-map-edge-${item.state}${'intent' in item && item.intent ? ` dope-plan-edge-${item.intent}` : ''}`,
             type: item.kind === 'containment' ? 'straight' : 'smoothstep',
             selectable: false
         }));
@@ -132,6 +157,53 @@ export class PhysicalMapWidget extends BaseWidget {
         this.renderedGraph = graph;
     }
 
+    private renderPlanningBar(): void {
+        const bar = this.planningBar;
+        bar.replaceChildren();
+        if (!this.planning.planningMode) { bar.hidden = true; return; }
+        bar.hidden = false;
+        const button = (label: string, action: () => void, disabled = false) => {
+            const control = document.createElement('button');
+            control.type = 'button'; control.textContent = label; control.disabled = disabled;
+            control.onclick = action; bar.append(control); return control;
+        };
+        const maps = document.createElement('select');
+        maps.setAttribute('aria-label', 'Planning Map');
+        for (const map of this.planning.visibleMaps) {
+            const option = document.createElement('option'); option.value = map.id;
+            option.textContent = `${map.title} · ${map.status}${map.branchedFrom ? ' · branch' : ''}`;
+            maps.append(option);
+        }
+        maps.value = this.planning.selectedMapId ?? '';
+        maps.onchange = () => this.planning.select(maps.value);
+        bar.append(maps);
+        const history = document.createElement('label');
+        const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = this.planning.showHistory;
+        checkbox.onchange = () => this.planning.setHistory(checkbox.checked);
+        history.append(checkbox, 'History'); bar.append(history);
+        button('Refresh', () => void this.planning.refresh(), this.planning.loading);
+        const title = document.createElement('input'); title.placeholder = 'Map title'; title.setAttribute('aria-label', 'New map title');
+        title.value = this.draftTitle; title.oninput = () => { this.draftTitle = title.value; };
+        const objective = document.createElement('input'); objective.placeholder = 'Objective'; objective.setAttribute('aria-label', 'New map objective');
+        objective.value = this.draftObjective; objective.oninput = () => { this.draftObjective = objective.value; };
+        bar.append(title, objective);
+        button('Create', () => { if (title.value.trim() && objective.value.trim()) {
+            void this.planning.create(title.value.trim(), objective.value.trim()); this.draftTitle = ''; this.draftObjective = '';
+        } },
+            !this.planning.canCreate || this.planning.loading || !this.controller.projectMatches);
+        button('Branch alternative', () => void this.planning.duplicate(), !this.planning.selected || this.planning.loading);
+        for (const status of this.planning.allowedTransitions) button(status[0].toUpperCase() + status.slice(1),
+            () => void this.planning.transition(status), this.planning.loading);
+        for (const view of ['current', 'target', 'diff'] as const) button(
+            view === 'current' ? 'Current only' : view === 'target' ? 'Target only' : 'Diff',
+            () => this.planning.setView(view), this.planning.view === view);
+        for (const conflict of this.planning.conflicts) {
+            const item = document.createElement('span'); item.className = 'dope-plan-conflict';
+            item.textContent = `Conflict: ${conflict.identityId} (${conflict.mapIds.join(' / ')})`;
+            bar.append(item);
+        }
+    }
+
     private async openSource(): Promise<void> {
         try {
             const location = await this.controller.source();
@@ -143,6 +215,7 @@ export class PhysicalMapWidget extends BaseWidget {
     }
 
     override dispose(): void {
+        this.planningListener.dispose();
         this.controller.dispose();
         this.root?.unmount();
         this.root = undefined;
