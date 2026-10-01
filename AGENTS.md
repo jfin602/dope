@@ -27,7 +27,7 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-**Current Phase 5 interruption:** P11 is paused at `0.5.11` behind `c5-smap-acceptance-debug-loop`. The correction may change only unaccepted sMap review work-state persistence, deterministic acceptance diagnostics/checking, and the narrow UI/service seams required to expose them. It must not repair the current Adaptive SEO ownership conflict, change synthesis/evidence-to-root semantics, regenerate benchmark sMaps, run the later iterative debug loop, qualify P11, or advance to `0.5.12`.
+**Current Phase 5 interruption:** P11 is paused / Not Green at `0.5.11` behind the one-off `c5-physical-map-load` correction. The Adaptive SEO architecture is already accepted and must remain untouched. The correction may repair only the center Physical Map connection/load path plus the two stale P11 qualification assertions (Phase 3 filename guard and Dope Dark restart default). It must not regenerate sMap state, change synthesis/provider behavior, redesign map/planning semantics, qualify P11 itself, or advance to `0.5.12`.
 
 Product Phase 5 — Visual Software Planning is ACTIVE from baseline `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved core scope. Architecture-discovery follow-ons remain historical evidence; the provider comparison is deferred. `c4-smap-storage` and `c4-color-theme` are GREEN / QUALIFIED at unchanged `0.4.6`.
 

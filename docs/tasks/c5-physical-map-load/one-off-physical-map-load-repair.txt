@@ -1,0 +1,164 @@
+TASK: One-off correction — Repair center Physical Map load before P11 rerun
+
+MODEL / REASONING / USAGE
+
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- This is a one-off correction prompt, NOT a codex phase/correction stack prompt.
+- Do not run this file through `codex:phase`.
+
+VERSIONING
+
+- Keep the complete Dope workspace exactly at `0.5.11`.
+- Do not advance P11 or create `0.5.12` work.
+
+GOAL
+
+Repair the center Physical Map loading defect exposed by P11, then clear the two already-proved stale qualification assertions. Do focused implementation validation only. P11 will be rerun separately as the real browser/T3 qualification.
+
+PREFLIGHT
+
+Read:
+- BOOT.md / AGENTS.md;
+- docs/tasks/c5-physical-map-load/README.md;
+- docs/tasks/p5/P11-visual-planning-dogfooding-evidence.md, especially the accepted Adaptive SEO rerun;
+- docs/tasks/p5/implementation-plan.md;
+- ADR 0008, ADR 0016 and ADR 0017;
+- current frontend/service/controller source and focused tests.
+
+Inspect at minimum:
+- packages/theia-extension/src/browser/frontend-module.ts;
+- packages/theia-extension/src/browser/software-map-controller.ts;
+- packages/theia-extension/src/browser/physical-map-controller.ts;
+- packages/theia-extension/src/browser/physical-map-widget.ts;
+- packages/theia-extension/src/browser/physical-map-projection.ts;
+- test/unit/physical-map-canvas.test.ts;
+- test/unit/physical-map-navigation.test.ts;
+- test/unit/pre-phase4-clean-baseline.test.ts;
+- test/integration/restart.test.mjs.
+
+Require:
+- current package version `0.5.11`;
+- P11 remains Not Green and P12 unexecuted;
+- accepted `/home/jfin/dev/adaptive-seo-dope` reference is not modified;
+- no sMap regeneration/provider work is performed.
+
+OBSERVED FAILURE
+
+P11 proved:
+- accepted Systems/Subsystems appear in the left sMap inspector;
+- center Physical Map remains at `Loading Physical Map...`;
+- a clean browser origin reproduces it;
+- console reports `Another channel with the id '/services/dope/software-map' is already open.`.
+
+Current wiring appears to:
+1. bind a singleton `SoftwareMapService` proxy used by `SoftwareMapController`;
+2. create another `ServiceConnectionProvider.createProxy<SoftwareMapService>(..., softwareMapServicePath)` inside each Physical Map widget factory;
+3. have `PhysicalMapController.refresh()` call `service.attach(workspace)` again before relationship queries.
+
+Treat this as a strong hypothesis, not an assumption. Trace the real lifecycle first.
+
+IMPLEMENTATION — CENTER MAP
+
+If the duplicate-channel/second-attach path is confirmed:
+
+- make `SoftwareMapController` remain the single frontend owner of the Software Map service connection/project handle;
+- add the smallest bounded query seam needed by the Physical Map to obtain relationship pages/results for the already-published generation;
+- preserve project handle, project switch, request and generation stale guards;
+- have `PhysicalMapController` consume the inspector controller's published `nodes`, `violations`, status/workspace and bounded relationship query;
+- remove the Physical Map widget's independent Software Map proxy;
+- remove the center controller's independent `attach(workspace)`;
+- preserve relationship kinds/scopes and deterministic projection behavior;
+- preserve focused-tab identity, selection, source navigation, Focus/Up/Fit and Planning Map consumers.
+
+Do NOT solve the symptom by opening another differently named channel or by weakening stale-generation checks.
+
+If the hypothesis is disproved, stop and trace the actual load transition:
+`Open Physical Map -> widget/controller -> published status -> relationship fetch -> projection -> loading=false/render`.
+Repair the smallest actual defect in that path while keeping one coherent Software Map state owner.
+
+REGRESSION
+
+Add a permanent focused regression that would fail on the current P11 defect.
+
+It must prove at minimum:
+- a ready/published accepted Software Map with Systems/Subsystems can create/refresh the Physical Map controller;
+- the center controller does not perform a second Software Map attach/channel acquisition;
+- relationship data is read through the existing published project context;
+- loading clears;
+- projection is non-empty;
+- project/generation change during async fetch cannot publish stale results;
+- a relationship query failure clears loading and exposes an error rather than hanging.
+
+Keep focused tab/navigation tests Green.
+
+STALE PHASE 3 GUARD
+
+Repair `test/unit/pre-phase4-clean-baseline.test.ts`.
+
+The current filename pattern incorrectly treats approved Phase 5 files such as `planning-map-controller.ts` as removed Phase 3 Planning modules.
+
+Requirements:
+- keep exact negative checks for removed `packages/planning`, old planning contracts/service/store/backend/view/widget/mode identifiers and `.dope/planning.json`;
+- permit current `planning-map-*` Phase 5 files;
+- do not broadly delete or neuter the regression;
+- add/adjust an assertion so the distinction between removed Phase 3 Planning and current Phase 5 Planning Map code is explicit.
+
+STALE THEME RESTART ASSERTION
+
+Repair `test/integration/restart.test.mjs`.
+
+The qualified default is `dope-dark`, not historical generic `dark`.
+
+Change only the stale default expectation needed to match ADR 0016/current app config. Preserve:
+- explicit `light` selection;
+- persisted light selection after restart;
+- invalid-theme/fallback behavior;
+- workspace/editor/keybinding/extension restart assertions.
+
+Do not change production theme behavior merely to satisfy the test.
+
+VALIDATION
+
+Use focused implementation validation only.
+
+Run:
+1. Physical Map canvas/navigation tests including the new regression.
+2. `test/unit/pre-phase4-clean-baseline.test.ts`.
+3. Affected Theia extension build.
+4. Browser build.
+5. Electron build required for restart coverage.
+6. `npm run test:restart`.
+7. `git diff --check`.
+8. Verify all ten live manifests/internal refs remain exactly `0.5.11` and no root package-lock appeared.
+
+Do NOT run:
+- the P11 A-I visual qualification;
+- `npm run check` just for reassurance;
+- AppImage packaging/native launch;
+- Local/Gemini/provider work;
+- sMap synthesis or acceptance changes.
+
+BOUNDARIES
+
+Do not modify:
+- `/home/jfin/dev/adaptive-seo-dope`;
+- accepted Adaptive SEO architecture/marker;
+- synthesis/provider code unless the traced load defect unexpectedly proves direct coupling, in which case stop and report rather than broadening scope;
+- PlanningMap domain semantics;
+- package versions.
+
+FINAL RESPONSE
+
+Report:
+- confirmed root cause;
+- exact connection/lifecycle change;
+- regression added;
+- Phase 3 guard correction;
+- restart theme correction;
+- exact focused commands/results;
+- changed files;
+- confirmation version remains `0.5.11`;
+- whether the candidate is ready for a fresh P11 rerun on `/tmp/adaptive-seo-dope-p11`.
+
+Do not claim P11 Green. P11 is the qualification step after this one-off correction.

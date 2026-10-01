@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 5 — Visual Software Planning is ACTIVE from baseline `0.5.0`; P1-P10 are implemented and P11 is **PAUSED / NOT GREEN at `0.5.11`** while `c5-smap-acceptance-debug-loop` installs acceptance-debug machinery. P12 / `0.5.12` remains blocked.
+Current stage: Product Phase 5 — Visual Software Planning is ACTIVE from baseline `0.5.0`; P1-P10 are implemented and P11 is **PAUSED / NOT GREEN at `0.5.11`** behind one-off correction `c5-physical-map-load`. The accepted Adaptive SEO sMap prerequisite is cleared; the remaining blocker is the center Physical Map loader plus two stale qualification assertions. P12 / `0.5.12` remains blocked.
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -54,6 +54,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c4-color-theme — Dope Dark | GREEN / QUALIFIED at unchanged `0.4.6`. The bounded correction established the first-class Dope Dark theme while preserving explicit user override. |
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Correction c5 — sMap Acceptance Debug Loop | P11 interruption at `0.5.11`: persist mutable unaccepted review work, enumerate deterministic acceptance blockers, and provide an offline checker so one generated sMap can be debugged across restarts without provider calls. This correction does not perform the actual Adaptive SEO debug loop. |
+| Correction c5 — Physical Map Load | One-off `0.5.11` repair after accepted Adaptive SEO architecture loads in the inspector but the center Physical Map remains stuck at Loading. Remove duplicate Software Map channel/attach ownership if confirmed, preserve one shared published map state, and correct stale Phase 3/theme qualification assertions. P11 remains the qualification gate. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 8 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
@@ -678,6 +679,38 @@ Make synthesis progress distinguish failed call attempts and active automatic re
 
 This is separate from the active `c5-smap-acceptance-debug-loop` acceptance checker and does not change its closeout, the preserved Adaptive SEO review, or the P11/P12 routing above.
 
+## Phase 5 interruption correction — `c5-physical-map-load`
+
+Status: **APPROVED / ONE-OFF IMPLEMENTATION at unchanged `0.5.11`**
+
+Activation source: `9dbde23fa37f59aa3f01c342bfae9f4d0e6cea59`.
+
+Evidence:
+- accepted `/home/jfin/dev/adaptive-seo-dope` canonical architecture and marker are healthy;
+- `/tmp/adaptive-seo-dope-p11` shows accepted Systems/Subsystems in the left inspector;
+- center Physical Map remains at **Loading Physical Map...**;
+- browser console reports `Another channel with the id '/services/dope/software-map' is already open.`;
+- current frontend wiring creates a singleton Software Map proxy for the inspector but also creates a new proxy in each Physical Map widget and the Physical Map controller calls `attach(workspace)` again;
+- focused Phase 5 tests pass, while the Phase 3 removal guard and restart theme assertion are stale against current Phase 5/Dope Dark contracts.
+
+Scope:
+- prove the duplicate-channel/second-attach hypothesis before changing code;
+- make the center Physical Map consume the already-attached/published Software Map controller state and a bounded relationship-query seam rather than owning another Software Map attach lifecycle;
+- preserve project/generation stale guards, focused tabs, source navigation and relationship semantics;
+- add a permanent regression for accepted ready map -> center canvas exits loading and renders;
+- narrow the Phase 3 negative filename guard without weakening its substantive removed-contract checks;
+- update the restart default-theme assertion from historical `dark` to qualified `dope-dark`, preserving explicit light override/restart behavior.
+
+Out of scope:
+- Adaptive SEO architecture/sMap mutation or regeneration;
+- synthesis/provider changes;
+- reopening `c5-synth-observe`;
+- PlanningMap/domain redesign;
+- P11 qualification itself;
+- any version change.
+
+Exit:
+The one-off implementation passes focused map regressions, the corrected Phase 3 guard, restart regression, affected builds and diff/version checks. Then rerun P11 on `/tmp/adaptive-seo-dope-p11`; P11 determines qualification and P12 eligibility.
 ## Product Phase 6 — AI Presence
 
 Purpose:

@@ -34,23 +34,19 @@ Run implementation prompts:
 
 The runner owns P1-P10 commits and stops for P11 because direct browser GUI evidence is required. After P11 is completed and committed, resume P12 closeout from the exact qualified candidate.
 
-## P11 pause — acceptance-debug machinery gate
+## P11 pause — center Physical Map correction gate
 
 P11 is currently paused / Not Green at `0.5.11`.
 
-The Adaptive SEO qualification workspace reached an unaccepted Architecture Review whose real acceptance path is blocked. Before continuing qualification, `c5-smap-acceptance-debug-loop` installs durable mutable review state plus deterministic acceptance diagnostics/checking.
+The acceptance-debug machinery is Green and the preserved Adaptive SEO architecture was successfully accepted through the real generated-review path. The latest P11 rerun on `/tmp/adaptive-seo-dope-p11` proved the accepted hierarchy appears in the inspector, but the center Physical Map remains at **Loading Physical Map...**.
 
-This correction is **machinery only**. It does not repair the Adaptive SEO architecture and it does not contain the later iterative debug-loop prompt.
+Before rerunning P11, execute the one-off `c5-physical-map-load` Sol High repair. It is not a codex phase/correction stack and it does not qualify P11.
 
 Routing:
 
-`P1-P10 -> P11 paused -> c5-smap-acceptance-debug-loop -> separate Adaptive SEO acceptance-debug loop -> resume P11 -> P12`
+`P1-P10 -> acceptance prerequisite cleared -> P11 Not Green on center map -> c5-physical-map-load one-off -> rerun P11 -> P12`
 
-P12/`0.5.12` is not eligible until the real Adaptive SEO architecture can be accepted and P11 completes.
-
-
-P11's first Dope-on-Dope attempt is retained as Not Green evidence. The rerun uses `/tmp/adaptive-seo-dope-p11`, a disposable copy of the accepted `/home/jfin/dev/adaptive-seo-dope` including its `.dope/` state, for the visual loop. Keep the accepted source workspace unchanged; Dope remains the host/regression/package fixture. Confirm usable canonical/Physical Map state in the `/tmp` workspace before GUI qualification.
-
+The accepted `/home/jfin/dev/adaptive-seo-dope` reference must remain unchanged. P11 continues to use `/tmp/adaptive-seo-dope-p11` for qualification. P12/`0.5.12` remains ineligible until P11 is Green.
 ## Product boundary
 
 Phase 5 proves the human-driven loop:

@@ -11,9 +11,9 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 ## Current state
 
-**Phase 5 P11 is PAUSED at package `0.5.11` while `c5-smap-acceptance-debug-loop` installs resumable unaccepted-review work state and deterministic acceptance diagnostics.** The motivating Adaptive SEO review is currently blocked from acceptance, but this correction is machinery-only: it must not repair that architecture, regenerate the sMap, run the iterative debug loop, complete P11, or advance P12/`0.5.12`. After the correction closes, the preserved Adaptive SEO review is debugged separately until the real acceptance path succeeds; only then does P11 resume.
+**Phase 5 P11 is PAUSED / NOT GREEN at package `0.5.11` behind `c5-physical-map-load`.** The acceptance prerequisite is now cleared: the generated Adaptive SEO review was corrected without regeneration, real `acceptReview` succeeded, and `/home/jfin/dev/adaptive-seo-dope` carries accepted canonical `.dope/architecture.json` plus matching `.dope/smap.json`. The latest P11 rerun on `/tmp/adaptive-seo-dope-p11` proved the inspector can load that accepted architecture, but the center Physical Map remains stuck at **Loading Physical Map...**. The one-off `c5-physical-map-load` correction repairs that center-map integration plus two stale qualification assertions; P11 is then rerun as the qualification gate. P12 / `0.5.12` remains blocked.
 
-`c5-synth-observe` is a separately queued correction for truthful synthesis retry progress, model-coupled manual retry and a read-only generation dry run. It does not expand the active acceptance-debug machinery scope or change the P11/P12 gate. See `docs/tasks/c5-synth-observe/README.md`.
+`c5-synth-observe` is separate historical side work and closed **Evidence Gap / Not Green** at unchanged `0.5.11`; retain its implementation/evidence without reopening it here. See `docs/tasks/c5-synth-observe/closeout.md`.
 
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
@@ -241,16 +241,10 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-The Product Phase 5 documentation review, authority promotion, prompt assessment, implementation plan and executable `p5` stack are complete.
+Run the one-off Sol High correction in `docs/tasks/c5-physical-map-load/one-off-physical-map-load-repair.txt` at unchanged `0.5.11`.
 
-Validate the stack:
+Do not run it through `codex:phase`; it is not a correction stack. It repairs only the center Physical Map load path and the two stale P11 regression assertions.
 
-`npm run codex:phase:validate -- p5`
+After that bounded repair, rerun P11 directly on `/tmp/adaptive-seo-dope-p11`. P11 owns the browser/T3 qualification. P12 remains blocked until P11 is Green.
 
-Then execute implementation routing:
-
-`npm run codex:phase -- p5 --closeout`
-
-Expected sequence is `0.5.1` through `0.5.12`. P1-P10 are runner-owned implementation/integration prompts. P11 is browser-required direct visual qualification on a mapped Adaptive SEO copy in the real Theia GUI, with Dope retained for host/regression/package checks. P12 is the sole evidence-only closeout.
-
-Phase 5 remains focused on the provider-free visual workflow. Do not pull general AI Presence, Agent Mind, ProposedAction, model-driven implementation, mutation authority or scoped delegation into this stack.
+Phase 5 remains focused on the provider-free visual workflow. Do not pull general AI Presence, Agent Mind, ProposedAction, model-driven implementation, mutation authority or scoped delegation into this correction.
