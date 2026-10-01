@@ -1,0 +1,66 @@
+TASK: Phase 5 / P3 — Center Physical Map canvas
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.5.3`.
+
+GOAL
+
+Add the first large center-workspace Physical Map visualization as a read-only projection of existing Software Map state.
+
+PREFLIGHT
+
+Read P5 authority/plans, exact P1-P2 source/tests, ADR 0008/0017, current sMap inspector/controller/review widget/frontend registration, Software Map service contracts and Dope theme rules.
+
+Require coherent `0.5.2`.
+
+CANVAS SUBSTRATE
+
+Use `@xyflow/react@12.11.6` in `@dope/theia-extension` presentation only.
+
+Preserve React/React DOM `19.2.8` and Theia `1.75.0`. Configure compatible React rendering/types as required by the extension build.
+
+Do not add another graph/layout engine. Use a deterministic architecture-first layout adapter with stable ordering suitable for project/System/Subsystem views.
+
+React Flow nodes/edges/viewport objects are disposable presentation data and must never enter Software Map, Visual Planning service contracts or `.dope/` canonical state.
+
+IMPLEMENT
+
+Create focused center-canvas projection/controller/widget files rather than expanding `SoftwareMapController` or `dope-workbench.ts`.
+
+Register a real center-workspace Physical Map command/widget reachable from the existing sMap surface.
+
+Default view:
+- Systems plus immediate Subsystems;
+- Components/Code hidden initially;
+- one-System project uses that System as the main frame;
+- visible containment and dependencies;
+- Fit Architecture control.
+
+Visual grammar:
+- System/Subsystem identity primarily through hierarchy, scale, shape, iconography and containment;
+- containment and dependency edges distinct;
+- realized/declared-only/detected-only/drifted/unassigned state uses badges/borders/edge styles, not color alone;
+- consume semantic Theia/Dope theme tokens;
+- keep dense evidence/provenance in the left inspector rather than duplicating it on canvas.
+
+The canvas is read-only in P3. No Planning Map or drag mutation.
+
+Advance versions/internal refs coherently to `0.5.3`.
+
+TESTS
+
+Add pure projection tests proving default Systems+Subsystems, deterministic ordering/layout, state/edge visual metadata independent from raw colors, no React Flow types in domain contracts, and one-System behavior.
+
+Add focused UI/registration tests proving the center widget is not the left inspector/right sidebar and current sMap/Project Mind placement remains intact.
+
+Run focused tests, extension typecheck/build and `git diff --check`. Do not perform P11 direct GUI qualification here.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report canvas substrate/projection boundary, visual semantics, focused tests and P4 eligibility.
