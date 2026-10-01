@@ -219,6 +219,46 @@ test('Gemini failure preserves retry without Local fallback or secret in UI erro
   controller.dispose();
 });
 
+test('failed-stage retry waits for a successful test of the changed Gemini model', async () => {
+  const c = connection();
+  const saved = { state: 'failed', declarationPresent: false, declarationFingerprint: 'absent', resumable: {
+    runId: 'saved', failedStage: 'subsystem-discovery', failedProviderKind: 'gemini', failedModelLabel: 'gemini-3.6-flash',
+    message: 'Gemini synthesis request failed', completed: [{ stage: 'system-discovery', providerKind: 'gemini', modelLabel: 'gemini-3.6-flash' }] } };
+  c.initializationStatus = () => Promise.resolve(saved);
+  let retries = 0;
+  c.retryFailedStage = () => { retries++; return Promise.resolve({ reviewId: 'recovered', packet: { items: [] },
+    proposal: { nodes: [], openQuestions: [], unassignedEvidenceRefs: [] }, draft: [] }); };
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  controller.chooseProvider('gemini');
+  controller.changeGeminiKey('session-secret');
+  await controller.discoverGemini();
+  await controller.probeGemini();
+  await controller.changeGeminiModel('gemini-3.8-flash');
+  await controller.synthesize('gemini', true);
+  assert.equal(retries, 0);
+  await controller.probeGemini();
+  await controller.synthesize('gemini', true);
+  assert.equal(retries, 1);
+  assert.equal(controller.review.reviewId, 'recovered');
+  assert.deepEqual(saved.resumable.completed, [{ stage: 'system-discovery', providerKind: 'gemini', modelLabel: 'gemini-3.6-flash' }]);
+  controller.dispose();
+});
+
+test('progress keeps text labels and theme tokens, with terminal heading from run state', () => {
+  const widget = readFileSync(new URL('../../packages/theia-extension/src/browser/software-map-widget.ts', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+  assert.match(widget, /runState === 'failed' \? 'Analysis failed'/);
+  assert.match(widget, /Retry failed stage with \$\{model\.geminiModel/);
+  assert.match(widget, /Retry failed stage with \$\{model\.model/);
+  assert.match(widget, /`\$\{state\}: \$\{item\.title\}`/);
+  for (const state of ['complete', 'current', 'queued', 'failed'])
+    assert.match(css, new RegExp(`dope-smap-stage-${state}`));
+  assert.match(css, /var\(--theia-testing-iconPassed/);
+  assert.match(css, /var\(--theia-testing-iconFailed/);
+  assert.doesNotMatch(widget.slice(widget.indexOf('private renderProgress()'), widget.indexOf('private renderReview()')), /\.error/);
+});
+
 test('Gemini refresh and restart retain only selected model preference, never readiness or key', async () => {
   const stored: any = { kind: 'gemini', endpoint: 'http://127.0.0.1:1234/v1', model: '', geminiModel: 'gemini-3.8-flash' };
   const preference = { getData: async () => stored, setData: async (_key: string, value: any) => Object.assign(stored, value) };

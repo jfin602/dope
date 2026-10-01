@@ -6,6 +6,7 @@ import {
   createArchitectureEvidenceView, validateArchitectureEvidenceView, usableEvidenceTokens, assertSynthesisInputBudget,
   validateSynthesisStageRequest, parseSynthesisStageResult, synthesisStageResultSchemas, assembleArchitectureProposal,
   parseAnalysisProgressEvent, synthesisStageRequestSchema,
+  SynthesisStageCache, SynthesisProviderFailure,
 } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidencePacket, ArchitectureProposal, SoftwareMapInitializationState,
   SynthesisCapabilities, SynthesisStageRequest, SystemCandidate, SystemSubtree } from '../../packages/software-map/lib/index.js';
@@ -122,6 +123,43 @@ const subsystem = { candidateKey: 'candidate:server', kind: 'subsystem' as const
 const component = { candidateKey: 'candidate:main', kind: 'component' as const, parentCandidateKey: subsystem.candidateKey,
   name: 'Main', responsibility: 'Start server', confidence: 1, ambiguityCodes: [], evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] };
 const subtree: SystemSubtree = { systemKey: systemCandidate.candidateKey, nodes: [subsystem, component] };
+test('cache retries only classified transient or malformed Gemini failures and reports the next attempt', async () => {
+  const valid = result('system-discovery', { systems: [systemCandidate] });
+  for (const failureClass of ['transient-transport', 'invalid-json'] as const) {
+    const cache = new SynthesisStageCache();
+    const progress: string[] = [];
+    let calls = 0;
+    const provider = { kind: 'gemini' as const, runStage: async () => {
+      if (++calls === 1) throw new SynthesisProviderFailure('safe failure', failureClass);
+      return { output: valid, usage: { tokenMeasurement: 'unavailable' as const, requestBytes: 1, outputBytes: 1 } };
+    } };
+    await cache.run(request('system-discovery'), packet, provider as any, 'gemini:model', undefined, () => {},
+      (attempt, retrying) => progress.push(`${attempt.attempt}:${attempt.failureClass ?? 'success'}:${retrying}`),
+      'model', attempt => progress.push(`start:${attempt}`));
+    assert.deepEqual(progress, [`1:${failureClass}:true`, 'start:2', '2:success:false']);
+    assert.equal(cache.attempts().length, 2);
+    assert.equal(cache.attempts()[0].consumed, false);
+    assert.equal(cache.checkpoints()[0].modelLabel, 'model');
+  }
+  for (const output of [result('system-discovery', { systems: [{ ...systemCandidate, evidenceRefs: ['invented'] }] }),
+    result('system-discovery', { systems: [systemCandidate, systemCandidate] })]) {
+    const cache = new SynthesisStageCache();
+    const progress: boolean[] = [];
+    let calls = 0;
+    await assert.rejects(cache.run(request('system-discovery'), packet,
+      { kind: 'gemini', runStage: async () => { calls++; return { output, usage: { tokenMeasurement: 'unavailable' } }; } } as any,
+      'gemini:model', undefined, () => {}, (_attempt, retrying) => progress.push(retrying)));
+    assert.equal(calls, 1);
+    assert.deepEqual(progress, [false]);
+  }
+  const cache = new SynthesisStageCache();
+  const progress: boolean[] = [];
+  await assert.rejects(cache.run(request('system-discovery'), packet,
+    { kind: 'gemini', runStage: async () => { throw new SynthesisProviderFailure('safe failure', 'transient-upstream'); } } as any,
+    'gemini:model', undefined, () => {}, (_attempt, retrying) => progress.push(retrying)));
+  assert.deepEqual(progress, [true, true, false]);
+  assert.equal(cache.attempts().length, 3);
+});
 test('capabilities reserve context and reject unsafe or malformed estimates', async () => {
   assert.equal(usableEvidenceTokens(capability), 650);
   assert.equal(await assertSynthesisInputBudget({ estimateTokens: async () => 650 }, capability, 'input'), 650);

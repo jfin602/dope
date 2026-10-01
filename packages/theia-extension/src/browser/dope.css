@@ -59,6 +59,12 @@
 .dope-smap-view summary { cursor: pointer; }
 .dope-smap-view .dope-smap-edge { border-left: 2px solid var(--theia-focusBorder); padding-left: 8px; margin: 8px 0; }
 .dope-smap-view p { overflow-wrap: anywhere; }
+.dope-smap-progress ol li { color: var(--theia-editor-foreground); border-left: 3px solid transparent; padding-left: 6px; }
+.dope-smap-progress .dope-smap-stage-complete { border-color: var(--theia-testing-iconPassed, var(--theia-charts-green, var(--theia-focusBorder))); }
+.dope-smap-progress .dope-smap-stage-current { border-color: var(--theia-focusBorder); font-weight: 600; }
+.dope-smap-progress .dope-smap-stage-queued { border-color: var(--theia-descriptionForeground); }
+.dope-smap-progress .dope-smap-stage-failed,
+.dope-smap-progress .dope-smap-stage-cancelled { border-color: var(--theia-testing-iconFailed, var(--theia-charts-red, var(--theia-focusBorder))); font-weight: 600; }
 .dope-smap-review { padding: 24px; }
 .dope-smap-review-layout { display: grid; grid-template-columns: minmax(220px, 32%) minmax(0, 1fr); gap: 24px; align-items: start; }
 .dope-smap-review-layout nav { border-right: 1px solid var(--theia-widget-border, var(--theia-input-border)); padding-right: 12px; }

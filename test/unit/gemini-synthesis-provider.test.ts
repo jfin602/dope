@@ -165,6 +165,7 @@ test('Gemini reports stage truncation without exposing response text', async () 
     String(url).endsWith(':generateContent') ? { ...completion(key), candidates: [{
       ...completion(key).candidates[0], finishReason: 'MAX_TOKENS' }] } : model) });
   await assert.rejects(provider.runStage(request), error => {
+    assert.equal((error as SynthesisProviderFailure).failureClass, 'nonretryable-provider');
     assert.match((error as Error).message, /Gemini stage output truncated at token limit/);
     assert.ok(!String(error).includes(key));
     return true;

@@ -397,7 +397,8 @@ export class SoftwareMapController {
         }
     }
     async synthesize(kind: SynthesisSetup['kind'] = this.providerKind, retry = false): Promise<void> {
-        if (kind !== this.providerKind || !this.setupReady || !this.connection || !this.handle) return;
+        if (kind !== this.providerKind || !this.setupReady || this.setupBusy || !this.connection || !this.handle ||
+            retry && !this.initialization?.resumable) return;
         const project = this.project;
         const request = ++this.setupRequest;
         this.setupBusy = true;

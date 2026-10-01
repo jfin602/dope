@@ -158,7 +158,7 @@ export class GeminiSynthesisProvider {
         } catch (error) { throw sanitized(error, abortSignal.aborted); }
         if (abortSignal.aborted) throw sanitized(undefined, true);
         if (response.candidates?.[0]?.finishReason === 'MAX_TOKENS')
-            throw new SynthesisProviderFailure('Gemini stage output truncated at token limit', 'invalid-json');
+            throw new SynthesisProviderFailure('Gemini stage output truncated at token limit', 'nonretryable-provider');
         let output: unknown;
         let content: string;
         try {

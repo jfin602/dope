@@ -161,6 +161,11 @@ export class SoftwareMapWidget extends BaseWidget {
         select.onchange = () => model.changeModel(select.value);
         label.append(select);
         local.append(label);
+        if (model.initialization?.resumable) {
+            const retry = this.button(`Retry failed stage with ${model.model || 'selected Local model'}`, () => void model.synthesize('local', true));
+            retry.disabled = model.providerKind !== 'local' || !model.setupReady || model.setupBusy;
+            local.append(retry);
+        }
         const probe = this.button('Run structured-output capability probe', () => void model.probe());
         probe.disabled = model.setupBusy || !model.model;
         local.append(probe, this.element('p', model.providerKind === 'local' && model.setupReady ? 'Structured-output probe passed. Model ready.' :
@@ -191,6 +196,11 @@ export class SoftwareMapWidget extends BaseWidget {
         geminiSelect.onchange = () => void model.changeGeminiModel(geminiSelect.value);
         geminiLabel.append(geminiSelect);
         gemini.append(geminiLabel);
+        if (model.initialization?.resumable) {
+            const retry = this.button(`Retry failed stage with ${model.geminiModel || 'selected Gemini model'}`, () => void model.synthesize('gemini', true));
+            retry.disabled = model.providerKind !== 'gemini' || !model.setupReady || model.setupBusy;
+            gemini.append(retry);
+        }
         const geminiProbe = this.button('Test selected model', () => void model.probeGemini());
         geminiProbe.disabled = model.setupBusy || !model.geminiModel || !model.geminiModels.includes(model.geminiModel);
         gemini.append(geminiProbe, this.element('p', model.providerKind === 'gemini' && model.setupReady ?
@@ -200,13 +210,11 @@ export class SoftwareMapWidget extends BaseWidget {
         geminiStart.disabled = model.providerKind !== 'gemini' || !model.setupReady || model.setupBusy;
         gemini.append(geminiStart);
         if (model.initialization?.resumable) {
-            const retry = this.button('Retry failed stage', () => void model.synthesize(model.providerKind, true));
-            retry.disabled = !model.setupReady || model.setupBusy;
             this.controls.append(this.element('p', `Failed: ${model.initialization.resumable.failedStage ?? 'interrupted stage'}` +
                 (model.initialization.resumable.failedSubject ? ` · ${model.initialization.resumable.failedSubject}` : '')),
             this.element('p', model.initialization.resumable.message),
             ...(model.initialization.resumable.failedProviderKind && model.initialization.resumable.failedModelLabel ?
-                [this.element('p', `${model.initialization.resumable.failedProviderKind} · ${model.initialization.resumable.failedModelLabel}`)] : []), retry);
+                [this.element('p', `${model.initialization.resumable.failedProviderKind} · ${model.initialization.resumable.failedModelLabel}`)] : []));
         }
         const cancel = this.button('Cancel', () => void model.cancel());
         this.controls.append(local, gemini, cancel);
@@ -218,13 +226,16 @@ export class SoftwareMapWidget extends BaseWidget {
         const work = current && ['failed', 'cancelled'].includes(current.stage) ?
             [...events].reverse().find(event => !['failed', 'cancelled', 'completed'].includes(event.stage)) ?? current : current;
         const saved = this.controller.initialization?.resumable;
+        const runState = this.controller.initialization?.state;
         const completed = new Set([...events.filter(event => event.status === 'completed').map(event => event.stage),
             ...(saved?.completed.map(item => item.stage) ?? [])]);
         const active = work?.stage ?? saved?.failedStage;
         const report = this.element('section');
         report.className = 'dope-smap-progress';
-        report.append(this.element('h3', current?.status === 'failed' || this.controller.initialization?.state === 'failed' ? 'Analysis failed' :
-            current?.status === 'cancelled' ? 'Analysis cancelled' : 'Analyzing project'));
+        report.append(this.element('h3', runState === 'failed' ? 'Analysis failed' :
+            current?.stage === 'cancelled' ? 'Analysis cancelled' :
+                current?.status === 'retrying' || current?.attempt && current.attempt > 1 && current.status === 'started' ?
+                    'Retrying model call' : 'Analyzing project'));
         this.progressClock.textContent = `Elapsed analysis: ${Math.floor(this.controller.analysisElapsedMs() / 1000)}s`;
         report.append(this.progressClock);
         if (current) {
@@ -235,29 +246,36 @@ export class SoftwareMapWidget extends BaseWidget {
                     analysisStages.find(item => item.stage === work.callPurpose)?.title ?? work.callPurpose}`));
             if (work?.providerKind && work.providerModelLabel) report.append(this.element('p',
                 `${work.providerKind === 'local' ? 'Local' : 'Gemini'} · ${work.providerModelLabel}`));
+            else if (saved?.failedProviderKind && saved.failedModelLabel) report.append(this.element('p',
+                `${saved.failedProviderKind === 'local' ? 'Local' : 'Gemini'} · ${saved.failedModelLabel}`));
+            if (work?.attempt) report.append(this.element('p', `Attempt ${work.attempt}${work.status === 'retrying' ? ' failed; retrying' : ''}`));
             const calls = events.filter(event => event.callDurationMs !== undefined);
             if (calls.length) {
                 const list = this.element('ul');
                 for (const call of calls) {
                     const usage = call.usage;
-                    list.append(this.element('li', `${call.stage}${call.subject ? ` · ${call.subject}` : ''}${call.attempt ? ` · attempt ${call.attempt}` : ''}: ${Math.round(call.callDurationMs!)} ms${call.reused ? ' · reused cache' : ''}${call.status === 'retrying' ? ' · retrying' : call.status === 'failed' ? ' · failed' : ''}` +
+                    list.append(this.element('li', `${call.stage}${call.subject ? ` · ${call.subject}` : ''}${call.attempt ? ` · attempt ${call.attempt}` : ''}: ${Math.round(call.callDurationMs!)} ms${call.reused ? ' · reused cache' : ''}${call.status === 'retrying' ? ` · failed, retrying · ${call.message}` : call.status === 'failed' ? ` · failed · ${call.message}` : ''}` +
                         (usage ? ` · Tokens (${usage.tokenMeasurement}): input ${usage.inputTokens ?? 'unavailable'}, output ${usage.outputTokens ?? 'unavailable'}, total ${usage.totalTokens ?? 'unavailable'} · request ${usage.requestBytes} bytes, output ${usage.outputBytes} bytes` : '')));
                 }
                 report.append(list);
             }
+            const recovered = [...calls].reverse().find(call => call.attempt && call.attempt > 1 && !['failed', 'retrying'].includes(call.status));
+            if (recovered) report.append(this.element('p', `Recovered on attempt ${recovered.attempt} with ${recovered.providerModelLabel}.`));
             if (work?.totalUnits !== undefined) report.append(this.element('p',
                 `${work.completedUnits ?? 0}/${work.totalUnits} ${work.stage === 'component-discovery' ? 'Subsystems' : 'Systems'}`));
             if (current.status === 'failed' || current.status === 'retrying' || current.status === 'cancelled')
-                report.append(this.element('p', current.message));
-            if (current.status === 'failed') report.append(this.element('p', this.controller.setupReady ?
-                'Retry Analyze Project when ready.' : 'Run the capability probe, then retry Analyze Project.'));
+                report.append(this.element('p', runState === 'failed' ? saved?.message ?? current.message : current.message));
+            if (runState === 'failed') report.append(this.element('p', this.controller.setupReady ?
+                'Retry the failed stage with the selected model, or restart analysis.' : 'Test the selected model, then retry the failed stage.'));
         }
         const stages = this.element('ol');
         for (const item of analysisStages) {
-            const state = active === item.stage && (current?.status === 'failed' || this.controller.initialization?.state === 'failed') ? 'Failed' :
+            const state = active === item.stage && runState === 'failed' ? 'Failed' :
                 completed.has(item.stage) ? 'Complete' : active === item.stage ?
                     current?.status === 'cancelled' ? 'Cancelled' : 'Current' : 'Queued';
-            stages.append(this.element('li', `${state}: ${item.title}`));
+            const row = this.element('li', `${state}: ${item.title}`);
+            row.className = `dope-smap-stage-${state.toLowerCase()}`;
+            stages.append(row);
         }
         report.append(stages);
         if (saved?.completed.length) {

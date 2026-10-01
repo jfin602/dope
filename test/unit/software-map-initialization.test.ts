@@ -11,7 +11,7 @@ import { acceptInitialization, readInitialization } from '../../packages/code-an
 import { readSynthesisRun } from '../../packages/code-analysis/lib/node/smap-analysis-file.js';
 import { SoftwareMapBackend } from '../../packages/theia-extension/lib/node/software-map-backend.js';
 import type { SynthesisProvider, SynthesisStageRequest, SoftwareMapClient, AnalysisProgressEvent } from '../../packages/software-map/lib/index.js';
-import { branchFingerprint, isDirectSystemResponsibilityEvidence, parseArchitecture } from '../../packages/software-map/lib/index.js';
+import { branchFingerprint, isDirectSystemResponsibilityEvidence, parseArchitecture, SynthesisProviderFailure } from '../../packages/software-map/lib/index.js';
 
 const declaration = { schemaVersion: 1 as const, systems: [{ id: 'app', name: 'App', purpose: 'App', subsystems: [
   { id: 'api', name: 'API', purpose: 'API', roots: ['src/api'], forbiddenDependencies: ['secret'] },
@@ -69,6 +69,33 @@ const fakeProvider = (observe?: (request: SynthesisStageRequest) => Promise<void
 const backend = (index: SoftwareMapIndex, provider?: SynthesisProvider, client: SoftwareMapClient = { notifySoftwareMapChanged() {} }) =>
   new SoftwareMapBackend(index, client, provider);
 const attach = async (service: SoftwareMapBackend, root: string) => (await service.attach(pathToFileURL(root).href)).projectHandle;
+
+test('Gemini progress distinguishes an automatic retry from terminal exhaustion', async () => {
+  for (const recover of [true, false]) {
+    const root = await fixture();
+    const events: AnalysisProgressEvent[] = [];
+    const base = fakeProvider();
+    let calls = 0;
+    const provider: SynthesisProvider = { ...base, kind: 'gemini', runStage: async request => {
+      if (request.stage === 'system-discovery' && (++calls === 1 || !recover))
+        throw new SynthesisProviderFailure('safe upstream failure', 'transient-upstream');
+      return base.runStage(request);
+    } };
+    const service = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), provider,
+      { notifySoftwareMapChanged() {}, notifySoftwareMapAnalysisProgress(_handle, event) { events.push(event); } });
+    try {
+      const handle = await attach(service, root);
+      if (recover) await service.startInitialization(handle);
+      else await assert.rejects(service.startInitialization(handle));
+      const callsForStage = events.filter(event => event.stage === 'system-discovery' && event.callPurpose === 'system-discovery');
+      assert.deepEqual(callsForStage.filter(event => event.callDurationMs !== undefined).map(event => event.status),
+        recover ? ['retrying', 'started'] : ['retrying', 'retrying', 'failed']);
+      assert.ok(callsForStage.some(event => event.status === 'started' && event.attempt === 2 && event.callDurationMs === undefined));
+      assert.equal(events.some(event => event.stage === 'failed'), !recover);
+      assert.equal((await service.synthesisAttempts(handle)).filter(item => item.stage === 'system-discovery').length, recover ? 2 : 3);
+    } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
+  }
+});
 
 test('failed branch resumes from its pinned evidence after restart and skips successful model calls', async () => {
   const root = await fixture();
