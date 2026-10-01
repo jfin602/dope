@@ -183,6 +183,28 @@ The forward ontology is **PlanningMap -> PlannedTransformation -> WorkItem**. Ph
 
 Visual software planning remains useful with no model configured. A diagram is a projection of project state, not an independent source of architectural truth. Canvas coordinates, viewport, selection and tab/layout state are presentation state.
 
+#### Locked Phase 5 visual semantics
+
+Phase 5 presentation and lifecycle semantics are:
+
+- Physical Map opens at Systems + immediate Subsystems by default; Components/Code appear through semantic zoom/focus.
+- Visual identity uses hierarchy/shape/icon/edge semantics first, with color only as reinforcement.
+- Geometric zoom coexists with explicit Focus / Up / Fit Architecture navigation.
+- Systems, Subsystems, Components and supported branches may open as separate focused map tabs over the same shared state.
+- Planning Map editing defaults to a physical-versus-target overlay/diff with Current / Target / Diff modes.
+- Direct manipulation creates typed PlannedTransformations only when intent is unambiguous; rich operations use explicit editors.
+- Unadopted planning edits support domain undo/redo.
+- A project may own multiple Planning Maps and explicit alternative branches.
+- PlanningMap lifecycle is `draft | active | completed | superseded | archived`.
+- Incompatible overlapping active Planning Maps surface explicit conflicts; there is no Phase 5 auto-merge.
+- PlannedTransformations are the source of graph-derived WorkItem suggestions; the developer explicitly accepts/reshapes those suggestions.
+- WorkItems are a separate work projection linked bidirectionally to transformations and architecture.
+- Adopt Target supports coherent partial slices and preserves the remaining still-planned target.
+- Staleness is tracked at map, branch and transformation granularity.
+- Rebase is an explicit three-way old-basis/current-reality/target-intent operation.
+- Reconciliation is transformation-centered and preserves intended versus realized outcome.
+- A PlanningMap enters `completed` only through explicit developer closeout after every transformation is resolved, accepted as intentionally different, deferred or abandoned.
+
 ### Phase 6-7 — AI collaboration and delegation
 
 Introduce or activate:
