@@ -187,7 +187,11 @@ Allow multiple durable Planning Maps with at most one explicitly foregrounded ma
 
 **Decision**
 
-TBD.
+Locked: a project may have **multiple durable Planning Maps**. Each map represents a coherent intended change or alternative design. The developer may explicitly duplicate/branch a map to explore another approach without mutating the original. The lifecycle is **Draft -> Active -> Completed -> Superseded / Archived**.
+
+Multiple Planning Maps may be active at once. When active maps touch the same architectural area and propose incompatible changes, Dope surfaces that conflict explicitly rather than attempting automatic merge semantics in Phase 5.
+
+Completed/superseded maps remain available as project history but are kept out of the normal active workspace by default. Opening a System/Subsystem/Component as a focused map tab does **not** create a new Planning Map; it is another projection of the same underlying Physical/Planning Map state unless the developer explicitly creates or branches a Planning Map.
 
 ---
 
