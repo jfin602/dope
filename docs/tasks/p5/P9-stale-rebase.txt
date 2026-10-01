@@ -71,7 +71,18 @@ Add pure rebase tests for every conflict class, unrelated changes not staling un
 
 Add focused UI tests for map/branch/transformation markers and explicit three-way rebase flow.
 
-Run focused tests, affected typecheck/build and `git diff --check`.
+Validation is bounded T2 because rebase consumes both current Software Map basis and durable PlanningMap state.
+
+Run only:
+- the new/changed staleness/rebase domain/service tests;
+- the focused rebase UI/controller tests;
+- the Software Map fingerprint/generation test(s) only if their contracts are changed by this prompt;
+- `corepack yarn workspace @dope/visual-planning build` if changed;
+- `corepack yarn workspace @dope/theia-extension build`;
+- the cheap manifest/version coherence guard;
+- `git diff --check`.
+
+Do **not** run Software Map synthesis/provider suites, aggregate product tests, root `npm run typecheck`, browser/Electron app builds, restart/package/native evidence or direct GUI qualification.
 
 Do not commit; runner owns commit boundaries.
 
