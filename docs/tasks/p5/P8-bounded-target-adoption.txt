@@ -61,7 +61,17 @@ TESTS
 
 Add focused tests for each bounded scope, dependency inclusion/blocking, exact canonical diff, invalid target rejection, stale planning/canonical basis rejection, atomic failure, partial adoption state, adopted-vs-still-planned distinction and proof that WorkItems/Physical Map are not falsely completed/realized.
 
-Run focused tests plus affected storage/backend/domain integration, typecheck/build and `git diff --check`.
+Validation is bounded T2 because canonical-architecture authority and durable planning state meet here.
+
+Run only:
+- the new/changed adoption planner/service/backend test file(s);
+- the strict architecture parser/storage tests directly affected by reuse/centralization of the canonical writer;
+- `corepack yarn workspace @dope/visual-planning build`;
+- `corepack yarn workspace @dope/theia-extension build` if the backend/preview UI changed;
+- the cheap manifest/version coherence guard;
+- `git diff --check`.
+
+Do **not** run unrelated Software Map synthesis/analyzer suites, aggregate product tests, root `npm run typecheck`, browser/Electron app builds, restart/package/native evidence or direct GUI qualification.
 
 Do not commit; runner owns commit boundaries.
 
