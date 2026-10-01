@@ -57,7 +57,16 @@ Add pure projection tests proving default Systems+Subsystems, deterministic orde
 
 Add focused UI/registration tests proving the center widget is not the left inspector/right sidebar and current sMap/Project Mind placement remains intact.
 
-Run focused tests, extension typecheck/build and `git diff --check`. Do not perform P11 direct GUI qualification here.
+Validation is T1.
+
+Run only:
+- the new/changed Physical Map projection/canvas tests;
+- the focused existing sMap placement/theme guard(s) only when directly affected by this prompt;
+- `corepack yarn workspace @dope/theia-extension build`;
+- the cheap manifest/version/dependency coherence guard;
+- `git diff --check`.
+
+Do **not** run root `npm run typecheck`, aggregate product tests, `npm test`, `npm run check`, browser/Electron application builds, restart tests, package/native evidence, or direct GUI qualification. P11 owns those claims.
 
 Do not commit; runner owns commit boundaries.
 
