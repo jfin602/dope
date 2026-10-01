@@ -1,5 +1,5 @@
 {
-  "name": "@dope/project-intelligence",
+  "name": "@dope/visual-planning",
   "version": "0.5.1",
   "private": true,
   "main": "lib/index.js",
@@ -8,6 +8,6 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@dope/contracts": "0.5.1"
+    "@dope/software-map": "0.5.1"
   }
 }
