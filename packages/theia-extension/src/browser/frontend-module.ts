@@ -1,5 +1,6 @@
 import { ContainerModule } from '@theia/core/shared/inversify';
 import { ApplicationShell, FrontendApplicationContribution, WidgetFactory, WidgetManager } from '@theia/core/lib/browser';
+import { CommandContribution, CommandRegistry } from '@theia/core/lib/common';
 import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-service';
 import { bindViewContribution } from '@theia/core/lib/browser/shell/view-contribution';
 import { NoteService, noteServicePath } from '@dope/contracts/lib/note-service';
@@ -19,6 +20,7 @@ import type { SoftwareMapClient } from '@dope/software-map';
 import { SoftwareMapView, SoftwareMapWidget, SOFTWARE_MAP_ID } from './software-map-widget';
 import { SoftwareMapController } from './software-map-controller';
 import { SoftwareMapReviewWidget, SOFTWARE_MAP_REVIEW_ID } from './software-map-review-widget';
+import { PhysicalMapWidget, PHYSICAL_MAP_ID } from './physical-map-widget';
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(FrontendApplicationContribution).toDynamicValue(context => ({
@@ -27,6 +29,14 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bindViewContribution(bind, ProjectMindView);
     bindViewContribution(bind, SoftwareMapView);
     bind(FrontendApplicationContribution).toService(SoftwareMapView);
+    const openPhysicalMap = async (manager: WidgetManager, shell: ApplicationShell) => {
+        const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID);
+        if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
+        await shell.activateWidget(widget.id);
+    };
+    bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) =>
+        commands.registerCommand({ id: 'dope.physicalMap.open', label: 'Dope: Open Physical Map' },
+            { execute: () => openPhysicalMap(context.container.get(WidgetManager), context.container.get(ApplicationShell)) }) })).inSingletonScope();
     bind(NoteService).toDynamicValue(context => ServiceConnectionProvider.createProxy<NoteService>(context.container, noteServicePath)).inSingletonScope();
     bind(ProjectMindService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ProjectMindService & RpcServer<ProjectMindClient>>(context.container, projectMindServicePath));
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();
@@ -41,8 +51,11 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             const widget = await manager.getOrCreateWidget<SoftwareMapReviewWidget>(SOFTWARE_MAP_REVIEW_ID);
             if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
             await shell.activateWidget(widget.id);
-        }
+        }, () => openPhysicalMap(context.container.get(WidgetManager), context.container.get(ApplicationShell))
     ) })).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({ id: PHYSICAL_MAP_ID, createWidget: () =>
+        new PhysicalMapWidget(context.container.get(SoftwareMapController),
+            ServiceConnectionProvider.createProxy<SoftwareMapService>(context.container, softwareMapServicePath)) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_REVIEW_ID, createWidget: () =>
         new SoftwareMapReviewWidget(context.container.get(SoftwareMapController), context.container.get(WorkspaceService),
             context.container.get(OpenerService)) })).inSingletonScope();

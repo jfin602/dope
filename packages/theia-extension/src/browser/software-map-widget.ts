@@ -42,7 +42,7 @@ export class SoftwareMapWidget extends BaseWidget {
     private readonly clockTimer: ReturnType<typeof setInterval>;
 
     constructor(controller: SoftwareMapController, private readonly workspaces: WorkspaceService, private readonly opener: OpenerService,
-        private readonly openReview: () => Promise<void>) {
+        private readonly openReview: () => Promise<void>, private readonly openPhysicalMap: () => Promise<void>) {
         super();
         this.id = SOFTWARE_MAP_ID;
         this.title.label = 'sMap';
@@ -104,6 +104,7 @@ export class SoftwareMapWidget extends BaseWidget {
         this.controls.replaceChildren();
         if (!model.workspace || !model.initialization) return;
         if (model.initialization.state === 'initialized') {
+            this.controls.append(this.button('Open Physical Map', () => void this.openPhysicalMap()));
             this.controls.append(this.button('Refresh Software Map', () => void model.analyze()));
             return;
         }
