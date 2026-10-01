@@ -159,7 +159,9 @@ Make an **overlay/diff Planning Map** the primary editing view: unchanged physic
 
 **Decision**
 
-TBD.
+Locked: the primary Planning Map is an **overlay/diff view** over referenced physical/canonical structure rather than a disconnected target drawing. Unchanged reality remains visible while planned additions, removals, moves, modifications and relationship/contract changes are layered on top. Provide **Current only / Target only / Diff** modes, with side-by-side comparison available when useful rather than as the default.
+
+Any **System, Subsystem, Component, or other supported architectural branch** may also be opened as its own focused map in a separate center-workspace tab. Those focused tabs are projections of the same shared Physical/Planning Map domain state, preserve the same stable identities and transformation semantics, and must not fork or duplicate architecture/planning state. Multiple focused maps may therefore remain open alongside the project-level map while the developer moves between different architectural areas.
 
 ---
 
