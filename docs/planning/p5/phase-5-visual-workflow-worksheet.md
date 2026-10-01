@@ -109,7 +109,7 @@ Combine ordinary pan/zoom with explicit architectural focus. Geometric zoom may 
 
 **Decision**
 
-TBD.
+Locked: use **both geometric zoom and explicit architectural focus**. Ordinary pan/zoom may progressively reveal useful detail, while **Focus** opens a dependable branch-centered view, **Up** returns one architectural level, and **Fit Architecture** restores the high-level overview. Selection and node identity remain stable as detail changes. Cross-boundary dependencies remain visible in simplified form while focused. Source navigation must round-trip back to the same architectural context rather than losing the developer's place.
 
 ---
 
