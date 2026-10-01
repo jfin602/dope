@@ -277,7 +277,17 @@ Track staleness at the map and affected transformation/branch levels. Use an exp
 
 **Decision**
 
-TBD.
+Locked: track staleness at **whole-map, affected-branch, and individual-transformation** levels. Physical/canonical changes that do not affect a target may refresh context without making unrelated work appear stale.
+
+Conflicted targets receive explicit visual markers on the affected nodes/edges. Rebase opens a dedicated three-way comparison workspace:
+
+```text
+Old basis
+-> Current reality
+-> Target intent
+```
+
+Within an explicitly initiated rebase, unaffected references may advance automatically. Conflicted transformations require developer resolution. Already-realized transformations are recognized explicitly, while differently realized implementation is shown as divergence rather than rewriting the plan. The developer may deliberately continue against the older basis, but stale state remains visible and explainable.
 
 ---
 
