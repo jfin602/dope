@@ -87,7 +87,7 @@ For Product Phase 1:
 
 Presentation preferences such as theme, keybindings, panel layout, and editor preferences may persist for the user, but they are not canonical project-domain state.
 
-Dope is dark-first: first-run/default presentation should use a dark theme and Dope-owned surfaces should be designed and qualified dark-first. Explicit user theme selection must remain supported, persist across restart, and override the default. Structural UI styling should prefer semantic theme tokens rather than assuming fixed dark colors.
+Dope is dark-first: first-run/default presentation uses the Dope-owned **Dope Dark** theme. Its locked brand palette is `#1F1F1F` workbench anchor, `#FF7A1A` primary orange, `#FFB15C` highlight orange, and `#C75100` deep orange. Brand colors belong in the theme layer; Dope widgets should continue consuming semantic Theia tokens rather than duplicating brand hex values. Explicit user theme selection must remain supported, persist across restart, and override the default; selecting another compatible theme must deactivate Dope Dark-specific overrides. Syntax and semantic diagnostic colors remain meaning-bearing and are not globally recolored to the brand palette.
 
 ## Workbench placement contract
 
