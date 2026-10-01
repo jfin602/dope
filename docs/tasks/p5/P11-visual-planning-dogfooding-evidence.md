@@ -60,3 +60,44 @@ Local diagnostic logs: `/tmp/dope-p5-p11-{check-final,focused,product,restart,br
 ## Decision and next action
 
 **Not Green.** The direct Dope-on-Dope Physical Map never rendered a usable overview, so the required Planning Map → WorkItems → adoption → rebase → implementation → reconciliation loop and direct persistence matrix were not qualified. Aggregate and restart gates also failed, despite focused tests and package/native readiness passing. Preserve this evidence and route a bounded Phase 5 correction for the real GUI load/analysis failure and stale Phase 3/theme regression assertions, then repeat affected direct, aggregate and restart evidence on the corrected exact candidate. P12 evidence-only closeout must wait for that qualification.
+
+## Rerun on the accepted Adaptive SEO copy — 2026-10-01
+
+**Decision: Not Green. P12 remains ineligible.** This section appends a new attempt; the preceding failed Dope-on-Dope attempt remains historical evidence.
+
+### Identity and fixture preflight
+
+- Exact Dope source candidate: clean `main` at `59cfd12b6ab609e8c99aa32d716a905479bb6543`, package `0.5.11`. Reachable P1–P10 predecessor is `97b92e2f6d0a38297d24fdeff33e389207adecc8` (`0.5.10`); its ten ordered implementation commits are `18697c9`, `7bcb17c`, `8e8b9c4`, `feb7742`, `5330266`, `9aa3d41`, `76ecac2`, `d190c6f`, `3b7d570`, `97b92e2`. The existing P11 version/test/evidence commit `502416e` and later correction commits are retained. BOOT/AGENTS still describe the older pause; the reachable correction closeout, accepted fixture, and current P11 prompt govern this rerun.
+- Read Phase 5 activation/plan/worksheet, ADR 0017, prompt assessment/implementation plan, P1–P10 results, current source/tests, stability/workflow authority, and prior Phase 4/package records. All ten live root/app/package manifests and internal `@dope/*` references are `0.5.11`; Node `24.21.0`, Theia `1.75.0`, Electron `42.8.1`, React `19.2.8`, canvas `@xyflow/react` `12.11.6`; no root `package-lock.json`.
+- Primary mapped fixture: `/tmp/adaptive-seo-dope-p11`, Git HEAD `0b26a25107be7d8dfb2210bc7258ccac8603197e`, status `?? .dope/` and `?? MODULES.md`. Its `.dope/` contains `architecture.json` (4,688 bytes) and `smap.json` (122 bytes), with no `planning-maps.json`. Their SHA-256 values, `b5a09a50397149f589a80c2f9987ec66c0023a85c75ad98b4a973ebd1d370208` and `b35801cb0d6ea2100c7fa47c28f2e75b186dab8ff9fae28cdf7fff446b4bc583`, match the accepted `/home/jfin/dev/adaptive-seo-dope` reference before and after this attempt. The declaration contains Adaptive SEO Service and Customer Site Feed Runtime with their Subsystems; the marker fingerprint matches the declaration. An accepted file alone was not treated as a usable canvas.
+- No source, canonical, Planning Map, adoption, rebase, corruption, or recovery mutation was made to either Adaptive SEO tree. The disposable copy is left intact for a corrected rerun; there are no destructive probes to restore. The accepted reference remains unchanged. Dope source was unchanged until this evidence append.
+
+### Direct GUI matrix on `/tmp/adaptive-seo-dope-p11`
+
+In the real Theia browser workbench at `127.0.0.1:3000`, the sMap Activity Bar opened the left inspector. **Refresh Software Map** produced generation 1, **partial**, 3,459 nodes, zero violations, and a hierarchy showing the accepted Systems and Subsystems. The partial TypeScript analysis included extensive diagnostics such as TS2304 `Cannot find name 'Array'`; partial analysis is reported honestly and is separate from the canvas failure. **Open Physical Map** opened a center tab, but it remained at **Loading Physical Map…** with an empty grid. A second clean browser origin (`localhost:3000`) showed the same loader. Both origins logged `Another channel with the id '/services/dope/software-map' is already open.` The current frontend binds a singleton Software Map proxy at `frontend-module.ts:53` but creates another proxy for each Physical Map widget at line 71; this wiring is consistent with the observed channel error, though this attempt did not repair and retest it.
+
+| Area | Rerun observation |
+| --- | --- |
+| A. Physical overview | **Not Green**: accepted hierarchy was visible in the inspector, but no System/Subsystem canvas nodes, edges, state grammar, or working Fit Architecture appeared. |
+| B. Navigation/tabs | Focus, selected-tab and source actions were disabled without rendered nodes. Zoom/Up/Fit controls appeared; semantic navigation, shared focused tabs, cross-boundary context, and source round-trip were not exercised. |
+| C. Theme/accessibility | Dope Dark and Light Modern were directly inspected on the Dope host workbench, with editor, left sMap inspector, and right Project Mind legible; Dope Dark was restored. The blocked Adaptive SEO canvas prevented checking map meaning or essential keyboard node actions. No accessibility certification claim. |
+| D. Planning overlay/maps | Clicking **Planning Map** exposed Current only, Target only, Diff and map controls, but the canvas still showed **Loading Physical Map…**. No map or branch was created because the required usable Physical Map prerequisite failed. |
+| E. Typed editing | Not exercised; no usable target canvas. |
+| F. WorkItems | Not exercised; no real Planning Map/transformation. |
+| G. Bounded adoption | Not exercised; no canonical diff or mutation fabricated. |
+| H. Stale/rebase | Not exercised; no controlled canonical/source change made. |
+| I. Implementation/reconciliation | Not exercised; no WorkItem or fresh intent-versus-outcome loop existed. |
+
+The Dope host workspace opened `BOOT.md` in an ordinary center editor while Project Mind loaded in the right secondary sidebar (`Saved · revision 35`) and sMap loaded in the left primary sidebar. This verifies those visible host surfaces, not the blocked Adaptive SEO visual loop.
+
+### Persistence, regression, and package evidence
+
+- Direct Planning Map restart/profile/copy recovery, disposable-presentation-state removal, second-project planning isolation, corrupt/future `planning-maps.json` byte preservation, and stale/late tab-result probes were **not exercised**: no Planning Map was created. The clean `localhost` origin reproduced the loader; it was not a separate application profile or restart qualification. Existing focused storage/UI tests are lower-tier evidence, not a substitute for the requested direct matrix.
+- Focused P5 `node --test` across ten domain/storage/canvas/navigation/editing/work/adoption/rebase/reconciliation files: **55/55 passed**. `npm run test:product`: **172/172 plus 22/22 passed**.
+- `npm run check`: typecheck and runner **93/93 passed**, then baseline **9/10 passed** and stopped. `pre-phase4-clean-baseline.test.ts` still treats current Phase 5 `planning-map-controller.ts` as a forbidden removed Phase 3 module because its filename regex matches `planning-map-*`. No test was weakened in P11.
+- `npm run test:restart`: **2/3 passed**. Project Mind and Software Map restart cases passed; the Electron theme case still expected `dark` and observed `dope-dark`. This remains a failed assertion, not a Green restart matrix.
+- `npm run build:browser` passed with zero browser/backend build errors. `npm run package:linux` passed, including Electron frontend/backend/electron builds with zero build errors. Fresh `dist/linux/Dope-0.5.11.AppImage`: x86-64 ELF, mode 755, 189,876,045 bytes, SHA-256 `b6fb0e6cc5ea1e2d4693c2a9302d6986fc6efb6f770548ac6578ca71516a9f4e`. Extracted `app.asar/package.json` reports `@dope/electron 0.5.11`; frontend/backend bundles and 91 plugins are present.
+- Fresh native AppImage launch with temporary profile `/tmp/dope-p11-native-J5Yrxt` listened on `127.0.0.1:35101` and logged frontend `ready` about 2.8 seconds after page start. A file-search `spawn ENOTDIR` error was logged. The first wrapper termination left child processes; they were explicitly terminated, and no matching process or listener remained. Native visual interaction was not qualified.
+- `npm run codex:phase:validate -- p5` was **VALID**; `git diff --check` and the no-root-lock check passed before this append. Local command logs are `/tmp/dope-p5-p11-rerun-{check,product,focused,restart,browser-build,package,native,phase-validate}.log` and do not replace this portable result record. Screenshots were inspected live but not retained as repository artifacts.
+
+The usable Physical Map prerequisite remains **Not Green** on the accepted Adaptive SEO copy. The duplicate-channel/loader failure and the aggregate/restart assertions require bounded correction and invalidated-evidence rerun before the A–I visual loop, direct persistence/recovery matrix, and P12 closeout can be qualified.
