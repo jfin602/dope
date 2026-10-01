@@ -2,8 +2,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import test from 'node:test';
+import { createRequire } from 'node:module';
 import type { ArchitectureViolation, GraphNode, GraphRelationship } from '../../packages/software-map/src/contracts.ts';
 import { projectPhysicalMap } from '../../packages/theia-extension/src/browser/physical-map-projection.ts';
+const require = createRequire(import.meta.url);
+const { SoftwareMapController } = require('../../packages/theia-extension/lib/browser/software-map-controller.js') as
+  typeof import('../../packages/theia-extension/src/browser/software-map-controller.ts');
+const { PhysicalMapController } = require('../../packages/theia-extension/lib/browser/physical-map-controller.js') as
+  typeof import('../../packages/theia-extension/src/browser/physical-map-controller.ts');
 
 const root = resolve(import.meta.dirname, '../..');
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
@@ -62,7 +68,8 @@ test('React Flow stays in presentation and registration preserves workbench plac
   const canvas = read('packages/theia-extension/src/browser/physical-map-widget.ts');
   const css = read('packages/theia-extension/src/browser/dope.css');
   assert.match(frontend, /id: PHYSICAL_MAP_ID, createWidget/);
-  assert.match(frontend, /new PhysicalMapWidget\(context\.container\.get\(SoftwareMapController\),\s*ServiceConnectionProvider\.createProxy<SoftwareMapService>/);
+  assert.match(frontend, /new PhysicalMapWidget\(context\.container\.get\(SoftwareMapController\),\s*context\.container\.get\(OpenerService\)/);
+  assert.doesNotMatch(frontend, /new PhysicalMapWidget\([\s\S]*?ServiceConnectionProvider\.createProxy<SoftwareMapService>/);
   assert.match(frontend, /registerCommand\(\{ id: 'dope\.physicalMap\.open'/);
   assert.match(frontend, /shell\.addWidget\(widget, \{ area: 'main' \}\)/);
   assert.match(inspector, /Open Physical Map/);
@@ -76,4 +83,53 @@ test('React Flow stays in presentation and registration preserves workbench plac
   assert.match(css, /\.dope-map-edge-drifted .*stroke-dasharray/);
   for (const path of ['packages/software-map/src/contracts.ts', 'packages/software-map/src/service.ts',
     'packages/visual-planning/src/service.ts']) assert.doesNotMatch(read(path), /@xyflow\/react|ReactFlowInstance|\bNode<.*>/);
+});
+
+test('published map loads through the inspector handle; failures and stale queries settle', async () => {
+  const architecture = [boundary('system', 'system', 'System'), boundary('subsystem', 'subsystem', 'Subsystem', 'system')];
+  const status = { state: 'ready', generation: 1, publishedGeneration: 1 };
+  let attaches = 0;
+  let fail = false;
+  let pending: Array<(page: { generation: number; total: number; items: GraphRelationship[] }) => void> | undefined;
+  let queriedHandle = '';
+  const service = {
+    setClient() {},
+    async attach() { attaches++; return { projectHandle: 'accepted-handle', status }; },
+    async initializationStatus() { return { state: 'initialized' }; },
+    async hierarchy() { return { generation: 1, total: architecture.length, items: architecture }; },
+    async violations() { return { generation: 1, total: 0, items: [] }; },
+    relationships(request: { projectHandle: string }) {
+      queriedHandle = request.projectHandle;
+      if (fail) return Promise.reject(new Error('relationship unavailable'));
+      if (pending) return new Promise(resolve => { pending!.push(resolve); });
+      return Promise.resolve({ generation: 1, total: 0, items: [] });
+    }
+  };
+  const map = new SoftwareMapController(() => service as any, () => {});
+  await map.attach('file:///accepted');
+  const canvas = new PhysicalMapController(map, () => {});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(attaches, 1);
+  assert.equal(queriedHandle, 'accepted-handle');
+  assert.equal(canvas.loading, false);
+  assert.deepEqual(canvas.projection.nodes.map(node => node.id), ['system', 'subsystem']);
+
+  fail = true;
+  canvas.focus('system');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(canvas.loading, false);
+  assert.match(canvas.error, /relationship unavailable/);
+
+  fail = false;
+  pending = [];
+  canvas.fit();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(canvas.loading, true);
+  map.status = { ...status, generation: 2, publishedGeneration: 2 } as any;
+  for (const resolve of pending) resolve({ generation: 1, total: 0, items: [] });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(canvas.loading, false);
+  assert.equal(canvas.projection.nodes.length, 0);
+  canvas.dispose();
+  map.dispose();
 });

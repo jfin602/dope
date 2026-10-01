@@ -1,5 +1,5 @@
 import { parseArchitecture, parseAnalysisProgressEvent, branchFingerprint, targetBranch, suggestArchitectureId, reviewDeclaration, reviewDiagnostics } from '@dope/software-map';
-import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup, SynthesisDryRunReport, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
+import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, SoftwareMapRelationshipRequest, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup, SynthesisDryRunReport, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
 
 export type SoftwareMapConnection = SoftwareMapService & { setClient(client: SoftwareMapClient | undefined): void };
 export interface SynthesisPreferenceStore {
@@ -666,6 +666,15 @@ export class SoftwareMapController {
             items.push(...page.items);
             if (items.length >= page.total) return items;
         }
+    }
+    async relationshipPage(request: Omit<SoftwareMapRelationshipRequest, 'projectHandle'>, generation: number): Promise<SoftwareMapPage<GraphRelationship>> {
+        if (!this.connection || !this.handle || !this.published(generation) || this.loading || this.disposed)
+            throw new Error('Software Map is not published for this project');
+        const project = this.project, currentRequest = this.request;
+        const page = await this.connection.relationships({ ...request, projectHandle: this.handle });
+        if (!this.current(project, currentRequest) || !this.published(generation) || page.generation !== generation)
+            throw new Error('Software Map changed during relationship query');
+        return page;
     }
     private async load(status: SoftwareMapStatus): Promise<void> {
         if (!this.connection || !this.handle || status.state !== 'ready' || status.generation !== status.publishedGeneration) return;

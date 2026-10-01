@@ -108,7 +108,7 @@ test('Electron restart preserves Theia state and runtime extension, with stale-s
         instance = await launch(directory, port, workspace, vsix);
         assert.match(instance.page.url, /#.*workspace$/);
         assert.equal(await evaluate(instance.page, `document.title.includes('workspace')`), true);
-        assert.equal(await evaluate(instance.page, `(() => { const entries = [...theia.container._bindingDictionary._map.entries()]; return theia.container.get(entries.find(([, bindings]) => bindings.some(binding => binding.implementationType?.prototype?.loadUserTheme))[0]).getCurrentTheme().id; })()`), 'dark');
+        assert.equal(await evaluate(instance.page, `(() => { const entries = [...theia.container._bindingDictionary._map.entries()]; return theia.container.get(entries.find(([, bindings]) => bindings.some(binding => binding.implementationType?.prototype?.loadUserTheme))[0]).getCurrentTheme().id; })()`), 'dope-dark');
         assert.equal(await evaluate(instance.page, `(() => { const button = [...document.querySelectorAll('button')].find(value => value.textContent.includes('Yes, I trust the authors')); if (!button) return false; button.click(); return true; })()`), true);
         assert.equal(await until(() => evaluate(instance.page, `(() => { const container = theia.container; const entry = [...container._bindingDictionary._map.entries()].find(([, bindings]) => bindings.some(binding => binding.implementationType?.prototype?.ensureCommandHandlerRegistration)); return container.get(entry[0]).contributions.get('dope-evidence.uppercase')?.state === 4; })()`)), true);
         const first = await evaluate(instance.page, `(async () => {

@@ -1,4 +1,4 @@
-import type { GraphNode, GraphRelationship, SoftwareMapPage, SoftwareMapService } from '@dope/software-map';
+import type { GraphNode, GraphRelationship, SoftwareMapPage } from '@dope/software-map';
 import type { SoftwareMapController } from './software-map-controller';
 import { projectPhysicalMap } from './physical-map-projection';
 import type { CanvasProjection } from './physical-map-projection';
@@ -21,8 +21,8 @@ export class PhysicalMapController {
     private activeWorkspace?: string;
     focusId?: string;
 
-    constructor(private readonly map: SoftwareMapController, private readonly service: SoftwareMapService,
-        private readonly changed: () => void, private readonly workspace?: string, focusId?: string) {
+    constructor(private readonly map: SoftwareMapController, private readonly changed: () => void,
+        private readonly workspace?: string, focusId?: string) {
         this.focusId = focusId;
         this.activeWorkspace = map.workspace;
         this.listener = map.onChange(() => { this.changed(); void this.refresh(); });
@@ -100,20 +100,20 @@ export class PhysicalMapController {
         this.error = '';
         this.changed();
         try {
-            const attached = await this.service.attach(workspace);
-            if (request !== this.request || !this.available() || this.map.workspace !== workspace || attached.status.publishedGeneration !== status.generation) return;
             const visible = this.focusId ? this.map.nodes.filter(node => node.id === this.focusId || node.parentId === this.focusId) :
                 this.map.nodes.filter(node => node.kind === 'system' || node.kind === 'subsystem');
-            const groups = await Promise.all(visible.flatMap(node => (['incoming', 'outgoing'] as const).map(direction => this.pages(offset => this.service.relationships({
-                projectHandle: attached.projectHandle, nodeId: node.id, direction,
+            const groups = await Promise.all(visible.flatMap(node => (['incoming', 'outgoing'] as const).map(direction => this.pages(offset => this.map.relationshipPage({
+                nodeId: node.id, direction,
                 kinds: node.kind === 'code' ? ['imports', 'depends-on', 'references', 'extends', 'implements'] : ['depends-on'],
                 scope: node.kind === 'code' ? 'direct' : 'aggregated', offset, limit: 200
-            }), status.generation))));
+            }, status.generation), status.generation))));
             if (request !== this.request || !this.available() || this.map.workspace !== workspace || this.map.status?.generation !== status.generation) return;
             this.relationships = [...new Map(groups.flat().map(edge => [edge.id, edge])).values()];
             this.projection = projectPhysicalMap(this.map.nodes, this.relationships, this.map.violations, this.focusId);
         } catch (error) {
-            if (request === this.request && this.available()) this.error = String(error);
+            if (request === this.request && this.available() && this.map.status?.generation === status.generation) {
+                this.loadedKey = ''; this.error = String(error);
+            }
         } finally {
             if (request === this.request) { this.loading = false; this.changed(); }
         }

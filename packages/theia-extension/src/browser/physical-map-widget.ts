@@ -48,7 +48,7 @@ export class PhysicalMapWidget extends BaseWidget {
     private draftTitle = '';
     private draftObjective = '';
 
-    constructor(map: ConstructorParameters<typeof PhysicalMapController>[0], service: ConstructorParameters<typeof PhysicalMapController>[1],
+    constructor(map: ConstructorParameters<typeof PhysicalMapController>[0],
         private readonly opener: OpenerService, private readonly openTab: (id: string) => Promise<void>,
         private readonly planning: PlanningMapController,
         options?: PhysicalMapTabOptions) {
@@ -92,7 +92,7 @@ export class PhysicalMapWidget extends BaseWidget {
         this.workPanel.className = 'dope-work-panel';
         this.workPanel.setAttribute('aria-label', 'Planning work');
         this.node.append(bar, this.planningBar, this.workPanel, this.breadcrumbs, this.status, this.canvas);
-        this.controller = new PhysicalMapController(map, service, () => this.render(), options?.workspace, options?.focusId);
+        this.controller = new PhysicalMapController(map, () => this.render(), options?.workspace, options?.focusId);
         this.planningListener = planning.onChange(() => this.render());
     }
 

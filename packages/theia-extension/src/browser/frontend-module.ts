@@ -68,7 +68,6 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     ) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: PHYSICAL_MAP_ID, createWidget: (options?: PhysicalMapTabOptions) =>
         new PhysicalMapWidget(context.container.get(SoftwareMapController),
-            ServiceConnectionProvider.createProxy<SoftwareMapService>(context.container, softwareMapServicePath),
             context.container.get(OpenerService), id => openFocusedMap(context.container.get(WidgetManager),
                 context.container.get(ApplicationShell), context.container.get(SoftwareMapController), id),
             context.container.get(PlanningMapController), options) })).inSingletonScope();
