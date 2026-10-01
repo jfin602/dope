@@ -27,19 +27,13 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-<<<<<<< HEAD
+**Current Phase 5 interruption:** P11 is paused at `0.5.11` behind `c5-smap-acceptance-debug-loop`. The correction may change only unaccepted sMap review work-state persistence, deterministic acceptance diagnostics/checking, and the narrow UI/service seams required to expose them. It must not repair the current Adaptive SEO ownership conflict, change synthesis/evidence-to-root semantics, regenerate benchmark sMaps, run the later iterative debug loop, qualify P11, or advance to `0.5.12`.
+
 Product Phase 5 — Visual Software Planning is ACTIVE from baseline `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved core scope. Architecture-discovery follow-ons remain historical evidence; the provider comparison is deferred. `c4-smap-storage` and `c4-color-theme` are GREEN / QUALIFIED at unchanged `0.4.6`.
-=======
-Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved scope. Architecture-discovery follow-ons retain their historical evidence; the provider comparison is deferred. `c4-smap-storage` is GREEN / QUALIFIED at `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`. The bounded `c4-color-theme` gate remains open at unchanged `0.4.6`. The explicit one-off durable-stage-resume request also reopens `c4-synth-coverage-review` without relabeling its historical evidence Green. Phase 5 remains inactive until both gates are disposed and a fresh `/docs-review` occurs.
->>>>>>> 542eba2 (fixed system ids)
 
 ADR 0008 remains the Software Map terminology/workbench-placement authority. ADR 0009 as amended by ADR 0010/0011/0012 requires deterministic, source-backed architecture evidence and hierarchy-first bounded synthesis. ADR 0017 owns the Phase 5 planning boundary: Planning Maps reference canonical/physical identities, express explicit target transformations, derive bounded WorkItems, require explicit target adoption, detect stale bases, and reconcile fresh Physical Map reality after implementation.
 
-<<<<<<< HEAD
 Phase 5 may add center-workspace Physical Map and Planning Map canvases, graph-native planning state, project-local Planning Map persistence, explicit target adoption/rebase and deterministic reconciliation. It must not resurrect Phase 3 `Plan -> PlanStep -> Task`, reuse `.dope/planning.json`, turn diagram layout into architectural truth, or pull Phase 6 AI Presence, Agent Mind, ProposedAction, tool authority or delegation forward.
-=======
-The current color-theme correction may modify Theia presentation/theme registration, application default-theme configuration, Dope presentation CSS tokens and focused presentation tests. It must not modify project/domain state, Software Map semantics, layout/workflow behavior or Phase 5 planning. Prefer one first-class Dope Dark theme and semantic token consumption over widget-specific hard-coded colors. Explicit user theme choice must remain supported and must disable Dope Dark overrides when another theme is active. Separately, the explicit one-off durable-stage-resume request reopens `c4-synth-coverage-review` for bounded sMap orchestration, project-local run checkpoints, retry/restart UI, and focused tests at unchanged `0.4.6`; it does not qualify that correction or activate Phase 5.
->>>>>>> 542eba2 (fixed system ids)
 
 Only the narrow provider-independent sMap synthesis boundary and reference adapters already authorized by ADR 0010/0011/0013 remain valid before Phase 6. Phase 5 visual planning itself must remain fully useful with no model configured.
 
@@ -81,6 +75,7 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 - The developer is the final source of truth for canonical architecture. Architecture may be defined before code; synthesis proposes from deterministic evidence, the developer confirms/corrects, and analysis reports realization or drift.
 - Physical software facts require deterministic source evidence or recorded runtime observation with provenance; AI interpretation and planning proposals remain distinct from physical truth.
 - Durable Software Map state is project-local: repository + `.dope/` must be sufficient to recover it. `.dope/architecture.json` owns canonical architecture, `.dope/smap.json` owns durable initialization/version/state metadata, and any additional persisted sMap artifacts remain beneath versioned `.dope/` storage. Machine-local caches may never be required project truth.
+- Unaccepted architecture-review work may also persist project-locally under `.dope/` as non-canonical, versioned work state. It may be temporarily invalid while the developer edits it; restart recovery must not promote it to canonical architecture or require a provider call. Acceptance remains the only transition to `.dope/architecture.json` / `.dope/smap.json`.
 - The sMap inspector defaults to the left primary sidebar behind its own Activity Bar button; the center workspace hosts editors and, beginning in Phase 5, visual Physical Map / Planning Map canvases; the right secondary sidebar is reserved by default for Agent Mind/chat/AI interaction. User layout customization remains presentation state.
 - Theia is an IDE substrate. It must not define Dope's product model.
 - Theia AI may be reused behind adapters, but it must not own Dope's Agent Runtime or Project Intelligence.

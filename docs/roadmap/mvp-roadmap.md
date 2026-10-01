@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 5 — Visual Software Planning is **ACTIVE** from baseline `0.5.0`, established by the package-only Phase 4 closeout transition `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 4 remains QUALIFIED/GREEN for its approved core scope at `fac88712bb55176d3d6d54fbe6034de8b0f801ff`. Architecture-synthesis corrections remain truthful historical evidence and the fresh provider comparison is deferred. `c4-smap-storage` is GREEN / QUALIFIED at `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`; `c4-color-theme` is GREEN / QUALIFIED at unchanged `0.4.6`.
+Current stage: Product Phase 5 — Visual Software Planning is ACTIVE from baseline `0.5.0`; P1-P10 are implemented and P11 is **PAUSED / NOT GREEN at `0.5.11`** while `c5-smap-acceptance-debug-loop` installs acceptance-debug machinery. P12 / `0.5.12` remains blocked.
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -53,6 +53,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c4-storage — sMap Persistence | GREEN / QUALIFIED at `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`; durable Software Map state is project-local and portable. |
 | Correction c4-color-theme — Dope Dark | GREEN / QUALIFIED at unchanged `0.4.6`. The bounded correction established the first-class Dope Dark theme while preserving explicit user override. |
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
+| Correction c5 — sMap Acceptance Debug Loop | P11 interruption at `0.5.11`: persist mutable unaccepted review work, enumerate deterministic acceptance blockers, and provide an offline checker so one generated sMap can be debugged across restarts without provider calls. This correction does not perform the actual Adaptive SEO debug loop. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 8 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
@@ -635,6 +636,39 @@ Planning
 Physical Map
 +
 Visual Planning
+
+## Phase 5 interruption correction — `c5-smap-acceptance-debug-loop`
+
+Status: **APPROVED / READY FOR EXECUTION at unchanged `0.5.11`**
+
+Activation source: `502416e2d8589132e8b96454ad3b72407406a20b`.
+
+Purpose:
+Install the machinery needed to debug a generated but unaccepted sMap iteratively without repeatedly paying for synthesis.
+
+Required scope:
+- persist the mutable working Architecture Review draft under versioned project-local `.dope/` work state;
+- restore that exact working draft after backend/app restart with no provider call;
+- permit temporarily invalid review drafts to persist without treating them as canonical architecture;
+- protect review writes with revision/stale-write checks;
+- preserve accepted Search Deeper replacements and ordinary review edits across restart;
+- provide one shared deterministic acceptance-diagnostics pass that reports all known blockers, including conflicting owners for duplicate roots;
+- provide a zero-provider, non-mutating project checker for a persisted `review_required` run;
+- make the Architecture Review UI consume the same structured diagnostics;
+- preserve compatibility with the existing schema-1 `.dope/smap-analysis.json` review state used by the current Adaptive SEO specimen.
+
+Explicitly out of scope:
+- fixing the current `src/server/jobs/job-repository.ts` ambiguous ownership;
+- changing synthesis prompts, hierarchy, evidence selection, ownership inference or evidence-to-root materialization;
+- root deduplication/automatic owner selection;
+- regenerating Adaptive SEO or invoking Local/Gemini for correction qualification;
+- running the actual iterative acceptance-debug loop;
+- completing P11 or advancing P12/`0.5.12`.
+
+Exit condition:
+An intentionally invalid unaccepted review can be edited, persisted, restarted and reopened with the exact same working draft and the same complete deterministic blocker set, with no model/provider call. Successful acceptance and explicit cancellation clear the in-progress analysis work state.
+
+After Green closeout, use the preserved Adaptive SEO review in a **separate iterative debug loop** until the real Accept Architecture path succeeds. Then resume Phase 5 P11. P12 remains blocked until P11 is Green.
 
 ## Product Phase 6 — AI Presence
 

@@ -1,5 +1,27 @@
 # Physical Map storage
 
+## Phase 5 amendment — resumable unaccepted Architecture Review work
+
+ADR 0018 supersedes the earlier c4 storage assumption that all synthesis-review state is session-only.
+
+Accepted project truth remains unchanged:
+- `.dope/architecture.json` is canonical developer-owned architecture;
+- `.dope/smap.json` is the accepted-initialization marker bound to exact architecture bytes.
+
+Before acceptance, Dope may additionally persist **non-canonical work state** in versioned `.dope/smap-analysis.json` so an expensive generated Architecture Review can survive backend/app restart. That persisted work may include the deterministic evidence packet, proposal/checkpoints needed to preserve the review session, and the developer's current mutable review draft.
+
+This work state:
+- is never canonical architecture and never marks the project initialized;
+- may be temporarily acceptance-invalid while the developer edits it;
+- must be bounded, strictly storage-validated, project-local and symlink/path safe;
+- must preserve compatibility with already-written schema-1 `review_required` runs;
+- must restore without invoking or requiring a synthesis provider;
+- must use stale-write/revision protection for mutable draft saves;
+- is cleared by explicit cancellation or successful architecture acceptance;
+- never stores provider credentials or converts UI/presentation state into project truth.
+
+Persistence validation and architecture-acceptance validation are deliberately separate. A review draft can be safely persisted even while deterministic acceptance diagnostics report blockers.
+
 ## Current correction execution — 2026-09-30
 
 `c4-smap-storage` is the sole remaining mandatory pre-Phase-5 correction at package `0.4.6`.
@@ -57,13 +79,13 @@ The project-local `.dope/smap.json` schema 1 marker records only accepted initia
 
 Missing marker means uninitialized, including when a valid `.dope/architecture.json` already exists. The fingerprint must match the present declaration before Dope reports initialized. An existing declaration can be explicitly accepted without rewriting its bytes. Manual or corrected declarations are strictly parsed before acceptance.
 
-The marker never stores provider endpoint, model, authentication, a decline, an evidence packet, a proposal or a review draft. `analyzing` and `review_required` are transient states scoped to the attached project connection; a restart or cancellation returns them to uninitialized. Ordinary Physical Map refresh requires an initialized marker.
+The marker never stores provider endpoint, model, authentication, a decline, an evidence packet, a proposal or a review draft. Those concerns remain outside accepted initialization. Under ADR 0018, however, an unaccepted `review_required` run and its mutable working draft may persist separately in `.dope/smap-analysis.json` as non-canonical project work state. Restart may restore that review without provider execution. Ordinary Physical Map refresh still requires an initialized marker.
 
 For an uninitialized project, opening the repository does not authorize analysis. Dope may offer **Analyze Project?**. If the developer declines, no sMap is built and no canonical or derived map state is written merely to record that decline. The sMap tab remains available with an **Analyze Project** action for later initialization.
 
 If repeated prompting is suppressed after a decline, that suppression is presentation/workspace state rather than canonical project architecture state.
 
-Until resumable review drafts are deliberately specified, failure or cancellation before explicit acceptance returns the sMap to uninitialized.
+ADR 0018 deliberately specifies resumable unaccepted review work. Explicit cancellation still discards that work and returns the project to uninitialized; restart/reopen restores a valid persisted `review_required` work session without marking the project initialized.
 
 ### Bootstrap documents are not canonical storage
 

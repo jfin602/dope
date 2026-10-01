@@ -1,0 +1,59 @@
+TASK: Correction 5 / P2 — Add acceptance diagnostics and offline checker
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.5.11`.
+
+EXECUTION
+- Runner-friendly implementation prompt.
+- T2 focused integration only.
+- Do not debug the real Adaptive SEO architecture.
+
+GOAL
+
+Add one shared deterministic all-blockers acceptance diagnostic path for Architecture Review drafts, expose it through a zero-provider non-mutating project checker, and make backend/UI preflight consume the same rules.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0018, correction README/assessment/plan, P1 result, and current Software Map architecture/review/service code/tests. Require P1 durable review work Green enough to continue and package `0.5.11`.
+
+DOMAIN DIAGNOSTICS
+
+Introduce provider-independent structured diagnostics with stable issue codes and deterministic ordering. Carry implicated proposal keys / canonical IDs / project paths where applicable.
+
+Report all known blockers in one call, including invalid/duplicate canonical IDs, invalid/missing parents, required empty roots, malformed/unsafe roots, exact ownership root claimed by multiple boundaries with every claimant, and current schema/dependency failures diagnosable from the draft.
+
+Do not weaken `parseArchitecture()`. Prefer one shared review-draft -> declaration projection so frontend/backend/checker cannot drift, while preserving current semantics exactly. Do not deduplicate or repair roots.
+
+OFFLINE CHECKER
+
+Add:
+
+`npm run smap:review:check -- <project>`
+
+Also provide deterministic machine-readable output, preferably `--json`.
+
+The checker loads only project-local persisted `review_required` work, inspects latest draft/revision, prints all blockers, separately surfaces deterministic staleness, exits 0 only when acceptance-valid, never configures/calls a model provider, and never mutates project files.
+
+UI / BACKEND
+
+Use the same diagnostics in Architecture Review and backend acceptance preflight. Show blocker count/details and conflicting nodes/paths. Keep acceptance blocked while deterministic blockers exist. Replace misleading “Validated review ready” wording with truthful review-ready / acceptance-blocked wording.
+
+NON-GOALS
+
+Do not fix the current Adaptive SEO ownership conflict or any next blocker. Do not change synthesis/evidence/root materialization. Do not run the actual iterative debug loop.
+
+TESTS
+
+Cover multiple blockers together, all duplicate-root claimants, deterministic ordering, checker text/JSON and exit codes, no write/provider calls, UI shared diagnostics, backend preflight/strict-parser consistency, and valid drafts.
+
+VALIDATION
+
+Run only affected domain/backend/UI/checker tests, required affected builds/typecheck, `git diff --check`, unchanged-version and no-root-lock checks.
+
+FINAL RESPONSE
+
+Report issue model, checker modes, UI/backend integration, focused results, unchanged `0.5.11`, and readiness for P3.
