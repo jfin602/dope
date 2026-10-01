@@ -59,7 +59,7 @@ Open at the highest useful architectural level, normally System + immediate Subs
 
 **Decision**
 
-TBD.
+Locked: default to a clean architecture overview showing **Systems plus their immediate Subsystems**. Do not show Components or code by default. In a one-System project, that System is the main frame and its Subsystems provide the first useful structure. Reopening restores the developer's last valid visual position when possible, with a one-action **Fit Architecture** command that returns to the high-level overview.
 
 ---
 
