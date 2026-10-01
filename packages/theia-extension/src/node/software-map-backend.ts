@@ -6,7 +6,7 @@ import type { KeyStoreService } from '@theia/core/lib/common/key-store';
 import { canonicalLocalRoot } from '@dope/code-analysis/lib/node/architecture-file';
 import { readInitialization, acceptInitialization } from '@dope/code-analysis/lib/node/smap-initialization-file';
 import { bootstrapDocumentPresence } from '@dope/code-analysis/lib/node/architecture-evidence';
-import { readSynthesisRun, writeSynthesisRun, clearSynthesisRun } from '@dope/code-analysis/lib/node/smap-analysis-file';
+import { readSynthesisRun, writeSynthesisRun, clearSynthesisRun, saveSynthesisReviewDraft } from '@dope/code-analysis/lib/node/smap-analysis-file';
 import type { SavedSynthesisRun } from '@dope/code-analysis/lib/node/smap-analysis-file';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
 import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseAnalysisProgressEvent, suggestArchitectureId,
@@ -337,7 +337,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
                 system.roots = system.roots.filter(root => !childRoots.has(root));
             this.still(projectHandle, root, run);
             const reviewId = randomUUID();
-            this.pending = { reviewId, packet, proposal, draft, coverageLedger, componentDescents, fingerprint };
+            this.pending = { reviewId, revision: 0, packet, proposal, draft, coverageLedger, componentDescents, fingerprint };
             this.analysisRun = { ...this.analysisRun!, status: 'review_required', review: this.pending,
                 checkpoints: this.synthesisCache.checkpoints(), attempts: this.synthesisCache.attempts(), current: undefined, failure: undefined };
             await writeSynthesisRun(root, this.analysisRun, () => this.still(projectHandle, root, run));
@@ -345,7 +345,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
             this.analysisStarted = undefined;
             emit({ stage: 'preparing-review', status: 'completed', elapsedMs: 0, message: 'Validated review ready' });
             emit({ stage: 'completed', status: 'completed', elapsedMs: 0, message: 'Analysis complete' });
-            return structuredClone({ reviewId, packet, proposal, draft, coverageLedger, componentDescents });
+            return structuredClone({ reviewId, revision: 0, packet, proposal, draft, coverageLedger, componentDescents });
         } catch (error) {
             if (this.run === run) {
                 this.phase = this.analysisRun ? 'failed' : undefined; this.pending = undefined;
@@ -372,8 +372,21 @@ export class SoftwareMapBackend implements SoftwareMapService {
     async review(projectHandle: string): Promise<ArchitectureReview | undefined> {
         this.active(projectHandle);
         if (!this.pending) return undefined;
-        const { reviewId, packet, proposal, draft, coverageLedger, componentDescents } = this.pending;
-        return structuredClone({ reviewId, packet, proposal, draft, coverageLedger, componentDescents });
+        const { reviewId, revision, packet, proposal, draft, coverageLedger, componentDescents } = this.pending;
+        return structuredClone({ reviewId, revision, packet, proposal, draft, coverageLedger, componentDescents });
+    }
+    async saveReviewDraft(projectHandle: string, reviewId: string, expectedRevision: number,
+        draft: ArchitectureReviewNode[]): Promise<number> {
+        const root = this.active(projectHandle);
+        if (this.phase !== 'review_required' || this.pending?.reviewId !== reviewId)
+            throw new Error('No matching architecture review');
+        const revision = await saveSynthesisReviewDraft(root, reviewId, expectedRevision, draft);
+        if (this.root === root && this.pending?.reviewId === reviewId) {
+            this.pending = { ...this.pending, draft: structuredClone(draft), revision };
+            if (this.analysisRun?.review?.reviewId === reviewId)
+                this.analysisRun = { ...this.analysisRun, review: this.pending };
+        }
+        return revision;
     }
     async searchDeeper(projectHandle: string, input: TargetedRefinementInput): Promise<TargetedRefinementResult> {
         const root = this.active(projectHandle), pending = this.pending, run = this.run;

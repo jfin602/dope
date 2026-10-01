@@ -55,6 +55,8 @@ export interface ArchitectureReviewNode {
 }
 export interface ArchitectureReview {
     reviewId: string;
+    /** Starts at zero for reviews written before draft persistence. */
+    revision: number;
     packet: ArchitectureEvidencePacket;
     proposal: ArchitectureProposal;
     draft: ArchitectureReviewNode[];
@@ -78,6 +80,7 @@ export interface SoftwareMapService {
     startInitialization(projectHandle: string): Promise<ArchitectureReview>;
     retryFailedStage(projectHandle: string): Promise<ArchitectureReview>;
     review(projectHandle: string): Promise<ArchitectureReview | undefined>;
+    saveReviewDraft(projectHandle: string, reviewId: string, expectedRevision: number, draft: ArchitectureReviewNode[]): Promise<number>;
     searchDeeper(projectHandle: string, input: TargetedRefinementInput): Promise<TargetedRefinementResult>;
     resolveReviewSource(projectHandle: string, reviewId: string, evidenceRef: string): Promise<SoftwareMapSourceLocation | undefined>;
     resolveReviewDocument(projectHandle: string, reviewId: string, path: string): Promise<SoftwareMapSourceLocation | undefined>;

@@ -27,10 +27,12 @@ function connection() {
   let analyzed = 0;
   let configured = 0;
   let accepted = 0;
+  let revision = 0;
+  const savedDrafts: any[] = [];
   const configurations: any[] = [];
   const selectedModels: string[] = [];
   return {
-    get analyzed() { return analyzed; }, get configured() { return configured; }, get accepted() { return accepted; }, configurations, selectedModels,
+    get analyzed() { return analyzed; }, get configured() { return configured; }, get accepted() { return accepted; }, configurations, selectedModels, savedDrafts,
     attachPending: attach, analyzePending: analyze, statusPending: statusRequest, hierarchyPending: hierarchy, violationsPending: violations, relationshipsPending: relationships, relationshipEdgesPending: relationshipEdges, evidencePending: evidence,
     setClient(value: any) { client = value; }, event(value: any) { client?.notifySoftwareMapChanged(value); },
     progress(handle: string, value: any) { client?.notifySoftwareMapAnalysisProgress(handle, value); },
@@ -44,6 +46,9 @@ function connection() {
     synthesisReady() { return Promise.resolve(false); },
     startInitialization() { return Promise.resolve({ reviewId: 'review', packet: { items: [] }, proposal: { nodes: [], openQuestions: [], unassignedEvidenceRefs: [] }, draft: [] }); },
     cancelInitialization() { return Promise.resolve(); },
+    saveReviewDraft(_handle: string, _reviewId: string, expectedRevision: number, draft: any[]) {
+      assert.equal(expectedRevision, revision++); savedDrafts.push(structuredClone(draft)); return Promise.resolve(revision);
+    },
     acceptManual() { accepted++; return Promise.resolve(idle); },
     acceptReview() { accepted++; return Promise.resolve(idle); },
     acceptExisting() { accepted++; return Promise.resolve(idle); },
@@ -461,6 +466,7 @@ test('Search Deeper previews current edits, preserves siblings, rejects stale an
   ] };
   pending.resolve({ ...sent, parentPacketFingerprint: 'packet', proposal }); await search;
   assert.deepEqual(controller.draft, original);
+  assert.equal(c.savedDrafts.length, 0);
   controller.rejectRefinement(); assert.deepEqual(controller.draft, original);
   c.searchDeeper = (_handle: string, input: any) => Promise.resolve({ ...input, parentPacketFingerprint: 'packet', proposal });
   await controller.searchDeeper('proposal:a'); controller.acceptRefinement();
@@ -482,10 +488,45 @@ test('Search Deeper previews current edits, preserves siblings, rejects stale an
   c.searchDeeper = (_handle: string, input: any) => { sent = input; return switchedCall.promise; };
   const inFlightSwitch = controller.searchDeeper('proposal:b');
   const switched = controller.attach('file:///B'); c.attachPending.resolve({ projectHandle: 'b', status: idle }); await switched;
+  assert.equal(c.savedDrafts.at(-1).find((node: any) => node.proposalKey === 'proposal:b').name, 'Changed B');
+  assert.equal(c.savedDrafts.at(-1).some((node: any) => node.name === 'Refined S'), true);
   switchedCall.resolve({ ...sent, proposal }); await inFlightSwitch;
   assert.equal(controller.refinementPreview, undefined);
   assert.equal(controller.refinementBusyKey, undefined);
   controller.dispose();
+});
+
+test('review edits coalesce and flush before acceptance and disposal', async () => {
+  const c = connection();
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attached = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attached;
+  controller.review = { reviewId: 'r', revision: 0, packet: { items: [] }, proposal: { nodes: [] }, draft: [] };
+  controller.flow = 'review';
+  controller.initialization = { state: 'review_required', declarationFingerprint: 'absent', declarationPresent: false };
+  controller.add('system');
+  const node = controller.draft[0];
+  node.id = 'app'; node.name = 'App'; node.purpose = 'First'; controller.draftChanged();
+  controller.add('subsystem', node.proposalKey);
+  const subsystem = controller.draft[1];
+  subsystem.id = 'core'; subsystem.name = 'Core'; subsystem.purpose = 'Core'; subsystem.roots = ['src']; controller.draftChanged();
+  node.purpose = 'Latest'; controller.draftChanged();
+  assert.equal(c.savedDrafts.length, 0);
+  await controller.accept();
+  assert.equal(c.savedDrafts.length, 1);
+  assert.equal(c.savedDrafts[0][0].purpose, 'Latest');
+  assert.equal(c.accepted, 1);
+  controller.dispose();
+
+  const d = connection();
+  const reopened = new SoftwareMapController(() => d, () => {});
+  const attaching = reopened.attach('file:///B'); d.attachPending.resolve({ projectHandle: 'b', status: idle }); await attaching;
+  reopened.review = { reviewId: 'r', revision: 0, packet: { items: [] }, proposal: { nodes: [] }, draft: [] };
+  reopened.flow = 'review';
+  reopened.add('system');
+  reopened.draft[0].name = 'Last edit'; reopened.draftChanged();
+  reopened.dispose();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(d.savedDrafts.at(-1)[0].name, 'Last edit');
 });
 
 test('accepted Search Deeper suggestions avoid sibling IDs and leave a valid full draft', async () => {

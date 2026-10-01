@@ -296,6 +296,68 @@ test('generated review has valid suggested IDs, remains noncanonical, and accept
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('schema-1 review draft saves invalid work, rejects stale writes, and restores without a provider', async () => {
+  const a = await fixture(), b = await fixture();
+  try {
+    const first = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), fakeProvider());
+    const handle = await attach(first, a);
+    const review = await first.startInitialization(handle);
+    const file = join(a, '.dope/smap-analysis.json');
+    const old = JSON.parse(await readFile(file, 'utf8'));
+    delete old.review.revision;
+    await writeFile(file, JSON.stringify(old));
+    first.dispose();
+
+    const restarted = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()));
+    const reopenedHandle = await attach(restarted, a);
+    assert.equal((await restarted.review(reopenedHandle))?.revision, 0);
+    const invalid = structuredClone(review.draft);
+    invalid[0].name = 'Edited system'; invalid[0].id = 'renamed-app';
+    invalid[0].purpose = 'Changed purpose';
+    invalid[0].roots = [...invalid[1].roots];
+    invalid.push({ ...invalid[0], proposalKey: 'draft:extra', id: 'extra', name: 'Added', roots: [...invalid[0].roots] });
+    assert.equal(await restarted.saveReviewDraft(reopenedHandle, review.reviewId, 0, invalid), 1);
+    await assert.rejects(restarted.acceptReview(reopenedHandle, review.reviewId, invalid), /ambiguous ownership root/);
+    await assert.rejects(restarted.saveReviewDraft(reopenedHandle, review.reviewId, 0, review.draft), /Stale/);
+    await assert.rejects(restarted.saveReviewDraft(reopenedHandle, 'wrong', 1, review.draft), /matching/);
+    await assert.rejects(restarted.saveReviewDraft('wrong', review.reviewId, 1, review.draft), /handle/);
+    const secondConnection = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()));
+    const secondHandle = await attach(secondConnection, a);
+    assert.deepEqual((await secondConnection.review(secondHandle))?.draft, invalid);
+    assert.equal((await secondConnection.review(secondHandle))?.revision, 1);
+    const refined = invalid.filter(node => node.proposalKey !== 'draft:extra').map(node =>
+      node.kind === 'subsystem' ? { ...node, name: 'Accepted refinement' } : node);
+    assert.equal(await secondConnection.saveReviewDraft(secondHandle, review.reviewId, 1, refined), 2);
+    await assert.rejects(restarted.saveReviewDraft(reopenedHandle, review.reviewId, 1, invalid), /Stale/);
+    const third = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()));
+    const thirdHandle = await attach(third, a);
+    assert.deepEqual((await third.review(thirdHandle))?.draft, refined);
+    assert.equal((await third.review(thirdHandle))?.revision, 2);
+    const bHandle = await attach(third, b);
+    await assert.rejects(third.saveReviewDraft(bHandle, review.reviewId, 2, refined), /matching/);
+    assert.deepEqual((await readSynthesisRun(a))?.review?.draft, refined);
+    await assert.rejects(third.saveReviewDraft(thirdHandle, review.reviewId, 2, refined), /handle/);
+    await secondConnection.cancelInitialization(secondHandle);
+    assert.equal(await readSynthesisRun(a), undefined);
+    restarted.dispose(); secondConnection.dispose(); third.dispose();
+  } finally { await rm(a, { recursive: true, force: true }); await rm(b, { recursive: true, force: true }); }
+});
+
+test('accepted review clears saved draft work', async () => {
+  const root = await fixture();
+  try {
+    const first = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), fakeProvider());
+    const handle = await attach(first, root);
+    const review = await first.startInitialization(handle);
+    const edited = review.draft.map(node => ({ ...node, purpose: `${node.purpose} edited` }));
+    assert.equal(await first.saveReviewDraft(handle, review.reviewId, 0, edited), 1);
+    assert.equal((await first.acceptReview(handle, review.reviewId, edited)).state, 'ready');
+    assert.equal(await readSynthesisRun(root), undefined);
+    assert.equal((await readInitialization(root)).initialized, true);
+    first.dispose();
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('targeted backend call uses pending packet and edited branch, validates evidence and records purpose', async () => {
   const root = await fixture();
   try {

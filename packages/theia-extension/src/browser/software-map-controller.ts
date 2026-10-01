@@ -38,6 +38,11 @@ export class SoftwareMapController {
         if (this.refinementPreview && branchFingerprint(targetBranch(this.draft, this.refinementPreview.targetKey),
             this.draft.find(node => node.proposalKey === this.refinementPreview!.parentKey)) !== this.refinementPreview.branchFingerprint)
             this.refinementPreview = undefined;
+        if (this.flow === 'review' && this.review) {
+            this.draftDirty = true;
+            if (this.draftTimer) clearTimeout(this.draftTimer);
+            this.draftTimer = setTimeout(() => { void this.flushReviewDraft().catch(error => { this.error = String(error); this.notify(); }); }, 250);
+        }
         this.notify();
     }
     workspace?: string;
@@ -84,6 +89,10 @@ export class SoftwareMapController {
     private geminiConfigured = false;
     private clearingSetup?: Promise<void>;
     private nextKey = 0;
+    private draftRevision = 0;
+    private draftDirty = false;
+    private draftTimer?: ReturnType<typeof setTimeout>;
+    private saving?: Promise<void>;
     private connection?: SoftwareMapConnection;
     private handle?: string;
     private project = 0;
@@ -106,8 +115,28 @@ export class SoftwareMapController {
         this.connection?.setClient(undefined);
         this.connection = undefined;
     }
+    private flushReviewDraft(): Promise<void> {
+        if (this.draftTimer) clearTimeout(this.draftTimer);
+        this.draftTimer = undefined;
+        if (this.saving) return this.saving;
+        const save = async () => {
+            while (this.draftDirty && this.connection && this.handle && this.review && this.flow === 'review') {
+                const connection = this.connection, handle = this.handle, reviewId = this.review.reviewId;
+                const draft = structuredClone(this.draft), expectedRevision = this.draftRevision;
+                this.draftDirty = false;
+                try {
+                    this.draftRevision = await connection.saveReviewDraft(handle, reviewId, expectedRevision, draft);
+                    this.review.revision = this.draftRevision;
+                } catch (error) { this.draftDirty = true; throw error; }
+            }
+        };
+        this.saving = save().finally(() => { this.saving = undefined; });
+        return this.saving;
+    }
     async attach(workspace?: string): Promise<void> {
         if (this.disposed) return;
+        try { await this.flushReviewDraft(); }
+        catch (error) { this.error = String(error); this.notify(); return; }
         const project = ++this.project;
         ++this.request;
         ++this.detailRequest;
@@ -125,6 +154,8 @@ export class SoftwareMapController {
         this.flow = 'none';
         this.review = undefined;
         this.draft = [];
+        this.draftRevision = 0;
+        this.draftDirty = false;
         this.refinementPreview = undefined; this.refinementBusyKey = undefined; this.refinementError = undefined; ++this.refinementRequest;
         this.refinedEvidence.clear();
         this.models = [];
@@ -186,7 +217,9 @@ export class SoftwareMapController {
             if (this.initialization.state === 'review_required') {
                 const review = await connection.review(attached.projectHandle);
                 if (this.disposed || project !== this.project) return;
-                if (review) { this.review = review; this.draft = structuredClone(review.draft); this.flow = 'review'; }
+                if (review) { this.review = review; this.draft = structuredClone(review.draft); this.draftRevision = review.revision;
+                    this.nextKey = Math.max(0, ...this.draft.map(node => /^draft:(\d+)$/.exec(node.proposalKey)?.[1] ?? '0').map(Number));
+                    this.flow = 'review'; }
             }
             if (this.initialization.state === 'uninitialized' && !declinedThisSession.has(workspace)) this.flow = 'offer';
             if (this.initialization.state === 'failed') await this.setup();
@@ -395,6 +428,8 @@ export class SoftwareMapController {
             this.reviewElapsedMs = Date.now() - this.analysisStartedAt!;
             this.review = review;
             this.draft = structuredClone(review.draft);
+            this.draftRevision = review.revision;
+            this.draftDirty = false;
             if (this.initialization) this.initialization = { ...this.initialization, state: 'review_required', resumable: undefined };
             this.flow = 'review';
             this.notify();
@@ -497,6 +532,7 @@ export class SoftwareMapController {
         this.error = '';
         this.notify();
         try {
+            if (this.review && this.flow === 'review') await this.flushReviewDraft();
             const status = this.review && this.flow === 'review'
                 ? await this.connection.acceptReview(this.handle, this.review.reviewId, this.draft)
                 : await this.connection.acceptManual(this.handle, declarationFromDraft(this.draft), this.initialization.declarationFingerprint);
@@ -541,6 +577,10 @@ export class SoftwareMapController {
         this.error = '';
         this.notify();
         try {
+            if (this.draftTimer) clearTimeout(this.draftTimer);
+            this.draftTimer = undefined;
+            this.draftDirty = false;
+            await this.saving?.catch(() => {});
             if (connection && handle) await connection.cancelInitialization(handle);
             if (project !== this.project || request !== this.setupRequest) return;
             if (connection && handle) await connection.clearSynthesis(handle);
@@ -741,6 +781,7 @@ export class SoftwareMapController {
         return this.current(project, request) && this.published(generation) ? location : undefined;
     }
     dispose(): void {
+        void this.flushReviewDraft().catch(() => {});
         this.disposed = true;
         ++this.project;
         ++this.request;
