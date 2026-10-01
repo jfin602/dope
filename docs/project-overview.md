@@ -81,7 +81,7 @@ ADR 0011 makes the first sMap synthesis path local-first: LM Studio with Qwen3-C
 
 The **Physical Map** describes current implemented reality mapped against canonical architecture. It distinguishes declared-only, detected-only, realized, drifted and unassigned implementation state, with provenance sufficient to explain the result.
 
-The **Planning Map** arrives in Phase 5 and references canonical/physical identities to express proposed target-state transformations. The normalized graph remains an internal/query substrate; “map” is the product vocabulary. Planning views do not duplicate current architecture into disconnected drawings.
+The **Planning Map** is activated in Phase 5 and references canonical/physical identities to express proposed target-state transformations. It records the architecture/Physical Map basis it branched from, becomes visibly stale when that basis changes, and requires explicit conflict-aware rebase. Editing a Planning Map does not mutate canonical architecture; **Adopt Target** is explicit. The normalized graph remains an internal/query substrate, “map” is the product vocabulary, and canvas geometry is presentation state rather than architectural truth.
 
 Semantic zoom is architectural rather than merely graphical: System -> Subsystem -> Component -> package/module/service -> file/symbol -> syntax/semantic source relationships.
 
@@ -170,13 +170,17 @@ Foundation Spike 0 — qualify Theia
 -> Phase 4 — Physical Map
 -> correction c4 — architecture discovery + developer authority
 -> correction c4-hierarchical — hierarchy-first synthesis + visible progress
+-> correction c4-gemini — compact shared Local/Gemini synthesis contracts
+-> correction c4-synth-improvements — responsibility-oriented synthesis/review
+-> correction c4-synth-coverage-review — coverage diagnostics + Search Deeper
 -> correction c4-storage — enforce project-local sMap persistence
+-> correction c4-color-theme — Dope Dark visual identity
 -> Phase 5 — Visual Software Planning
 -> Phase 6 — AI Presence
 -> Phase 7 — Scoped Delegation
 -> Phase 8 — Development Sessions
 
-Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map scope is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). `c4-smap-synth` / `c4-architecture-discovery` is owner-closed Not Qualified at terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0` after the real Qwen path produced materially weak System boundaries. ADR 0012 now requires `c4-smap-hierarchical-synthesis` at unchanged `0.4.6`; only after that closes Green does bounded `c4-smap-storage` enforce the project-local `.dope/` sMap persistence boundary before Phase 5 planning or activation.
+Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map core remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The later architecture-synthesis corrections remain truthful owner-closed Not Qualified history with useful implementation retained; `c4-smap-storage` and `c4-color-theme` closed Green. Owner closeout advanced only the package baseline to `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 5 — Visual Software Planning is now active from that baseline under ADR 0017 and `docs/planning/p5/`; the fresh provider comparison remains deferred off its critical path.
 
 ## Non-goals
 
