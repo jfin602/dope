@@ -166,15 +166,34 @@ A working directory is not an OS sandbox.
 
 If future autonomous process execution claims containment, that claim requires an actual qualified sandbox.
 
-## Live Plans and Tasks
+## Product Phase 5 — Visual Software Planning qualification
 
-Applicable when Planning introduces Plan/Task state.
+Phase 5 qualification applies from the `0.5.0` baseline and must remain valid with no model/provider configured.
 
-Plan/task completion is application truth, not model assertion.
+Require executable evidence for:
+- Physical Map and Planning Map center-workspace projections reconstructing from domain state rather than owning it;
+- semantic zoom/navigation across System -> Subsystem -> Component -> Code with stable identity and source navigation;
+- durable PlanningMap / PlannedTransformation / WorkItem creation, mutation, dependency and validation-target behavior;
+- explicit add/modify/remove/move/split/merge/redirect-relationship/change-contract target transformations;
+- explicit Adopt Target behavior with no silent Planning Map -> canonical architecture mutation;
+- project-local `.dope/planning-maps.json` persistence, restart/reopen continuity, project isolation, malformed/unsupported-state fail-closed behavior and copy-to-new-root recovery;
+- no dependency on historical Phase 3 `.dope/planning.json`, `Plan`, `PlanStep` or `Task` runtime contracts;
+- stale-plan detection when canonical architecture or Physical Map basis changes;
+- explicit rebase preserving intent and surfacing identity/hierarchy/contract/already-realized conflicts;
+- deterministic post-implementation re-analysis and reconciliation outcomes: implemented as planned, implemented differently, not implemented and unexpected implementation;
+- WorkItem completion never becoming architecture adoption or physical truth;
+- canvas geometry/layout remaining presentation state;
+- direct Dope-on-Dope GUI dogfooding through the full human-driven Physical Map -> Planning Map -> transformations -> WorkItems -> implementation -> re-analysis -> reconciliation loop.
 
-A plan step becomes complete only through the applicable transition rule and evidence.
+Broad browser/Electron/native/package evidence belongs in the designated T3 qualification/closeout gate rather than ordinary implementation prompts.
 
-Changes to a live plan must remain synchronized with any task/agent state that exists in that phase.
+## Planning Maps and WorkItems
+
+PlanningMap/WorkItem completion is application truth, not model assertion.
+
+Changes to WorkItems must remain synchronized with referenced transformations, but WorkItem mutation must not silently rewrite architectural target intent. Changes to target intent are explicit PlanningMap/PlannedTransformation mutations.
+
+A stale PlanningMap cannot be silently treated as current. Rebase or deliberate continuation against the recorded old basis must be explicit and visible.
 
 ## Ideas
 
@@ -184,9 +203,9 @@ Capturing an Idea must not mutate active work unless the developer or an explici
 
 Ambient discovery should never silently expand scope.
 
-## Architecture model
+## Software Map architecture truth
 
-Applicable when ArchitectureModel is introduced.
+Applicable to the active Software Map and Planning Map domains.
 
 Architecture evidence retains provenance/classification:
 - deterministic static observation
