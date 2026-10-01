@@ -1,0 +1,65 @@
+TASK: Phase 5 / P1 — Visual planning domain core
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.5.1`.
+
+GOAL
+
+Create the presentation-independent Visual Software Planning domain from the active Phase 5 baseline.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, Phase 5 activation/plan/resolved worksheet, ADR 0017, PRODUCT-MODEL, ARCHITECTURE, roadmap/workflow/stability authority, p5 prompt assessment/implementation plan, current Software Map contracts/tests and package manifests.
+
+Require reachable activation transition `016bd8780e89081dfdb5746eae981183dc945baa`, root `0.5.0`, clean intended Git state, Node 24, no root package-lock, Theia 1.75.0, Electron 42.8.1.
+
+The root-only closeout intentionally left live workspace package manifests at 0.4.6. Normalize them directly to this prompt target; do not create an intermediate package-only state.
+
+IMPLEMENT
+
+Add one real `@dope/visual-planning` package.
+
+It may depend on `@dope/software-map` contracts. It must not import Theia, React, React Flow, model/provider SDKs, browser globals or Phase 3 Planning.
+
+Define strict versioned contracts/parsers for:
+- PlanningMap: stable map/project identity, title/objective, `draft | active | completed | superseded | archived`, revision/history, canonical architecture basis, Physical Map input/generation basis;
+- PlannedTransformation kinds: `add`, `modify`, `remove`, `move`, `split`, `merge`, `redirect-relationship`, `change-contract`;
+- references to current/canonical identities plus intended future identities for planned nodes;
+- WorkItem: stable identity, transformation refs, dependencies, objective, requirements, constraints, acceptance criteria, validation targets, project-relative working-set refs, status and completion notes;
+- cross-map conflict descriptors;
+- stale/rebase and reconciliation result contracts.
+
+Implement pure deterministic helpers for:
+- schema/identity/reference validation and deterministic ordering;
+- legal PlanningMap lifecycle transitions and explicit duplicate/branch creation;
+- target projection from canonical architecture plus transformations without copying physical truth into canonical planning state;
+- transformation dependency validation;
+- incompatible overlapping active-map conflict detection;
+- deterministic WorkItem grouping/dependency suggestions that remain proposals until developer acceptance;
+- closeout eligibility: every transformation resolved as planned, accepted intentionally different, deferred or abandoned.
+
+Do not implement filesystem persistence, Theia UI, canvas objects, adoption writes or AI.
+
+INTEGRATION
+
+Add the package to root workspaces/build/typecheck/product-test ordering and baseline manifest assertions.
+
+Advance root, browser/electron apps, all live internal packages and internal `@dope/*` references coherently to `0.5.1`. Preserve Theia/Electron/React/external dependency baselines.
+
+TESTS
+
+Add focused `test/unit/visual-planning.test.ts` covering parser failures/future schema, lifecycle, branch identity, transformation references/dependencies, target projection, cross-map conflicts, deterministic WorkItem suggestions, completion eligibility and proof that WorkItem completion alone does not create physical/canonical truth.
+
+Run only focused changed tests, affected package typecheck/build, baseline/version/no-root-lock checks, `git diff --check`, and phase validation when the full p5 stack is present.
+
+Do not run broad qualification or package/native evidence here.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report domain boundary, contracts/helpers, version normalization, focused validation and P2 eligibility.
