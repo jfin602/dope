@@ -540,6 +540,7 @@ export class SoftwareMapController {
             if (project !== this.project || request !== this.setupRequest) return;
             if (connection && handle) await connection.clearSynthesis(handle);
             this.review = undefined; this.draft = []; this.setupReady = false; this.flow = wasAnalyzing ? 'setup' : 'none'; this.token = ''; this.geminiKey = '';
+            this.configuredSetup = undefined; this.geminiConfigured = false; this.models = []; this.geminiModels = [];
             this.refinementPreview = undefined; this.refinementBusyKey = undefined; this.refinementError = undefined; ++this.refinementRequest;
             this.refinedEvidence.clear();
             this.analysisStartedAt = undefined;

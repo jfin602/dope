@@ -218,6 +218,34 @@ test('Gemini refresh and restart retain only selected model preference, never re
   reopened.dispose();
 });
 
+test('cancelled Gemini analysis configures a fresh provider before model discovery', async () => {
+  const c = connection();
+  const pending = deferred();
+  let configured = false;
+  const configure = c.configureSynthesis;
+  c.configureSynthesis = (handle: string, options: any) => { configured = true; return configure(handle, options); };
+  c.clearSynthesis = () => { configured = false; return Promise.resolve(); };
+  c.refreshSynthesisModels = () => configured
+    ? Promise.resolve({ models: ['gemini-3.6-flash'] }) : Promise.reject(new Error('Gemini is not configured'));
+  c.startInitialization = () => pending.promise;
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  await controller.setup();
+  await controller.discoverGemini();
+  await controller.probeGemini();
+  const analysis = controller.synthesize('gemini');
+  await controller.cancel();
+  assert.equal(controller.flow, 'setup');
+  assert.equal(controller.setupReady, false);
+  await controller.discoverGemini();
+  assert.equal(controller.error, '');
+  assert.equal(c.configured, 2);
+  await controller.probeGemini();
+  assert.equal(controller.setupReady, true);
+  pending.resolve({ reviewId: 'stale', draft: [] }); await analysis;
+  controller.dispose();
+});
+
 test('draft validation, manual cancellation and existing acceptance are explicit', async () => {
   const c = connection();
   c.initializationStatus = () => Promise.resolve({ state: 'uninitialized', declarationPresent: true, declarationFingerprint: 'existing' });
