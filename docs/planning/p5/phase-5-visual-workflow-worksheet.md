@@ -313,7 +313,13 @@ Make reconciliation transformation-centered with rollups to WorkItems, branches,
 
 **Decision**
 
-TBD.
+Locked: reconciliation is **transformation-centered**, with rollups to WorkItems, architecture branches, and the whole Planning Map. Each transformation resolves to at least **Implemented as planned**, **Implemented differently**, **Not implemented**, or **Unexpected implementation**.
+
+The original target remains preserved even when implementation differs. **Implemented differently** may be an accepted final outcome; Dope must not rewrite history to pretend the original target matched reality. If the implementation reveals a better architecture, the developer may explicitly update/adopt canonical architecture afterward.
+
+WorkItem completion and reconciliation are separate. A WorkItem may be complete while reconciliation still reports architectural divergence.
+
+A Planning Map becomes **Completed only through explicit developer closeout**. Closeout requires every transformation to be resolved, accepted as intentionally different, deferred into another Planning Map, or explicitly abandoned. Completed maps remain durable historical records of intended versus realized software.
 
 ## Secondary implementation questions
 
