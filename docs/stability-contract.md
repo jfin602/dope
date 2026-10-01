@@ -184,6 +184,17 @@ Require executable evidence for:
 - WorkItem completion never becoming architecture adoption or physical truth;
 - canvas geometry/layout remaining presentation state;
 - direct Dope-on-Dope GUI dogfooding through the full human-driven Physical Map -> Planning Map -> transformations -> WorkItems -> implementation -> re-analysis -> reconciliation loop.
+- default overview renders Systems plus immediate Subsystems without dumping Components/Code;
+- visual grammar remains understandable without relying on color alone and remains readable under alternate supported themes;
+- Focus / Up / Fit Architecture, geometric zoom, selection stability, simplified cross-boundary context and source round-trip preserve map identity;
+- project/System/Subsystem/Component focused tabs share one underlying map/planning state and never fork data;
+- Current / Target / Diff projections show the same PlanningMap state consistently;
+- supported direct gestures create the expected typed transformation, preview before commit and participate in domain undo/redo;
+- multiple Planning Maps, explicit alternative branching, lifecycle transitions and overlapping-map conflict visibility behave deterministically;
+- WorkItem suggestions require explicit developer acceptance/reshaping and WorkItem <-> transformation selection remains bidirectional;
+- bounded Adopt Target handles coherent partial slices, dependency/conflict checks and adopted-versus-still-planned distinction;
+- stale state localizes to map/branch/transformation and explicit rebase presents old basis/current reality/target intent;
+- reconciliation rolls up from transformations and explicit closeout is the only transition to completed PlanningMap state;
 
 Broad browser/Electron/native/package evidence belongs in the designated T3 qualification/closeout gate rather than ordinary implementation prompts.
 
