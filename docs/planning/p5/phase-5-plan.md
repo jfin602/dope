@@ -1,0 +1,164 @@
+# Product Phase 5 — Visual Software Planning Plan
+
+Status: **ACTIVE PLAN**
+
+Baseline: `0.5.0`
+
+Authority:
+- `docs/decisions/0007-software-model-centered-product-architecture.md`
+- `docs/decisions/0008-software-map-terminology-and-workbench-placement.md`
+- `docs/decisions/0017-visual-planning-map-and-work-model.md`
+- `docs/PRODUCT-MODEL.md`
+- `docs/ARCHITECTURE.md`
+- `docs/stability-contract.md`
+
+## Objective
+
+Make architecture understanding, target design, work decomposition, implementation and reconciliation one coherent human-driven workflow centered on the Software Map.
+
+```text
+Physical Map
+-> target Planning Map
+-> PlannedTransformations
+-> WorkItems
+-> ordinary implementation
+-> fresh Physical Map
+-> Reconciliation
+```
+
+No model/provider is required.
+
+## Product invariants
+
+1. The Physical Map remains evidence-backed current reality.
+2. Canonical architecture remains explicit developer authority.
+3. A Planning Map is durable target intent, not physical truth.
+4. Existing architecture nodes are referenced by identity, not copied.
+5. The canvas is a projection of domain state, not a second database.
+6. Editing target intent does not silently mutate canonical architecture.
+7. Work completion does not imply architecture adoption or physical realization.
+8. Stale target state is visible; rebase is explicit.
+9. Reconciliation compares against freshly analyzed reality.
+10. Historical Phase 3 planning state is not a compatibility requirement.
+11. Phase 5 remains useful with no AI configured.
+12. Theia renders the product; Theia does not own its domain semantics.
+
+## Domain model
+
+### PlanningMap
+
+Required semantic state includes:
+- stable map ID and project identity;
+- title/objective and lifecycle status;
+- canonical architecture revision/fingerprint at branch time;
+- Physical Map input fingerprint/generation basis at branch time;
+- PlannedTransformations and WorkItems;
+- document/map revision for optimistic conflict handling;
+- developer-authored mutation history sufficient to explain accepted target/work changes.
+
+### PlannedTransformation
+
+Initial kinds:
+- add;
+- modify;
+- remove;
+- move;
+- split;
+- merge;
+- redirect relationship;
+- change contract.
+
+A transformation references affected current/canonical IDs where applicable and expresses target state explicitly. Planned new Systems, Subsystems and Components may carry intended future canonical IDs, but those IDs remain planned until target adoption.
+
+### WorkItem
+
+A WorkItem is a bounded unit of implementation work connected to one or more transformations. It may contain stable identity, objective, dependencies, requirements, constraints, acceptance criteria, validation targets, project-relative working-set references, status and completion notes.
+
+WorkItems can be revised independently without silently changing target architecture. Do not recreate Phase 3 PlanStep under another name.
+
+## Target adoption
+
+Editing a PlanningMap never writes `.dope/architecture.json`.
+
+Provide an explicit **Adopt Target** operation that validates the target, presents canonical changes, requires developer acceptance, updates canonical architecture through the existing authority boundary, and records the resulting architecture basis back into planning state.
+
+Adoption may create declared-only architecture before implementation. It does not complete WorkItems or create physical evidence.
+
+## Persistence
+
+Canonical Phase 5 planning persistence is `.dope/planning-maps.json`.
+
+Requirements:
+- versioned readable Dope-owned schema;
+- stable project identity;
+- optimistic revision/conflict handling;
+- safe path/root validation;
+- restart/reopen recovery;
+- project isolation;
+- copy-to-new-root portability;
+- fail closed on corrupt/unsupported state;
+- external inspection/recovery with writers stopped.
+
+Do not reuse or migrate historical Phase 3 `.dope/planning.json`. Repository + `.dope/` must be sufficient to recover durable Phase 5 planning truth.
+
+## Presentation state
+
+Viewport/pan/zoom, node coordinates/routing geometry, selection, collapsed groups, open tabs, panel sizes and transient filters are presentation state. Deleting them must not change PlanningMap meaning.
+
+## Visual workspace
+
+ADR 0008 placement remains:
+- left: sMap inspector/navigation/evidence;
+- center: Physical Map and Planning Map editor-like tabs;
+- right: reserved for later Agent Mind/chat;
+- bottom: terminal/tests/runtime/Problems.
+
+The Phase 5 canvas must consume semantic theme tokens.
+
+The Physical Map canvas is a projection of existing Software Map state and should support semantic zoom from System -> Subsystem -> Component -> Code while preserving identity and source navigation.
+
+The Planning Map overlays target intent on referenced physical/canonical structure and visibly distinguishes unchanged reality, additions, modifications, removals, moved/reparented structure, relationship/contract changes, and stale/unresolved/conflicted state.
+
+## Staleness and rebase
+
+A PlanningMap becomes stale when its canonical architecture basis or relevant Physical Map input basis changes.
+
+Do not silently rebase.
+
+Explicit rebase compares old basis, new basis and target intent. Conflicts include removed/replaced targets, parent/hierarchy changes, identity changes, dependency/contract changes, relationship changes, transformations already realized and implementation realized differently.
+
+Non-conflicting reference refresh may occur inside an explicitly initiated rebase, but the developer reviews the result before acceptance.
+
+## Reconciliation
+
+After implementation, run deterministic Software Map analysis and compare the fresh Physical Map with the PlanningMap target.
+
+Retain at least:
+- implemented as planned;
+- implemented differently;
+- not implemented;
+- unexpected implementation.
+
+Reconciliation does not rewrite target or canonical architecture automatically.
+
+## Project Mind relationship
+
+Planning Maps and WorkItems may reference Project Mind artifacts by stable ID. Referenced knowledge remains owned by Project Mind.
+
+## Implementation surfaces
+
+WorkItems target ordinary editor/source navigation, terminal, tests, debugger, SCM/diffs and Problems/diagnostics. Phase 5 does not add an execution agent.
+
+## Validation strategy
+
+Use normal repository T1/T2/T3 tiers.
+
+T3 qualification must directly prove on the Dope repository: Physical Map -> Planning Map -> meaningful transformations -> WorkItems -> restart/copy recovery -> stale detection -> explicit rebase -> optional Adopt Target -> ordinary implementation -> re-analysis -> reconciliation, plus project isolation, corrupt-state fail-closed behavior, semantic zoom/source navigation and applicable browser/Electron/native/package evidence for the exact candidate.
+
+## Explicit non-goals
+
+Phase 5 does not implement AI Presence/chat, Agent Mind, provider selection for planning, ProposedAction, tool authority, AI mutation/delegation, durable Development Sessions, Phase 3 Planning migration/compatibility, automatic plan generation, autonomous target adoption or autonomous rebase conflict resolution.
+
+## Exit condition
+
+Phase 5 is qualified when the developer can use Dope itself, with no model configured, to understand current architecture visually, design a durable target, derive executable work, implement through ordinary IDE workflows, re-analyze reality and reconcile the result without losing the distinction among physical truth, canonical architecture and planning intent.
