@@ -85,6 +85,103 @@ Semantic zoom is architectural: System -> Subsystem -> Component -> Code. Visual
 
 Visual Software Planning must work with no model configured. General AI Presence, Agent Mind, ProposedAction, tool authority and delegation remain later phases.
 
+## Locked visual workflow
+
+Phase 5 uses the following visual interaction contract.
+
+### Default architecture view
+
+Opening the Physical Map defaults to a clean architecture overview showing **Systems plus their immediate Subsystems**. Components and Code are not shown by default. In a one-System project, that System becomes the main frame and its Subsystems provide the first useful structure.
+
+Reopening restores the last valid visual position when possible. **Fit Architecture** always returns to the high-level overview.
+
+### Visual grammar
+
+System / Subsystem / Component / Code identity is communicated primarily through structure, scale, shape, iconography, containment and edge semantics. Color reinforces meaning but is never the only carrier of state.
+
+Containment and dependency relationships use distinct treatments. Canonical, physical, planned, drift, stale and conflict states use concise badges, borders or line treatments layered onto the architectural object rather than replacing its identity. Dense evidence/provenance remains in the sMap inspector.
+
+### Semantic navigation
+
+Use both geometric zoom and explicit architectural navigation:
+- **Focus** opens a branch-centered map;
+- **Up** returns one architecture level;
+- **Fit Architecture** returns to the project overview.
+
+Selection and stable identity survive semantic-detail changes. Cross-boundary dependencies remain visible in simplified form. Source navigation must round-trip back to the same map context.
+
+Any supported System, Subsystem, Component or architecture branch may be opened as its own focused map in a separate center-workspace tab. These tabs are projections of shared state, not copies.
+
+### Direct manipulation
+
+Direct manipulation is allowed only when architectural intent is unambiguous. Every accepted gesture becomes an explicit typed PlannedTransformation:
+- moving a Component between Subsystems -> `move`;
+- drawing/redirecting a dependency -> relationship transformation;
+- adding a target node -> `add`;
+- removing from target -> `remove` without deleting physical truth.
+
+Semantically rich operations such as `split`, `merge` and `change contract` use focused commands/editors. Show the semantic operation before commit. Unadopted planning edits support domain-level undo/redo.
+
+### Physical-versus-target comparison
+
+The primary Planning Map is an **overlay/diff view** over referenced physical/canonical structure. Unchanged reality remains visible while target changes are layered on top.
+
+Provide **Current only / Target only / Diff** modes. Side-by-side comparison is secondary, not the default.
+
+### Planning Map lifecycle and branching
+
+A project may have multiple durable Planning Maps. The lifecycle is:
+
+`Draft -> Active -> Completed -> Superseded / Archived`.
+
+Developers may explicitly duplicate/branch maps to explore alternative designs. Multiple maps may be active at once. Incompatible overlapping active maps surface explicit conflicts; Phase 5 does not auto-merge them.
+
+Completed/superseded maps remain durable project history but are hidden from the ordinary active workspace by default.
+
+### WorkItems
+
+PlannedTransformations are the architectural source for work. Dope may deterministically suggest WorkItem groupings/dependencies, but the developer explicitly accepts, edits, splits or merges them.
+
+One transformation may require several WorkItems; one WorkItem may cover several tightly related transformations.
+
+WorkItems live primarily in a dedicated work projection rather than becoming architecture nodes. WorkItem and transformation selections highlight each other bidirectionally.
+
+### Bounded target adoption
+
+**Adopt Target** may adopt a coherent System, Subsystem, Component branch or compatible transformation set rather than requiring whole-map adoption.
+
+Dope includes deterministic required dependencies when safe or blocks adoption until unresolved dependencies/conflicts are addressed. Before acceptance, show a canonical-architecture diff.
+
+Partial adoption leaves the remaining target intact and visibly distinguishes adopted target from still-planned target.
+
+### Localized staleness and explicit rebase
+
+Track staleness at whole-map, affected-branch and individual-transformation levels. Unrelated physical changes may refresh context without marking unrelated work stale.
+
+Rebase uses an explicit three-way comparison:
+
+```text
+Old basis
+-> Current reality
+-> Target intent
+```
+
+Unaffected references may advance during the explicit operation. Conflicted transformations require developer resolution. Already-realized and differently-realized transformations are identified rather than silently rewriting the plan.
+
+### Reconciliation and closeout
+
+Reconciliation is transformation-centered with rollups to WorkItems, branches and the whole Planning Map.
+
+At minimum retain:
+- Implemented as planned;
+- Implemented differently;
+- Not implemented;
+- Unexpected implementation.
+
+Original target intent is preserved. **Implemented differently** may be an accepted final outcome.
+
+A Planning Map becomes **Completed only through explicit developer closeout**. Every transformation must be resolved, accepted as intentionally different, deferred into another Planning Map, or explicitly abandoned. Completed maps preserve intended-versus-realized history.
+
 ## Consequences
 
 Dope regains planning as a graph-centered product rather than restoring Phase 3. Architecture intent, canonical authority and physical evidence remain independently inspectable. Planning survives restart/copy/reopen without Theia or provider dependence. Staleness, rebase and adoption become explicit developer decisions. A visualization library can be replaced without migrating canonical planning semantics.
