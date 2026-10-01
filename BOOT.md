@@ -243,10 +243,10 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Validate and execute `c5-planning-basis-isolation` at unchanged `0.5.11`:
+Run the manual one-off Sol High correction:
 
-`npm run codex:phase:validate -- c5-planning-basis-isolation`
+`docs/tasks/c5-planning-basis-isolation/one-off-planning-basis-isolation.txt`
 
-`npm run codex:phase -- c5-planning-basis-isolation --closeout`
+Do not run it through `codex:phase`; this folder is no longer a correction stack.
 
-After the correction closes Green, recreate `/tmp/adaptive-seo-dope-p11` from the accepted `/home/jfin/dev/adaptive-seo-dope` reference so the failed qualification Planning Maps created under the old basis semantics are not reused. Then rerun P11. P12 remains blocked until P11 is Green.
+After focused implementation validation passes, recreate `/tmp/adaptive-seo-dope-p11` from the accepted `/home/jfin/dev/adaptive-seo-dope` reference and rerun P11. P12 remains blocked until P11 is Green.

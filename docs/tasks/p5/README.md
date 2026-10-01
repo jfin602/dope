@@ -34,19 +34,19 @@ Run implementation prompts:
 
 The runner owns P1-P10 commits and stops for P11 because direct browser GUI evidence is required. After P11 is completed and committed, resume P12 closeout from the exact qualified candidate.
 
-## P11 pause — Planning basis isolation gate
+## P11 pause — Planning basis isolation one-off
 
 P11 is currently paused / Not Green at `0.5.11`.
 
-The accepted Adaptive SEO hierarchy renders in the corrected center Physical Map and Planning Maps now persist. The latest rerun found the next blocker: creation of `.dope/planning-maps.json` changed the Physical Map input fingerprint, and a subsequent unchanged reanalysis advanced generation and falsely marked both maps stale.
+The accepted Adaptive SEO hierarchy renders in the corrected center Physical Map and Planning Maps persist, but the latest rerun found false staleness from two coupled defects: `.dope/planning-maps.json` entered Physical Map input identity, and generation-only reanalysis was treated as semantic change.
 
-`c5-planning-basis-isolation` corrects that boundary before another P11 rerun. It does not qualify P11.
+Run the manual one-off `c5-planning-basis-isolation` Sol High prompt, then rerun P11. There is no separate correction closeout agent.
 
 Routing:
 
-`P1-P10 -> acceptance cleared -> center map fixed -> P11 Not Green on false planning staleness -> c5-planning-basis-isolation -> fresh disposable P11 workspace -> rerun P11 -> P12`
+`P1-P10 -> accepted sMap -> center map fixed -> P11 false-stale failure -> manual c5-planning-basis-isolation -> fresh P11 workspace -> rerun P11 -> P12`
 
-After the correction closes, delete/recreate `/tmp/adaptive-seo-dope-p11` from `/home/jfin/dev/adaptive-seo-dope` rather than reusing the Planning Maps created under the broken basis contract. The accepted reference remains unchanged. P12/`0.5.12` remains ineligible until P11 is Green.
+After the one-off, recreate `/tmp/adaptive-seo-dope-p11` from `/home/jfin/dev/adaptive-seo-dope` rather than reusing the Planning Maps created under the broken basis contract.
 ## Product boundary
 
 Phase 5 proves the human-driven loop:

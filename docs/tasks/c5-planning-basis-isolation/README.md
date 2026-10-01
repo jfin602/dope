@@ -1,7 +1,6 @@
 # Correction 5 — Planning Basis Isolation
 
-Status: **APPROVED / READY FOR EXECUTION**
-Correction folder: `c5-planning-basis-isolation`
+Status: **APPROVED / MANUAL ONE-OFF**
 Required unchanged version: `0.5.11`
 Activation source: `2c21fcf244e42fb806ba01d27c68addc5ffb198e`
 Phase context: Product Phase 5 P11 paused / Not Green
@@ -13,9 +12,17 @@ Repair false Planning Map staleness without weakening real staleness detection.
 
 The latest P11 run proved two defects:
 1. `.dope/planning-maps.json` becomes a TypeScript-analyzer config input and changes the Physical Map fingerprint;
-2. a generation-only Physical Map refresh is treated as semantic Planning Map change.
+2. generation-only Physical Map refresh is treated as semantic Planning Map change.
 
-## Scope
+## Execution
+
+This correction is deliberately one manual implementation prompt:
+
+`one-off-planning-basis-isolation.txt`
+
+Use GPT-6 Sol High. Do not run this folder through `codex:phase`. There is no separate prompt assessment, implementation plan, or correction closeout prompt; the next P11 rerun is the qualification gate.
+
+## Required repair
 
 - exclude `.dope/` from generic analyzer source/config discovery, including explicit configured-source/reference paths where necessary;
 - keep `.dope/architecture.json` represented only by the dedicated declaration fingerprint;
@@ -23,15 +30,6 @@ The latest P11 run proved two defects:
 - remove generation-only false stale/current failures;
 - keep exact generation guards for asynchronous/snapshot concurrency;
 - add permanent regressions reproducing the exact P11 sequence and proving real source/canonical changes still stale correctly.
-
-## Stack
-
-| Prompt | Work | Tier | Model | Browser |
-| --- | --- | --- | --- | --- |
-| P1 | implement input isolation + planning-basis semantics + permanent regressions | T2 | GPT-6 Sol High | no |
-| P2 | evidence-only correction closeout | T2 audit | GPT-6 Sol Medium | no |
-
-Both prompts keep package version exactly `0.5.11`.
 
 ## Scope guard
 
@@ -43,11 +41,25 @@ Do not:
 - remove exact generation race guards globally;
 - auto-rebase Planning Maps;
 - redesign persistence or planning ontology;
-- run P11/P12;
+- run the full P11 GUI qualification inside the correction;
 - advance package version.
 
-## Exit
+## Validation
 
-Green means Dope metadata writes and unchanged reanalysis no longer stale Planning Maps, while real software/canonical changes still do and exact snapshot-generation protections remain intact.
+Focused implementation evidence only:
+- affected TypeScript analyzer tests;
+- Software Map index/backend tests;
+- planning rebase/staleness tests;
+- visual-planning storage/backend tests;
+- planning-map controller/UI tests touched by the change;
+- affected package builds/typecheck;
+- `git diff --check`;
+- exact `0.5.11` / no-root-lock checks.
 
-After Green closeout, recreate `/tmp/adaptive-seo-dope-p11` from the accepted reference and rerun P11.
+Do not run full `npm run check`, AppImage/native packaging, providers, or the P11 browser matrix here.
+
+## Exit routing
+
+If focused implementation validation is Green:
+
+`manual c5-planning-basis-isolation -> recreate /tmp/adaptive-seo-dope-p11 -> rerun P11 -> P12 only if P11 Green`.

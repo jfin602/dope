@@ -714,34 +714,27 @@ Exit:
 The one-off implementation passes focused map regressions, the corrected Phase 3 guard, restart regression, affected builds and diff/version checks. Then rerun P11 on `/tmp/adaptive-seo-dope-p11`; P11 determines qualification and P12 eligibility.
 ## Phase 5 interruption correction — `c5-planning-basis-isolation`
 
-Status: **APPROVED / READY FOR EXECUTION at unchanged `0.5.11`**
+Status: **APPROVED / MANUAL ONE-OFF at unchanged `0.5.11`**
 
 Activation source: `2c21fcf244e42fb806ba01d27c68addc5ffb198e`.
 
 Purpose:
-Repair the Planning Map basis boundary proven by the latest P11 rerun.
+Repair the Planning Map basis boundary proven by P11. Dope-owned `.dope/` work state must not alter Physical Map input identity, and generation-only observation refresh must not be treated as semantic plan staleness.
 
-Required contract:
-- Dope-owned `.dope/` product/work files do not participate in generic language-analyzer source/config fingerprints;
-- `.dope/architecture.json` remains canonical input through the dedicated declaration fingerprint, not JSON/config discovery;
-- a Planning Map records `physicalGeneration` as observation provenance, but generation-only advancement with unchanged architecture/input fingerprints does not make the plan stale;
-- source/config changes still change Physical Map input identity;
-- canonical architecture changes still stale relevant Planning Maps;
-- exact generation checks remain where they protect in-flight query, snapshot, preview or acceptance races;
-- one shared semantic-basis comparison is used where the product asks whether the software meaningfully changed, while exact-observation comparison remains available for concurrency guards.
-
-Qualification routing:
-P1 implements the bounded correction with focused regressions. P2 is evidence-only correction closeout. Neither prompt runs P11. After Green closeout, recreate the disposable Adaptive SEO P11 workspace from the accepted reference and rerun P11 as the browser/T3 qualification gate.
+Execution:
+- one manual GPT-6 Sol High implementation prompt;
+- focused regression/build validation only;
+- no internal correction closeout prompt;
+- P11 is the qualification/closeout gate for the repaired behavior.
 
 Out of scope:
-- migration of the disposable failed P11 planning store;
+- migration of disposable failed-run Planning Maps;
 - accepted Adaptive SEO architecture/sMap regeneration;
 - synthesis/provider changes;
-- automatic rebase;
-- PlanningMap persistence redesign;
-- P11/P12 execution;
-- version advance.
+- auto-rebase or planning persistence redesign;
+- P12 or version advance.
 
+After the one-off passes, recreate `/tmp/adaptive-seo-dope-p11` from the accepted reference and rerun P11.
 ## Product Phase 6 — AI Presence
 
 Purpose:

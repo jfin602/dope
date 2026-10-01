@@ -1,16 +1,18 @@
-TASK: Correction 5 / P1 — Isolate Planning Map basis from Dope state and generation churn
+TASK: One-off correction — Isolate Planning Map basis from Dope state and generation churn
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
+- This is a manual one-off correction, not a codex phase/correction stack prompt.
+- Do not run this file through `codex:phase`.
 
 VERSIONING
-- Required unchanged project version: `0.5.11`.
+- Keep the complete Dope workspace exactly at `0.5.11`.
+- Do not advance P11 or create `0.5.12` work.
 
 EXECUTION
-- Runner-friendly bounded implementation prompt.
-- T2 focused validation only.
-- P11 is the later qualification gate; do not run it here.
+- One bounded implementation pass with focused validation only.
+- P11 is the qualification gate after this repair; do not run the P11 GUI matrix here.
 
 GOAL
 
@@ -24,7 +26,7 @@ Read:
 - BOOT.md / AGENTS.md;
 - ADR 0019 and ADR 0017;
 - current ARCHITECTURE.md / stability contract / Phase 5 docs;
-- docs/tasks/c5-planning-basis-isolation/{README.md,prompt-assessment.md,implementation-plan.md};
+- docs/tasks/c5-planning-basis-isolation/README.md;
 - latest P11 evidence;
 - exact affected source/tests.
 
@@ -130,4 +132,6 @@ Report:
 - exact focused commands/results;
 - changed files;
 - unchanged `0.5.11`;
-- readiness for P2 closeout.
+- whether the candidate is ready for a fresh P11 rerun on a recreated `/tmp/adaptive-seo-dope-p11`.
+
+Do not claim P11 Green. P11 is the qualification step after this manual correction.
