@@ -1,0 +1,129 @@
+TASK: Correction 4 / P2 — Manual Dope Dark visual browser check and closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: **yes**.
+- Execution: **MANUAL INTERACTIVE HANDOFF — do not run as an ordinary runner-only prompt**.
+
+VERSIONING
+- Keep every package exactly `0.4.6`.
+
+GOAL
+
+Perform one quick real-browser visual check of Dope Dark plus user theme override, apply at most one tiny directly observed color-token fix if needed, and close `c4-color-theme`.
+
+This is intentionally a short closeout, not a broad browser qualification.
+
+PREFLIGHT
+
+Read:
+- BOOT.md / AGENTS.md;
+- ADR 0016;
+- docs/tasks/c4-color-theme/README.md;
+- assessment/plan;
+- exact P1 prompt/result;
+- current theme source/tests.
+
+Require:
+- exact P1 candidate;
+- P1 focused validation Green;
+- package `0.4.6`;
+- no unexpected product-source drift.
+
+FRESH DEFAULT CHECK
+
+Use a fresh browser context/profile or clear prior Theia theme persistence so an old user theme cannot mask the application default.
+
+Open browser Dope on the real Dope repository.
+
+Confirm the default active theme is **Dope Dark**.
+
+Quickly inspect:
+- editor/main workbench background near `#1F1F1F`;
+- primary button/action uses `#FF7A1A`;
+- hover/highlight uses `#FFB15C`;
+- deep/pressed/emphasis use of `#C75100` where applicable;
+- focus ring/input focus;
+- active Activity Bar/nav/tab state;
+- representative list/tree selection;
+- Project Mind;
+- sMap sidebar/review if readily available.
+
+Use a handful of computed-style checks where useful, but prioritize real visual coherence/readability.
+
+Confirm:
+- primary-orange control foreground is readable;
+- there is no obvious Microsoft/VS Code-blue brand accent left on the main active/focus interactions covered by the theme;
+- errors, warnings, success and syntax still retain meaningful non-brand colors.
+
+USER THEME OVERRIDE
+
+Through normal Appearance / Color Theme UI:
+1. switch to another built-in theme such as Light (Theia) or Dark (Theia);
+2. confirm that theme visibly takes control;
+3. confirm the Dope Dark activation class/token overrides are removed and orange does not contaminate the alternate theme;
+4. optionally switch back to Dope Dark.
+
+This override check is mandatory.
+
+TINY FIX ALLOWANCE
+
+If one small theme defect is directly observed, you may fix only a bounded color-token/CSS/theme-registration issue, for example:
+- unreadable button foreground;
+- missed focus/active token;
+- stale Dope theme class after switching;
+- one lingering blue active indicator in the intended brand mapping.
+
+After a tiny fix:
+- update/add the focused regression;
+- rebuild only the extension/browser as needed;
+- recheck that exact visual surface.
+
+If the problem requires layout redesign, framework replacement, broad CSS rewrite or Phase 5 work, mark Not Green instead.
+
+CLOSEOUT
+
+Write:
+`docs/tasks/c4-color-theme/closeout.md`
+
+Update:
+`docs/tasks/c4-color-theme/README.md`
+
+Record:
+- exact candidate;
+- P1 automated validation;
+- default visual result;
+- theme override result;
+- any tiny P2 fix;
+- residual gaps;
+- final Green / Not Green decision.
+
+Cheap final checks only:
+- focused theme test if changed in P2;
+- browser/extension build only if P2 changed code;
+- `git diff --check`;
+- version/no-root-lock;
+- correction prompt validation if applicable.
+
+Do not run AppImage/native packaging.
+
+ROUTING
+
+If Green:
+- close `c4-color-theme` Green/Qualified;
+- route to a fresh Product Phase 5 `/docs-review`;
+- do not implement Phase 5 in this prompt.
+
+If Not Green:
+- identify the narrow visual/theme defect;
+- keep Phase 5 blocked.
+
+FINAL RESPONSE
+
+Report:
+- exact candidate;
+- visual default result;
+- alternate-theme override result;
+- any tiny fix;
+- closeout decision;
+- routing.
