@@ -1,0 +1,53 @@
+TASK: Phase 5 / P6 — Typed transformation editing and undo
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.5.6`.
+
+GOAL
+
+Make the Planning Map directly editable where architectural intent is unambiguous, with typed previews and domain-level undo/redo.
+
+PREFLIGHT
+
+Read exact P5 source/tests and locked Q4/Q5 visual decisions.
+
+Require coherent `0.5.5`.
+
+IMPLEMENT
+
+Map supported visual actions to explicit PlannedTransformation previews:
+- add target System/Subsystem/Component -> `add`;
+- drag/reparent supported boundary -> `move`;
+- remove from target -> `remove` without deleting physical/canonical truth;
+- draw/redirect supported dependency -> `redirect-relationship` or applicable relationship transformation.
+
+Every gesture must:
+1. resolve stable Dope-owned source/target IDs;
+2. build a typed preview;
+3. show the semantic operation to the developer;
+4. validate against current PlanningMap revision/basis;
+5. require explicit commit/cancel before durable mutation.
+
+Do not infer `split`, `merge`, `modify` or `change-contract` from ambiguous geometry. Provide focused commands/editors for those operations with typed preview.
+
+Implement domain-level undo/redo for **unadopted PlanningMap semantic edits**. Undo/redo mutates PlanningMap transformations/revision/history through the service; it is not React Flow coordinate undo.
+
+Reject invalid hierarchy moves, missing IDs, conflicting transformation references, stale revisions and ambiguous gestures without partial writes.
+
+Advance versions/internal refs coherently to `0.5.6`.
+
+TESTS
+
+Add focused pure/controller tests for each supported gesture -> typed transformation, preview/cancel/commit, complex-operation editors, invalid gestures, stale revisions, undo/redo history and proof that physical/canonical state is unchanged.
+
+Run focused tests, affected extension/domain build/typecheck and `git diff --check`.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report gesture semantics, preview/undo behavior, safety and P7 eligibility.
