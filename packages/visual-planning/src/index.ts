@@ -19,7 +19,7 @@ export interface DependencyRelationship { sourceId: string; targetId: string; po
 export interface RelationshipRedirect { from: DependencyRelationship; to: DependencyRelationship }
 export interface PlannedTransformation {
   id: string; kind: TransformationKind; currentIds: string[]; futureNodes: PlannedNode[]; dependsOn: string[];
-  redirect?: RelationshipRedirect; resolution?: Resolution; adopted?: boolean;
+  redirect?: RelationshipRedirect; resolution?: Resolution; deferredTo?: { mapId: string; transformationId: string }; adopted?: boolean;
 }
 export type WorkStatus = 'proposed' | 'ready' | 'in-progress' | 'completed' | 'cancelled';
 export interface WorkItem {
@@ -33,6 +33,7 @@ export interface PlanningMap {
   revision: number; history: HistoryEntry[]; basis: PlanningBasis;
   basisSnapshot?: RebaseReality;
   transformations: PlannedTransformation[]; workItems: WorkItem[]; branchedFrom?: string;
+  reconciliation?: PlanningReconciliation;
   editHistory?: { undo: PlannedTransformation[][]; redo: PlannedTransformation[][] };
 }
 export interface CrossMapConflict { schemaVersion: 1; mapIds: [string, string]; transformationIds: [string, string]; identityId: string; reason: 'incompatible-target' }
@@ -41,7 +42,8 @@ export interface RebaseConflict { transformationId: string; identityId: string; 
 export interface StaleResult { schemaVersion: 1; stale: boolean; architectureChanged: boolean; physicalChanged: boolean; affectedTransformationIds: string[]; affectedBranchIds: string[]; conflicts: RebaseConflict[] }
 export interface RebaseResult { schemaVersion: 1; oldBasis: PlanningBasis; currentBasis: PlanningBasis; conflicts: RebaseConflict[]; unaffectedTransformationIds: string[]; oldReality?: RebaseReality; currentReality: RebaseReality }
 export type ReconciliationOutcome = 'implemented-as-planned' | 'implemented-differently' | 'not-implemented' | 'unexpected-implementation';
-export interface ReconciliationResult { schemaVersion: 1; transformationId?: string; identityId: string; outcome: ReconciliationOutcome; physicalGeneration: number; evidenceIds: string[] }
+export interface ReconciliationResult { schemaVersion: 1; transformationId?: string; identityId: string; outcome: ReconciliationOutcome; physicalGeneration: number; evidenceIds: string[]; explanation: string; branchIds?: string[] }
+export interface PlanningReconciliation { basis: PlanningBasis; results: ReconciliationResult[]; at: string }
 export interface TargetProjection { nodes: PlannedNode[]; relationships: DependencyRelationship[] }
 export interface WorkItemSuggestion { transformationIds: string[]; dependsOn: number[]; objective: string }
 
@@ -110,7 +112,7 @@ function relationship(v: unknown, at: string): DependencyRelationship {
   return { sourceId: id(x.sourceId, `${at}.sourceId`), targetId: id(x.targetId, `${at}.targetId`), policy: choice(x.policy, ['allowed', 'forbidden'] as const, `${at}.policy`) };
 }
 function transformation(v: unknown, at: string): PlannedTransformation {
-  const x = obj(v, at); fields(x, ['id', 'kind', 'currentIds', 'futureNodes', 'dependsOn'], ['redirect', 'resolution', 'adopted'], at);
+  const x = obj(v, at); fields(x, ['id', 'kind', 'currentIds', 'futureNodes', 'dependsOn'], ['redirect', 'resolution', 'deferredTo', 'adopted'], at);
   const kind = choice(x.kind, ['add', 'modify', 'remove', 'move', 'split', 'merge', 'redirect-relationship', 'change-contract'] as const, `${at}.kind`);
   const currentIds = ids(x.currentIds, `${at}.currentIds`);
   const futureNodes = list(x.futureNodes, node, `${at}.futureNodes`).sort(byId);
@@ -129,6 +131,8 @@ function transformation(v: unknown, at: string): PlannedTransformation {
   return { id: id(x.id, `${at}.id`), kind, currentIds, futureNodes, dependsOn: ids(x.dependsOn, `${at}.dependsOn`),
     ...(redirect ? { redirect: { from: relationship(redirect.from, `${at}.redirect.from`), to: relationship(redirect.to, `${at}.redirect.to`) } } : {}),
     ...(x.resolution === undefined ? {} : { resolution: choice(x.resolution, ['as-planned', 'accepted-different', 'deferred', 'abandoned'] as const, `${at}.resolution`) }),
+    ...(x.deferredTo === undefined ? {} : { deferredTo: (() => { const d = obj(x.deferredTo, `${at}.deferredTo`); fields(d, ['mapId', 'transformationId'], [], `${at}.deferredTo`);
+      return { mapId: id(d.mapId, `${at}.deferredTo.mapId`), transformationId: id(d.transformationId, `${at}.deferredTo.transformationId`) }; })() }),
     ...(x.adopted === undefined ? {} : { adopted: bool(x.adopted, `${at}.adopted`) }) };
 }
 function work(v: unknown, at: string): WorkItem {
@@ -156,7 +160,7 @@ function acyclic(items: Array<{ id: string; dependsOn: string[] }>, at: string):
 }
 export function validateTransformationDependencies(items: PlannedTransformation[]): void { acyclic(items, 'transformations'); }
 export function parsePlanningMap(input: unknown): PlanningMap {
-  const x = obj(input, 'root'); fields(x, ['schemaVersion', 'id', 'projectId', 'title', 'objective', 'status', 'revision', 'history', 'basis', 'transformations', 'workItems'], ['branchedFrom', 'editHistory', 'basisSnapshot'], 'root');
+  const x = obj(input, 'root'); fields(x, ['schemaVersion', 'id', 'projectId', 'title', 'objective', 'status', 'revision', 'history', 'basis', 'transformations', 'workItems'], ['branchedFrom', 'editHistory', 'basisSnapshot', 'reconciliation'], 'root');
   if (x.schemaVersion !== 1) fail('unsupported schemaVersion');
   const basis = parseBasis(x.basis, 'basis');
   if (x.basisSnapshot !== undefined && JSON.stringify(parseRebaseReality(x.basisSnapshot).basis) !== JSON.stringify(basis)) fail('basis snapshot mismatch');
@@ -165,6 +169,7 @@ export function parsePlanningMap(input: unknown): PlanningMap {
   if (history.length && (history[history.length - 1].revision !== revision || history.some((h, i) => i && h.revision <= history[i - 1].revision))) fail('history revision');
   if (!history.length && revision !== 0) fail('history revision');
   const transformations = list(x.transformations, transformation, 'transformations').sort(byId);
+  if (transformations.some(t => (t.resolution === 'deferred') !== !!t.deferredTo)) fail('deferral linkage');
   const editHistory = x.editHistory === undefined ? undefined : obj(x.editHistory, 'editHistory');
   if (editHistory) fields(editHistory, ['undo', 'redo'], [], 'editHistory');
   const snapshots = (value: unknown, at: string) => list(value, (raw, place) => {
@@ -179,10 +184,14 @@ export function parsePlanningMap(input: unknown): PlanningMap {
   const transformIds = new Set(transformations.map(t => t.id));
   for (const item of workItems) for (const ref of item.transformationIds) if (!transformIds.has(ref)) fail(`unknown transformation ${ref}`);
   const status = choice(x.status, ['draft', 'active', 'completed', 'superseded', 'archived'] as const, 'status');
-  if (status === 'completed' && !canCloseOut({ transformations } as PlanningMap)) fail('unresolved closeout');
+  const reconciliation = x.reconciliation === undefined ? undefined : parsePlanningReconciliation(x.reconciliation);
+  if (reconciliation && (reconciliation.results.filter(r => r.transformationId).length !== transformations.length ||
+    transformations.some(t => reconciliation.results.filter(r => r.transformationId === t.id).length !== 1))) fail('reconciliation coverage');
+  const closed = history.some(entry => entry.action.startsWith('closeout:'));
+  if ((status === 'completed' && !closed || closed && !canCloseOut({ transformations, reconciliation } as PlanningMap))) fail('unresolved closeout');
   return { schemaVersion: 1, id: id(x.id, 'id'), projectId: id(x.projectId, 'projectId'), title: str(x.title, 'title'), objective: str(x.objective, 'objective'), status, revision, history,
     basis, ...(x.basisSnapshot === undefined ? {} : { basisSnapshot: parseRebaseReality(x.basisSnapshot) }),
-    transformations, workItems, ...(x.branchedFrom === undefined ? {} : { branchedFrom: id(x.branchedFrom, 'branchedFrom') }),
+    transformations, workItems, ...(reconciliation ? { reconciliation } : {}), ...(x.branchedFrom === undefined ? {} : { branchedFrom: id(x.branchedFrom, 'branchedFrom') }),
     ...(editHistory ? { editHistory: { undo: snapshots(editHistory.undo, 'editHistory.undo'), redo: snapshots(editHistory.redo, 'editHistory.redo') } } : {}) };
 }
 export function parsePlanningMapJson(json: string): PlanningMap { try { return parsePlanningMap(JSON.parse(json)); } catch (error) { if (error instanceof SyntaxError) fail('malformed JSON'); throw error; } }
@@ -213,24 +222,42 @@ export function parseRebaseResult(input: unknown): RebaseResult {
     ...(x.oldReality === undefined ? {} : { oldReality: parseRebaseReality(x.oldReality) }), currentReality: parseRebaseReality(x.currentReality) };
 }
 export function parseReconciliationResult(input: unknown): ReconciliationResult {
-  const x = versioned(input, 'reconciliation', ['identityId', 'outcome', 'physicalGeneration', 'evidenceIds'], ['transformationId']);
+  const x = versioned(input, 'reconciliation', ['identityId', 'outcome', 'physicalGeneration', 'evidenceIds', 'explanation'], ['transformationId', 'branchIds']);
   const outcome = choice(x.outcome, ['implemented-as-planned', 'implemented-differently', 'not-implemented', 'unexpected-implementation'] as const, 'reconciliation.outcome');
   if ((outcome === 'unexpected-implementation') === (x.transformationId !== undefined)) fail('reconciliation.transformationId');
-  return { schemaVersion: 1, identityId: id(x.identityId, 'reconciliation.identityId'), outcome, physicalGeneration: integer(x.physicalGeneration, 'reconciliation.physicalGeneration'),
-    evidenceIds: ids(x.evidenceIds, 'reconciliation.evidenceIds'), ...(x.transformationId === undefined ? {} : { transformationId: id(x.transformationId, 'reconciliation.transformationId') }) };
+  return { schemaVersion: 1, identityId: str(x.identityId, 'reconciliation.identityId'), outcome, physicalGeneration: integer(x.physicalGeneration, 'reconciliation.physicalGeneration'),
+    evidenceIds: strings(x.evidenceIds, 'reconciliation.evidenceIds'), explanation: str(x.explanation, 'reconciliation.explanation'),
+    ...(x.branchIds === undefined ? {} : { branchIds: ids(x.branchIds, 'reconciliation.branchIds') }),
+    ...(x.transformationId === undefined ? {} : { transformationId: id(x.transformationId, 'reconciliation.transformationId') }) };
 }
 
-export function canCloseOut(map: PlanningMap): boolean { return map.transformations.every(t => t.resolution !== undefined); }
-const transitions: Record<MapStatus, MapStatus[]> = { draft: ['active', 'archived'], active: ['completed', 'superseded', 'archived'], completed: ['archived'], superseded: ['archived'], archived: [] };
+export function parsePlanningReconciliation(input: unknown): PlanningReconciliation {
+  const x = obj(input, 'planning reconciliation'); fields(x, ['basis', 'results', 'at'], [], 'planning reconciliation');
+  const basis = parseBasis(x.basis, 'planning reconciliation.basis');
+  const results = list(x.results, parseReconciliationResult, 'planning reconciliation.results');
+  if (results.some(r => r.physicalGeneration !== basis.physicalGeneration) ||
+    new Set(results.map(r => `${r.transformationId ?? ''}:${r.identityId}`)).size !== results.length) fail('reconciliation generation or duplicate');
+  return { basis, results, at: str(x.at, 'planning reconciliation.at') };
+}
+export function canCloseOut(map: PlanningMap): boolean {
+  const results = map.reconciliation?.results;
+  return !!results && map.transformations.every(t => {
+    const outcome = results.find(r => r.transformationId === t.id)?.outcome;
+    return !!outcome && (t.resolution === 'as-planned' && outcome === 'implemented-as-planned' ||
+      t.resolution === 'accepted-different' && outcome === 'implemented-differently' ||
+      t.resolution === 'deferred' && !!t.deferredTo || t.resolution === 'abandoned');
+  });
+}
+const transitions: Record<MapStatus, MapStatus[]> = { draft: ['active', 'archived'], active: ['superseded', 'archived'], completed: ['archived'], superseded: ['archived'], archived: [] };
 export function transitionMap(map: PlanningMap, status: MapStatus, at: string): PlanningMap {
-  if (!transitions[map.status].includes(status) || (status === 'completed' && !canCloseOut(map))) fail(`illegal transition ${map.status} -> ${status}`);
+  if (!transitions[map.status].includes(status)) fail(`illegal transition ${map.status} -> ${status}`);
   const next = { ...map, status, revision: map.revision + 1, history: [...map.history, { revision: map.revision + 1, action: `status:${status}`, at: str(at, 'at') }] };
   return parsePlanningMap(next);
 }
 export function branchMap(map: PlanningMap, newId: string, at: string): PlanningMap {
   if (newId === map.id) fail('branch identity');
   return parsePlanningMap({ ...map, id: id(newId, 'newId'), status: 'draft', revision: 0, history: [{ revision: 0, action: `branch:${map.id}`, at: str(at, 'at') }], branchedFrom: map.id,
-    transformations: map.transformations.map(t => ({ ...t, resolution: undefined })), editHistory: { undo: [], redo: [] },
+    transformations: map.transformations.map(t => ({ ...t, resolution: undefined, deferredTo: undefined })), reconciliation: undefined, editHistory: { undo: [], redo: [] },
     workItems: map.workItems.map(w => ({ ...w, status: 'proposed', completionNotes: undefined })) });
 }
 export const duplicateMap = branchMap;

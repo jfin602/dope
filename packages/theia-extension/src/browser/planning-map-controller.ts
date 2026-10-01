@@ -10,7 +10,7 @@ import type { SoftwareMapController } from './software-map-controller';
 import type { PlanningView } from './planning-map-projection';
 
 const transitions: Record<MapStatus, MapStatus[]> = {
-    draft: ['active', 'archived'], active: ['completed', 'superseded', 'archived'],
+    draft: ['active', 'archived'], active: ['superseded', 'archived'],
     completed: ['archived'], superseded: ['archived'], archived: []
 };
 export class PlanningMapController {
@@ -52,7 +52,15 @@ export class PlanningMapController {
         this.map.initialization?.declarationFingerprint && this.handle && this.map.workspace === this.workspace); }
     get visibleMaps(): PlanningMap[] { return this.collection?.maps.filter(map => this.showHistory || map.status === 'draft' || map.status === 'active') ?? []; }
     get conflicts(): CrossMapConflict[] { return detectActiveConflicts(this.collection?.maps ?? []); }
-    get allowedTransitions(): MapStatus[] { return this.selected ? transitions[this.selected.status].filter(status => status !== 'completed' || canCloseOut(this.selected!)) : []; }
+    get allowedTransitions(): MapStatus[] { return this.selected ? transitions[this.selected.status] : []; }
+    get canCloseOut(): boolean { return !!this.selected && this.selected.status === 'active' && canCloseOut(this.selected); }
+    reconcile(): Promise<void> { const map = this.selected; return map ? this.mutate({ type: 'reconcile', mapId: map.id, expectedMapRevision: map.revision }) : Promise.resolve(); }
+    disposition(transformationId: string, resolution: PlannedTransformation['resolution'], deferredToMapId?: string): Promise<void> {
+        const map = this.selected;
+        return map && resolution ? this.mutate({ type: 'disposition', mapId: map.id, transformationId, resolution, deferredToMapId }) : Promise.resolve();
+    }
+    closeout(): Promise<void> { const map = this.selected; return map && this.canCloseOut ?
+        this.mutate({ type: 'closeout', mapId: map.id, expectedMapRevision: map.revision }) : Promise.resolve(); }
     setMode(value: boolean): void { this.planningMode = value; this.notify(); }
     setView(value: PlanningView): void { this.view = value; this.notify(); }
     setHistory(value: boolean): void {

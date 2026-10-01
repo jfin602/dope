@@ -62,6 +62,11 @@ export class SoftwareMapIndex {
     }
     status(root: string): SoftwareMapStatus { return structuredClone(this.entries.get(root)?.status ?? idle()); }
     snapshot(root: string): PhysicalMapSnapshot | undefined { return this.entries.get(root)?.snapshot; }
+    async inputsCurrent(root: string): Promise<boolean> {
+        const { text } = await readArchitecture(root);
+        return this.entries.get(root)?.inputs?.fingerprint ===
+            (await fingerprints(root, text, this.analyzer.inputPaths?.(root))).fingerprint;
+    }
 
     /** Initialization can collect evidence without changing index state or publishing a snapshot. */
     collectEvidence(root: string) { return collectArchitectureEvidence(root, this.analyzer); }

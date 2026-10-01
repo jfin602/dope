@@ -36,7 +36,8 @@ export class VisualPlanningBackend implements VisualPlanningService {
       if (!within || within === '..' || within.startsWith('../') || isAbsolute(within)) throw new Error('Unsafe Software Map source');
       sourceHashes[path] = createHash('sha256').update(await readFile(file)).digest('hex');
     }
-    if (this.index?.status(root).generation !== status.generation) throw new Error('Software Map generation changed during rebase');
+    if (this.index?.status(root).generation !== status.generation || !await this.index?.inputsCurrent(root))
+      throw new Error('Software Map inputs or generation changed; analyze again');
     return captureReality({ architectureRevision: 0, architectureFingerprint: state.declarationFingerprint,
       physicalInputFingerprint: snapshot.metadata.inputFingerprint, physicalGeneration: snapshot.metadata.generation }, architecture, snapshot, sourceHashes);
   }
@@ -87,8 +88,15 @@ export class VisualPlanningBackend implements VisualPlanningService {
   async mutate(request: PlanningMutation) {
     if (!request || typeof request !== 'object') throw new Error('Invalid planning mutation');
     const root = this.active(request.projectHandle);
+    // ponytail: analyze under the planning lock so stale requests cannot publish a fresh generation; revisit if lock latency matters.
+    const observed = request.operation.type === 'reconcile' ? async () => {
+      if (!this.index) throw new Error('Software Map analysis is unavailable');
+      const status = await this.index.analyze(root);
+      if (status.state !== 'ready' || status.analysis.completeness !== 'complete') throw new Error('Fresh Software Map analysis did not complete');
+      return this.reality(root);
+    } : ['create', 'closeout'].includes(request.operation.type) && this.index ? () => this.reality(root) : undefined;
     const snapshot = await this.store.mutate(root, request.expectedRevision, request.operation, this.projectId,
-      request.operation.type === 'create' && this.index ? () => this.reality(root) : undefined);
+      observed);
     this.projectId = snapshot.projectId;
     return snapshot;
   }

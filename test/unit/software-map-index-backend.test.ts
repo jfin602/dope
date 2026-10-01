@@ -76,6 +76,7 @@ test('index invalidates source/config/declaration, matches clean rebuild, and re
     const clean = async () => { const separate = new SoftwareMapIndex(new TypeScriptAnalyzer()); await separate.analyze(root); return snapshotData(separate, root); };
     let status = await index.analyze(root);
     assert.equal(status.state, 'ready');
+    assert.equal(await index.inputsCurrent(root), true);
     assert.deepEqual(snapshotData(index, root), await clean());
     const snapshot = index.snapshot(root)!;
     assert.equal(snapshot.violations.length, 1);
@@ -106,7 +107,9 @@ test('index invalidates source/config/declaration, matches clean rebuild, and re
     assert.ok(status.reusedSourceFiles > 0);
     assert.deepEqual(snapshotData(index, root), await clean());
     await writeFile(join(root, 'src/core/c.ts'), 'export const core = () => 3;\n');
+    assert.equal(await index.inputsCurrent(root), false);
     await index.analyze(root);
+    assert.equal(await index.inputsCurrent(root), true);
     assert.deepEqual(snapshotData(index, root), await clean());
     await writeFile(join(root, 'src/core/c.ts'), 'export const renamed = () => 3;\n');
     await index.analyze(root);

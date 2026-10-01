@@ -52,8 +52,8 @@ test('lifecycle, branch identity and explicit closeout', () => {
   assert.equal(branch.revision, 0); assert.equal(branch.history[0].action, 'branch:plan-a');
   assert.throws(() => branchMap(active, 'plan-a', '2026-10-01'), /branch identity/);
   const resolved = map([{ ...add, resolution: 'as-planned' }]);
-  assert.equal(canCloseOut(resolved), true);
-  assert.equal(transitionMap(transitionMap(resolved, 'active', '2026-10-01'), 'completed', '2026-10-02').status, 'completed');
+  assert.equal(canCloseOut(resolved), false);
+  assert.throws(() => transitionMap(transitionMap(resolved, 'active', '2026-10-01'), 'completed', '2026-10-02'), /illegal transition/);
   assert.equal(transitionMap(active, 'superseded', '2026-10-01').status, 'superseded');
 });
 
@@ -129,7 +129,7 @@ test('versioned conflict, stale, rebase and reconciliation results fail closed',
     conflicts: [{ transformationId: 'move-routes', identityId: 'routes', reason: 'parent', evidence: ['Parent changed'] }], unaffectedTransformationIds: ['add-worker'] };
   assert.deepEqual(parseRebaseResult(rebase), rebase);
   assert.throws(() => parseRebaseResult({ ...rebase, unaffectedTransformationIds: ['move-routes'] }), /conflicting unaffected/);
-  const reconciliation = { schemaVersion: 1, transformationId: 'add-worker', identityId: 'worker', outcome: 'not-implemented', physicalGeneration: 4, evidenceIds: [] };
+  const reconciliation = { schemaVersion: 1, transformationId: 'add-worker', identityId: 'worker', outcome: 'not-implemented', physicalGeneration: 4, evidenceIds: [], explanation: 'No physical source change observed' };
   assert.deepEqual(parseReconciliationResult(reconciliation), reconciliation);
   assert.throws(() => parseReconciliationResult({ ...reconciliation, schemaVersion: 2 }), /schemaVersion/);
   assert.throws(() => parseReconciliationResult({ ...reconciliation, outcome: 'unexpected-implementation' }), /transformationId/);

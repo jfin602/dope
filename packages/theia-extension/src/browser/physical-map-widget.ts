@@ -8,10 +8,11 @@ import URI from '@theia/core/lib/common/uri';
 import { PhysicalMapController, physicalMapTabId, type PhysicalMapTabOptions } from './physical-map-controller';
 import type { CanvasNode } from './physical-map-projection';
 import { PlanningMapController } from './planning-map-controller';
-import { projectPlanningMap, projectRebaseConflict } from './planning-map-projection';
+import { projectPlanningMap, projectRebaseConflict, projectReconciliationResult } from './planning-map-projection';
 import { affectedArchitecture, transformationsForArchitecture } from './planning-work-projection';
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
-import type { PlannedNode, WorkItem } from '@dope/visual-planning';
+import type { PlannedNode, Resolution, WorkItem } from '@dope/visual-planning';
+import { reconciliationRollups } from '@dope/visual-planning/lib/reconciliation';
 import './dope.css';
 
 export const PHYSICAL_MAP_ID = 'dope-physical-map-canvas';
@@ -217,7 +218,8 @@ export class PhysicalMapWidget extends BaseWidget {
         } },
             !this.planning.canCreate || this.planning.loading || !this.controller.projectMatches);
         button('Branch alternative', () => void this.planning.duplicate(), !this.planning.selected || this.planning.loading);
-        const editable = !!this.planning.selected && !this.planning.loading && this.controller.projectMatches;
+        const editable = !!this.planning.selected && ['draft', 'active'].includes(this.planning.selected.status) &&
+            !this.planning.loading && this.controller.projectMatches;
         const ask = (label: string, value = '') => window.prompt(label, value)?.trim();
         button('Add target', () => {
             const kind = ask('Kind: system, subsystem, component');
@@ -316,6 +318,39 @@ export class PhysicalMapWidget extends BaseWidget {
             bar.append(preview);
             button('Accept canonical diff and adopt', () => void this.planning.acceptAdoption(), !editable || !!result.blockers.length);
             button('Cancel adoption', () => this.planning.cancelAdoption());
+        }
+        const selected = this.planning.selected;
+        if (selected && (selected.status === 'active' || selected.status === 'completed')) {
+            button('Analyze and reconcile', () => void this.planning.reconcile(), selected.status !== 'active' || !editable);
+            const report = selected.reconciliation;
+            if (report) {
+                const summary = document.createElement('p');
+                summary.textContent = `Reconciliation · Physical generation ${report.basis.physicalGeneration} · input ${report.basis.physicalInputFingerprint} · ${JSON.stringify(reconciliationRollups(selected).map)}`;
+                bar.append(summary);
+                for (const result of report.results) {
+                    const row = document.createElement('p');
+                    row.textContent = projectReconciliationResult(result);
+                    bar.append(row);
+                    if (!result.transformationId || selected.status !== 'active') continue;
+                    const change = selected.transformations.find(t => t.id === result.transformationId)!;
+                    const options = result.outcome === 'implemented-as-planned' ? [['as-planned', 'Resolve as planned']] :
+                        result.outcome === 'implemented-differently' ? [['accepted-different', 'Accept intentionally different']] : [];
+                    for (const [resolution, label] of [...options, ['deferred', 'Defer'], ['abandoned', 'Abandon']]) button(
+                        `${label}: ${change.id}`, () => {
+                            const target = resolution === 'deferred' ? ask('Destination Planning Map ID') : undefined;
+                            if (resolution !== 'deferred' || target) void this.planning.disposition(change.id,
+                                resolution as Resolution, target);
+                        }, !editable || change.resolution === resolution);
+                }
+                const rollups = reconciliationRollups(selected);
+                for (const [id, counts] of Object.entries(rollups.workItems)) {
+                    const row = document.createElement('p'); row.textContent = `WorkItem ${id}: ${JSON.stringify(counts)}`; bar.append(row);
+                }
+                for (const [id, counts] of Object.entries(rollups.branches)) {
+                    const row = document.createElement('p'); row.textContent = `Branch ${id}: ${JSON.stringify(counts)}`; bar.append(row);
+                }
+            }
+            if (selected.status === 'active') button('Close out Planning Map', () => void this.planning.closeout(), !this.planning.canCloseOut || !editable);
         }
         for (const status of this.planning.allowedTransitions) button(status[0].toUpperCase() + status.slice(1),
             () => void this.planning.transition(status), this.planning.loading);

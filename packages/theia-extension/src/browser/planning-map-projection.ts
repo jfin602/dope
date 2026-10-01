@@ -1,9 +1,11 @@
 import type { GraphNode, GraphRelationship, ArchitectureViolation } from '@dope/software-map';
-import type { PlanningMap, PlannedTransformation, RebaseConflict, RebaseResult, StaleResult } from '@dope/visual-planning';
+import type { PlanningMap, PlannedTransformation, RebaseConflict, RebaseResult, ReconciliationResult, StaleResult } from '@dope/visual-planning';
 import { projectPhysicalMap } from './physical-map-projection';
 import type { CanvasProjection } from './physical-map-projection';
 
 export type PlanningView = 'current' | 'target' | 'diff';
+export const projectReconciliationResult = (result: ReconciliationResult): string =>
+    `${result.transformationId ?? 'Unexpected'} · ${result.identityId}: ${result.outcome} · ${result.explanation} · evidence ${result.evidenceIds.join(', ') || 'none'}${result.branchIds?.length ? ` · branches ${result.branchIds.join(', ')}` : ''}`;
 export type PlanningIntent = 'add' | 'modify' | 'remove' | 'move' | 'relationship' | 'contract';
 export interface PlanningProjection extends CanvasProjection {
     nodes: (CanvasProjection['nodes'][number] & { intent?: PlanningIntent; stale?: boolean; conflict?: boolean })[];

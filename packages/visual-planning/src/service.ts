@@ -1,4 +1,4 @@
-import type { CrossMapConflict, MapStatus, PlannedTransformation, PlanningBasis, PlanningMap, WorkItem } from './index';
+import type { CrossMapConflict, MapStatus, PlannedTransformation, PlanningBasis, PlanningMap, Resolution, WorkItem } from './index';
 import type { EditCommand } from './editing';
 import type { AdoptionPreview, AdoptionScope } from './adoption';
 import type { RebaseResult, StaleResult } from './index';
@@ -19,7 +19,10 @@ export type PlanningOperation =
   | { type: 'put-work-item'; mapId: string; workItem: WorkItem }
   | { type: 'split-work-item'; mapId: string; sourceId: string; parts: [WorkItem, WorkItem] }
   | { type: 'merge-work-items'; mapId: string; sourceIds: [string, string]; merged: WorkItem }
-  | { type: 'remove-work-item'; mapId: string; workItemId: string };
+  | { type: 'remove-work-item'; mapId: string; workItemId: string }
+  | { type: 'reconcile'; mapId: string; expectedMapRevision: number }
+  | { type: 'disposition'; mapId: string; transformationId: string; resolution: Resolution; deferredToMapId?: string }
+  | { type: 'closeout'; mapId: string; expectedMapRevision: number };
 export interface PlanningMutation { projectHandle: string; expectedRevision: number; operation: PlanningOperation }
 export interface AdoptionRequest { projectHandle: string; mapId: string; expectedRevision: number; expectedMapRevision: number;
   expectedBasis: PlanningBasis; scope: AdoptionScope }

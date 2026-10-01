@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { branchMap, detectActiveConflicts, transitionMap } from '../../packages/visual-planning/lib/index.js';
+import { branchMap, canCloseOut, detectActiveConflicts, transitionMap } from '../../packages/visual-planning/lib/index.js';
 import type { GraphNode, GraphRelationship } from '../../packages/software-map/src/index.ts';
 import type { PlanningMap, PlannedTransformation, RebaseResult, StaleResult } from '../../packages/visual-planning/src/index.ts';
 import type { AdoptionAcceptance, AdoptionRequest, PlanningCollection, PlanningOperation, RebaseAcceptance, RebaseRequest, VisualPlanningService } from '../../packages/visual-planning/src/service.ts';
@@ -12,7 +12,7 @@ import type { SoftwareMapController } from '../../packages/theia-extension/src/b
 const require = createRequire(import.meta.url);
 const { PlanningMapController } = require('../../packages/theia-extension/lib/browser/planning-map-controller.js') as
   typeof import('../../packages/theia-extension/src/browser/planning-map-controller.ts');
-const { projectPlanningMap, projectRebaseConflict } = require('../../packages/theia-extension/lib/browser/planning-map-projection.js') as
+const { projectPlanningMap, projectRebaseConflict, projectReconciliationResult } = require('../../packages/theia-extension/lib/browser/planning-map-projection.js') as
   typeof import('../../packages/theia-extension/src/browser/planning-map-projection.ts');
 const { physicalMapTabId, physicalMapTabOptions } = require('../../packages/theia-extension/lib/browser/physical-map-controller.js') as
   typeof import('../../packages/theia-extension/src/browser/physical-map-controller.ts');
@@ -102,6 +102,22 @@ function harness() {
         const index = maps.findIndex(m => m.id === operation.mapId);
         maps[index] = transitionMap(maps[index], operation.status, '2026-10-01');
       }
+      if (operation.type === 'reconcile') {
+        const index = maps.findIndex(m => m.id === operation.mapId), current = maps[index];
+        maps[index] = { ...current, revision: current.revision + 1, reconciliation: { basis: { ...basis, physicalGeneration: 2 }, at: '2026-10-01',
+          results: current.transformations.map(t => ({ schemaVersion: 1, transformationId: t.id, identityId: t.futureNodes[0]?.id ?? t.id,
+            outcome: 'implemented-differently' as const, physicalGeneration: 2, evidenceIds: ['source'], explanation: 'Source changed' })) } };
+      }
+      if (operation.type === 'disposition') {
+        const index = maps.findIndex(m => m.id === operation.mapId), current = maps[index];
+        maps[index] = { ...current, revision: current.revision + 1, transformations: current.transformations.map(t =>
+          t.id === operation.transformationId ? { ...t, resolution: operation.resolution } : t) };
+      }
+      if (operation.type === 'closeout') {
+        const index = maps.findIndex(m => m.id === operation.mapId), current = maps[index];
+        assert.equal(canCloseOut(current), true);
+        maps[index] = { ...current, status: 'completed', revision: current.revision + 1 };
+      }
       collection = { ...collection, revision: collection.revision + 1, maps };
       return collection;
     } };
@@ -150,16 +166,36 @@ test('creation, explicit branching, multiple active maps, lifecycle and history 
   await h.controller.refresh();
   assert.deepEqual(h.controller.conflicts, detectActiveConflicts(h.collection.maps));
   assert.equal(h.controller.conflicts[0].identityId, 'a');
-  await h.controller.transition('completed'); // unresolved transformation: domain rule blocks
+  await h.controller.transition('completed'); // generic transition never completes a map
   assert.equal(h.controller.selected!.status, 'active');
-  h.collection = { ...h.collection, maps: h.collection.maps.map(m => m.id === second ? map(second, 'active', []) : m) };
-  await h.controller.refresh();
-  await h.controller.transition('completed');
-  assert.equal(h.controller.visibleMaps.some(m => m.id === second), false);
-  h.controller.setHistory(true);
-  assert.equal(h.controller.visibleMaps.some(m => m.id === second), true);
   await h.controller.transition('archived');
-  assert.equal(h.controller.selected!.status, 'archived');
+  assert.equal(h.collection.maps.find(m => m.id === second)?.status, 'archived');
+  h.controller.dispose();
+});
+
+test('reconciliation is presented through controller state and closeout is an explicit action', async () => {
+  const h = harness(); await tick();
+  h.collection = { schemaVersion: 1, projectId: 'project', revision: 1, maps: [map('plan', 'active', [changes[1]])] };
+  await h.controller.refresh();
+  assert.equal(h.controller.canCloseOut, false);
+  await h.controller.reconcile();
+  assert.equal(h.controller.selected?.reconciliation?.results[0].outcome, 'implemented-differently');
+  await h.controller.closeout();
+  assert.equal(h.controller.selected?.status, 'active');
+  await h.controller.disposition('modify', 'accepted-different');
+  assert.equal(h.controller.canCloseOut, true);
+  await h.controller.closeout();
+  assert.equal(h.controller.visibleMaps.some(m => m.id === 'plan'), false);
+  h.controller.setHistory(true);
+  h.controller.select('plan');
+  assert.equal(h.controller.selected?.reconciliation?.results[0].evidenceIds[0], 'source');
+  assert.match(projectReconciliationResult(h.controller.selected!.reconciliation!.results[0]), /implemented-differently.*Source changed.*source/);
+  assert.match(projectReconciliationResult({ schemaVersion: 1, identityId: 'code:extra', outcome: 'unexpected-implementation',
+    physicalGeneration: 2, evidenceIds: ['evidence:extra'], explanation: 'Unplanned file' }), /Unexpected.*code:extra.*evidence:extra/);
+  const widget = readFileSync(resolve(import.meta.dirname, '../../packages/theia-extension/src/browser/physical-map-widget.ts'), 'utf8');
+  assert.match(widget, /Analyze and reconcile/);
+  assert.match(widget, /Close out Planning Map/);
+  assert.match(widget, /projectReconciliationResult/);
   h.controller.dispose();
 });
 

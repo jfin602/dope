@@ -3,12 +3,13 @@ import { constants } from 'node:fs';
 import { lstat, mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { branchMap, detectActiveConflicts, parsePlanningMap, transitionMap } from '../index';
+import { branchMap, canCloseOut, detectActiveConflicts, parsePlanningMap, transitionMap } from '../index';
+import { reconcilePlanningMap } from '../reconciliation';
 import { projectTarget } from '../index';
 import { mergeWorkItems, putWorkItem, splitWorkItem } from '../work';
 import { parseArchitecture } from '@dope/software-map';
 import { createHash } from 'node:crypto';
-import type { PlanningMap } from '../index';
+import type { PlannedTransformation, PlanningMap } from '../index';
 import type { PlanningCollection, PlanningOperation } from '../service';
 import type { AdoptionAcceptance, AdoptionRequest } from '../service';
 import { planAdoption } from '../adoption';
@@ -21,6 +22,9 @@ import type { RebaseAcceptance } from '../service';
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const bad = (place: string): never => { throw new Error(`Invalid planning collection: ${place}`); };
 const validRevision = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0;
+const sameTarget = (a: PlannedTransformation, b: PlannedTransformation): boolean =>
+  JSON.stringify({ ...a, resolution: undefined, deferredTo: undefined }) ===
+  JSON.stringify({ ...b, resolution: undefined, deferredTo: undefined });
 
 export function parsePlanningCollection(value: unknown): PlanningCollection {
   if (!value || typeof value !== 'object' || Array.isArray(value)) bad('document');
@@ -30,6 +34,11 @@ export function parsePlanningCollection(value: unknown): PlanningCollection {
       !validRevision(data.revision) || data.revision === 0 || !Array.isArray(data.maps)) bad('schema');
   const maps = (data.maps as unknown[]).map(parsePlanningMap).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   if (new Set(maps.map(map => map.id)).size !== maps.length || maps.some(map => map.projectId !== data.projectId)) bad('map identity');
+  for (const map of maps.filter(map => map.history.some(entry => entry.action.startsWith('closeout:'))))
+    for (const change of map.transformations.filter(t => t.resolution === 'deferred')) {
+    if (!maps.some(target => target.id === change.deferredTo?.mapId && target.transformations.some(t => t.id === change.deferredTo?.transformationId)))
+      bad('deferred map linkage');
+  }
   return { schemaVersion: 1, projectId: data.projectId as string, revision: data.revision as number, maps };
 }
 
@@ -170,7 +179,8 @@ export class PlanningStore {
           if (createHash('sha256').update(declaration).digest('hex') !== map.basis.architectureFingerprint)
             throw new Error('Stale Planning Map architecture basis');
         }
-        if ((op.type === 'put-transformation' && (op.transformation.adopted !== undefined || map.transformations.some(t => t.id === op.transformation.id && t.adopted))) ||
+        if ((op.type === 'put-transformation' && (op.transformation.adopted !== undefined || op.transformation.resolution !== undefined ||
+            map.transformations.some(t => t.id === op.transformation.id && t.adopted))) ||
             (op.type === 'remove-transformation' && map.transformations.some(t => t.id === op.transformationId && t.adopted)) ||
             ((op.type === 'undo' || op.type === 'redo') && map.transformations.some(t => t.adopted)))
           throw new Error('Adopted transformations cannot be edited');
@@ -182,6 +192,43 @@ export class PlanningStore {
           if (map.status !== 'draft' && map.status !== 'active') throw new Error('Planning map is closed');
           let changed: PlanningMap;
           switch (op.type) {
+            case 'reconcile': {
+              if (!reality) throw new Error('Software Map analysis is unavailable');
+              const observed = await reality();
+              changed = { ...map, reconciliation: reconcilePlanningMap(map, observed, now),
+                transformations: map.transformations.map(t => ({ ...t, resolution: undefined, deferredTo: undefined })) };
+              break;
+            }
+            case 'disposition': {
+              if (!map.reconciliation) throw new Error('Reconcile before disposition');
+              const target = map.transformations.find(t => t.id === op.transformationId);
+              const outcome = map.reconciliation.results.find(r => r.transformationId === op.transformationId)?.outcome;
+              if (!target || !outcome || op.resolution === 'as-planned' && outcome !== 'implemented-as-planned' ||
+                op.resolution === 'accepted-different' && outcome !== 'implemented-differently') throw new Error('Invalid reconciliation disposition');
+              if (op.resolution === 'deferred') {
+                const destination = maps.find(item => item.id === op.deferredToMapId && item.id !== map.id &&
+                  (item.status === 'draft' || item.status === 'active'));
+                const carried = destination?.transformations.find(t => t.id === target.id);
+                if (!carried || !sameTarget(carried, target)) throw new Error('Deferral requires a matching transformation in another active Planning Map');
+              } else if (op.deferredToMapId !== undefined) throw new Error('Invalid deferral target');
+              changed = { ...map, transformations: map.transformations.map(t => t.id === target.id ? { ...t,
+                resolution: op.resolution, deferredTo: op.resolution === 'deferred' ?
+                  { mapId: op.deferredToMapId!, transformationId: target.id } : undefined } : t) };
+              break;
+            }
+            case 'closeout': {
+              if (map.status !== 'active' || !canCloseOut(map) || !reality) throw new Error('Unresolved Planning Map closeout');
+              const observed = await reality();
+              if (JSON.stringify(map.reconciliation!.basis) !== JSON.stringify(observed.basis))
+                throw new Error('Stale reconciliation; analyze and reconcile again');
+              for (const t of map.transformations.filter(t => t.resolution === 'deferred')) {
+                const destination = maps.find(item => item.id === t.deferredTo?.mapId && (item.status === 'draft' || item.status === 'active'));
+                const carried = destination?.transformations.find(item => item.id === t.deferredTo?.transformationId);
+                if (!carried) throw new Error('Deferred Planning Map linkage changed');
+              }
+              changed = { ...map, status: 'completed' };
+              break;
+            }
             case 'update': changed = { ...map, title: op.title, objective: op.objective }; break;
             case 'put-transformation': changed = { ...map, transformations: [...map.transformations.filter(item => item.id !== op.transformation?.id), op.transformation] }; break;
             case 'remove-transformation': changed = { ...map, transformations: map.transformations.filter(item => item.id !== op.transformationId) }; break;
@@ -205,6 +252,10 @@ export class PlanningStore {
             throw new Error('Unknown planning item');
           if (op.type === 'put-transformation' || op.type === 'remove-transformation') changed.editHistory = {
             undo: [...(map.editHistory?.undo ?? []), map.transformations], redo: [] };
+          if (['put-transformation', 'remove-transformation', 'undo', 'redo'].includes(op.type)) {
+            changed.reconciliation = undefined;
+            changed.transformations = changed.transformations.map(t => ({ ...t, resolution: undefined, deferredTo: undefined }));
+          }
           if ('expectedBasis' in op) {
             const declaration = parseArchitecture(JSON.parse(await this.declaration(root)));
             projectTarget(declaration, parsePlanningMap({ ...changed, revision: map.revision + 1,
@@ -287,7 +338,8 @@ export class PlanningStore {
       const revision = map.revision + 1;
       const changed = parsePlanningMap({ ...map, revision, history: [...map.history, { revision, action: `adopt:${included.join(',')}`, at: new Date().toISOString() }],
         basis: { ...map.basis, architectureRevision: map.basis.architectureRevision + 1, architectureFingerprint: nextFingerprint },
-        transformations: map.transformations.map(t => included.includes(t.id) ? { ...t, adopted: true } : t),
+        transformations: map.transformations.map(t => ({ ...t, ...(included.includes(t.id) ? { adopted: true } : {}), resolution: undefined, deferredTo: undefined })),
+        reconciliation: undefined,
         editHistory: { undo: [], redo: [] } });
       const maps = [...current.maps]; maps[index] = changed;
       const next = parsePlanningCollection({ ...current, revision: current.revision + 1, maps });

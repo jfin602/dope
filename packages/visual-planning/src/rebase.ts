@@ -177,7 +177,8 @@ export function acceptRebase(map: PlanningMap, preview: RebaseResult, decisions:
         to: { ...t.redirect.to, sourceId: replace(t.redirect.to.sourceId, ds), targetId: replace(t.redirect.to.targetId, ds) } },
       ...(ds.some(d => d.action === 'accept-different') ? { resolution: 'accepted-different' as const } : {}) };
   });
-  return parsePlanningMap({ ...map, basis: preview.currentBasis, basisSnapshot: preview.currentReality, transformations,
+  return parsePlanningMap({ ...map, basis: preview.currentBasis, basisSnapshot: preview.currentReality,
+    transformations, reconciliation: undefined,
     editHistory: { undo: [], redo: [] }, revision: map.revision + 1,
     history: [...map.history, { revision: map.revision + 1,
       action: `rebase:${map.basis.architectureFingerprint}:${map.basis.physicalInputFingerprint}:${decisions.map(d => `${d.transformationId}/${d.identityId}/${d.reason}=${d.action}`).join(',')}`,
