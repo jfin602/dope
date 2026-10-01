@@ -19,7 +19,7 @@ visual-planning domain
 -> WorkItems
 -> bounded target adoption
 -> stale/rebase
--> reconciliation/closeout semantics
+-> reconciliation/completion semantics
 -> direct GUI/restart/package qualification
 -> evidence-only closeout.
 
@@ -27,14 +27,14 @@ visual-planning domain
 | --- | --- | --- | --- |
 | P1 | `@dope/visual-planning` domain contracts/core | T1 | GPT-6 Sol High |
 | P2 | `.dope/planning-maps.json` store + typed service/backend | T2 | GPT-6 Sol High |
-| P3 | center Physical Map canvas + visual grammar | T1/T2 | GPT-6 Sol High |
-| P4 | semantic zoom/focus + focused map tabs/source round-trip | T1/T2 | GPT-6 Sol High |
+| P3 | center Physical Map canvas + visual grammar | T1 | GPT-6 Sol High |
+| P4 | semantic zoom/focus + focused map tabs/source round-trip | T1 | GPT-6 Sol High |
 | P5 | Planning Map overlay/diff + lifecycle/branching | T2 | GPT-6 Sol High |
-| P6 | typed direct manipulation + previews + undo/redo | T1/T2 | GPT-6 Sol High |
-| P7 | deterministic WorkItem suggestions + work projection | T2 | GPT-6 Sol High |
+| P6 | typed direct manipulation + previews + undo/redo | T1 | GPT-6 Sol High |
+| P7 | deterministic WorkItem suggestions + work projection | T1 | GPT-6 Sol High |
 | P8 | bounded Adopt Target | T2 | GPT-6 Sol High |
 | P9 | localized staleness + explicit three-way rebase | T2 | GPT-6 Sol High |
-| P10 | transformation reconciliation + explicit Planning Map closeout | T2 | GPT-6 Sol High |
+| P10 | transformation reconciliation + explicit Planning Map completion | T2 | GPT-6 Sol High |
 | P11 | real Dope-on-Dope visual workflow qualification | T3 | GPT-6 Sol High |
 | P12 | evidence-only Phase 5 closeout | T3 | GPT-6 Sol Medium |
 
