@@ -47,7 +47,17 @@ TESTS
 
 Add focused controller/projection tests for Current/Target/Diff consistency, lifecycle visibility, explicit branching, multiple active maps/conflicts, history filtering, focused-tab shared PlanningMap identity and project/workspace stale-response protection.
 
-Run focused visual-planning/UI tests, affected build/typecheck and `git diff --check`.
+Validation is bounded T2 because this prompt joins the planning service, current Software Map projection and center-workspace presentation.
+
+Run only:
+- the new/changed Planning Map controller/projection/UI test file(s);
+- the visual-planning domain test only if lifecycle/branch/conflict core semantics are changed here;
+- `corepack yarn workspace @dope/visual-planning build` only if that package changed;
+- `corepack yarn workspace @dope/theia-extension build`;
+- the cheap manifest/version coherence guard;
+- `git diff --check`.
+
+Do **not** run the full product suite, root `npm run typecheck`, `npm test`, `npm run check`, browser/Electron app builds, restart/package/native evidence or direct GUI qualification.
 
 Do not commit; runner owns commit boundaries.
 
