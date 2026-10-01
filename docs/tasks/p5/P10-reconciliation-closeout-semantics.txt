@@ -1,0 +1,69 @@
+TASK: Phase 5 / P10 — Reconciliation and Planning Map closeout semantics
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.5.10`.
+
+GOAL
+
+Close the provider-free visual planning loop by comparing target intent with fresh physical reality and requiring explicit developer resolution before a Planning Map is completed.
+
+PREFLIGHT
+
+Read exact P1-P9 source/tests, Software Map reanalysis APIs, ADR 0017 reconciliation rules and stability contract.
+
+Require coherent `0.5.9`.
+
+IMPLEMENT
+
+Require an explicit fresh Software Map analysis/reanalysis before final reconciliation. Bind the reconciliation result to the fresh input fingerprint/generation used.
+
+Reconcile at PlannedTransformation granularity.
+
+Retain at least:
+- `implemented-as-planned`;
+- `implemented-differently`;
+- `not-implemented`;
+- `unexpected-implementation`.
+
+Preserve original target intent and evidence explaining the observed result. Never mutate old target/history to make it appear correct.
+
+Roll up outcomes to:
+- associated WorkItems;
+- affected architecture branch;
+- whole PlanningMap.
+
+WorkItem completion remains independent from reconciliation result.
+
+Allow the developer to explicitly accept `implemented differently` as a final resolved outcome without pretending the original target matched.
+
+Support explicit dispositions for unresolved transformations:
+- resolved as planned;
+- accepted intentionally different;
+- deferred into another PlanningMap with stable linkage;
+- explicitly abandoned.
+
+Only an explicit developer closeout operation may transition PlanningMap to `completed`, and only when every transformation has a valid final disposition.
+
+Completed maps preserve target plus realized outcome as durable history and are hidden from active workspace by default but remain inspectable.
+
+Unexpected implementation must remain visible even when not represented by a WorkItem.
+
+Advance versions/internal refs coherently to `0.5.10`.
+
+TESTS
+
+Add pure/integration tests for all outcomes, fresh-generation requirement, stale reconciliation rejection, rollups, accepted divergence, defer linkage, abandon, incomplete closeout rejection, WorkItem-complete-but-map-not-complete, completed-history preservation and unexpected implementation.
+
+Add focused UI tests for reconciliation presentation and explicit closeout.
+
+Run focused tests, affected domain/backend/UI integration, typecheck/build and `git diff --check`. Do not run P11 broad qualification yet.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report reconciliation truth, explicit closeout behavior and P11 readiness.
