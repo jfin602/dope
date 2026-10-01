@@ -50,7 +50,7 @@ export class SoftwareMapController {
     loading = false;
     error = '';
     initialization?: SoftwareMapInitializationStatus;
-    flow: 'none' | 'offer' | 'setup' | 'review' | 'manual' = 'none';
+    flow: 'none' | 'offer' | 'setup' | 'dry-run' | 'review' | 'manual' = 'none';
     review?: ArchitectureReview;
     draft: ArchitectureReviewNode[] = [];
     refinementPreview?: TargetedRefinementResult;
@@ -259,6 +259,7 @@ export class SoftwareMapController {
         if (!this.connection || !this.handle || this.initialization?.state === 'analyzing') return;
         const project = this.project, request = ++this.dryRunRequest;
         const connection = this.connection, handle = this.handle;
+        this.flow = 'dry-run';
         this.dryRunBusy = true;
         this.dryRunReport = undefined;
         this.dryRunError = '';
@@ -273,6 +274,7 @@ export class SoftwareMapController {
             if (project === this.project && request === this.dryRunRequest) { this.dryRunBusy = false; this.notify(); }
         }
     }
+    returnToSetup(): void { if (this.flow === 'dry-run') { this.flow = 'setup'; this.notify(); } }
     async discover(): Promise<void> {
         if (!this.connection || !this.handle) return;
         this.providerKind = 'local';

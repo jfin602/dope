@@ -1,6 +1,6 @@
 # Correction 5 — Synthesis Observability and Dry Run
 
-Status: **PLANNED / QUEUED FOR EXECUTION**
+Status: **EVIDENCE GAP / NOT GREEN** — P1/P2 implemented; P3 browser dry run observed, controlled retry and model-switch paths unobserved. See `closeout.md`.
 Correction folder: `c5-synth-observe`
 Current package baseline: `0.5.11`; execute without a version bump if this baseline still applies.
 Phase context: Product Phase 5 P11 paused; separate from `c5-smap-acceptance-debug-loop`.

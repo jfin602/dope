@@ -98,6 +98,7 @@ test('generation dry run discards a late project response and sanitizes service 
   a.attachPending.resolve({ projectHandle: 'a', status: idle });
   await first;
   const report = controller.dryRun();
+  assert.equal(controller.flow, 'dry-run');
   const second = controller.attach('file:///dry-b');
   b.attachPending.resolve({ projectHandle: 'b', status: idle });
   await second;
@@ -106,6 +107,9 @@ test('generation dry run discards a late project response and sanitizes service 
   assert.equal(controller.dryRunReport, undefined);
   await controller.dryRun();
   assert.doesNotMatch(controller.dryRunError, /private token/);
+  assert.equal(controller.flow, 'dry-run');
+  controller.returnToSetup();
+  assert.equal(controller.flow, 'setup');
   controller.dispose();
 });
 
