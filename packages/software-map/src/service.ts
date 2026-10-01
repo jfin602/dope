@@ -66,6 +66,21 @@ export interface ArchitectureReview {
 export type SynthesisSetup = { kind: 'local'; endpoint?: string; token?: string; contextWindowTokens?: number } |
     { kind: 'gemini'; apiKey?: string };
 export interface SynthesisSetupResult { models: string[] }
+export interface SynthesisDryRunReport {
+    inputFingerprint?: string;
+    evidence: { kind: string; count: number }[];
+    documents: { category: string; count: number }[];
+    diagnostics: string[];
+    savedRun?: {
+        runId: string;
+        state: 'analyzing' | 'failed' | 'review_required';
+        completedCount: number;
+        completed: { stage: string; subject?: string; providerKind: 'local' | 'gemini'; modelLabel: string }[];
+        failed?: { stage: string; subject?: string };
+        pending: { stage: string; subject?: string }[];
+    };
+    untested: string[];
+}
 export interface SoftwareMapService {
     attach(folderUri: string): Promise<{ projectHandle: string; status: SoftwareMapStatus }>;
     synthesisEnvironment(projectHandle: string): Promise<{ geminiKeyAvailable: boolean }>;
@@ -76,6 +91,7 @@ export interface SoftwareMapService {
     probeSynthesis(projectHandle: string): Promise<void>;
     synthesisReady(projectHandle: string): Promise<boolean>;
     synthesisAttempts(projectHandle: string): Promise<SynthesisCallAttempt[]>;
+    dryRunSynthesis(projectHandle: string): Promise<SynthesisDryRunReport>;
     initializationStatus(projectHandle: string): Promise<SoftwareMapInitializationStatus>;
     startInitialization(projectHandle: string): Promise<ArchitectureReview>;
     retryFailedStage(projectHandle: string): Promise<ArchitectureReview>;

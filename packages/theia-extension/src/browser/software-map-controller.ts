@@ -1,5 +1,5 @@
 import { parseArchitecture, parseAnalysisProgressEvent, branchFingerprint, targetBranch, suggestArchitectureId, reviewDeclaration, reviewDiagnostics } from '@dope/software-map';
-import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
+import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup, SynthesisDryRunReport, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
 
 export type SoftwareMapConnection = SoftwareMapService & { setClient(client: SoftwareMapClient | undefined): void };
 export interface SynthesisPreferenceStore {
@@ -69,6 +69,10 @@ export class SoftwareMapController {
     models: string[] = [];
     setupReady = false;
     setupBusy = false;
+    dryRunBusy = false;
+    dryRunReport?: SynthesisDryRunReport;
+    dryRunError = '';
+    private dryRunRequest = 0;
     contextWindowTokens = 65536;
     progressEvents: AnalysisProgressEvent[] = [];
     private analysisStartedAt?: number;
@@ -130,6 +134,7 @@ export class SoftwareMapController {
         ++this.request;
         ++this.detailRequest;
         ++this.setupRequest;
+        ++this.dryRunRequest;
         this.disconnect();
         this.workspace = workspace;
         this.handle = undefined;
@@ -152,6 +157,9 @@ export class SoftwareMapController {
         this.geminiConfigured = false;
         this.setupReady = false;
         this.setupBusy = false;
+        this.dryRunBusy = false;
+        this.dryRunReport = undefined;
+        this.dryRunError = '';
         this.configuredSetup = undefined;
         this.clearingSetup = undefined;
         this.progressEvents = [];
@@ -245,6 +253,24 @@ export class SoftwareMapController {
             this.notify();
         } catch (error) {
             if (project === this.project && request === this.setupRequest) { this.error = String(error); this.notify(); }
+        }
+    }
+    async dryRun(): Promise<void> {
+        if (!this.connection || !this.handle || this.initialization?.state === 'analyzing') return;
+        const project = this.project, request = ++this.dryRunRequest;
+        const connection = this.connection, handle = this.handle;
+        this.dryRunBusy = true;
+        this.dryRunReport = undefined;
+        this.dryRunError = '';
+        this.notify();
+        try {
+            const report = await connection.dryRunSynthesis(handle);
+            if (project === this.project && request === this.dryRunRequest) this.dryRunReport = report;
+        } catch {
+            if (project === this.project && request === this.dryRunRequest)
+                this.dryRunError = 'Dry run could not complete. Check repository inputs or saved analysis work.';
+        } finally {
+            if (project === this.project && request === this.dryRunRequest) { this.dryRunBusy = false; this.notify(); }
         }
     }
     async discover(): Promise<void> {
@@ -400,6 +426,10 @@ export class SoftwareMapController {
         if (kind !== this.providerKind || !this.setupReady || this.setupBusy || !this.connection || !this.handle ||
             retry && !this.initialization?.resumable) return;
         const project = this.project;
+        ++this.dryRunRequest;
+        this.dryRunBusy = false;
+        this.dryRunReport = undefined;
+        this.dryRunError = '';
         const request = ++this.setupRequest;
         this.setupBusy = true;
         if (this.initialization) this.initialization = { ...this.initialization, state: 'analyzing' };

@@ -226,12 +226,13 @@ test('Gemini retries one malformed stage result and retains both attempts', asyn
   let calls = 0;
   const provider = { kind: 'gemini', runStage: async (input: SynthesisStageRequest) => {
     calls++;
-    return executed(input, { systems: [{ ...system('a', 'a'), ...(calls === 1 ? { extra: true } : {}) }] });
+    if (calls === 1) throw new SynthesisProviderFailure('Invalid Gemini stage JSON', 'invalid-json');
+    return executed(input, { systems: [system('a', 'a')] });
   } } as SynthesisProvider;
   await cache.run(req, packet, provider, 'gemini/model');
   assert.equal(calls, 2);
   assert.deepEqual(cache.attempts().map(item => [item.failureClass, item.consumed]),
-    [['invalid-stage-result', false], [undefined, true]]);
+    [['invalid-json', false], [undefined, true]]);
   assert.equal(cache.attempts()[1].retryOf, cache.attempts()[0].attemptId);
 });
 
@@ -249,8 +250,7 @@ test('Gemini retry caps and nonretryable provider failures remain explicit', asy
         ...(failure === 'schema' ? { extra: true } : { evidenceRefs: ['fabricated'] }) }] });
     } } as SynthesisProvider;
     await assert.rejects(cache.run(req, packet, provider, 'gemini/model'));
-    assert.equal(calls, failure === 'upstream' ? MAX_GEMINI_ATTEMPTS :
-      failure === 'schema' || failure === 'content' ? 2 : 1, failure);
+    assert.equal(calls, failure === 'upstream' ? MAX_GEMINI_ATTEMPTS : failure === 'invalid-json' ? 2 : 1, failure);
     assert.equal(cache.attempts().length, calls);
     assert.ok(cache.attempts().every(item => !item.consumed));
     if (failure === 'invalid-json') assert.equal(cache.attempts()[0].failureClass, 'invalid-json');

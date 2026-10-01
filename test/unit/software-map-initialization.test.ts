@@ -69,6 +69,85 @@ const fakeProvider = (observe?: (request: SynthesisStageRequest) => Promise<void
 const backend = (index: SoftwareMapIndex, provider?: SynthesisProvider, client: SoftwareMapClient = { notifySoftwareMapChanged() {} }) =>
   new SoftwareMapBackend(index, client, provider);
 const attach = async (service: SoftwareMapBackend, root: string) => (await service.attach(pathToFileURL(root).href)).projectHandle;
+async function projectBytes(root: string): Promise<Record<string, string>> {
+  const result: Record<string, string> = {};
+  const walk = async (dir: string, prefix = ''): Promise<void> => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const name = `${prefix}${entry.name}`;
+      if (entry.isDirectory()) await walk(join(dir, entry.name), `${name}/`);
+      else if (entry.isFile()) result[name] = (await readFile(join(dir, entry.name))).toString('hex');
+    }
+  };
+  await walk(root);
+  return result;
+}
+
+test('generation dry run reads fresh, failed and review work without provider or project writes', async () => {
+  for (const state of ['fresh', 'failed', 'review_required'] as const) {
+    const root = await fixture();
+    let calls = 0;
+    const source = fakeProvider();
+    const generating = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), { ...source, runStage: async request => {
+      if (state === 'failed' && request.stage === 'subsystem-discovery') throw new Error('private provider detail');
+      return source.runStage(request);
+    } });
+    let reader: SoftwareMapBackend | undefined;
+    try {
+      const firstHandle = await attach(generating, root);
+      if (state === 'failed') await assert.rejects(generating.startInitialization(firstHandle));
+      if (state === 'review_required') await generating.startInitialization(firstHandle);
+      generating.dispose();
+      const before = await projectBytes(root);
+      reader = new SoftwareMapBackend(new SoftwareMapIndex(new TypeScriptAnalyzer()), { notifySoftwareMapChanged() {} },
+        { ...source, capabilities: async () => { calls++; throw new Error('provider used'); },
+          estimateTokens: async () => { calls++; throw new Error('counter used'); },
+          runStage: async () => { calls++; throw new Error('model used'); } },
+        () => { calls++; throw new Error('Gemini used'); },
+        { getPassword: async () => { calls++; throw new Error('credentials used'); },
+          setPassword: async () => { calls++; throw new Error('credentials used'); } });
+      const handle = await attach(reader, root);
+      const report = await reader.dryRunSynthesis(handle);
+      assert.match(report.inputFingerprint ?? '', /^[a-f0-9]{64}$/);
+      assert.ok(report.evidence.length);
+      assert.match(report.untested.join(' '), /Model-dependent stages and output quality/);
+      assert.equal(report.savedRun?.state, state === 'fresh' ? undefined : state);
+      if (state === 'failed') {
+        assert.ok(report.savedRun?.completed.length);
+        assert.equal(report.savedRun?.failed?.stage, 'subsystem-discovery');
+        assert.deepEqual(report.savedRun?.pending.map(item => item.stage), ['subsystem-discovery']);
+      }
+      if (state === 'review_required') assert.deepEqual(report.savedRun?.pending, []);
+      assert.equal(calls, 0);
+      assert.deepEqual(await projectBytes(root), before);
+    } finally { generating.dispose(); reader?.dispose(); await rm(root, { recursive: true, force: true }); }
+  }
+});
+
+test('generation dry run rejects active analysis and safely reports malformed saved work', async () => {
+  const root = await fixture();
+  let release!: () => void;
+  let started!: () => void;
+  const entered = new Promise<void>(resolve => { started = resolve; });
+  const wait = new Promise<void>(resolve => { release = resolve; });
+  const source = fakeProvider();
+  const service = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), { ...source, runStage: async request => {
+    started(); await wait; return source.runStage(request);
+  } });
+  try {
+    const handle = await attach(service, root);
+    const running = service.startInitialization(handle);
+    await entered;
+    await assert.rejects(service.dryRunSynthesis(handle), /unavailable while analysis is active/);
+    release(); await running;
+    const path = join(root, '.dope/smap-analysis.json');
+    await writeFile(path, '{"secret":"must not surface"');
+    const bytes = await projectBytes(root);
+    const report = await service.dryRunSynthesis(handle);
+    assert.match(report.diagnostics.join(' '), /could not be safely read/);
+    assert.doesNotMatch(JSON.stringify(report), /secret/);
+    assert.deepEqual(await projectBytes(root), bytes);
+  } finally { release(); service.dispose(); await rm(root, { recursive: true, force: true }); }
+});
 
 test('Gemini progress distinguishes an automatic retry from terminal exhaustion', async () => {
   for (const recover of [true, false]) {

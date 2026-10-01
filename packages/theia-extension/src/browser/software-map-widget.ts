@@ -141,6 +141,32 @@ export class SoftwareMapWidget extends BaseWidget {
             return;
         }
         this.controls.append(this.element('h3', 'Synthesis setup'));
+        const dryRun = this.button('Dry run (no model calls)', () => void model.dryRun());
+        dryRun.disabled = model.dryRunBusy;
+        this.controls.append(dryRun);
+        if (model.dryRunBusy) this.controls.append(this.element('p', 'Collecting deterministic inputs…'));
+        if (model.dryRunError) this.controls.append(this.element('p', model.dryRunError));
+        if (model.dryRunReport) {
+            const result = model.dryRunReport;
+            const section = this.element('section');
+            section.append(this.element('h4', 'Generation input dry run'),
+                this.element('p', `Current input fingerprint: ${result.inputFingerprint ?? 'unavailable'}`),
+                this.element('p', `Evidence: ${result.evidence.map(item => `${item.kind} ${item.count}`).join(', ') || 'none'}`),
+                this.element('p', `Documents: ${result.documents.map(item => `${item.category} ${item.count}`).join(', ') || 'none'}`));
+            for (const diagnostic of result.diagnostics) section.append(this.element('p', diagnostic));
+            if (result.savedRun) {
+                const saved = result.savedRun;
+                section.append(this.element('p', `Saved run ${saved.runId} · ${saved.state} · ${saved.completedCount} validated checkpoints`));
+                for (const item of saved.completed) section.append(this.element('p',
+                    `Completed ${item.stage}${item.subject ? ` · ${item.subject}` : ''} · ${item.providerKind} · ${item.modelLabel}`));
+                if (saved.failed) section.append(this.element('p',
+                    `Failed ${saved.failed.stage}${saved.failed.subject ? ` · ${saved.failed.subject}` : ''}`));
+                for (const item of saved.pending) section.append(this.element('p',
+                    `Known pending: ${item.stage}${item.subject ? ` · ${item.subject}` : ''}`));
+            }
+            section.append(this.element('p', `Untested: ${result.untested.join('; ')}.`));
+            this.controls.append(section);
+        }
         const local = this.element('details');
         local.open = this.localSetupOpen;
         local.ontoggle = () => { this.localSetupOpen = local.open; };

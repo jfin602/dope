@@ -10,11 +10,11 @@ import { readSynthesisRun, writeSynthesisRun, clearSynthesisRun, saveSynthesisRe
 import type { SavedSynthesisRun } from '@dope/code-analysis/lib/node/smap-analysis-file';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
 import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseAnalysisProgressEvent, suggestArchitectureId, reviewDeclaration, reviewDiagnostics,
-    HierarchicalSynthesisOrchestrator, SynthesisStageCache, planTargetedRefinement, parseTargetedRefinement } from '@dope/software-map';
+    HierarchicalSynthesisOrchestrator, SynthesisStageCache, validateArchitectureEvidencePacket, planTargetedRefinement, parseTargetedRefinement } from '@dope/software-map';
 import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, SoftwareMapPageRequest, GraphRelationship, SoftwareMapRelationshipRequest,
     PhysicalMapSnapshot, SoftwareMapClient, SoftwareMapService, ArchitectureEvidencePacket, ArchitectureReview, ArchitectureReviewNode,
     ArchitectureDeclaration, SoftwareMapInitializationStatus, SynthesisProvider, SynthesisSetup, SynthesisSetupResult, AnalysisProgressEvent,
-    TargetedRefinementInput, TargetedRefinementResult } from '@dope/software-map';
+    TargetedRefinementInput, TargetedRefinementResult, SynthesisDryRunReport } from '@dope/software-map';
 import { LmStudioSynthesisProvider } from './lmstudio-synthesis-provider';
 import { GeminiSynthesisProvider } from './gemini-synthesis-provider';
 
@@ -219,6 +219,49 @@ export class SoftwareMapBackend implements SoftwareMapService {
     async synthesisAttempts(projectHandle: string) {
         this.active(projectHandle);
         return this.synthesisCache.attempts();
+    }
+    async dryRunSynthesis(projectHandle: string): Promise<SynthesisDryRunReport> {
+        const root = this.active(projectHandle);
+        if (this.phase === 'analyzing') throw new Error('Dry run is unavailable while analysis is active');
+        const run = this.run;
+        const report: SynthesisDryRunReport = { evidence: [], documents: [], diagnostics: [],
+            untested: ['Model capability and token budget', 'Model-dependent stages and output quality', 'Synthesis success'] };
+        try {
+            const packet = await this.index.collectEvidence(root);
+            validateArchitectureEvidencePacket(packet);
+            report.inputFingerprint = packet.inputFingerprint;
+            const counts = <T extends string>(values: T[], key: 'kind' | 'category') =>
+                [...new Set(values)].sort().map(value => ({ [key]: value, count: values.filter(item => item === value).length }));
+            report.evidence = counts(packet.items.map(item => item.kind), 'kind') as SynthesisDryRunReport['evidence'];
+            report.documents = counts((packet.documents ?? []).map(item => item.class), 'category') as SynthesisDryRunReport['documents'];
+        } catch { report.diagnostics.push('Current evidence collection or validation failed. Inspect repository inputs.'); }
+        try {
+            const saved = await readSynthesisRun(root);
+            if (saved) {
+                if (report.inputFingerprint && saved.packet.inputFingerprint !== report.inputFingerprint)
+                    report.diagnostics.push('Saved run evidence differs from current repository inputs.');
+                const cache = new SynthesisStageCache(Number.MAX_SAFE_INTEGER);
+                cache.restore(saved.checkpoints, saved.attempts, saved.packet);
+                const safe = (value: string | null | undefined) => value?.replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 160);
+                const valid = cache.checkpoints().filter(item => ['local', 'gemini'].includes(item.providerKind) &&
+                    typeof item.modelLabel === 'string');
+                const completed = valid.slice(0, 64).map(item => ({ stage: safe(item.request.stage) ?? '',
+                    subject: safe(item.request.context.subjectSubsystemKey ?? item.request.context.subjectSystemKey),
+                    providerKind: item.providerKind, modelLabel: safe(item.modelLabel) ?? '' }));
+                if (valid.length !== saved.checkpoints.length)
+                    report.diagnostics.push('Some saved checkpoints did not pass validation.');
+                if (valid.length > completed.length)
+                    report.diagnostics.push('Completed checkpoint list is limited to the first 64 entries.');
+                const failed = saved.failure ?? (saved.status === 'failed' ? saved.current : undefined);
+                report.savedRun = { runId: safe(saved.runId) ?? '', state: saved.status, completedCount: valid.length, completed,
+                    ...(failed ? { failed: { stage: safe(failed.stage) ?? '', subject: safe(failed.subject) } } : {}),
+                    pending: saved.status !== 'review_required' && saved.current ?
+                        [{ stage: safe(saved.current.stage) ?? '', subject: safe(saved.current.subject) }] : [] };
+            }
+        } catch { report.diagnostics.push('Saved analysis work could not be safely read or validated.'); }
+        if (this.active(projectHandle) !== root || run !== this.run)
+            throw new Error('Dry run was superseded by an analysis or project change');
+        return report;
     }
     async initializationStatus(projectHandle: string): Promise<SoftwareMapInitializationStatus> {
         const root = this.active(projectHandle);

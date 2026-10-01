@@ -87,6 +87,28 @@ test('late attach and query from A cannot render in B; disposal rejects late dat
   assert.equal(b.disposed, false);
 });
 
+test('generation dry run discards a late project response and sanitizes service errors', async () => {
+  const a = connection(), b = connection();
+  const pending = deferred();
+  (a as any).dryRunSynthesis = () => pending.promise;
+  (b as any).dryRunSynthesis = () => Promise.reject(new Error('private token'));
+  let count = 0;
+  const controller = new SoftwareMapController(() => ++count === 1 ? a : b, () => {});
+  const first = controller.attach('file:///dry-a');
+  a.attachPending.resolve({ projectHandle: 'a', status: idle });
+  await first;
+  const report = controller.dryRun();
+  const second = controller.attach('file:///dry-b');
+  b.attachPending.resolve({ projectHandle: 'b', status: idle });
+  await second;
+  pending.resolve({ inputFingerprint: 'stale', evidence: [], documents: [], diagnostics: [], untested: [] });
+  await report;
+  assert.equal(controller.dryRunReport, undefined);
+  await controller.dryRun();
+  assert.doesNotMatch(controller.dryRunError, /private token/);
+  controller.dispose();
+});
+
 test('first-use offer, decline, and later Analyze Project do not analyze on attach', async () => {
   const c = connection();
   const controller = new SoftwareMapController(() => c, () => {});
