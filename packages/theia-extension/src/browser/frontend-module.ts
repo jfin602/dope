@@ -21,6 +21,7 @@ import { SoftwareMapView, SoftwareMapWidget, SOFTWARE_MAP_ID } from './software-
 import { SoftwareMapController } from './software-map-controller';
 import { SoftwareMapReviewWidget, SOFTWARE_MAP_REVIEW_ID } from './software-map-review-widget';
 import { PhysicalMapWidget, PHYSICAL_MAP_ID } from './physical-map-widget';
+import { physicalMapTabOptions, type PhysicalMapTabOptions } from './physical-map-controller';
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(FrontendApplicationContribution).toDynamicValue(context => ({
@@ -29,10 +30,18 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bindViewContribution(bind, ProjectMindView);
     bindViewContribution(bind, SoftwareMapView);
     bind(FrontendApplicationContribution).toService(SoftwareMapView);
-    const openPhysicalMap = async (manager: WidgetManager, shell: ApplicationShell) => {
-        const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID);
+    const openPhysicalMap = async (manager: WidgetManager, shell: ApplicationShell,
+        map?: SoftwareMapController, options?: PhysicalMapTabOptions) => {
+        const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID, options);
+        if (options && (map?.workspace !== options.workspace || !map.nodes.some(node => node.id === options.focusId) || widget.isDisposed)) return;
         if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
+        if (options && (map?.workspace !== options.workspace || widget.isDisposed)) return;
         await shell.activateWidget(widget.id);
+    };
+    const openFocusedMap = (manager: WidgetManager, shell: ApplicationShell, map: SoftwareMapController, id: string) => {
+        if (!map.workspace || !map.nodes.some(node => node.id === id && node.kind !== 'project')) return Promise.resolve();
+        return openPhysicalMap(manager, shell, map,
+            physicalMapTabOptions(map.workspace, id));
     };
     bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) =>
         commands.registerCommand({ id: 'dope.physicalMap.open', label: 'Dope: Open Physical Map' },
@@ -53,9 +62,11 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             await shell.activateWidget(widget.id);
         }, () => openPhysicalMap(context.container.get(WidgetManager), context.container.get(ApplicationShell))
     ) })).inSingletonScope();
-    bind(WidgetFactory).toDynamicValue(context => ({ id: PHYSICAL_MAP_ID, createWidget: () =>
+    bind(WidgetFactory).toDynamicValue(context => ({ id: PHYSICAL_MAP_ID, createWidget: (options?: PhysicalMapTabOptions) =>
         new PhysicalMapWidget(context.container.get(SoftwareMapController),
-            ServiceConnectionProvider.createProxy<SoftwareMapService>(context.container, softwareMapServicePath)) })).inSingletonScope();
+            ServiceConnectionProvider.createProxy<SoftwareMapService>(context.container, softwareMapServicePath),
+            context.container.get(OpenerService), id => openFocusedMap(context.container.get(WidgetManager),
+                context.container.get(ApplicationShell), context.container.get(SoftwareMapController), id), options) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_REVIEW_ID, createWidget: () =>
         new SoftwareMapReviewWidget(context.container.get(SoftwareMapController), context.container.get(WorkspaceService),
             context.container.get(OpenerService)) })).inSingletonScope();
