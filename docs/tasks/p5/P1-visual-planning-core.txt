@@ -54,9 +54,16 @@ TESTS
 
 Add focused `test/unit/visual-planning.test.ts` covering parser failures/future schema, lifecycle, branch identity, transformation references/dependencies, target projection, cross-map conflicts, deterministic WorkItem suggestions, completion eligibility and proof that WorkItem completion alone does not create physical/canonical truth.
 
-Run only focused changed tests, affected package typecheck/build, baseline/version/no-root-lock checks, `git diff --check`, and phase validation when the full p5 stack is present.
+Validation is deliberately T1.
 
-Do not run broad qualification or package/native evidence here.
+Run only:
+- the new/changed visual-planning unit test file(s);
+- `corepack yarn workspace @dope/visual-planning build`;
+- the cheap manifest/version coherence guard needed because this prompt normalizes all workspace versions;
+- no-root-lock/version checks;
+- `git diff --check`.
+
+Do **not** run `npm test`, `npm run test:product`, `npm run typecheck`, `npm run check`, browser/Electron builds, restart tests, packaging/native evidence, or the phase validator from inside this implementation prompt. The stack is validated once before execution and again only if prompt files themselves change.
 
 Do not commit; runner owns commit boundaries.
 
