@@ -71,6 +71,7 @@ Current authority:
 - docs/decisions/0013-compact-smap-stage-contracts-and-local-gemini-providers.md
 - docs/decisions/0014-responsibility-oriented-smap-decomposition-and-review.md
 - docs/decisions/0015-modules-bootstrap-architecture-seed.md
+- docs/decisions/0016-dope-dark-visual-identity.md
 
 ## Product premise
 
