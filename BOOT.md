@@ -15,13 +15,13 @@ Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af
 
 **Product Phase 5 — Visual Software Planning is ACTIVE from baseline `0.5.0` at closeout transition commit `016bd8780e89081dfdb5746eae981183dc945baa`.** Product Phase 4 — Physical Map remains Qualified/Green for its approved core scope at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The architecture-discovery follow-ons remain truthful history: `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are owner-closed **Not Qualified** with useful implementation retained. `c4-smap-storage` and `c4-color-theme` are **GREEN / QUALIFIED** at unchanged `0.4.6`. The post-theme failed-analysis-state repair at `c7e0d66269d3f11fd2e31c3f94ecc7ffc843bae9` is part of the owner-accepted Phase 4 baseline. The fresh provider comparison remains deferred off the Phase 5 critical path.
 
-**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first bootstrap; ADR 0012 governs hierarchy-first synthesis/progress/performance; ADR 0013 governs compact shared provider contracts; ADR 0014 governs responsibility-oriented decomposition/review and its owner sequencing amendments; ADR 0015 governs optional root `MODULES.md` bootstrap intent; ADR 0016 governs Dope Dark visual identity and theme boundaries; ADR 0017 governs Phase 5 Planning Maps, transformations, WorkItems, target adoption, staleness/rebase and reconciliation.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. The developer owns canonical System / Subsystem / Component identity. General Phase 6 AI Presence and the Phase 5 visual planning canvas remain out of scope.
+**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first bootstrap; ADR 0012 governs hierarchy-first synthesis/progress/performance; ADR 0013 governs compact shared provider contracts; ADR 0014 governs responsibility-oriented decomposition/review and its owner sequencing amendments; ADR 0015 governs optional root `MODULES.md` bootstrap intent; ADR 0016 governs Dope Dark visual identity and theme boundaries; ADR 0017 governs Phase 5 Planning Maps, transformations, WorkItems, target adoption, staleness/rebase and reconciliation.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. The developer owns canonical System / Subsystem / Component identity. General Phase 6 AI Presence remains out of scope; the Phase 5 visual planning canvas and provider-free visual workflow are now active scope.
 
 Phase 2's P6 `0.2.6` evidence-only audit remains **Not Qualified**. The owner subsequently explicitly closed Phase 2 for sequencing and authorized Phase 3 from a coherent `0.3.0` baseline. This owner disposition does not relabel the P6 audit Green or erase its evidence gaps. The retained Phase 2 gaps are the initially hidden legacy-migration entry, unproved dirty same-renderer workspace switch, lack of exact `0.2.6` native artifact launch/direct native visual Project Mind use, and inherited Phase 1 gaps where applicable. See `docs/tasks/p2/closeout.md` and `docs/planning/p3/activation.md`.
 
 The September 28, 2026 Phase 1 P6 closeout also remains **Not Qualified** at `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). Its historical failures are preserved. Neither the Phase 2 sequencing waiver nor the Phase 3 owner-close changes that evidence.
 
-Phase 3 added human-first live Planning on top of Project Mind and qualified it at `0.3.6`. Correction `c3-remove-planning-instruments` then removed that complete live subsystem before Phase 4 while preserving its historical plans/evidence. Phase 4 starts clean at `0.4.0` with no Phase 3 Planning compatibility obligation. ADR 0010/0011 authorize only the narrow pre-Phase-6 sMap synthesis provider needed by c4. Production visual planning, general AI Presence/provider integration, Agent Mind, tool calling, AI mutation, scoped delegation and durable Development Sessions remain deferred to their roadmap phases.
+Phase 3 added human-first live Planning on top of Project Mind and qualified it at `0.3.6`. Correction `c3-remove-planning-instruments` then removed that complete live subsystem before Phase 4 while preserving its historical plans/evidence. Phase 4 started clean at `0.4.0` with no Phase 3 Planning compatibility obligation. ADR 0010/0011 authorize only the narrow pre-Phase-6 sMap synthesis provider needed by c4. **Phase 5 visual planning is now active and provider-free.** General AI Presence/provider integration, Agent Mind, tool calling, AI mutation, scoped delegation and durable Development Sessions remain deferred to their roadmap phases.
 
 The qualified substrate remains:
 
@@ -130,16 +130,13 @@ Theia is the initial IDE/workbench substrate.
 
 The product architecture is not "Theia IDE + plugins."
 
-Current/early layers:
+Current layers:
 
 Dope desktop / Theia workbench
 -> Dope presentation adapters and widgets
 -> Application / orchestration
--> Project Intelligence / Software Map
+-> Project Intelligence / Software Map / Visual Software Planning
 -> Code-analysis and persistence adapters
-
-Later:
--> Visual Software Planning
 
 Later AI layers:
 
@@ -239,27 +236,18 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Do not activate Product Phase 5 implementation yet.
+Product Phase 5 documentation authority and the ten visual-workflow decisions are locked.
 
-Execute correction `c4-color-theme` at unchanged package version `0.4.6` from storage-qualified baseline `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`.
+Next execute the normal implementation-planning workflow against the active `0.5.0` baseline:
 
-Locked palette:
-- workbench anchor: `#1F1F1F`;
-- primary orange: `#FF7A1A`;
-- highlight orange: `#FFB15C`;
-- deep orange: `#C75100`.
+```text
+/prompt-ass
+-> /prompt-plan
+-> /prompt-write p5
+-> npm run codex:phase:validate -- p5
+-> npm run codex:phase -- p5 --closeout
+```
 
-Implementation direction:
-- add a first-class **Dope Dark** theme instead of scattering hard-coded orange through widgets;
-- keep Dope-owned UI CSS semantic-token based;
-- map brand colors to workbench interaction tokens such as focus, buttons, active navigation/tabs, links, badges/progress and selections;
-- keep syntax/diagnostic semantic colors meaningful rather than orange-washing the IDE;
-- preserve explicit user selection of compatible light/dark/custom themes; alternate themes must not retain Dope Dark overrides;
-- keep this bounded to color/theme identity, not layout or interaction redesign;
-- keep Phase 5 visual-map/planning work out of scope.
+Phase 5 remains focused on the provider-free visual workflow: Physical Map visualization, Planning Map target editing, graph-derived WorkItems, bounded target adoption, stale/rebase handling, implementation through ordinary IDE surfaces, deterministic re-analysis and reconciliation.
 
-Use a fast two-prompt stack:
-1. P1 — implement Dope Dark + focused permanent theme tests/builds;
-2. P2 — manually run a quick browser visual check and closeout; bounded cosmetic token fixes are allowed only if tiny and directly observed.
-
-If `c4-color-theme` closes Green, route to a fresh Product Phase 5 `/docs-review`.
+Do not pull general AI Presence, Agent Mind, ProposedAction, mutation authority or scoped delegation into the Phase 5 implementation stack.
