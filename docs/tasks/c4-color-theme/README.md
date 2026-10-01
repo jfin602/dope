@@ -1,10 +1,13 @@
 # Correction 4 — Dope Color Theme
 
-Status: **APPROVED / DOCS AUTHORITY READY — MANDATORY NEXT CORRECTION**
+Status: **APPROVED / PROMPT STACK READY — MANDATORY NEXT CORRECTION**
 Correction folder: `c4-color-theme`
 Required unchanged version: `0.4.6`
 Activation source: `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`
 Predecessor: GREEN / QUALIFIED `c4-smap-storage`
+Assessment: `c9aaf9495b8ccdc1a4b48a03d147fc78880135b7`
+Plan: `29ecd10a302e28f32219ef7b0926befec1af8369`
+Prompts: P1 `b67461ebdb5b05484339d44e88c7b858c5c475ff`; P2 `24461386505573442f954fb76ddb38772247d8f6`
 Authority: ADR 0016 plus current ARCHITECTURE.md / roadmap / principles
 
 ## Purpose
