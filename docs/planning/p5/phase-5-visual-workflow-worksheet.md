@@ -135,7 +135,7 @@ Support direct manipulation where the semantic operation is unambiguous, but tra
 
 **Decision**
 
-TBD.
+Locked: make the Planning Map directly editable **only where the semantic intent is unambiguous**, and translate every accepted gesture into an explicit typed PlannedTransformation. Dragging a Component between Subsystems creates `move`; drawing/redirecting a dependency creates a relationship transformation; adding a target node creates `add`; removing something from the target creates `remove` without deleting physical truth. Semantically rich operations such as `split`, `merge` and `change contract` use focused commands/editors. Before commit, show the exact semantic operation being created. Support domain-level undo/redo for unadopted planning edits.
 
 ---
 
