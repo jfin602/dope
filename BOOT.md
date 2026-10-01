@@ -80,6 +80,8 @@ Current authority:
 - docs/decisions/0015-modules-bootstrap-architecture-seed.md
 - docs/decisions/0016-dope-dark-visual-identity.md
 - docs/decisions/0017-visual-planning-map-and-work-model.md
+- docs/decisions/0018-resumable-smap-review-work-state.md
+- docs/decisions/0019-planning-basis-semantic-identity.md
 
 ## Product premise
 
