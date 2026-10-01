@@ -5,6 +5,8 @@ Date: 2026-10-01
 Builds on: ADR 0007, ADR 0008, ADR 0009
 Supersedes for forward planning ontology: historical Product Phase 3 Plan/PlanStep/Task model
 
+Sequencing amendment (2026-10-01): ADR 0020 inserts provider-free Product Phase 6 — Data Flow after this phase and moves general AI Presence to Phase 7. Phase 5 scope, P11/P12 qualification and the PlanningMap ontology in this ADR are unchanged.
+
 ## Context
 
 Dope deliberately removed the qualified Phase 3 Planning implementation before building the Physical Map. That prevented an early task-first ontology from constraining the software-map-centered architecture.

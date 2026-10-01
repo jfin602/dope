@@ -215,6 +215,10 @@ Reconciliation is transformation-centered and rolls up to WorkItems/branches/map
 
 Completion requires explicit developer closeout with every transformation resolved, intentionally accepted as different, deferred, or abandoned.
 
+## Forward projection boundary
+
+ADR 0020 inserts Product Phase 6 — Data Flow after Phase 5. Data Flow will be a provider-free directional projection of the same Physical Map identities, not a separate map/database. This does **not** expand Phase 5 implementation or qualification: P11/P12, the T3 visual-planning loop and the Phase 5 exit condition remain exactly scoped to Visual Software Planning.
+
 ## Validation strategy
 
 Use normal repository T1/T2/T3 tiers.

@@ -219,7 +219,7 @@ Product Phase 3 uses execution folder `p3` and coherent package baseline `0.3.0`
 
 P3 versions are `0.3.1` through `0.3.6`. P1-P4 were runner-owned, P5 was the direct interactive Planning dogfood handoff, and P6 was evidence-only closeout. Phase 3's `0.3.6` applicable-scope audit remains Qualified in `docs/tasks/p3/closeout.md`, but its live Planning runtime was subsequently removed by completed correction `c3-remove-planning-instruments`. Historical Phase 1/2 Not Qualified evidence remains intact.
 
-The Phase 3 product runtime contained no AI provider. ADR 0006 now applies to future Phase 6 AI Presence; it never authorized OpenAI/Codex/local-model integration in Phase 3.
+The Phase 3 product runtime contained no AI provider. ADR 0006 now applies to future Phase 7 AI Presence; it never authorized OpenAI/Codex/local-model integration in Phase 3.
 
 ## Phase 4 activation
 
@@ -227,7 +227,7 @@ Product Phase 4 uses execution folder `p4` and coherent package baseline `0.4.0`
 
 P4 versions are `0.4.1` through `0.4.6`. P1-P4 are runner-owned implementation/integration prompts, P5 is the direct interactive "Dope maps Dope" GUI handoff, and P6 is evidence-only closeout. P5 must inspect the real Dope repository through the actual Theia GUI and trace representative physical relationships/violations to source evidence; automated/headless checks do not replace its direct interaction evidence.
 
-Phase 4 has no model/provider runtime and no Planning Map. It must preserve the distinction between developer-authored architecture declarations/constraints (canonical project state) and extracted physical graph/index data (rebuildable derived state). Phase 5 introduces Visual Software Planning; Phase 6 introduces AI Presence.
+Phase 4 has no model/provider runtime and no Planning Map. It must preserve the distinction between developer-authored architecture declarations/constraints (canonical project state) and extracted physical graph/index data (rebuildable derived state). Phase 5 introduces Visual Software Planning; Phase 6 introduces provider-free Data Flow over the Physical Map; Phase 7 introduces AI Presence.
 
 ### September 29 sMap amendment and correction gate
 

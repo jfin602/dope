@@ -3,6 +3,8 @@
 Status: Accepted
 Date: 2026-09-27
 
+Sequencing amendment (2026-10-01): ADR 0020 inserts provider-free Product Phase 6 — Data Flow before AI Presence. The original phase numbering below is preserved as historical decision context; current future sequencing is Phase 6 Data Flow, Phase 7 AI Presence, Phase 8 Scoped Delegation, Phase 9 Development Sessions.
+
 ## Context
 
 Dope's long-term product goal is to unify coding, durable project understanding, planning, AI collaboration, validation, and development-session continuity.

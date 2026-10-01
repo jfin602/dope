@@ -205,7 +205,13 @@ Phase 5 presentation and lifecycle semantics are:
 - Reconciliation is transformation-centered and preserves intended versus realized outcome.
 - A PlanningMap enters `completed` only through explicit developer closeout after every transformation is resolved, accepted as intentionally different, deferred or abandoned.
 
-### Phase 6-7 — AI collaboration and delegation
+### Phase 6 — Data Flow
+
+Introduce a provider-free **Data Flow projection** over the Physical Map. It reuses stable System / Subsystem / Component / CodeEntity identity and evidence-backed physical relationships while presenting directional inputs, transformations, stores, external boundaries and outputs.
+
+Data Flow is derived/projection state, not a fourth durable map or architecture authority. Flow roles and layout do not become canonical architecture. Unknown payload/flow details remain unknown unless deterministic evidence or recorded runtime observation supports them.
+
+### Phase 7-8 — AI collaboration and delegation
 
 Introduce or activate:
 - AgentWorkingState / Agent Mind
@@ -214,7 +220,9 @@ Introduce or activate:
 - ChangeSet
 - Validation integration
 
-### Phase 8 — Development Sessions
+AI Presence begins in Phase 7 and may consume Dope-owned architecture, Data Flow, planning and project context. Scoped Delegation follows in Phase 8.
+
+### Phase 9 — Development Sessions
 
 Introduce durable DeveloperSession as the cross-time development unit.
 
@@ -350,6 +358,20 @@ Architecture-scale nodes may be canonical, detected candidates, or a reconciliat
 It also contains typed relationships, evidence/provenance and optional runtime observations. The Physical Map is independent from any particular diagram layout.
 
 Physical source facts are deterministic or explicitly labeled otherwise. Runtime facts are observations. Architecture discovery is derived interpretation with evidence. Developer-authored canonical architecture remains authoritative for architectural identity and intent, while conflicting physical evidence remains visible as drift rather than being discarded.
+
+### DataFlowProjection
+
+A read-only, evidence-backed directional projection of the Physical Map for a selected architectural scope.
+
+It answers how information moves through implemented software while preserving the same underlying System / Subsystem / Component / CodeEntity identities used by the Architecture projection. Initial scope is System-first with Subsystem focus.
+
+A DataFlowProjection may classify presentation roles such as **Input**, **Boundary**, **Transformation**, **Store**, **External** and **Output** and may annotate edges with payload/type/schema/event identity when evidence supports that detail. Those roles and annotations are derived projection semantics, not new canonical architecture node kinds.
+
+The projection may show branches, joins, fan-out, cycles, retries and external round trips. Directional layout is a comprehension aid and must not imply synchronous or strictly linear execution.
+
+Every physical flow relationship retains evidence/provenance. Deterministic source/semantic/framework facts and recorded runtime observations may establish flow. AI may later explain or propose interpretations, but it does not silently create physical flow evidence. Unknown payloads or unproved hops remain explicitly unknown.
+
+Data Flow is not separately persisted as canonical truth and does not create a `DataFlowMap` authority. It is reconstructible from Software Map / Physical Map state plus disposable presentation state.
 
 ### System
 

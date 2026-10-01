@@ -25,6 +25,7 @@ Theia
 -> enforce project-local sMap persistence
 -> align app color system to the Dope logo
 -> Visual Software Planning
+-> Data Flow
 -> AI Presence
 -> Scoped Delegation
 -> Development Sessions
@@ -56,9 +57,10 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — sMap Acceptance Debug Loop | P11 interruption at `0.5.11`: persist mutable unaccepted review work, enumerate deterministic acceptance blockers, and provide an offline checker so one generated sMap can be debugged across restarts without provider calls. This correction does not perform the actual Adaptive SEO debug loop. |
 | Correction c5 — Physical Map Load | One-off `0.5.11` repair after accepted Adaptive SEO architecture loads in the inspector but the center Physical Map remains stuck at Loading. Remove duplicate Software Map channel/attach ownership if confirmed, preserve one shared published map state, and correct stale Phase 3/theme qualification assertions. P11 remains the qualification gate. |
 | Correction c5 — Planning Basis Isolation | `0.5.11` correction after P11 reached durable Planning Maps but ordinary `.dope/planning-maps.json` persistence changed Physical Map identity and unchanged reanalysis falsely staled plans. Isolate `.dope/` from generic analysis inputs and make generation observation provenance rather than semantic staleness. |
-| Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
-| Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
-| Product Phase 8 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
+| Product Phase 6 — Data Flow | Dope explains how information moves through software. A developer can follow evidence-backed inputs, transformations, stores, external boundaries and outputs through the same Physical Map identities without a model provider. |
+| Product Phase 7 — AI Presence | AI understands Dope through Dope-owned project state, architecture, Data Flow, Planning Map context and provider-independent read-only assistance. |
+| Product Phase 8 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
+| Product Phase 9 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
 
 Self-development never receives privileged authority.
 
@@ -203,7 +205,7 @@ Initial scope:
 
 Plans are live control structures, not static memos. BUILD/PLAN mode remains presentation state and must never silently mutate Plan, PlanStep or Task status.
 
-Phase 3 deliberately remains human-first. It has no model runtime, Codex/OpenAI product integration, local-model runtime, Agent Mind, ProposedAction, tool calling, AI ownership or mutation authority. ADR 0006 makes Codex/OpenAI the first reference provider when AI Presence begins in Phase 6; it does not pull AI into Phase 3.
+Phase 3 deliberately remains human-first. It has no model runtime, Codex/OpenAI product integration, local-model runtime, Agent Mind, ProposedAction, tool calling, AI ownership or mutation authority. ADR 0006 makes Codex/OpenAI the first reference provider when AI Presence begins in Phase 7; it does not pull AI into Phase 3.
 
 Planning uses the existing Project Mind `projectId` as the project identity. Phase 3 does not create a competing project identity allocator. If a local project has no canonical Project Mind identity yet, Planning must surface that prerequisite rather than silently creating unrelated identity state. Planning persists separately in readable `.dope/planning.json` and validates identity against Project Mind.
 
@@ -526,7 +528,7 @@ Routing now goes directly to `c4-smap-storage`. This does not relabel coverage G
 Status: **DEFERRED / REMOVED FROM PRE-PHASE-5 CRITICAL PATH**
 
 Purpose:
-Retain the option for a future controlled Local/Gemini comparison when provider optimization or Phase 6 AI Presence actually needs comparative evidence.
+Retain the option for a future controlled Local/Gemini comparison when provider optimization or Phase 7 AI Presence actually needs comparative evidence.
 
 This correction is not executed as a prerequisite for storage or Phase 5, is not relabeled Green, and must not rewrite or reopen the closed `c4-smap-gemini-provider` history.
 
@@ -735,7 +737,36 @@ Out of scope:
 - P12 or version advance.
 
 After the one-off passes, recreate `/tmp/adaptive-seo-dope-p11` from the accepted reference and rerun P11.
-## Product Phase 6 — AI Presence
+## Product Phase 6 — Data Flow
+
+Purpose:
+Make the Software Map explain how information moves through implemented software, from system inputs through processing, storage and external boundaries to outputs.
+
+Initial scope:
+- provider-free deterministic Data Flow projection over the existing Physical Map;
+- **Architecture / Data Flow** view switching over the same stable Software Map identities;
+- System-first scope, with Subsystem focus and the same Focus / Up / source-navigation context;
+- directional layouts optimized for input -> processing -> output comprehension without claiming execution itself is linear;
+- evidence-backed inputs, outputs, transformations, stores, external boundaries and producer/consumer relationships;
+- payload/type/schema/event identity only when deterministic or recorded-runtime evidence supports it;
+- explicit unknown flow/payload state rather than fabricated certainty;
+- branches, joins, fan-out, cycles, retries and external round trips remain representable;
+- flow evidence/provenance and round-trip source navigation;
+- analyzer/query extensions for HTTP/API boundaries, framework routes, symbol/type flow, persistence, jobs/events/queues and external clients where supported;
+- Input / Boundary / Transformation / Store / External / Output are projection roles, not new canonical architecture node kinds;
+- no model/provider requirement;
+- no AI mutation/delegation;
+- no requirement for live runtime tracing.
+
+Data Flow is a **Physical Map projection**, not a separate `DataFlowMap` database or new architecture authority. Switching Architecture <-> Data Flow preserves selected/focused System / Subsystem / Component / CodeEntity identity. Static source/framework evidence and recorded runtime observations may establish physical flow; AI interpretation never silently becomes flow evidence.
+
+Phase 6 starts only after Phase 5 qualification/closeout establishes the `0.6.0` successor baseline. The Phase 5 P11/P12 qualification contract is unchanged by this insertion.
+
+Exit condition:
+
+With no model configured, a developer can open an initialized real project, focus a representative System, switch from Architecture to Data Flow, follow meaningful information through at least one non-trivial path containing an input boundary, transformation, persistence and/or external interaction, downstream processing and output, inspect representative flow evidence, navigate it to source, focus into a Subsystem, observe at least one branch/fan-out or join, and return to Architecture without losing stable identity or context.
+
+## Product Phase 7 — AI Presence
 
 Purpose:
 Introduce AI as an observable collaborator inside an already-useful development environment.
@@ -747,7 +778,7 @@ Initial scope:
 - capability-based provider adapters
 - Ask / Explain / Trace / Find Related
 - read-only project and editor context
-- Project Mind and active Plan context
+- Project Mind, canonical architecture, Physical Map Architecture/Data Flow and active Planning Map/WorkItem context
 - suggestions for notes, questions, ideas, and plan refinements
 - structured Agent Mind for visible working state
 
@@ -756,9 +787,9 @@ observation and assistance before mutation.
 
 Exit condition:
 
-AI can understand and assist with the project without owning canonical product state or requiring Dope to become chat-first.
+AI can understand and assist with the project using Dope-owned project, architecture, flow and planning context without owning canonical product state or requiring Dope to become chat-first.
 
-## Product Phase 7 — Scoped Delegation
+## Product Phase 8 — Scoped Delegation
 
 Purpose:
 Give AI bounded hands without giving away the developer's authorship or control.
@@ -777,7 +808,7 @@ Exit condition:
 
 A developer can delegate a bounded portion of work, see what the agent believes and intends, intervene during execution, and retain control over mutation.
 
-## Product Phase 8 — Development Sessions
+## Product Phase 9 — Development Sessions
 
 Purpose:
 Make the development session durable for the developer, not only for the model.

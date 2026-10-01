@@ -103,6 +103,10 @@ The Physical Map represents what actually exists. Its source-derived facts must 
 
 Planning operates against that reality. Planning diagrams reference physical systems, subsystems and components and express proposed additions, removals, modifications and relationship changes rather than copying the current architecture into disconnected drawings.
 
+The same Physical Map supports complementary evidence-backed projections. **Architecture** answers what exists and how it is organized. **Data Flow** answers how information moves through those same identities from inputs through transformations, stores and external boundaries to outputs. Data Flow is a projection of physical evidence, not a separate architecture database. A later runtime view may add what actually happened during a concrete execution without confusing static structure, inferred flow and recorded observation.
+
+The product progression is deliberate: understand structure -> design change -> understand information flow -> give AI read-only presence over that richer project model -> add scoped delegation.
+
 The core development loop is:
 
 Understand current system

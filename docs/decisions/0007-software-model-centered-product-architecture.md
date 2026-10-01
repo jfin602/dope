@@ -3,6 +3,8 @@
 Status: Accepted
 Date: 2026-09-28
 
+Sequencing amendment (2026-10-01): ADR 0020 inserts provider-free Product Phase 6 — Data Flow between Visual Software Planning and AI Presence. The original phase numbering below remains historical context; current future sequencing is Phase 6 Data Flow, Phase 7 AI Presence, Phase 8 Scoped Delegation, Phase 9 Development Sessions. The underlying decision to delay general AI until the software-model substrate is strong is extended: AI Presence now follows Physical Map + Visual Planning + Data Flow.
+
 Terminology amendment: ADR 0008 supersedes this ADR's **Software Model / Physical Software Model / planning graph** product vocabulary with **Software Map (sMap) / Physical Map / Planning Map** and establishes default workbench placement. The architectural substance of ADR 0007 remains accepted; its original wording is preserved here as historical decision context.
 
 Architecture-authority amendment: ADR 0009 clarifies that deterministic analysis must discover candidate System / Subsystem / Component structure rather than requiring declarations to manufacture those physical levels. Developer-authored architecture remains canonical authority: detection proposes and explains; the developer confirms or corrects; subsequent analysis measures implementation against that canonical architecture. ADR 0009 also makes greenfield architecture-before-code a first-class workflow.

@@ -3,6 +3,8 @@
 Status: Accepted
 Date: 2026-09-28
 
+Sequencing amendment (2026-10-01): ADR 0020 inserts Product Phase 6 — Data Flow and moves AI Presence to Product Phase 7. This ADR's provider/bootstrap decision remains accepted unchanged; references below to Phase 6 AI Presence are preserved as historical numbering and now apply when Phase 7 AI Presence begins.
+
 ## Decision
 
 When Product Phase 6 — AI Presence begins, Dope will implement and qualify OpenAI/Codex as the first reference AI provider/workflow.

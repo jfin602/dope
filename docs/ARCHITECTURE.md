@@ -22,7 +22,7 @@ Dope presentation adapters and widgets
   |
 Application / orchestration
   |
-Project Intelligence / Software Map / Visual Software Planning / later Agent Runtime
+Project Intelligence / Software Map / Visual Software Planning / Data Flow / later Agent Runtime
   |
 Persistence / Model / Tool / Authority / Execution adapters
 
@@ -95,7 +95,7 @@ Dope's default workbench placement is part of the product architecture, while in
 
 Default placement:
 - **Left primary sidebar / Activity Bar:** project-navigation surfaces, including a dedicated **sMap** button and Software Map inspector. The inspector owns hierarchy, dependency, violation, evidence and source-navigation views for the Physical Map.
-- **Center workspace:** editors and ordinary working surfaces. Product Phase 5 adds the large visual **Physical Map** and **Planning Map** canvases here as editor-like tabs/workspaces.
+- **Center workspace:** editors and ordinary working surfaces. Product Phase 5 adds the large visual **Physical Map** and **Planning Map** canvases here as editor-like tabs/workspaces. Product Phase 6 adds **Data Flow** as a directional Physical Map projection in the same center-workspace model.
 - **Right secondary sidebar:** reserved by default for future **Agent Mind / chat / AI interaction**. The Software Map inspector must not claim this area as its default home.
 - **Bottom panel:** terminal, Problems, tests, runtime and similar execution/diagnostic surfaces.
 
@@ -162,7 +162,7 @@ Every PlanningMap records the canonical architecture revision/fingerprint and Ph
 
 Durable Phase 5 planning state is project-local in versioned `.dope/planning-maps.json`. Do not reuse or migrate historical Phase 3 `.dope/planning.json`. Repository + `.dope/` must be sufficient to recover Planning Maps and WorkItems. Machine-local planning caches are disposable.
 
-Phase 5 is provider-free. No model is required to create/edit/adopt/rebase/reconcile a PlanningMap. General AI Presence, Agent Mind, ProposedAction, authority/delegation and mutation-capable tool execution remain Phase 6+ concerns.
+Phase 5 is provider-free. No model is required to create/edit/adopt/rebase/reconcile a PlanningMap. General AI Presence, Agent Mind, ProposedAction, authority/delegation and mutation-capable tool execution remain Phase 7+ concerns.
 
 ### Visual projection and tab identity
 
@@ -177,6 +177,22 @@ The primary PlanningMap canvas is an overlay/diff projection over physical/canon
 Direct visual gestures must compile into typed PlannedTransformation operations before durable mutation. Raw node coordinates, drag positions or library edge objects never mutate architecture semantics directly.
 
 Focus / Up / Fit Architecture and geometric pan/zoom are presentation navigation. Stable architecture/planning IDs survive tab changes, zoom/focus changes and source round-trips.
+
+## Data Flow projection boundary
+
+Product Phase 6 extends the Physical Map with a provider-free directional **Data Flow** projection.
+
+Data Flow consumes the same Software Map graph, stable architecture/code identities, query/index services and provenance boundary as the Architecture projection. It must not create a second architecture database, fork canonical identity, or make visualization-library nodes/edges authoritative.
+
+The initial query/presentation contract is System-first with Subsystem focus. Switching Architecture <-> Data Flow preserves focused scope, selection and source-navigation identity.
+
+Flow roles such as Input, Boundary, Transformation, Store, External and Output are projection semantics. They may be computed from typed physical relationships and evidence but are not new canonical System / Subsystem / Component kinds.
+
+Analyzer/query layers may add evidence-backed flow facts for supported language/framework surfaces, including route/request/response relationships, calls/references, symbol/type/schema movement, persistence reads/writes, job/event/queue producer-consumer relationships and external clients. Every flow edge remains explainable through deterministic source/semantic/framework evidence or explicit recorded-runtime observation. When the path or payload cannot be established, the product preserves that uncertainty rather than inventing a hop or data type.
+
+Directional layout is presentation state. It may optimize for input -> processing -> output comprehension while still representing branches, joins, fan-out, cycles, retries, asynchronous boundaries and external round trips.
+
+Phase 6 does not require a model provider, AI Presence, mutation authority, live tracing, or a new durable Data Flow store. Future runtime observation may enrich the same evidence model without turning static flow inference into observed execution.
 
 ## Model and provider boundary
 
@@ -227,7 +243,7 @@ Do not make Theia AI's agent/chat/session ontology Dope's product ontology.
 
 Theia AI is optional infrastructure.
 
-General Theia AI reuse is qualified when AI Presence is implemented, not during Foundation Spike 0. ADR 0010 permits the narrower pre-Phase-6 architecture-synthesis capability required for initial sMap generation; that capability must still use Dope-owned contracts and replaceable provider adapters.
+General Theia AI reuse is qualified when AI Presence is implemented, not during Foundation Spike 0. ADR 0010 permits the narrower pre-Phase-7 architecture-synthesis capability required for initial sMap generation; that capability must still use Dope-owned contracts and replaceable provider adapters.
 
 ## Local-first sMap synthesis bootstrap
 
@@ -393,7 +409,7 @@ Planning mutations use expected document revision plus a project-bound handle. E
 
 The real Planning UI should live in focused presentation/controller files rather than substantially growing `dope-workbench.ts`. Preserve the existing Project Mind draft/race lessons: dirty Planning drafts must survive navigation/workspace/event races, late responses must be generation/project guarded, and save status must reflect backend acknowledgement. BUILD/PLAN mode may foreground Planning or coding surfaces but remains presentation state.
 
-No model/provider SDK, Theia AI ontology, Codex/OpenAI runtime, local-model runtime, Agent Mind, ProposedAction, authority or tool execution belongs in Phase 3. ADR 0006 selects Codex/OpenAI only as the first Phase 6 reference integration.
+No model/provider SDK, Theia AI ontology, Codex/OpenAI runtime, local-model runtime, Agent Mind, ProposedAction, authority or tool execution belongs in Phase 3. ADR 0006 selects Codex/OpenAI only as the first Phase 7 reference integration.
 
 ### Agent State
 

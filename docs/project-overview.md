@@ -176,9 +176,10 @@ Foundation Spike 0 — qualify Theia
 -> correction c4-storage — enforce project-local sMap persistence
 -> correction c4-color-theme — Dope Dark visual identity
 -> Phase 5 — Visual Software Planning
--> Phase 6 — AI Presence
--> Phase 7 — Scoped Delegation
--> Phase 8 — Development Sessions
+-> Phase 6 — Data Flow
+-> Phase 7 — AI Presence
+-> Phase 8 — Scoped Delegation
+-> Phase 9 — Development Sessions
 
 Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map core remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The later architecture-synthesis corrections remain truthful owner-closed Not Qualified history with useful implementation retained; `c4-smap-storage` and `c4-color-theme` closed Green. Owner closeout advanced only the package baseline to `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 5 — Visual Software Planning is now active from that baseline under ADR 0017 and `docs/planning/p5/`; the fresh provider comparison remains deferred off its critical path.
 
@@ -223,7 +224,7 @@ The predecessor `c4-smap-synth` is closed historical evidence. The active hierar
 
 Historical Phase 1/2 qualification gaps remain unchanged. Phase 3 remains historical evidence and its live Planning implementation remains removed. Theia stays pinned to 1.75.0 and Electron to 42.8.1 unless a deliberate framework upgrade is separately approved.
 
-Phase 5 Visual Software Planning, general AI Presence/model integration, Agent Mind, tool execution, AI mutation, scoped delegation and durable development sessions remain blocked behind their roadmap gates. ADR 0010 authorizes only the narrow pre-Phase-6 architecture-synthesis capability required by sMap initialization, and ADR 0011 selects its first local reference implementation without superseding ADR 0006 for Phase 6.
+Phase 5 Visual Software Planning, Phase 6 Data Flow, general AI Presence/model integration, Agent Mind, tool execution, AI mutation, scoped delegation and durable development sessions remain blocked behind their roadmap gates. ADR 0010 authorizes only the narrow pre-Phase-7 architecture-synthesis capability required by sMap initialization, and ADR 0011 selects its first local reference implementation without superseding ADR 0006 for Phase 7.
 
 ## Phase 3 result — live human-first Planning
 
@@ -235,4 +236,4 @@ Planning persists in readable `.dope/planning.json` with its own optimistic docu
 
 BUILD/PLAN mode may foreground the appropriate work surface but is not canonical Plan/Task status. Task file links open the ordinary editor; coding, terminal, tests, SCM and debugger stay normal IDE workflows.
 
-ADR 0006 records Codex/OpenAI as the first reference AI implementation for Phase 6 so the future agent/runtime design is proven against a capable system before local-model limits are diagnosed. That is a bootstrap/qualification strategy only. Phase 3 contains no provider runtime code and preserves first-class future local-model compatibility.
+ADR 0006 records Codex/OpenAI as the first reference AI implementation for Phase 7 so the future agent/runtime design is proven against a capable system before local-model limits are diagnosed. That is a bootstrap/qualification strategy only. Phase 3 contains no provider runtime code and preserves first-class future local-model compatibility.
