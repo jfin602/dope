@@ -1,0 +1,56 @@
+TASK: Phase 5 / P5 — Planning Map overlay, lifecycle and branching
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.5.5`.
+
+GOAL
+
+Introduce the durable Planning Map center experience over Physical Map reality, including multiple maps, alternatives and conflicts, without direct gesture editing yet.
+
+PREFLIGHT
+
+Read exact P1-P4 source/tests and all locked visual workflow authority.
+
+Require coherent `0.5.4`.
+
+IMPLEMENT
+
+Add a focused Planning Map frontend controller/widget projection using `VisualPlanningService` plus existing Software Map queries.
+
+Primary view is an overlay/diff:
+- unchanged referenced physical/canonical structure remains visible;
+- planned target state overlays it;
+- provide Current only / Target only / Diff modes;
+- side-by-side may exist only if trivial; it is not required.
+
+Render non-color-only target semantics for planned add/modify/remove/move/relationship/contract state.
+
+Planning Map management:
+- create/select;
+- `draft -> active -> completed -> superseded / archived` controls only as allowed by domain rules;
+- explicit duplicate/branch alternative;
+- multiple active maps;
+- show overlapping incompatible active-map conflicts;
+- completed/superseded hidden from normal active list by default with explicit history access.
+
+Focused System/Subsystem/Component map tabs from P4 remain projections of the selected Planning Map when planning mode is active; opening a focused tab never creates/branches a map.
+
+No direct drag/add/remove relationship mutation in P5; transformations can be created through minimal explicit form/fixture controls only if required to demonstrate projection. Full editing lands P6.
+
+Advance versions/internal refs coherently to `0.5.5`.
+
+TESTS
+
+Add focused controller/projection tests for Current/Target/Diff consistency, lifecycle visibility, explicit branching, multiple active maps/conflicts, history filtering, focused-tab shared PlanningMap identity and project/workspace stale-response protection.
+
+Run focused visual-planning/UI tests, affected build/typecheck and `git diff --check`.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report overlay/lifecycle/branching behavior and P6 eligibility.
