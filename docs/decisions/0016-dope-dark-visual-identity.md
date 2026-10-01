@@ -43,6 +43,19 @@ Solid primary-orange controls use a dark foreground when needed for readable con
 
 Selections may use transparent/derived variants of the orange palette; those variants remain defined centrally with the theme rather than copied into widgets.
 
+### Status bar treatment
+
+The default Dope Dark status bar uses a dark full-width base rather than a full-width orange fill.
+
+The status bar contract is:
+- the far-left Git branch selector is the only persistent filled brand region and uses the primary orange with a readable contrasting foreground;
+- ordinary status-bar text and icons use primary orange `#FF7A1A` on the dark base;
+- diagnostics adjacent to the branch selector retain semantic colors by type rather than inheriting the general orange foreground: errors remain error/red, warnings use the warning/orange semantic color, and information, hints, and other diagnostic classes use their appropriate semantic theme colors;
+- no other status item receives a persistent orange background block;
+- existing status-bar height, spacing, ordering, click targets, commands, hover behavior, focus behavior, and semantic meaning remain unchanged.
+
+This treatment is scoped to Dope Dark. Alternate user themes retain their own status-bar contract when selected.
+
 ### What is not recolored
 
 Brand identity must not destroy semantic meaning.

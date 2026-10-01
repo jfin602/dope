@@ -43,6 +43,20 @@ Keep semantic status and syntax colors meaningful.
 
 Dope-owned CSS should continue consuming semantic `--theia-*` variables rather than hard-coding brand hex values into each widget.
 
+### Status bar visual contract
+
+The current status-bar design is a post-closeout refinement of the original `c4-color-theme` browser result; historical closeout evidence remains unchanged.
+
+For Dope Dark:
+- the status bar has a dark full-width base;
+- the far-left Git branch selector is the only persistent filled-orange region;
+- ordinary status-bar foreground text and icons use primary orange `#FF7A1A`;
+- diagnostics next to the branch selector preserve semantic colors by type: errors red, warnings warning/orange, and information/hints/other diagnostic classes their appropriate semantic theme colors;
+- no other status item receives a persistent orange background;
+- status-bar geometry, ordering, interactions, commands, hover behavior, and focus behavior are preserved.
+
+ADR 0016 is the normative visual-identity authority for this treatment.
+
 Browser and Electron use Dope Dark as their default.
 
 Explicit user-selected compatible themes must still work, persist normally, and deactivate Dope Dark-specific overrides.
