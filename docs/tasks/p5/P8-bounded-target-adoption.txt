@@ -1,0 +1,70 @@
+TASK: Phase 5 / P8 — Bounded target adoption
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.5.8`.
+
+GOAL
+
+Implement explicit bounded Adopt Target as the sole Phase 5 bridge from Planning Map intent into canonical architecture.
+
+PREFLIGHT
+
+Read exact P1-P7 source/tests, ADR 0017 adoption authority, strict architecture parser/write path, `acceptInitialization`/current architecture storage behavior and Software Map persistence safety.
+
+Require coherent `0.5.7`.
+
+IMPLEMENT
+
+Support adoption scopes:
+- coherent System branch;
+- coherent Subsystem branch;
+- coherent Component branch;
+- selected compatible transformation set.
+
+Build a pure adoption planner that:
+- starts from current canonical architecture + selected target transformations;
+- computes exact proposed canonical diff;
+- determines required dependent target changes where deterministic;
+- rejects unresolved dependency/conflict/hierarchy/identity problems;
+- validates the complete resulting declaration through the existing strict Software Map architecture parser;
+- never consumes React Flow geometry.
+
+Expose an explicit backend/service Adopt Target operation with expected planning revision and expected canonical basis.
+
+Before durable write return/show:
+- selected scope;
+- included dependent target changes;
+- canonical add/change/remove/reparent/dependency diff;
+- blockers.
+
+Require explicit developer acceptance of that diff.
+
+Centralize/reuse the existing safe canonical architecture write/initialization storage path. Do not create a second weaker writer and do not overwrite corrupt/future/unsafe architecture bytes.
+
+After successful partial adoption:
+- update canonical architecture atomically;
+- refresh PlanningMap canonical basis/revision;
+- mark transformations/slices as adopted where needed for presentation;
+- preserve still-planned target;
+- do not complete WorkItems;
+- do not fabricate Physical Map realization.
+
+Implementation may occur before or after adoption; adoption is an architecture-authority action, not a task-completion action.
+
+Advance versions/internal refs coherently to `0.5.8`.
+
+TESTS
+
+Add focused tests for each bounded scope, dependency inclusion/blocking, exact canonical diff, invalid target rejection, stale planning/canonical basis rejection, atomic failure, partial adoption state, adopted-vs-still-planned distinction and proof that WorkItems/Physical Map are not falsely completed/realized.
+
+Run focused tests plus affected storage/backend/domain integration, typecheck/build and `git diff --check`.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report authority path, diff/dependency behavior, atomicity and P9 eligibility.
