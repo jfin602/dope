@@ -130,6 +130,17 @@ Documentation:
 -> explicit approval
 -> /docs-apply
 
+Registries:
+
+/issue <input>
+-> add a complete Open Issue to `known-issues.md`
+
+/feature <input>
+-> add a complete Proposed Idea to `feature-ideas.md`
+
+/resolve <ID>
+-> resolve a plain issue ID or ship a `+ID` feature entry according to `docs/workflow.md`
+
 Implementation:
 
 /prompt-ass
