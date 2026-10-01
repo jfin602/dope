@@ -18,6 +18,43 @@ Read BOOT.md, AGENTS.md, and the narrowest relevant current docs before substant
 
 Do not silently convert discussion into repository authority.
 
+## Issue and feature registry workflow
+
+Registry commands update the root issue/feature logs directly. They are bookkeeping commands, not substitutes for `/docs-review`, implementation planning, or qualification evidence.
+
+### /issue <input>
+
+Treat the supplied input as a reported product/repository problem and turn it into a complete new entry under **Open Issues** in `known-issues.md`.
+
+- Generate a pseudo-random unique 4-character issue ID using the registry's restricted Base32 alphabet.
+- Use the current date in the title: `### ID — YYYY-MM-DD — Issue title`.
+- Write a complete entry from the available evidence and conversation context, normally including status, summary, observed behavior/context, expected behavior, relevant safety/authority boundaries, regression coverage, and user/developer impact when applicable.
+- Preserve the user's report as the source of the problem statement. Distinguish observed facts from suspected causes or proposed fixes, and do not invent evidence.
+- If the input is actually a product idea/general enhancement rather than a defect, route it to `/feature` instead of recording it as an issue.
+- Apply the registry update directly and report the assigned ID.
+
+### /feature <input>
+
+Treat the supplied input as a proposed product/repository capability and turn it into a complete new entry under **Proposed Ideas** in `feature-ideas.md`.
+
+- Generate a pseudo-random unique 4-character feature ID using the registry's restricted Base32 alphabet and prefix it with `+`.
+- Use the current date in the title: `### +ID — YYYY-MM-DD — Feature title`.
+- Write a complete entry from the supplied idea and relevant context, normally including status, summary, description/behavior, constraints or boundaries, potential uses/value, and open questions when genuinely unresolved.
+- Include enough detail that the entry can later feed `/docs-review` and implementation-prompt planning without pretending the idea is already approved architecture or implementation scope.
+- Do not invent implementation evidence or silently promote the feature into roadmap authority.
+- Apply the registry update directly and report the assigned `+ID`.
+
+### /resolve <ID>
+
+Resolve the registry entry identified by its permanent ID. The ID determines which registry and lifecycle apply.
+
+- Plain `ID`: locate the matching entry in `known-issues.md`, move it from **Open Issues** to **Resolved Issues**, set status to `Resolved YYYY-MM-DD`, and add/update a concise resolution summary plus the strongest available validation/evidence. Preserve the original ID, report date, and title.
+- `+ID`: locate the matching entry in `feature-ideas.md`, move it from **Proposed Ideas** to **Shipped Ideas**, set status to `Shipped YYYY-MM-DD`, and add/update a concise shipped summary plus the strongest available validation/evidence. Preserve the original `+ID`, proposal date, and title.
+- Use the current conversation and repository evidence to describe the resolution. Do not fabricate implementation or validation details merely to make the entry look complete.
+- If the entry is already resolved/shipped, do not duplicate or reuse it; report its existing terminal state.
+- If the ID does not exist, make no registry mutation and report that it was not found.
+- `/resolve +ID` means the feature was completed/shipped. Deferred, rejected, superseded, or abandoned ideas require an explicit disposition rather than being falsely marked shipped.
+
 ## Implementation planning workflow
 
 /prompt-ass -> /prompt-plan -> /prompt-write <folder>
