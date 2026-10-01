@@ -84,7 +84,7 @@ Use hierarchy/shape/icon/line semantics first and theme color as reinforcement, 
 
 **Decision**
 
-TBD.
+Locked: distinguish **System / Subsystem / Component / Code** primarily through structure, scale, shape, iconography, containment and edge semantics. Color reinforces meaning but is never the only carrier of state. Containment and dependency relationships use distinct visual treatments. Canonical/physical/planned/drift/stale/conflict states use concise badges, borders or line treatments layered onto the architectural object rather than replacing its identity. Dense evidence, provenance, confidence and diagnostics remain in the inspector. The grammar must remain readable under alternate themes and for color-vision deficiencies.
 
 ---
 
