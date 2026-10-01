@@ -1,0 +1,131 @@
+TASK: Phase 5 / P11 — Visual planning Dope-on-Dope qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.5.11`.
+
+GOAL
+
+Qualify the complete provider-free Phase 5 visual workflow directly in the real Dope GUI on the Dope repository, then collect restart/copy/package/native evidence for the exact candidate.
+
+PREFLIGHT
+
+Read all P5 authority, prompt assessment/plan, exact reachable P1-P10 commits/results, current tests and prior Phase 4/package evidence.
+
+Require coherent `0.5.10`, clean intended Git state before controlled probes, no model/provider requirement for planning, and a reproducible way to restore any controlled Dope source/architecture edits.
+
+Advance root/apps/internal package versions/internal refs coherently to `0.5.11` before final candidate qualification.
+
+DIRECT GUI MATRIX
+
+Using the actual Theia GUI on the real Dope repository, directly interact and record:
+
+A. Physical overview
+- open Physical Map in center workspace;
+- default shows Systems + immediate Subsystems, not code hairball;
+- one-action Fit Architecture;
+- containment/dependency/state grammar readable without relying only on color.
+
+B. Navigation/tabs
+- geometric zoom;
+- Focus / Up / Fit Architecture;
+- System, Subsystem and Component focused maps in separate tabs;
+- multiple focused tabs share state/identity;
+- source navigation opens ordinary editor and return preserves map context;
+- simplified cross-boundary dependency context remains visible.
+
+C. Theme/accessibility
+- inspect Dope Dark;
+- switch to at least one supported alternate theme and verify meaning remains legible;
+- keyboard-accessible essential focus/actions;
+- do not claim formal accessibility certification.
+
+D. Planning overlay/maps
+- create a real Planning Map for a small controlled Dope change;
+- exercise Current / Target / Diff;
+- create/branch an alternative map;
+- show multiple active maps and an intentional overlap/conflict;
+- verify focused tabs do not implicitly create branches.
+
+E. Typed editing
+- add target;
+- move/reparent;
+- remove from target without deleting physical truth;
+- relationship change;
+- one complex explicit editor operation;
+- preview/cancel/commit;
+- undo/redo unadopted semantic edits.
+
+F. WorkItems
+- request deterministic suggestions;
+- accept/edit;
+- split and merge where valid;
+- inspect dependencies/parallelism;
+- prove WorkItem <-> transformation/architecture highlighting;
+- complete a WorkItem and prove it does not adopt/reconcile automatically.
+
+G. Bounded adoption
+- preview canonical diff for a coherent partial target slice;
+- adopt the bounded slice;
+- verify adopted vs still-planned target distinction;
+- prove no WorkItem/Physical realization is fabricated.
+
+H. Stale/rebase
+- make a controlled relevant canonical/source change outside the Planning Map;
+- refresh/reanalyze;
+- observe localized map/branch/transformation stale state;
+- open explicit old-basis -> current-reality -> target-intent rebase;
+- prove unaffected advance, conflict resolution and cancel/retain-old-basis behavior as applicable.
+
+I. Implementation/reconciliation
+- implement one small controlled WorkItem through ordinary editor/terminal/test surfaces, not AI execution;
+- run fresh Software Map reanalysis;
+- observe at least one implemented-as-planned result;
+- deliberately exercise or fixture an implemented-differently/not-implemented/unexpected case without falsifying production state;
+- accept an intentional difference where appropriate;
+- explicitly close out only after every transformation is resolved/deferred/abandoned;
+- inspect completed intent-versus-outcome history.
+
+PERSISTENCE / RECOVERY MATRIX
+
+Prove for exact candidate:
+- process restart/reopen;
+- different application profile reopening same project;
+- copy project including `.dope/` to another root and recover Planning Maps/WorkItems;
+- remove disposable presentation state and retain semantic truth;
+- second project cannot read/mutate first planning state;
+- corrupt/future `.dope/planning-maps.json` fails closed without byte loss;
+- stale/late tab/project results cannot render into another workspace.
+
+AGGREGATE / PACKAGE
+
+Run the designated T3 evidence:
+- focused P5 suites;
+- current aggregate `npm run check`;
+- current restart integration suite;
+- browser and Electron builds;
+- Linux AppImage/package inspection and native launch appropriate to current repository qualification;
+- no root package-lock;
+- exact version/Theia/Electron/React/canvas dependency coherence;
+- `npm run codex:phase:validate -- p5`;
+- `git diff --check`.
+
+Do not hide or repair a material qualification failure by weakening tests or evidence. Tiny directly observed cosmetic fixes are not part of this prompt unless they are clearly bounded and rerun all invalidated evidence; otherwise report Not Green for correction.
+
+EVIDENCE
+
+Create `docs/tasks/p5/P11-visual-planning-dogfooding-evidence.md` recording:
+- exact source/candidate identity;
+- A-I direct matrix;
+- controlled mutations and restoration;
+- restart/copy/isolation/corruption results;
+- aggregate/build/package/native commands/results;
+- residual Not Green/Evidence Gaps;
+- screenshots/observations as available without inventing evidence.
+
+FINAL RESPONSE
+
+Report exact candidate, direct visual loop result, persistence/recovery/package result, gaps and whether P12 closeout is eligible.
