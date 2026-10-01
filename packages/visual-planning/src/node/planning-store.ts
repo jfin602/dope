@@ -4,6 +4,9 @@ import { lstat, mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { branchMap, detectActiveConflicts, parsePlanningMap, transitionMap } from '../index';
+import { projectTarget } from '../index';
+import { parseArchitecture } from '@dope/software-map';
+import { createHash } from 'node:crypto';
 import type { PlanningMap } from '../index';
 import type { PlanningCollection, PlanningOperation } from '../service';
 
@@ -50,6 +53,14 @@ export class PlanningStore {
       if (!info.isFile() || info.isSymbolicLink()) throw new Error(`Unsafe planning file: ${file}`);
       return true;
     } catch (error) { if (absent(error)) return false; throw error; }
+  }
+
+  private async declaration(root: string): Promise<string> {
+    const file = join(root, '.dope/architecture.json');
+    if (!(await this.regular(file))) throw new Error('Missing canonical architecture');
+    const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try { if (!(await handle.stat()).isFile()) throw new Error('Unsafe architecture file'); return await handle.readFile('utf8'); }
+    finally { await handle.close(); }
   }
 
   async read(root: string): Promise<PlanningCollection> {
@@ -140,6 +151,13 @@ export class PlanningStore {
         const index = maps.findIndex(map => map.id === op.mapId);
         if (index < 0) throw new Error('Unknown planning map');
         const map = maps[index];
+        if ('expectedMapRevision' in op && map.revision !== op.expectedMapRevision) throw new Error('Stale Planning Map revision');
+        if ('expectedBasis' in op && JSON.stringify(map.basis) !== JSON.stringify(op.expectedBasis)) throw new Error('Stale Planning Map basis');
+        if ('expectedBasis' in op) {
+          const declaration = await this.declaration(root);
+          if (createHash('sha256').update(declaration).digest('hex') !== map.basis.architectureFingerprint)
+            throw new Error('Stale Planning Map architecture basis');
+        }
         if (op.type === 'duplicate') {
           if (maps.some(item => item.id === op.newId)) throw new Error('Planning map already exists');
           maps.push(branchMap(map, op.newId, now));
@@ -151,12 +169,29 @@ export class PlanningStore {
             case 'update': changed = { ...map, title: op.title, objective: op.objective }; break;
             case 'put-transformation': changed = { ...map, transformations: [...map.transformations.filter(item => item.id !== op.transformation?.id), op.transformation] }; break;
             case 'remove-transformation': changed = { ...map, transformations: map.transformations.filter(item => item.id !== op.transformationId) }; break;
+            case 'undo': case 'redo': {
+              const past = map.editHistory ?? { undo: [], redo: [] };
+              const source = op.type === 'undo' ? past.undo : past.redo;
+              if (!source.length) throw new Error(`Nothing to ${op.type}`);
+              changed = { ...map, transformations: source.at(-1)!, editHistory: {
+                undo: op.type === 'undo' ? source.slice(0, -1) : [...past.undo, map.transformations],
+                redo: op.type === 'redo' ? source.slice(0, -1) : [...past.redo, map.transformations]
+              } };
+              break;
+            }
             case 'put-work-item': changed = { ...map, workItems: [...map.workItems.filter(item => item.id !== op.workItem?.id), op.workItem] }; break;
             case 'remove-work-item': changed = { ...map, workItems: map.workItems.filter(item => item.id !== op.workItemId) }; break;
             default: throw new Error('Invalid planning operation');
           }
           if (op.type.startsWith('remove-') && changed.transformations.length === map.transformations.length && changed.workItems.length === map.workItems.length)
             throw new Error('Unknown planning item');
+          if (op.type === 'put-transformation' || op.type === 'remove-transformation') changed.editHistory = {
+            undo: [...(map.editHistory?.undo ?? []), map.transformations], redo: [] };
+          if ('expectedBasis' in op) {
+            const declaration = parseArchitecture(JSON.parse(await this.declaration(root)));
+            projectTarget(declaration, parsePlanningMap({ ...changed, revision: map.revision + 1,
+              history: [...map.history, { revision: map.revision + 1, action: op.type, at: now }] }));
+          }
           const subject = 'transformation' in op ? op.transformation?.id : 'transformationId' in op ? op.transformationId :
             'workItem' in op ? op.workItem?.id : 'workItemId' in op ? op.workItemId : map.id;
           maps[index] = parsePlanningMap({ ...changed, revision: map.revision + 1,

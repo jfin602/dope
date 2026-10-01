@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { PlanningCollection, PlanningMutation, VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
+import { previewTransformation } from '@dope/visual-planning/lib/editing';
 import { detectActiveConflicts } from '@dope/visual-planning';
+import { readInitialization } from '@dope/code-analysis/lib/node/smap-initialization-file';
+import { readArchitecture } from '@dope/code-analysis/lib/node/architecture-file';
+import type { EditCommand } from '@dope/visual-planning/lib/editing';
 
 export class VisualPlanningBackend implements VisualPlanningService {
   private root?: string;
@@ -42,6 +46,18 @@ export class VisualPlanningBackend implements VisualPlanningService {
   async get(projectHandle: string, mapId: string) { return (await this.read(projectHandle)).maps.find(map => map.id === mapId); }
   async conflicts(projectHandle: string) {
     return detectActiveConflicts((await this.read(projectHandle)).maps);
+  }
+  async preview(projectHandle: string, mapId: string, expectedRevision: number, expectedMapRevision: number,
+    command: EditCommand, transformationId: string) {
+    const root = this.active(projectHandle);
+    const collection = await this.read(projectHandle);
+    const map = collection.maps.find(item => item.id === mapId);
+    if (collection.revision !== expectedRevision || !map || map.revision !== expectedMapRevision)
+      throw new Error('Stale planning revision');
+    if ((await readInitialization(root)).declarationFingerprint !== map.basis.architectureFingerprint)
+      throw new Error('Stale Planning Map architecture basis');
+    const architecture = (await readArchitecture(root)).architecture;
+    return previewTransformation(architecture, map, command, transformationId);
   }
   async mutate(request: PlanningMutation) {
     if (!request || typeof request !== 'object') throw new Error('Invalid planning mutation');

@@ -25,6 +25,7 @@ export interface PlanningMap {
   schemaVersion: 1; id: string; projectId: string; title: string; objective: string; status: MapStatus;
   revision: number; history: HistoryEntry[]; basis: PlanningBasis;
   transformations: PlannedTransformation[]; workItems: WorkItem[]; branchedFrom?: string;
+  editHistory?: { undo: PlannedTransformation[][]; redo: PlannedTransformation[][] };
 }
 export interface CrossMapConflict { schemaVersion: 1; mapIds: [string, string]; transformationIds: [string, string]; identityId: string; reason: 'incompatible-target' }
 export interface StaleResult { schemaVersion: 1; stale: boolean; architectureChanged: boolean; physicalChanged: boolean; affectedTransformationIds: string[]; affectedBranchIds: string[] }
@@ -125,7 +126,7 @@ function acyclic(items: Array<{ id: string; dependsOn: string[] }>, at: string):
 }
 export function validateTransformationDependencies(items: PlannedTransformation[]): void { acyclic(items, 'transformations'); }
 export function parsePlanningMap(input: unknown): PlanningMap {
-  const x = obj(input, 'root'); fields(x, ['schemaVersion', 'id', 'projectId', 'title', 'objective', 'status', 'revision', 'history', 'basis', 'transformations', 'workItems'], ['branchedFrom'], 'root');
+  const x = obj(input, 'root'); fields(x, ['schemaVersion', 'id', 'projectId', 'title', 'objective', 'status', 'revision', 'history', 'basis', 'transformations', 'workItems'], ['branchedFrom', 'editHistory'], 'root');
   if (x.schemaVersion !== 1) fail('unsupported schemaVersion');
   const basis = parseBasis(x.basis, 'basis');
   const history = list(x.history, (raw, at) => { const h = obj(raw, at); fields(h, ['revision', 'action', 'at'], [], at); return { revision: integer(h.revision, `${at}.revision`), action: str(h.action, `${at}.action`), at: str(h.at, `${at}.at`) }; }, 'history').sort((a, b) => a.revision - b.revision);
@@ -133,6 +134,14 @@ export function parsePlanningMap(input: unknown): PlanningMap {
   if (history.length && (history[history.length - 1].revision !== revision || history.some((h, i) => i && h.revision <= history[i - 1].revision))) fail('history revision');
   if (!history.length && revision !== 0) fail('history revision');
   const transformations = list(x.transformations, transformation, 'transformations').sort(byId);
+  const editHistory = x.editHistory === undefined ? undefined : obj(x.editHistory, 'editHistory');
+  if (editHistory) fields(editHistory, ['undo', 'redo'], [], 'editHistory');
+  const snapshots = (value: unknown, at: string) => list(value, (raw, place) => {
+    const items = list(raw, transformation, place).sort(byId);
+    unique(items.map(item => item.id), `${place} id`);
+    validateTransformationDependencies(items);
+    return items;
+  }, at);
   const workItems = list(x.workItems, work, 'workItems').sort(byId);
   unique(transformations.map(t => t.id), 'transformation id'); unique(workItems.map(w => w.id), 'work item id');
   validateTransformationDependencies(transformations); acyclic(workItems, 'work items');
@@ -142,7 +151,8 @@ export function parsePlanningMap(input: unknown): PlanningMap {
   if (status === 'completed' && !canCloseOut({ transformations } as PlanningMap)) fail('unresolved closeout');
   return { schemaVersion: 1, id: id(x.id, 'id'), projectId: id(x.projectId, 'projectId'), title: str(x.title, 'title'), objective: str(x.objective, 'objective'), status, revision, history,
     basis,
-    transformations, workItems, ...(x.branchedFrom === undefined ? {} : { branchedFrom: id(x.branchedFrom, 'branchedFrom') }) };
+    transformations, workItems, ...(x.branchedFrom === undefined ? {} : { branchedFrom: id(x.branchedFrom, 'branchedFrom') }),
+    ...(editHistory ? { editHistory: { undo: snapshots(editHistory.undo, 'editHistory.undo'), redo: snapshots(editHistory.redo, 'editHistory.redo') } } : {}) };
 }
 export function parsePlanningMapJson(json: string): PlanningMap { try { return parsePlanningMap(JSON.parse(json)); } catch (error) { if (error instanceof SyntaxError) fail('malformed JSON'); throw error; } }
 export function parseCrossMapConflict(input: unknown): CrossMapConflict {
@@ -185,7 +195,7 @@ export function transitionMap(map: PlanningMap, status: MapStatus, at: string): 
 export function branchMap(map: PlanningMap, newId: string, at: string): PlanningMap {
   if (newId === map.id) fail('branch identity');
   return parsePlanningMap({ ...map, id: id(newId, 'newId'), status: 'draft', revision: 0, history: [{ revision: 0, action: `branch:${map.id}`, at: str(at, 'at') }], branchedFrom: map.id,
-    transformations: map.transformations.map(t => ({ ...t, resolution: undefined })),
+    transformations: map.transformations.map(t => ({ ...t, resolution: undefined })), editHistory: { undo: [], redo: [] },
     workItems: map.workItems.map(w => ({ ...w, status: 'proposed', completionNotes: undefined })) });
 }
 export const duplicateMap = branchMap;

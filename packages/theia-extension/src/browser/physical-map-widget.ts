@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import { ReactFlow, Background, Controls, type ReactFlowInstance, type Edge, type Node } from '@xyflow/react';
+import { ReactFlow, Background, Controls, Handle, Position, type ReactFlowInstance, type Edge, type Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { BaseWidget, Message, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { OpenerService, open } from '@theia/core/lib/browser';
@@ -9,16 +9,21 @@ import { PhysicalMapController, physicalMapTabId, type PhysicalMapTabOptions } f
 import type { CanvasNode } from './physical-map-projection';
 import { PlanningMapController } from './planning-map-controller';
 import { projectPlanningMap } from './planning-map-projection';
+import type { EditCommand } from '@dope/visual-planning/lib/editing';
+import type { PlannedNode } from '@dope/visual-planning';
 import './dope.css';
 
 export const PHYSICAL_MAP_ID = 'dope-physical-map-canvas';
 
-function MapNode({ data }: { data: { item: CanvasNode & { intent?: string } } }): React.ReactElement {
+function MapNode({ data }: { data: { item: CanvasNode & { intent?: string }; editable?: boolean } }): React.ReactElement {
     const item = data.item;
     return React.createElement('div', { className: `dope-map-node dope-map-${item.kind} dope-map-${item.state}${item.intent ? ` dope-plan-${item.intent}` : ''}` },
         React.createElement('span', { className: 'dope-map-kind' }, `${item.context ? '↗ ' : ''}${item.kind}`),
         React.createElement('strong', null, item.name),
-        React.createElement('small', { className: 'dope-map-badge', title: item.badge }, item.badge));
+        React.createElement('small', { className: 'dope-map-badge', title: item.badge }, item.badge),
+        data.editable && item.kind === 'subsystem' ? React.createElement(React.Fragment, null,
+            React.createElement(Handle, { type: 'target', position: Position.Left }),
+            React.createElement(Handle, { type: 'source', position: Position.Right })) : null);
 }
 const nodeTypes = { architecture: MapNode };
 
@@ -134,8 +139,9 @@ export class PhysicalMapWidget extends BaseWidget {
                 'No published architecture. Initialize or refresh the Software Map in the left inspector.';
         const nodes: Node[] = projection.nodes.map(item => ({
             id: item.id, type: 'architecture', position: { x: item.x, y: item.y },
-            parentId: item.parentId, extent: item.parentId ? 'parent' : undefined,
-            data: { item }, draggable: false, selectable: true, selected: item.id === selected,
+            parentId: item.parentId,
+            data: { item, editable: planningMode && !!selectedMap }, draggable: planningMode &&
+                (item.kind === 'subsystem' || item.kind === 'component'), selectable: true, selected: item.id === selected,
             className: item.id === selected ? 'dope-map-selected' : item.context ? 'dope-map-context' : undefined,
             style: { width: item.width, height: item.height }
         }));
@@ -146,9 +152,19 @@ export class PhysicalMapWidget extends BaseWidget {
             selectable: false
         }));
         this.root.render(React.createElement(ReactFlow, {
-            nodes, edges, nodeTypes, nodesDraggable: false, nodesConnectable: false, elementsSelectable: true,
+            nodes, edges, nodeTypes, nodesDraggable: planningMode, nodesConnectable: planningMode, elementsSelectable: true,
             onNodeClick: (_event: React.MouseEvent, node: Node) => this.controller.select(node.id),
             onNodeDoubleClick: (_event: React.MouseEvent, node: Node) => this.controller.focus(node.id),
+            onNodeDragStop: (_event: MouseEvent | TouchEvent, node: Node) => {
+                const kind = (node.data.item as CanvasNode).kind;
+                const parents = this.flow?.getIntersectingNodes(node).filter(item =>
+                    (item.data.item as CanvasNode).kind === (kind === 'component' ? 'subsystem' : 'system') && item.id !== node.parentId) ?? [];
+                if (parents.length === 1) void this.planning.beginEdit({ kind: 'move', id: node.id, parentId: parents[0].id });
+                else if (parents.length) this.status.textContent = 'Ambiguous move: drop on one parent boundary.';
+                this.render();
+            },
+            onConnect: connection => { if (connection.source && connection.target) void this.planning.beginEdit({
+                kind: 'draw-relationship', sourceId: connection.source, targetId: connection.target }); },
             fitView: true, fitViewOptions: { padding: 0.14 }, onInit: (flow: ReactFlowInstance) => { this.flow = flow; void flow.fitView({ padding: 0.14 }); },
             proOptions: { hideAttribution: true }
         }, React.createElement(Background), React.createElement(Controls, { showInteractive: false })));
@@ -192,6 +208,50 @@ export class PhysicalMapWidget extends BaseWidget {
         } },
             !this.planning.canCreate || this.planning.loading || !this.controller.projectMatches);
         button('Branch alternative', () => void this.planning.duplicate(), !this.planning.selected || this.planning.loading);
+        const editable = !!this.planning.selected && !this.planning.loading && this.controller.projectMatches;
+        const ask = (label: string, value = '') => window.prompt(label, value)?.trim();
+        button('Add target', () => {
+            const kind = ask('Kind: system, subsystem, component');
+            if (kind !== 'system' && kind !== 'subsystem' && kind !== 'component') return;
+            const id = ask('Stable target ID'), name = ask('Name'), purpose = ask('Purpose');
+            const parentId = kind === 'system' ? undefined : ask('Parent ID', this.controller.selectedId ?? '');
+            const roots = ask('Project-relative roots, comma separated');
+            if (!id || !name || !purpose || roots === undefined || (kind !== 'system' && !parentId)) return;
+            const node: PlannedNode = { id, kind, name, purpose, roots: roots.split(',').map(s => s.trim()).filter(Boolean),
+                ...(parentId ? { parentId } : {}) };
+            void this.planning.beginEdit({ kind: 'add', node });
+        }, !editable);
+        button('Move selected', () => { const id = this.controller.selectedId, parentId = ask('New parent ID');
+            if (id && parentId) void this.planning.beginEdit({ kind: 'move', id, parentId }); }, !editable || !this.controller.selectedId);
+        button('Remove from target', () => { const id = this.controller.selectedId;
+            if (id) void this.planning.beginEdit({ kind: 'remove', id }); }, !editable || !this.controller.selectedId);
+        button('Redirect dependency', () => {
+            const sourceId = ask('Source Subsystem ID'), oldTarget = ask('Current target Subsystem ID');
+            const targetId = ask('New target Subsystem ID'), policy = ask('Policy: allowed or forbidden', 'allowed');
+            if (sourceId && oldTarget && targetId && (policy === 'allowed' || policy === 'forbidden'))
+                void this.planning.beginEdit({ kind: 'redirect-relationship',
+                    from: { sourceId, targetId: oldTarget, policy }, to: { sourceId, targetId, policy } });
+        }, !editable);
+        for (const kind of ['modify', 'split', 'merge', 'change-contract'] as const) button(kind, () => {
+            const ids = ask('Current IDs, comma separated', this.controller.selectedId ?? '');
+            const json = ask('Future nodes JSON array (id, kind, parentId, name, purpose, roots)');
+            if (!ids || !json) return;
+            try {
+                const futureNodes = JSON.parse(json) as PlannedNode[];
+                const command: EditCommand = { kind, currentIds: ids.split(',').map(s => s.trim()), futureNodes };
+                void this.planning.beginEdit(command);
+            } catch { this.status.textContent = 'Invalid future nodes JSON'; }
+        }, !editable);
+        button('Undo', () => void this.planning.undo(), !editable || !this.planning.canUndo);
+        button('Redo', () => void this.planning.redo(), !editable || !this.planning.canRedo);
+        if (this.planning.preview) {
+            const preview = document.createElement('pre');
+            const change = this.planning.preview.transformation;
+            preview.textContent = `Preview ${change.kind}\n${JSON.stringify(change, null, 2)}`;
+            bar.append(preview);
+            button('Commit change', () => void this.planning.commitEdit(), !editable);
+            button('Cancel change', () => this.planning.cancelEdit());
+        }
         for (const status of this.planning.allowedTransitions) button(status[0].toUpperCase() + status.slice(1),
             () => void this.planning.transition(status), this.planning.loading);
         for (const view of ['current', 'target', 'diff'] as const) button(
