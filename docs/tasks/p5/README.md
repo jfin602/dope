@@ -49,7 +49,7 @@ Routing:
 P12/`0.5.12` is not eligible until the real Adaptive SEO architecture can be accepted and P11 completes.
 
 
-P11's first Dope-on-Dope attempt is retained as Not Green evidence. The rerun uses a disposable copy of `/home/jfin/dev/adaptive-seo-dope` with its `.dope/` state for the visual loop; Dope remains the host/regression/package fixture. Confirm usable canonical/Physical Map state before GUI qualification.
+P11's first Dope-on-Dope attempt is retained as Not Green evidence. The rerun uses `/tmp/adaptive-seo-dope-p11`, a disposable copy of the accepted `/home/jfin/dev/adaptive-seo-dope` including its `.dope/` state, for the visual loop. Keep the accepted source workspace unchanged; Dope remains the host/regression/package fixture. Confirm usable canonical/Physical Map state in the `/tmp` workspace before GUI qualification.
 
 ## Product boundary
 

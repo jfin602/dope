@@ -255,7 +255,7 @@ The correction must not be counted as P11 qualification and must not advance to 
 
 ## P11 — direct visual workflow qualification (`0.5.11`) — T3 / browser required
 
-Use a disposable copy of `/home/jfin/dev/adaptive-seo-dope`, including `.dope/`, as the primary mapped workspace in the actual Theia GUI. Require a usable canonical/Physical Map before the direct loop. Keep the real Adaptive SEO checkout unchanged. Use the Dope repository for host/IDE/Project Mind/sMap regression and exact-candidate builds, package and native launch; Dope's own canonical map need not qualify the visual loop.
+Use `/tmp/adaptive-seo-dope-p11` as the primary mapped workspace in the actual Theia GUI. It must be a disposable copy of the accepted `/home/jfin/dev/adaptive-seo-dope`, including `.dope/`. Require a usable canonical/Physical Map in this exact `/tmp` workspace before the direct loop. Keep `/home/jfin/dev/adaptive-seo-dope` unchanged as the accepted reference. Use the Dope repository for host/IDE/Project Mind/sMap regression and exact-candidate builds, package and native launch; Dope's own canonical map need not qualify the visual loop.
 
 Qualify:
 - Physical Map overview Systems + immediate Subsystems;
