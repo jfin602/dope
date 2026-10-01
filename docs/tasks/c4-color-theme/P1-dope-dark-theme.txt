@@ -5,7 +5,7 @@ MODEL / REASONING / USAGE
 - Browser required: no.
 
 VERSIONING
-- Keep every package exactly `0.4.6`.
+- Required unchanged project version: `0.4.6`.
 
 EXECUTION
 - Runner-friendly implementation prompt.

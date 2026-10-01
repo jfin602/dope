@@ -2,11 +2,11 @@ TASK: Correction 4 / P2 — Manual Dope Dark visual browser check and closeout
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol Medium`.
-- Browser required: **yes**.
+- Browser required: yes.
 - Execution: **MANUAL INTERACTIVE HANDOFF — do not run as an ordinary runner-only prompt**.
 
 VERSIONING
-- Keep every package exactly `0.4.6`.
+- Required unchanged project version: `0.4.6`.
 
 GOAL
 
