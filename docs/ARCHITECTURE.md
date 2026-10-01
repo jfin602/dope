@@ -164,6 +164,20 @@ Durable Phase 5 planning state is project-local in versioned `.dope/planning-map
 
 Phase 5 is provider-free. No model is required to create/edit/adopt/rebase/reconcile a PlanningMap. General AI Presence, Agent Mind, ProposedAction, authority/delegation and mutation-capable tool execution remain Phase 6+ concerns.
 
+### Visual projection and tab identity
+
+The center-workspace visual layer is a projection boundary.
+
+Project-level maps and focused System / Subsystem / Component / branch tabs all consume the same underlying Software Map / PlanningMap identity. Opening a focused map must not fork, clone or snapshot canonical/planning state. Multiple tabs may observe/edit the same PlanningMap through typed application operations and must converge through the same revision/conflict rules.
+
+React/graph-library node and edge objects are presentation adapters only. They never become persisted PlanningMap or canonical architecture types.
+
+The primary PlanningMap canvas is an overlay/diff projection over physical/canonical state. Current-only, target-only and diff modes change presentation, not state.
+
+Direct visual gestures must compile into typed PlannedTransformation operations before durable mutation. Raw node coordinates, drag positions or library edge objects never mutate architecture semantics directly.
+
+Focus / Up / Fit Architecture and geometric pan/zoom are presentation navigation. Stable architecture/planning IDs survive tab changes, zoom/focus changes and source round-trips.
+
 ## Model and provider boundary
 
 Dope must not depend architecturally on one model, model family, provider, API, hosted service, local runtime, or provider-native chat/session ontology.
