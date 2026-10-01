@@ -298,3 +298,13 @@ Its streamlined sequence is:
 P2 should prove the storage invariant directly rather than repeating synthesis qualification: initialize a controlled repository, restart, copy/open it at a different root, discard machine-local state, rebuild derived Physical Map state, prove a copy without `.dope/` is uninitialized, prove project isolation/fail-closed corrupt state, and initialize Dope's existing canonical declaration through the real acceptance path. Do not run live provider comparison, multi-repository architecture scoring, AppImage/native packaging or broad browser qualification unless a P1 repair materially makes that evidence necessary.
 
 If `c4-smap-storage` closes Green, route directly to a fresh Product Phase 5 `/docs-review`. Do not reopen closed synthesis corrections merely to improve scores before visual-map work.
+
+## October 1, 2026 — Phase 5 activation
+
+Product Phase 4 is owner-closed for sequencing and the bounded package-only closeout transition established `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`.
+
+`c4-color-theme` is GREEN / QUALIFIED at unchanged `0.4.6`. The architecture-synthesis corrections retain their original Not Qualified evidence; the deferred Local/Gemini comparison remains off the Phase 5 critical path.
+
+Product Phase 5 — Visual Software Planning is active. Documentation authority is `docs/planning/p5/activation.md`, `docs/planning/p5/phase-5-plan.md`, and ADR 0017. Implementation planning follows the ordinary `/prompt-ass -> /prompt-plan -> /prompt-write p5` workflow.
+
+Phase 5 is intentionally provider-free. Prompt stacks must not pull general AI Presence, Agent Mind, ProposedAction, authority/delegation or Phase 3 Planning compatibility forward. T3 qualification must exercise the human-driven Physical Map -> Planning Map -> transformations -> WorkItems -> implementation -> re-analysis -> reconciliation loop.
