@@ -51,9 +51,18 @@ Add focused storage/backend tests for empty/create/read/reopen, multiple maps, r
 
 Use explicit temporary fixtures; do not mutate the real Dope repository.
 
-Run focused visual-planning/storage/backend tests, affected typecheck/build, version/no-root-lock checks and `git diff --check`. Use a bounded affected integration test only where backend registration requires it.
+Validation is bounded T2 because this prompt crosses domain storage, typed service and Theia backend registration.
 
-Do not run full package/native/direct GUI qualification.
+Run only:
+- the new/changed planning storage/service/backend test file(s);
+- the P1 visual-planning core test only if this prompt changes its pure domain contracts/helpers;
+- `corepack yarn workspace @dope/visual-planning build`;
+- `corepack yarn workspace @dope/theia-extension build` because backend registration/transport changed;
+- the cheap manifest/version coherence guard;
+- no-root-lock/version checks;
+- `git diff --check`.
+
+Do **not** run aggregate product tests, `npm test`, root `npm run typecheck`, `npm run check`, browser/Electron builds, restart tests, packaging/native evidence, or direct GUI qualification.
 
 Do not commit; runner owns commit boundaries.
 
