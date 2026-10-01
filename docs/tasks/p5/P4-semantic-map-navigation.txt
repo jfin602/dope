@@ -1,0 +1,56 @@
+TASK: Phase 5 / P4 — Semantic navigation and focused map tabs
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.5.4`.
+
+GOAL
+
+Turn the Physical Map canvas into a dependable semantic architecture navigator with focused branch tabs and source round-trip.
+
+PREFLIGHT
+
+Read exact P3 canvas source/tests plus P5 authority and current Software Map source-resolution/query APIs.
+
+Require coherent `0.5.3`.
+
+IMPLEMENT
+
+Add semantic navigation:
+- ordinary geometric pan/zoom may reveal useful detail;
+- explicit `Focus` on selected System/Subsystem/Component/supported branch;
+- `Up` one architecture level;
+- `Fit Architecture` back to project overview;
+- System -> Subsystem -> Component -> Code semantic detail;
+- stable Dope-owned selection identity while representation/detail changes;
+- simplified cross-boundary dependency context in focused views;
+- breadcrumbs/focus context.
+
+Allow any supported System, Subsystem, Component or branch to open as its own center-workspace map tab.
+
+Use supported Theia widget factory/manager APIs with stable factory options/IDs. Multiple focused tabs must consume shared underlying Software Map/selection state and must not clone/fork graph truth.
+
+Source navigation:
+- selected source-backed map object can open ordinary editor source;
+- returning/activating the map preserves its focus/selection context.
+
+Presentation restoration may remember last valid focus/viewport/tab context as disposable workspace/application state. Deleting it must not change semantic state.
+
+Protect against late project A/tab requests rendering after project B attachment or disposed widgets.
+
+Advance versions/internal refs coherently to `0.5.4`.
+
+TESTS
+
+Add focused tests for Focus/Up/Fit, semantic level selection, cross-boundary context, stable identity, focused-tab keying/shared state, source-navigation resolution intent, presentation-state non-canonical status and project-switch/disposal guards.
+
+Run focused tests plus affected extension build/typecheck and `git diff --check`.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report navigation/tab/source behavior, stale-request protection and P5 eligibility.
