@@ -13,9 +13,9 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** The architecture-discovery follow-ons are retained as truthful Phase 4 history. `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are owner-closed **Not Qualified**. The owner closed `c4-synth-coverage-review` after its stopped P6 at pushed source `c059f67a5fd85c81183ba09044e550462c9000a1`: the final Adaptive SEO replay was materially closer and met the <=8-minute objective, but Component depth/coverage and several qualification controls remained incomplete. P7 will not run. The implemented synthesis/review capability is accepted as the bounded baseline without being relabeled Green. The fresh provider-comparison correction is deferred off the pre-Phase-5 critical path. The sole remaining mandatory gate is `c4-smap-storage` at unchanged `0.4.6`; storage Green routes to a fresh Product Phase 5 `/docs-review`.
+**Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** The architecture-discovery follow-ons remain truthful history. `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are owner-closed **Not Qualified** with their useful implementation retained. `c4-smap-storage` is **GREEN / QUALIFIED** at closeout commit `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`; no storage-only gaps remain. The fresh provider comparison stays deferred. The active gate is the bounded `c4-color-theme` correction at unchanged `0.4.6`; when it closes Green, route to a fresh Product Phase 5 `/docs-review`.
 
-**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first bootstrap; ADR 0012 governs hierarchy-first synthesis/progress/performance; ADR 0013 governs compact shared provider contracts; ADR 0014, including its September 30 coverage/review amendment, governs responsibility-oriented decomposition, coverage recovery, Component-descent diagnostics, and branch-local review refinement; ADR 0015 governs optional root `MODULES.md` as a bootstrap architecture seed while preserving `.dope/architecture.json` as the sole canonical architecture after acceptance.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. The developer owns canonical System / Subsystem / Component identity. General Phase 6 AI Presence and the Phase 5 visual planning canvas remain out of scope.
+**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first bootstrap; ADR 0012 governs hierarchy-first synthesis/progress/performance; ADR 0013 governs compact shared provider contracts; ADR 0014 governs responsibility-oriented decomposition/review and its owner sequencing amendments; ADR 0015 governs optional root `MODULES.md` bootstrap intent; ADR 0016 governs Dope Dark visual identity and theme boundaries.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. The developer owns canonical System / Subsystem / Component identity. General Phase 6 AI Presence and the Phase 5 visual planning canvas remain out of scope.
 
 Phase 2's P6 `0.2.6` evidence-only audit remains **Not Qualified**. The owner subsequently explicitly closed Phase 2 for sequencing and authorized Phase 3 from a coherent `0.3.0` baseline. This owner disposition does not relabel the P6 audit Green or erase its evidence gaps. The retained Phase 2 gaps are the initially hidden legacy-migration entry, unproved dirty same-renderer workspace switch, lack of exact `0.2.6` native artifact launch/direct native visual Project Mind use, and inherited Phase 1 gaps where applicable. See `docs/tasks/p2/closeout.md` and `docs/planning/p3/activation.md`.
 
@@ -235,29 +235,27 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Do not activate or author Product Phase 5 implementation work yet.
+Do not activate Product Phase 5 implementation yet.
 
-Execute correction `c4-smap-storage` at unchanged package version `0.4.6` from the pushed owner-close baseline `c059f67a5fd85c81183ba09044e550462c9000a1`.
+Execute correction `c4-color-theme` at unchanged package version `0.4.6` from storage-qualified baseline `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`.
 
-This is a deliberately bounded portability correction, not a new persistence subsystem. The existing implementation already has the core contract: project-local `.dope/architecture.json` for canonical architecture, `.dope/smap.json` for accepted initialization, safe/fail-closed file handling, and transient in-memory physical/synthesis state.
+Locked palette:
+- workbench anchor: `#1F1F1F`;
+- primary orange: `#FF7A1A`;
+- highlight orange: `#FFB15C`;
+- deep orange: `#C75100`.
 
-The correction must:
-- prove repository + project-local `.dope/` is sufficient to recover durable Software Map truth after backend restart and when copied/opened at a different filesystem root;
-- preserve exact canonical architecture IDs/containment and rebuild derived Physical Map state from current source/config plus canonical architecture;
-- prove deletion/absence of machine-local synthesis/provider/cache state cannot change initialized state or canonical truth;
-- keep provider/model preferences, credentials, presentation state, review drafts, evidence packets, physical snapshots, coverage ledgers, synthesis attempts/cache and Search Deeper previews non-project/transient unless a concrete defect proves persistence is required;
-- prove a repository opened without its `.dope/` state does not inherit initialization from another root;
-- preserve project isolation plus existing malformed/mismatched/symlink fail-closed behavior;
-- initialize Dope's existing tracked `.dope/architecture.json` through the real acceptance path so the repository carries a valid `.dope/smap.json` dogfood marker;
-- add/retain a permanent regression guard for the project-local persistence boundary;
-- keep package version `0.4.6`;
-- avoid live provider benchmarking, broad synthesis retuning, Phase 5 canvas/work ontology, general AI Presence, or persistence of rebuildable derived artifacts.
+Implementation direction:
+- add a first-class **Dope Dark** theme instead of scattering hard-coded orange through widgets;
+- keep Dope-owned UI CSS semantic-token based;
+- map brand colors to workbench interaction tokens such as focus, buttons, active navigation/tabs, links, badges/progress and selections;
+- keep syntax/diagnostic semantic colors meaningful rather than orange-washing the IDE;
+- preserve explicit user selection of compatible light/dark/custom themes; alternate themes must not retain Dope Dark overrides;
+- keep this bounded to color/theme identity, not layout or interaction redesign;
+- keep Phase 5 visual-map/planning work out of scope.
 
-Use a streamlined three-prompt stack:
-1. P1 — persistence-boundary audit plus only necessary repair and focused guards;
-2. P2 — short copy/reopen/restart portability qualification plus Dope dogfood initialization;
-3. P3 — evidence-only closeout.
+Use a fast two-prompt stack:
+1. P1 — implement Dope Dark + focused permanent theme tests/builds;
+2. P2 — manually run a quick browser visual check and closeout; bounded cosmetic token fixes are allowed only if tiny and directly observed.
 
-P2 is intentionally narrow. Do not spend time on Local/Gemini comparison, multi-repository architecture scoring, AppImage/native packaging, or full browser qualification unless P1 materially changes code that makes such evidence necessary.
-
-If `c4-smap-storage` closes Green, the next planned step is a bounded visual-identity alignment that matches Dope's application palette to the existing logo while preserving dark-first behavior and supported theme overrides. After that alignment is complete, route to a fresh Product Phase 5 `/docs-review`. The deferred provider-comparison idea may be revived later only if provider optimization/AI Presence work actually needs it.
+If `c4-color-theme` closes Green, route to a fresh Product Phase 5 `/docs-review`.
