@@ -47,7 +47,16 @@ TESTS
 
 Add focused tests for Focus/Up/Fit, semantic level selection, cross-boundary context, stable identity, focused-tab keying/shared state, source-navigation resolution intent, presentation-state non-canonical status and project-switch/disposal guards.
 
-Run focused tests plus affected extension build/typecheck and `git diff --check`.
+Validation is T1.
+
+Run only:
+- the new/changed semantic-navigation/focused-tab controller tests;
+- any existing source-navigation or stale-project UI test directly changed by this prompt;
+- `corepack yarn workspace @dope/theia-extension build`;
+- the cheap manifest/version coherence guard;
+- `git diff --check`.
+
+Do **not** run aggregate product suites, root `npm run typecheck`, browser/Electron builds, restart/package/native evidence or direct GUI qualification.
 
 Do not commit; runner owns commit boundaries.
 
