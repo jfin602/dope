@@ -1,6 +1,6 @@
 # Correction 5 — sMap Acceptance Debug Loop Machinery
 
-Status: **APPROVED / READY FOR EXECUTION**
+Status: **GREEN / MACHINERY CLOSED** — see `closeout.md`; P11 remains paused.
 Correction folder: `c5-smap-acceptance-debug-loop`
 Required unchanged version: `0.5.11`
 Activation source: `502416e2d8589132e8b96454ad3b72407406a20b`
