@@ -149,6 +149,72 @@ Planning Maps and WorkItems may reference Project Mind artifacts by stable ID. R
 
 WorkItems target ordinary editor/source navigation, terminal, tests, debugger, SCM/diffs and Problems/diagnostics. Phase 5 does not add an execution agent.
 
+## Locked visual workflow contract
+
+The resolved Phase 5 worksheet is authoritative planning input.
+
+### Overview and navigation
+
+- Default project view: Systems plus immediate Subsystems.
+- One-System projects use the System as the main frame.
+- Restore last valid map presentation context on reopen.
+- Always expose **Fit Architecture**.
+- Support geometric pan/zoom plus explicit **Focus / Up / Fit Architecture**.
+- Preserve stable identity/selection and source-navigation round-trip.
+- Keep simplified cross-boundary dependencies visible while focused.
+- Allow project/System/Subsystem/Component/branch-focused map tabs simultaneously; every tab is a projection of the same shared state.
+
+### Visual grammar
+
+Use hierarchy, containment, scale, shape, iconography and edge semantics before color.
+
+Color is reinforcement only. Alternate themes and color-vision-deficiency readability are qualification requirements.
+
+Keep detailed evidence/provenance/diagnostics in the left sMap inspector; use concise state markers on the canvas.
+
+### Planning comparison and editing
+
+The primary Planning Map is an overlay/diff over physical/canonical state with **Current only / Target only / Diff** modes. Side-by-side is optional secondary presentation.
+
+Direct gestures are semantic commands, not raw geometry mutation:
+- add target node -> `add`;
+- drag/reparent -> `move`;
+- remove from target -> `remove`;
+- draw/redirect dependency -> relationship transformation.
+
+Preview the typed semantic operation before commit. Use focused editors for split/merge/change-contract. Support domain undo/redo for unadopted edits.
+
+### Multiple maps and alternatives
+
+Allow multiple durable Planning Maps with lifecycle:
+`Draft -> Active -> Completed -> Superseded / Archived`.
+
+Explicit duplication/branching creates alternatives. Overlapping incompatible active transformations surface conflicts; do not auto-merge maps.
+
+Focused map tabs do not create branches.
+
+### Work projection
+
+PlannedTransformations drive deterministic WorkItem suggestions. The developer accepts/edits/splits/merges suggestions.
+
+WorkItems live in a dedicated work projection with visible dependency/parallelism information. WorkItem selection highlights affected transformations/architecture and vice versa.
+
+### Adoption
+
+Adopt Target supports coherent partial slices. Show canonical diff and dependency/conflict checks. Partial adoption distinguishes adopted target from still-planned target.
+
+### Staleness/rebase
+
+Track stale state at map/branch/transformation granularity.
+
+Explicit rebase presents old basis -> current reality -> target intent. Advance unaffected references only within that explicit operation; require developer resolution for conflicts.
+
+### Reconciliation/closeout
+
+Reconciliation is transformation-centered and rolls up to WorkItems/branches/map. Preserve original target plus observed outcome.
+
+Completion requires explicit developer closeout with every transformation resolved, intentionally accepted as different, deferred, or abandoned.
+
 ## Validation strategy
 
 Use normal repository T1/T2/T3 tiers.
