@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 4 remains QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`. Architecture-synthesis corrections remain truthful historical evidence and the fresh provider comparison is deferred. `c4-smap-storage` is GREEN / QUALIFIED at `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`. The active pre-Phase-5 correction is `c4-color-theme` at unchanged `0.4.6`.
+Current stage: Product Phase 5 — Visual Software Planning is **ACTIVE** from baseline `0.5.0`, established by the package-only Phase 4 closeout transition `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 4 remains QUALIFIED/GREEN for its approved core scope at `fac88712bb55176d3d6d54fbe6034de8b0f801ff`. Architecture-synthesis corrections remain truthful historical evidence and the fresh provider comparison is deferred. `c4-smap-storage` is GREEN / QUALIFIED at `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`; `c4-color-theme` is GREEN / QUALIFIED at unchanged `0.4.6`.
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -51,7 +51,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c4-synth-coverage-review — Coverage + Iterative Review | OWNER-CLOSED / NOT QUALIFIED after stopped P6. The useful coverage/review implementation remains the accepted baseline; P7 is unexecuted and residual depth/qualification gaps remain explicit. |
 | Deferred provider comparison | Removed from the pre-Phase-5 critical path without being relabeled Green; reconsider only when later provider optimization or AI Presence needs controlled comparison evidence. |
 | Correction c4-storage — sMap Persistence | GREEN / QUALIFIED at `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`; durable Software Map state is project-local and portable. |
-| Correction c4-color-theme — Dope Dark | ACTIVE / MANDATORY NEXT. Align the workbench to the logo palette through a first-class Dope Dark theme while preserving semantic UI tokens and explicit user theme override. |
+| Correction c4-color-theme — Dope Dark | GREEN / QUALIFIED at unchanged `0.4.6`. The bounded correction established the first-class Dope Dark theme while preserving explicit user override. |
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
@@ -589,27 +589,40 @@ The default app and logo read as one coherent product identity, alternate user t
 
 ## Product Phase 5 — Visual Software Planning
 
+Status: **ACTIVE** from package `0.5.0` at transition commit `016bd8780e89081dfdb5746eae981183dc945baa`.
+
+Execution folder: `p5`. Activation baseline: package `0.5.0`; normal phase prompts advance through `0.5.x`. Authority: `docs/planning/p5/phase-5-plan.md`, `docs/planning/p5/activation.md`, and ADR 0017.
+
 Purpose:
-Design the new planning/work system from the software graph outward and turn architecture understanding, intent and implementation into one visual workflow.
+Design the new planning/work system from the Software Map outward and turn architecture understanding, target design, implementation work and reconciliation into one visual workflow.
 
 Initial scope:
-- multi-tab central workspace for code and planning artifacts
-- Physical Map diagrams as projections of the Software Map
-- semantic zoom from canonical/detected systems -> subsystems -> components -> packages/modules/services -> files/symbols -> syntax/semantic relationships
-- Planning Maps created from/referencing physical nodes
-- explicit planned add/modify/remove/move/split/merge/relationship changes
-- visible distinction between physical, planned, inferred and unknown state
-- graph-derived work decomposition, dependencies, acceptance criteria and validation targets
-- implementation targeting/working-set navigation from graph objects
-- post-implementation re-analysis and target-versus-physical reconciliation
-- no compatibility adapter or migration requirement for Phase 3 internal Planning state
-- no AI requirement
+- multi-tab central workspace for code, Physical Map and Planning Map surfaces;
+- Physical Map diagrams as projections of existing Software Map state, never a second architecture database;
+- architectural semantic zoom from System -> Subsystem -> Component -> Code while retaining stable identity/selection;
+- durable Planning Maps that reference canonical/physical identities instead of copying current architecture;
+- explicit planned `add`, `modify`, `remove`, `move`, `split`, `merge`, `redirect relationship` and `change contract` transformations;
+- planned new architecture nodes with intended future canonical IDs that remain planned until explicit adoption;
+- graph-derived WorkItems with dependencies, requirements/constraints, acceptance criteria, validation targets and working-set references;
+- explicit **Adopt Target** rather than silent Planning Map -> canonical architecture mutation;
+- project-local versioned persistence at `.dope/planning-maps.json`, independent from historical Phase 3 `.dope/planning.json`;
+- a recorded canonical-architecture fingerprint/revision and Physical Map input fingerprint for every Planning Map branch;
+- visible stale-plan detection when either underlying input changes, with explicit conflict-aware rebase rather than silent reinterpretation;
+- implementation targeting/navigation through ordinary editor, terminal, SCM, debugger and test surfaces;
+- post-implementation deterministic re-analysis and target-versus-physical reconciliation;
+- visible distinction among physical, canonical, planned, inferred, unresolved and stale state;
+- no compatibility adapter or migration requirement for Phase 3 internal Planning state;
+- no AI requirement.
 
-Existing physical nodes are referenced rather than copied into planning diagrams. Phase 5 does not assume Plan -> PlanStep -> Task survives; the graph-centered design determines the future work ontology.
+Phase 5 introduces the forward planning ontology **PlanningMap -> PlannedTransformation -> WorkItem**. WorkItems are executable planning units but do not silently rewrite architectural intent; changing a WorkItem and changing the target map are distinct operations. Phase 5 does not resurrect `Plan -> PlanStep -> Task`.
+
+Canvas layout is presentation state. Node coordinates, viewport, selection, open tabs, collapsed groups and panel sizes may persist for UX, but they do not define architectural identity or target semantics.
+
+Reconciliation compares the Planning Map target with a freshly analyzed Physical Map and retains at least: `implemented as planned`, `implemented differently`, `not implemented`, and `unexpected implementation`. Completing a WorkItem never manufactures physical truth.
 
 Exit condition:
 
-A developer can start from the current physical Dope architecture, create a target architectural plan, connect its transformations to executable Planning state, implement work through ordinary IDE surfaces, re-analyze the repository and see whether the resulting physical software matches the plan.
+With no model configured, a developer can start from the current physical Dope architecture, create a durable target Planning Map, define explicit transformations, derive and execute WorkItems through ordinary IDE surfaces, deliberately adopt target architecture where appropriate, survive restart/copy/reopen, detect/rebase stale plans, re-analyze the repository and reconcile the resulting physical software against the planned target.
 
 This completes the core pre-AI product foundation:
 
