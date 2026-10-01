@@ -54,7 +54,17 @@ TESTS
 
 Add focused domain/controller/UI tests for deterministic suggestions, explicit acceptance, split/merge/dependencies, many-to-many transformation refs, invalid refs, working-set path validation, bidirectional highlighting, project switch safety and WorkItem completion remaining separate from architecture/reconciliation truth.
 
-Run focused tests, affected build/typecheck and `git diff --check`.
+Validation is T1.
+
+Run only:
+- the new/changed WorkItem suggestion/projection tests;
+- the visual-planning core test only if its pure WorkItem suggestion contracts/helpers changed;
+- `corepack yarn workspace @dope/visual-planning build` only if that package changed;
+- `corepack yarn workspace @dope/theia-extension build`;
+- the cheap manifest/version coherence guard;
+- `git diff --check`.
+
+Do **not** run full planning persistence/backend suites unless this prompt actually changes them, and do not run aggregate product tests, root `npm run typecheck`, browser/Electron builds, restart/package/native evidence or direct GUI qualification.
 
 Do not commit; runner owns commit boundaries.
 
