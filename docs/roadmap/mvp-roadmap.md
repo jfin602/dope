@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 4 remains QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`. `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are OWNER-CLOSED / NOT QUALIFIED history. `c4-synth-coverage-review` stopped during P6 and is owner-closed at pushed source `c059f67a5fd85c81183ba09044e550462c9000a1`; P7 will not run. Its implemented synthesis/review capability is accepted as the sequencing baseline without relabeling the correction Green. The fresh provider-comparison correction is deferred off the pre-Phase-5 critical path. `c4-smap-storage` is now the sole remaining mandatory Phase 4 correction at unchanged `0.4.6`.
+Current stage: Product Phase 4 remains QUALIFIED/GREEN at committed `fac88712bb55176d3d6d54fbe6034de8b0f801ff`. Architecture-synthesis corrections remain truthful historical evidence and the fresh provider comparison is deferred. `c4-smap-storage` is GREEN / QUALIFIED at `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`. The active pre-Phase-5 correction is `c4-color-theme` at unchanged `0.4.6`.
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -50,8 +50,8 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c4-synth-improvements — Responsibility-oriented Synthesis | OWNER-CLOSED / NOT QUALIFIED after P4. Responsibility naming and center review improved, but major implemented responsibilities remained omitted/merged; P5 is not run. |
 | Correction c4-synth-coverage-review — Coverage + Iterative Review | OWNER-CLOSED / NOT QUALIFIED after stopped P6. The useful coverage/review implementation remains the accepted baseline; P7 is unexecuted and residual depth/qualification gaps remain explicit. |
 | Deferred provider comparison | Removed from the pre-Phase-5 critical path without being relabeled Green; reconsider only when later provider optimization or AI Presence needs controlled comparison evidence. |
-| Correction c4-storage — sMap Persistence | ACTIVE / MANDATORY NEXT. Dope proves that durable Software Map state travels with the repository under project-local `.dope/`, while machine-local state remains disposable or preference-only. |
-| Visual identity alignment — Logo palette | After storage, align Dope's app color system to the existing Dope logo before building the visual-map experience. Keep this bounded to palette/tokens and affected Dope-owned UI surfaces; preserve dark-first behavior and user theme override rather than turning it into a broad redesign. |
+| Correction c4-storage — sMap Persistence | GREEN / QUALIFIED at `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`; durable Software Map state is project-local and portable. |
+| Correction c4-color-theme — Dope Dark | ACTIVE / MANDATORY NEXT. Align the workbench to the logo palette through a first-class Dope Dark theme while preserving semantic UI tokens and explicit user theme override. |
 | Product Phase 5 — Visual Software Planning | Dope designs Dope. A developer can semantically zoom through canonical and physical architecture, branch into a target Planning Map, derive the necessary work from graph transformations, and reconcile implementation back to reality. |
 | Product Phase 6 — AI Presence | AI understands Dope through Dope-owned project state, Software Map context and provider-independent read-only assistance. |
 | Product Phase 7 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
@@ -529,7 +529,7 @@ This correction is not executed as a prerequisite for storage or Phase 5, is not
 
 ## Mandatory pre-Phase-5 correction — `c4-smap-storage`
 
-Status: **ACTIVE / MANDATORY NEXT CORRECTION — sole remaining pre-Phase-5 gate**
+Status: **GREEN / QUALIFIED — closeout `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`**
 
 Version semantics: bounded correction at unchanged package version `0.4.6`. The closed Not Green `c4-smap-gemini-provider` is historical evidence and is not reopened.
 
@@ -554,23 +554,38 @@ Exit condition:
 
 At unchanged `0.4.6`, durable sMap state is demonstrably project-local, versioned, recoverable and portable; no machine-local application/provider/cache state is required to reconstruct project truth; regression coverage prevents required sMap persistence from escaping `.dope/`; and Dope itself carries a valid accepted `.dope/smap.json` marker for its tracked canonical architecture. Storage Green routes next to the bounded visual-identity alignment below.
 
-## Pre-Phase-5 visual identity alignment — Dope logo palette
+## Mandatory pre-Phase-5 correction — `c4-color-theme`
+
+Status: **ACTIVE / APPROVED FOR PROMPT PLANNING**
+
+Version semantics: unchanged package version `0.4.6`.
 
 Purpose:
 
-Bring Dope's application color system into visual alignment with the existing Dope logo before the visual Software Map/Planning Map experience is built.
+Bring Dope's application color system into visual alignment with the existing logo before the visual Software Map/Planning Map experience is built.
 
-Scope:
-- derive the application palette/tokens from the existing logo rather than inventing a separate visual identity;
-- update Dope-owned workbench surfaces and accents that currently conflict with that palette;
-- keep the change primarily color/token/theme work, not a layout, interaction or component redesign;
-- preserve the dark-first default;
-- preserve user-selected light/custom theme behavior where current product contracts require it;
-- do not begin the Phase 5 visual-map canvas, planning ontology or graph interactions in this step.
+Locked palette:
+- workbench/editor anchor `#1F1F1F`;
+- primary orange `#FF7A1A`;
+- highlight orange `#FFB15C`;
+- deep orange `#C75100`.
+
+Required contract:
+- register a first-class **Dope Dark** theme and make it the browser/Electron default;
+- centralize brand color definitions in the theme layer rather than duplicating hex values across widgets;
+- keep Dope-owned surfaces on semantic Theia tokens;
+- apply brand colors to interaction identity: focus, primary actions, hover/active states, links, active navigation/tabs, badges/progress and selection accents;
+- use a dark foreground on solid primary-orange controls where needed for contrast;
+- keep syntax highlighting and semantic diagnostic colors meaningful; do not recolor errors/warnings/success or every syntax token orange;
+- explicit user selection of another compatible theme persists and overrides Dope Dark; Dope-specific overrides must deactivate cleanly;
+- preserve layout, widget placement, interactions and Phase 4 product behavior;
+- do not implement Phase 5 visual-map/planning functionality.
+
+Qualification is intentionally small: focused tests/builds in P1, then a quick manual browser visual/override check in P2 closeout.
 
 Exit condition:
 
-The app and logo read as one coherent product identity without reducing readability or breaking supported theme override behavior. Completion routes to a fresh Product Phase 5 `/docs-review`.
+The default app and logo read as one coherent product identity, alternate user themes remain usable, and the correction adds no broader redesign. Green routes to a fresh Product Phase 5 `/docs-review`.
 
 ## Product Phase 5 — Visual Software Planning
 
