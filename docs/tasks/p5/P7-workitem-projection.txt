@@ -1,0 +1,63 @@
+TASK: Phase 5 / P7 — WorkItems and work projection
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.5.7`.
+
+GOAL
+
+Bridge visual architectural intent into bounded developer work without turning WorkItems into disconnected TODOs or AI execution units.
+
+PREFLIGHT
+
+Read exact P1-P6 source/tests and locked Q7/ADR 0017 WorkItem authority.
+
+Require coherent `0.5.6`.
+
+IMPLEMENT
+
+Use PlannedTransformations as the architectural source for deterministic WorkItem suggestions.
+
+Suggestion rules must be deterministic, inspectable and generic:
+- group tightly related transformations by affected architecture/dependency context where useful;
+- preserve every source transformation reference;
+- expose dependency/parallelism suggestions;
+- never invent work from an LLM or silently create canonical WorkItems.
+
+Developer controls:
+- request/view suggestions;
+- accept a suggestion;
+- edit accepted WorkItem;
+- split one suggestion/WorkItem;
+- merge compatible WorkItems;
+- attach/detach transformation references subject to validation;
+- edit objective, requirements, constraints, acceptance criteria, validation targets and project-relative working-set refs;
+- update WorkItem status/completion notes through legal domain transitions.
+
+Support one transformation -> multiple WorkItems and one coherent WorkItem -> multiple transformations.
+
+Add a dedicated work projection/panel associated with the Planning Map, not architecture-node clutter.
+
+Bidirectional selection:
+- selecting a WorkItem highlights its Systems/Subsystems/Components/transformations;
+- selecting a transformation reveals linked WorkItems;
+- focused map tabs preserve the same WorkItem identity.
+
+WorkItem changes must never silently rewrite target transformations, adopt architecture, create Physical Map evidence or imply validation success.
+
+Advance versions/internal refs coherently to `0.5.7`.
+
+TESTS
+
+Add focused domain/controller/UI tests for deterministic suggestions, explicit acceptance, split/merge/dependencies, many-to-many transformation refs, invalid refs, working-set path validation, bidirectional highlighting, project switch safety and WorkItem completion remaining separate from architecture/reconciliation truth.
+
+Run focused tests, affected build/typecheck and `git diff --check`.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report WorkItem derivation/projection semantics and P8 eligibility.
