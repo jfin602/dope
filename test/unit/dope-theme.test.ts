@@ -51,7 +51,7 @@ test('locked palette is centralized and widget rules consume semantic tokens', (
     'editor-selectionBackground', 'badge-background', 'progressBar-background']) {
     assert.match(themeCss, new RegExp(`--theia-${token}:`));
   }
-  for (const token of ['statusBar-background', 'menu-selectionBackground', 'quickInputList-focusBackground',
+  for (const token of ['menu-selectionBackground', 'quickInputList-focusBackground',
     'editorActionList-focusBackground', 'editorSuggestWidget-selectedBackground', 'inputOption-activeBorder',
     'radio-activeBorder', 'sash-activeBorder', 'sash-hoverBorder', 'pickerGroup-foreground',
     'notificationLink-foreground', 'list-highlightForeground', 'list-focusHighlightForeground',
@@ -63,5 +63,25 @@ test('locked palette is centralized and widget rules consume semantic tokens', (
     const manifest = JSON.parse(readFileSync(join(root, `apps/${app}/package.json`), 'utf8'));
     assert.equal(manifest.theia.frontend.config.defaultTheme, 'dope-dark');
     assert.equal(manifest.theia.frontend.config.preferences['workbench.colorTheme'], undefined);
+  }
+});
+
+test('Dope Dark status bar uses a dark base, one continuous Git accent, and semantic diagnostics', () => {
+  for (const token of ['statusBar-background', 'statusBar-noFolderBackground']) {
+    assert.match(css, new RegExp(`--theia-${token}: var\\(--dope-background\\);`));
+  }
+  for (const token of ['statusBar-foreground', 'statusBar-noFolderForeground']) {
+    assert.match(css, new RegExp(`--theia-${token}: var\\(--dope-primary\\);`));
+  }
+  assert.doesNotMatch(css, /--theia-statusBar-background: var\(--dope-deep\)/);
+  for (const id of ['0', '1']) {
+    assert.match(css, new RegExp(`\\.dope-dark #theia-statusBar \\.area \\[id="status-bar-scm\\.status\\.${id}"\\]`));
+  }
+  assert.match(css, /background: var\(--dope-primary\);\s*color: var\(--dope-background\);\s*box-shadow: calc\(-1 \* var\(--theia-ui-padding\)\) 0 0 var\(--dope-primary\);/);
+  for (const [severity, token] of Object.entries({
+    error: 'editorError-foreground', warning: 'editorWarning-foreground',
+    info: 'editorInfo-foreground', hint: 'successBackground',
+  })) {
+    assert.match(css, new RegExp(`\\.dope-dark #status-bar-problem-marker-status \\.codicon-${severity} \\+ span \\{\\s*color: var\\(--theia-${token}\\);`));
   }
 });

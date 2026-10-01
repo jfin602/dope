@@ -160,7 +160,10 @@
     --theia-badge-background: var(--dope-primary);
     --theia-badge-foreground: var(--dope-background);
     --theia-progressBar-background: var(--dope-primary);
-    --theia-statusBar-background: var(--dope-deep);
+    --theia-statusBar-background: var(--dope-background);
+    --theia-statusBar-foreground: var(--dope-primary);
+    --theia-statusBar-noFolderBackground: var(--dope-background);
+    --theia-statusBar-noFolderForeground: var(--dope-primary);
     --theia-menu-selectionBackground: var(--dope-deep);
     --theia-quickInputList-focusBackground: var(--dope-deep);
     --theia-editorActionList-focusBackground: var(--dope-deep);
@@ -178,6 +181,34 @@
     --theia-editorHoverWidget-highlightForeground: var(--dope-highlight);
     --theia-editorLink-activeForeground: var(--dope-highlight);
     --theia-selection-background: var(--dope-deep);
+}
+
+/* Paint Theia's existing gap without changing item geometry or click targets. */
+.dope-dark #theia-statusBar .area [id="status-bar-scm.status.0"],
+.dope-dark #theia-statusBar .area [id="status-bar-scm.status.1"] {
+    background: var(--dope-primary);
+    color: var(--dope-background);
+    box-shadow: calc(-1 * var(--theia-ui-padding)) 0 0 var(--dope-primary);
+}
+
+.dope-dark #status-bar-problem-marker-status .codicon-error,
+.dope-dark #status-bar-problem-marker-status .codicon-error + span {
+    color: var(--theia-editorError-foreground);
+}
+
+.dope-dark #status-bar-problem-marker-status .codicon-warning,
+.dope-dark #status-bar-problem-marker-status .codicon-warning + span {
+    color: var(--theia-editorWarning-foreground);
+}
+
+.dope-dark #status-bar-problem-marker-status .codicon-info,
+.dope-dark #status-bar-problem-marker-status .codicon-info + span {
+    color: var(--theia-editorInfo-foreground);
+}
+
+.dope-dark #status-bar-problem-marker-status .codicon-hint,
+.dope-dark #status-bar-problem-marker-status .codicon-hint + span {
+    color: var(--theia-successBackground);
 }
 
 .dope-dark .theia-button:active,
