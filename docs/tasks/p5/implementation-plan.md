@@ -77,7 +77,7 @@ Bind via `backend-module.ts`; do not enlarge `SoftwareMapConnection` with planni
 
 Tests: storage/service/backend isolation, revision/lock/recovery/copy/corrupt/future cases.
 
-## P3 — center Physical Map canvas foundation (`0.5.3`) — T1/T2
+## P3 — center Physical Map canvas foundation (`0.5.3`) — T1
 
 Add `@xyflow/react@12.11.6` only to the presentation boundary and configure the extension for compatible React rendering without changing Theia/React baselines.
 
@@ -98,7 +98,7 @@ Canvas model adapter is pure enough to unit test and never persists React Flow n
 
 Register real center widget/command from existing sMap navigation without moving the left inspector.
 
-## P4 — semantic navigation and focused map tabs (`0.5.4`) — T1/T2
+## P4 — semantic navigation and focused map tabs (`0.5.4`) — T1
 
 Implement:
 - geometric pan/zoom plus explicit Focus / Up / Fit Architecture;
@@ -135,7 +135,7 @@ UX:
 
 No direct canvas mutation yet beyond map lifecycle/selection.
 
-## P6 — typed transformation editing and undo/redo (`0.5.6`) — T1/T2
+## P6 — typed transformation editing and undo/redo (`0.5.6`) — T1
 
 Implement Planning Map semantic editing:
 - add target architecture node -> preview `add`;
@@ -150,7 +150,7 @@ Add domain-level undo/redo for unadopted PlanningMap transformation edits. Undo/
 
 Reject ambiguous/invalid gestures and stale expected revisions.
 
-## P7 — WorkItems and work projection (`0.5.7`) — T2
+## P7 — WorkItems and work projection (`0.5.7`) — T1
 
 Implement deterministic graph-derived WorkItem suggestions using P1 helper:
 - suggestions require explicit developer acceptance;
@@ -218,7 +218,7 @@ Within explicit rebase:
 
 No background/silent rebase.
 
-## P10 — reconciliation and Planning Map closeout (`0.5.10`) — T2
+## P10 — reconciliation and Planning Map completion (`0.5.10`) — T2
 
 After explicit fresh Software Map reanalysis, reconcile each transformation against current Physical Map/canonical state.
 
@@ -294,15 +294,20 @@ Create `docs/tasks/p5/closeout.md`, update README status, and route Green to Pha
 
 ## Validation discipline
 
-Ordinary prompts run focused changed tests, affected typecheck/build and cheap guards only. Do not append full `npm test`/`npm run check` to P1-P10 unless a prompt is explicitly T2 and the affected integration surface justifies a bounded aggregate suite.
+P1-P10 use the smallest validation surface that can prove the change:
+- new/changed focused test files;
+- directly affected existing regression tests only when their contracts/code changed;
+- the smallest workspace build needed to compile changed production code;
+- cheap package/version/no-root-lock coherence;
+- `git diff --check`.
 
-Concentrate full product/restart/package/native/direct-GUI evidence in P11, then use that exact evidence in P12.
+Do not run root `npm run typecheck` merely for reassurance; it rebuilds multiple packages. Do not run `npm run test:product`, `npm test`, `npm run check`, browser/Electron application builds, restart tests, packaging or native launch in P1-P10 unless a prompt explicitly identifies a newly discovered failure that cannot be proven otherwise.
 
-Every prompt runs:
-- applicable focused tests;
-- exact package/version/no-root-lock checks;
-- `git diff --check`;
-- `npm run codex:phase:validate -- p5` when the full stack exists.
+T2 means **bounded cross-boundary tests**, not an aggregate suite by default.
+
+Concentrate full product/restart/browser/Electron/package/native/direct-GUI evidence in P11, then reuse that exact evidence in P12.
+
+Run `npm run codex:phase:validate -- p5` once before stack execution and only rerun it if the prompt files themselves are modified. Implementation prompts do not rerun prompt grammar validation.
 
 ## Expected production shape after P10
 
