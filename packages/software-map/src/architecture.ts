@@ -1,6 +1,24 @@
 import type { ArchitectureDeclaration, ComponentDeclaration, DeclaredBoundary, SubsystemDeclaration, SystemDeclaration, Ownership } from './contracts';
 
 function fail(message: string): never { throw new Error(`Invalid architecture declaration: ${message}`); }
+const architectureIdPattern = /^[A-Za-z][A-Za-z0-9._-]*$/;
+
+/** Editable review suggestion; only explicit acceptance makes the ID canonical. */
+export function suggestArchitectureId(name: string, usedIds: Iterable<string> = [], existingId?: string): string {
+    const used = new Set(usedIds);
+    if (existingId && architectureIdPattern.test(existingId) && !used.has(existingId)) return existingId;
+    let base = name.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    if (!base) base = 'node';
+    else if (!/^[a-z]/.test(base)) base = `node-${base}`;
+    base = base.slice(0, 60).replace(/-+$/g, '');
+    let id = base;
+    for (let suffix = 2; used.has(id); suffix++) {
+        const tail = `-${suffix}`;
+        id = `${base.slice(0, 60 - tail.length).replace(/-+$/g, '')}${tail}`;
+    }
+    return id;
+}
 function object(value: unknown, at: string): Record<string, unknown> {
     if (!value || typeof value !== 'object' || Array.isArray(value)) fail(at);
     return value as Record<string, unknown>;
@@ -32,7 +50,7 @@ function roots(value: unknown, at: string, required: boolean): string[] | undefi
 }
 function boundary(value: Record<string, unknown>, at: string, requiredRoots: boolean): DeclaredBoundary {
     const id = nonempty(value.id, `${at}.id`);
-    if (!/^[A-Za-z][A-Za-z0-9._-]*$/.test(id)) fail(`${at}.id`);
+    if (!architectureIdPattern.test(id)) fail(`${at}.id`);
     return {
         id,
         name: nonempty(value.name, `${at}.name`),

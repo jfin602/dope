@@ -1,5 +1,7 @@
 TASK: Correction 4 / P6 — Multi-repository synthesis quality and final candidate qualification
 
+2026-09-30 durable-resume amendment: this historical P6 was stopped and is not resumed by the one-off implementation. Any later browser qualification of this correction must additionally prove the durable Retry failed stage / Restart analysis distinction, pinned evidence after source edits, late-stage and branch-local failure recovery, malformed-output retryability, process-restart recovery, dependency-scoped invalidation, stage provider/model provenance, downstream continuation, and Search Deeper preservation of unrelated branches. Count actual provider calls to prove valid upstream and sibling stages were skipped. Do not treat the old P6 evidence as satisfying these new gates.
+
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
 - Browser required: yes.

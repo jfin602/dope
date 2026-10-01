@@ -7,9 +7,10 @@ import test from 'node:test';
 import { TypeScriptAnalyzer } from '../../packages/code-analysis-typescript/lib/index.js';
 import { SoftwareMapIndex } from '../../packages/code-analysis/lib/node/software-map-index.js';
 import { acceptInitialization, readInitialization } from '../../packages/code-analysis/lib/node/smap-initialization-file.js';
+import { readSynthesisRun } from '../../packages/code-analysis/lib/node/smap-analysis-file.js';
 import { SoftwareMapBackend } from '../../packages/theia-extension/lib/node/software-map-backend.js';
 import type { SynthesisProvider, SynthesisStageRequest, SoftwareMapClient, AnalysisProgressEvent } from '../../packages/software-map/lib/index.js';
-import { branchFingerprint, isDirectSystemResponsibilityEvidence } from '../../packages/software-map/lib/index.js';
+import { branchFingerprint, isDirectSystemResponsibilityEvidence, parseArchitecture } from '../../packages/software-map/lib/index.js';
 
 const declaration = { schemaVersion: 1 as const, systems: [{ id: 'app', name: 'App', purpose: 'App', subsystems: [
   { id: 'api', name: 'API', purpose: 'API', roots: ['src/api'], forbiddenDependencies: ['secret'] },
@@ -68,7 +69,114 @@ const backend = (index: SoftwareMapIndex, provider?: SynthesisProvider, client: 
   new SoftwareMapBackend(index, client, provider);
 const attach = async (service: SoftwareMapBackend, root: string) => (await service.attach(pathToFileURL(root).href)).projectHandle;
 
-test('attach/status, decline, failure and cancel leave an uninitialized project unwritten and unpublished', async () => {
+test('failed branch resumes from its pinned evidence after restart and skips successful model calls', async () => {
+  const root = await fixture();
+  const calls: string[] = [];
+  let failFrontend = true;
+  const provider = (modelLabel: string): SynthesisProvider => {
+    const base = fakeProvider();
+    return { ...base, capabilities: async () => ({ ...(await base.capabilities()), modelLabel }),
+      runStage: async request => {
+        calls.push(`${modelLabel}:${request.stage}:${request.context.subjectSystemKey ?? ''}`);
+        if (request.stage === 'subsystem-discovery' && request.context.subjectSystemKey === 'candidate:frontend' && failFrontend) {
+          failFrontend = false;
+          throw new Error('provider failed');
+        }
+        if (request.stage === 'system-discovery') {
+          const source = (path: string) => request.view.items.find(item => item.path === path &&
+            isDirectSystemResponsibilityEvidence(item))?.id;
+          const backendRef = source('src/api/a.ts'), frontendRef = source('src/secret/s.ts');
+          assert.ok(backendRef && frontendRef);
+          return execution(request, { systems: [
+            { candidateKey: 'candidate:backend', kind: 'system', name: 'Backend', responsibility: 'Backend work',
+              confidence: .8, ambiguityCodes: [], evidenceRefs: [backendRef] },
+            { candidateKey: 'candidate:frontend', kind: 'system', name: 'Frontend', responsibility: 'Frontend work',
+              confidence: .8, ambiguityCodes: [], evidenceRefs: [frontendRef] }] });
+        }
+        if (request.stage === 'system-challenge') return execution(request, { decisions: request.context.systems.map(system => ({
+          action: 'keep', sourceKeys: [system.candidateKey], systems: [system], evidenceRefs: system.evidenceRefs })) });
+        if (request.stage === 'subsystem-discovery') {
+          const system = request.context.systems.find(item => item.candidateKey === request.context.subjectSystemKey)!;
+          return execution(request, { systemKey: system.candidateKey, subsystems: [{
+            candidateKey: `${system.candidateKey}-sub`, kind: 'subsystem', parentCandidateKey: system.candidateKey,
+            name: `${system.name} work`, responsibility: `${system.name} work`, confidence: .8, ambiguityCodes: [],
+            evidenceRefs: system.evidenceRefs, ownershipEvidenceRefs: system.evidenceRefs }] });
+        }
+        return base.runStage(request);
+      } };
+  };
+  try {
+    const first = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), provider('model-a'));
+    const handle = await attach(first, root);
+    await assert.rejects(first.startInitialization(handle), /provider failed/);
+    const failed = await readSynthesisRun(root);
+    assert.equal(failed?.status, 'failed');
+    assert.deepEqual(failed?.current, { stage: 'subsystem-discovery', subject: 'candidate:frontend',
+      providerKind: 'local', modelLabel: 'model-a' });
+    assert.ok(failed?.checkpoints.some(item => item.request.context.subjectSystemKey === 'candidate:backend'));
+    assert.ok(!failed?.checkpoints.some(item => item.request.context.subjectSystemKey === 'candidate:frontend'));
+    assert.equal((await first.initializationStatus(handle)).resumable?.runId, failed?.runId);
+    first.dispose();
+
+    await writeFile(join(root, 'src/secret/s.ts'), 'export const changedAfterFailure = 2;\n');
+    const second = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), provider('model-b'));
+    const reopenedHandle = await attach(second, root);
+    assert.equal((await second.initializationStatus(reopenedHandle)).state, 'failed');
+    const before = calls.length;
+    const review = await second.retryFailedStage(reopenedHandle);
+    const retryCalls = calls.slice(before);
+    assert.ok(retryCalls.includes('model-b:subsystem-discovery:candidate:frontend'));
+    assert.ok(!retryCalls.some(call => /system-discovery:$|system-challenge:$|:candidate:backend$/.test(call)));
+    assert.equal(review.packet.sourceFingerprint, failed?.packet.sourceFingerprint);
+    const complete = await readSynthesisRun(root);
+    assert.equal(complete?.status, 'review_required');
+    assert.equal(complete?.runId, failed?.runId);
+    assert.ok(complete?.checkpoints.some(item => item.request.context.subjectSystemKey === 'candidate:backend' && item.modelLabel === 'model-a'));
+    assert.ok(complete?.checkpoints.some(item => item.request.context.subjectSystemKey === 'candidate:frontend' && item.modelLabel === 'model-b'));
+    assert.equal(complete?.checkpoints.find(item => item.request.context.subjectSystemKey === 'candidate:frontend')?.attempt, 2);
+    second.dispose();
+
+    const third = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), provider('model-b'));
+    const thirdHandle = await attach(third, root);
+    assert.equal((await third.review(thirdHandle))?.reviewId, review.reviewId);
+    await third.cancelInitialization(thirdHandle);
+    const fresh = await third.startInitialization(thirdHandle);
+    assert.notEqual(fresh.packet.sourceFingerprint, failed?.packet.sourceFingerprint);
+    assert.notEqual((await readSynthesisRun(root))?.runId, failed?.runId);
+    assert.equal(calls.filter(call => call.endsWith('system-discovery:')).length, 2);
+    third.dispose();
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('malformed stage output is never checkpointed and retry starts at that stage', async () => {
+  const root = await fixture();
+  let malformed = true;
+  const calls: string[] = [];
+  const base = fakeProvider();
+  const provider: SynthesisProvider = { ...base, runStage: async request => {
+    calls.push(request.stage);
+    if (request.stage === 'system-challenge' && malformed) {
+      malformed = false;
+      return execution(request, { decisions: [], extra: 'invalid' });
+    }
+    return base.runStage(request);
+  } };
+  try {
+    const service = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), provider);
+    const handle = await attach(service, root);
+    await assert.rejects(service.startInitialization(handle), /Invalid hierarchical synthesis/);
+    const saved = await readSynthesisRun(root);
+    assert.deepEqual(saved?.checkpoints.map(item => item.request.stage), ['system-discovery']);
+    assert.equal(saved?.failure?.stage, 'system-challenge');
+    const before = calls.length;
+    await service.retryFailedStage(handle);
+    assert.equal(calls.slice(before).includes('system-discovery'), false);
+    assert.equal(calls.slice(before)[0], 'system-challenge');
+    service.dispose();
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('attach and cancel leave the project uninitialized; failure stores only resumable analysis', async () => {
   const root = await fixture();
   try {
     let analyses = 0;
@@ -89,9 +197,9 @@ test('attach/status, decline, failure and cancel leave an uninitialized project 
     assert.equal(analyses, 0);
     await assert.rejects(service.startInitialization(handle), /provider failed/);
     assert.ok(analyses > 0);
-    assert.equal((await service.initializationStatus(handle)).state, 'uninitialized');
+    assert.equal((await service.initializationStatus(handle)).state, 'failed');
     assert.equal(index.snapshot(root), undefined);
-    assert.equal((await readdir(root)).includes('.dope'), false);
+    assert.equal((await readdir(root)).includes('.dope'), true);
     service.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
@@ -127,15 +235,24 @@ test('existing declaration is uninitialized until explicit acceptance; restart r
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('generated review stays transient, rejects invalid/stale drafts, then accepts canonical IDs', async () => {
+test('generated review has valid suggested IDs, remains noncanonical, and accepts unchanged', async () => {
   const root = await fixture();
   try {
+    await writeFile(join(root, 'src/secret/part.ts'), 'export const part = 1;\n');
     const index = new SoftwareMapIndex(new TypeScriptAnalyzer());
-    const service = backend(index, fakeProvider());
+    const base = fakeProvider();
+    const provider: SynthesisProvider = { ...base, runStage: async request => {
+      if (request.stage !== 'component-discovery') return base.runStage(request);
+      const ref = request.view.items.find(item => item.path === 'src/secret/part.ts' && isDirectSystemResponsibilityEvidence(item))?.id;
+      assert.ok(ref);
+      return execution(request, { systemKey: request.context.subjectSystemKey, subsystemKey: request.context.subjectSubsystemKey,
+        components: [{ candidateKey: 'candidate:part', kind: 'component', parentCandidateKey: request.context.subjectSubsystemKey,
+          name: 'Part', responsibility: 'Part', confidence: .8, ambiguityCodes: [], evidenceRefs: [ref], ownershipEvidenceRefs: [ref] }] });
+    } };
+    const service = backend(index, provider);
     const handle = await attach(service, root);
     const review = await service.startInitialization(handle);
     assert.equal((await service.initializationStatus(handle)).state, 'review_required');
-    assert.ok(review.componentDescents?.some(item => item.kind === 'leaf-responsibility'));
     assert.deepEqual((await service.review(handle))?.componentDescents, review.componentDescents);
     const sourceFact = review.packet.items.find((item: any) => item.path === 'src/api/a.ts');
     assert.ok(sourceFact);
@@ -143,18 +260,30 @@ test('generated review stays transient, rejects invalid/stale drafts, then accep
     assert.equal(await service.resolveReviewSource(handle, 'wrong', sourceFact.id), undefined);
     assert.equal(await service.resolveReviewSource(handle, review.reviewId, 'fabricated'), undefined);
     assert.equal(index.snapshot(root), undefined);
-    assert.equal((await readdir(root)).includes('.dope'), false);
+    assert.equal((await readdir(root)).includes('.dope'), true);
+    const ids = review.draft.map(node => node.id);
+    assert.deepEqual(review.draft.map(node => node.kind), ['system', 'subsystem', 'component']);
+    assert.ok(ids.every(id => /^[A-Za-z][A-Za-z0-9._-]*$/.test(id)));
+    assert.equal(new Set(ids).size, ids.length);
+    assert.doesNotThrow(() => parseArchitecture({ schemaVersion: 1, systems: review.draft.filter(node => node.kind === 'system').map(system => ({
+      id: system.id, name: system.name, purpose: system.purpose, ...(system.roots.length ? { roots: system.roots } : {}),
+      subsystems: review.draft.filter(node => node.parentProposalKey === system.proposalKey).map(subsystem => ({
+        id: subsystem.id, name: subsystem.name, purpose: subsystem.purpose, roots: subsystem.roots,
+        components: review.draft.filter(node => node.parentProposalKey === subsystem.proposalKey).map(component => ({
+          id: component.id, name: component.name, purpose: component.purpose, roots: component.roots,
+        })),
+      })),
+    })) }));
     await assert.rejects(service.acceptReview(handle, 'wrong', review.draft), /matching/);
-    await assert.rejects(service.acceptReview(handle, review.reviewId, review.draft), /review draft|declaration/);
+    await assert.rejects(service.acceptReview(handle, review.reviewId, review.draft.map(node => ({ ...node, id: '' }))), /review draft|declaration/);
     assert.equal((await service.initializationStatus(handle)).state, 'review_required');
-    const draft = review.draft.map(node => ({ ...node, id: node.kind === 'system' ? 'app' : 'api', roots: node.kind === 'subsystem' ? ['src/api'] : [] }));
     await writeFile(join(root, '.dope/architecture.json'), JSON.stringify(declaration)).catch(async () => {
       await mkdir(join(root, '.dope')); await writeFile(join(root, '.dope/architecture.json'), JSON.stringify(declaration));
     });
-    await assert.rejects(service.acceptReview(handle, review.reviewId, draft), /Stale/);
+    await assert.rejects(service.acceptReview(handle, review.reviewId, review.draft), /Stale/);
     assert.equal((await service.initializationStatus(handle)).state, 'review_required');
     await rm(join(root, '.dope/architecture.json'));
-    assert.equal((await service.acceptReview(handle, review.reviewId, draft)).state, 'ready');
+    assert.equal((await service.acceptReview(handle, review.reviewId, review.draft)).state, 'ready');
     const acceptedArchitecture = await readFile(join(root, '.dope/architecture.json'), 'utf8');
     await writeFile(join(root, 'MODULES.md'), '# Changed architecture intent');
     await service.analyze(handle);
@@ -162,7 +291,7 @@ test('generated review stays transient, rejects invalid/stale drafts, then accep
     assert.equal((await service.initializationStatus(handle)).state, 'initialized');
     assert.equal((await service.review(handle)), undefined);
     assert.equal(await service.resolveReviewSource(handle, review.reviewId, sourceFact.id), undefined);
-    assert.equal(index.snapshot(root)!.nodes.some(node => node.id === 'api'), true);
+    assert.equal(index.snapshot(root)!.nodes.some(node => node.id === review.draft.find(node => node.kind === 'subsystem')?.id), true);
     service.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
@@ -290,7 +419,7 @@ test('project handle and review token isolate roots', async () => {
     await assert.rejects(service.acceptReview(handleB, reviewA.reviewId, reviewA.draft), /matching/);
     await service.cancelInitialization(handleB);
     assert.equal((await service.initializationStatus(handleB)).state, 'uninitialized');
-    assert.equal((await readdir(a)).includes('.dope'), false);
+    assert.equal((await readdir(a)).includes('.dope'), true);
     assert.equal((await readdir(b)).includes('.dope'), false);
     service.dispose();
   } finally { await rm(a, { recursive: true, force: true }); await rm(b, { recursive: true, force: true }); }
@@ -308,7 +437,7 @@ test('hierarchical review revalidates source before acceptance', async () => {
     const draft = review.draft.map(node => ({ ...node, id: node.kind === 'system' ? 'app' : 'api', roots: node.kind === 'subsystem' ? ['src/api'] : [] }));
     await writeFile(join(root, 'src/api/a.ts'), 'export const changed = 1;\n');
     await assert.rejects(service.acceptReview(handle, review.reviewId, draft), /Stale Software Map evidence/);
-    assert.equal((await readdir(root)).includes('.dope'), false);
+    assert.equal((await readdir(root)).includes('.dope'), true);
     service.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
@@ -342,7 +471,7 @@ test('backend reports ordered hierarchy, known counts and measured time before t
     events.length = 0;
     assert.equal((await service.synthesisAttempts(handle)).length, attempts.length);
     assert.ok(!JSON.stringify(events).match(/prompt|chain.of.thought|percentage/i));
-    assert.equal((await readdir(root)).includes('.dope'), false);
+    assert.equal((await readdir(root)).includes('.dope'), true);
     service.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
@@ -392,7 +521,7 @@ test('Gemini environment and session setup remain in memory, fail closed, and ne
     assert.deepEqual(calls, ['probe:gemini-3.6-flash', 'probe:gemini-3.6-flash', 'gemini:gemini-3.6-flash']);
     assert.ok(JSON.stringify(events).includes('gemini-3.6-flash'));
     assert.equal(JSON.stringify(events).includes('environment-secret'), false);
-    assert.equal((await readdir(root)).includes('.dope'), false);
+    assert.equal((await readdir(root)).includes('.dope'), true);
     await service.configureSynthesis(handle, { kind: 'gemini', apiKey: 'session-secret' });
     assert.deepEqual(keys, ['environment-secret', 'session-secret']);
     assert.equal(await service.synthesisReady(handle), false);
@@ -457,7 +586,7 @@ test('Gemini stage exposes only fixed safe failure diagnostics', async () => {
     const handle = await attach(service, root);
     await assert.rejects(service.startInitialization(handle), /Gemini analysis failed: Gemini request rejected \(HTTP 400\)/);
     await assert.rejects(service.startInitialization(handle), /Gemini analysis failed: System Discovery produced no Systems to challenge/);
-    assert.equal((await readdir(root)).includes('.dope'), false);
+    assert.equal((await readdir(root)).includes('.dope'), true);
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -465,10 +594,12 @@ test('failure can retry; cancel and project switch discard late stage results', 
   const a = await fixture(); const b = await fixture();
   const events: { handle: string; event: AnalysisProgressEvent }[] = [];
   let fail = true;
+  let entered = 0;
   let block: Promise<void> | undefined;
   let release = () => {};
   const provider = fakeProvider(async request => {
     if (request.stage !== 'system-discovery') return;
+    entered++;
     if (fail) { fail = false; throw new Error('provider failed'); }
     await block;
   });
@@ -478,10 +609,10 @@ test('failure can retry; cancel and project switch discard late stage results', 
     const handleA = await attach(service, a);
     await assert.rejects(service.startInitialization(handleA), /provider failed/);
     assert.equal(events.at(-1)?.event.stage, 'failed');
-    assert.equal((await service.initializationStatus(handleA)).state, 'uninitialized');
+    assert.equal((await service.initializationStatus(handleA)).state, 'failed');
     block = new Promise<void>(resolve => { release = resolve; });
     const pending = service.startInitialization(handleA);
-    while (events.filter(item => item.handle === handleA && item.event.message === 'Analyzing system discovery').length < 2)
+    while (entered < 2)
       await new Promise(resolve => setTimeout(resolve, 10));
     await service.cancelInitialization(handleA);
     assert.equal(events.at(-1)?.event.stage, 'cancelled');
@@ -491,7 +622,7 @@ test('failure can retry; cancel and project switch discard late stage results', 
     assert.ok((await service.synthesisAttempts(handleA)).some(item => item.failureClass === 'cancelled' && !item.consumed));
     block = new Promise<void>(resolve => { release = resolve; });
     const old = service.startInitialization(handleA);
-    while (events.filter(item => item.handle === handleA && item.event.message === 'Analyzing system discovery').length < 3)
+    while (entered < 3)
       await new Promise(resolve => setTimeout(resolve, 10));
     const handleB = await attach(service, b);
     const count = events.length;
@@ -499,7 +630,7 @@ test('failure can retry; cancel and project switch discard late stage results', 
     await assert.rejects(old, /Invalid|Superseded/);
     assert.equal(events.length, count);
     assert.equal(await service.review(handleB), undefined);
-    assert.equal((await readdir(a)).includes('.dope'), false);
+    assert.equal((await readdir(a)).includes('.dope'), true);
     assert.equal((await readdir(b)).includes('.dope'), false);
   } finally { service.dispose(); await rm(a, { recursive: true, force: true }); await rm(b, { recursive: true, force: true }); }
 });

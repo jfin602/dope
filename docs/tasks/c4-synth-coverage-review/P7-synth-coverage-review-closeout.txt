@@ -1,5 +1,7 @@
 TASK: Correction 4 / P7 — sMap coverage and iterative-review correction closeout
 
+2026-09-30 durable-resume amendment: this remains an unexecuted historical prompt. Do not close the reopened correction from the old P5/P6 record. A future closeout must first review direct durable-resume browser qualification and actual skipped-call evidence specified in the correction README; package version remains `0.4.6`.
+
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.

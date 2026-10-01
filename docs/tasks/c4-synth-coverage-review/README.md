@@ -1,6 +1,6 @@
 # Correction 4 — sMap Coverage + Iterative Review
 
-Status: **OWNER-CLOSED / NOT QUALIFIED AFTER STOPPED P6 — P7 UNEXECUTED**
+Status: **OPEN FOR ONE-OFF DURABLE STAGE RESUME / NOT QUALIFIED — historical P7 unexecuted**
 Correction folder: `c4-synth-coverage-review`
 Required unchanged version: `0.4.6`
 Activation source: `4a887ecebc546f9944adf54890143827623e008c`
@@ -11,6 +11,8 @@ Predecessor: owner-closed / Not Qualified `c4-synth-improvements`
 Authority: ADR 0015 plus ADR 0014 as amended 2026-09-30 and ADR 0008-0013 where not amended
 
 ## Owner disposition — 2026-09-30
+
+The historical owner closeout below remains evidence of the stopped P6, not a Green result. The current one-off request reopens this same correction solely for durable stage resume; it does not create a new stack, complete P6/P7, or change version `0.4.6`.
 
 The owner closes this correction after stopped P6 at pushed source `c059f67a5fd85c81183ba09044e550462c9000a1`.
 
@@ -62,6 +64,8 @@ All prompts use `GPT-6 Sol High` and keep package version exactly `0.4.6`.
 
 ## Qualification targets
 
+The remaining browser qualification must inject late-stage, branch, malformed/schema-invalid and process-restart failures; show Retry and Restart as separate actions; prove retry uses the original repository evidence after source edits; prove input/contract changes invalidate only affected checkpoints and descendants; retain per-stage provider/model provenance; continue downstream work after successful retry; and show Search Deeper preserves unrelated edited branches. Provider call counts must prove expensive successful ancestors and sibling calls were actually skipped.
+
 P6 must cover:
 - pinned Adaptive SEO;
 - an uncontaminated Dope benchmark root;
@@ -75,6 +79,6 @@ Green does not require exact names/counts. It requires material implemented resp
 
 ## Routing
 
-Route directly to `c4-smap-storage` at unchanged `0.4.6`.
+Historical routing to `c4-smap-storage` was completed. Keep this reopened correction Not Qualified and open until its remaining qualification is explicitly disposed; `c4-smap-storage` remains Green.
 
-The provider-comparison idea is deferred, not Green. Do not reopen this correction, do not execute P7 as qualification, and do not activate Phase 5 until storage closes Green.
+The provider-comparison idea remains deferred, not Green. Historical P7 is not retroactively executed, and Phase 5 remains inactive.

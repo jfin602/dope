@@ -36,12 +36,24 @@ export interface HierarchicalAnalysis {
 }
 
 /** Exact serialized identity avoids hash collisions; cached values are always revalidated against the parent packet. */
-export function stageWorkIdentity(request: SynthesisStageRequest, providerIdentity: string,
+export function stageWorkIdentity(request: SynthesisStageRequest, _providerIdentity: string,
     promptVersion = SYNTHESIS_PROMPT_VERSION): string {
-    if (!providerIdentity.trim() || !Number.isSafeInteger(promptVersion) || promptVersion < 1)
+    if (!_providerIdentity.trim() || !Number.isSafeInteger(promptVersion) || promptVersion < 1)
         throw new Error('Invalid synthesis work identity');
     return JSON.stringify([request.parentPacketFingerprint, request.view.viewId, request.stage,
-        request.stageVersion, promptVersion, request.context, providerIdentity]);
+        request.stageVersion, promptVersion, request.context]);
+}
+
+export interface SynthesisCheckpoint {
+    identity: string;
+    request: SynthesisStageRequest;
+    result: SynthesisStageResult;
+    providerKind: SynthesisProvider['kind'];
+    modelLabel: string;
+    attempt: number;
+    completedAt: string;
+    outputFingerprint: string;
+    promptVersion: number;
 }
 
 class StageResultFailure extends Error {
@@ -52,28 +64,76 @@ class StageResultFailure extends Error {
 }
 
 export class SynthesisStageCache {
-    private readonly results = new Map<string, { provider: SynthesisProvider; result: SynthesisStageResult }>();
+    private readonly results = new Map<string, SynthesisCheckpoint>();
     private readonly ledger: SynthesisCallAttempt[] = [];
     private nextCall = 0;
     constructor(private readonly maximum = 64) {
         if (!Number.isSafeInteger(maximum) || maximum < 1) throw new Error('Invalid synthesis cache bound');
     }
+    onCheckpoint?: (checkpoints: SynthesisCheckpoint[], attempts: SynthesisCallAttempt[]) => Promise<void>;
+    onStageStart?: (stage: SynthesisStage, subject: string | undefined, providerKind: SynthesisProvider['kind'],
+        modelLabel: string, checkpoints: SynthesisCheckpoint[]) => Promise<void>;
+    checkpoints(): SynthesisCheckpoint[] { return structuredClone([...this.results.values()]); }
+    private scope(request: SynthesisStageRequest): string { return request.stage === 'verification' ?
+        `${request.context.targetCandidateKeys.join(',')}:${request.context.boundaryCode ?? ''}` :
+        request.context.subjectSubsystemKey ?? request.context.subjectSystemKey ?? ''; }
+    private invalidate(request: SynthesisStageRequest): void {
+        for (const [key, item] of this.results) {
+            const sameSystem = item.request.context.subjectSystemKey === request.context.subjectSystemKey;
+            const dependent = request.stage === 'system-discovery' ||
+                request.stage === 'system-challenge' && item.request.stage !== 'system-discovery' ||
+                request.stage === 'subsystem-discovery' && (sameSystem && ['subsystem-challenge', 'component-discovery'].includes(item.request.stage) ||
+                    ['reconciliation', 'verification'].includes(item.request.stage)) ||
+                request.stage === 'subsystem-challenge' && (sameSystem && item.request.stage === 'component-discovery' ||
+                    ['reconciliation', 'verification'].includes(item.request.stage)) ||
+                request.stage === 'component-discovery' && ['reconciliation', 'verification'].includes(item.request.stage) ||
+                request.stage === 'reconciliation' && item.request.stage === 'verification';
+            if (item.request.stage === request.stage && this.scope(item.request) === this.scope(request) || dependent) this.results.delete(key);
+        }
+    }
+    restore(checkpoints: SynthesisCheckpoint[], attempts: SynthesisCallAttempt[] = [], packet?: ArchitectureEvidencePacket): void {
+        this.clear();
+        const invalid: SynthesisStageRequest[] = [];
+        for (const item of checkpoints) {
+            if (item.promptVersion !== SYNTHESIS_PROMPT_VERSION || item.request.stageVersion !== SYNTHESIS_STAGE_VERSION) {
+                invalid.push(item.request); continue;
+            }
+            if (item.identity !== stageWorkIdentity(item.request, 'restored', item.promptVersion) ||
+                item.outputFingerprint !== JSON.stringify(item.result)) throw new Error('Invalid synthesis checkpoint');
+            if (packet) {
+                try { parseSynthesisStageResult(item.result, item.request, packet); }
+                catch { invalid.push(item.request); continue; }
+            }
+            this.results.set(item.identity, structuredClone(item));
+        }
+        invalid.forEach(request => this.invalidate(request));
+        this.ledger.push(...structuredClone(attempts));
+        this.nextCall = attempts.reduce((max, item) => Math.max(max, Number(item.callId.slice(5)) || 0), 0);
+    }
     async run(request: SynthesisStageRequest, packet: ArchitectureEvidencePacket, provider: SynthesisProvider,
         providerIdentity: string, promptVersion = SYNTHESIS_PROMPT_VERSION,
         checkpoint: () => void = () => {}, onAttempt?: (attempt: SynthesisCallAttempt) => void,
         modelLabel = providerIdentity): Promise<{ result: SynthesisStageResult; reused: boolean; durationMs: number;
-            usage?: import('./hierarchical-synthesis').SynthesisStageUsage }> {
+            usage?: import('./hierarchical-synthesis').SynthesisStageUsage; provenance: { providerKind: SynthesisProvider['kind']; modelLabel: string } }> {
         const identity = stageWorkIdentity(request, providerIdentity, promptVersion);
         const cached = this.results.get(identity);
-        if (cached && cached.provider === provider) {
+        if (cached) {
             try {
                 const result = parseSynthesisStageResult(structuredClone(cached.result), request, packet);
-                return { result, reused: true, durationMs: 0 };
+                return { result, reused: true, durationMs: 0,
+                    provenance: { providerKind: cached.providerKind, modelLabel: cached.modelLabel } };
             } catch { this.results.delete(identity); }
         }
+        const subjectScope = this.scope(request);
+        const replaced = [...this.results.values()].some(item => item.request.stage === request.stage &&
+            this.scope(item.request) === subjectScope && item.identity !== identity);
+        if (replaced) this.invalidate(request);
         const callId = `call:${++this.nextCall}`;
         const requestBytes = new TextEncoder().encode(JSON.stringify(request)).length;
         const subject = request.context.subjectSubsystemKey ?? request.context.subjectSystemKey ?? undefined;
+        await this.onStageStart?.(request.stage, subject, provider.kind, modelLabel, this.checkpoints());
+        const previous = this.ledger.filter(item => item.stage === request.stage && item.subject === subject);
+        const previousAttempt = previous.at(-1)?.consumed ? undefined : previous.at(-1);
         for (let number = 1; ; number++) {
             const startedAt = new Date().toISOString();
             const start = performance.now();
@@ -104,24 +164,28 @@ export class SynthesisStageCache {
                 }
             }
             const attempt: SynthesisCallAttempt = { callId, attemptId: `${callId}:${number}`,
-                ...(number > 1 ? { retryOf: `${callId}:${number - 1}` } : {}), stage: request.stage, subject,
-                providerKind: provider.kind, modelLabel, attempt: number, startedAt, durationMs, requestBytes,
+                ...(number > 1 ? { retryOf: `${callId}:${number - 1}` } : previousAttempt ? { retryOf: previousAttempt.attemptId } : {}),
+                stage: request.stage, subject,
+                providerKind: provider.kind, modelLabel, attempt: previous.length + number, startedAt, durationMs, requestBytes,
                 ...(execution ? { outputBytes: execution.usage.outputBytes,
                     inputTokens: execution.usage.inputTokens, outputTokens: execution.usage.outputTokens,
                     totalTokens: execution.usage.totalTokens } : {}),
                 tokenMeasurement: execution?.usage.tokenMeasurement ?? 'unavailable',
                 ...(failureClass ? { failureClass } : {}), reused: false, consumed: !!result };
             this.ledger.push(attempt);
-            try { onAttempt?.(structuredClone(attempt)); }
-            catch (error) {
-                attempt.consumed = false;
-                attempt.failureClass = 'cancelled';
-                throw error;
-            }
             if (result) {
-                this.results.set(identity, { provider, result: structuredClone(result) });
+                const saved: SynthesisCheckpoint = { identity, request: structuredClone(request), result: structuredClone(result),
+                    providerKind: provider.kind, modelLabel, attempt: attempt.attempt, completedAt: new Date().toISOString(),
+                    outputFingerprint: JSON.stringify(result), promptVersion };
+                this.results.set(identity, saved);
+                try { await this.onCheckpoint?.(this.checkpoints(), this.attempts()); }
+                catch (error) { this.results.delete(identity); attempt.consumed = false; throw error; }
                 if (this.results.size > this.maximum) this.results.delete(this.results.keys().next().value!);
-                return { result, reused: false, durationMs, usage: execution!.usage };
+            }
+            onAttempt?.(structuredClone(attempt));
+            if (result) {
+                return { result, reused: false, durationMs, usage: execution!.usage,
+                    provenance: { providerKind: provider.kind, modelLabel } };
             }
             const retryMalformed = failure instanceof StageResultFailure && number < 2;
             const retryTransient = failure instanceof SynthesisProviderFailure &&
@@ -319,7 +383,7 @@ export class HierarchicalSynthesisOrchestrator {
                         durationMs: attempt.durationMs, reused: false, providerKind: attempt.providerKind,
                         modelLabel: attempt.modelLabel, status: attempt.consumed ? 'completed' : 'failed',
                         attempt: attempt.attempt, usage });
-                    emit(stage, attempt.failureClass && attempt.attempt < MAX_GEMINI_ATTEMPTS &&
+                    emit(stage, attempt.failureClass && Number(attempt.attemptId.split(':').at(-1)) < MAX_GEMINI_ATTEMPTS &&
                         ['transient-transport', 'transient-upstream'].includes(attempt.failureClass) ? 'retrying' :
                         attempt.failureClass ? 'failed' : 'started',
                     attempt.failureClass ? `Model call ${attempt.failureClass.replaceAll('-', ' ')}` : 'Model call complete',
@@ -331,10 +395,10 @@ export class HierarchicalSynthesisOrchestrator {
             if (executed.reused) {
                 record({ operation: stage === 'verification' ? 'verification-call' : 'stage-call', stage,
                     subject: context.subjectSubsystemKey ?? context.subjectSystemKey ?? undefined,
-                    durationMs: 0, reused: true, providerKind: this.provider.kind,
-                    modelLabel: capability.modelLabel, status: 'completed' });
+                    durationMs: 0, reused: true, providerKind: executed.provenance.providerKind,
+                    modelLabel: executed.provenance.modelLabel, status: 'completed' });
                 emit(stage, 'started', 'Cached stage reused', { subject, ...units, callPurpose: stage,
-                    providerKind: this.provider.kind, providerModelLabel: capability.modelLabel,
+                    providerKind: executed.provenance.providerKind, providerModelLabel: executed.provenance.modelLabel,
                     callDurationMs: 0, reused: true });
             }
             if (stage === 'subsystem-discovery') subsystemCompleted++;
@@ -369,8 +433,9 @@ export class HierarchicalSynthesisOrchestrator {
         const subtrees: SystemSubtree[] = [];
         const recoveredKeys = new Set<string>();
         for (const system of systems) {
-            const discovered = (await run('subsystem-discovery', context(systems, [], system.candidateKey))).result as SubsystemDiscoveryResult;
-            const challenged = (await run('subsystem-challenge', context(systems, [], system.candidateKey, [],
+            const branch = [system];
+            const discovered = (await run('subsystem-discovery', context(branch, [], system.candidateKey))).result as SubsystemDiscoveryResult;
+            const challenged = (await run('subsystem-challenge', context(branch, [], system.candidateKey, [],
                 discovered.subsystems))).result as SubsystemChallengeResult;
             for (const decision of challenged.decisions) if (decision.action === 'merge' || decision.action === 'split')
                 for (const item of decision.subsystems) recoveredKeys.add(item.candidateKey);
@@ -381,7 +446,7 @@ export class HierarchicalSynthesisOrchestrator {
             const componentDescents: NonNullable<SystemSubtree['componentDescents']> = [];
             componentCompleted = 0; componentTotal = subsystems.length;
             for (const subsystem of subsystems) {
-                const components = (await run('component-discovery', context(systems, [], system.candidateKey, [],
+                const components = (await run('component-discovery', context(branch, [], system.candidateKey, [],
                     subsystems, subsystem.candidateKey, challenged))).result as ComponentDiscoveryResult;
                 nodes.push(...components.components);
                 if (components.disposition) componentDescents.push(components.disposition);

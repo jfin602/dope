@@ -117,7 +117,9 @@ Every deterministic stage and model call required for qualification records elap
 
 ### Caching and incremental identity
 
-Bounded synthesis work should be cacheable/reusable using deterministic identity that includes at least parent evidence packet/slice identity, synthesis stage and stage version, synthesis contract/prompt version, and selected provider/model identity where output compatibility depends on it.
+Bounded synthesis work should be cacheable/reusable using deterministic identity that includes at least parent evidence packet/slice identity, synthesis stage and stage version, synthesis contract/prompt version, and effective stage inputs. Provider/model provenance is retained with the checkpoint; it affects reuse only if it changes the effective stage contract or inputs.
+
+Amendment — durable analysis resume: provider/model identity is provenance, not an automatic invalidation dependency for an otherwise compatible validated stage output. Each successful stage is durably checkpointed before dependents run. The run pins the complete evidence packet and records stage scope, effective input/dependency identity, contract version, output identity, provider/model, attempt and completion time. A failure retains successful ancestors and independent branches; retry repeats only the failed unit and then its pending dependents. Fresh analysis is a separate explicit action. Process restart must restore the pinned run. Search Deeper remains an explicit branch-local review operation. Browser qualification must prove actual provider calls are skipped on retry and that independent branches survive failure and refinement.
 
 Unchanged analysis input should not require re-running identical expensive calls merely because the UI is reopened.
 

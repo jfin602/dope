@@ -105,6 +105,31 @@ test('first-use offer, decline, and later Analyze Project do not analyze on atta
   next.dispose();
 });
 
+test('reopened failed analysis keeps its run and invokes the retry operation', async () => {
+  const c = connection();
+  const calls: string[] = [];
+  const failed = { state: 'failed', declarationPresent: false, declarationFingerprint: 'absent',
+    resumable: { runId: 'run-one', failedStage: 'subsystem-discovery', failedSubject: 'candidate:frontend',
+      message: 'Provider request failed.', completed: [{ stage: 'system-discovery', providerKind: 'local', modelLabel: 'old' }] } };
+  c.initializationStatus = () => Promise.resolve(failed);
+  c.synthesisReady = () => Promise.resolve(true);
+  c.retryFailedStage = () => { calls.push('retry'); return Promise.resolve({ reviewId: 'review', packet: { items: [] },
+    proposal: { nodes: [], openQuestions: [], unassignedEvidenceRefs: [] }, draft: [] }); };
+  c.startInitialization = () => { calls.push('restart'); return Promise.resolve({ reviewId: 'fresh', packet: { items: [] },
+    proposal: { nodes: [], openQuestions: [], unassignedEvidenceRefs: [] }, draft: [] }); };
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attaching = controller.attach('file:///A');
+  c.attachPending.resolve({ projectHandle: 'a', status: idle });
+  await attaching;
+  assert.equal(controller.flow, 'setup');
+  assert.equal(controller.initialization.resumable.runId, 'run-one');
+  controller.setupReady = true;
+  await controller.synthesize('local', true);
+  assert.deepEqual(calls, ['retry']);
+  assert.equal(controller.review.reviewId, 'review');
+  controller.dispose();
+});
+
 test('local setup prefers Qwen and stores endpoint/model only as application state after probe', async () => {
   const c = connection();
   const writes: any[] = [];
@@ -460,6 +485,35 @@ test('Search Deeper previews current edits, preserves siblings, rejects stale an
   switchedCall.resolve({ ...sent, proposal }); await inFlightSwitch;
   assert.equal(controller.refinementPreview, undefined);
   assert.equal(controller.refinementBusyKey, undefined);
+  controller.dispose();
+});
+
+test('accepted Search Deeper suggestions avoid sibling IDs and leave a valid full draft', async () => {
+  const c = connection();
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attached = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attached;
+  controller.review = { reviewId: 'r', packet: { items: [
+    { id: 'sub-root', kind: 'semantic', path: 'src/new-sub' },
+    { id: 'component-root', kind: 'semantic', path: 'src/new-component' },
+  ] }, proposal: { nodes: [] }, draft: [] };
+  controller.flow = 'review';
+  controller.draft = [
+    { proposalKey: 'old', kind: 'system', parentProposalKey: null, id: 'old', name: 'Old', purpose: 'Old', roots: [] },
+    { proposalKey: 'old-sub', kind: 'subsystem', parentProposalKey: 'old', id: 'old-sub', name: 'Old Sub', purpose: 'Old', roots: ['src/old'] },
+    { proposalKey: 'sibling', kind: 'system', parentProposalKey: null, id: 'b', name: 'Sibling', purpose: 'Sibling', roots: [] },
+    { proposalKey: 'sibling-sub', kind: 'subsystem', parentProposalKey: 'sibling', id: 'custom_ID', name: 'Sibling Sub', purpose: 'Sibling', roots: ['src/sibling'] },
+  ];
+  c.searchDeeper = (_handle: string, input: any) => Promise.resolve({ ...input, proposal: { nodes: [
+    { proposalKey: 'new', kind: 'system', parentProposalKey: null, name: 'B', purpose: 'New', evidenceRefs: [] },
+    { proposalKey: 'new-sub', kind: 'subsystem', parentProposalKey: 'new', name: '3D Renderer', purpose: 'New Sub', evidenceRefs: ['sub-root'] },
+    { proposalKey: 'new-component', kind: 'component', parentProposalKey: 'new-sub', name: '3D Renderer', purpose: 'New Component', evidenceRefs: ['component-root'] },
+  ] } });
+  await controller.searchDeeper('old'); controller.acceptRefinement();
+  assert.deepEqual(controller.draft.filter((node: any) => node.proposalKey === 'sibling' || node.proposalKey === 'sibling-sub')
+    .map((node: any) => node.id), ['b', 'custom_ID']);
+  assert.deepEqual(controller.draft.filter((node: any) => node.proposalKey.startsWith('draft:')).map((node: any) => node.id),
+    ['b-2', 'node-3d-renderer', 'node-3d-renderer-2']);
+  assert.equal(controller.draftError(), undefined);
   controller.dispose();
 });
 

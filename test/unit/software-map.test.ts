@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   aggregateDependencies, assignOwnership, createSnapshot, derivedId, hierarchy, ownershipForPath,
-  parseArchitecture, parseArchitectureJson, relationshipId, relationshipsFor, validateSubsystemDependencies,
+  parseArchitecture, parseArchitectureJson, relationshipId, relationshipsFor, suggestArchitectureId, validateSubsystemDependencies,
 } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureDeclaration, CodeEntityNode, Evidence, GraphNode, GraphRelationship, SnapshotMetadata } from '../../packages/software-map/lib/index.js';
 
@@ -32,6 +32,17 @@ const api: GraphNode = { id: 'api', kind: 'subsystem', name: 'API', purpose: 'Pu
 const core: GraphNode = { id: 'core', kind: 'subsystem', name: 'Core', purpose: 'Logic', parentId: 'app', evidenceIds: ['decl'] };
 const secret: GraphNode = { id: 'secret', kind: 'subsystem', name: 'Secret', purpose: 'Private', parentId: 'app', evidenceIds: ['decl'] };
 const routes: GraphNode = { id: 'routes', kind: 'component', name: 'Routes', purpose: 'Handlers', parentId: 'api', evidenceIds: ['decl'] };
+
+test('review ID suggestions satisfy the canonical contract without replacing a custom ID', () => {
+  const names = ['Physical Software Model', 'Agent Runtime', '  API / Gateway!! ', '3D Renderer', '!!!', 'Runtime', 'Runtime'];
+  const used = new Set<string>();
+  const ids = names.map(name => { const id = suggestArchitectureId(name, used); used.add(id); return id; });
+  assert.deepEqual(ids, ['physical-software-model', 'agent-runtime', 'api-gateway', 'node-3d-renderer', 'node', 'runtime', 'runtime-2']);
+  assert.equal(suggestArchitectureId('Changed Name', used, 'my.Custom_ID'), 'my.Custom_ID');
+  assert.equal(suggestArchitectureId('Changed Name', used, '3invalid'), 'changed-name');
+  assert.ok(suggestArchitectureId('x'.repeat(100), used).length <= 60);
+  for (const id of ids) assert.match(id, /^[A-Za-z][A-Za-z0-9._-]*$/);
+});
 
 test('strict declaration parser rejects malformed, future, duplicate and unsafe data', () => {
   assert.deepEqual(parseArchitectureJson(JSON.stringify(declaration)), architecture);

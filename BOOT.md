@@ -13,7 +13,11 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
+<<<<<<< HEAD
 **Product Phase 5 — Visual Software Planning is ACTIVE from baseline `0.5.0` at closeout transition commit `016bd8780e89081dfdb5746eae981183dc945baa`.** Product Phase 4 — Physical Map remains Qualified/Green for its approved core scope at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The architecture-discovery follow-ons remain truthful history: `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are owner-closed **Not Qualified** with useful implementation retained. `c4-smap-storage` and `c4-color-theme` are **GREEN / QUALIFIED** at unchanged `0.4.6`. The post-theme failed-analysis-state repair at `c7e0d66269d3f11fd2e31c3f94ecc7ffc843bae9` is part of the owner-accepted Phase 4 baseline. The fresh provider comparison remains deferred off the Phase 5 critical path.
+=======
+**Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). Phase 5 is not activated.** The architecture-discovery follow-ons remain truthful history. `c4-smap-synth`, `c4-smap-gemini-provider`, and `c4-synth-improvements` are owner-closed **Not Qualified**. The historical `c4-synth-coverage-review` closeout remains Not Qualified evidence; the current one-off durable-stage-resume request reopens that same correction without completing P6/P7. `c4-smap-storage` is **GREEN / QUALIFIED** at closeout commit `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`. The fresh provider comparison stays deferred. The bounded `c4-color-theme` correction also remains an active pre-Phase-5 gate at unchanged `0.4.6`.
+>>>>>>> 542eba2 (fixed system ids)
 
 **ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first bootstrap; ADR 0012 governs hierarchy-first synthesis/progress/performance; ADR 0013 governs compact shared provider contracts; ADR 0014 governs responsibility-oriented decomposition/review and its owner sequencing amendments; ADR 0015 governs optional root `MODULES.md` bootstrap intent; ADR 0016 governs Dope Dark visual identity and theme boundaries; ADR 0017 governs Phase 5 Planning Maps, transformations, WorkItems, target adoption, staleness/rebase and reconciliation.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**. AI interprets deterministic evidence; it does not create evidence. The developer owns canonical System / Subsystem / Component identity. General Phase 6 AI Presence remains out of scope; the Phase 5 visual planning canvas and provider-free visual workflow are now active scope.
 
@@ -246,6 +250,10 @@ Then execute implementation routing:
 
 `npm run codex:phase -- p5 --closeout`
 
+<<<<<<< HEAD
 Expected sequence is `0.5.1` through `0.5.12`. P1-P10 are runner-owned implementation/integration prompts. P11 is browser-required direct Dope-on-Dope qualification and must use the real Theia GUI. P12 is the sole evidence-only closeout.
 
 Phase 5 remains focused on the provider-free visual workflow. Do not pull general AI Presence, Agent Mind, ProposedAction, model-driven implementation, mutation authority or scoped delegation into this stack.
+=======
+Both the reopened `c4-synth-coverage-review` durable-resume qualification and `c4-color-theme` gate must be explicitly disposed before a fresh Product Phase 5 `/docs-review`.
+>>>>>>> 542eba2 (fixed system ids)

@@ -6,8 +6,10 @@ import type { KeyStoreService } from '@theia/core/lib/common/key-store';
 import { canonicalLocalRoot } from '@dope/code-analysis/lib/node/architecture-file';
 import { readInitialization, acceptInitialization } from '@dope/code-analysis/lib/node/smap-initialization-file';
 import { bootstrapDocumentPresence } from '@dope/code-analysis/lib/node/architecture-evidence';
+import { readSynthesisRun, writeSynthesisRun, clearSynthesisRun } from '@dope/code-analysis/lib/node/smap-analysis-file';
+import type { SavedSynthesisRun } from '@dope/code-analysis/lib/node/smap-analysis-file';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
-import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseAnalysisProgressEvent,
+import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseAnalysisProgressEvent, suggestArchitectureId,
     HierarchicalSynthesisOrchestrator, SynthesisStageCache, planTargetedRefinement, parseTargetedRefinement } from '@dope/software-map';
 import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, SoftwareMapPageRequest, GraphRelationship, SoftwareMapRelationshipRequest,
     PhysicalMapSnapshot, SoftwareMapClient, SoftwareMapService, ArchitectureEvidencePacket, ArchitectureReview, ArchitectureReviewNode,
@@ -36,10 +38,11 @@ export class SoftwareMapBackend implements SoftwareMapService {
     private disposed = false;
     private initialized = false;
     private run = 0;
-    private phase: 'analyzing' | 'review_required' | undefined;
+    private phase: 'analyzing' | 'review_required' | 'failed' | undefined;
+    private analysisRun?: SavedSynthesisRun;
     private pending?: ArchitectureReview & { fingerprint: string };
     private provider?: SynthesisProvider;
-    private readonly synthesisCache = new SynthesisStageCache();
+    private readonly synthesisCache = new SynthesisStageCache(Number.MAX_SAFE_INTEGER);
     private analysisStarted?: number;
     private localProvider?: LmStudioSynthesisProvider;
     private geminiProvider?: GeminiSynthesisProvider;
@@ -80,6 +83,21 @@ export class SoftwareMapBackend implements SoftwareMapService {
         }
         this.root = root;
         this.initialized = (await readInitialization(root)).initialized;
+        this.analysisRun = this.initialized ? undefined : await readSynthesisRun(root);
+        if (this.analysisRun) {
+            this.synthesisCache.restore(this.analysisRun.checkpoints, this.analysisRun.attempts, this.analysisRun.packet);
+            if (this.synthesisCache.checkpoints().length !== this.analysisRun.checkpoints.length) {
+                const invalid = this.analysisRun.checkpoints.find(item => !this.synthesisCache.checkpoints().some(saved => saved.identity === item.identity))!;
+                this.analysisRun = { ...this.analysisRun, status: 'failed', review: undefined,
+                    current: { stage: invalid.request.stage,
+                        subject: invalid.request.context.subjectSubsystemKey ?? invalid.request.context.subjectSystemKey ?? undefined,
+                        providerKind: invalid.providerKind, modelLabel: invalid.modelLabel },
+                    checkpoints: this.synthesisCache.checkpoints(), failure: undefined };
+                await writeSynthesisRun(root, this.analysisRun);
+            }
+            this.phase = this.analysisRun.status === 'review_required' ? 'review_required' : 'failed';
+            this.pending = this.analysisRun.review;
+        }
         return { projectHandle: this.handle, status: this.initialized ? this.index.status(root) : this.idleStatus() };
     }
 
@@ -206,8 +224,17 @@ export class SoftwareMapBackend implements SoftwareMapService {
         const root = this.active(projectHandle);
         const state = await readInitialization(root);
         this.initialized = state.initialized;
-        return { state: state.initialized ? 'initialized' : this.phase ?? 'uninitialized',
+        return { state: state.initialized ? 'initialized' : this.analysisRun && this.phase !== 'analyzing' && this.phase !== 'review_required' ? 'failed' : this.phase ?? 'uninitialized',
             declarationPresent: state.declarationPresent, declarationFingerprint: state.declarationFingerprint,
+            ...(this.analysisRun && !state.initialized && this.phase === 'failed' ? { resumable: { runId: this.analysisRun.runId,
+                failedStage: this.analysisRun.failure?.stage ?? this.analysisRun.current?.stage,
+                failedSubject: this.analysisRun.failure?.subject ?? this.analysisRun.current?.subject,
+                failedProviderKind: this.analysisRun.failure?.providerKind ?? this.analysisRun.current?.providerKind,
+                failedModelLabel: this.analysisRun.failure?.modelLabel ?? this.analysisRun.current?.modelLabel,
+                message: this.analysisRun.failure?.message ?? 'Analysis was interrupted. Retry the failed stage.',
+                completed: this.analysisRun.checkpoints.map(item => ({ stage: item.request.stage,
+                    subject: item.request.context.subjectSubsystemKey ?? item.request.context.subjectSystemKey ?? undefined,
+                    providerKind: item.providerKind, modelLabel: item.modelLabel })) } } : {}),
             ...(state.initialized ? {} : { bootstrap: await bootstrapDocumentPresence(root) }) };
     }
     private still(handle: string, root: string, run: number): void {
@@ -215,20 +242,41 @@ export class SoftwareMapBackend implements SoftwareMapService {
     }
     async startInitialization(projectHandle: string): Promise<ArchitectureReview> {
         const root = this.active(projectHandle);
-        if ((await readInitialization(root)).initialized || this.phase) throw new Error('Software Map initialization is already active');
+        if ((await readInitialization(root)).initialized || this.phase === 'analyzing' || this.phase === 'review_required') throw new Error('Software Map initialization is already active');
         if (!this.provider || !(await this.synthesisReady(projectHandle))) throw new Error('Synthesis provider is not ready');
+        this.analysisRun = undefined;
+        this.synthesisCache.clear();
+        await clearSynthesisRun(root);
+        return this.executeInitialization(projectHandle);
+    }
+    async retryFailedStage(projectHandle: string): Promise<ArchitectureReview> {
+        const root = this.active(projectHandle);
+        if ((await readInitialization(root)).initialized || this.phase === 'analyzing' || this.phase === 'review_required')
+            throw new Error('Software Map initialization is already active');
+        const saved = this.analysisRun ?? await readSynthesisRun(root);
+        if (!saved || saved.status === 'review_required' || !saved.current) throw new Error('No failed analysis stage to retry');
+        if (!this.provider || !(await this.synthesisReady(projectHandle))) throw new Error('Synthesis provider is not ready');
+        if ((await readInitialization(root)).declarationFingerprint !== saved.declarationFingerprint)
+            throw new Error('Architecture declaration changed; restart analysis');
+        this.synthesisCache.restore(saved.checkpoints, saved.attempts, saved.packet);
+        this.analysisRun = saved;
+        return this.executeInitialization(projectHandle, saved);
+    }
+    private async executeInitialization(projectHandle: string, saved?: SavedSynthesisRun): Promise<ArchitectureReview> {
+        const root = this.active(projectHandle);
         const provider = this.provider;
+        if (!provider) throw new Error('Synthesis provider is not ready');
         const run = ++this.run;
         const started = performance.now();
         this.analysisStarted = started;
         const stageStarted = new Map<AnalysisProgressEvent['stage'], number>();
-        let currentStage: AnalysisProgressEvent['stage'] = 'collecting-evidence';
+        let currentStage: AnalysisProgressEvent['stage'] = saved?.current?.stage ?? 'collecting-evidence';
         let lastElapsed = 0;
         const emit = (event: AnalysisProgressEvent): void => {
             this.still(projectHandle, root, run);
             const now = performance.now();
             if (event.status === 'started' && !stageStarted.has(event.stage)) stageStarted.set(event.stage, now);
-            currentStage = event.stage;
+            if (event.stage !== 'failed' && event.stage !== 'cancelled') currentStage = event.stage;
             const elapsedMs = Math.max(lastElapsed, Math.floor(now - started));
             lastElapsed = elapsedMs;
             this.client.notifySoftwareMapAnalysisProgress?.(projectHandle, parseAnalysisProgressEvent({ ...event,
@@ -237,11 +285,31 @@ export class SoftwareMapBackend implements SoftwareMapService {
         this.phase = 'analyzing';
         this.pending = undefined;
         try {
-            emit({ stage: 'collecting-evidence', status: 'started', elapsedMs: 0, message: 'Collecting repository evidence' });
-            const fingerprint = (await readInitialization(root)).declarationFingerprint;
-            const packet = await this.index.collectEvidence(root);
+            if (!saved) emit({ stage: 'collecting-evidence', status: 'started', elapsedMs: 0, message: 'Collecting repository evidence' });
+            const fingerprint = saved?.declarationFingerprint ?? (await readInitialization(root)).declarationFingerprint;
+            const packet = saved?.packet ?? await this.index.collectEvidence(root);
             this.still(projectHandle, root, run);
-            emit({ stage: 'collecting-evidence', status: 'completed', elapsedMs: 0, message: 'Repository evidence collected' });
+            if (!saved) {
+                this.analysisRun = { schemaVersion: 1, runId: randomUUID(), packet, declarationFingerprint: fingerprint,
+                    status: 'analyzing', checkpoints: [], attempts: [] };
+                await writeSynthesisRun(root, this.analysisRun, () => this.still(projectHandle, root, run));
+                emit({ stage: 'collecting-evidence', status: 'completed', elapsedMs: 0, message: 'Repository evidence collected' });
+            }
+            this.synthesisCache.onStageStart = async (stage, subject, providerKind, modelLabel, checkpoints) => {
+                this.still(projectHandle, root, run);
+                const next = { ...this.analysisRun!, status: 'analyzing' as const,
+                    current: { stage, subject, providerKind, modelLabel }, checkpoints, failure: undefined };
+                await writeSynthesisRun(root, next, () => this.still(projectHandle, root, run));
+                this.still(projectHandle, root, run);
+                this.analysisRun = next;
+            };
+            this.synthesisCache.onCheckpoint = async (checkpoints, attempts) => {
+                this.still(projectHandle, root, run);
+                const next = { ...this.analysisRun!, checkpoints, attempts };
+                await writeSynthesisRun(root, next, () => this.still(projectHandle, root, run));
+                this.still(projectHandle, root, run);
+                this.analysisRun = next;
+            };
             const localProvider = this.localProvider;
             const orchestrator = new HierarchicalSynthesisOrchestrator(provider,
                 localProvider?.endpoint ?? provider.kind, undefined, undefined, emit,
@@ -251,6 +319,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
             this.still(projectHandle, root, run);
             emit({ stage: 'preparing-review', status: 'started', elapsedMs: 0, message: 'Preparing sMap for review' });
             if ((await readInitialization(root)).declarationFingerprint !== fingerprint) throw new Error('Stale Software Map architecture declaration');
+            const usedIds = new Set<string>();
             const draft: ArchitectureReviewNode[] = proposal.nodes.map(node => {
                 const roots = new Set<string>();
                 for (const ref of node.evidenceRefs) {
@@ -258,12 +327,20 @@ export class SoftwareMapBackend implements SoftwareMapService {
                     if (item.kind === 'configuration') for (const path of item.sourcePaths ?? []) roots.add(path);
                     if (item.kind === 'entrypoint' || item.kind === 'semantic' || item.kind === 'framework') roots.add(item.path);
                 }
-                return { proposalKey: node.proposalKey, kind: node.kind, id: '', name: node.name,
+                const id = suggestArchitectureId(node.name, usedIds);
+                usedIds.add(id);
+                return { proposalKey: node.proposalKey, kind: node.kind, id, name: node.name,
                     purpose: node.purpose, parentProposalKey: node.parentProposalKey, roots: [...roots].sort() };
             });
+            const childRoots = new Set(draft.filter(node => node.kind !== 'system').flatMap(node => node.roots));
+            for (const system of draft.filter(node => node.kind === 'system'))
+                system.roots = system.roots.filter(root => !childRoots.has(root));
             this.still(projectHandle, root, run);
             const reviewId = randomUUID();
             this.pending = { reviewId, packet, proposal, draft, coverageLedger, componentDescents, fingerprint };
+            this.analysisRun = { ...this.analysisRun!, status: 'review_required', review: this.pending,
+                checkpoints: this.synthesisCache.checkpoints(), attempts: this.synthesisCache.attempts(), current: undefined, failure: undefined };
+            await writeSynthesisRun(root, this.analysisRun, () => this.still(projectHandle, root, run));
             this.phase = 'review_required';
             this.analysisStarted = undefined;
             emit({ stage: 'preparing-review', status: 'completed', elapsedMs: 0, message: 'Validated review ready' });
@@ -271,11 +348,23 @@ export class SoftwareMapBackend implements SoftwareMapService {
             return structuredClone({ reviewId, packet, proposal, draft, coverageLedger, componentDescents });
         } catch (error) {
             if (this.run === run) {
-                this.phase = undefined; this.pending = undefined;
+                this.phase = this.analysisRun ? 'failed' : undefined; this.pending = undefined;
                 this.analysisStarted = undefined;
+                if (this.analysisRun) {
+                    const capability = await provider.capabilities().catch(() => undefined);
+                    const message = error instanceof Error && (/^Invalid hierarchical synthesis:/.test(error.message) ||
+                        error.message === 'System Discovery produced no Systems to challenge' ||
+                        error.message === 'System Challenge rejected every System') ? error.message :
+                        provider.kind === 'gemini' ? geminiAnalysisError(error).message : 'Provider request failed. Retry the failed stage.';
+                    this.analysisRun = { ...this.analysisRun, status: 'failed', attempts: this.synthesisCache.attempts(),
+                        failure: { stage: this.analysisRun.current?.stage ?? 'system-discovery',
+                            subject: this.analysisRun.current?.subject, message,
+                            providerKind: provider.kind, modelLabel: capability?.modelLabel ?? 'unknown' } };
+                    await writeSynthesisRun(root, this.analysisRun, () => this.still(projectHandle, root, run));
+                }
                 emit({ stage: 'failed', status: 'failed', elapsedMs: 0,
-                    message: `Analysis failed during ${currentStage.replaceAll('-', ' ')}. Review setup and retry.`,
-                    subject: currentStage });
+                    message: this.analysisRun?.failure?.message ?? `Analysis failed during ${currentStage.replaceAll('-', ' ')}.`,
+                    subject: this.analysisRun?.failure?.subject ?? currentStage });
             }
             throw provider.kind === 'gemini' && this.run === run ? geminiAnalysisError(error) : error;
         }
@@ -345,7 +434,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
         return { uri: pathToFileURL(canonical).href, path };
     }
     async cancelInitialization(projectHandle: string): Promise<void> {
-        this.active(projectHandle);
+        const root = this.active(projectHandle);
         if (this.phase === 'analyzing') this.client.notifySoftwareMapAnalysisProgress?.(projectHandle,
             parseAnalysisProgressEvent({ stage: 'cancelled', status: 'cancelled', elapsedMs: Math.max(0, Math.floor(performance.now() - (this.analysisStarted ?? performance.now()))),
                 message: 'Analysis cancelled' }));
@@ -353,6 +442,10 @@ export class SoftwareMapBackend implements SoftwareMapService {
         this.analysisStarted = undefined;
         this.phase = undefined;
         this.pending = undefined;
+        this.analysisRun = undefined;
+        this.synthesisCache.onCheckpoint = undefined;
+        this.synthesisCache.onStageStart = undefined;
+        await clearSynthesisRun(root);
     }
     private declaration(draft: ArchitectureReviewNode[]): ArchitectureDeclaration {
         if (!Array.isArray(draft) || !draft.length) throw new Error('Invalid architecture review draft');
@@ -382,6 +475,8 @@ export class SoftwareMapBackend implements SoftwareMapService {
         this.initialized = true;
         this.phase = undefined;
         this.pending = undefined;
+        this.analysisRun = undefined;
+        await clearSynthesisRun(root);
         return this.index.analyze(root);
     }
     async acceptExisting(projectHandle: string, expectedFingerprint: string) {

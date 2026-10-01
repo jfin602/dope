@@ -2,6 +2,7 @@ import { BaseWidget, codicon, Message } from '@theia/core/lib/browser/widgets/wi
 import { OpenerService, open } from '@theia/core/lib/browser';
 import URI from '@theia/core/lib/common/uri';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
+import { suggestArchitectureId } from '@dope/software-map';
 import type { ArchitectureReviewNode } from '@dope/software-map';
 import { SoftwareMapController } from './software-map-controller';
 import './dope.css';
@@ -141,9 +142,10 @@ export class SoftwareMapReviewWidget extends BaseWidget {
             this.controller.review!.proposal.nodes.find(item => item.proposalKey === node.proposalKey);
         target.append(this.element('h3', `${node.kind}: ${node.name || '(unnamed)'}`));
         const edit = (key: 'name' | 'purpose') => this.field(key === 'name' ? 'Name' : 'Purpose / responsibility', node[key], value => {
-            const oldSuggestedId = key === 'name' ? this.suggestId(node.name, node) : '';
+            const otherIds = this.controller.draft.filter(item => item !== node).map(item => item.id);
+            const oldSuggestedId = key === 'name' ? suggestArchitectureId(node.name, otherIds) : '';
             node[key] = value;
-            if (key === 'name' && (!node.id || node.id === oldSuggestedId)) node.id = this.suggestId(value, node);
+            if (key === 'name' && (!node.id || node.id === oldSuggestedId)) node.id = suggestArchitectureId(value, otherIds);
             this.controller.draftChanged();
         }, key === 'purpose');
         target.append(edit('name'), edit('purpose'));
@@ -217,13 +219,6 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         if (node.kind !== 'component') target.append(this.button(`Add ${node.kind === 'system' ? 'Subsystem' : 'Component'}`, () =>
             this.add(node.kind === 'system' ? 'subsystem' : 'component', node.proposalKey)));
         target.append(this.button(`Remove ${node.kind} and descendants`, () => { this.controller.remove(node.proposalKey); }));
-    }
-    private suggestId(name: string, node: ArchitectureReviewNode): string {
-        const base = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-        if (!base) return '';
-        let id = base, suffix = 2;
-        while (this.controller.draft.some(item => item !== node && item.id === id)) id = `${base}-${suffix++}`;
-        return id;
     }
     private add(kind: ArchitectureReviewNode['kind'], parent: string | null = null): void {
         this.controller.add(kind, parent);

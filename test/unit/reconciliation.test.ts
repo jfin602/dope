@@ -67,7 +67,7 @@ test('challenged Subsystem peers expose direct ownership and dependency conflict
     [{ systemKey: 'candidate:a', nodes: [first, separated] }]).some(f => f.code === 'cross-subsystem-dependency'));
 });
 
-test('stage reuse requires exact packet, view, scope, prompt and provider identity', async () => {
+test('stage reuse requires exact packet, view, scope and prompt while retaining provider provenance', async () => {
   const cache = new SynthesisStageCache();
   let calls = 0;
   const provider = { kind: 'local', runStage: async (req: SynthesisStageRequest) => { calls++; return executed(req, { systems: [system('a', 'a')] }); } } as SynthesisProvider;
@@ -85,7 +85,7 @@ test('stage reuse requires exact packet, view, scope, prompt and provider identi
   assert.equal(calls, 1);
   assert.equal(cache.attempts().length, 1);
   assert.notEqual(stageWorkIdentity(first, 'provider/model', 1), stageWorkIdentity(first, 'provider/model', 2));
-  assert.notEqual(stageWorkIdentity(first, 'provider/model', 1), stageWorkIdentity(first, 'other/model', 1));
+  assert.equal(stageWorkIdentity(first, 'provider/model', 1), stageWorkIdentity(first, 'other/model', 1));
   assert.notEqual(stageWorkIdentity(first, 'provider/model', 1), stageWorkIdentity({ ...first,
     view: createArchitectureEvidenceView(packet, ['a']) }, 'provider/model', 1));
   assert.notEqual(stageWorkIdentity(first, 'provider/model', 1), stageWorkIdentity({ ...first,
@@ -98,6 +98,70 @@ test('stage reuse requires exact packet, view, scope, prompt and provider identi
   await cache.run(first, packet, { ...provider }, 'provider/model', 1);
   assert.equal(calls, 5);
   await assert.rejects(cache.run(first, changedPacket, provider, 'provider/model', 1), /identity|packet/);
+});
+
+test('branch input and contract identities invalidate descendants without changing a sibling', () => {
+  const a = { ...request('subsystem-discovery'), context: { ...context, systems: [systems[0]],
+    subjectSystemKey: 'candidate:a' } } as SynthesisStageRequest;
+  const b = { ...request('subsystem-discovery'), context: { ...context, systems: [systems[1]],
+    subjectSystemKey: 'candidate:b' } } as SynthesisStageRequest;
+  const changedA = { ...a, context: { ...a.context, systems: [{ ...systems[0], responsibility: 'changed responsibility' }] } };
+  const descendant = { ...request('component-discovery'), context: { ...a.context,
+    subsystems: [tree('candidate:a', 'a').nodes[0]], subjectSubsystemKey: 'candidate:a.sub' } } as SynthesisStageRequest;
+  const changedDescendant = { ...descendant, context: { ...descendant.context, systems: changedA.context.systems } };
+  assert.notEqual(stageWorkIdentity(a, 'model'), stageWorkIdentity(changedA, 'model'));
+  assert.notEqual(stageWorkIdentity(descendant, 'model'), stageWorkIdentity(changedDescendant, 'model'));
+  assert.equal(stageWorkIdentity(b, 'model'), stageWorkIdentity(b, 'other-model'));
+  assert.notEqual(stageWorkIdentity(b, 'model', 6), stageWorkIdentity(b, 'model', 7));
+});
+
+test('a changed branch input or prompt contract reruns only that branch', async () => {
+  const cache = new SynthesisStageCache();
+  const calls: string[] = [];
+  const provider = { kind: 'local', runStage: async (req: SynthesisStageRequest) => {
+    calls.push(req.context.subjectSystemKey!);
+    return executed(req, req.stage === 'subsystem-challenge' ?
+      { systemKey: req.context.subjectSystemKey, decisions: [] } :
+      { systemKey: req.context.subjectSystemKey, subsystems: [] });
+  } } as SynthesisProvider;
+  const branch = (candidate: SystemCandidate): SynthesisStageRequest => ({ ...request('subsystem-discovery'),
+    context: { ...context, systems: [candidate], subjectSystemKey: candidate.candidateKey } });
+  const a = branch(systems[0]), b = branch(systems[1]);
+  const child = { ...a, stage: 'subsystem-challenge' as const };
+  await cache.run(a, packet, provider, 'model');
+  await cache.run(child, packet, provider, 'model');
+  await cache.run(b, packet, provider, 'model');
+  await cache.run(branch({ ...systems[0], responsibility: 'changed responsibility' }), packet, provider, 'model');
+  assert.equal(cache.checkpoints().some(item => item.request.stage === 'subsystem-challenge'), false);
+  assert.equal(cache.checkpoints().some(item => item.request.context.subjectSystemKey === 'candidate:b'), true);
+  await cache.run(b, packet, provider, 'model');
+  await cache.run(a, packet, provider, 'model', 7);
+  await cache.run(b, packet, provider, 'model');
+  assert.deepEqual(calls, ['candidate:a', 'candidate:a', 'candidate:b', 'candidate:a', 'candidate:a']);
+  const restored = new SynthesisStageCache();
+  const obsolete = cache.checkpoints().map(item => item.request.context.subjectSystemKey === 'candidate:a' ?
+    { ...item, promptVersion: 5 } : item);
+  restored.restore(obsolete, cache.attempts(), packet);
+  assert.deepEqual(restored.checkpoints().map(item => item.request.context.subjectSystemKey), ['candidate:b']);
+});
+
+test('recomputing System challenge keeps its successful discovery ancestor', async () => {
+  const cache = new SynthesisStageCache();
+  const calls: string[] = [];
+  const provider = { kind: 'local', runStage: async (req: SynthesisStageRequest) => {
+    calls.push(req.stage);
+    return executed(req, req.stage === 'system-discovery' ? { systems: [systems[0]] } :
+      { decisions: [{ action: 'keep', sourceKeys: ['candidate:a'], systems: req.context.systems,
+        evidenceRefs: ['a'] }] });
+  } } as SynthesisProvider;
+  const discovery = request('system-discovery');
+  const challenge = { ...request('system-challenge'), context: { ...context, systems: [systems[0]] } };
+  await cache.run(discovery, packet, provider, 'model');
+  await cache.run(challenge, packet, provider, 'model');
+  await cache.run({ ...challenge, context: { ...challenge.context,
+    systems: [{ ...systems[0], responsibility: 'changed responsibility' }] } }, packet, provider, 'model');
+  assert.deepEqual(calls, ['system-discovery', 'system-challenge', 'system-challenge']);
+  assert.equal(cache.checkpoints().some(item => item.request.stage === 'system-discovery'), true);
 });
 
 test('targeted verification view remains small over a larger complete packet', async () => {

@@ -164,7 +164,7 @@ export class SoftwareMapWidget extends BaseWidget {
         probe.disabled = model.setupBusy || !model.model;
         local.append(probe, this.element('p', model.providerKind === 'local' && model.setupReady ? 'Structured-output probe passed. Model ready.' :
             model.setupBusy ? 'Checking local model…' : 'Run the probe before analysis.'));
-        const start = this.button('Analyze with Local', () => void model.synthesize('local'));
+        const start = this.button(model.initialization?.resumable ? 'Restart analysis with Local' : 'Analyze with Local', () => void model.synthesize('local'));
         start.disabled = model.providerKind !== 'local' || !model.setupReady || model.setupBusy;
         local.append(start);
         const gemini = this.element('details');
@@ -194,23 +194,35 @@ export class SoftwareMapWidget extends BaseWidget {
         geminiProbe.disabled = model.setupBusy || !model.geminiModel || !model.geminiModels.includes(model.geminiModel);
         gemini.append(geminiProbe, this.element('p', model.providerKind === 'gemini' && model.setupReady ?
             `${model.geminiModel} ready.` : model.geminiModel ? `${model.geminiModel} requires a successful test.` : 'Discover models before analysis.'));
-        const geminiStart = this.button(`Analyze Project with ${model.geminiModel || 'Gemini'}`, () => void model.synthesize('gemini'));
+        const geminiStart = this.button(model.initialization?.resumable ? 'Restart analysis with Gemini' :
+            `Analyze Project with ${model.geminiModel || 'Gemini'}`, () => void model.synthesize('gemini'));
         geminiStart.disabled = model.providerKind !== 'gemini' || !model.setupReady || model.setupBusy;
         gemini.append(geminiStart);
+        if (model.initialization?.resumable) {
+            const retry = this.button('Retry failed stage', () => void model.synthesize(model.providerKind, true));
+            retry.disabled = !model.setupReady || model.setupBusy;
+            this.controls.append(this.element('p', `Failed: ${model.initialization.resumable.failedStage ?? 'interrupted stage'}` +
+                (model.initialization.resumable.failedSubject ? ` · ${model.initialization.resumable.failedSubject}` : '')),
+            this.element('p', model.initialization.resumable.message),
+            ...(model.initialization.resumable.failedProviderKind && model.initialization.resumable.failedModelLabel ?
+                [this.element('p', `${model.initialization.resumable.failedProviderKind} · ${model.initialization.resumable.failedModelLabel}`)] : []), retry);
+        }
         const cancel = this.button('Cancel', () => void model.cancel());
         this.controls.append(local, gemini, cancel);
-        if (model.progressEvents.length) this.renderProgress();
+        if (model.progressEvents.length || model.initialization?.resumable) this.renderProgress();
     }
     private renderProgress(): void {
         const events = this.controller.progressEvents;
         const current = events.at(-1);
         const work = current && ['failed', 'cancelled'].includes(current.stage) ?
             [...events].reverse().find(event => !['failed', 'cancelled', 'completed'].includes(event.stage)) ?? current : current;
-        const completed = new Set(events.filter(event => event.status === 'completed').map(event => event.stage));
-        const active = work?.stage;
+        const saved = this.controller.initialization?.resumable;
+        const completed = new Set([...events.filter(event => event.status === 'completed').map(event => event.stage),
+            ...(saved?.completed.map(item => item.stage) ?? [])]);
+        const active = work?.stage ?? saved?.failedStage;
         const report = this.element('section');
         report.className = 'dope-smap-progress';
-        report.append(this.element('h3', current?.status === 'failed' ? 'Analysis failed' :
+        report.append(this.element('h3', current?.status === 'failed' || this.controller.initialization?.state === 'failed' ? 'Analysis failed' :
             current?.status === 'cancelled' ? 'Analysis cancelled' : 'Analyzing project'));
         this.progressClock.textContent = `Elapsed analysis: ${Math.floor(this.controller.analysisElapsedMs() / 1000)}s`;
         report.append(this.progressClock);
@@ -241,11 +253,18 @@ export class SoftwareMapWidget extends BaseWidget {
         }
         const stages = this.element('ol');
         for (const item of analysisStages) {
-            const state = completed.has(item.stage) ? 'Complete' : active === item.stage ?
-                current?.status === 'failed' ? 'Failed' : current?.status === 'cancelled' ? 'Cancelled' : 'Current' : 'Queued';
+            const state = active === item.stage && (current?.status === 'failed' || this.controller.initialization?.state === 'failed') ? 'Failed' :
+                completed.has(item.stage) ? 'Complete' : active === item.stage ?
+                    current?.status === 'cancelled' ? 'Cancelled' : 'Current' : 'Queued';
             stages.append(this.element('li', `${state}: ${item.title}`));
         }
         report.append(stages);
+        if (saved?.completed.length) {
+            const branches = this.element('ul');
+            for (const item of saved.completed) branches.append(this.element('li',
+                `Complete: ${item.stage}${item.subject ? ` · ${item.subject}` : ''} · ${item.providerKind} / ${item.modelLabel}`));
+            report.append(branches);
+        }
         this.controls.append(report);
     }
     private renderReview(): void {

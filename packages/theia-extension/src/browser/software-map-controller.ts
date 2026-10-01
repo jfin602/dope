@@ -1,4 +1,4 @@
-import { parseArchitecture, parseAnalysisProgressEvent, branchFingerprint, targetBranch } from '@dope/software-map';
+import { parseArchitecture, parseAnalysisProgressEvent, branchFingerprint, targetBranch, suggestArchitectureId } from '@dope/software-map';
 import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
 
 export type SoftwareMapConnection = SoftwareMapService & { setClient(client: SoftwareMapClient | undefined): void };
@@ -189,6 +189,7 @@ export class SoftwareMapController {
                 if (review) { this.review = review; this.draft = structuredClone(review.draft); this.flow = 'review'; }
             }
             if (this.initialization.state === 'uninitialized' && !declinedThisSession.has(workspace)) this.flow = 'offer';
+            if (this.initialization.state === 'failed') await this.setup();
             this.notify();
         } catch (error) {
             if (!this.disposed && project === this.project) { this.error = String(error); this.loading = false; this.notify(); }
@@ -373,7 +374,7 @@ export class SoftwareMapController {
             if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
         }
     }
-    async synthesize(kind: SynthesisSetup['kind'] = this.providerKind): Promise<void> {
+    async synthesize(kind: SynthesisSetup['kind'] = this.providerKind, retry = false): Promise<void> {
         if (kind !== this.providerKind || !this.setupReady || !this.connection || !this.handle) return;
         const project = this.project;
         const request = ++this.setupRequest;
@@ -388,18 +389,19 @@ export class SoftwareMapController {
         this.error = '';
         this.notify();
         try {
-            const review = await this.connection.startInitialization(this.handle);
+            const review = retry ? await this.connection.retryFailedStage(this.handle) :
+                await this.connection.startInitialization(this.handle);
             if (project !== this.project || request !== this.setupRequest) return;
             this.reviewElapsedMs = Date.now() - this.analysisStartedAt!;
             this.review = review;
             this.draft = structuredClone(review.draft);
-            if (this.initialization) this.initialization = { ...this.initialization, state: 'review_required' };
+            if (this.initialization) this.initialization = { ...this.initialization, state: 'review_required', resumable: undefined };
             this.flow = 'review';
             this.notify();
         } catch (error) {
             if (project === this.project && request === this.setupRequest) {
                 this.review = undefined; this.draft = [];
-                if (this.initialization) this.initialization = { ...this.initialization, state: 'uninitialized' };
+                this.initialization = await this.connection.initializationStatus(this.handle);
                 try { this.setupReady = await this.connection.synthesisReady(this.handle); }
                 catch { this.setupReady = false; }
                 if (project !== this.project || request !== this.setupRequest) return;
@@ -467,15 +469,18 @@ export class SoftwareMapController {
         const omittedAnchor = preview.targetKind === 'subsystem' ? preview.proposal.nodes.find(node => node.kind === 'system')?.proposalKey : undefined;
         const replacements = preview.proposal.nodes.filter(node => node.proposalKey !== omittedAnchor);
         const keys = new Map(replacements.map(node => [node.proposalKey, `draft:${++this.nextKey}`]));
+        const removed = new Set(targetBranch(this.draft, preview.targetKey).map(node => node.proposalKey));
+        const usedIds = new Set(this.draft.filter(node => !removed.has(node.proposalKey)).map(node => node.id));
         const replacementNodes: ArchitectureReviewNode[] = replacements.map(node => {
             const roots = [...new Set(node.evidenceRefs.flatMap(ref => {
                 const item = this.review!.packet.items.find(fact => fact.id === ref);
                 return item?.kind === 'configuration' ? item.sourcePaths ?? [] : item ? [item.path] : [];
             }))].sort();
-            return { proposalKey: keys.get(node.proposalKey)!, kind: node.kind, id: '', name: node.name, purpose: node.purpose,
+            const id = suggestArchitectureId(node.name, usedIds);
+            usedIds.add(id);
+            return { proposalKey: keys.get(node.proposalKey)!, kind: node.kind, id, name: node.name, purpose: node.purpose,
                 parentProposalKey: node.parentProposalKey === null || node.parentProposalKey === omittedAnchor ? preview.parentKey : keys.get(node.parentProposalKey)!, roots };
         });
-        const removed = new Set(targetBranch(this.draft, preview.targetKey).map(node => node.proposalKey));
         for (const key of removed) this.refinedEvidence.delete(key);
         for (const node of replacements) this.refinedEvidence.set(keys.get(node.proposalKey)!, node);
         this.draft = [...this.draft.filter(node => !removed.has(node.proposalKey)), ...replacementNodes];

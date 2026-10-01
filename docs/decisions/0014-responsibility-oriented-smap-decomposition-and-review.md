@@ -239,4 +239,6 @@ Mandatory next correction:
 
 Storage is intentionally narrow. Existing `.dope/architecture.json` and `.dope/smap.json` contracts should be proven/repaired rather than replaced. Rebuildable evidence packets, Physical Map snapshots/indexes, review drafts, coverage ledgers, provider attempts/caches and targeted-refinement previews remain transient unless a concrete defect requires project persistence.
 
+The one-off failed-stage-resume correction is that concrete defect. An active/failed initialization run now keeps its pinned evidence packet, validated stage checkpoints, safe failure details and per-stage provider/model provenance in project-local versioned `.dope/` storage. Pending review may retain those same checkpoints until acceptance or decline. Retry replaces only failed branch work and its dependents; Search Deeper continues to preview and accept only the selected edited review branch, preserving unrelated edits. Neither mechanism changes canonical architecture without developer acceptance. Historical owner-close evidence above remains Not Qualified; this correction stays open for new browser qualification.
+
 Storage Green routes directly to a fresh Product Phase 5 `/docs-review`.

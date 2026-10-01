@@ -27,11 +27,19 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
+<<<<<<< HEAD
 Product Phase 5 — Visual Software Planning is ACTIVE from baseline `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved core scope. Architecture-discovery follow-ons remain historical evidence; the provider comparison is deferred. `c4-smap-storage` and `c4-color-theme` are GREEN / QUALIFIED at unchanged `0.4.6`.
+=======
+Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved scope. Architecture-discovery follow-ons retain their historical evidence; the provider comparison is deferred. `c4-smap-storage` is GREEN / QUALIFIED at `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`. The bounded `c4-color-theme` gate remains open at unchanged `0.4.6`. The explicit one-off durable-stage-resume request also reopens `c4-synth-coverage-review` without relabeling its historical evidence Green. Phase 5 remains inactive until both gates are disposed and a fresh `/docs-review` occurs.
+>>>>>>> 542eba2 (fixed system ids)
 
 ADR 0008 remains the Software Map terminology/workbench-placement authority. ADR 0009 as amended by ADR 0010/0011/0012 requires deterministic, source-backed architecture evidence and hierarchy-first bounded synthesis. ADR 0017 owns the Phase 5 planning boundary: Planning Maps reference canonical/physical identities, express explicit target transformations, derive bounded WorkItems, require explicit target adoption, detect stale bases, and reconcile fresh Physical Map reality after implementation.
 
+<<<<<<< HEAD
 Phase 5 may add center-workspace Physical Map and Planning Map canvases, graph-native planning state, project-local Planning Map persistence, explicit target adoption/rebase and deterministic reconciliation. It must not resurrect Phase 3 `Plan -> PlanStep -> Task`, reuse `.dope/planning.json`, turn diagram layout into architectural truth, or pull Phase 6 AI Presence, Agent Mind, ProposedAction, tool authority or delegation forward.
+=======
+The current color-theme correction may modify Theia presentation/theme registration, application default-theme configuration, Dope presentation CSS tokens and focused presentation tests. It must not modify project/domain state, Software Map semantics, layout/workflow behavior or Phase 5 planning. Prefer one first-class Dope Dark theme and semantic token consumption over widget-specific hard-coded colors. Explicit user theme choice must remain supported and must disable Dope Dark overrides when another theme is active. Separately, the explicit one-off durable-stage-resume request reopens `c4-synth-coverage-review` for bounded sMap orchestration, project-local run checkpoints, retry/restart UI, and focused tests at unchanged `0.4.6`; it does not qualify that correction or activate Phase 5.
+>>>>>>> 542eba2 (fixed system ids)
 
 Only the narrow provider-independent sMap synthesis boundary and reference adapters already authorized by ADR 0010/0011/0013 remain valid before Phase 6. Phase 5 visual planning itself must remain fully useful with no model configured.
 

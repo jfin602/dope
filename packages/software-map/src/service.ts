@@ -35,11 +35,14 @@ export interface SoftwareMapClient {
     notifySoftwareMapAnalysisProgress?(projectHandle: string, event: AnalysisProgressEvent): void;
 }
 export interface SoftwareMapInitializationStatus {
-    state: 'uninitialized' | 'analyzing' | 'review_required' | 'initialized';
+    state: 'uninitialized' | 'analyzing' | 'failed' | 'review_required' | 'initialized';
     declarationPresent: boolean;
     /** Hash of the exact declaration bytes, or the absent-file sentinel. Supply it on manual acceptance. */
     declarationFingerprint: string;
     bootstrap?: { modules: boolean; readme: boolean };
+    resumable?: { runId: string; failedStage?: string; failedSubject?: string;
+        failedProviderKind?: 'local' | 'gemini'; failedModelLabel?: string; message: string;
+        completed: { stage: string; subject?: string; providerKind: 'local' | 'gemini'; modelLabel: string }[] };
 }
 export interface ArchitectureReviewNode {
     proposalKey: string;
@@ -73,6 +76,7 @@ export interface SoftwareMapService {
     synthesisAttempts(projectHandle: string): Promise<SynthesisCallAttempt[]>;
     initializationStatus(projectHandle: string): Promise<SoftwareMapInitializationStatus>;
     startInitialization(projectHandle: string): Promise<ArchitectureReview>;
+    retryFailedStage(projectHandle: string): Promise<ArchitectureReview>;
     review(projectHandle: string): Promise<ArchitectureReview | undefined>;
     searchDeeper(projectHandle: string, input: TargetedRefinementInput): Promise<TargetedRefinementResult>;
     resolveReviewSource(projectHandle: string, reviewId: string, evidenceRef: string): Promise<SoftwareMapSourceLocation | undefined>;
