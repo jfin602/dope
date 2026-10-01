@@ -33,7 +33,7 @@ test('both applications carry the required IDE composition', () => {
     for (const name of required) assert.equal(value.dependencies[`@theia/${name}`], '1.75.0', `${path}: ${name}`);
     assert.equal(value.dependencies['@dope/theia-extension'], '0.4.6');
     assert.equal(value.theia.frontend.config.applicationName, 'Dope');
-    assert.equal(value.theia.frontend.config.defaultTheme, 'dark');
+    assert.equal(value.theia.frontend.config.defaultTheme, 'dope-dark');
     assert.equal(value.theia.frontend.config.preferences['jestrunner.enableTestExplorer'], true);
   }
   assert.equal(manifests[1].value.theia.target, 'browser');

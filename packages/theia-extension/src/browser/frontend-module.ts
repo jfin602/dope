@@ -10,6 +10,9 @@ import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { OpenerService } from '@theia/core/lib/browser';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
+import { ThemeService } from '@theia/core/lib/browser/theming';
+import { dopeDarkTheme } from './dope-theme';
+import './dope.css';
 import { DopeWindowTitleService, ProjectMindView, ProjectMindWidget, PROJECT_MIND_ID } from './dope-workbench';
 import { SoftwareMapService, softwareMapServicePath } from '@dope/software-map';
 import type { SoftwareMapClient } from '@dope/software-map';
@@ -18,6 +21,9 @@ import { SoftwareMapController } from './software-map-controller';
 import { SoftwareMapReviewWidget, SOFTWARE_MAP_REVIEW_ID } from './software-map-review-widget';
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
+    bind(FrontendApplicationContribution).toDynamicValue(context => ({
+        initialize: () => context.container.get(ThemeService).register(dopeDarkTheme),
+    })).inSingletonScope();
     bindViewContribution(bind, ProjectMindView);
     bindViewContribution(bind, SoftwareMapView);
     bind(FrontendApplicationContribution).toService(SoftwareMapView);

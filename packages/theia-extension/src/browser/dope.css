@@ -71,3 +71,40 @@
 .dope-smap-review-layout section { min-width: 0; margin: 0; padding: 0 8px; border: 0; }
 .dope-smap-review-actions { border-top: 1px solid var(--theia-widget-border, var(--theia-input-border)); margin-top: 20px; padding-top: 12px; }
 @media (max-width: 700px) { .dope-smap-review-layout { grid-template-columns: 1fr; } .dope-smap-review-layout nav { border-right: 0; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); } }
+.dope-dark {
+    --dope-background: #1F1F1F;
+    --dope-primary: #FF7A1A;
+    --dope-highlight: #FFB15C;
+    --dope-deep: #C75100;
+
+    --theia-editor-background: var(--dope-background);
+    --theia-focusBorder: var(--dope-primary);
+    --theia-button-background: var(--dope-primary);
+    --theia-button-foreground: var(--dope-background);
+    --theia-button-hoverBackground: var(--dope-highlight);
+    --theia-button-separator: var(--dope-deep);
+    --theia-textLink-foreground: var(--dope-highlight);
+    --theia-textLink-activeForeground: var(--dope-primary);
+    --theia-activityBar-foreground: var(--dope-primary);
+    --theia-activityBar-activeBorder: var(--dope-primary);
+    --theia-activityBarBadge-background: var(--dope-primary);
+    --theia-activityBarBadge-foreground: var(--dope-background);
+    --theia-tab-activeBorderTop: var(--dope-primary);
+    --theia-tab-activeBorder: var(--dope-primary);
+    --theia-list-activeSelectionBackground: color-mix(in srgb, var(--dope-primary) 35%, var(--dope-background));
+    --theia-list-activeSelectionForeground: var(--theia-foreground);
+    --theia-list-focusOutline: var(--dope-primary);
+    --theia-editor-selectionBackground: color-mix(in srgb, var(--dope-primary) 35%, transparent);
+    --theia-editor-inactiveSelectionBackground: color-mix(in srgb, var(--dope-primary) 20%, transparent);
+    --theia-editor-findMatchHighlightBackground: color-mix(in srgb, var(--dope-highlight) 30%, transparent);
+    --theia-badge-background: var(--dope-primary);
+    --theia-badge-foreground: var(--dope-background);
+    --theia-progressBar-background: var(--dope-primary);
+}
+
+.dope-dark .theia-button:active,
+.dope-dark .dope-mind-view button:active,
+.dope-dark .dope-smap-view button:active {
+    background: var(--dope-deep);
+    color: var(--dope-background);
+}
