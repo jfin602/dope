@@ -1,0 +1,84 @@
+TASK: Phase 5 / P12 — Visual planning closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.5.12`.
+
+GOAL
+
+Perform an evidence-only Product Phase 5 closeout from the exact P11 qualified candidate. Do not repair product behavior and do not create Phase 6 implementation prompts.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, all current Phase 5 authority, exact reachable P1-P11 commits/results, P11 direct evidence, current manifests/tests, Phase 4 closeout/correction history and inherited Phase 1/2 gaps.
+
+Require coherent `0.5.11` predecessor and an exact P11 evidence record. A version subject alone is not qualification evidence.
+
+Advance root/apps/all live internal package versions/internal refs coherently to `0.5.12`.
+
+AUDIT
+
+Assess Green / Not Green / Evidence Gap for:
+
+A. Domain truth — PlanningMap/PlannedTransformation/WorkItem contracts, lifecycle, branching/conflicts and no Phase 3/provider leakage.
+
+B. Persistence/service — project-local `.dope/planning-maps.json`, revision/locking, corrupt/future safety, root containment, restart/copy and project isolation.
+
+C. Physical Map canvas — Systems+immediate-Subsystem default, visual grammar, semantic theme behavior and physical truth remaining read-only.
+
+D. Navigation/tabs — Focus/Up/Fit, semantic zoom, focused System/Subsystem/Component tabs, shared identity and source round-trip.
+
+E. Planning Map — overlay Current/Target/Diff, multiple maps/alternatives/conflicts and typed direct transformations/preview/undo.
+
+F. WorkItems — deterministic suggestions, explicit developer acceptance/reshape, dependencies, bidirectional map linkage and completion separation.
+
+G. Adopt Target — bounded scopes, canonical diff/dependency checks, safe canonical writer, partial adopted-vs-planned state and no false physical realization.
+
+H. Stale/rebase — localized stale state, explicit three-way rebase, conflict handling, already/differently realized states and no silent rebase.
+
+I. Reconciliation/closeout — fresh physical basis, four outcome classes, preserved target history, accepted divergence/defer/abandon and explicit developer-only completion.
+
+J. Direct Dope-on-Dope — real GUI A-I matrix, ordinary manual implementation path, alternate theme/keyboard observations and no AI execution dependency.
+
+K. Regression/release — Project Mind/sMap/ordinary IDE preserved, exact P11 restart/build/package/native evidence, Theia 1.75.0/Electron 42.8.1/React 19.2.8 coherence and no Phase 6 scope leakage.
+
+Preserve every historical failure/Evidence Gap; do not rewrite earlier Phase 4 synthesis corrections as Green.
+
+RERUN
+
+Because P11 owns broad T3 evidence, do not blindly repeat all expensive evidence.
+
+Run:
+- focused P5 domain/storage/UI tests needed to prove the `0.5.12` version-only/coherence transition did not break composition;
+- affected typecheck/build as required by version reference changes;
+- `npm run codex:phase:validate -- p5`;
+- no-root-lock/version/Theia/Electron/React/canvas-dependency coherence;
+- `git diff --check`.
+
+Repeat broader restart/package/native/direct GUI evidence only if the closeout/version transition or an observed failure invalidated P11 evidence.
+
+Do not repair failures during closeout.
+
+OUTPUT
+
+Create `docs/tasks/p5/closeout.md` with:
+- activation and exact P1-P11 candidate identities;
+- A-K decision table;
+- exact domain/persistence/visual/editing/WorkItem/adoption/rebase/reconciliation evidence;
+- P11 direct matrix and package/native result;
+- retained historical evidence;
+- residual gaps;
+- Qualified / Not Qualified decision.
+
+Update `docs/tasks/p5/README.md` truthfully.
+
+If Qualified, route to a fresh Product Phase 6 `/docs-review`. Do not create Phase 6 prompts or claim AI implementation exists.
+
+If Not Qualified, preserve blockers and route to a bounded Phase 5 correction.
+
+FINAL RESPONSE
+
+Report exact A-K decision, Phase 5 usefulness as a provider-free visual workflow, qualification evidence, residual gaps, docs updated and next action.
