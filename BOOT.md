@@ -236,18 +236,16 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Product Phase 5 documentation authority and the ten visual-workflow decisions are locked.
+The Product Phase 5 documentation review, authority promotion, prompt assessment, implementation plan and executable `p5` stack are complete.
 
-Next execute the normal implementation-planning workflow against the active `0.5.0` baseline:
+Validate the stack:
 
-```text
-/prompt-ass
--> /prompt-plan
--> /prompt-write p5
--> npm run codex:phase:validate -- p5
--> npm run codex:phase -- p5 --closeout
-```
+`npm run codex:phase:validate -- p5`
 
-Phase 5 remains focused on the provider-free visual workflow: Physical Map visualization, Planning Map target editing, graph-derived WorkItems, bounded target adoption, stale/rebase handling, implementation through ordinary IDE surfaces, deterministic re-analysis and reconciliation.
+Then execute implementation routing:
 
-Do not pull general AI Presence, Agent Mind, ProposedAction, mutation authority or scoped delegation into the Phase 5 implementation stack.
+`npm run codex:phase -- p5 --closeout`
+
+Expected sequence is `0.5.1` through `0.5.12`. P1-P10 are runner-owned implementation/integration prompts. P11 is browser-required direct Dope-on-Dope qualification and must use the real Theia GUI. P12 is the sole evidence-only closeout.
+
+Phase 5 remains focused on the provider-free visual workflow. Do not pull general AI Presence, Agent Mind, ProposedAction, model-driven implementation, mutation authority or scoped delegation into this stack.
