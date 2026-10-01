@@ -4,6 +4,7 @@ import { acceptSuggestion } from '@dope/visual-planning/lib/work';
 import type { PlannedTransformation } from '@dope/visual-planning';
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
 import type { PlanningCollection, PlanningOperation, VisualPlanningService } from '@dope/visual-planning/lib/service';
+import type { AdoptionPreview, AdoptionScope } from '@dope/visual-planning/lib/adoption';
 import type { SoftwareMapController } from './software-map-controller';
 import type { PlanningView } from './planning-map-projection';
 
@@ -31,6 +32,7 @@ export class PlanningMapController {
     loading = false;
     error = '';
     preview?: { transformation: PlannedTransformation; mapId: string; collectionRevision: number; mapRevision: number; basis: PlanningMap['basis'] };
+    adoptionPreview?: { result: AdoptionPreview; mapId: string; collectionRevision: number; mapRevision: number; basis: PlanningMap['basis'] };
 
     constructor(private readonly map: SoftwareMapController, private readonly connect: () => VisualPlanningService) {
         this.mapListener = map.onChange(() => { if (this.workspace !== map.workspace) void this.attach(); });
@@ -54,7 +56,7 @@ export class PlanningMapController {
         if (!value && this.selected && !this.visibleMaps.includes(this.selected)) this.selectedMapId = this.visibleMaps[0]?.id;
         this.notify();
     }
-    select(id: string): void { if (this.collection?.maps.some(map => map.id === id)) { this.preview = undefined; this.selectedMapId = id;
+    select(id: string): void { if (this.collection?.maps.some(map => map.id === id)) { this.preview = undefined; this.adoptionPreview = undefined; this.selectedMapId = id;
         this.selectedWorkItemId = undefined; this.selectedTransformationId = undefined; this.suggestions = undefined; this.notify(); } }
     get selectedWorkItem(): WorkItem | undefined { return this.selected?.workItems.find(item => item.id === this.selectedWorkItemId); }
     requestSuggestions(): void { this.suggestions = this.selected ? suggestWorkItems(this.selected) : [];
@@ -120,6 +122,41 @@ export class PlanningMapController {
         finally { if (request === this.request && !this.disposed) { this.loading = false; this.notify(); } }
     }
     cancelEdit(): void { this.preview = undefined; this.notify(); }
+    async beginAdoption(scope: AdoptionScope): Promise<void> {
+        const connection = this.connection, handle = this.handle, collection = this.collection, map = this.selected;
+        const workspace = this.workspace, request = ++this.request;
+        this.adoptionPreview = undefined;
+        if (!connection || !handle || !collection || !map || !workspace || this.map.workspace !== workspace) return;
+        this.loading = true; this.error = ''; this.notify();
+        try {
+            const result = await connection.previewAdoption({ projectHandle: handle, mapId: map.id,
+                expectedRevision: collection.revision, expectedMapRevision: map.revision, expectedBasis: map.basis, scope });
+            if (request !== this.request || this.disposed || this.map.workspace !== workspace) return;
+            this.adoptionPreview = { result, mapId: map.id, collectionRevision: collection.revision, mapRevision: map.revision, basis: map.basis };
+        } catch (error) { if (request === this.request && !this.disposed) this.error = String(error); }
+        finally { if (request === this.request && !this.disposed) { this.loading = false; this.notify(); } }
+    }
+    cancelAdoption(): void { this.adoptionPreview = undefined; this.notify(); }
+    async acceptAdoption(): Promise<void> {
+        const preview = this.adoptionPreview, map = this.selected, collection = this.collection;
+        const connection = this.connection, handle = this.handle, workspace = this.workspace, request = ++this.request;
+        if (!preview || !map || !collection || !connection || !handle || !workspace || this.map.workspace !== workspace ||
+            preview.result.blockers.length || preview.mapId !== map.id || preview.mapRevision !== map.revision ||
+            preview.collectionRevision !== collection.revision) {
+            this.error = 'Adoption preview is blocked or stale'; this.adoptionPreview = undefined; this.notify(); return;
+        }
+        this.loading = true; this.error = ''; this.notify();
+        try {
+            const snapshot = await connection.adoptTarget({ projectHandle: handle, mapId: map.id,
+                expectedRevision: collection.revision, expectedMapRevision: map.revision, expectedBasis: preview.basis,
+                scope: preview.result.scope, acceptedChanges: preview.result.changes,
+                acceptedTransformationIds: [...preview.result.selectedTransformationIds, ...preview.result.includedDependentTransformationIds].sort() });
+            if (request !== this.request || this.disposed || this.map.workspace !== workspace) return;
+            this.collection = snapshot; this.adoptionPreview = undefined; this.suggestions = undefined;
+            void this.map.attach(workspace);
+        } catch (error) { if (request === this.request && !this.disposed) this.error = String(error); }
+        finally { if (request === this.request && !this.disposed) { this.loading = false; this.notify(); } }
+    }
     async commitEdit(): Promise<void> {
         const preview = this.preview, map = this.selected;
         if (!preview || !map || map.id !== preview.mapId || map.revision !== preview.mapRevision ||
@@ -148,6 +185,7 @@ export class PlanningMapController {
         this.suggestions = undefined;
         this.acceptedSuggestionIds.clear();
         this.preview = undefined;
+        this.adoptionPreview = undefined;
         this.planningMode = false;
         this.loading = !!workspace;
         this.error = '';
@@ -161,6 +199,7 @@ export class PlanningMapController {
             this.handle = projectHandle;
             this.collection = snapshot;
             this.preview = undefined;
+            this.adoptionPreview = undefined;
             this.selectedMapId = snapshot.maps.find(map => map.status === 'active')?.id ?? snapshot.maps.find(map => map.status === 'draft')?.id;
         } catch (error) { if (request === this.request && !this.disposed) this.error = String(error); }
         finally { if (request === this.request && !this.disposed) { this.loading = false; this.notify(); } }
@@ -173,6 +212,7 @@ export class PlanningMapController {
             if (request !== this.request || this.disposed || this.map.workspace !== workspace) return;
             this.collection = snapshot;
             this.preview = undefined;
+            this.adoptionPreview = undefined;
             if (!snapshot.maps.some(map => map.id === this.selectedMapId)) this.selectedMapId = snapshot.maps.find(map => map.status === 'active')?.id ?? snapshot.maps[0]?.id;
             if (!this.selected?.workItems.some(item => item.id === this.selectedWorkItemId)) this.selectedWorkItemId = undefined;
             if (!this.selected?.transformations.some(item => item.id === this.selectedTransformationId)) this.selectedTransformationId = undefined;

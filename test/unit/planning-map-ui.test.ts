@@ -6,7 +6,8 @@ import { resolve } from 'node:path';
 import { branchMap, detectActiveConflicts, transitionMap } from '../../packages/visual-planning/lib/index.js';
 import type { GraphNode, GraphRelationship } from '../../packages/software-map/src/index.ts';
 import type { PlanningMap, PlannedTransformation } from '../../packages/visual-planning/src/index.ts';
-import type { PlanningCollection, PlanningOperation, VisualPlanningService } from '../../packages/visual-planning/src/service.ts';
+import type { AdoptionAcceptance, AdoptionRequest, PlanningCollection, PlanningOperation, VisualPlanningService } from '../../packages/visual-planning/src/service.ts';
+import type { AdoptionPreview } from '../../packages/visual-planning/src/adoption.ts';
 import type { SoftwareMapController } from '../../packages/theia-extension/src/browser/software-map-controller.ts';
 const require = createRequire(import.meta.url);
 const { PlanningMapController } = require('../../packages/theia-extension/lib/browser/planning-map-controller.js') as
@@ -66,14 +67,28 @@ test('move, contract and relationship states have textual target and diff semant
   assert.match(projectPlanningMap(nodes, [edge], [], planning, 'target', 'b').nodes.find(n => n.id === 'cmp')!.badge, /move/);
 });
 
+test('adopted target remains visible without claiming Physical Map realization', () => {
+  const planning = map('adopted', 'active', [{ ...changes[0], adopted: true }, changes[1],
+    { id: 'remove', kind: 'remove', currentIds: ['b'], futureNodes: [], dependsOn: [], adopted: true }]);
+  const target = projectPlanningMap(nodes, [], [], planning, 'target');
+  const diff = projectPlanningMap(nodes, [], [], planning, 'diff');
+  assert.equal(target.nodes.find(node => node.id === 'new')?.state, 'declared-only');
+  assert.match(target.nodes.find(node => node.id === 'new')!.badge, /Adopted target · Physical Map refresh pending/);
+  assert.match(target.nodes.find(node => node.id === 'a')!.badge, /Planned change/);
+  assert.equal(target.nodes.some(node => node.id === 'b'), false);
+  assert.match(diff.nodes.find(node => node.id === 'b')!.badge, /Adopted removal/);
+});
+
 function harness() {
   const listeners = new Set<() => void>();
   const physical = { workspace: 'file:///A', status: { state: 'ready', generation: 1, publishedGeneration: 1, inputFingerprint: 'source' },
-    initialization: { declarationFingerprint: 'arch' }, onChange(listener: () => void) {
+    initialization: { declarationFingerprint: 'arch' }, async attach() {}, onChange(listener: () => void) {
       listeners.add(listener); return { dispose: () => { listeners.delete(listener); } };
     } };
   let collection: PlanningCollection = { schemaVersion: 1, projectId: 'project', revision: 0, maps: [] };
   const service = { async attach() { return { projectHandle: 'handle', snapshot: collection }; },
+    async previewAdoption(_request: AdoptionRequest): Promise<AdoptionPreview> { throw new Error('Not configured'); },
+    async adoptTarget(_request: AdoptionAcceptance): Promise<PlanningCollection> { throw new Error('Not configured'); },
     async read() { return collection; }, async mutate({ expectedRevision, operation }: { expectedRevision: number; operation: PlanningOperation }) {
       assert.equal(expectedRevision, collection.revision);
       const maps = [...collection.maps];
@@ -89,6 +104,30 @@ function harness() {
   const controller = new PlanningMapController(physical as unknown as SoftwareMapController, () => service as VisualPlanningService);
   return { controller, physical, listeners, service, get collection() { return collection; }, set collection(value: PlanningCollection) { collection = value; } };
 }
+
+test('Adopt Target requires displayed diff acceptance and clears the preview after commit', async () => {
+  const h = harness(); await tick();
+  h.collection = { schemaVersion: 1, projectId: 'project', revision: 1, maps: [map('plan', 'active', [changes[0]])] };
+  await h.controller.refresh();
+  const result: AdoptionPreview = { scope: { kind: 'subsystem', id: 'new' }, selectedTransformationIds: ['add'],
+    includedDependentTransformationIds: [], changes: [{ id: 'new', kind: 'subsystem', action: 'add', after: changes[0].futureNodes[0] }], blockers: [] };
+  let writes = 0;
+  h.service.previewAdoption = async request => { assert.equal(request.expectedRevision, 1); return result; };
+  h.service.adoptTarget = async request => {
+    writes++;
+    assert.deepEqual(request.acceptedChanges, result.changes);
+    assert.deepEqual(request.acceptedTransformationIds, ['add']);
+    return { ...h.collection, revision: 2, maps: [map('plan', 'active', [{ ...changes[0], adopted: true }])] };
+  };
+  await h.controller.beginAdoption(result.scope);
+  assert.equal(writes, 0);
+  assert.deepEqual(h.controller.adoptionPreview?.result, result);
+  await h.controller.acceptAdoption();
+  assert.equal(writes, 1);
+  assert.equal(h.controller.selected?.transformations[0].adopted, true);
+  assert.equal(h.controller.adoptionPreview, undefined);
+  h.controller.dispose();
+});
 
 test('creation, explicit branching, multiple active maps, lifecycle and history filtering', async () => {
   const h = harness(); await tick();

@@ -120,3 +120,46 @@ export async function acceptInitialization(root: string, expectedFingerprint: st
         if (!(await readInitialization(root)).initialized) throw new Error('Software Map initialization verification failed');
     });
 }
+
+/** Replaces initialized canonical authority; the marker remains the commit point. */
+export async function replaceArchitecture(root: string, expectedFingerprint: string, declaration: ArchitectureDeclaration,
+    beforeMarkerCommit: () => Promise<() => Promise<void>>): Promise<string> {
+    return locked(root, async () => {
+        const before = await readInitialization(root);
+        if (!before.initialized || before.declarationFingerprint !== expectedFingerprint) throw new Error('Stale Software Map architecture declaration');
+        const original = (await readArchitecture(root)).text!;
+        const text = `${JSON.stringify(parseArchitectureJson(JSON.stringify(declaration)), null, 2)}\n`;
+        const dir = await directory(root);
+        if (!dir) throw new Error('Missing Software Map directory');
+        const architecturePath = join(dir, 'architecture.json'), markerPath = join(dir, 'smap.json');
+        const markerBefore = await readFile(markerPath, 'utf8');
+        let architectureStage: string | undefined;
+        let markerStage: string | undefined;
+        let replaced = false;
+        let rollback: (() => Promise<void>) | undefined;
+        try {
+            architectureStage = await stage(architecturePath, text);
+            markerStage = await stage(markerPath, `${JSON.stringify({ schemaVersion: 1, architectureFingerprint: hash(text) }, null, 2)}\n`);
+            if ((await readInitialization(root)).declarationFingerprint !== expectedFingerprint || !await safeFile(architecturePath) || !await safeFile(markerPath))
+                throw new Error('Stale Software Map architecture declaration');
+            await rename(architectureStage, architecturePath);
+            architectureStage = undefined;
+            replaced = true;
+            rollback = await beforeMarkerCommit();
+            if (await readFile(markerPath, 'utf8') !== markerBefore) throw new Error('Stale Software Map marker');
+            await rename(markerStage, markerPath);
+            markerStage = undefined;
+            return hash(text);
+        } catch (error) {
+            // A failed companion planning write never leaves the new declaration authoritative.
+            try {
+                await rollback?.();
+                if (replaced) await rename(await stage(architecturePath, original), architecturePath);
+            } catch (restore) { throw new Error(`Architecture adoption outcome uncertain: ${String(restore)}; original error: ${String(error)}`); }
+            throw error;
+        } finally {
+            if (architectureStage) await rm(architectureStage, { force: true });
+            if (markerStage) await rm(markerStage, { force: true });
+        }
+    });
+}

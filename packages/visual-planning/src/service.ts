@@ -1,5 +1,6 @@
 import type { CrossMapConflict, MapStatus, PlannedTransformation, PlanningBasis, PlanningMap, WorkItem } from './index';
 import type { EditCommand } from './editing';
+import type { AdoptionPreview, AdoptionScope } from './adoption';
 
 export const visualPlanningServicePath = '/services/dope/visual-planning';
 export const VisualPlanningService = Symbol('VisualPlanningService');
@@ -18,6 +19,9 @@ export type PlanningOperation =
   | { type: 'merge-work-items'; mapId: string; sourceIds: [string, string]; merged: WorkItem }
   | { type: 'remove-work-item'; mapId: string; workItemId: string };
 export interface PlanningMutation { projectHandle: string; expectedRevision: number; operation: PlanningOperation }
+export interface AdoptionRequest { projectHandle: string; mapId: string; expectedRevision: number; expectedMapRevision: number;
+  expectedBasis: PlanningBasis; scope: AdoptionScope }
+export interface AdoptionAcceptance extends AdoptionRequest { acceptedChanges: AdoptionPreview['changes']; acceptedTransformationIds: string[] }
 export interface VisualPlanningService {
   attach(folderUri: string): Promise<{ projectHandle: string; snapshot: PlanningCollection }>;
   read(projectHandle: string): Promise<PlanningCollection>;
@@ -26,5 +30,7 @@ export interface VisualPlanningService {
   conflicts(projectHandle: string): Promise<CrossMapConflict[]>;
   preview(projectHandle: string, mapId: string, expectedRevision: number, expectedMapRevision: number,
     command: EditCommand, transformationId: string): Promise<PlannedTransformation>;
+  previewAdoption(request: AdoptionRequest): Promise<AdoptionPreview>;
+  adoptTarget(request: AdoptionAcceptance): Promise<PlanningCollection>;
   mutate(request: PlanningMutation): Promise<PlanningCollection>;
 }

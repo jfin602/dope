@@ -260,6 +260,25 @@ export class PhysicalMapWidget extends BaseWidget {
             button('Commit change', () => void this.planning.commitEdit(), !editable);
             button('Cancel change', () => this.planning.cancelEdit());
         }
+        const selectedNode = this.controller.sourceNodes.find(node => node.id === this.controller.selectedId);
+        button('Preview branch adoption', () => {
+            const kind = ask('Branch kind: system, subsystem, component', selectedNode?.kind ?? 'system');
+            const id = ask('Branch ID', selectedNode?.id ?? '');
+            if (id && (kind === 'system' || kind === 'subsystem' || kind === 'component'))
+                void this.planning.beginAdoption({ kind, id });
+        }, !editable);
+        button('Preview transformation set adoption', () => {
+            const ids = ask('Transformation IDs, comma separated', this.planning.selectedTransformationId ?? '');
+            if (ids) void this.planning.beginAdoption({ kind: 'transformations', ids: ids.split(',').map(id => id.trim()).filter(Boolean) });
+        }, !editable);
+        if (this.planning.adoptionPreview) {
+            const result = this.planning.adoptionPreview.result;
+            const preview = document.createElement('pre');
+            preview.textContent = `Adopt Target · ${JSON.stringify(result.scope)}\nSelected: ${result.selectedTransformationIds.join(', ')}\nIncluded dependencies: ${result.includedDependentTransformationIds.join(', ') || 'none'}\nCanonical diff:\n${JSON.stringify(result.changes, null, 2)}\nBlockers: ${result.blockers.join('; ') || 'none'}`;
+            bar.append(preview);
+            button('Accept canonical diff and adopt', () => void this.planning.acceptAdoption(), !editable || !!result.blockers.length);
+            button('Cancel adoption', () => this.planning.cancelAdoption());
+        }
         for (const status of this.planning.allowedTransitions) button(status[0].toUpperCase() + status.slice(1),
             () => void this.planning.transition(status), this.planning.loading);
         for (const view of ['current', 'target', 'diff'] as const) button(
@@ -310,7 +329,7 @@ export class PhysicalMapWidget extends BaseWidget {
             () => this.planning.selectWorkItem(item.id), item.id === this.planning.selectedWorkItemId);
         line(`Transformations: ${map.transformations.map(change => change.id).join(', ') || 'none'}`);
         for (const change of map.transformations) {
-            const control = button(`${change.id}${map.workItems.some(item => item.transformationIds.includes(change.id)) ? ' · linked' : ''}`,
+            const control = button(`${change.id} · ${change.adopted ? 'adopted' : 'still planned'}${map.workItems.some(item => item.transformationIds.includes(change.id)) ? ' · linked' : ''}`,
                 () => this.planning.selectTransformation(change.id), change.id === this.planning.selectedTransformationId);
             if (this.planning.selectedWorkItem?.transformationIds.includes(change.id)) control.classList.add('dope-work-highlight');
         }

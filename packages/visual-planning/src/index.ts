@@ -12,7 +12,7 @@ export interface DependencyRelationship { sourceId: string; targetId: string; po
 export interface RelationshipRedirect { from: DependencyRelationship; to: DependencyRelationship }
 export interface PlannedTransformation {
   id: string; kind: TransformationKind; currentIds: string[]; futureNodes: PlannedNode[]; dependsOn: string[];
-  redirect?: RelationshipRedirect; resolution?: Resolution;
+  redirect?: RelationshipRedirect; resolution?: Resolution; adopted?: boolean;
 }
 export type WorkStatus = 'proposed' | 'ready' | 'in-progress' | 'completed' | 'cancelled';
 export interface WorkItem {
@@ -81,7 +81,7 @@ function relationship(v: unknown, at: string): DependencyRelationship {
   return { sourceId: id(x.sourceId, `${at}.sourceId`), targetId: id(x.targetId, `${at}.targetId`), policy: choice(x.policy, ['allowed', 'forbidden'] as const, `${at}.policy`) };
 }
 function transformation(v: unknown, at: string): PlannedTransformation {
-  const x = obj(v, at); fields(x, ['id', 'kind', 'currentIds', 'futureNodes', 'dependsOn'], ['redirect', 'resolution'], at);
+  const x = obj(v, at); fields(x, ['id', 'kind', 'currentIds', 'futureNodes', 'dependsOn'], ['redirect', 'resolution', 'adopted'], at);
   const kind = choice(x.kind, ['add', 'modify', 'remove', 'move', 'split', 'merge', 'redirect-relationship', 'change-contract'] as const, `${at}.kind`);
   const currentIds = ids(x.currentIds, `${at}.currentIds`);
   const futureNodes = list(x.futureNodes, node, `${at}.futureNodes`).sort(byId);
@@ -99,7 +99,8 @@ function transformation(v: unknown, at: string): PlannedTransformation {
   if (redirect) fields(redirect, ['from', 'to'], [], `${at}.redirect`);
   return { id: id(x.id, `${at}.id`), kind, currentIds, futureNodes, dependsOn: ids(x.dependsOn, `${at}.dependsOn`),
     ...(redirect ? { redirect: { from: relationship(redirect.from, `${at}.redirect.from`), to: relationship(redirect.to, `${at}.redirect.to`) } } : {}),
-    ...(x.resolution === undefined ? {} : { resolution: choice(x.resolution, ['as-planned', 'accepted-different', 'deferred', 'abandoned'] as const, `${at}.resolution`) }) };
+    ...(x.resolution === undefined ? {} : { resolution: choice(x.resolution, ['as-planned', 'accepted-different', 'deferred', 'abandoned'] as const, `${at}.resolution`) }),
+    ...(x.adopted === undefined ? {} : { adopted: bool(x.adopted, `${at}.adopted`) }) };
 }
 function work(v: unknown, at: string): WorkItem {
   const x = obj(v, at); fields(x, ['id', 'title', 'objective', 'transformationIds', 'dependsOn', 'requirements', 'constraints', 'acceptanceCriteria', 'validationTargets', 'workingSet', 'status'], ['completionNotes'], at);
@@ -213,7 +214,7 @@ function canonicalNodes(architecture: ArchitectureDeclaration): PlannedNode[] {
 function key(r: DependencyRelationship): string { return `${r.sourceId}\0${r.policy}\0${r.targetId}`; }
 function topo(items: PlannedTransformation[]): PlannedTransformation[] {
   const lookup = new Map(items.map(x => [x.id, x])); const done = new Set<string>(); const result: PlannedTransformation[] = [];
-  function visit(t: PlannedTransformation): void { if (done.has(t.id)) return; for (const dep of t.dependsOn) visit(lookup.get(dep)!); done.add(t.id); result.push(t); }
+  function visit(t: PlannedTransformation): void { if (done.has(t.id)) return; for (const dep of t.dependsOn) { const dependency = lookup.get(dep); if (dependency) visit(dependency); } done.add(t.id); result.push(t); }
   for (const t of [...items].sort(byId)) visit(t); return result;
 }
 /** A proposed target only. This never changes architecture or physical evidence. */
@@ -222,7 +223,7 @@ export function projectTarget(architecture: ArchitectureDeclaration, map: Planni
   const nodes = new Map(canonicalNodes(canonical).map(n => [n.id, n]));
   const declared = new Set(nodes.keys());
   const produced = new Map<string, string>();
-  for (const t of map.transformations) if (['add', 'split', 'merge'].includes(t.kind)) for (const n of t.futureNodes) {
+  for (const t of map.transformations.filter(t => !t.adopted)) if (['add', 'split', 'merge'].includes(t.kind)) for (const n of t.futureNodes) {
     if (!declared.has(n.id)) {
       if (produced.has(n.id)) fail(`duplicate future identity ${n.id}`);
       produced.set(n.id, t.id);
@@ -239,7 +240,7 @@ export function projectTarget(architecture: ArchitectureDeclaration, map: Planni
     return false;
   }
   const redirects: RelationshipRedirect[] = [];
-  for (const t of topo(map.transformations)) {
+  for (const t of topo(map.transformations.filter(t => !t.adopted))) {
     for (const reference of [...t.currentIds, ...t.futureNodes.map(n => n.parentId).filter((x): x is string => x !== undefined),
       ...(t.redirect ? [t.redirect.from.sourceId, t.redirect.from.targetId, t.redirect.to.sourceId, t.redirect.to.targetId] : [])]) {
       const producer = produced.get(reference);

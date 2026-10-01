@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { PlanningCollection, PlanningMutation, VisualPlanningService } from '@dope/visual-planning/lib/service';
+import type { AdoptionAcceptance, AdoptionRequest, PlanningCollection, PlanningMutation, VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { previewTransformation } from '@dope/visual-planning/lib/editing';
 import { detectActiveConflicts } from '@dope/visual-planning';
-import { readInitialization } from '@dope/code-analysis/lib/node/smap-initialization-file';
+import { readInitialization, replaceArchitecture } from '@dope/code-analysis/lib/node/smap-initialization-file';
 import { readArchitecture } from '@dope/code-analysis/lib/node/architecture-file';
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
 
@@ -62,6 +62,23 @@ export class VisualPlanningBackend implements VisualPlanningService {
   async mutate(request: PlanningMutation) {
     if (!request || typeof request !== 'object') throw new Error('Invalid planning mutation');
     const snapshot = await this.store.mutate(this.active(request.projectHandle), request.expectedRevision, request.operation, this.projectId);
+    this.projectId = snapshot.projectId;
+    return snapshot;
+  }
+  async previewAdoption(request: AdoptionRequest) {
+    const root = this.active(request.projectHandle);
+    const state = await readInitialization(root);
+    if (!state.initialized || state.declarationFingerprint !== request.expectedBasis.architectureFingerprint)
+      throw new Error('Stale canonical architecture basis');
+    return this.store.previewAdoption(root, request);
+  }
+  async adoptTarget(request: AdoptionAcceptance) {
+    const root = this.active(request.projectHandle);
+    const state = await readInitialization(root);
+    if (!state.initialized || state.declarationFingerprint !== request.expectedBasis.architectureFingerprint)
+      throw new Error('Stale canonical architecture basis');
+    const snapshot = await this.store.adopt(root, request, this.projectId,
+      (fingerprint, declaration, beforeCommit) => replaceArchitecture(root, fingerprint, declaration, beforeCommit));
     this.projectId = snapshot.projectId;
     return snapshot;
   }

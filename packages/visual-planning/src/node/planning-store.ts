@@ -10,6 +10,10 @@ import { parseArchitecture } from '@dope/software-map';
 import { createHash } from 'node:crypto';
 import type { PlanningMap } from '../index';
 import type { PlanningCollection, PlanningOperation } from '../service';
+import type { AdoptionAcceptance, AdoptionRequest } from '../service';
+import { planAdoption } from '../adoption';
+import type { AdoptionPreview } from '../adoption';
+import type { ArchitectureDeclaration } from '@dope/software-map';
 
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const bad = (place: string): never => { throw new Error(`Invalid planning collection: ${place}`); };
@@ -159,6 +163,10 @@ export class PlanningStore {
           if (createHash('sha256').update(declaration).digest('hex') !== map.basis.architectureFingerprint)
             throw new Error('Stale Planning Map architecture basis');
         }
+        if ((op.type === 'put-transformation' && (op.transformation.adopted !== undefined || map.transformations.some(t => t.id === op.transformation.id && t.adopted))) ||
+            (op.type === 'remove-transformation' && map.transformations.some(t => t.id === op.transformationId && t.adopted)) ||
+            ((op.type === 'undo' || op.type === 'redo') && map.transformations.some(t => t.adopted)))
+          throw new Error('Adopted transformations cannot be edited');
         if (op.type === 'duplicate') {
           if (maps.some(item => item.id === op.newId)) throw new Error('Planning map already exists');
           maps.push(branchMap(map, op.newId, now));
@@ -213,4 +221,59 @@ export class PlanningStore {
   }
 
   async conflicts(root: string) { return detectActiveConflicts((await this.read(root)).maps); }
+
+  private async adoptionPreview(root: string, request: AdoptionRequest, collection: PlanningCollection): Promise<AdoptionPreview> {
+    const map = collection.maps.find(item => item.id === request.mapId);
+    if (collection.revision !== request.expectedRevision || !map || map.revision !== request.expectedMapRevision ||
+        JSON.stringify(map.basis) !== JSON.stringify(request.expectedBasis)) throw new Error('Stale planning revision or basis');
+    const bytes = await this.declaration(root);
+    if (createHash('sha256').update(bytes).digest('hex') !== map.basis.architectureFingerprint)
+      throw new Error('Stale Planning Map architecture basis');
+    return planAdoption(parseArchitecture(JSON.parse(bytes)), map, request.scope);
+  }
+
+  async previewAdoption(root: string, request: AdoptionRequest): Promise<AdoptionPreview> {
+    return this.adoptionPreview(root, request, await this.read(root));
+  }
+
+  async adopt(root: string, request: AdoptionAcceptance, expectedProjectId: string | undefined,
+    writer: (expectedFingerprint: string, declaration: ArchitectureDeclaration, beforeCommit: () => Promise<() => Promise<void>>) => Promise<string>): Promise<PlanningCollection> {
+    const { lock } = await this.paths(root);
+    const handle = await this.acquire(lock);
+    try {
+      const current = await this.read(root);
+      if (expectedProjectId && current.projectId !== expectedProjectId) throw new Error('Planning identity changed; reattach');
+      const preview = await this.adoptionPreview(root, request, current);
+      if (preview.blockers.length || !preview.declaration) throw new Error(`Adoption blocked: ${preview.blockers.join('; ')}`);
+      const included = [...preview.selectedTransformationIds, ...preview.includedDependentTransformationIds].sort();
+      if (JSON.stringify(request.acceptedChanges) !== JSON.stringify(preview.changes) ||
+          JSON.stringify(request.acceptedTransformationIds) !== JSON.stringify(included)) throw new Error('Adoption diff was not accepted');
+      const index = current.maps.findIndex(map => map.id === request.mapId);
+      const map = current.maps[index];
+      if (map.status !== 'draft' && map.status !== 'active') throw new Error('Planning map is closed');
+      const nextFingerprint = createHash('sha256').update(`${JSON.stringify(preview.declaration, null, 2)}\n`).digest('hex');
+      const revision = map.revision + 1;
+      const changed = parsePlanningMap({ ...map, revision, history: [...map.history, { revision, action: `adopt:${included.join(',')}`, at: new Date().toISOString() }],
+        basis: { ...map.basis, architectureRevision: map.basis.architectureRevision + 1, architectureFingerprint: nextFingerprint },
+        transformations: map.transformations.map(t => included.includes(t.id) ? { ...t, adopted: true } : t),
+        editHistory: { undo: [], redo: [] } });
+      const maps = [...current.maps]; maps[index] = changed;
+      const next = parsePlanningCollection({ ...current, revision: current.revision + 1, maps });
+      await writer(map.basis.architectureFingerprint, preview.declaration, async () => {
+        try { await this.write(root, next); }
+        catch (error) {
+          try { await this.write(root, current); }
+          catch (restore) { throw new Error(`Planning adoption outcome uncertain: ${String(restore)}; original error: ${String(error)}`); }
+          throw error;
+        }
+        return async () => this.write(root, current);
+      });
+      return next;
+    } finally {
+      const acquired = await handle.stat();
+      await handle.close();
+      try { if ((await lstat(lock)).ino !== acquired.ino) throw new Error('Planning lock changed; inspect it'); await rm(lock); }
+      catch (error) { if (!absent(error)) throw error; }
+    }
+  }
 }
