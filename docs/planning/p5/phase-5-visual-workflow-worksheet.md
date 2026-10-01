@@ -1,6 +1,6 @@
 # Product Phase 5 — Visual Software Planning Worksheet
 
-Status: OPEN PLANNING WORKSHEET  
+Status: RESOLVED / PROMOTED TO PHASE 5 AUTHORITY  
 Date: October 1, 2026  
 Target phase: Product Phase 5 — Visual Software Planning
 
@@ -219,7 +219,7 @@ Treat transformations as the architectural source and let Dope offer determinist
 
 Locked: **PlannedTransformations are the architectural source of truth for work**. Dope may deterministically suggest WorkItems from selected transformations, but the developer explicitly accepts, edits, splits or merges those suggestions. One transformation may require several WorkItems; one WorkItem may cover several tightly related transformations.
 
-WorkItems are presented primarily in a dedicated planning/work projection rather than as another architecture-node type on the canvas. Dependencies and parallelizable work remain visible there. Selecting a WorkItem highlights the exact Systems/Subystems/Components/transformations it affects, and selecting a transformation reveals its associated WorkItems.
+WorkItems are presented primarily in a dedicated planning/work projection rather than as another architecture-node type on the canvas. Dependencies and parallelizable work remain visible there. Selecting a WorkItem highlights the exact Systems/Subsystems/Components/transformations it affects, and selecting a transformation reveals its associated WorkItems.
 
 Each WorkItem exposes its objective, requirements, constraints, acceptance criteria, validation targets and working-set references. This WorkItem remains suitable as the later Phase 7 delegation unit without requiring Phase 5 to introduce AI execution.
 
@@ -320,6 +320,12 @@ The original target remains preserved even when implementation differs. **Implem
 WorkItem completion and reconciliation are separate. A WorkItem may be complete while reconciliation still reports architectural divergence.
 
 A Planning Map becomes **Completed only through explicit developer closeout**. Closeout requires every transformation to be resolved, accepted as intentionally different, deferred into another Planning Map, or explicitly abandoned. Completed maps remain durable historical records of intended versus realized software.
+
+## Resolution
+
+All ten primary decisions are resolved and promoted into ADR 0017, `docs/planning/p5/phase-5-plan.md`, `docs/PRODUCT-MODEL.md`, `docs/ARCHITECTURE.md`, and `docs/stability-contract.md`.
+
+This worksheet is retained as decision history and explanatory context. The promoted authority files govern implementation if wording differs.
 
 ## Secondary implementation questions
 
