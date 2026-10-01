@@ -44,7 +44,17 @@ TESTS
 
 Add focused pure/controller tests for each supported gesture -> typed transformation, preview/cancel/commit, complex-operation editors, invalid gestures, stale revisions, undo/redo history and proof that physical/canonical state is unchanged.
 
-Run focused tests, affected extension/domain build/typecheck and `git diff --check`.
+Validation is T1; the broad integrated planning loop remains deferred to P11.
+
+Run only:
+- the new/changed transformation-editing/undo tests;
+- the visual-planning domain test only if this prompt changes pure transformation/undo contracts;
+- `corepack yarn workspace @dope/visual-planning build` only if that package changed;
+- `corepack yarn workspace @dope/theia-extension build`;
+- the cheap manifest/version coherence guard;
+- `git diff --check`.
+
+Do **not** run broad planning-service integration, aggregate product tests, root `npm run typecheck`, browser/Electron builds, restart/package/native evidence or direct GUI qualification.
 
 Do not commit; runner owns commit boundaries.
 
