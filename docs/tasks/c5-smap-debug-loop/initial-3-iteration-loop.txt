@@ -1,0 +1,411 @@
+TASK: One-off Adaptive SEO sMap acceptance debug loop - 3 bounded iterations
+
+MODEL / REASONING / USAGE
+
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+- This is a one-off debugging prompt, NOT a codex phase/correction stack prompt.
+- Do not run this file through codex:phase.
+
+VERSIONING
+
+- Keep the Dope project version exactly 0.5.11.
+- Do not advance P11 or create 0.5.12 work.
+- Do not change Adaptive SEO application/source code as part of this loop.
+
+WORKSPACES
+
+- Dope repository: /home/jfin/dev/dope
+- Preserved sMap specimen: /home/jfin/dev/adaptive-seo-dope
+- The specimen's existing .dope/smap-analysis.json is the review we are debugging.
+- Reuse that review. Do not regenerate it.
+
+CONTEXT
+
+Correction 5 acceptance-debug machinery is Green:
+- durable mutable review drafts;
+- review revision / stale-write protection;
+- provider-free review reopen;
+- shared complete acceptance diagnostics;
+- npm run smap:review:check -- <project> [--json];
+- cancel/accept cleanup behavior.
+
+The c5-synth-observe stack may have completed after that machinery correction. Before doing any debugging, read its final README/closeout and preserve all of its accepted changes. Its synthesis observability/dry-run work is adjacent but does not authorize regeneration of this Adaptive SEO review.
+
+The original observed acceptance failure included:
+
+Invalid architecture declaration: ambiguous ownership root src/server/jobs/job-repository.ts
+
+Do not assume that is the only blocker or the root cause. The checker now exists specifically so we can see the entire blocker set.
+
+PRIMARY GOAL
+
+Run THREE bounded debug iterations against the SAME persisted Adaptive SEO Architecture Review.
+
+Each iteration must:
+
+1. observe the complete current acceptance state;
+2. identify the highest-leverage remaining defect class;
+3. trace the defect to its real cause;
+4. make the smallest generalized Dope fix and/or explicit evidence-backed persisted-review correction needed to move this exact review forward;
+5. add focused regression protection for any Dope defect fixed;
+6. reopen/recheck the same saved review;
+7. record what changed and what blockers remain.
+
+Do not restart synthesis. Do not create a new review. Do not use Search Deeper. Do not call Local, Gemini, or another model provider.
+
+If real Accept Architecture succeeds before iteration 3, do not invent new architecture work. Use any remaining iteration budget only to verify/repair the next deterministic post-acceptance failure in the real acceptance -> initialization -> Physical Map path. Stop when the prerequisite is genuinely healthy.
+
+NON-NEGOTIABLE SPECIMEN SAFETY
+
+Before the first iteration:
+
+1. Read:
+   - BOOT.md / AGENTS.md;
+   - ADR 0018;
+   - docs/tasks/c5-smap-acceptance-debug-loop/closeout.md;
+   - docs/tasks/c5-smap-acceptance-debug-loop/README.md;
+   - docs/tasks/c5-synth-observe/README.md;
+   - docs/tasks/c5-synth-observe/closeout.md if present;
+   - current Software Map architecture/review/persistence/diagnostic code;
+   - focused tests for the affected path.
+
+2. Require:
+   - Dope package/version remains 0.5.11;
+   - c5 acceptance-debug machinery commits are reachable;
+   - c5-synth-observe is complete or explicitly stopped/disposed;
+   - no unresolved merge/conflict state;
+   - P11 remains paused and P12 remains unexecuted.
+
+3. Record both repositories' git status.
+
+4. Freeze the Adaptive SEO SOURCE TREE:
+   - do not edit Adaptive SEO src/, config, package manifests, docs, or other application files;
+   - do not modify .dope/architecture.json or .dope/smap.json manually;
+   - the only permitted Adaptive SEO mutation before successful acceptance is the persisted review working draft through the real review-save path.
+
+5. Record:
+   - SHA-256 of /home/jfin/dev/adaptive-seo-dope/.dope/smap-analysis.json;
+   - reviewId;
+   - current review revision;
+   - sourceFingerprint and declarationFingerprint from the saved run;
+   - current checker JSON;
+   - whether .dope/architecture.json and .dope/smap.json exist.
+
+6. Make a byte-for-byte emergency backup of the initial smap-analysis.json OUTSIDE the project, e.g. under /tmp. Never use that backup as active project state unless recovery is required.
+
+PROHIBITED SHORTCUTS
+
+Do NOT:
+
+- call startInitialization or otherwise regenerate synthesis;
+- delete .dope/smap-analysis.json to get a clean state;
+- invoke Search Deeper;
+- configure/probe/call Gemini, LM Studio, Local, or another provider;
+- directly hand-edit .dope/smap-analysis.json JSON;
+- bypass saveReviewDraft revision checking;
+- hand-write .dope/architecture.json;
+- hand-write .dope/smap.json;
+- switch to acceptManual or acceptExisting as a substitute for the generated-review acceptance path;
+- weaken parseArchitecture or acceptance rules just to make the specimen pass;
+- silently deduplicate ownership roots;
+- choose architecture based only on making diagnostics disappear;
+- modify Adaptive SEO source to make stale/ownership diagnostics easier;
+- run broad release/package/browser qualification unless a specific change genuinely requires it.
+
+PERSISTED REVIEW EDIT RULE
+
+If an iteration proves that the current saved draft itself contains invalid architecture data that a code repair cannot retroactively change:
+
+- correct the persisted draft only through the production review-save boundary (saveReviewDraft), using the current reviewId and expected revision;
+- use either the actual review UI or a temporary local harness that instantiates/calls the real service path;
+- remove any temporary harness before finishing;
+- do not write smap-analysis.json directly;
+- base the correction on concrete Adaptive SEO source/evidence and proposal provenance;
+- record the exact node(s), root(s), before/after semantic change and revision transition;
+- preserve unrelated review nodes exactly.
+
+When possible, fix the generalized Dope producer/materialization defect for future reviews AND apply the equivalent minimal explicit correction to this already-generated saved review. Do not regenerate merely because future materialization is fixed.
+
+DEFECT CLASSIFICATION
+
+For each selected blocker class, explicitly classify it before changing code:
+
+A. acceptance diagnostic/validator defect
+B. persistence/revision/reopen defect
+C. review materialization defect that affects future generated reviews
+D. saved-review architecture data defect requiring an explicit persisted draft correction
+E. stale source/declaration state
+F. acceptance persistence/initialization defect
+G. post-acceptance Physical Map/index defect
+H. other - explain precisely
+
+A blocker may be mixed, e.g. C + D.
+
+Do not conflate:
+- evidence that supports a boundary;
+- ownership of an implementation root;
+- canonical architecture authority.
+
+ITERATION PROCEDURE
+
+Perform exactly three bounded iterations unless the full acceptance prerequisite becomes healthy sooner.
+
+============================================================
+ITERATION 1
+============================================================
+
+OBSERVE
+
+Run:
+
+npm run smap:review:check -- /home/jfin/dev/adaptive-seo-dope --json
+
+Capture the ENTIRE result.
+
+Also inspect the persisted review read-only enough to map every blocker to:
+- proposalKey;
+- canonical ID;
+- kind: System / Subsystem / Component;
+- parent;
+- roots;
+- relevant proposal evidenceRefs;
+- relevant evidence packet items/source paths.
+
+For duplicate ownership roots, identify ALL claimants.
+
+DIAGNOSE
+
+Group blockers by defect class rather than fixing the first printed path.
+
+Select ONE highest-leverage defect class for this iteration.
+
+Preference order:
+1. a generalized Dope bug causing many blockers;
+2. a shared invalid materialization rule;
+3. a saved-review correction that becomes obvious only after the generalized rule is understood;
+4. an isolated final blocker.
+
+Trace the actual call/data path in Dope. For review-root problems, inspect the full path from staged candidate/proposal evidence through proposal assembly, review root materialization, persistence, diagnostics and acceptance.
+
+Do not rely on the earlier hypothesis that evidenceRefs are incorrectly being treated as ownership roots unless current code/specimen evidence proves it.
+
+FIX
+
+Make the smallest coherent fix for the chosen defect class.
+
+Rules:
+- generalized product bug -> fix Dope and add focused regression;
+- specimen-only invalid review data -> use saveReviewDraft production path;
+- mixed producer + specimen defect -> fix future producer behavior, test it, then apply only the equivalent minimal persisted review correction required to move this specimen forward;
+- never weaken canonical strictness.
+
+VALIDATE
+
+Run only focused tests for changed Dope code and required affected package builds/typecheck.
+
+Then force a fresh read boundary:
+- dispose/recreate the relevant backend/service process or use an equivalent fresh-process checker read;
+- do not keep relying on an in-memory object that predates the save.
+
+Run the checker again and capture:
+- previous blocker count/codes;
+- new blocker count/codes;
+- exact persisted revision;
+- smap-analysis.json hash;
+- whether staleness changed.
+
+ITERATION 1 EXIT
+
+State:
+- selected defect class;
+- root cause;
+- code fix, persisted-review correction, or both;
+- focused validation;
+- blockers removed;
+- blockers remaining.
+
+============================================================
+ITERATION 2
+============================================================
+
+Start ONLY from the persisted result of Iteration 1.
+
+Repeat the same OBSERVE -> DIAGNOSE -> FIX -> VALIDATE cycle.
+
+Do not reopen or reconsider Iteration 1 unless the new checker result proves the prior fix was wrong.
+
+Select the highest-leverage REMAINING defect class.
+
+If the checker reaches zero blockers during Iteration 2, immediately attempt the real generated-review acceptance path:
+
+SoftwareMapBackend/SoftwareMapService.acceptReview(
+  current project handle,
+  current reviewId,
+  current persisted draft
+)
+
+Use the production generated-review acceptance path. Do not substitute another acceptance method.
+
+If acceptance fails despite zero checker blockers, that failure becomes the Iteration 2 or Iteration 3 debugging target depending on when it occurs.
+
+If acceptance succeeds:
+- verify .dope/smap-analysis.json is cleared;
+- verify canonical .dope/architecture.json exists and strictly parses;
+- verify matching .dope/smap.json accepted initialization exists;
+- verify initializationStatus reports initialized;
+- run the normal Physical Map analyze/load path;
+- capture whether it reaches ready and any deterministic analysis errors.
+
+Do not edit Adaptive SEO source.
+
+============================================================
+ITERATION 3
+============================================================
+
+Start ONLY from the state left by Iteration 2.
+
+If review blockers remain:
+- run the checker again;
+- select the highest-leverage remaining defect class;
+- diagnose/fix/validate exactly as above.
+
+If checker is already zero but acceptance has not succeeded:
+- debug the real acceptance failure, not review diagnostics.
+
+If acceptance has succeeded but Physical Map/index readiness failed:
+- use Iteration 3 on that deterministic post-acceptance failure.
+
+If everything is already healthy:
+- do not manufacture a third code change;
+- use Iteration 3 as a clean fresh-process verification of accepted initialization + Physical Map readiness and report that no further repair was needed.
+
+REAL ACCEPTANCE SUCCESS CRITERIA
+
+The debug loop is complete only when all applicable conditions are true:
+
+1. the persisted review checker reached zero blockers with no staleness that blocks acceptance;
+2. the production generated-review acceptReview path succeeded;
+3. .dope/smap-analysis.json was removed by successful acceptance;
+4. .dope/architecture.json is the accepted canonical declaration;
+5. .dope/smap.json matches that accepted declaration;
+6. fresh initializationStatus reports initialized;
+7. Physical Map analysis/load reaches a usable ready state without a new deterministic blocker;
+8. Adaptive SEO source tree remained unchanged by this loop.
+
+Do not call P11 Green. This prompt only clears the prerequisite so P11 can resume.
+
+TEST / CHANGE DISCIPLINE
+
+For Dope fixes:
+- add a permanent focused regression that would fail on the pre-fix defect class;
+- run the smallest meaningful test set first;
+- do not run full npm run check simply for reassurance;
+- keep package 0.5.11;
+- do not alter c5-synth-observe behavior unless the observed acceptance defect directly crosses that implementation;
+- preserve unrelated changes;
+- git diff --check before final response.
+
+For persisted Adaptive SEO review corrections:
+- each save must use the current expected revision;
+- record revision N -> N+1;
+- after save, reopen/fresh-read before trusting it;
+- never batch unrelated architecture decisions merely to reduce blocker count.
+
+FINAL RESPONSE FORMAT
+
+Return a concise but complete report containing:
+
+1. Baseline
+   - Dope HEAD/version;
+   - c5-synth-observe disposition read;
+   - Adaptive SEO source status;
+   - initial reviewId/revision;
+   - initial checker blocker count/codes;
+   - initial smap-analysis hash.
+
+2. Iteration 1
+   - selected defect class;
+   - root cause;
+   - changes;
+   - validation;
+   - ending checker state.
+
+3. Iteration 2
+   - same fields.
+
+4. Iteration 3
+   - same fields, or clean verification if already solved.
+
+5. Final acceptance state
+   - checker state immediately before acceptance;
+   - real acceptReview result;
+   - canonical/marker/analysis-run lifecycle result;
+   - initialization + Physical Map result;
+   - Dope git status;
+   - Adaptive SEO git/source status.
+
+6. Remaining work
+
+If ANY acceptance blocker, stale state, acceptance failure, or post-acceptance Physical Map failure remains after the three iterations, append ONE fenced code block containing a self-contained starting brief for the next agent.
+
+That code block must include:
+- exact Dope HEAD and package version;
+- exact Adaptive SEO path;
+- explicit instruction NOT to regenerate the sMap;
+- current reviewId/revision if review still exists;
+- current smap-analysis SHA-256 if review still exists;
+- current checker JSON summary;
+- exact unresolved blocker/failure classes;
+- what Iterations 1-3 changed;
+- focused tests already passing;
+- what must not be repeated;
+- the single best next investigation target;
+- the same source-freeze / no-provider / no-raw-JSON-edit rules.
+
+Example shape only:
+
+```text
+NEXT AGENT STARTING BRIEF
+
+Dope:
+- HEAD: ...
+- package: 0.5.11
+
+Specimen:
+- /home/jfin/dev/adaptive-seo-dope
+- DO NOT regenerate synthesis.
+- DO NOT modify Adaptive SEO source.
+- reviewId: ...
+- revision: ...
+- smap-analysis sha256: ...
+
+Current deterministic state:
+- checker blockers: ...
+- staleness: ...
+- acceptance result: ...
+
+Completed work:
+- Iteration 1: ...
+- Iteration 2: ...
+- Iteration 3: ...
+
+Passing focused validation:
+- ...
+
+Do not repeat:
+- ...
+
+Next target:
+- ...
+
+Constraints:
+- use same persisted review;
+- no Search Deeper;
+- no provider calls;
+- no raw smap-analysis.json edits;
+- persisted review edits only through saveReviewDraft with expected revision;
+- keep Dope at 0.5.11.
+```
+
+If the real acceptance path and Physical Map prerequisite are fully healthy, do NOT emit a next-agent brief. End by stating that the prerequisite is cleared and Phase 5 P11 may resume.
