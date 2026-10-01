@@ -1,0 +1,80 @@
+TASK: Phase 5 / P9 — Localized staleness and explicit rebase
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.5.9`.
+
+GOAL
+
+Make Planning Maps safely survive changing canonical/physical reality without silent background reinterpretation.
+
+PREFLIGHT
+
+Read exact P1-P8 source/tests, stored PlanningMap basis contracts, Software Map fingerprint/generation semantics and locked Q9/ADR 0017 rebase rules.
+
+Require coherent `0.5.8`.
+
+IMPLEMENT
+
+Compare each PlanningMap's recorded:
+- canonical architecture revision/fingerprint;
+- Physical Map input fingerprint/generation basis;
+
+against current state.
+
+Compute localized stale state:
+- whole-map summary;
+- affected branch IDs;
+- affected transformation IDs;
+- reasons/evidence for each affected transformation.
+
+Do not mark unrelated transformations stale merely because a newer Physical Map generation exists. Use identity/relevant target/source/relationship changes to localize impact.
+
+Model explicit three-way rebase:
+```text
+Old basis
+-> Current reality
+-> Target intent
+```
+
+Classify at least:
+- unaffected reference can advance;
+- referenced node removed/replaced;
+- hierarchy/parent changed;
+- identity changed;
+- dependency/contract/relationship changed;
+- target transformation already realized;
+- implementation realized differently;
+- unresolved conflict.
+
+Provide a dedicated rebase UI/projection launched explicitly from a stale map.
+
+Within that explicit operation only:
+- unaffected references may auto-advance;
+- conflicts require developer resolution;
+- already-realized transformations are identified;
+- different realization remains visible as divergence;
+- developer may cancel and continue against old basis, with stale markers retained.
+
+Rebase acceptance atomically updates target references/basis/revision/history. No silent background rebase.
+
+Show stale/conflict markers on affected canvas nodes/edges using non-color-only semantics.
+
+Advance versions/internal refs coherently to `0.5.9`.
+
+TESTS
+
+Add pure rebase tests for every conflict class, unrelated changes not staling unrelated work, already-realized/different realization, cancel/accept, stale expected revision, atomicity and retained old-basis state.
+
+Add focused UI tests for map/branch/transformation markers and explicit three-way rebase flow.
+
+Run focused tests, affected typecheck/build and `git diff --check`.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report staleness localization, three-way conflict behavior and P10 eligibility.
