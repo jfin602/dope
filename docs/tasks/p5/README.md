@@ -11,14 +11,14 @@ Authority: Phase 5 activation/plan, resolved visual workflow worksheet, ADR 0017
 | --- | --- | --- | --- | --- | --- |
 | P1 | `0.5.1` | visual-planning domain core | T1 | GPT-6 Sol High | no |
 | P2 | `0.5.2` | planning persistence/service/backend | T2 | GPT-6 Sol High | no |
-| P3 | `0.5.3` | center Physical Map canvas | T1/T2 | GPT-6 Sol High | no |
-| P4 | `0.5.4` | semantic navigation + focused tabs | T1/T2 | GPT-6 Sol High | no |
+| P3 | `0.5.3` | center Physical Map canvas | T1 | GPT-6 Sol High | no |
+| P4 | `0.5.4` | semantic navigation + focused tabs | T1 | GPT-6 Sol High | no |
 | P5 | `0.5.5` | Planning Map overlay/lifecycle/branching | T2 | GPT-6 Sol High | no |
-| P6 | `0.5.6` | typed visual transformations + undo/redo | T1/T2 | GPT-6 Sol High | no |
-| P7 | `0.5.7` | WorkItems + work projection | T2 | GPT-6 Sol High | no |
+| P6 | `0.5.6` | typed visual transformations + undo/redo | T1 | GPT-6 Sol High | no |
+| P7 | `0.5.7` | WorkItems + work projection | T1 | GPT-6 Sol High | no |
 | P8 | `0.5.8` | bounded Adopt Target | T2 | GPT-6 Sol High | no |
 | P9 | `0.5.9` | localized stale state + explicit rebase | T2 | GPT-6 Sol High | no |
-| P10 | `0.5.10` | reconciliation + explicit map closeout | T2 | GPT-6 Sol High | no |
+| P10 | `0.5.10` | reconciliation + explicit map completion | T2 | GPT-6 Sol High | no |
 | P11 | `0.5.11` | direct visual dogfood/restart/package qualification | T3 | GPT-6 Sol High | yes |
 | P12 | `0.5.12` | evidence-only closeout | T3 | GPT-6 Sol Medium | no |
 
