@@ -1,4 +1,4 @@
-TASK: Phase 5 / P11 — Visual planning Dope-on-Dope qualification
+TASK: Phase 5 / P11 — Visual planning qualification in Adaptive SEO
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
@@ -9,19 +9,19 @@ VERSIONING
 
 GOAL
 
-Qualify the complete provider-free Phase 5 visual workflow directly in the real Dope GUI on the Dope repository, then collect restart/copy/package/native evidence for the exact candidate.
+Qualify the complete provider-free Phase 5 visual workflow in the real Dope GUI with `/home/jfin/dev/adaptive-seo-dope` as the primary mapped project. Use a disposable copy including its `.dope/` state for all adoption, source-edit, rebase, corruption and recovery probes. Keep the Dope repository as the host/regression/build/package fixture for the exact candidate.
 
 PREFLIGHT
 
 Read all P5 authority, prompt assessment/plan, exact reachable P1-P10 commits/results, current tests and prior Phase 4/package evidence.
 
-Require coherent `0.5.10`, clean intended Git state before controlled probes, no model/provider requirement for planning, and a reproducible way to restore any controlled Dope source/architecture edits.
+Confirm the coherent `0.5.10` P1-P10 predecessor and account for any existing P11 `0.5.11` version/evidence changes; do not discard them. Record Git status and inventory the Adaptive SEO `.dope/` state before copying. Verify that the copy opens with a usable canonical/Physical Map; an analysis review or `MODULES.md` alone does not prove this. If canonical state is absent or the map cannot load, report the prerequisite as Not Green without fabricating or deleting mapping state. No model/provider is required for planning. Keep the real Adaptive SEO checkout unchanged during qualification, and record how each disposable probe copy is restored or discarded.
 
-Advance root/apps/internal package versions/internal refs coherently to `0.5.11` before final candidate qualification.
+Confirm or advance root/apps/internal package versions/internal refs coherently to `0.5.11` before final candidate qualification.
 
 DIRECT GUI MATRIX
 
-Using the actual Theia GUI on the real Dope repository, directly interact and record:
+Using the actual Theia GUI on the disposable Adaptive SEO copy, directly interact and record:
 
 A. Physical overview
 - open Physical Map in center workspace;
@@ -44,7 +44,7 @@ C. Theme/accessibility
 - do not claim formal accessibility certification.
 
 D. Planning overlay/maps
-- create a real Planning Map for a small controlled Dope change;
+- create a real Planning Map for a small controlled Adaptive SEO change;
 - exercise Current / Target / Diff;
 - create/branch an alternative map;
 - show multiple active maps and an intentional overlap/conflict;
@@ -89,12 +89,16 @@ I. Implementation/reconciliation
 - explicitly close out only after every transformation is resolved/deferred/abandoned;
 - inspect completed intent-versus-outcome history.
 
+HOST / REGRESSION MATRIX
+
+Using the Dope repository as the application source and host fixture, verify normal IDE use, Project Mind/sMap regression and sMap/Project Mind placement in the real GUI. Dope's own canonical Software Map is not a prerequisite for the Adaptive SEO visual loop. Build/package/native evidence below remains tied to the same Dope `0.5.11` candidate.
+
 PERSISTENCE / RECOVERY MATRIX
 
 Prove for exact candidate:
 - process restart/reopen;
 - different application profile reopening same project;
-- copy project including `.dope/` to another root and recover Planning Maps/WorkItems;
+- copy the Adaptive SEO probe project including `.dope/` to another root and recover Planning Maps/WorkItems;
 - remove disposable presentation state and retain semantic truth;
 - second project cannot read/mutate first planning state;
 - corrupt/future `.dope/planning-maps.json` fails closed without byte loss;
@@ -117,10 +121,11 @@ Do not hide or repair a material qualification failure by weakening tests or evi
 
 EVIDENCE
 
-Create `docs/tasks/p5/P11-visual-planning-dogfooding-evidence.md` recording:
+Preserve the existing Not Green P11 attempt as historical evidence. Append the rerun to `docs/tasks/p5/P11-visual-planning-dogfooding-evidence.md`, recording:
 - exact source/candidate identity;
 - A-I direct matrix;
-- controlled mutations and restoration;
+- mapped-fixture preflight, controlled mutations and restoration;
+- separate Adaptive SEO direct-GUI and Dope host/regression results;
 - restart/copy/isolation/corruption results;
 - aggregate/build/package/native commands/results;
 - residual Not Green/Evidence Gaps;

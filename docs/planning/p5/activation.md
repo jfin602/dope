@@ -83,4 +83,4 @@ Phase 5 must not introduce:
 -> /prompt-write p5
 ```
 
-Implementation prompts follow the repository T1/T2/T3 validation discipline. The final qualification gate must prove the complete human-driven Dope-on-Dope loop.
+Implementation prompts follow the repository T1/T2/T3 validation discipline. The final qualification gate must prove the complete human-driven visual loop on a mapped Adaptive SEO copy, with Dope as the host/regression/package fixture.

@@ -244,7 +244,7 @@ Add integrated tests proving WorkItem completion alone cannot close/reconcile a 
 
 ## P11 — direct visual workflow qualification (`0.5.11`) — T3 / browser required
 
-Use the real Dope repository and actual Theia GUI.
+Use a disposable copy of `/home/jfin/dev/adaptive-seo-dope`, including `.dope/`, as the primary mapped workspace in the actual Theia GUI. Require a usable canonical/Physical Map before the direct loop. Keep the real Adaptive SEO checkout unchanged. Use the Dope repository for host/IDE/Project Mind/sMap regression and exact-candidate builds, package and native launch; Dope's own canonical map need not qualify the visual loop.
 
 Qualify:
 - Physical Map overview Systems + immediate Subsystems;
@@ -285,7 +285,7 @@ F. adoption;
 G. stale/rebase;
 H. reconciliation/closeout;
 I. restart/copy/project isolation;
-J. direct Dope-on-Dope GUI/package/native qualification;
+J. direct Adaptive SEO visual-loop GUI qualification plus Dope host/regression/package/native qualification;
 K. preserved Phase 4/Project Mind/IDE behavior and no Phase 6 scope leakage.
 
 Do not repair failures.

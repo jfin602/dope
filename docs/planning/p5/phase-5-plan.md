@@ -219,7 +219,7 @@ Completion requires explicit developer closeout with every transformation resolv
 
 Use normal repository T1/T2/T3 tiers.
 
-T3 qualification must directly prove on the Dope repository: Physical Map -> Planning Map -> meaningful transformations -> WorkItems -> restart/copy recovery -> stale detection -> explicit rebase -> optional Adopt Target -> ordinary implementation -> re-analysis -> reconciliation, plus project isolation, corrupt-state fail-closed behavior, semantic zoom/source navigation and applicable browser/Electron/native/package evidence for the exact candidate.
+T3 qualification must directly prove in a disposable copy of the mapped `/home/jfin/dev/adaptive-seo-dope` workspace: Physical Map -> Planning Map -> meaningful transformations -> WorkItems -> restart/copy recovery -> stale detection -> explicit rebase -> optional Adopt Target -> ordinary implementation -> re-analysis -> reconciliation, plus project isolation, corrupt-state fail-closed behavior and semantic zoom/source navigation. Verify usable canonical/Physical Map state before the direct loop. The Dope repository remains the host/IDE/Project Mind/sMap regression and exact-candidate browser/Electron/native/package fixture; its own canonical map is not required for the visual loop.
 
 ## Explicit non-goals
 

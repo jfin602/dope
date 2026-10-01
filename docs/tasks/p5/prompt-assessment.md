@@ -35,7 +35,7 @@ visual-planning domain
 | P8 | bounded Adopt Target | T2 | GPT-6 Sol High |
 | P9 | localized staleness + explicit three-way rebase | T2 | GPT-6 Sol High |
 | P10 | transformation reconciliation + explicit Planning Map completion | T2 | GPT-6 Sol High |
-| P11 | real Dope-on-Dope visual workflow qualification | T3 | GPT-6 Sol High |
+| P11 | Adaptive SEO visual workflow; Dope host/regression/package qualification | T3 | GPT-6 Sol High |
 | P12 | evidence-only Phase 5 closeout | T3 | GPT-6 Sol Medium |
 
 Versions are exactly `0.5.1` through `0.5.12`.

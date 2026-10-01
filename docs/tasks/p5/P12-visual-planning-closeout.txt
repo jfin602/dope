@@ -41,7 +41,7 @@ H. Stale/rebase — localized stale state, explicit three-way rebase, conflict h
 
 I. Reconciliation/closeout — fresh physical basis, four outcome classes, preserved target history, accepted divergence/defer/abandon and explicit developer-only completion.
 
-J. Direct Dope-on-Dope — real GUI A-I matrix, ordinary manual implementation path, alternate theme/keyboard observations and no AI execution dependency.
+J. Direct visual qualification — real GUI A-I matrix on a mapped Adaptive SEO copy, ordinary manual implementation path, alternate theme/keyboard observations, no AI execution dependency, and separate Dope host/regression evidence.
 
 K. Regression/release — Project Mind/sMap/ordinary IDE preserved, exact P11 restart/build/package/native evidence, Theia 1.75.0/Electron 42.8.1/React 19.2.8 coherence and no Phase 6 scope leakage.
 

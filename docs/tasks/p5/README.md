@@ -19,7 +19,7 @@ Authority: Phase 5 activation/plan, resolved visual workflow worksheet, ADR 0017
 | P8 | `0.5.8` | bounded Adopt Target | T2 | GPT-6 Sol High | no |
 | P9 | `0.5.9` | localized stale state + explicit rebase | T2 | GPT-6 Sol High | no |
 | P10 | `0.5.10` | reconciliation + explicit map completion | T2 | GPT-6 Sol High | no |
-| P11 | `0.5.11` | direct visual dogfood/restart/package qualification | T3 | GPT-6 Sol High | yes |
+| P11 | `0.5.11` | mapped Adaptive SEO GUI loop; Dope host/restart/package qualification | T3 | GPT-6 Sol High | yes |
 | P12 | `0.5.12` | evidence-only closeout | T3 | GPT-6 Sol Medium | no |
 
 ## Execution
@@ -33,6 +33,8 @@ Run implementation prompts:
 `npm run codex:phase -- p5 --closeout`
 
 The runner owns P1-P10 commits and stops for P11 because direct browser GUI evidence is required. After P11 is completed and committed, resume P12 closeout from the exact qualified candidate.
+
+P11's first Dope-on-Dope attempt is retained as Not Green evidence. The rerun uses a disposable copy of `/home/jfin/dev/adaptive-seo-dope` with its `.dope/` state for the visual loop; Dope remains the host/regression/package fixture. Confirm usable canonical/Physical Map state before GUI qualification.
 
 ## Product boundary
 

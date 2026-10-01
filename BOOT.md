@@ -251,7 +251,7 @@ Then execute implementation routing:
 `npm run codex:phase -- p5 --closeout`
 
 <<<<<<< HEAD
-Expected sequence is `0.5.1` through `0.5.12`. P1-P10 are runner-owned implementation/integration prompts. P11 is browser-required direct Dope-on-Dope qualification and must use the real Theia GUI. P12 is the sole evidence-only closeout.
+Expected sequence is `0.5.1` through `0.5.12`. P1-P10 are runner-owned implementation/integration prompts. P11 is browser-required direct visual qualification on a mapped Adaptive SEO copy in the real Theia GUI, with Dope retained for host/regression/package checks. P12 is the sole evidence-only closeout.
 
 Phase 5 remains focused on the provider-free visual workflow. Do not pull general AI Presence, Agent Mind, ProposedAction, model-driven implementation, mutation authority or scoped delegation into this stack.
 =======
