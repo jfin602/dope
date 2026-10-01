@@ -60,7 +60,18 @@ Add pure/integration tests for all outcomes, fresh-generation requirement, stale
 
 Add focused UI tests for reconciliation presentation and explicit closeout.
 
-Run focused tests, affected domain/backend/UI integration, typecheck/build and `git diff --check`. Do not run P11 broad qualification yet.
+Validation is bounded T2 because reconciliation explicitly joins fresh Software Map analysis with durable PlanningMap/WorkItem state.
+
+Run only:
+- the new/changed reconciliation/completion domain/service tests;
+- the focused reconciliation UI/controller tests;
+- the existing Software Map reanalysis/reconciliation test(s) only when their shared contracts are touched;
+- `corepack yarn workspace @dope/visual-planning build` if changed;
+- `corepack yarn workspace @dope/theia-extension build`;
+- the cheap manifest/version coherence guard;
+- `git diff --check`.
+
+Do **not** run aggregate product tests, root `npm run typecheck`, `npm test`, `npm run check`, browser/Electron app builds, restart tests, packaging/native evidence or direct GUI qualification. P11 owns the broad proof.
 
 Do not commit; runner owns commit boundaries.
 
