@@ -22,7 +22,7 @@ Dope presentation adapters and widgets
   |
 Application / orchestration
   |
-Project Intelligence / Software Map / later Visual Software Planning / later Agent Runtime
+Project Intelligence / Software Map / Visual Software Planning / later Agent Runtime
   |
 Persistence / Model / Tool / Authority / Execution adapters
 
@@ -137,6 +137,32 @@ Repository + `.dope/` must be sufficient to recover durable sMap state. Theia wo
 Provider endpoint/model selection remains user/application state, not project state. Provider credentials are secret application/runtime state and must never be written into `.dope/`, derived sMap evidence/proposals, progress events, cache identities or ordinary preference storage. External caches are allowed only when fully disposable and reconstructible from repository evidence plus project-local `.dope/`.
 
 The active `c4-smap-synth` P6-P8 prompts remain frozen while they execute. This persistence rule does not retroactively alter those prompts. A bounded post-c4 storage correction at unchanged `0.4.6` must reconcile the implementation to this boundary before Product Phase 5 activation.
+
+## Visual Software Planning boundary
+
+Product Phase 5 adds a Dope-owned planning domain above the Software Map and below Theia presentation.
+
+```text
+Physical Map / Canonical Architecture
+-> PlanningMap
+-> PlannedTransformation
+-> WorkItem
+-> ordinary implementation surfaces
+-> fresh Physical Map analysis
+-> Reconciliation
+```
+
+The domain remains presentation-independent. A diagram/canvas is a projection of PlanningMap and Physical Map state; visualization-library types, node coordinates, viewport, selection, open tabs, collapsed groups and panel layout cannot define architecture or target semantics.
+
+PlanningMap references canonical/physical IDs rather than cloning current architecture. Planned new architecture nodes may carry intended future canonical IDs but remain target intent until explicit developer adoption.
+
+Editing a PlanningMap does not mutate canonical architecture. **Adopt Target** is an explicit application/domain operation through the existing architecture authority boundary. Adoption may intentionally create declared-only architecture before code exists. WorkItem status never implies adoption or physical realization.
+
+Every PlanningMap records the canonical architecture revision/fingerprint and Physical Map input fingerprint/generation it branched from. If either basis changes, the PlanningMap is stale. Rebase is explicit, conflict-aware and never silently reinterprets target intent.
+
+Durable Phase 5 planning state is project-local in versioned `.dope/planning-maps.json`. Do not reuse or migrate historical Phase 3 `.dope/planning.json`. Repository + `.dope/` must be sufficient to recover Planning Maps and WorkItems. Machine-local planning caches are disposable.
+
+Phase 5 is provider-free. No model is required to create/edit/adopt/rebase/reconcile a PlanningMap. General AI Presence, Agent Mind, ProposedAction, authority/delegation and mutation-capable tool execution remain Phase 6+ concerns.
 
 ## Model and provider boundary
 
