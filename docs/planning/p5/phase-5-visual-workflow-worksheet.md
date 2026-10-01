@@ -217,7 +217,11 @@ Treat transformations as the architectural source and let Dope offer determinist
 
 **Decision**
 
-TBD.
+Locked: **PlannedTransformations are the architectural source of truth for work**. Dope may deterministically suggest WorkItems from selected transformations, but the developer explicitly accepts, edits, splits or merges those suggestions. One transformation may require several WorkItems; one WorkItem may cover several tightly related transformations.
+
+WorkItems are presented primarily in a dedicated planning/work projection rather than as another architecture-node type on the canvas. Dependencies and parallelizable work remain visible there. Selecting a WorkItem highlights the exact Systems/Subystems/Components/transformations it affects, and selecting a transformation reveals its associated WorkItems.
+
+Each WorkItem exposes its objective, requirements, constraints, acceptance criteria, validation targets and working-set references. This WorkItem remains suitable as the later Phase 7 delegation unit without requiring Phase 5 to introduce AI execution.
 
 ---
 
