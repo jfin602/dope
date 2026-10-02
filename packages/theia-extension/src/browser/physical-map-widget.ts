@@ -4,6 +4,7 @@ import { ReactFlow, Background, Controls, Handle, Position, type ReactFlowInstan
 import '@xyflow/react/dist/style.css';
 import { BaseWidget, Message, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { OpenerService, open } from '@theia/core/lib/browser';
+import { SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
 import URI from '@theia/core/lib/common/uri';
 import { PhysicalMapController, physicalMapTabId, type PhysicalMapTabOptions } from './physical-map-controller';
 import type { CanvasNode } from './physical-map-projection';
@@ -30,6 +31,9 @@ function MapNode({ data }: { data: { item: CanvasNode & { intent?: string; stale
 const nodeTypes = { architecture: MapNode };
 
 export class PhysicalMapWidget extends BaseWidget {
+    private async ask(title: string, initialValue = ''): Promise<string | undefined> {
+        return (await new SingleTextInputDialog({ title, initialValue }).open())?.trim();
+    }
     private readonly controller: PhysicalMapController;
     private readonly status = document.createElement('p');
     private readonly canvas = document.createElement('div');
@@ -220,32 +224,31 @@ export class PhysicalMapWidget extends BaseWidget {
         button('Branch alternative', () => void this.planning.duplicate(), !this.planning.selected || this.planning.loading);
         const editable = !!this.planning.selected && ['draft', 'active'].includes(this.planning.selected.status) &&
             !this.planning.loading && this.controller.projectMatches;
-        const ask = (label: string, value = '') => window.prompt(label, value)?.trim();
-        button('Add target', () => {
-            const kind = ask('Kind: system, subsystem, component');
+        button('Add target', async () => {
+            const kind = await this.ask('Kind: system, subsystem, component');
             if (kind !== 'system' && kind !== 'subsystem' && kind !== 'component') return;
-            const id = ask('Stable target ID'), name = ask('Name'), purpose = ask('Purpose');
-            const parentId = kind === 'system' ? undefined : ask('Parent ID', this.controller.selectedId ?? '');
-            const roots = ask('Project-relative roots, comma separated');
+            const id = await this.ask('Stable target ID'), name = await this.ask('Name'), purpose = await this.ask('Purpose');
+            const parentId = kind === 'system' ? undefined : await this.ask('Parent ID', this.controller.selectedId ?? '');
+            const roots = await this.ask('Project-relative roots, comma separated');
             if (!id || !name || !purpose || roots === undefined || (kind !== 'system' && !parentId)) return;
             const node: PlannedNode = { id, kind, name, purpose, roots: roots.split(',').map(s => s.trim()).filter(Boolean),
                 ...(parentId ? { parentId } : {}) };
             void this.planning.beginEdit({ kind: 'add', node });
         }, !editable);
-        button('Move selected', () => { const id = this.controller.selectedId, parentId = ask('New parent ID');
+        button('Move selected', async () => { const id = this.controller.selectedId, parentId = await this.ask('New parent ID');
             if (id && parentId) void this.planning.beginEdit({ kind: 'move', id, parentId }); }, !editable || !this.controller.selectedId);
         button('Remove from target', () => { const id = this.controller.selectedId;
             if (id) void this.planning.beginEdit({ kind: 'remove', id }); }, !editable || !this.controller.selectedId);
-        button('Redirect dependency', () => {
-            const sourceId = ask('Source Subsystem ID'), oldTarget = ask('Current target Subsystem ID');
-            const targetId = ask('New target Subsystem ID'), policy = ask('Policy: allowed or forbidden', 'allowed');
+        button('Redirect dependency', async () => {
+            const sourceId = await this.ask('Source Subsystem ID'), oldTarget = await this.ask('Current target Subsystem ID');
+            const targetId = await this.ask('New target Subsystem ID'), policy = await this.ask('Policy: allowed or forbidden', 'allowed');
             if (sourceId && oldTarget && targetId && (policy === 'allowed' || policy === 'forbidden'))
                 void this.planning.beginEdit({ kind: 'redirect-relationship',
                     from: { sourceId, targetId: oldTarget, policy }, to: { sourceId, targetId, policy } });
         }, !editable);
-        for (const kind of ['modify', 'split', 'merge', 'change-contract'] as const) button(kind, () => {
-            const ids = ask('Current IDs, comma separated', this.controller.selectedId ?? '');
-            const json = ask('Future nodes JSON array (id, kind, parentId, name, purpose, roots)');
+        for (const kind of ['modify', 'split', 'merge', 'change-contract'] as const) button(kind, async () => {
+            const ids = await this.ask('Current IDs, comma separated', this.controller.selectedId ?? '');
+            const json = await this.ask('Future nodes JSON array (id, kind, parentId, name, purpose, roots)');
             if (!ids || !json) return;
             try {
                 const futureNodes = JSON.parse(json) as PlannedNode[];
@@ -301,14 +304,14 @@ export class PhysicalMapWidget extends BaseWidget {
             button('Cancel change', () => this.planning.cancelEdit());
         }
         const selectedNode = this.controller.sourceNodes.find(node => node.id === this.controller.selectedId);
-        button('Preview branch adoption', () => {
-            const kind = ask('Branch kind: system, subsystem, component', selectedNode?.kind ?? 'system');
-            const id = ask('Branch ID', selectedNode?.id ?? '');
+        button('Preview branch adoption', async () => {
+            const kind = await this.ask('Branch kind: system, subsystem, component', selectedNode?.kind ?? 'system');
+            const id = await this.ask('Branch ID', selectedNode?.id ?? '');
             if (id && (kind === 'system' || kind === 'subsystem' || kind === 'component'))
                 void this.planning.beginAdoption({ kind, id });
         }, !editable);
-        button('Preview transformation set adoption', () => {
-            const ids = ask('Transformation IDs, comma separated', this.planning.selectedTransformationId ?? '');
+        button('Preview transformation set adoption', async () => {
+            const ids = await this.ask('Transformation IDs, comma separated', this.planning.selectedTransformationId ?? '');
             if (ids) void this.planning.beginAdoption({ kind: 'transformations', ids: ids.split(',').map(id => id.trim()).filter(Boolean) });
         }, !editable);
         if (this.planning.adoptionPreview) {
@@ -336,8 +339,8 @@ export class PhysicalMapWidget extends BaseWidget {
                     const options = result.outcome === 'implemented-as-planned' ? [['as-planned', 'Resolve as planned']] :
                         result.outcome === 'implemented-differently' ? [['accepted-different', 'Accept intentionally different']] : [];
                     for (const [resolution, label] of [...options, ['deferred', 'Defer'], ['abandoned', 'Abandon']]) button(
-                        `${label}: ${change.id}`, () => {
-                            const target = resolution === 'deferred' ? ask('Destination Planning Map ID') : undefined;
+                        `${label}: ${change.id}`, async () => {
+                            const target = resolution === 'deferred' ? await this.ask('Destination Planning Map ID') : undefined;
                             if (resolution !== 'deferred' || target) void this.planning.disposition(change.id,
                                 resolution as Resolution, target);
                         }, !editable || change.resolution === resolution);
@@ -376,11 +379,11 @@ export class PhysicalMapWidget extends BaseWidget {
         };
         const line = (value: string) => { const element = document.createElement('p'); element.textContent = value; panel.append(element); };
         const csv = (value: string) => value.split(',').map(item => item.trim()).filter(Boolean);
-        const edit = (field: keyof WorkItem, value: string, list = false) => {
+        const edit = async (field: keyof WorkItem, value: string, list = false) => {
             const item = this.planning.selectedWorkItem;
             if (!item) return;
-            const answer = window.prompt(`WorkItem ${field}`, value);
-            if (answer === null) return;
+            const answer = await this.ask(`WorkItem ${field}`, value);
+            if (answer === undefined) return;
             void this.planning.putWorkItem({ ...item, [field]: list ? csv(answer) : answer.trim() });
         };
         const heading = document.createElement('h3'); heading.textContent = 'Work'; panel.append(heading);
@@ -388,11 +391,11 @@ export class PhysicalMapWidget extends BaseWidget {
         this.planning.suggestions?.forEach((suggestion, index) => {
             line(`Suggestion ${index + 1}: ${suggestion.objective} · ${suggestion.transformationIds.join(', ')} · ${suggestion.dependsOn.length ? `after ${suggestion.dependsOn.map(i => i + 1).join(', ')}` : 'parallel'}`);
             button(`Accept suggestion ${index + 1}`, () => void this.planning.acceptSuggestion(index));
-            button(`Split suggestion ${index + 1}`, () => {
-                const first = window.prompt('First part transformation IDs, comma separated', suggestion.transformationIds.join(', '));
-                if (first === null) return;
-                const second = window.prompt('Second part transformation IDs, comma separated', suggestion.transformationIds.join(', '));
-                if (second === null) return;
+            button(`Split suggestion ${index + 1}`, async () => {
+                const first = await this.ask('First part transformation IDs, comma separated', suggestion.transformationIds.join(', '));
+                if (first === undefined) return;
+                const second = await this.ask('Second part transformation IDs, comma separated', suggestion.transformationIds.join(', '));
+                if (second === undefined) return;
                 try { this.planning.splitSuggestion(index, [csv(first), csv(second)]); }
                 catch (error) { this.status.textContent = String(error); }
             });
@@ -416,18 +419,18 @@ export class PhysicalMapWidget extends BaseWidget {
             line(`${field}: ${Array.isArray(value) ? value.join(', ') || 'none' : value}`);
             button(`Edit ${field}`, () => edit(field, Array.isArray(value) ? value.join(', ') : value, Array.isArray(value)));
         }
-        button('Split WorkItem', () => {
-            const first = window.prompt('First part transformation IDs, comma separated', item.transformationIds.join(', '));
-            if (first === null) return;
-            const second = window.prompt('Second part transformation IDs, comma separated', item.transformationIds.join(', '));
-            if (second === null) return;
+        button('Split WorkItem', async () => {
+            const first = await this.ask('First part transformation IDs, comma separated', item.transformationIds.join(', '));
+            if (first === undefined) return;
+            const second = await this.ask('Second part transformation IDs, comma separated', item.transformationIds.join(', '));
+            if (second === undefined) return;
             const parts: [WorkItem, WorkItem] = [first, second].map((refs, index) => ({ ...item,
                 id: `work-${crypto.randomUUID()}`, title: `${item.title} ${index + 1}`, transformationIds: csv(refs), status: 'proposed',
                 completionNotes: undefined })) as [WorkItem, WorkItem];
             void this.planning.splitWorkItem(item.id, parts);
         }, item.status === 'completed' || item.status === 'cancelled');
-        button('Merge WorkItem', () => {
-            const otherId = window.prompt('Other WorkItem ID');
+        button('Merge WorkItem', async () => {
+            const otherId = await this.ask('Other WorkItem ID');
             const other = map.workItems.find(work => work.id === otherId);
             if (!other) return;
             const merged: WorkItem = { ...item, id: `work-${crypto.randomUUID()}`, title: `${item.title} + ${other.title}`,
@@ -446,8 +449,8 @@ export class PhysicalMapWidget extends BaseWidget {
             proposed: ['ready', 'cancelled'], ready: ['in-progress', 'cancelled'],
             'in-progress': ['ready', 'completed', 'cancelled'], completed: [], cancelled: []
         };
-        for (const status of transitions[item.status]) button(`Mark ${status}`, () => {
-            const notes = status === 'completed' ? window.prompt('Completion notes (validation is tracked separately)') : undefined;
+        for (const status of transitions[item.status]) button(`Mark ${status}`, async () => {
+            const notes = status === 'completed' ? await this.ask('Completion notes (validation is tracked separately)') : undefined;
             if (status === 'completed' && !notes?.trim()) return;
             void this.planning.transitionWorkItem(status, notes?.trim());
         });

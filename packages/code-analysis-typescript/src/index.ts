@@ -1,5 +1,6 @@
 import { readdirSync, statSync } from 'node:fs';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { createRequire } from 'node:module';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import * as ts from 'typescript';
 import { derivedId, relationshipId } from '@dope/software-map';
 import type { AnalysisError, CodeEntityNode, Evidence, GraphRelationship } from '@dope/software-map';
@@ -8,6 +9,7 @@ import { theiaInversifyExtractor } from './framework-extractor';
 
 const PRODUCER = '@dope/code-analysis-typescript';
 const VERSION = '5.9.3';
+const compilerLib = dirname(createRequire(__filename).resolve('typescript'));
 const ignored = new Set(['node_modules', '.git', '.dope', '.theia', 'plugins', 'dist', 'build', 'out', 'coverage', 'generated', 'vendor']);
 const sourceFile = /\.(?:[cm]?[jt]s|[jt]sx)$/i;
 const declarationFile = /\.d\.[cm]?ts$/i;
@@ -143,7 +145,8 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
                 const parsed = ts.parseJsonConfigFileContent(read.config, configHost, resolve(config, '..'), undefined, config);
                 for (const reference of parsed.projectReferences ?? []) parseConfig(ts.resolveProjectReferencePath(reference));
                 for (const diagnostic of parsed.errors) report(`TS${diagnostic.code}`, ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'), configPath);
-                const fileNames = parsed.fileNames.filter(file => !!pathOf(file) && sourceFile.test(file) && !declarationFile.test(file));
+                const configuredFiles = parsed.fileNames.filter(file => !!pathOf(file) && sourceFile.test(file));
+                const fileNames = configuredFiles.filter(file => !declarationFile.test(file));
                 const sourcePaths = fileNames.map(file => pathOf(file)!).sort();
                 projects.push({ configPath, sourcePaths });
                 fileNames.forEach(file => paths.add(resolve(file)));
@@ -152,6 +155,8 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
                 const cacheKey = `${root}\0${configPath}`;
                 const cache = this.sourceCache.get(cacheKey) ?? new Map<string, { text: string; file: ts.SourceFile }>();
                 const host = ts.createCompilerHost(options);
+                host.getDefaultLibLocation = () => compilerLib;
+                host.getDefaultLibFileName = options => join(compilerLib, ts.getDefaultLibFileName(options));
                 const originalGet = host.getSourceFile.bind(host);
                 const analyzable = new Set(fileNames);
                 const reused = new Set<string>();
@@ -165,7 +170,7 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
                     if (parsed) cache.set(file, { text, file: parsed });
                     return parsed;
                 };
-                const program = ts.createProgram({ rootNames: fileNames, options, host });
+                const program = ts.createProgram({ rootNames: configuredFiles, options, host });
                 reusedSourceFiles += reused.size;
                 for (const file of cache.keys()) if (!analyzable.has(file)) cache.delete(file);
                 this.sourceCache.set(cacheKey, cache);
@@ -245,7 +250,9 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
                 const resolveImport = (specifier: ts.StringLiteralLike, isExport: boolean): void => {
                     const target = ts.resolveModuleName(specifier.text, file.fileName, options, ts.sys).resolvedModule;
                     const targetPath = target && pathOf(target.resolvedFileName);
-                    if (!target) report('unresolved-import', `Cannot resolve ${specifier.text}`, path);
+                    if (!target && specifier.text.startsWith('.') &&
+                        (!/\.[^/]+$/.test(specifier.text) || sourceFile.test(specifier.text)))
+                        report('unresolved-import', `Cannot resolve ${specifier.text}`, path);
                     else if (targetPath && included.has(targetPath)) addEdge(isExport ? 'exports' : 'imports', moduleId, moduleIds.get(targetPath)!, file, specifier);
                 };
                 const visit = (node: ts.Node): void => {

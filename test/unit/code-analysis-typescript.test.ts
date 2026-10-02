@@ -3,6 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import ts from 'typescript';
 import { TypeScriptAnalyzer } from '../../packages/code-analysis-typescript/lib/index.js';
 import { derivedId } from '../../packages/software-map/lib/index.js';
 
@@ -65,6 +66,26 @@ test('unresolved imports are diagnostics without invented targets; exclusion res
     assert.ok(!clean.nodes.some(node => node.path === 'src/missing.ts'));
     assert.ok(clean.relationships.some(edge => edge.kind === 'references' && edge.sourceId === derivedId('module', 'packages/app/src/index.ts') && edge.targetId.includes('Shared')));
   } finally { rmSync(temporary, { recursive: true, force: true }); }
+});
+
+test('configured declarations and ambient or asset imports do not make complete analysis partial', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dope-declarations-'));
+  try {
+    mkdirSync(join(root, 'src'));
+    writeFileSync(join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'ESNext' }, include: ['src/**/*'] }));
+    writeFileSync(join(root, 'src/ambient.d.ts'), "interface ImportMeta { env: string }\ndeclare module 'node:example' { export const value: string }\n");
+    writeFileSync(join(root, 'src/style.css'), 'body {}\n');
+    writeFileSync(join(root, 'src/main.ts'), "import { value } from 'node:example';\nimport './style.css';\nexport const result = import.meta.env + value;\n");
+    const originalExecutable = ts.sys.getExecutingFilePath;
+    ts.sys.getExecutingFilePath = () => join(root, 'packed-backend.js');
+    let result;
+    try { result = analyzer.analyze(root); }
+    finally { ts.sys.getExecutingFilePath = originalExecutable; }
+    assert.equal(result.status.completeness, 'complete');
+    assert.deepEqual(result.status.errors, []);
+    assert.ok(result.nodes.some(node => node.path === 'src/main.ts'));
+    assert.ok(!result.nodes.some(node => node.path === 'src/ambient.d.ts'));
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test('Dope state is excluded even when tsconfig names its sources and project reference', () => {

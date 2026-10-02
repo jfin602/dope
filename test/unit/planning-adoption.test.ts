@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { parseArchitecture } from '../../packages/software-map/lib/index.js';
 import { planAdoption } from '../../packages/visual-planning/lib/adoption.js';
+import { stalePlanningMap } from '../../packages/visual-planning/lib/rebase.js';
 import { parsePlanningMap, projectTarget } from '../../packages/visual-planning/lib/index.js';
 import { PlanningStore } from '../../packages/visual-planning/lib/node/planning-store.js';
 import { acceptInitialization, readInitialization, replaceArchitecture } from '../../packages/code-analysis/lib/node/smap-initialization-file.js';
@@ -97,11 +98,13 @@ async function fixture(run: (root: string, backend: VisualPlanningBackend, handl
   } finally { await rm(root, { recursive: true, force: true }); }
 }
 
-test('explicit acceptance updates canonical and planning basis; partial target and work remain independent of physical truth', async () => fixture(async (root, backend, handle, store) => {
+test('explicit acceptance updates canonical and preserves the old planning basis until rebase', async () => fixture(async (root, backend, handle, store) => {
   const state = await readInitialization(root);
   const realBasis = { ...basis, architectureFingerprint: state.declarationFingerprint };
-  let collection = await backend.mutate({ projectHandle: handle, expectedRevision: 0,
-    operation: { type: 'create', id: 'plan', title: 'Plan', objective: 'Improve', basis: realBasis } });
+  let collection = await store.mutate(root, 0,
+    { type: 'create', id: 'plan', title: 'Plan', objective: 'Improve', basis: realBasis }, undefined,
+    async () => ({ basis: realBasis, architecture, physicalNodes: [], relationships: [] }));
+  await backend.read(handle);
   for (const change of [changes[0], changes[1], changes[2], changes[3]]) collection = await backend.mutate({ projectHandle: handle,
     expectedRevision: collection.revision, operation: { type: 'put-transformation', mapId: 'plan', transformation: change } });
   const work = { id: 'work', title: 'Work', objective: 'Build', transformationIds: ['new-component'], dependsOn: [], requirements: [], constraints: [],
@@ -117,12 +120,16 @@ test('explicit acceptance updates canonical and planning basis; partial target a
   assert.equal(createHash('sha256').update(before).digest('hex'), realBasis.architectureFingerprint);
   const acceptedTransformationIds = [...preview.selectedTransformationIds, ...preview.includedDependentTransformationIds].sort();
   const after = await backend.adoptTarget({ ...request, acceptedChanges: preview.changes, acceptedTransformationIds });
-  assert.equal(after.maps[0].basis.architectureRevision, 1);
+  assert.deepEqual(after.maps[0].basis, realBasis);
+  assert.deepEqual(after.maps[0].basisSnapshot?.basis, realBasis);
   assert.equal(after.maps[0].workItems[0].status, 'proposed');
   assert.deepEqual(after.maps[0].transformations.filter(t => t.adopted).map(t => t.id), acceptedTransformationIds);
   assert.equal(after.maps[0].transformations.find(t => t.id === 'move-route')?.adopted, undefined);
   assert.equal((await readArchitecture(root)).architecture.systems.some(s => s.id === 'next'), true);
-  assert.equal((await readInitialization(root)).declarationFingerprint, after.maps[0].basis.architectureFingerprint);
+  const nextFingerprint = (await readInitialization(root)).declarationFingerprint;
+  assert.notEqual(nextFingerprint, after.maps[0].basis.architectureFingerprint);
+  assert.equal(stalePlanningMap(after.maps[0], { basis: { ...realBasis, architectureFingerprint: nextFingerprint },
+    architecture: (await readArchitecture(root)).architecture, physicalNodes: [], relationships: [] }).stale, true);
   assert.equal(projectTarget((await readArchitecture(root)).architecture, after.maps[0]).nodes.find(n => n.id === 'route')?.parentId, 'db');
   assert.equal((await store.read(root)).revision, after.revision);
   await assert.rejects(backend.mutate({ projectHandle: handle, expectedRevision: after.revision,

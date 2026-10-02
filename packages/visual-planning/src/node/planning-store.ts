@@ -334,10 +334,8 @@ export class PlanningStore {
       const index = current.maps.findIndex(map => map.id === request.mapId);
       const map = current.maps[index];
       if (map.status !== 'draft' && map.status !== 'active') throw new Error('Planning map is closed');
-      const nextFingerprint = createHash('sha256').update(`${JSON.stringify(preview.declaration, null, 2)}\n`).digest('hex');
       const revision = map.revision + 1;
       const changed = parsePlanningMap({ ...map, revision, history: [...map.history, { revision, action: `adopt:${included.join(',')}`, at: new Date().toISOString() }],
-        basis: { ...map.basis, architectureRevision: map.basis.architectureRevision + 1, architectureFingerprint: nextFingerprint },
         transformations: map.transformations.map(t => ({ ...t, ...(included.includes(t.id) ? { adopted: true } : {}), resolution: undefined, deferredTo: undefined })),
         reconciliation: undefined,
         editHistory: { undo: [], redo: [] } });

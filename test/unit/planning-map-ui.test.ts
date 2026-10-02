@@ -216,6 +216,8 @@ test('reconciliation is presented through controller state and closeout is an ex
   assert.match(widget, /Analyze and reconcile/);
   assert.match(widget, /Close out Planning Map/);
   assert.match(widget, /projectReconciliationResult/);
+  assert.match(widget, /new SingleTextInputDialog\(/);
+  assert.doesNotMatch(widget, /window\.prompt\(/);
   h.controller.dispose();
 });
 
