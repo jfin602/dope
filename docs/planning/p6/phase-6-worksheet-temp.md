@@ -87,9 +87,9 @@ Questions to resolve:
 - What identity do we use when only generic "external HTTP" or "database" is knowable?
 - How do endpoints map back to the owning architecture context without becoming canonical nodes?
 
-**Decision:**
+**Decision:** Represent non-architectural Flow endpoints as first-class derived Physical Map records separate from `GraphNode`. Give each endpoint a deterministic normalized identity based only on evidenced endpoint properties such as protocol, HTTP method/path, logical datastore/connection identity, table/entity when directly known, queue/topic/job name, or external service/host/path. Multiple observations may share one endpoint only when Dope can deterministically establish they are the same endpoint; otherwise keep narrower source-scoped or connection-scoped endpoint identities. Every endpoint retains links to its originating code/evidence so Dope can place its use in architectural context without making the endpoint a canonical System/Subsystem/Component/CodeEntity.
 
-**Why:**
+**Why:** External/store/boundary concepts are real physical participants in Flow but are not architecture declarations or code entities. Keeping them separate preserves ontology truth and avoids creating fake Components just for visualization. Conservative endpoint equivalence prevents unrelated calls from collapsing into misleading generic Database/External nodes while still allowing real shared services/stores to converge to one stable endpoint when evidence proves identity.
 
 ---
 
@@ -263,7 +263,7 @@ Before `/prompt-write p6`, promote answers into authoritative Phase 6 docs:
 
 - [x] Q1 Flow-hop semantics and data-enrichment threshold
 - [x] Q2 domain/snapshot/index ownership
-- [ ] Q3 derived endpoint identity
+- [x] Q3 derived endpoint identity
 - [ ] Q4 Adaptive SEO supported patterns
 - [ ] Q5 execution-path stitching bounds
 - [ ] Q6 data/type/schema enrichment scope
