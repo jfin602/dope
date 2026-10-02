@@ -168,7 +168,7 @@ The resolved Phase 5 worksheet is authoritative planning input.
 
 Use hierarchy, containment, scale, shape, iconography and edge semantics before color.
 
-The Phase 5-qualified baseline may remain compact, but the post-closeout `c5-smap-readability` correction locks the fuller presentation contract: progressive semantic LOD, hierarchy-first rendering, relationship-on-demand, stable breadcrumbs/focus context and complete visible labels. A label may be omitted at a deliberately lower LOD; if it is shown, it must not be truncated, clipped or ellipsized. Layout may wrap labels, break paths at sensible boundaries, grow nodes and reflow geometry.
+The P11-qualified visual-planning candidate may remain compact, but the post-P11 / pre-P12 `c5-smap-readability` correction locks the fuller presentation contract: progressive semantic LOD, hierarchy-first rendering, relationship-on-demand, stable breadcrumbs/focus context and complete visible labels. A label may be omitted at a deliberately lower LOD; if it is shown, it must not be truncated, clipped or ellipsized. Layout may wrap labels, break paths at sensible boundaries, grow nodes and reflow geometry.
 
 Color is reinforcement only. Alternate themes and color-vision-deficiency readability are qualification requirements. The readability correction may add a curated project-scoped node-color preference, but it remains presentation metadata and cannot alter identity, evidence, planning semantics or staleness.
 
@@ -217,15 +217,15 @@ Reconciliation is transformation-centered and rolls up to WorkItems/branches/map
 
 Completion requires explicit developer closeout with every transformation resolved, intentionally accepted as different, deferred, or abandoned.
 
-## Post-qualification readability boundary
+## Post-P11 readability boundary
 
-`c5-smap-readability` is a planned unchanged-`0.5.12` correction after Phase 5 P11/P12 closeout and before Phase 6 activation. It refines presentation of the already-qualified Physical/Planning Map surfaces; it does not reopen or expand P11/P12 and is not part of the Phase 5 exit gate.
+`c5-smap-readability` is a planned unchanged-`0.5.11` correction after P11 is Green and before P12 closeout. It refines presentation of the P11-qualified Physical/Planning Map surfaces; it does not reopen or expand P11 and must close before P12 runs.
 
 The correction may change browser-only projection, layout, React Flow interaction, inspector synchronization and project-scoped presentation preferences. It must not change canonical architecture contracts, deterministic evidence, Physical Map service/domain state, PlanningMap/PlannedTransformation/WorkItem semantics, staleness basis, adoption or reconciliation. No provider/model is required.
 
 ## Forward projection boundary
 
-ADR 0020 inserts Product Phase 6 — Data Flow after Phase 5 and after the readability correction. Data Flow will be a provider-free directional projection of the same Physical Map identities, not a separate map/database. This does **not** expand Phase 5 implementation or qualification: P11/P12, the T3 visual-planning loop and the Phase 5 exit condition remain exactly scoped to Visual Software Planning.
+ADR 0020 inserts Product Phase 6 — Data Flow after Phase 5. The readability correction remains a bounded pre-P12 presentation correction at 0.5.11; Data Flow still waits for P12 closeout and the 0.6.0 successor baseline. This does **not** expand P11's qualification contract or add Data Flow to Phase 5.
 
 ## Validation strategy
 

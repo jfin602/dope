@@ -111,7 +111,8 @@ Foundation Spike 0 — qualify Theia
 -> correction c4-storage — project-local sMap persistence
 -> visual identity alignment — match app palette to Dope logo
 -> Phase 5 — Visual Software Planning
--> post-Phase-5 correction c5-smap-readability
+-> post-P11 / pre-P12 correction c5-smap-readability
+-> Phase 5 P12 closeout
 -> Phase 6 — Data Flow
 -> Phase 7 — AI Presence
 -> Phase 8 — Scoped Delegation
@@ -119,7 +120,7 @@ Foundation Spike 0 — qualify Theia
 
 Do not pull later-phase concepts forward merely because they already exist in the long-term product model.
 
-`c5-smap-readability` is planned but blocked until Phase 5 P11/P12 closeout. It executes at unchanged `0.5.12` before Phase 6 and must not be folded into the current `0.5.11` P11 interruption.
+`c5-smap-readability` is planned at unchanged `0.5.11`, blocked until P11 is Green, and runs before P12. It must not be folded into the active P11 repair/qualification work.
 
 ## Product shape
 
