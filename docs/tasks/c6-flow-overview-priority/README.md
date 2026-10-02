@@ -1,6 +1,6 @@
 # Correction 6 — Flow Overview Priority
 
-Status: **APPROVED / MANUAL ONE-OFF READY**
+Status: **IMPLEMENTED / TARGET FLOW EXPOSED / HISTORICAL P7 REPAIR**
 Correction folder: `c6-flow-overview-priority`
 Required unchanged version: `0.6.7`
 Activation source: `59573b0dd66935fc78ec1eb0cc34f60644e4f000`
@@ -84,3 +84,10 @@ The focused view must no longer be flooded by unrelated calls solely through the
 
 A Green correction does not rewrite the original P7 run as Green. It makes Phase 6 eligible to resume the P7/P8 qualification path under fresh evidence.
 
+
+
+## Subsequent disposition
+
+A later P7 requalification confirmed that the correction exposed the intended GET opportunities behavior in the real GUI as a 5-participant / 8-interaction trace from HTTP Input through the handler and `AdaptiveRepository.list` to three PostgreSQL reads and three response branches, with representative source evidence and explicit partial coverage. The trace rebuilt after restart.
+
+This does not relabel P7 Green. The later run exposed separate blockers: the focused Subsystem canvas was too dim to read immediately and the packaged AppImage failed controlled shutdown. Presentation work is now routed to `docs/tasks/c6-map-canvas-priority/`; native shutdown remains a separate P7 blocker.
