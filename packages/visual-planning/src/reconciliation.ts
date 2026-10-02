@@ -6,9 +6,7 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 /** Compare source-backed physical evidence; canonical declarations alone do not prove implementation. */
 export function reconcilePlanningMap(map: PlanningMap, input: RebaseReality, at: string): PlanningReconciliation {
   const current = parseRebaseReality(input), old = map.basisSnapshot;
-  if (!old || current.basis.physicalGeneration <= map.basis.physicalGeneration ||
-    current.basis.physicalGeneration <= old.basis.physicalGeneration)
-    throw new Error('Fresh Software Map analysis required');
+  if (!old) throw new Error('Planning Map basis snapshot required');
   const now = new Map(current.physicalNodes.map(node => [node.id, node]));
   const before = new Map(old.physicalNodes.map(node => [node.id, node]));
   const descendants = (reality: RebaseReality, id: string) => {

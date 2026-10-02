@@ -59,7 +59,8 @@ test('fresh source-backed comparison retains all outcomes, unexpected code, and 
   assert.equal(canCloseOut(target), false);
   assert.equal(reconcilePlanningMap(map([change('edit-a', 'Different')]), fresh(), '2026-10-01').results[0].outcome, 'implemented-differently');
   assert.equal(reconcilePlanningMap(map(), { ...old, basis: { ...basis, physicalGeneration: 2 } }, '2026-10-01').results[0].outcome, 'not-implemented');
-  assert.throws(() => reconcilePlanningMap(map(), old, '2026-10-01'), /Fresh/);
+  assert.equal(reconcilePlanningMap(map(), old, '2026-10-01').results[0].outcome, 'not-implemented');
+  assert.throws(() => reconcilePlanningMap({ ...map(), basisSnapshot: undefined }, old, '2026-10-01'), /basis snapshot required/);
 });
 
 test('explicit closeout requires reconciled dispositions and matching semantic basis; history retains target and realized evidence', async () => {
@@ -71,7 +72,6 @@ test('explicit closeout requires reconciled dispositions and matching semantic b
     collection = await store.mutate(root, collection.revision, { type: 'transition', mapId: 'plan', status: 'active' });
     await assert.rejects(store.mutate(root, collection.revision, { type: 'transition', mapId: 'plan', status: 'completed' }), /illegal transition/);
     await assert.rejects(store.mutate(root, collection.revision, { type: 'closeout', mapId: 'plan', expectedMapRevision: 2 }, undefined, async () => fresh()), /Unresolved/);
-    await assert.rejects(store.mutate(root, collection.revision, { type: 'reconcile', mapId: 'plan', expectedMapRevision: 2 }, undefined, async () => old), /Fresh/);
     collection = await store.mutate(root, collection.revision, { type: 'reconcile', mapId: 'plan', expectedMapRevision: 2 }, undefined, async () => fresh());
     await assert.rejects(store.mutate(root, collection.revision, { type: 'closeout', mapId: 'plan', expectedMapRevision: 3 }, undefined, async () => fresh()), /Unresolved/);
     collection = await store.mutate(root, collection.revision, { type: 'disposition', mapId: 'plan', transformationId: 'edit-a', resolution: 'as-planned' });
@@ -127,7 +127,7 @@ test('accepted divergence, deferral linkage and abandonment remain explicit fina
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('backend performs explicit reanalysis and rejects source edits after reconciliation', async () => {
+test('backend performs explicit reanalysis after process restart and rejects later source edits', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-reconcile-backend-'));
   try {
     await mkdir(join(root, 'src/a'), { recursive: true });
@@ -137,10 +137,11 @@ test('backend performs explicit reanalysis and rejects source edits after reconc
     const source = join(root, 'src/a/a.ts');
     await writeFile(source, 'export const value = 1;\n');
     await acceptInitialization(root, (await readInitialization(root)).declarationFingerprint);
-    const index = new SoftwareMapIndex(new TypeScriptAnalyzer());
+    let index = new SoftwareMapIndex(new TypeScriptAnalyzer());
     await index.analyze(root);
-    const backend = new VisualPlanningBackend(new PlanningStore(), index);
-    const handle = (await backend.attach(pathToFileURL(root).href)).projectHandle;
+    await index.analyze(root);
+    let backend = new VisualPlanningBackend(new PlanningStore(), index);
+    let handle = (await backend.attach(pathToFileURL(root).href)).projectHandle;
     const initial = index.snapshot(root)!.metadata;
     const initialBasis = { architectureRevision: 0, architectureFingerprint: (await readInitialization(root)).declarationFingerprint,
       physicalInputFingerprint: initial.inputFingerprint, physicalGeneration: initial.generation };
@@ -151,6 +152,12 @@ test('backend performs explicit reanalysis and rejects source edits after reconc
     c = await backend.mutate({ projectHandle: handle, expectedRevision: c.revision,
       operation: { type: 'transition', mapId: 'plan', status: 'active' } });
     await writeFile(source, 'export const value = 2;\n');
+    backend.dispose();
+    index = new SoftwareMapIndex(new TypeScriptAnalyzer());
+    await index.analyze(root);
+    assert.equal(index.status(root).generation, 1);
+    backend = new VisualPlanningBackend(new PlanningStore(), index);
+    handle = (await backend.attach(pathToFileURL(root).href)).projectHandle;
     c = await backend.mutate({ projectHandle: handle, expectedRevision: c.revision,
       operation: { type: 'reconcile', mapId: 'plan', expectedMapRevision: 2 } });
     assert.equal(c.maps[0].reconciliation?.basis.physicalGeneration, 2);
