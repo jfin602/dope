@@ -71,6 +71,16 @@ A deterministically resolved project-code call remains valid `invokes` Flow even
 
 Data/type/schema/event information upgrades a Flow interaction only when separately evidenced. Serialization/deserialization is initially Processing metadata/annotation, not its own interaction, unless it represents a distinct meaningful execution component.
 
+### Snapshot ownership
+
+`PhysicalFlowFact[]` is first-class rebuildable state on `PhysicalMapSnapshot`.
+
+Static Flow facts publish atomically with the same Physical Map project identity, analysis generation, and source/config/canonical input fingerprint as graph nodes and structural relationships. Phase 6 does not add a separate Flow index or independent generation counter.
+
+Flow queries and aggregation operate from the published snapshot first. Add a separate index only if later measured scale/performance evidence requires one.
+
+Future recorded-runtime observations should reuse the same Flow fact/evidence domain with explicit runtime evidence/observation identity. They must not silently redefine the current static source/config/canonical input fingerprint contract or create a second Flow authority.
+
 ### FlowRole
 
 Projection roles:
