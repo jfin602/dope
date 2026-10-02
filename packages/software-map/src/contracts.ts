@@ -68,6 +68,10 @@ export interface Evidence {
     originRelationshipIds?: string[];
     observationId?: string;
     inferenceLabel?: string;
+    /** Dedicated interaction proof; structural evidence alone is never Flow proof. */
+    flowKind?: FlowInteractionKind;
+    flowEnrichmentKind?: FlowEnrichment['kind'];
+    flowBehavior?: 'async' | 'retry' | 'error';
 }
 export interface AnalysisError { producer: string; code: string; message: string; path?: string }
 export interface AnalysisStatus { completeness: 'complete' | 'partial' | 'failed'; errors: AnalysisError[] }
@@ -84,6 +88,87 @@ export interface PhysicalMapSnapshot {
     relationships: GraphRelationship[];
     evidence: Evidence[];
     violations: ArchitectureViolation[];
+    flowFacts: PhysicalFlowFact[];
+    flowEndpoints: PhysicalFlowEndpoint[];
+    flowCoverage: FlowCoverage[];
+    flowDiagnostics: FlowDiagnostic[];
+}
+export type FlowInteractionKind = 'receives' | 'invokes' | 'reads' | 'writes' | 'calls-external' | 'publishes' | 'consumes' | 'responds';
+export type FlowEndpointKind = 'http-input' | 'http-output' | 'store' | 'queue' | 'event' | 'job' | 'external-service' | 'external-client' | 'file-store';
+/** Identity fields are evidence-backed. sourceScope keeps unidentified boundaries distinct. */
+export interface FlowEndpointIdentity {
+    protocol?: string;
+    method?: string;
+    path?: string;
+    service?: string;
+    store?: string;
+    channel?: string;
+    connection?: string;
+    sourceScope?: string;
+}
+export interface PhysicalFlowEndpoint {
+    id: string;
+    kind: FlowEndpointKind;
+    identity: FlowEndpointIdentity;
+    anchorNodeId: string;
+    evidenceIds: string[];
+}
+export interface FlowEnrichment {
+    kind: 'data' | 'type' | 'schema' | 'event';
+    label: string;
+    evidenceIds: string[];
+}
+export interface FlowBehaviorMetadata {
+    async?: boolean;
+    retry?: boolean;
+    error?: boolean;
+    evidenceIds: string[];
+}
+export interface PhysicalFlowFact {
+    id: string;
+    kind: FlowInteractionKind;
+    sourceId: string;
+    targetId: string;
+    /** Stable call site or observation discriminator, empty only for unique boundary facts. */
+    discriminator: string;
+    /** Required for an observed fact; keeps observation truth distinct from static possibility. */
+    observationId?: string;
+    evidenceIds: string[];
+    /** Present only on an aggregate over existing lower-level Flow facts. */
+    originFlowFactIds?: string[];
+    enrichment?: FlowEnrichment[];
+    behavior?: FlowBehaviorMetadata;
+}
+export interface FlowDiagnostic {
+    id: string;
+    code: string;
+    message: string;
+    scopeId?: string;
+    evidenceIds: string[];
+}
+export interface FlowCoverage {
+    scopeId: string;
+    status: 'complete' | 'partial' | 'unsupported' | 'truncated';
+    diagnosticIds: string[];
+}
+export interface FlowQuery {
+    projectId: string;
+    generation: number;
+    focusId?: string;
+    direction?: 'upstream' | 'downstream';
+    maxNodes?: number;
+    maxFacts?: number;
+    maxHops?: number;
+}
+export interface FlowQueryResult {
+    projectId: string;
+    generation: number;
+    inputFingerprint: string;
+    facts: PhysicalFlowFact[];
+    endpoints: PhysicalFlowEndpoint[];
+    coverage: FlowCoverage[];
+    diagnostics: FlowDiagnostic[];
+    truncated: boolean;
 }
 export interface ArchitectureViolation {
     id: string;

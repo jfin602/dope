@@ -1,5 +1,6 @@
 import { ownershipForPath, projectPath } from './architecture';
-import type { ArchitectureDeclaration, ArchitectureViolation, CodeEntityNode, Evidence, GraphNode, GraphRelationship, NodeKind, PhysicalMapSnapshot, RelationshipKind, SnapshotMetadata, SubsystemDeclaration } from './contracts';
+import { validateFlow } from './flow';
+import type { ArchitectureDeclaration, ArchitectureViolation, CodeEntityNode, Evidence, FlowCoverage, FlowDiagnostic, GraphNode, GraphRelationship, NodeKind, PhysicalFlowEndpoint, PhysicalFlowFact, PhysicalMapSnapshot, RelationshipKind, SnapshotMetadata, SubsystemDeclaration } from './contracts';
 
 function invalid(message: string): never { throw new Error(`Invalid Physical Map: ${message}`); }
 function name(value: unknown): value is string { return typeof value === 'string' && !!value.trim() && value === value.trim(); }
@@ -40,13 +41,20 @@ function validateEvidence(value: Evidence): Evidence {
 }
 
 /** Validates references and returns stable, deduplicated, read-only-friendly arrays. */
-export function createSnapshot(metadata: SnapshotMetadata, nodes: GraphNode[], relationships: GraphRelationship[], evidence: Evidence[], violations: ArchitectureViolation[] = []): PhysicalMapSnapshot {
+export function createSnapshot(metadata: SnapshotMetadata, nodes: GraphNode[], relationships: GraphRelationship[], evidence: Evidence[], violations: ArchitectureViolation[] = [],
+    flowFacts: PhysicalFlowFact[] = [], flowEndpoints: PhysicalFlowEndpoint[] = [], flowCoverage: FlowCoverage[] = [], flowDiagnostics: FlowDiagnostic[] = []): PhysicalMapSnapshot {
     if (!name(metadata.projectId) || !name(metadata.inputFingerprint) || !Number.isSafeInteger(metadata.generation) || metadata.generation < 0 ||
         !['complete', 'partial', 'failed'].includes(metadata.analysis.completeness) || !Array.isArray(metadata.analysis.errors) ||
         metadata.analysis.completeness === 'complete' && metadata.analysis.errors.length) invalid('metadata');
     const byEvidence = new Map<string, Evidence>();
     for (const raw of evidence) {
         const entry = validateEvidence(raw);
+        if (entry.flowKind && (!['receives', 'invokes', 'reads', 'writes', 'calls-external', 'publishes', 'consumes', 'responds'].includes(entry.flowKind) ||
+            !['syntax', 'semantic', 'framework', 'runtime'].includes(entry.class) || entry.class !== 'runtime' && !entry.span)) invalid(`Flow evidence ${entry.id}`);
+        if (entry.flowEnrichmentKind && !['data', 'type', 'schema', 'event'].includes(entry.flowEnrichmentKind) ||
+            entry.flowBehavior && !['async', 'retry', 'error'].includes(entry.flowBehavior) ||
+            (entry.flowEnrichmentKind || entry.flowBehavior) &&
+            (!['syntax', 'semantic', 'framework', 'runtime'].includes(entry.class) || entry.class !== 'runtime' && !entry.span)) invalid(`Flow annotation evidence ${entry.id}`);
         if (byEvidence.has(entry.id)) invalid(`duplicate evidence ${entry.id}`);
         byEvidence.set(entry.id, entry);
     }
@@ -119,6 +127,7 @@ export function createSnapshot(metadata: SnapshotMetadata, nodes: GraphNode[], r
         relationships: [...byRelationship.values()].sort((a, b) => a.id.localeCompare(b.id)),
         evidence: [...byEvidence.values()].sort((a, b) => a.id.localeCompare(b.id)),
         violations: [...byViolation.values()].sort((a, b) => a.id.localeCompare(b.id)),
+        ...validateFlow(byNode, byEvidence, flowEndpoints, flowFacts, flowCoverage, flowDiagnostics),
     };
 }
 
