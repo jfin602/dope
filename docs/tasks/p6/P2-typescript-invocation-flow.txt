@@ -1,0 +1,69 @@
+TASK: Phase 6 / P2 — Generic TypeScript invocation Flow
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.6.2`.
+
+GOAL
+
+Teach the existing TypeScript analyzer to emit deterministic project-code invocation Flow, including inline callable identities needed by callback-heavy applications.
+
+PREFLIGHT
+
+Read all p6 authority/assessment/plan, exact P1 source/tests and current `@dope/code-analysis` / `@dope/code-analysis-typescript` analyzer implementation.
+
+Require coherent `0.6.1` predecessor and P1 Green focused evidence.
+
+IMPLEMENT
+
+Extend `CodeAnalysisResult` with dedicated physical Flow outputs. Do not reuse synthesis-oriented `FrameworkFact` as execution truth.
+
+Using the existing TypeScript Program/type checker and alias resolution:
+- identify the enclosing supported callable for relevant `CallExpression` sites;
+- use existing named CodeEntity identity for named functions/methods;
+- create deterministic source-backed CodeEntity identity for supported anonymous function/arrow callbacks that participate in Flow;
+- use a non-symbol code/analyzer kind for anonymous callables rather than fabricating a symbol name;
+- resolve called aliases/symbols to project-owned declarations;
+- emit `invokes` only when caller and target are deterministically identified;
+- support named functions, methods, imported aliases, inline callbacks, zero-argument calls and unused return values;
+- preserve async/await metadata when the resolved invocation is awaited;
+- support deterministic recursion/cycles without infinite analysis;
+- use precise semantic source evidence for each invocation;
+- dedupe output deterministically across repeated analysis.
+
+Negative rules:
+- import/reference/property access alone is not invocation;
+- existing CommonJS `require` module-resolution handling must not become application invocation Flow;
+- unresolved calls and external-library calls do not become project `invokes`;
+- do not infer argument/return lineage merely because a call resolves.
+
+Optional low-cost enrichment may record useful directly resolved argument/return type names. Suppress broad/low-information types according to Phase 6 authority.
+
+Preserve existing analyzer diagnostics, `.dope/` exclusion, tsconfig/project-reference behavior and framework architecture evidence.
+
+Advance all live versions/internal references coherently to `0.6.2`.
+
+TESTS
+
+Validation is T1.
+
+Extend/add fixtures and tests for named function/method calls, alias-import call resolution, inline arrow/function-expression caller identity, async/await, zero-argument/unused-return calls, recursion/cycle, repeated deterministic output, source evidence spans, import/reference-only negatives, unresolved/external-call negatives and no regression to module/import/reference analysis.
+
+Run only:
+- `node --test test/unit/code-analysis-typescript.test.ts` plus the new/changed invocation-focused test file if separate;
+- `corepack yarn workspace @dope/code-analysis build`;
+- `corepack yarn workspace @dope/code-analysis-typescript build`;
+- `node --test test/unit/theia-baseline.test.ts`;
+- no-root-lock/version checks;
+- `git diff --check`.
+
+Do not run broad product/check/restart/browser/Electron/package suites.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report caller/target identity strategy, invocation evidence, negative guards, focused validation and P3 eligibility.
