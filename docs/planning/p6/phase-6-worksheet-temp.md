@@ -232,9 +232,9 @@ Questions to resolve:
 - Are retry/error paths required for P7, or fixture-only/deferred?
 - How do we distinguish possible branch from observed runtime branch later?
 
-**Decision:**
+**Decision:** Branches/fan-out and joins/fan-in are represented by graph topology, not new base interaction kinds. Ordinary `async`/`await` or Promise continuation is an attribute/visual treatment on a Flow interaction when the target is deterministically resolved. Real asynchronous handoffs such as queue/topic/job/event boundaries use explicit derived Flow endpoints with `publishes` / `consumes`. Cycles remain explicit back-edges in the directional layout. Retries and optional/error paths appear only when deterministic evidence proves them and are represented as metadata/visual semantics rather than new base Flow kinds. External round trips remain one `calls-external` interaction; awaited/consumed response evidence may enrich it rather than adding a reverse `returns` edge. P7 must demonstrate at least one real branch/fan-out or join in Adaptive SEO. Retries, cycles, and rarer async shapes may be fixture-qualified rather than required in the real dogfood path.
 
-**Why:**
+**Why:** The graph shape already expresses branching and joining, so extra ontology would add noise without adding truth. Distinguishing ordinary async continuation from a real queue/event handoff preserves useful semantics. Keeping retries/cycles optional for the real dogfood path avoids forcing Adaptive SEO to satisfy every uncommon topology while still requiring the renderer/query model to represent non-linear execution honestly.
 
 ---
 
@@ -269,7 +269,7 @@ Before `/prompt-write p6`, promote answers into authoritative Phase 6 docs:
 - [x] Q6 data/type/schema enrichment scope
 - [x] Q7 architecture aggregation semantics
 - [x] Q8 primary Flow UX
-- [ ] Q9 non-linear/async visual grammar
+- [x] Q9 non-linear/async visual grammar
 - [ ] Q10 P7 completeness/qualification bar
 
 After promotion into authority, remove this temporary worksheet.
