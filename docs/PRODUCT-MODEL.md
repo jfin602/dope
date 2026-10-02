@@ -181,16 +181,20 @@ Introduce:
 
 The forward ontology is **PlanningMap -> PlannedTransformation -> WorkItem**. Phase 5 does not resurrect `Plan -> PlanStep -> Task`. The Phase 3 domain, `.dope/planning.json`, RPC, UI and associated tests remain historical and removed.
 
-Visual software planning remains useful with no model configured. A diagram is a projection of project state, not an independent source of architectural truth. Canvas coordinates, viewport, selection and tab/layout state are presentation state.
+Visual software planning remains useful with no model configured. A diagram is a projection of project state, not an independent source of architectural truth. Canvas coordinates, viewport, semantic LOD, focus, selection, relationship visibility, node colors and tab/layout state are presentation state. Project-scoped presentation preferences may survive restart, but deleting them must not change canonical architecture, Physical Map evidence/realization, Planning Map transformations, staleness or reconciliation.
 
 #### Locked Phase 5 visual semantics
 
 Phase 5 presentation and lifecycle semantics are:
 
-- Physical Map opens at Systems + immediate Subsystems by default; Components/Code appear through semantic zoom/focus.
-- Visual identity uses hierarchy/shape/icon/edge semantics first, with color only as reinforcement.
-- Geometric zoom coexists with explicit Focus / Up / Fit Architecture navigation.
+- Physical Map opens at Systems + immediate Subsystems by default; a farther semantic LOD may collapse to Systems only, while Components/Code appear only through bounded semantic zoom/focus so the whole repository does not explode into implementation detail.
+- A label may disappear at a deliberately lower semantic LOD, but every map-visible System, Subsystem, Component, code identity, path or name is rendered completely. Prefer wrapping, path-aware breaks, node growth and layout reflow over ellipsis, clipping or shortening.
+- Visual identity uses hierarchy, containment, scale, shape, iconography and edge semantics before color.
+- Dependency relationships are progressively disclosed: containment remains the quiet default; selection/focus promotes the relevant typed neighborhood; simplified cross-boundary dependencies remain visible while focused; unrelated edges remain hidden or subdued.
+- Geometric zoom coexists with explicit Focus / Up / Fit Architecture navigation. Breadcrumbs preserve the current Project -> System -> Subsystem -> Component context.
+- Selection stays synchronized with the left sMap inspector, which provides deterministic/canonical responsibility, children, incoming/outgoing relationships, evidence, source and diagnostics without requiring a model.
 - Systems, Subsystems, Components and supported branches may open as separate focused map tabs over the same shared state.
+- Developers may assign a node one color from a small curated theme-aware palette and reset it to default. The choice persists per project as workbench presentation metadata, applies consistently to Physical/Planning projections of the same identity, and is never consumed as architecture/evidence/planning meaning.
 - Planning Map editing defaults to a physical-versus-target overlay/diff with Current / Target / Diff modes.
 - Direct manipulation creates typed PlannedTransformations only when intent is unambiguous; rich operations use explicit editors.
 - Unadopted planning edits support domain undo/redo.

@@ -103,7 +103,7 @@ Do not reuse or migrate historical Phase 3 `.dope/planning.json`. Repository + `
 
 ## Presentation state
 
-Viewport/pan/zoom, node coordinates/routing geometry, selection, collapsed groups, open tabs, panel sizes and transient filters are presentation state. Deleting them must not change PlanningMap meaning.
+Viewport/pan/zoom, semantic LOD, focus, node coordinates/routing geometry, selection, relationship visibility, developer-selected node colors, collapsed groups, open tabs, panel sizes and transient filters are presentation state. Deleting them must not change PlanningMap meaning.
 
 ## Visual workspace
 
@@ -168,9 +168,11 @@ The resolved Phase 5 worksheet is authoritative planning input.
 
 Use hierarchy, containment, scale, shape, iconography and edge semantics before color.
 
-Color is reinforcement only. Alternate themes and color-vision-deficiency readability are qualification requirements.
+The Phase 5-qualified baseline may remain compact, but the post-closeout `c5-smap-readability` correction locks the fuller presentation contract: progressive semantic LOD, hierarchy-first rendering, relationship-on-demand, stable breadcrumbs/focus context and complete visible labels. A label may be omitted at a deliberately lower LOD; if it is shown, it must not be truncated, clipped or ellipsized. Layout may wrap labels, break paths at sensible boundaries, grow nodes and reflow geometry.
 
-Keep detailed evidence/provenance/diagnostics in the left sMap inspector; use concise state markers on the canvas.
+Color is reinforcement only. Alternate themes and color-vision-deficiency readability are qualification requirements. The readability correction may add a curated project-scoped node-color preference, but it remains presentation metadata and cannot alter identity, evidence, planning semantics or staleness.
+
+Keep detailed evidence/provenance/diagnostics in the left sMap inspector; use concise state markers on the canvas. Selection on the canvas and inspector remains shared so provider-free responsibility/relationship/evidence/source detail explains the selected node.
 
 ### Planning comparison and editing
 
@@ -215,9 +217,15 @@ Reconciliation is transformation-centered and rolls up to WorkItems/branches/map
 
 Completion requires explicit developer closeout with every transformation resolved, intentionally accepted as different, deferred, or abandoned.
 
+## Post-qualification readability boundary
+
+`c5-smap-readability` is a planned unchanged-`0.5.12` correction after Phase 5 P11/P12 closeout and before Phase 6 activation. It refines presentation of the already-qualified Physical/Planning Map surfaces; it does not reopen or expand P11/P12 and is not part of the Phase 5 exit gate.
+
+The correction may change browser-only projection, layout, React Flow interaction, inspector synchronization and project-scoped presentation preferences. It must not change canonical architecture contracts, deterministic evidence, Physical Map service/domain state, PlanningMap/PlannedTransformation/WorkItem semantics, staleness basis, adoption or reconciliation. No provider/model is required.
+
 ## Forward projection boundary
 
-ADR 0020 inserts Product Phase 6 — Data Flow after Phase 5. Data Flow will be a provider-free directional projection of the same Physical Map identities, not a separate map/database. This does **not** expand Phase 5 implementation or qualification: P11/P12, the T3 visual-planning loop and the Phase 5 exit condition remain exactly scoped to Visual Software Planning.
+ADR 0020 inserts Product Phase 6 — Data Flow after Phase 5 and after the readability correction. Data Flow will be a provider-free directional projection of the same Physical Map identities, not a separate map/database. This does **not** expand Phase 5 implementation or qualification: P11/P12, the T3 visual-planning loop and the Phase 5 exit condition remain exactly scoped to Visual Software Planning.
 
 ## Validation strategy
 

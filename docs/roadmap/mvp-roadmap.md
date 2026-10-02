@@ -25,6 +25,7 @@ Theia
 -> enforce project-local sMap persistence
 -> align app color system to the Dope logo
 -> Visual Software Planning
+-> sMap readability correction
 -> Data Flow
 -> AI Presence
 -> Scoped Delegation
@@ -57,6 +58,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — sMap Acceptance Debug Loop | P11 interruption at `0.5.11`: persist mutable unaccepted review work, enumerate deterministic acceptance blockers, and provide an offline checker so one generated sMap can be debugged across restarts without provider calls. This correction does not perform the actual Adaptive SEO debug loop. |
 | Correction c5 — Physical Map Load | One-off `0.5.11` repair after accepted Adaptive SEO architecture loads in the inspector but the center Physical Map remains stuck at Loading. Remove duplicate Software Map channel/attach ownership if confirmed, preserve one shared published map state, and correct stale Phase 3/theme qualification assertions. P11 remains the qualification gate. |
 | Correction c5 — Planning Basis Isolation | `0.5.11` correction after P11 reached durable Planning Maps but ordinary `.dope/planning-maps.json` persistence changed Physical Map identity and unchanged reanalysis falsely staled plans. Isolate `.dope/` from generic analysis inputs and make generation observation provenance rather than semantic staleness. |
+| Correction c5 — sMap Readability | PLANNED / BLOCKED ON PHASE 5 CLOSEOUT. At unchanged `0.5.12`, make the existing Physical/Planning Map projections progressively understandable through semantic LOD, hierarchy-first rendering, relationship-on-demand, focused navigation, complete visible labels, consistent visual grammar and project-scoped presentation colors without changing architectural truth. |
 | Product Phase 6 — Data Flow | Dope explains how information moves through software. A developer can follow evidence-backed inputs, transformations, stores, external boundaries and outputs through the same Physical Map identities without a model provider. |
 | Product Phase 7 — AI Presence | AI understands Dope through Dope-owned project state, architecture, Data Flow, Planning Map context and provider-independent read-only assistance. |
 | Product Phase 8 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
@@ -737,6 +739,36 @@ Out of scope:
 - P12 or version advance.
 
 After the one-off passes, recreate `/tmp/adaptive-seo-dope-p11` from the accepted reference and rerun P11.
+
+## Post-Phase-5 correction — `c5-smap-readability`
+
+Status: **PLANNED / BLOCKED ON PHASE 5 P11/P12 CLOSEOUT**
+
+Required unchanged version after activation: `0.5.12`.
+
+Purpose:
+Make the existing sMap readable at progressively deeper levels without creating another architecture model. The Physical Map remains evidence-backed reality, the Planning Map remains target intent, and readability state remains presentation-only.
+
+Locked scope:
+- semantic LOD that keeps the default project view at Systems + immediate Subsystems, allows a farther Systems-only view, and reveals deeper Component/Code detail only within bounded focus context rather than exploding the entire repository;
+- hierarchy/containment first, with dependency relationships disclosed on selection/focus instead of rendering every valid edge continuously;
+- focused navigation with stable identity, breadcrumbs, **Focus / Up / Fit Architecture**, source round-trip and simplified cross-boundary context;
+- every label shown at an active LOD is complete: wrapping, path-aware breaks, node growth and layout reflow are allowed; ellipsis/clipping of map-visible architectural/code identity is not;
+- the left sMap inspector remains the provider-free explanation surface for responsibility, hierarchy, incoming/outgoing relationships, evidence, source and diagnostics;
+- selectable node colors from a small theme-aware palette, persisted as project-scoped workbench presentation metadata and never interpreted as architecture/evidence/planning semantics;
+- the same readability rules continue to apply when the Planning Map projects Current / Target / Diff state.
+
+Explicit boundaries:
+- no Data Flow implementation;
+- no new durable map/database;
+- no provider/model requirement and no Phase 7 Explain This/chat behavior;
+- no mutation of canonical architecture, Physical Map evidence, Planning Map transformations, staleness or reconciliation based on layout, zoom, focus, filters or color;
+- no expansion of the current P11/P12 qualification contract.
+
+Execution folder: `docs/tasks/c5-smap-readability/`.
+
+Activation occurs only after Phase 5 P11 and P12 are Green/closed on the exact committed `0.5.12` candidate. The correction keeps `0.5.12` unchanged. Phase 6 may establish the `0.6.0` baseline only after this correction closes Green/Qualified.
+
 ## Product Phase 6 — Data Flow
 
 Purpose:

@@ -35,7 +35,7 @@ ADR 0008 remains the Software Map terminology/workbench-placement authority. ADR
 
 Phase 5 may add center-workspace Physical Map and Planning Map canvases, graph-native planning state, project-local Planning Map persistence, explicit target adoption/rebase and deterministic reconciliation. It must not resurrect Phase 3 `Plan -> PlanStep -> Task`, reuse `.dope/planning.json`, turn diagram layout into architectural truth, or pull Phase 7 AI Presence, Agent Mind, ProposedAction, tool authority or delegation forward.
 
-Only the narrow provider-independent sMap synthesis boundary and reference adapters already authorized by ADR 0010/0011/0013 remain valid before Phase 7. Phase 5 visual planning itself must remain fully useful with no model configured. Product Phase 6 Data Flow is also provider-free: it extends the Physical Map with evidence-backed directional flow projections before general AI Presence begins in Phase 7.
+Only the narrow provider-independent sMap synthesis boundary and reference adapters already authorized by ADR 0010/0011/0013 remain valid before Phase 7. Phase 5 visual planning itself must remain fully useful with no model configured. A planned post-Phase-5 `c5-smap-readability` correction at unchanged `0.5.12` refines only Physical/Planning Map presentation—semantic LOD, progressive relationship disclosure, full visible labels, orientation and project-scoped node colors—and remains blocked until P11/P12 closeout; it must not expand the current `0.5.11` interruption. Product Phase 6 Data Flow is also provider-free: it extends the Physical Map with evidence-backed directional flow projections before general AI Presence begins in Phase 7.
 
 Qualification requirements are phase-aware.
 

@@ -85,6 +85,10 @@ The **Planning Map** is activated in Phase 5 and references canonical/physical i
 
 Semantic zoom is architectural rather than merely graphical: System -> Subsystem -> Component -> package/module/service -> file/symbol -> syntax/semantic source relationships.
 
+The map must practice progressive disclosure rather than rendering all known structure and relationships at once. Default architecture reading is hierarchy-first; deeper detail appears through bounded zoom/focus context. At a deliberately lower LOD a label may be omitted entirely, but any identity label that is shown must be complete rather than ellipsized or clipped. Selecting/focusing architecture promotes only the relevant dependency neighborhood while the left sMap inspector provides provider-free responsibility, relationship, evidence and source detail. Breadcrumbs plus Focus / Up / Fit Architecture preserve orientation.
+
+Developer-chosen node colors are project-scoped presentation metadata used only to reinforce visual organization. They must remain theme-aware and readable, must not replace hierarchy/shape/edge semantics, and must never affect canonical identity, deterministic evidence, Physical Map realization, Planning Map meaning, staleness or reconciliation.
+
 The core loop is:
 
 Discover / define architecture
@@ -176,6 +180,7 @@ Foundation Spike 0 — qualify Theia
 -> correction c4-storage — enforce project-local sMap persistence
 -> correction c4-color-theme — Dope Dark visual identity
 -> Phase 5 — Visual Software Planning
+-> correction c5-smap-readability — progressive disclosure and map readability
 -> Phase 6 — Data Flow
 -> Phase 7 — AI Presence
 -> Phase 8 — Scoped Delegation
