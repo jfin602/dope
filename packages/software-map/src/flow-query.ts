@@ -15,7 +15,7 @@ export function queryStaticFlow(snapshot: PhysicalMapSnapshot, query: FlowQuery)
     const nodes = new Map(snapshot.nodes.map(node => [node.id, node]));
     const endpoints = new Map(snapshot.flowEndpoints.map(endpoint => [endpoint.id, endpoint]));
     const focus = query.focusId ? nodes.get(query.focusId) : undefined;
-    if (query.focusId && focus?.kind !== 'system' && focus?.kind !== 'subsystem') throw new Error('Invalid Flow focus');
+    if (query.focusId && !['system', 'subsystem', 'component', 'code'].includes(focus?.kind ?? '')) throw new Error('Invalid Flow focus');
     if (query.selectedId && !nodes.has(query.selectedId) && !endpoints.has(query.selectedId)) throw new Error('Invalid Flow selection');
     const inFocus = (id: string): boolean => {
         if (!focus) return true;
@@ -23,7 +23,8 @@ export function queryStaticFlow(snapshot: PhysicalMapSnapshot, query: FlowQuery)
         const node = nodes.get(anchored);
         if (!node) return false;
         if (node.id === focus.id) return true;
-        if (node.kind === 'code') return node.ownership[focus.kind === 'system' ? 'systemId' : 'subsystemId'] === focus.id;
+        if (node.kind === 'code' && (focus.kind === 'system' || focus.kind === 'subsystem'))
+            return node.ownership[focus.kind === 'system' ? 'systemId' : 'subsystemId'] === focus.id;
         for (let parent = node.parentId; parent; parent = nodes.get(parent)?.parentId) if (parent === focus.id) return true;
         return false;
     };

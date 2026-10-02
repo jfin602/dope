@@ -71,6 +71,17 @@ test('endpoint selection and unresolved diagnostics stay visible', () => {
   assert.equal(query(unsupported).coverageStatus, 'unsupported');
 });
 
+test('Component and Code focus disclose only adjacent evidenced invocation detail', () => {
+  const component: GraphNode = { id: 'cmp', kind: 'component', name: 'Component', purpose: '', parentId: 'a', evidenceIds: ['node'] };
+  const entry = { ...code('entry', 'a'), parentId: 'cmp', ownership: { state: 'assigned' as const, systemId: 's', subsystemId: 'a', componentId: 'cmp' } };
+  const map = snapshot([component, entry, code('outside', 'b')], [edge('entry', 'outside')]);
+  const focused = queryStaticFlow(map, { projectId: 'p', generation: 7, focusId: 'cmp' });
+  assert.deepEqual(focused.facts.map(fact => [fact.sourceId, fact.targetId]), [['entry', 'outside']]);
+  assert.equal(focused.aggregates.length, 0);
+  assert.deepEqual(queryStaticFlow(map, { projectId: 'p', generation: 7, focusId: 'entry' }).facts.map(fact => fact.id),
+    focused.facts.map(fact => fact.id));
+});
+
 test('queue continuation needs matching endpoint identity; unsupported hops are not stitched', () => {
   const nodes = [code('producer', 'a'), code('consumer', 'b'), code('unrelated', 'b')];
   const one = { channel: 'work' }, two = { channel: 'other-work' };

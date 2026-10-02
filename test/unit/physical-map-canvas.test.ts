@@ -131,7 +131,7 @@ test('React Flow stays in presentation and registration preserves workbench plac
   assert.match(css, /\.dope-map-edge-containment .*stroke-dasharray/);
   assert.match(css, /\.dope-map-edge-drifted .*stroke-dasharray/);
   for (const path of ['packages/software-map/src/contracts.ts', 'packages/software-map/src/service.ts',
-    'packages/visual-planning/src/service.ts']) assert.doesNotMatch(read(path), /@xyflow\/react|ReactFlowInstance|\bNode<.*>|SemanticDetail|MapPresentation|selectedId/);
+    'packages/visual-planning/src/service.ts']) assert.doesNotMatch(read(path), /@xyflow\/react|ReactFlowInstance|\bNode<.*>|SemanticDetail|MapPresentation/);
 });
 
 test('published map loads through the inspector handle; failures and stale queries settle', async () => {

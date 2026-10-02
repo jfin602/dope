@@ -1,5 +1,5 @@
 import { parseArchitecture, parseAnalysisProgressEvent, branchFingerprint, targetBranch, suggestArchitectureId, reviewDeclaration, reviewDiagnostics } from '@dope/software-map';
-import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, SoftwareMapRelationshipRequest, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup, SynthesisDryRunReport, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
+import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, FlowQuery, FlowQueryResult, GraphNode, SoftwareMapPage, SoftwareMapRelationshipRequest, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup, SynthesisDryRunReport, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
 
 export type SoftwareMapConnection = SoftwareMapService & { setClient(client: SoftwareMapClient | undefined): void };
 export interface SynthesisPreferenceStore {
@@ -675,6 +675,25 @@ export class SoftwareMapController {
         if (!this.current(project, currentRequest) || !this.published(generation) || page.generation !== generation)
             throw new Error('Software Map changed during relationship query');
         return page;
+    }
+    async flowQuery(request: Omit<FlowQuery, 'projectId'>): Promise<FlowQueryResult> {
+        if (!this.connection || !this.handle || !this.published(request.generation) || this.loading || this.disposed)
+            throw new Error('Software Map is not published for this project');
+        const project = this.project, currentRequest = this.request;
+        const result = await this.connection.flow({ ...request, projectId: 'project:root', projectHandle: this.handle });
+        if (!this.current(project, currentRequest) || !this.published(request.generation) ||
+            result.generation !== request.generation || result.projectId !== 'project:root')
+            throw new Error('Software Map changed during Flow query');
+        return result;
+    }
+    async evidenceDetails(ids: string[], generation: number): Promise<Evidence[]> {
+        if (!this.connection || !this.handle || !this.published(generation) || this.loading || this.disposed)
+            throw new Error('Software Map is not published for this project');
+        const project = this.project, currentRequest = this.request;
+        const result = await this.evidenceFor(ids, this.connection, this.handle, generation);
+        if (!this.current(project, currentRequest) || !this.published(generation))
+            throw new Error('Software Map changed during evidence query');
+        return result;
     }
     private async load(status: SoftwareMapStatus): Promise<void> {
         if (!this.connection || !this.handle || status.state !== 'ready' || status.generation !== status.publishedGeneration) return;

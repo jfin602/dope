@@ -1,6 +1,6 @@
 {
   "name": "@dope/code-analysis-typescript",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "private": true,
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -8,8 +8,8 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@dope/code-analysis": "0.6.5",
-    "@dope/software-map": "0.6.5",
+    "@dope/code-analysis": "0.6.6",
+    "@dope/software-map": "0.6.6",
     "typescript": "5.9.3"
   }
 }

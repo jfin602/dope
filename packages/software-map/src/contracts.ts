@@ -154,7 +154,7 @@ export interface FlowCoverage {
 export interface FlowQuery {
     projectId: string;
     generation: number;
-    /** System or Subsystem whose known Flow is shown. */
+    /** Architectural scope or CodeEntity whose known Flow is shown. */
     focusId?: string;
     /** Selected GraphNode or derived endpoint. Omit to clear a trace. */
     selectedId?: string;

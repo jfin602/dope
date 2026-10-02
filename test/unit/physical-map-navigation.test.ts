@@ -120,7 +120,7 @@ test('focused tabs are keyed by project and identity, with shared controller sta
   assert.match(frontend, /map\?\.workspace !== options\.workspace/);
   assert.match(widget, /new PhysicalMapController\(map, \(\) => this\.render\(\)/);
   for (const file of ['packages/software-map/src/contracts.ts', 'packages/visual-planning/src/service.ts']) {
-    assert.doesNotMatch(readFileSync(resolve(import.meta.dirname, '../..', file), 'utf8'), /PhysicalMapTabOptions|focusId|viewport/);
+    assert.doesNotMatch(readFileSync(resolve(import.meta.dirname, '../..', file), 'utf8'), /PhysicalMapTabOptions|viewport/);
   }
 });
 

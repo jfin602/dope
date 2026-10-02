@@ -8,6 +8,7 @@ import { SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
 import URI from '@theia/core/lib/common/uri';
 import { PhysicalMapController, physicalMapTabId, type PhysicalMapTabOptions } from './physical-map-controller';
 import type { CanvasNode } from './physical-map-projection';
+import type { FlowCanvasNode } from './flow-map-projection';
 import { MapViewport, mapFitContext } from './map-viewport';
 import { mapLabel } from './map-label';
 import { PlanningMapController } from './planning-map-controller';
@@ -33,6 +34,15 @@ function MapNode({ data }: { data: { item: CanvasNode & { intent?: string; stale
         React.createElement(Handle, { type: 'source', position: Position.Right, isConnectable: connectable, style: hiddenHandle }));
 }
 const nodeTypes = { architecture: MapNode };
+function FlowNode({ data }: { data: { item: FlowCanvasNode } }): React.ReactElement {
+    const item = data.item;
+    return React.createElement('div', { className: `dope-flow-node dope-flow-${item.shape}${item.subdued ? ' dope-flow-subdued' : ''}` },
+        React.createElement('span', { className: 'dope-map-kind' }, item.role),
+        React.createElement('strong', null, mapLabel(item.name)),
+        React.createElement(Handle, { type: 'target', position: Position.Left, style: { opacity: 0 } }),
+        React.createElement(Handle, { type: 'source', position: Position.Right, style: { opacity: 0 } }));
+}
+const flowNodeTypes = { flow: FlowNode };
 
 export class PhysicalMapWidget extends BaseWidget {
     private async ask(title: string, initialValue = ''): Promise<string | undefined> {
@@ -55,6 +65,11 @@ export class PhysicalMapWidget extends BaseWidget {
     private readonly colorSelect = document.createElement('select');
     private readonly planningBar = document.createElement('section');
     private readonly workPanel = document.createElement('section');
+    private readonly flowBar = document.createElement('section');
+    private readonly flowPanel = document.createElement('section');
+    private readonly modeBar = document.createElement('div');
+    private readonly architectureButton = document.createElement('button');
+    private readonly flowButton = document.createElement('button');
     private readonly planningListener;
     private readonly colorListener;
     private readonly heading = document.createElement('h2');
@@ -80,6 +95,14 @@ export class PhysicalMapWidget extends BaseWidget {
         planningToggle.type = 'button';
         planningToggle.textContent = 'Planning Map';
         planningToggle.onclick = () => this.planning.setMode(!this.planning.planningMode);
+        this.modeBar.className = 'dope-map-mode';
+        this.modeBar.setAttribute('role', 'group');
+        this.modeBar.setAttribute('aria-label', 'Physical Map view');
+        this.architectureButton.textContent = 'Architecture';
+        this.flowButton.textContent = 'Flow';
+        this.architectureButton.onclick = () => this.controller.setMode('architecture');
+        this.flowButton.onclick = () => this.controller.setMode('flow');
+        this.modeBar.append(this.architectureButton, this.flowButton);
         const up = document.createElement('button');
         up.type = 'button';
         up.textContent = 'Up';
@@ -110,7 +133,7 @@ export class PhysicalMapWidget extends BaseWidget {
         };
         const colorLabel = document.createElement('label');
         colorLabel.append('Node color ', this.colorSelect);
-        bar.append(this.heading, planningToggle, up, this.focusButton, this.tabButton, this.sourceButton, fit, colorLabel);
+        bar.append(this.heading, planningToggle, this.modeBar, up, this.focusButton, this.tabButton, this.sourceButton, fit, colorLabel);
         this.breadcrumbs.setAttribute('aria-label', 'Map focus');
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
@@ -118,9 +141,15 @@ export class PhysicalMapWidget extends BaseWidget {
         this.planningBar.className = 'dope-planning-bar';
         this.workPanel.className = 'dope-work-panel';
         this.workPanel.setAttribute('aria-label', 'Planning work');
-        this.node.append(bar, this.planningBar, this.workPanel, this.breadcrumbs, this.status, this.canvas);
+        this.flowBar.className = 'dope-flow-bar';
+        this.flowPanel.className = 'dope-flow-panel';
+        this.flowPanel.setAttribute('aria-label', 'Flow inspection');
+        this.node.append(bar, this.planningBar, this.workPanel, this.flowBar, this.flowPanel, this.breadcrumbs, this.status, this.canvas);
         this.controller = new PhysicalMapController(map, () => this.render(), options?.workspace, options?.focusId);
-        this.planningListener = planning.onChange(() => this.render());
+        this.planningListener = planning.onChange(() => {
+            if (planning.planningMode && this.controller.mode === 'flow') this.controller.setMode('architecture');
+            this.render();
+        });
         this.colorListener = colors.onChange(() => this.render());
     }
 
@@ -144,16 +173,20 @@ export class PhysicalMapWidget extends BaseWidget {
         const { loading, error } = this.controller;
         const selectedMap = this.planning.selected;
         const planningMode = this.planning.planningMode;
+        const flowMode = !planningMode && this.controller.mode === 'flow';
         const context = mapFitContext(this.controller.mapWorkspace, this.controller.mapGeneration, this.controller.focusId,
-            planningMode ? 'planning' : 'physical', planningMode ? selectedMap?.id : undefined,
+            planningMode ? 'planning' : flowMode ? 'flow' : 'physical', planningMode ? selectedMap?.id : undefined,
             planningMode ? this.planning.view : 'current');
         if (context !== this.fitContext) {
             this.fitContext = context;
             this.fitRequested = true;
-            if (this.controller.detail !== 'architecture') { this.controller.setDetail('architecture'); return; }
+            if (!flowMode && this.controller.detail !== 'architecture') { this.controller.setDetail('architecture'); return; }
         }
         this.heading.textContent = planningMode ? 'Planning Map' : 'Physical Map';
         if (!this.focusedTab) this.title.label = planningMode ? 'Planning Map' : 'Physical Map';
+        this.modeBar.hidden = planningMode;
+        this.architectureButton.setAttribute('aria-pressed', String(!flowMode));
+        this.flowButton.setAttribute('aria-pressed', String(flowMode));
         const projection = planningMode && selectedMap ? projectPlanningMap(
             this.controller.sourceNodes, this.controller.sourceRelationships, this.controller.sourceViolations,
             selectedMap, this.planning.view, this.controller.focusId, this.planning.stale,
@@ -173,6 +206,8 @@ export class PhysicalMapWidget extends BaseWidget {
             button.onclick = () => { this.controller.setDetail('architecture'); this.controller.focus(item.id); };
             this.breadcrumbs.append(button);
         }
+        if (flowMode) { this.renderFlow(); return; }
+        this.flowBar.hidden = true; this.flowPanel.hidden = true;
         const selected = this.controller.selectedId;
         const selectedNode = projection.nodes.find(node => node.id === selected &&
             (node.kind === 'system' || node.kind === 'subsystem' || node.kind === 'component'));
@@ -231,6 +266,113 @@ export class PhysicalMapWidget extends BaseWidget {
         if (nodes.length && !loading) this.queueFit();
     }
 
+    private renderFlow(): void {
+        const controller = this.controller, projection = controller.flowProjection;
+        this.planningBar.hidden = true; this.workPanel.hidden = true;
+        this.flowBar.hidden = false; this.flowPanel.hidden = false;
+        const selected = controller.flowSelectedId;
+        const traceable = !!selected && !!controller.flowResult &&
+            (controller.flowResult.nodes.some(node => node.id === selected) ||
+                controller.flowResult.endpoints.some(endpoint => endpoint.id === selected));
+        this.focusButton.disabled = !selected || !controller.sourceNodes.some(node => node.id === selected);
+        this.tabButton.disabled = this.focusButton.disabled;
+        this.sourceButton.disabled = !selected || !controller.sourceNodes.some(node => node.id === selected);
+        this.colorSelect.disabled = true;
+        this.flowBar.replaceChildren();
+        const button = (label: string, action: () => void, disabled = false) => {
+            const control = document.createElement('button');
+            control.type = 'button'; control.textContent = label; control.disabled = disabled; control.onclick = action;
+            this.flowBar.append(control); return control;
+        };
+        button('Trace downstream', () => controller.trace('downstream'), !traceable);
+        button('Trace upstream', () => controller.trace('upstream'), !traceable);
+        button('Clear trace', () => controller.trace(), !controller.direction);
+        const label = document.createElement('span');
+        label.textContent = `Static Flow · ${controller.direction ? `tracing ${controller.direction}` : 'possible execution'}`;
+        this.flowBar.append(label);
+        this.flowPanel.replaceChildren();
+        if (projection) {
+            const coverage = document.createElement('p');
+            coverage.textContent = `Coverage: ${projection.coverageStatus}${projection.truncated ? ' · truncated; continue deeper from ' +
+                (projection.truncation.continueFromIds.join(', ') || 'the current focus') : ''}`;
+            this.flowPanel.append(coverage);
+            for (const item of projection.coverage) {
+                const line = document.createElement('p');
+                line.textContent = `${item.scopeId}: ${item.status} Flow coverage`;
+                this.flowPanel.append(line);
+            }
+            for (const item of projection.diagnostics) {
+                const line = document.createElement('p'); line.textContent = `⚠ ${item.code}: ${item.message}`;
+                this.flowPanel.append(line);
+            }
+            const participants = document.createElement('details');
+            const summary = document.createElement('summary'); summary.textContent = 'Flow participants'; participants.append(summary);
+            for (const item of projection.nodes) {
+                const control = document.createElement('button'); control.type = 'button';
+                control.textContent = `${item.role} · ${item.name}`;
+                control.setAttribute('aria-pressed', String(item.selected));
+                control.onclick = () => controller.select(item.id);
+                participants.append(control);
+            }
+            this.flowPanel.append(participants);
+            const edgeList = document.createElement('div');
+            edgeList.className = 'dope-flow-edge-list';
+            edgeList.setAttribute('aria-label', 'Flow edges');
+            for (const edge of projection.edges) {
+                const control = document.createElement('button'); control.type = 'button';
+                control.textContent = `${edge.source} → ${edge.target} · ${edge.label}`;
+                control.setAttribute('aria-pressed', String(controller.selectedFlowEdgeId === edge.id));
+                control.onclick = () => void controller.inspectFlowEdge(edge.id);
+                edgeList.append(control);
+            }
+            this.flowPanel.append(edgeList);
+            const edge = controller.selectedFlowEdge;
+            if (edge) {
+                const details = document.createElement('section');
+                details.setAttribute('aria-label', 'Selected Flow edge');
+                const line = (value: string) => { const p = document.createElement('p'); p.textContent = value; details.append(p); };
+                const name = (id: string) => projection.nodes.find(node => node.id === id)?.name ?? id;
+                line(`${edge.kind} · ${name(edge.source)} (${edge.source}) → ${name(edge.target)} (${edge.target})`);
+                line(`Origin Flow facts: ${edge.originFlowFactIds.join(', ')}`);
+                if (edge.async || edge.retry || edge.error)
+                    line(`Behavior: ${[edge.async && 'async', edge.retry && 'retry', edge.error && 'error'].filter(Boolean).join(', ')}`);
+                line(edge.enrichment.length ? `Data semantics: ${edge.enrichment.map(item => `${item.kind} ${item.label}`).join('; ')}` :
+                    'Data semantics unresolved');
+                line(`Evidence: ${edge.evidenceIds.join(', ') || 'none'}`);
+                for (const evidence of controller.flowEvidence)
+                    line(`${evidence.id} · ${evidence.class} · ${evidence.producer} ${evidence.path ?? ''}${evidence.span?.line ? `:${evidence.span.line}` : ''}`);
+                if (projection.coverageStatus !== 'complete') line(`Flow coverage: ${projection.coverageStatus}`);
+                const source = document.createElement('button'); source.type = 'button';
+                source.textContent = 'Open edge source'; source.disabled = !edge.evidenceIds.length;
+                source.onclick = () => void this.openSource(true); details.append(source);
+                this.flowPanel.append(details);
+            }
+        }
+        this.status.textContent = !controller.projectMatches ? 'This map tab belongs to another project.' :
+            controller.error ? `Flow: ${controller.error}` : controller.loading ? 'Loading Static Flow…' :
+            projection ? `${projection.nodes.length} Flow participants · ${projection.edges.length} evidenced interactions` :
+                'Focus a System to inspect Static Flow.';
+        const nodes: Node[] = projection?.nodes.map(item => ({ id: item.id, type: 'flow',
+            position: { x: item.x, y: item.y }, data: { item }, draggable: false, selectable: true,
+            selected: item.selected, className: item.subdued ? 'dope-flow-subdued' : item.selected ? 'dope-flow-selected' : '',
+            style: { width: item.width, height: item.height } })) ?? [];
+        const edges: Edge[] = projection?.edges.map(item => ({ id: item.id, source: item.source, target: item.target,
+            label: [item.label, ...item.enrichment.map(value => value.label), item.async ? 'async' : '',
+                item.retry ? 'retry' : '', item.error ? 'error' : ''].filter(Boolean).join(' · '),
+            type: item.backEdge ? 'smoothstep' : 'default', animated: item.async,
+            className: `dope-flow-edge${item.subdued ? ' dope-flow-subdued' : ''}${item.selected ? ' dope-flow-selected' : ''}${item.backEdge ? ' dope-flow-back' : ''}`,
+            selectable: true, selected: controller.selectedFlowEdgeId === item.id })) ?? [];
+        this.root?.render(React.createElement(ReactFlow, { nodes, edges, nodeTypes: flowNodeTypes,
+            minZoom: 0.01, nodesDraggable: false, nodesConnectable: false, elementsSelectable: true,
+            onNodeClick: (_event: React.MouseEvent, node: Node) => controller.select(node.id),
+            onNodeDoubleClick: (_event: React.MouseEvent, node: Node) => controller.focus(node.id),
+            onEdgeClick: (_event: React.MouseEvent, edge: Edge) => void controller.inspectFlowEdge(edge.id),
+            onInit: (flow: ReactFlowInstance) => { this.flow = flow; this.queueFit(); },
+            proOptions: { hideAttribution: true }
+        }, React.createElement(Background), React.createElement(Controls, { showInteractive: false })));
+        if (nodes.length && !controller.loading) this.queueFit();
+    }
+
     private fitArchitecture(): void {
         this.fitRequested = true;
         this.controller.setDetail('architecture');
@@ -239,7 +381,8 @@ export class PhysicalMapWidget extends BaseWidget {
     }
 
     private queueFit(): void {
-        if (!this.fitRequested || this.fitQueued || this.fitting || !this.flow || this.controller.loading || !this.controller.projection.nodes.length) return;
+        if (!this.fitRequested || this.fitQueued || this.fitting || !this.flow || this.controller.loading ||
+            !(this.controller.mode === 'flow' ? this.controller.flowProjection?.nodes.length : this.controller.projection.nodes.length)) return;
         this.fitQueued = true;
         requestAnimationFrame(async () => {
             this.fitQueued = false;
@@ -524,9 +667,9 @@ export class PhysicalMapWidget extends BaseWidget {
         if (item.status === 'completed') button('Edit completion notes', () => edit('completionNotes', item.completionNotes ?? ''));
     }
 
-    private async openSource(): Promise<void> {
+    private async openSource(edge = false): Promise<void> {
         try {
-            const location = await this.controller.source();
+            const location = edge ? await this.controller.flowSource() : await this.controller.source();
             if (!location || this.isDisposed) return;
             await open(this.opener, new URI(location.uri), location.span?.line ? { selection: {
                 start: { line: location.span.line - 1, character: (location.span.column ?? 1) - 1 }
