@@ -58,7 +58,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — sMap Acceptance Debug Loop | P11 interruption at `0.5.11`: persist mutable unaccepted review work, enumerate deterministic acceptance blockers, and provide an offline checker so one generated sMap can be debugged across restarts without provider calls. This correction does not perform the actual Adaptive SEO debug loop. |
 | Correction c5 — Physical Map Load | One-off `0.5.11` repair after accepted Adaptive SEO architecture loads in the inspector but the center Physical Map remains stuck at Loading. Remove duplicate Software Map channel/attach ownership if confirmed, preserve one shared published map state, and correct stale Phase 3/theme qualification assertions. P11 remains the qualification gate. |
 | Correction c5 — Planning Basis Isolation | `0.5.11` correction after P11 reached durable Planning Maps but ordinary `.dope/planning-maps.json` persistence changed Physical Map identity and unchanged reanalysis falsely staled plans. Isolate `.dope/` from generic analysis inputs and make generation observation provenance rather than semantic staleness. |
-| Correction c5 — sMap Readability | PLANNED / BLOCKED ON P11 GREEN. At unchanged `0.5.11`, make the existing Physical/Planning Map projections progressively understandable through semantic LOD, hierarchy-first rendering, relationship-on-demand, focused navigation, complete visible labels, consistent visual grammar and project-scoped presentation colors without changing architectural truth. Run after P11 and before P12. |
+| Correction c5 — sMap Readability | ACTIVE / READY at unchanged `0.5.11`. Make the existing Physical/Planning Map projections progressively understandable through semantic LOD, hierarchy-first rendering, relationship-on-demand, focused navigation, complete visible labels, consistent visual grammar and project-scoped presentation colors without changing architectural truth. Run now, then return to P11 qualification. |
 | Product Phase 6 — Data Flow | Dope explains how information moves through software. A developer can follow evidence-backed inputs, transformations, stores, external boundaries and outputs through the same Physical Map identities without a model provider. |
 | Product Phase 7 — AI Presence | AI understands Dope through Dope-owned project state, architecture, Data Flow, Planning Map context and provider-independent read-only assistance. |
 | Product Phase 8 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
@@ -740,11 +740,13 @@ Out of scope:
 
 After the one-off passes, recreate `/tmp/adaptive-seo-dope-p11` from the accepted reference and rerun P11.
 
-## Post-P11 / pre-P12 correction — `c5-smap-readability`
+## Pre-P11-rerun correction — `c5-smap-readability`
 
-Status: **PLANNED / BLOCKED ON P11 GREEN**
+Status: **ACTIVE / READY**
 
-Required unchanged version after activation: `0.5.11`.
+Required unchanged version: `0.5.11`.
+
+Activation source: `158b61d601947b342472e457fe61d78b24bf5152`.
 
 Purpose:
 Make the existing sMap readable at progressively deeper levels without creating another architecture model. The Physical Map remains evidence-backed reality, the Planning Map remains target intent, and readability state remains presentation-only.
@@ -767,7 +769,7 @@ Explicit boundaries:
 
 Execution folder: `docs/tasks/c5-smap-readability/`.
 
-Activation occurs only after Phase 5 P11 is Green on the exact committed `0.5.11` candidate. The correction keeps `0.5.11` unchanged and must close Green/Qualified before P12 runs. Phase 6 may establish the `0.6.0` baseline only after the subsequent P12 closeout.
+The correction is authorized now at unchanged `0.5.11` from the recorded activation source. It must close before returning to the P11 qualification rerun. P12 remains blocked on P11 Green; Phase 6 may establish the `0.6.0` baseline only after P12 closeout.
 
 ## Product Phase 6 — Data Flow
 

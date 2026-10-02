@@ -22,7 +22,7 @@ Read:
 
 Require:
 - README activation source is exact, not TBD;
-- Phase 5 P11 Green;
+- activation source `158b61d601947b342472e457fe61d78b24bf5152` reachable;
 - P1-P3 focused evidence Green;
 - package exactly 0.5.11;
 - clean intended candidate.
@@ -147,10 +147,10 @@ Do not update known-issues.md or feature-ideas.md automatically.
 If Green, explicitly report:
 - K7MX is eligible for /resolve K7MX;
 - +F6QK is eligible for /resolve +F6QK;
-- Phase 5 P12 may resume.
+- Phase 5 P11 qualification may resume.
 
 If Not Green:
-- keep P12 and Phase 6 blocked;
+- keep P11/P12 and Phase 6 blocked;
 - identify the narrow failed contract and strongest evidence.
 
 FINAL RESPONSE
