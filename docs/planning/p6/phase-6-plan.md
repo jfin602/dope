@@ -191,6 +191,18 @@ The query must:
 - reject stale project/generation publication;
 - distinguish a static possible execution path from future recorded-runtime observed paths.
 
+### Architecture-scope Flow aggregation
+
+System/Subsystem Flow aggregation is path-preserving rather than relationship-counting.
+
+An architectural aggregate may exist only when lower-level Flow facts form one continuous evidenced execution path between the relevant architectural scopes. Every aggregate retains `originFlowFactIds` and evidence/provenance for the lower-level facts that justify it.
+
+If the lower-level path contains an unsupported or missing hop, the aggregate projection preserves that gap. It must not draw a connector merely because source and target scopes both participate somewhere in the broader execution graph.
+
+Preserve meaningful branch/fan-out/join shape during aggregation. Repeated equivalent lower-level interactions may collapse visually, but materially different interaction kinds such as `reads`, `writes`, `invokes`, and `calls-external` remain distinct when merging them would erase behavior.
+
+Optional data/type/schema annotations are never combined into an invented shared payload. Aggregation may summarize only what the origin facts actually support.
+
 ### Static execution-path stitching
 
 Flow queries stitch deterministic multi-hop execution only across proven Flow facts.
