@@ -259,6 +259,31 @@ Switching mode preserves:
 
 Flow edges are inspectable. Edge inspection exposes interaction kind, evidence/provenance, optional data annotation and ordinary source navigation.
 
+## Flow UX
+
+The default Flow experience is **overview first, path exploration second**.
+
+When the developer switches to `Flow` at System scope, show a quiet architecture-level overview containing:
+- major Inputs;
+- major Outputs;
+- participating architectural scopes;
+- Stores;
+- External endpoints;
+- high-level evidenced Flow connections.
+
+Do not render every code-level invocation in the initial System view.
+
+Selecting an Input or Flow participant highlights its relevant Static Flow path/neighborhood. Other known Flow remains visually subdued by default for orientation rather than disappearing completely.
+
+Provide explicit exploration controls:
+- `Trace downstream`;
+- `Trace upstream`;
+- `Clear trace`.
+
+Known Inputs should be easy to discover and act as natural behavioral entry points.
+
+Code-level invocation detail is progressively disclosed as the developer focuses from System -> Subsystem -> Component -> Code. The Flow surface should preserve the same progressive-disclosure mental model as the rest of sMap and avoid becoming an unbounded call-graph hairball.
+
 ## Persistence
 
 No `.dope/flow.json` is introduced.
