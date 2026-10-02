@@ -181,9 +181,9 @@ Questions to resolve:
 - When should gaps split the visual path?
 - How are optional data annotations combined without inventing one payload?
 
-**Decision:**
+**Decision:** Architectural Flow aggregation is allowed only over continuous evidenced origin paths. Every aggregate edge retains its `originFlowFactIds` and provenance. If a lower-level execution path contains an unsupported or missing hop, the higher-level projection preserves the gap rather than drawing a connector across it. Preserve meaningful branch/fan-out/join structure instead of flattening distinct paths into one linear edge. Repeated equivalent lower-level interactions may collapse visually, but materially different interaction kinds such as `reads`, `writes`, `invokes`, and `calls-external` remain distinct when merging them would erase behavior. Distinct data/type/schema annotations must never be combined into an invented shared payload.
 
-**Why:**
+**Why:** Aggregation exists for readability, not to manufacture stronger claims than the evidence. Requiring a continuous origin path keeps System/Subsystem Flow traceable to real code, while preserving semantic differences and non-linear shape keeps the high-level map behaviorally truthful.
 
 ---
 
@@ -267,7 +267,7 @@ Before `/prompt-write p6`, promote answers into authoritative Phase 6 docs:
 - [x] Q4 Adaptive SEO supported patterns
 - [x] Q5 execution-path stitching bounds
 - [x] Q6 data/type/schema enrichment scope
-- [ ] Q7 architecture aggregation semantics
+- [x] Q7 architecture aggregation semantics
 - [ ] Q8 primary Flow UX
 - [ ] Q9 non-linear/async visual grammar
 - [ ] Q10 P7 completeness/qualification bar
