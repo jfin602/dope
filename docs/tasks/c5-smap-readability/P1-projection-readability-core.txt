@@ -1,11 +1,11 @@
 TASK: Correction 5 / P1 — Projection readability core
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
 
 VERSIONING
-- Required unchanged project version: 0.5.12.
+- Required unchanged project version: `0.5.12`.
 
 ACTIVATION
 - Do not execute unless docs/tasks/c5-smap-readability/README.md records the exact committed Phase 5 P12 closeout activation source.

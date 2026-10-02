@@ -1,12 +1,12 @@
 TASK: Correction 5 / P4 — sMap readability browser qualification and closeout
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: yes.
 - Execution: MANUAL INTERACTIVE HANDOFF — do not treat as a runner-only prompt.
 
 VERSIONING
-- Required unchanged project version: 0.5.12.
+- Required unchanged project version: `0.5.12`.
 
 GOAL
 

@@ -1,11 +1,11 @@
 TASK: Correction 5 / P2 — Readable React Flow integration
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
 
 VERSIONING
-- Required unchanged project version: 0.5.12.
+- Required unchanged project version: `0.5.12`.
 
 GOAL
 
