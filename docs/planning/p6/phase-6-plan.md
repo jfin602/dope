@@ -55,17 +55,21 @@ A fact represents one evidence-backed application-level execution interaction an
 
 Source/target may reference existing Software Map nodes or stable derived physical endpoints such as an inbound route boundary, store, queue or external service. Derived endpoints do not become canonical architecture nodes.
 
-Initial interaction semantics should cover the concrete Phase 6 slice rather than a universal ontology. Candidate semantics include:
-- receives;
-- invokes;
-- reads;
-- writes;
-- calls-external;
-- publishes;
-- consumes;
-- responds.
+Initial Phase 6 interaction semantics are locked as:
+- `receives`;
+- `invokes`;
+- `reads`;
+- `writes`;
+- `calls-external`;
+- `publishes`;
+- `consumes`;
+- `responds`.
 
-The temporary worksheet resolves the exact initial set before prompt writing.
+Do not add `returns` as a separate base interaction in Phase 6. Return information normally enriches `invokes` or an explicit output/response boundary.
+
+A deterministically resolved project-code call remains valid `invokes` Flow even when it has zero arguments and its return value is unused, provided it is a real application execution step.
+
+Data/type/schema/event information upgrades a Flow interaction only when separately evidenced. Serialization/deserialization is initially Processing metadata/annotation, not its own interaction, unless it represents a distinct meaningful execution component.
 
 ### FlowRole
 
