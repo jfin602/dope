@@ -157,9 +157,9 @@ Questions to resolve:
 - Should SQL table/entity names be shown when directly parseable?
 - What UI language represents unknown data without making Flow look broken?
 
-**Decision:**
+**Decision:** Phase 6 supports direct, low-cost semantic enrichment only when evidence is explicit. Show useful TypeScript argument/return type names, HTTP method/path and explicit request/response schema identity, event/topic identity and schema, and directly evidenced persistence entity/table names. Suppress broad or low-information types such as `unknown`, `object`, generic records, and framework plumbing types from the main Flow canvas unless they materially aid understanding. HTTP method/path is boundary metadata even when payload semantics are unresolved. Field-level lineage, alias/property tracking, inferred DTO transformations, taint propagation, and guessed schema relationships are out of scope. Unknown data is represented by the absence of a data annotation on the canvas; edge inspection may state that data semantics are not resolved.
 
-**Why:**
+**Why:** This gives developers meaningful context where the analyzer can prove it without turning Phase 6 into a data-lineage project. Keeping unknowns quiet on the canvas preserves readability, while explicit inspection text keeps uncertainty honest.
 
 ---
 
@@ -266,7 +266,7 @@ Before `/prompt-write p6`, promote answers into authoritative Phase 6 docs:
 - [x] Q3 derived endpoint identity
 - [x] Q4 Adaptive SEO supported patterns
 - [x] Q5 execution-path stitching bounds
-- [ ] Q6 data/type/schema enrichment scope
+- [x] Q6 data/type/schema enrichment scope
 - [ ] Q7 architecture aggregation semantics
 - [ ] Q8 primary Flow UX
 - [ ] Q9 non-linear/async visual grammar
