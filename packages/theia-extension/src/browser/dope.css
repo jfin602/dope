@@ -119,10 +119,24 @@
 .dope-physical-map-canvas .react-flow__edge-text { fill: var(--theia-editor-foreground); }
 .dope-physical-map-canvas .react-flow__edge-textbg { fill: var(--theia-editor-background); }
 .dope-map-mode { display: flex; gap: 2px; }
-.dope-map-mode button[aria-pressed="true"], .dope-flow-bar button:focus-visible, .dope-flow-edge-list button[aria-pressed="true"] { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-map-mode button[aria-pressed="true"], .dope-flow-bar button[aria-pressed="true"], .dope-flow-edge-list button[aria-pressed="true"], .dope-map-inspection button[aria-pressed="true"] { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-physical-map-view button[aria-label] .codicon { pointer-events: none; }
 .dope-flow-bar { display: flex; align-items: center; gap: 6px; }
 .dope-flow-bar[hidden], .dope-planning-bar[hidden] { display: none; }
-.dope-flow-panel, .dope-planning-inspection { position: absolute; top: 8px; right: 8px; z-index: 2; box-sizing: border-box; width: min(360px, 45%); max-height: calc(100% - 48px); overflow: auto; padding: 8px; background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border, var(--theia-input-border)); border-radius: 4px; }
+.dope-map-inspection { position: absolute; top: 8px; right: 8px; z-index: 2; box-sizing: border-box; width: min(420px, max(260px, 48%), calc(100% - 16px)); max-height: calc(100% - 48px); overflow: auto; padding: 8px; color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border, var(--theia-input-border)); border-radius: 4px; }
+.dope-map-inspection-header { position: sticky; top: -8px; z-index: 1; display: flex; align-items: center; gap: 4px; min-width: 0; background: var(--theia-editorWidget-background, var(--theia-editor-background)); }
+.dope-map-inspection-summary { flex: 1; min-width: 0; margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.dope-map-inspection[data-state="compact"] { width: min(360px, max(260px, 48%), calc(100% - 16px)); }
+.dope-map-inspection[data-state="compact"] .dope-flow-panel,
+.dope-map-inspection[data-state="compact"] .dope-planning-inspection,
+.dope-map-inspection[data-state="minimized"] .dope-flow-panel,
+.dope-map-inspection[data-state="minimized"] .dope-planning-inspection { display: none; }
+.dope-map-inspection[data-state="minimized"] { width: auto; max-width: min(180px, 48%); }
+.dope-map-inspection[data-state="minimized"] .dope-map-inspection-summary,
+.dope-map-inspection[data-state="minimized"] .dope-map-inspection-header > button:not([aria-label="Expand map inspection"]) { display: none; }
+.dope-map-inspection[data-state="minimized"] .dope-map-inspection-summary::before { content: 'Inspect map'; font-size: 11px; }
+.dope-map-inspection[data-state="minimized"] .dope-map-inspection-summary { display: block; font-size: 0; }
+.dope-flow-panel, .dope-planning-inspection { padding-top: 6px; }
 .dope-planning-inspection[hidden], .dope-flow-panel[hidden] { display: none; }
 .dope-flow-panel p { margin: 4px 0; overflow-wrap: anywhere; }
 .dope-flow-panel details button { margin: 4px; }
@@ -133,10 +147,16 @@
 .dope-flow-store { border-style: double; border-width: 4px; }
 .dope-flow-external { border-style: dashed; }
 .dope-flow-queue { border-style: dotted; border-width: 3px; }
-.dope-flow-selected .dope-flow-node { outline: 3px solid var(--theia-focusBorder); outline-offset: 2px; }
-.dope-flow-subdued { opacity: .45; }
+.dope-physical-map-canvas .react-flow__node.dope-flow-subdued,
+.dope-physical-map-canvas .react-flow__edge.dope-flow-subdued { opacity: .82; }
+.dope-physical-map-canvas .react-flow__node.dope-flow-selected,
+.dope-physical-map-canvas .react-flow__edge.dope-flow-selected { opacity: 1; }
+.dope-flow-selected .dope-flow-node { outline: 4px solid var(--theia-focusBorder); outline-offset: 2px; border-width: 3px; }
+.dope-flow-node strong { color: var(--theia-editor-foreground); font-weight: 700; }
 .dope-flow-edge .react-flow__edge-path { stroke: var(--theia-editor-foreground); stroke-width: 2; }
-.dope-flow-edge.dope-flow-selected .react-flow__edge-path { stroke-width: 4; }
+.dope-flow-edge.dope-flow-selected .react-flow__edge-path { stroke: var(--theia-focusBorder); stroke-width: 5; }
+.dope-flow-edge.dope-flow-selected .react-flow__edge-text { font-weight: 700; }
+.dope-flow-edge .react-flow__edge-textbg { fill: var(--theia-editorWidget-background, var(--theia-editor-background)); }
 .dope-flow-edge.dope-flow-back .react-flow__edge-path { stroke-dasharray: 7 4; }
 .dope-planning-bar { display: flex; align-items: center; gap: 6px; }
 .dope-planning-bar select, .dope-planning-details input, .dope-planning-details select { color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border); padding: 5px; }

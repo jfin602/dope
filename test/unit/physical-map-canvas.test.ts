@@ -126,7 +126,7 @@ test('React Flow stays in presentation and registration preserves workbench plac
   assert.match(frontend, /bindViewContribution\(bind, ProjectMindView\)/);
   assert.match(frontend, /id: PROJECT_MIND_ID, createWidget/);
   assert.doesNotMatch(canvas, /area: 'left'|area: 'right'|nodesDraggable: true/);
-  assert.match(canvas, /Fit Architecture/);
+  assert.match(canvas, /Fit current map to canvas/);
   assert.match(css, /\.dope-map-declared-only \{ border-style: dashed;/);
   assert.match(css, /\.dope-map-edge-containment .*stroke-dasharray/);
   assert.match(css, /\.dope-map-edge-drifted .*stroke-dasharray/);

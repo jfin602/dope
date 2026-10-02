@@ -36,13 +36,23 @@ function MapNode({ data }: { data: { item: CanvasNode & { intent?: string; stale
 const nodeTypes = { architecture: MapNode };
 function FlowNode({ data }: { data: { item: FlowCanvasNode } }): React.ReactElement {
     const item = data.item;
-    return React.createElement('div', { className: `dope-flow-node dope-flow-${item.shape}${item.subdued ? ' dope-flow-subdued' : ''}` },
+    return React.createElement('div', { className: `dope-flow-node dope-flow-${item.shape}` },
         React.createElement('span', { className: 'dope-map-kind' }, item.role),
         React.createElement('strong', null, mapLabel(item.name)),
         React.createElement(Handle, { type: 'target', position: Position.Left, style: { opacity: 0 } }),
         React.createElement(Handle, { type: 'source', position: Position.Right, style: { opacity: 0 } }));
 }
 const flowNodeTypes = { flow: FlowNode };
+
+function iconButton(button: HTMLButtonElement, label: string, icon: string): void {
+    button.type = 'button';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    const glyph = document.createElement('span');
+    glyph.className = codicon(icon);
+    glyph.setAttribute('aria-hidden', 'true');
+    button.replaceChildren(glyph);
+}
 
 export class PhysicalMapWidget extends BaseWidget {
     private async ask(title: string, initialValue = ''): Promise<string | undefined> {
@@ -59,6 +69,7 @@ export class PhysicalMapWidget extends BaseWidget {
     private fitQueued = false;
     private fitting = false;
     private readonly breadcrumbs = document.createElement('nav');
+    private readonly upButton = document.createElement('button');
     private readonly focusButton = document.createElement('button');
     private readonly tabButton = document.createElement('button');
     private readonly sourceButton = document.createElement('button');
@@ -66,6 +77,12 @@ export class PhysicalMapWidget extends BaseWidget {
     private readonly planningBar = document.createElement('section');
     private readonly planningDetails = document.createElement('section');
     private readonly planningOverlay = document.createElement('div');
+    private readonly inspection = document.createElement('aside');
+    private readonly inspectionSummary = document.createElement('p');
+    private readonly inspectionAction = document.createElement('button');
+    private readonly expandInspection = document.createElement('button');
+    private readonly compactInspection = document.createElement('button');
+    private readonly minimizeInspection = document.createElement('button');
     private readonly workPanel = document.createElement('section');
     private readonly flowBar = document.createElement('section');
     private readonly flowPanel = document.createElement('section');
@@ -108,28 +125,22 @@ export class PhysicalMapWidget extends BaseWidget {
         this.architectureButton.onclick = () => this.controller.setMode('architecture');
         this.flowButton.onclick = () => this.controller.setMode('flow');
         this.modeBar.append(this.architectureButton, this.flowButton);
-        const up = document.createElement('button');
-        up.type = 'button';
-        up.textContent = 'Up';
-        up.onclick = () => { this.controller.setDetail('architecture'); this.controller.up(); };
-        this.focusButton.type = 'button';
-        this.focusButton.textContent = 'Focus';
+        iconButton(this.upButton, 'Move up one map level', 'arrow-up');
+        this.upButton.onclick = () => { this.controller.setDetail('architecture'); this.controller.up(); };
+        iconButton(this.focusButton, 'Focus selected map object', 'target');
         this.focusButton.onclick = () => { this.controller.setDetail('architecture'); this.controller.focus(); };
-        this.tabButton.type = 'button';
-        this.tabButton.textContent = 'Open Selected Tab';
+        iconButton(this.tabButton, 'Open selected object in a map tab', 'link-external');
         this.tabButton.onclick = () => { const id = this.controller.selectedId; if (id) void this.openTab(id); };
-        this.sourceButton.type = 'button';
-        this.sourceButton.textContent = 'Open Source';
+        iconButton(this.sourceButton, 'Open selected object source', 'go-to-file');
         this.sourceButton.onclick = () => void this.openSource();
         const fit = document.createElement('button');
-        fit.type = 'button';
-        fit.textContent = 'Fit Architecture';
+        iconButton(fit, 'Fit current map to canvas', 'screen-full');
         fit.onclick = () => this.fitArchitecture();
         const zoomIn = document.createElement('button');
-        zoomIn.type = 'button'; zoomIn.textContent = 'Zoom in';
+        iconButton(zoomIn, 'Zoom in on map', 'zoom-in');
         zoomIn.onclick = () => void this.flow?.zoomIn();
         const zoomOut = document.createElement('button');
-        zoomOut.type = 'button'; zoomOut.textContent = 'Zoom out';
+        iconButton(zoomOut, 'Zoom out on map', 'zoom-out');
         zoomOut.onclick = () => void this.flow?.zoomOut();
         this.colorSelect.setAttribute('aria-label', 'Selected node color');
         for (const color of nodePalette) {
@@ -144,7 +155,7 @@ export class PhysicalMapWidget extends BaseWidget {
         };
         const colorLabel = document.createElement('label');
         colorLabel.append('Node color ', this.colorSelect);
-        bar.append(this.heading, planningToggle, this.modeBar, up, this.focusButton, this.tabButton, this.sourceButton,
+        bar.append(this.heading, planningToggle, this.modeBar, this.upButton, this.focusButton, this.tabButton, this.sourceButton,
             zoomIn, zoomOut, fit, colorLabel, this.flowBar, this.planningBar, this.breadcrumbs);
         this.breadcrumbs.setAttribute('aria-label', 'Map focus');
         this.status.setAttribute('role', 'status');
@@ -158,10 +169,26 @@ export class PhysicalMapWidget extends BaseWidget {
         this.flowBar.className = 'dope-flow-bar';
         this.flowPanel.className = 'dope-flow-panel';
         this.flowPanel.setAttribute('aria-label', 'Flow inspection');
+        this.inspection.className = 'dope-map-inspection';
+        this.inspection.setAttribute('aria-label', 'Map inspection');
+        const inspectionHeader = document.createElement('div');
+        inspectionHeader.className = 'dope-map-inspection-header';
+        this.inspectionSummary.className = 'dope-map-inspection-summary';
+        iconButton(this.expandInspection, 'Expand map inspection', 'chevron-up');
+        iconButton(this.compactInspection, 'Compact map inspection', 'chevron-down');
+        iconButton(this.minimizeInspection, 'Minimize map inspection', 'chrome-minimize');
+        this.expandInspection.onclick = () => this.setInspectionState('expanded');
+        this.compactInspection.onclick = () => this.setInspectionState('compact');
+        this.minimizeInspection.onclick = () => this.setInspectionState('minimized');
+        this.inspectionAction.type = 'button';
+        inspectionHeader.append(this.inspectionSummary, this.inspectionAction, this.expandInspection,
+            this.compactInspection, this.minimizeInspection);
+        this.inspection.append(inspectionHeader, this.flowPanel, this.planningOverlay);
+        this.setInspectionState('expanded');
         const stage = document.createElement('div');
         stage.className = 'dope-map-stage';
         this.planningOverlay.append(this.planningDetails, this.workPanel);
-        stage.append(this.canvas, this.flowPanel, this.planningOverlay, this.status);
+        stage.append(this.canvas, this.inspection, this.status);
         this.node.append(bar, stage);
         this.controller = new PhysicalMapController(map, () => this.render(), options?.workspace, options?.focusId);
         this.planningListener = planning.onChange(() => {
@@ -185,6 +212,24 @@ export class PhysicalMapWidget extends BaseWidget {
         super.onBeforeDetach(msg);
     }
 
+    private setInspectionState(state: 'expanded' | 'compact' | 'minimized'): void {
+        this.inspection.dataset.state = state;
+        this.expandInspection.hidden = state === 'expanded';
+        this.compactInspection.hidden = state !== 'expanded';
+        this.minimizeInspection.hidden = state === 'minimized';
+        this.expandInspection.setAttribute('aria-pressed', String(state === 'expanded'));
+        this.compactInspection.setAttribute('aria-pressed', String(state === 'compact'));
+        this.minimizeInspection.setAttribute('aria-pressed', String(state === 'minimized'));
+    }
+
+    private inspectionActionFor(label: string | undefined, icon: string, action: () => void): void {
+        this.inspectionAction.hidden = !label;
+        if (!label) return;
+        iconButton(this.inspectionAction, label, icon);
+        this.inspectionAction.disabled = false;
+        this.inspectionAction.onclick = action;
+    }
+
     private render(): void {
         if (!this.root) return;
         void this.colors.attach(this.controller.mapWorkspace);
@@ -203,6 +248,7 @@ export class PhysicalMapWidget extends BaseWidget {
         this.heading.textContent = planningMode ? 'Planning Map' : 'Physical Map';
         if (!this.focusedTab) this.title.label = planningMode ? 'Planning Map' : 'Physical Map';
         this.modeBar.hidden = planningMode;
+        this.upButton.disabled = !this.controller.focusId || !this.controller.projectMatches;
         this.architectureButton.setAttribute('aria-pressed', String(!flowMode));
         this.flowButton.setAttribute('aria-pressed', String(flowMode));
         const projection = planningMode && selectedMap ? projectPlanningMap(
@@ -213,6 +259,13 @@ export class PhysicalMapWidget extends BaseWidget {
         this.renderPlanningBar();
         this.renderWorkPanel();
         this.planningOverlay.hidden = !planningMode;
+        this.inspectionSummary.textContent = planningMode ?
+            `${this.planning.selectedWorkItem ? `Work: ${this.planning.selectedWorkItem.title}` :
+                this.planning.selectedTransformationId ? `Change: ${this.planning.selectedTransformationId}` :
+                    projection.nodes.find(node => node.id === this.controller.selectedId)?.name ?? (selectedMap ? `Plan: ${selectedMap.title}` : 'Planning Map')} · ${this.planning.stale?.stale ? 'stale' : selectedMap?.status ?? 'no map'}` :
+            `${projection.nodes.find(node => node.id === this.controller.selectedId)?.name ?? 'Architecture'} · ${projection.nodes.length} objects`;
+        this.inspectionActionFor(planningMode ? 'Review Planning work and details' : this.controller.sourceNodes.some(node => node.id === this.controller.selectedId) ? 'Open selected object source' : undefined,
+            planningMode ? 'edit' : 'go-to-file', () => planningMode ? this.setInspectionState('expanded') : void this.openSource());
         this.breadcrumbs.replaceChildren();
         const overview = document.createElement('button');
         overview.textContent = 'Project';
@@ -296,14 +349,27 @@ export class PhysicalMapWidget extends BaseWidget {
         this.tabButton.disabled = !selected || !controller.sourceNodes.some(node => node.id === selected);
         this.sourceButton.disabled = !selected || !controller.sourceNodes.some(node => node.id === selected);
         this.colorSelect.disabled = true;
+        const selectedEdge = controller.selectedFlowEdge;
+        const selectedNode = projection?.nodes.find(item => item.id === controller.selectedGroupId || item.id === selected);
+        this.inspectionSummary.textContent = `${selectedEdge ? `Edge: ${selectedEdge.source} → ${selectedEdge.target}` : selectedNode ?
+            `${selectedNode.role}: ${selectedNode.name}` : 'Static Flow'} · ${projection?.coverageStatus ?? 'loading'}${projection?.truncated ? ' · truncated' : ''}`;
+        const selectedGroup = controller.flowResult?.groups?.find(group => group.id === controller.selectedGroupId);
+        this.inspectionActionFor(selectedEdge ? 'Open selected Flow edge evidence source' : selectedGroup?.focusId ? 'Focus selected Flow Subsystem' :
+            selected ? 'Trace downstream from selected Flow participant' : undefined,
+            selectedEdge ? 'go-to-file' : selectedGroup?.focusId ? 'target' : 'arrow-right',
+            () => selectedEdge ? void this.openSource(true) : selectedGroup?.focusId ? controller.focus(selectedGroup.id) : controller.trace('downstream'));
+        this.inspectionAction.disabled = selectedEdge ? !selectedEdge.evidenceIds.length : false;
         this.flowBar.replaceChildren();
         const button = (label: string, action: () => void, disabled = false) => {
             const control = document.createElement('button');
-            control.type = 'button'; control.textContent = label; control.disabled = disabled; control.onclick = action;
+            iconButton(control, label === 'Trace downstream' ? 'Trace possible execution downstream from selection' :
+                label === 'Trace upstream' ? 'Trace possible execution upstream from selection' : 'Clear current Flow trace',
+                label === 'Trace downstream' ? 'arrow-right' : label === 'Trace upstream' ? 'arrow-left' : 'clear-all');
+            control.disabled = disabled; control.onclick = action;
             this.flowBar.append(control); return control;
         };
-        button('Trace downstream', () => controller.trace('downstream'), !traceable);
-        button('Trace upstream', () => controller.trace('upstream'), !traceable);
+        button('Trace downstream', () => controller.trace('downstream'), !traceable).setAttribute('aria-pressed', String(controller.direction === 'downstream'));
+        button('Trace upstream', () => controller.trace('upstream'), !traceable).setAttribute('aria-pressed', String(controller.direction === 'upstream'));
         button('Clear trace', () => controller.trace(), !controller.direction);
         const label = document.createElement('span');
         label.textContent = `Static Flow · ${controller.direction ? `tracing ${controller.direction}` : 'possible execution'}`;
@@ -424,7 +490,7 @@ export class PhysicalMapWidget extends BaseWidget {
                 'Focus a System to inspect Static Flow.';
         const nodes: Node[] = projection?.nodes.map(item => ({ id: item.id, type: 'flow',
             position: { x: item.x, y: item.y }, data: { item }, draggable: false, selectable: true,
-            selected: item.selected, className: item.subdued ? 'dope-flow-subdued' : item.selected ? 'dope-flow-selected' : '',
+            selected: item.selected, className: `${item.subdued ? 'dope-flow-subdued ' : ''}${item.selected ? 'dope-flow-selected' : ''}`,
             style: { width: item.width, height: item.height } })) ?? [];
         const edges: Edge[] = projection?.edges.map(item => ({ id: item.id, source: item.source, target: item.target,
             label: [item.label, ...item.enrichment.map(value => value.label), item.async ? 'async' : '',

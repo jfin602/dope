@@ -11,7 +11,8 @@ test('one map toolbar owns shared, Flow and Planning controls; details overlay t
   assert.equal((widget.match(/document\.createElement\('header'\)/g) ?? []).length, 1);
   assert.match(widget, /bar\.className = 'dope-map-toolbar'/);
   assert.match(widget, /bar\.append\([\s\S]*?this\.flowBar, this\.planningBar, this\.breadcrumbs\)/);
-  assert.match(widget, /stage\.append\(this\.canvas, this\.flowPanel, this\.planningOverlay, this\.status\)/);
+  assert.match(widget, /stage\.append\(this\.canvas, this\.inspection, this\.status\)/);
+  assert.match(widget, /this\.inspection\.append\(inspectionHeader, this\.flowPanel, this\.planningOverlay\)/);
   assert.match(widget, /this\.planningOverlay\.append\(this\.planningDetails, this\.workPanel\)/);
   assert.match(widget, /this\.planningOverlay\.hidden = !planningMode/);
   assert.match(widget, /this\.flowBar\.append\(control\)/);
@@ -21,7 +22,7 @@ test('one map toolbar owns shared, Flow and Planning controls; details overlay t
   assert.match(widget, /this\.status\.setAttribute\('aria-live', 'polite'\)/);
   assert.match(css, /\.dope-map-stage \{[^}]*flex: 1 1 auto; min-height: 0; min-width: 0/);
   assert.match(css, /\.dope-physical-map-canvas \{[^}]*position: absolute; inset: 0/);
-  assert.match(css, /\.dope-flow-panel, \.dope-planning-inspection \{[^}]*position: absolute/);
+  assert.match(css, /\.dope-map-inspection \{[^}]*position: absolute/);
   assert.doesNotMatch(css, /\.dope-flow-panel \{[^}]*max-height: 190px|\.dope-work-panel \{[^}]*max-height: 210px/);
 });
 
