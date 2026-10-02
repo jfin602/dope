@@ -139,3 +139,28 @@ test('Flow controls are keyboard-native, theme-based and absent from Planning Ma
     assert.match(css, /dope-flow-store \{ border-style: double/);
     assert.match(css, /var\(--theia-focusBorder\)/);
 });
+
+test('grouped System relationship can drill to a member trace and its Subsystem', async () => {
+    const { controller, map, queries } = harness();
+    await flush(); controller.focus('s'); await flush();
+    map.flowQuery = query => {
+        queries.push(query);
+        return Promise.resolve(query.direction ? { ...result(query.generation), direction: query.direction, aggregates: [] } :
+            { ...result(query.generation), facts: [], nodes: [nodes[1]], endpoints: [],
+                groups: [{ id: 'flow:group:http-input:a', name: 'Inputs · A', role: 'Input' as const, focusId: 'a',
+                    memberIds: ['input'], members: [{ id: 'input', name: 'GET /entry' }] }],
+                aggregates: [{ ...raw[0], id: 'summary', sourceId: 'flow:group:http-input:a', targetId: 'a',
+                    originFlowFactIds: ['in'], originParticipants: [{ id: 'in', sourceId: 'input', targetId: 'entry' }] }] });
+    };
+    controller.setMode('flow'); await flush();
+    assert.deepEqual(controller.flowProjection?.nodes.map(node => node.id).sort(), ['a', 'flow:group:http-input:a']);
+    controller.select('flow:group:http-input:a');
+    assert.equal(controller.flowSelectedId, undefined);
+    assert.equal(controller.selectedGroupId, 'flow:group:http-input:a');
+    controller.traceOrigin(controller.flowProjection!.edges[0].originParticipants[0].sourceId); await flush();
+    assert.ok(queries.some(query => query.selectedId === 'input' && query.direction === 'downstream'));
+    controller.trace(); await flush();
+    controller.select('flow:group:http-input:a'); controller.focus('flow:group:http-input:a'); await flush();
+    assert.equal(controller.focusId, 'a');
+    controller.dispose();
+});

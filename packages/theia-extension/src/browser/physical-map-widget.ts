@@ -271,11 +271,10 @@ export class PhysicalMapWidget extends BaseWidget {
         this.planningBar.hidden = true; this.workPanel.hidden = true;
         this.flowBar.hidden = false; this.flowPanel.hidden = false;
         const selected = controller.flowSelectedId;
-        const traceable = !!selected && !!controller.flowResult &&
-            (controller.flowResult.nodes.some(node => node.id === selected) ||
-                controller.flowResult.endpoints.some(endpoint => endpoint.id === selected));
-        this.focusButton.disabled = !selected || !controller.sourceNodes.some(node => node.id === selected);
-        this.tabButton.disabled = this.focusButton.disabled;
+        const traceable = !!selected && !!controller.flowResult;
+        this.focusButton.disabled = !controller.flowResult?.groups?.some(group => group.id === controller.selectedGroupId && !!group.focusId) &&
+            (!selected || !controller.sourceNodes.some(node => node.id === selected));
+        this.tabButton.disabled = !selected || !controller.sourceNodes.some(node => node.id === selected);
         this.sourceButton.disabled = !selected || !controller.sourceNodes.some(node => node.id === selected);
         this.colorSelect.disabled = true;
         this.flowBar.replaceChildren();
@@ -292,19 +291,35 @@ export class PhysicalMapWidget extends BaseWidget {
         this.flowBar.append(label);
         this.flowPanel.replaceChildren();
         if (projection) {
+            if (!controller.direction && controller.flowResult?.aggregation) {
+                const summary = document.createElement('p');
+                const aggregation = controller.flowResult.aggregation;
+                summary.textContent = `Architectural overview: ${aggregation.sourceFacts} evidenced interactions summarized as ${aggregation.shownRelationships} relationships; ${aggregation.groupedParticipants} participants grouped`;
+                this.flowPanel.append(summary);
+                if (aggregation.unassignedInvocations) {
+                    const unassigned = document.createElement('p');
+                    unassigned.textContent = `${aggregation.unassignedInvocations} invocation facts involve code without accepted ownership; open Unassigned code to trace them`;
+                    this.flowPanel.append(unassigned);
+                }
+            }
             const coverage = document.createElement('p');
-            coverage.textContent = `Coverage: ${projection.coverageStatus}${projection.truncated ? ' · truncated; continue deeper from ' +
-                (projection.truncation.continueFromIds.join(', ') || 'the current focus') : ''}`;
+            coverage.textContent = `Coverage: ${projection.coverageStatus}${projection.truncated ?
+                ` · ${projection.truncation.continueFromIds.length} continuation points` : ''}`;
             this.flowPanel.append(coverage);
+            const coverageDetails = document.createElement('details');
+            const coverageSummary = document.createElement('summary');
+            coverageSummary.textContent = `${projection.coverage.length} coverage areas · ${projection.diagnostics.length} diagnostics`;
+            coverageDetails.append(coverageSummary);
             for (const item of projection.coverage) {
                 const line = document.createElement('p');
                 line.textContent = `${item.scopeId}: ${item.status} Flow coverage`;
-                this.flowPanel.append(line);
+                coverageDetails.append(line);
             }
             for (const item of projection.diagnostics) {
                 const line = document.createElement('p'); line.textContent = `⚠ ${item.code}: ${item.message}`;
-                this.flowPanel.append(line);
+                coverageDetails.append(line);
             }
+            this.flowPanel.append(coverageDetails);
             const participants = document.createElement('details');
             const summary = document.createElement('summary'); summary.textContent = 'Flow participants'; participants.append(summary);
             for (const item of projection.nodes) {
@@ -315,9 +330,27 @@ export class PhysicalMapWidget extends BaseWidget {
                 participants.append(control);
             }
             this.flowPanel.append(participants);
+            const group = controller.flowResult?.groups?.find(item => item.id === controller.selectedGroupId);
+            if (group) {
+                const details = document.createElement('section');
+                details.setAttribute('aria-label', 'Grouped Flow participants');
+                const title = document.createElement('p'); title.textContent = `${group.name} · ${group.memberIds.length} evidenced members`;
+                details.append(title);
+                if (group.focusId) button('Focus Subsystem', () => controller.focus(group.id));
+                for (const member of group.members) {
+                    const control = document.createElement('button'); control.type = 'button';
+                    control.textContent = member.name;
+                    control.onclick = () => controller.select(member.id);
+                    details.append(control);
+                }
+                this.flowPanel.append(details);
+            }
             const edgeList = document.createElement('div');
             edgeList.className = 'dope-flow-edge-list';
             edgeList.setAttribute('aria-label', 'Flow edges');
+            const edgeDetails = document.createElement('details');
+            const edgeSummary = document.createElement('summary'); edgeSummary.textContent = `${projection.edges.length} evidenced relationships`;
+            edgeDetails.append(edgeSummary);
             for (const edge of projection.edges) {
                 const control = document.createElement('button'); control.type = 'button';
                 control.textContent = `${edge.source} → ${edge.target} · ${edge.label}`;
@@ -325,7 +358,7 @@ export class PhysicalMapWidget extends BaseWidget {
                 control.onclick = () => void controller.inspectFlowEdge(edge.id);
                 edgeList.append(control);
             }
-            this.flowPanel.append(edgeList);
+            edgeDetails.append(edgeList); this.flowPanel.append(edgeDetails);
             const edge = controller.selectedFlowEdge;
             if (edge) {
                 const details = document.createElement('section');
@@ -333,12 +366,30 @@ export class PhysicalMapWidget extends BaseWidget {
                 const line = (value: string) => { const p = document.createElement('p'); p.textContent = value; details.append(p); };
                 const name = (id: string) => projection.nodes.find(node => node.id === id)?.name ?? id;
                 line(`${edge.kind} · ${name(edge.source)} (${edge.source}) → ${name(edge.target)} (${edge.target})`);
-                line(`Origin Flow facts: ${edge.originFlowFactIds.join(', ')}`);
+                const origins = document.createElement('details');
+                const originSummary = document.createElement('summary');
+                originSummary.textContent = `${edge.originFlowFactIds.length} backing interactions · expand for detail traces`;
+                origins.append(originSummary);
+                for (const origin of edge.originParticipants) {
+                    const control = document.createElement('button'); control.type = 'button';
+                    const source = controller.sourceNodes.find(node => node.id === origin.sourceId)?.name ??
+                        controller.flowResult?.groups?.flatMap(group => group.members).find(member => member.id === origin.sourceId)?.name ?? origin.sourceId;
+                    control.textContent = `${source} · trace downstream`;
+                    control.title = origin.id;
+                    control.onclick = () => controller.traceOrigin(origin.sourceId);
+                    origins.append(control);
+                }
+                if (!edge.originParticipants.length) for (const id of edge.originFlowFactIds) {
+                    const item = document.createElement('p'); item.textContent = id; origins.append(item);
+                }
+                details.append(origins);
+                if (edge.projectionVariants.length > 1)
+                    line(`${edge.projectionVariants.length} detail variants; shared data/behavior semantics remain unresolved at this level`);
                 if (edge.async || edge.retry || edge.error)
                     line(`Behavior: ${[edge.async && 'async', edge.retry && 'retry', edge.error && 'error'].filter(Boolean).join(', ')}`);
                 line(edge.enrichment.length ? `Data semantics: ${edge.enrichment.map(item => `${item.kind} ${item.label}`).join('; ')}` :
                     'Data semantics unresolved');
-                line(`Evidence: ${edge.evidenceIds.join(', ') || 'none'}`);
+                line(`Evidence: ${edge.evidenceIds.length} source records`);
                 for (const evidence of controller.flowEvidence)
                     line(`${evidence.id} · ${evidence.class} · ${evidence.producer} ${evidence.path ?? ''}${evidence.span?.line ? `:${evidence.span.line}` : ''}`);
                 if (projection.coverageStatus !== 'complete') line(`Flow coverage: ${projection.coverageStatus}`);

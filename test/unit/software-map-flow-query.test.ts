@@ -28,9 +28,10 @@ test('overview, clear trace, upstream and downstream retain stable Static Flow f
   const overview = query(map);
   assert.equal(overview.kind, 'static');
   assert.equal(overview.generation, 7);
-  assert.deepEqual(overview.facts.map(f => f.id), facts.map(f => f.id).sort());
-  assert.deepEqual(query(map, 'x', 'downstream').facts.map(f => f.id), overview.facts.map(f => f.id));
-  assert.deepEqual(query(map, 'x', 'upstream').facts.map(f => f.id), overview.facts.map(f => f.id));
+  assert.deepEqual(overview.facts, []);
+  assert.deepEqual(overview.aggregates.map(f => f.kind), ['invokes', 'invokes']);
+  assert.deepEqual(query(map, 'x', 'downstream').facts.map(f => f.id), facts.map(f => f.id).sort());
+  assert.deepEqual(query(map, 'x', 'upstream').facts.map(f => f.id), facts.map(f => f.id).sort());
   assert.deepEqual(query(map), overview);
   assert.equal(overview.truncated, false);
   assert.throws(() => queryStaticFlow(map, { projectId: 'other', generation: 7 }), /Stale/);
@@ -120,4 +121,155 @@ test('hard node, fact and hop budgets report each exhaustion', () => {
   assert.throws(() => queryStaticFlow(map, { projectId: 'p', generation: 7, maxNodes: 101 }), /Invalid/);
   const self = snapshot([code('loop', 'a')], [edge('loop', 'loop')]);
   assert.equal(queryStaticFlow(self, { projectId: 'p', generation: 7, selectedId: 'loop', direction: 'downstream', maxNodes: 1 }).truncated, false);
+});
+
+test('dense overviews admit HTTP boundaries before hidden calls and report visible truncation', () => {
+  const nodes = Array.from({ length: 130 }, (_, i) => code(`worker${i}`, 'a'));
+  const calls = Array.from({ length: 300 }, (_, i) => edge(`worker${i % 130}`, `worker${(i + 1) % 130}`, 'invokes', `call${i}`));
+  const stores = Array.from({ length: 105 }, (_, i): PhysicalFlowEndpoint => ({
+    id: flowEndpointId('store', { connection: `db${i}` }), kind: 'store', identity: { connection: `db${i}` }, anchorNodeId: 'worker0', evidenceIds: ['reads'] }));
+  const input: PhysicalFlowEndpoint = { id: flowEndpointId('http-input', { method: 'GET', path: '/entry' }), kind: 'http-input', identity: { method: 'GET', path: '/entry' },
+    anchorNodeId: 'worker0', evidenceIds: ['receives'] };
+  const output: PhysicalFlowEndpoint = { id: flowEndpointId('http-output', { method: 'GET', path: '/entry' }), kind: 'http-output', identity: { method: 'GET', path: '/entry' },
+    anchorNodeId: 'worker0', evidenceIds: ['responds'] };
+  const facts = [...calls, edge(input.id, 'worker0', 'receives'), edge('worker0', output.id, 'responds'),
+    ...stores.map(store => edge('worker0', store.id, 'reads'))];
+  const map = snapshot(nodes, facts, [...stores, input, output]);
+  const system = query(map);
+  assert.equal(system.truncated, true);
+  assert.ok(system.aggregates.some(fact => fact.kind === 'receives'));
+  assert.ok(system.aggregates.some(fact => fact.kind === 'responds'));
+  assert.ok(!system.aggregates.some(fact => fact.kind === 'invokes'));
+  assert.ok(system.nodes.length + system.endpoints.length <= 100);
+  assert.ok(system.aggregates.length <= 200);
+  assert.deepEqual(query(map), system);
+  const subsystem = queryStaticFlow(map, { projectId: 'p', generation: 7, focusId: 'a' });
+  assert.equal(subsystem.truncated, true);
+  assert.ok(subsystem.aggregates.some(fact => fact.kind === 'receives'));
+  assert.ok(subsystem.aggregates.some(fact => fact.kind === 'responds'));
+});
+
+test('shared endpoint scope follows each fact and retains one physical store identity', () => {
+  const nodes = [code('callerA', 'a'), code('callerB', 'b'), code('callerC', 'a')];
+  const store: PhysicalFlowEndpoint = { id: flowEndpointId('store', { connection: 'shared' }), kind: 'store', identity: { connection: 'shared' },
+    anchorNodeId: 'callerA', evidenceIds: ['reads'] };
+  const map = snapshot(nodes, nodes.map(node => edge(node.id, store.id, 'reads')), [store]);
+  const focused = queryStaticFlow(map, { projectId: 'p', generation: 7, focusId: 'b' });
+  assert.deepEqual(focused.aggregates.flatMap(fact => fact.originFlowFactIds), [edge('callerB', store.id, 'reads').id]);
+  assert.deepEqual(focused.endpoints.map(endpoint => endpoint.id), [store.id]);
+  assert.ok(queryStaticFlow(map, { projectId: 'p', generation: 7, focusId: 'b', selectedId: store.id, direction: 'upstream' })
+    .facts.some(fact => fact.sourceId === 'callerB'));
+});
+
+test('System-owned code is reduced to its System in a System overview', () => {
+  const direct = { ...code('direct', 'a'), parentId: 's', ownership: { state: 'assigned' as const, systemId: 's' } };
+  const input: PhysicalFlowEndpoint = { id: flowEndpointId('http-input', { method: 'GET', path: '/direct' }),
+    kind: 'http-input', identity: { method: 'GET', path: '/direct' }, anchorNodeId: 'direct', evidenceIds: ['receives'] };
+  const result = query(snapshot([direct], [edge(input.id, 'direct', 'receives')], [input]));
+  assert.deepEqual(result.aggregates.map(fact => [fact.sourceId, fact.targetId]), [['flow:group:http-input:s', 's']]);
+  assert.deepEqual(result.groups?.[0].memberIds, [input.id]);
+  assert.deepEqual(result.nodes.map(node => node.id), ['s']);
+});
+
+test('Subsystem overview favors cross-scope invocation over interior calls', () => {
+  const nodes = [code('localA', 'a'), code('localB', 'a'), code('outside', 'b')];
+  const map = snapshot(nodes, [edge('localA', 'localB', 'invokes', 'inside'), edge('localA', 'outside', 'invokes', 'cross')]);
+  const result = queryStaticFlow(map, { projectId: 'p', generation: 7, focusId: 'a', maxFacts: 1 });
+  assert.deepEqual(result.aggregates.flatMap(fact => fact.originFlowFactIds), [edge('localA', 'outside', 'invokes', 'cross').id]);
+});
+
+test('System relationship groups detail variants without inventing shared semantics', () => {
+  const nodes = [code('one', 'a'), code('two', 'a')];
+  const store: PhysicalFlowEndpoint = { id: flowEndpointId('store', { connection: 'shared' }), kind: 'store', identity: { connection: 'shared' },
+    anchorNodeId: 'one', evidenceIds: ['reads'] };
+  const first = { ...edge('one', store.id, 'reads', 'first'), enrichment: [{ kind: 'schema' as const, label: 'items', evidenceIds: ['schema1'] }],
+    behavior: { async: true, evidenceIds: ['async1'] } };
+  const second = { ...edge('two', store.id, 'reads', 'second'), enrichment: [{ kind: 'schema' as const, label: 'items', evidenceIds: ['schema2'] }],
+    behavior: { async: true, evidenceIds: ['async2'] } };
+  const differentSchema = { ...edge('one', store.id, 'reads', 'third'), enrichment: [{ kind: 'schema' as const, label: 'other', evidenceIds: ['schema3'] }] };
+  const differentKind = { ...edge('two', store.id, 'reads', 'fifth'), enrichment: [{ kind: 'data' as const, label: 'items', evidenceIds: ['data'] }] };
+  const retry = { ...edge('two', store.id, 'reads', 'fourth'), behavior: { retry: true, evidenceIds: ['retry'] } };
+  const error = { ...edge('one', store.id, 'reads', 'sixth'), behavior: { error: true, evidenceIds: ['error'] } };
+  const writes = edge('one', store.id, 'writes');
+  const map = { ...snapshot(nodes, [], [store]), flowFacts: [first, second, differentSchema, differentKind, retry, error, writes] };
+  const result = query(map);
+  assert.equal(result.aggregates.length, 2);
+  const combined = result.aggregates.find(fact => fact.kind === 'reads')!;
+  assert.deepEqual(combined.originFlowFactIds, [first, second, differentSchema, differentKind, retry, error].map(f => f.id).sort());
+  assert.deepEqual(combined.evidenceIds, ['reads']);
+  assert.equal(combined.enrichment, undefined);
+  assert.equal(combined.behavior, undefined);
+  assert.equal(combined.projectionVariants?.length, 5);
+  assert.deepEqual(combined.projectionVariants?.find(item => item.originFlowFactIds.length === 2)?.enrichment?.[0].evidenceIds, ['schema1', 'schema2']);
+  assert.deepEqual(combined.projectionVariants?.find(item => item.originFlowFactIds.length === 2)?.behavior?.evidenceIds, ['async1', 'async2']);
+  assert.deepEqual(combined.originParticipants?.map(item => item.id), combined.originFlowFactIds);
+  assert.deepEqual(query(map), result);
+});
+
+test('rich hierarchy projects a quiet System, a finer Subsystem, and exact detail without losing evidence', () => {
+  const component: GraphNode = { id: 'ac', kind: 'component', name: 'A component', purpose: '', parentId: 'a', evidenceIds: ['node'] };
+  const a = Array.from({ length: 40 }, (_, i) => ({ ...code(`a${i}`, 'a'), parentId: 'ac',
+    ownership: { state: 'assigned' as const, systemId: 's', subsystemId: 'a', componentId: 'ac' } }));
+  const b = Array.from({ length: 10 }, (_, i) => code(`b${i}`, 'b'));
+  const makeEndpoint = (kind: PhysicalFlowEndpoint['kind'], identity: PhysicalFlowEndpoint['identity'], anchorNodeId: string,
+    evidenceId: PhysicalFlowFact['kind']): PhysicalFlowEndpoint => ({ id: flowEndpointId(kind, identity), kind, identity, anchorNodeId, evidenceIds: [evidenceId] });
+  const inputs = Array.from({ length: 15 }, (_, i) => makeEndpoint('http-input', { method: 'GET', path: `/entry/${i}` }, `a${i}`, 'receives'));
+  const outputs = Array.from({ length: 15 }, (_, i) => makeEndpoint('http-output', { method: 'GET', path: `/entry/${i}` }, `a${i}`, 'responds'));
+  const stores = [makeEndpoint('store', { connection: 'primary' }, 'a0', 'reads'),
+    makeEndpoint('store', { connection: 'audit' }, 'a0', 'reads')];
+  const externals = [makeEndpoint('external-service', { service: 'one.example' }, 'a0', 'calls-external'),
+    makeEndpoint('external-service', { service: 'two.example' }, 'a0', 'calls-external')];
+  const facts = [
+    ...inputs.map((input, i) => edge(input.id, `a${i}`, 'receives')),
+    ...outputs.map((output, i) => edge(`a${i}`, output.id, 'responds')),
+    ...a.slice(0, 39).map((node, i) => edge(node.id, `a${i + 1}`, 'invokes')),
+    edge('a0', 'b0'), edge('b0', stores[0].id, 'reads'),
+    ...a.map(node => edge(node.id, stores[0].id, 'reads')),
+    ...a.map(node => edge(node.id, stores[1].id, 'reads')),
+    ...externals.map(external => edge('a0', external.id, 'calls-external'))
+  ];
+  const map = snapshot([component, ...a, ...b], facts, [...inputs, ...outputs, ...stores, ...externals]);
+  const system = query(map);
+  assert.equal(system.projectionLevel, 'system');
+  assert.ok(system.nodes.length + system.endpoints.length + system.groups!.length <= 9);
+  assert.ok(system.aggregates.length <= 9);
+  assert.equal(system.truncated, false);
+  assert.equal(system.aggregation?.sourceFacts, facts.length);
+  assert.deepEqual(system.groups?.filter(group => group.role === 'Input').flatMap(group => group.memberIds), inputs.map(item => item.id).sort());
+  assert.deepEqual([...new Set(system.aggregates.filter(fact => fact.kind === 'reads').map(fact => fact.targetId))].sort(), stores.map(item => item.id).sort());
+  assert.deepEqual(system.aggregates.filter(fact => fact.kind === 'calls-external').map(fact => fact.targetId).sort(), externals.map(item => item.id).sort());
+  assert.deepEqual(system.aggregates.find(fact => fact.kind === 'receives')?.originFlowFactIds,
+    inputs.map((input, i) => edge(input.id, `a${i}`, 'receives').id).sort());
+  assert.ok(system.aggregates.find(fact => fact.kind === 'invokes')?.originParticipants?.some(item => item.sourceId === 'a0' && item.targetId === 'b0'));
+  const subsystem = queryStaticFlow(map, { projectId: 'p', generation: 7, focusId: 'a' });
+  assert.equal(subsystem.projectionLevel, 'subsystem');
+  assert.ok(subsystem.aggregates.length > system.aggregates.length);
+  assert.ok(subsystem.aggregates.some(fact => fact.sourceId === inputs[0].id && fact.targetId === 'ac'));
+  const trace = query(map, inputs[0].id, 'downstream');
+  assert.equal(trace.projectionLevel, 'detail');
+  assert.ok(trace.facts.some(fact => fact.sourceId === inputs[0].id && fact.targetId === 'a0'));
+  assert.ok(trace.facts.some(fact => fact.sourceId === 'a0' && fact.targetId === 'b0'));
+  assert.ok(trace.facts.some(fact => fact.sourceId === 'b0' && fact.targetId === stores[0].id));
+  const bounded = queryStaticFlow(map, { projectId: 'p', generation: 7, focusId: 's', maxNodes: 2 });
+  assert.equal(bounded.coverageStatus, 'truncated');
+  assert.equal(bounded.aggregation?.sourceFacts, facts.length);
+  assert.ok(bounded.aggregates.some(fact => fact.kind === 'receives'));
+  assert.deepEqual(query(snapshot([...b, component, ...a], [...facts].reverse(), [...externals, ...stores, ...outputs, ...inputs])), system);
+});
+
+test('unassigned invocation evidence stays traceable without a false System connector', () => {
+  const unknown = { ...code('unknown', 'a'), parentId: 'p', ownership: { state: 'unassigned' as const } };
+  const input: PhysicalFlowEndpoint = { id: flowEndpointId('http-input', { method: 'GET', path: '/work' }),
+    kind: 'http-input', identity: { method: 'GET', path: '/work' }, anchorNodeId: 'owned', evidenceIds: ['receives'] };
+  const facts = [edge(input.id, 'owned', 'receives'), edge('owned', 'other'),
+    ...Array.from({ length: 60 }, (_, i) => edge(i % 2 ? 'unknown' : 'owned', i % 2 ? 'other' : 'unknown', 'invokes', `unknown-${i}`))];
+  const map = snapshot([code('owned', 'a'), code('other', 'b'), unknown], facts, [input]);
+  const system = query(map);
+  assert.equal(system.aggregation?.unassignedInvocations, 60);
+  assert.ok(system.groups?.some(group => group.name === 'Unassigned code' && group.memberIds.includes('unknown')));
+  assert.ok(system.aggregates.some(fact => fact.sourceId === 'a' && fact.targetId === 'b'));
+  assert.ok(!system.aggregates.some(fact => fact.sourceId.includes('unassigned') || fact.targetId.includes('unassigned')));
+  assert.ok(system.aggregates.some(fact => fact.kind === 'receives'));
+  assert.equal(system.truncated, false);
+  assert.ok(query(map, 'unknown', 'downstream').facts.some(fact => fact.sourceId === 'unknown' && fact.targetId === 'other'));
 });

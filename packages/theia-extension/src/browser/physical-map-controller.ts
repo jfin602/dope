@@ -19,6 +19,7 @@ export class PhysicalMapController {
     mode: 'architecture' | 'flow' = 'architecture';
     direction?: 'upstream' | 'downstream';
     selectedEndpointId?: string;
+    selectedGroupId?: string;
     selectedFlowEdgeId?: string;
     loading = false;
     error = '';
@@ -41,7 +42,7 @@ export class PhysicalMapController {
     }
 
     get selectedId(): string | undefined { return this.projectMatches ? this.selectedPlannedId ?? this.map.selectedId : undefined; }
-    get flowSelectedId(): string | undefined { return this.mode === 'flow' ? this.selectedEndpointId ?? this.map.selectedId : undefined; }
+    get flowSelectedId(): string | undefined { return this.mode === 'flow' && !this.selectedGroupId ? this.selectedEndpointId ?? this.map.selectedId : undefined; }
     get selectedFlowEdge() { return this.flowProjection?.edges.find(edge => edge.id === this.selectedFlowEdgeId); }
     get sourceNodes(): GraphNode[] { return this.projectMatches && !this.loading ? this.map.nodes : []; }
     get sourceRelationships(): GraphRelationship[] { return this.projectMatches && !this.loading ? this.relationships : []; }
@@ -58,6 +59,9 @@ export class PhysicalMapController {
     select(id: string): void {
         if (!this.available()) return;
         this.selectedFlowEdgeId = undefined; this.flowEvidence = [];
+        const group = this.mode === 'flow' && this.flowResult?.groups?.find(item => item.id === id);
+        if (group) { this.selectedGroupId = id; this.selectedEndpointId = undefined; this.direction = undefined; this.changed(); return; }
+        this.selectedGroupId = undefined;
         if (this.mode === 'flow' && !this.map.nodes.some(node => node.id === id)) {
             this.selectedEndpointId = id; this.direction = undefined; void this.refresh(); return;
         }
@@ -66,13 +70,18 @@ export class PhysicalMapController {
     }
     setMode(mode: 'architecture' | 'flow'): void {
         if (this.mode === mode) return;
-        this.mode = mode; this.direction = undefined; this.selectedFlowEdgeId = undefined; this.flowEvidence = [];
+        this.mode = mode; this.direction = undefined; this.selectedGroupId = undefined; this.selectedFlowEdgeId = undefined; this.flowEvidence = [];
         this.loadedKey = ''; void this.refresh();
     }
     trace(direction?: 'upstream' | 'downstream'): void {
         if (this.mode !== 'flow' || direction && (!this.flowSelectedId || !this.flowResult ||
             ![...this.flowResult.nodes, ...this.flowResult.endpoints].some(item => item.id === this.flowSelectedId))) return;
         this.direction = direction; this.loadedKey = ''; void this.refresh();
+    }
+    traceOrigin(id: string): void {
+        if (this.mode !== 'flow' || !this.available()) return;
+        this.selectedGroupId = undefined; this.selectedEndpointId = id; this.direction = 'downstream';
+        this.loadedKey = ''; void this.refresh();
     }
     async inspectFlowEdge(id: string): Promise<void> {
         if (this.mode !== 'flow' || !this.available()) return;
@@ -112,9 +121,10 @@ export class PhysicalMapController {
     clearPlannedSelectionIfAbsent(ids: string[]): void {
         if (this.selectedPlannedId && !ids.includes(this.selectedPlannedId)) this.selectedPlannedId = undefined;
     }
-    focus(id = this.selectedId): void {
+    focus(id = this.selectedGroupId ?? this.selectedId): void {
+        id = this.flowResult?.groups?.find(group => group.id === id)?.focusId ?? id;
         if (!this.available() || !id || !this.map.nodes.some(node => node.id === id && node.kind !== 'project')) return;
-        this.focusId = id;
+        this.focusId = id; this.selectedGroupId = undefined;
         this.loadedKey = ''; this.selectedEndpointId = undefined; this.direction = undefined; this.selectedFlowEdgeId = undefined;
         void this.refresh();
     }
@@ -123,7 +133,7 @@ export class PhysicalMapController {
         if (parent && this.map.nodes.some(node => node.id === parent && node.kind !== 'project')) this.focus(parent);
         else this.fit();
     }
-    fit(): void { this.focusId = undefined; this.loadedKey = ''; this.selectedEndpointId = undefined; this.direction = undefined; this.selectedFlowEdgeId = undefined; void this.refresh(); }
+    fit(): void { this.focusId = undefined; this.loadedKey = ''; this.selectedEndpointId = undefined; this.selectedGroupId = undefined; this.direction = undefined; this.selectedFlowEdgeId = undefined; void this.refresh(); }
     private available(): boolean { return !this.disposed && !!this.map.workspace && (!this.workspace || this.workspace === this.map.workspace); }
     async source() {
         if (!this.available()) return;
@@ -151,7 +161,7 @@ export class PhysicalMapController {
             this.activeWorkspace = this.map.workspace;
             this.focusId = undefined;
             this.selectedPlannedId = undefined;
-            this.selectedEndpointId = undefined; this.selectedFlowEdgeId = undefined; this.direction = undefined; this.flowEvidence = [];
+            this.selectedEndpointId = undefined; this.selectedGroupId = undefined; this.selectedFlowEdgeId = undefined; this.direction = undefined; this.flowEvidence = [];
         }
         const status = this.map.status;
         if (!this.available() || this.map.loading || status?.state !== 'ready' || status.generation !== status.publishedGeneration) {

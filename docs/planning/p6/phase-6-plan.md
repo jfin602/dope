@@ -300,6 +300,14 @@ Known Inputs should be easy to discover and act as natural behavioral entry poin
 
 Code-level invocation detail is progressively disclosed as the developer focuses from System -> Subsystem -> Component -> Code. The Flow surface should preserve the same progressive-disclosure mental model as the rest of sMap and avoid becoming an unbounded call-graph hairball.
 
+### Enforceable overview density
+
+At System scope, the query projects code into its accepted Subsystem (or its directly owning System); code without accepted ownership remains an explicitly labeled unassigned group. Invocation facts involving that group stay available for trace but do not draw architectural connectors without an accepted owner; their count is explicit and is not called truncation. HTTP Inputs and Outputs group by direction at the System boundary; their individual routes reappear at Subsystem scope. Distinct Stores, external services and other resource identities remain distinct. For each ordered pair of visible participants and interaction kind, the System canvas receives one relationship with all direct origin facts and separate detail-semantic variants. No relationship is inferred merely because two areas touch a shared participant.
+
+At Subsystem scope, accepted Components take precedence; otherwise code collapses to its evidenced file identity, while HTTP routes and resource identities remain individually inspectable. Directional traces return the underlying physical interactions. Group members and relationship origins provide drill-down to those facts.
+
+These are semantic bounds rather than a count chosen to clip the canvas. The existing 100 participant / 200 relationship hard limits apply after projection; exhaustion is reported as truncation. Intentional aggregation is reported separately and never changes analysis coverage status.
+
 ## Persistence
 
 No `.dope/flow.json` is introduced.

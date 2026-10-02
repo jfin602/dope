@@ -139,6 +139,11 @@ export interface PhysicalFlowFact {
     enrichment?: FlowEnrichment[];
     behavior?: FlowBehaviorMetadata;
 }
+export interface FlowProjectionRelationship extends PhysicalFlowFact {
+    /** System summaries keep differing detail semantics as separate evidenced variants. */
+    projectionVariants?: { originFlowFactIds: string[]; enrichment?: FlowEnrichment[]; behavior?: FlowBehaviorMetadata }[];
+    originParticipants?: { id: string; sourceId: string; targetId: string }[];
+}
 export interface FlowDiagnostic {
     id: string;
     code: string;
@@ -174,7 +179,13 @@ export interface FlowQueryResult {
     nodes: GraphNode[];
     facts: PhysicalFlowFact[];
     /** Direct, one-hop architecture summaries. Traversal always uses facts. */
-    aggregates: PhysicalFlowFact[];
+    aggregates: FlowProjectionRelationship[];
+    projectionLevel?: 'system' | 'subsystem' | 'detail';
+    /** Derived overview participants; members retain selectable physical identities. */
+    groups?: { id: string; name: string; memberIds: string[]; members: { id: string; name: string }[]; focusId?: string;
+        role: 'Input' | 'Output' | 'Processing' }[];
+    /** Semantic summarization is independent of incomplete analysis/query truncation. */
+    aggregation?: { sourceFacts: number; shownRelationships: number; groupedParticipants: number; unassignedInvocations: number };
     endpoints: PhysicalFlowEndpoint[];
     coverage: FlowCoverage[];
     coverageStatus: FlowCoverage['status'] | 'unknown';

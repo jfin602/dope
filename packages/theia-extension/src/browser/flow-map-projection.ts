@@ -1,4 +1,4 @@
-import type { FlowQueryResult, PhysicalFlowEndpoint, PhysicalFlowFact } from '@dope/software-map';
+import type { FlowProjectionRelationship, FlowQueryResult, PhysicalFlowEndpoint, PhysicalFlowFact } from '@dope/software-map';
 
 export type FlowRole = 'Input' | 'Boundary' | 'Processing' | 'Store' | 'External' | 'Output';
 export type FlowShape = 'entry' | 'boundary' | 'process' | 'store' | 'external' | 'exit' | 'queue';
@@ -10,6 +10,8 @@ export interface FlowCanvasNode {
 export interface FlowCanvasEdge {
     id: string; source: string; target: string; kind: PhysicalFlowFact['kind']; label: string;
     originFlowFactIds: string[]; evidenceIds: string[];
+    originParticipants: NonNullable<FlowProjectionRelationship['originParticipants']>;
+    projectionVariants: NonNullable<FlowProjectionRelationship['projectionVariants']>;
     enrichment: { kind: 'data' | 'type' | 'schema' | 'event'; label: string; evidenceIds: string[] }[];
     behaviorEvidenceIds: string[];
     backEdge: boolean; async: boolean; retry: boolean; error: boolean;
@@ -44,9 +46,13 @@ const size = (name: string): { width: number; height: number } => {
 export function projectFlowMap(result: FlowQueryResult, focus: FlowArchitectureFocus = {}, presentation: FlowPresentation = {}): FlowCanvasProjection {
     const nodes = new Map(result.nodes.map(node => [node.id, node]));
     const endpoints = new Map(result.endpoints.map(endpoint => [endpoint.id, endpoint]));
+    const groups = new Map((result.groups ?? []).map(group => [group.id, group]));
+    const memberGroup = new Map((result.groups ?? []).flatMap(group => group.memberIds.map(id => [id, group.id] as const)));
     const systemOverview = (focus.kind ?? nodes.get(result.focusId ?? '')?.kind) === 'system';
     const owner = (id: string): string => {
-        if (!systemOverview || endpoints.has(id)) return id;
+        if (!systemOverview) return id;
+        if (memberGroup.has(id)) return memberGroup.get(id)!;
+        if (endpoints.has(id)) return id;
         const node = nodes.get(id);
         return node?.kind === 'code' ? node.ownership.subsystemId ?? id : id;
     };
@@ -60,6 +66,7 @@ export function projectFlowMap(result: FlowQueryResult, focus: FlowArchitectureF
     }).sort((a, b) => compare(a.id, b.id));
     const facts = [...new Map(chosen.map(fact => [fact.id, fact])).values()];
     const shown = new Set(facts.flatMap(fact => [fact.sourceId, fact.targetId]));
+    for (const group of result.groups ?? []) if (group.role === 'Processing') shown.add(group.id);
     if (result.selectedId && (nodes.has(result.selectedId) || endpoints.has(result.selectedId))) shown.add(result.selectedId);
     const selectedId = presentation.selectedId ?? result.selectedId;
     const trace = presentation.traceFactIds && new Set(presentation.traceFactIds);
@@ -72,6 +79,11 @@ export function projectFlowMap(result: FlowQueryResult, focus: FlowArchitectureF
     const canvasEdges: FlowCanvasEdge[] = facts.map(fact => ({
         id: fact.id, source: fact.sourceId, target: fact.targetId, kind: fact.kind,
         label: fact.kind.replaceAll('-', ' '), originFlowFactIds: [...(fact.originFlowFactIds ?? [fact.id])],
+        originParticipants: (fact as FlowProjectionRelationship).originParticipants?.map(item => ({ ...item })) ?? [],
+        projectionVariants: (fact as FlowProjectionRelationship).projectionVariants?.map(item => ({
+            originFlowFactIds: [...item.originFlowFactIds], enrichment: item.enrichment?.map(value => ({ ...value, evidenceIds: [...value.evidenceIds] })),
+            behavior: item.behavior && { ...item.behavior, evidenceIds: [...item.behavior.evidenceIds] }
+        })) ?? [],
         evidenceIds: [...fact.evidenceIds],
         enrichment: fact.enrichment?.map(item => ({ ...item, evidenceIds: [...item.evidenceIds] })) ?? [],
         behaviorEvidenceIds: [...(fact.behavior?.evidenceIds ?? [])], backEdge: false,
@@ -97,13 +109,14 @@ export function projectFlowMap(result: FlowQueryResult, focus: FlowArchitectureF
     const inbound = new Set(canvasEdges.map(edge => edge.target));
     const outbound = new Set(canvasEdges.map(edge => edge.source));
     const canvasNodes: FlowCanvasNode[] = [...shown].map(id => {
-        const endpoint = endpoints.get(id), node = nodes.get(id);
-        const role: FlowRole = endpoint?.kind === 'http-input' ? 'Input' : endpoint?.kind === 'http-output' ? 'Output' :
+        const endpoint = endpoints.get(id), node = nodes.get(id), group = groups.get(id);
+        const role: FlowRole = group?.role ?? (endpoint?.kind === 'http-input' ? 'Input' : endpoint?.kind === 'http-output' ? 'Output' :
             endpoint && ['store', 'file-store'].includes(endpoint.kind) ? 'Store' :
             endpoint && ['external-service', 'external-client'].includes(endpoint.kind) ? 'External' :
             endpoint && ['queue', 'event', 'job'].includes(endpoint.kind) ? 'Boundary' :
-            !inbound.has(id) && outbound.has(id) ? 'Input' : inbound.has(id) && !outbound.has(id) ? 'Output' : 'Processing';
-        const name = endpoint ? endpointName(endpoint) : node?.name ?? id;
+            node && node.kind !== 'code' ? 'Processing' :
+            !inbound.has(id) && outbound.has(id) ? 'Input' : inbound.has(id) && !outbound.has(id) ? 'Output' : 'Processing');
+        const name = group?.name ?? (endpoint ? endpointName(endpoint) : node?.name ?? id);
         return { id, name, role, shape: shapeOf(role, endpoint), x: 0, y: 0, ...size(name),
             selected: !!selectedId && (id === selectedId || systemOverview && id === owner(selectedId)),
             subdued: emphasis && !activeNodes.has(id) };

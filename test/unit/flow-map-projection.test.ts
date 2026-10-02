@@ -100,3 +100,22 @@ test('long identity names remain complete and receive space for wrapping', () =>
     assert.ok(view.nodes[0].height > 86);
     assert.ok(view.nodes[0].width <= 480);
 });
+
+test('semantic overview renders aggregates without raw origins; trace renders raw facts', () => {
+    const aggregate = fact('summary', 'input', 'a', 'receives', { originFlowFactIds: ['raw'], evidenceIds: ['proof'] });
+    const endpoint = boundary('input', 'http-input', { method: 'GET', path: '/entry' });
+    const overview = query([{ id: 'a', name: 'A', kind: 'subsystem', purpose: '', evidenceIds: [] }], [], [endpoint],
+        { aggregates: [aggregate] });
+    assert.deepEqual(projectFlowMap(overview, { kind: 'system' }).edges.map(edge => edge.originFlowFactIds), [['raw']]);
+    const traced = query([code('handler')], [fact('raw', 'input', 'handler', 'receives')], [endpoint],
+        { direction: 'downstream', aggregates: [aggregate] });
+    assert.deepEqual(projectFlowMap(traced, { kind: 'system' }).edges.map(edge => edge.id), ['raw']);
+});
+
+test('architectural areas with only outbound facts remain Processing, not invented Inputs', () => {
+    const area = { id: 'area', name: 'Area', kind: 'subsystem', purpose: '', evidenceIds: [] } as GraphNode;
+    const store = boundary('store', 'store', { connection: 'db' });
+    const view = projectFlowMap(query([area], [fact('read', 'area', 'store', 'reads')], [store]));
+    assert.equal(view.nodes.find(node => node.id === 'area')?.role, 'Processing');
+    assert.equal(view.nodes.find(node => node.id === 'store')?.role, 'Store');
+});
