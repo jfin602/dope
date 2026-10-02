@@ -1,8 +1,8 @@
 # Correction 5 Prompt Assessment — sMap Readability
 
-Status: **APPROVED PLAN / BLOCKED ON ACTIVATION**
+Status: **APPROVED PLAN / BLOCKED ON P11 GREEN**
 Correction folder: c5-smap-readability
-Required unchanged package version after activation: 0.5.12
+Required unchanged package version after activation: 0.5.11
 Docs authority source: 312972ef8143eefe1bd0c5a400fa0f89dfe2856a
 
 ## Conclusion
@@ -14,7 +14,7 @@ Use exactly four prompts.
 3. **P3 — project-scoped node colors (T1).** Add the curated selectable palette through a separate presentation-state seam backed by Theia StorageService.
 4. **P4 — browser qualification + closeout (T3).** Exercise the exact candidate on a disposable copy of the accepted Adaptive SEO mapped workspace and close only on direct readability evidence.
 
-Do not execute until the README records the exact Phase 5 P12 closeout activation commit at 0.5.12.
+Do not execute until the README records the exact committed Phase 5 P11 Green activation candidate at 0.5.11.
 
 ## Source findings
 
@@ -160,7 +160,7 @@ No Linux package/native AppImage gate is required unless P1-P3 unexpectedly chan
 
 ## Material-gate rule
 
-Return Planning needed only if current 0.5.12 source after Phase 5 closeout materially invalidates these seams—for example React Flow is replaced, the map presentation boundary is redesigned, or Phase 5 closeout changes the shared selection/projection ownership model.
+Return Planning needed only if the exact 0.5.11 P11-Green source materially invalidates these seams—for example React Flow is replaced or the map presentation/shared-selection ownership model changed during P11 repairs.
 
 Ordinary line drift, test renames or small layout differences are implementation details, not a reason to replan.
 
@@ -173,4 +173,4 @@ Green requires all README exit behaviors plus explicit proof that:
 - selectable colors are nonsemantic, project-scoped workbench presentation state;
 - Planning Map intent/stale/conflict visuals remain distinguishable;
 - alternate theme remains readable;
-- package remains exactly 0.5.12.
+- package remains exactly 0.5.11.

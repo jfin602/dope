@@ -1,8 +1,8 @@
 # Correction 5 Implementation Plan — sMap Readability
 
-Status: **APPROVED PLAN / BLOCKED ON ACTIVATION**
+Status: **APPROVED PLAN / BLOCKED ON P11 GREEN**
 Correction folder: c5-smap-readability
-Required unchanged package version: 0.5.12
+Required unchanged package version: 0.5.11
 Assessment: prompt-assessment.md
 
 ## Shared invariants
@@ -316,15 +316,15 @@ Do not run npm test or browser qualification.
 
 ### Goal
 
-Prove the exact 0.5.12 correction candidate in the real Dope browser UI against the accepted Adaptive SEO mapped workspace, then close Green/Not Green.
+Prove the exact 0.5.11 correction candidate in the real Dope browser UI against the accepted Adaptive SEO mapped workspace, then close Green/Not Green.
 
 ### Preflight
 
 Require:
 - README activation source recorded;
-- Phase 5 P11/P12 Green/closed;
+- Phase 5 P11 Green;
 - P1-P3 exact candidate;
-- package exactly 0.5.12;
+- package exactly 0.5.11;
 - no unexpected product-source drift.
 
 Create a disposable copy of /home/jfin/dev/adaptive-seo-dope for direct interaction. Do not regenerate accepted architecture merely for this correction.
@@ -390,10 +390,11 @@ Do not modify known-issues.md or feature-ideas.md automatically. If Green, repor
 ### Exit routing
 
 If Green:
-- correction closes Green/Qualified at unchanged 0.5.12;
-- Phase 6 Data Flow may be activated from 0.6.0;
+- correction closes Green/Qualified at unchanged 0.5.11;
+- resume Phase 5 P12 closeout;
+- Phase 6 remains blocked until P12 establishes the 0.6.0 successor baseline;
 - no Phase 6 code is implemented here.
 
 If Not Green:
-- keep Phase 6 blocked;
+- keep P12 and Phase 6 blocked;
 - identify the narrow readability defect and strongest evidence.

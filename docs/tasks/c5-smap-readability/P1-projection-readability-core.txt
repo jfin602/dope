@@ -5,11 +5,11 @@ MODEL / REASONING / USAGE
 - Browser required: no.
 
 VERSIONING
-- Required unchanged project version: `0.5.12`.
+- Required unchanged project version: `0.5.11`.
 
 ACTIVATION
-- Do not execute unless docs/tasks/c5-smap-readability/README.md records the exact committed Phase 5 P12 closeout activation source.
-- Require Phase 5 P11/P12 Green and package 0.5.12.
+- Do not execute unless docs/tasks/c5-smap-readability/README.md records the exact committed Phase 5 P11 Green activation source.
+- Require Phase 5 P11 Green and package 0.5.11.
 - If activation is still TBD, stop without changing code.
 
 GOAL
@@ -98,5 +98,5 @@ Report:
 - relationship query/disclosure behavior;
 - layout changes;
 - focused test evidence;
-- unchanged 0.5.12;
+- unchanged 0.5.11;
 - any bounded handoff concern for P2.
