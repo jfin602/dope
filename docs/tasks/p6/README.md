@@ -1,6 +1,6 @@
 # Product Phase 6 — Flow Task Stack
 
-Status: **P7 NOT GREEN / P8 BLOCKED / c6-flow-overview-priority ACTIVE**
+Status: **P7 NOT GREEN / P8 BLOCKED / c6-map-canvas-priority ACTIVE**
 Activation baseline: `710edb362f9881ab41215705db4f08d8daca6293`
 Package baseline: `0.6.0`
 Authority: ADR 0020 as amended by ADR 0021, Phase 6 activation/plan
@@ -20,15 +20,24 @@ Authority: ADR 0020 as amended by ADR 0021, Phase 6 activation/plan
 
 ## Current gate
 
-P1-P6 are implemented. P7 ran on `0.6.7` and is Not Green; P8 is not eligible.
+P1-P6 are implemented. P7 remains Not Green on `0.6.7`; P8 is not eligible.
 
-Direct analyzer evidence proved a real GET opportunities behavior, but System/Subsystem Flow overviews truncated before the HTTP Input appeared and shared PostgreSQL endpoint anchoring admitted unrelated focused-scope facts.
+The original P7 run proved valid source-backed GET opportunities Flow but failed because the bounded System/Subsystem overview omitted the HTTP Input and leaked unrelated calls through shared PostgreSQL endpoint anchoring. That failure remains preserved in `P7-flow-dogfooding-evidence.md`.
 
-Active correction:
+Correction `c6-flow-overview-priority` repaired the overview/query path sufficiently for the subsequent direct GUI requalification to expose the intended behavior: GET opportunities traced from the HTTP Input through the handler and `AdaptiveRepository.list` to three PostgreSQL reads and three response branches, with representative source evidence and explicit partial coverage. The same 5-participant, 8-interaction trace rebuilt after restart.
 
-`docs/tasks/c6-flow-overview-priority/`
+That requalification is still Not Green for two separate reasons:
+- the focused Subsystem canvas is too dim to read immediately;
+- the packaged AppImage reaches ready state but fails controlled shutdown.
 
-The correction keeps version `0.6.7` unchanged. Its single manual GPT-6 Sol High one-off prompt is `docs/tasks/c6-flow-overview-priority/one-off-flow-overview-priority.txt`. A successful correction must preserve the original P7 Not Green record, repair overview/query semantics, and directly replay the failed Adaptive SEO behavior before P8 may become eligible.
+The active presentation correction is:
+
+`docs/tasks/c6-map-canvas-priority/`
+
+It keeps version `0.6.7` unchanged and is narrowly responsible for the canvas-first map shell, unified icon toolbar, floating/minimizable selection details and immediate map readability. It must not change Flow truth, query semantics, extraction, aggregation, budgets, canonical architecture or Planning Map semantics.
+
+The native controlled-shutdown failure is outside this presentation correction and remains an independent P7 blocker that must be resolved or separately requalified before P8.
+
 ## Locked truth rules
 
 ```text
