@@ -133,9 +133,9 @@ Questions to resolve:
 - How do we label static possible paths versus future recorded-runtime observed paths?
 - Do we need any argument/return propagation in Phase 6 path stitching, or only as optional annotation?
 
-**Decision:**
+**Decision:** Stitch deterministic multi-hop execution paths only across proven Flow facts. Support upstream and downstream traversal from a known boundary or selected node; terminate recursion/cycles with visited node/edge guards. Treat `async`/`await` as ordinary execution continuity when the target is deterministically resolved. Include callbacks, promises, and producer/consumer event continuation only when the callback/binding or event identity is deterministically established. Phase 6 path stitching does not require argument/return propagation; those remain optional enrichment. Bound each query to 100 visible Flow nodes, 200 Flow edges, and 32 hops on one path. When a budget is exceeded, expose explicit truncated/continue-deeper state instead of silently dropping Flow. Label deterministic static results as Static Flow: evidence-backed possible execution relationships. Reserve Observed Flow for future runtime-observed execution.
 
-**Why:**
+**Why:** Multi-hop stitching is necessary for Flow to explain real behavior, but exhaustive whole-program traversal would create unreadable graphs and misleading certainty. Explicit budgets keep query cost and UI density bounded, while truncation preserves truth. Separating Static from future Observed Flow prevents a statically reachable branch from being presented as proof that one concrete runtime request executed it.
 
 ---
 
@@ -265,7 +265,7 @@ Before `/prompt-write p6`, promote answers into authoritative Phase 6 docs:
 - [x] Q2 domain/snapshot/index ownership
 - [x] Q3 derived endpoint identity
 - [x] Q4 Adaptive SEO supported patterns
-- [ ] Q5 execution-path stitching bounds
+- [x] Q5 execution-path stitching bounds
 - [ ] Q6 data/type/schema enrichment scope
 - [ ] Q7 architecture aggregation semantics
 - [ ] Q8 primary Flow UX
