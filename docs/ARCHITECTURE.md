@@ -184,17 +184,66 @@ Focus / Up / Fit Architecture and geometric pan/zoom are presentation navigation
 
 Product Phase 6 extends the Physical Map with a provider-free directional **Flow** projection of application-level execution/behavior.
 
-Flow consumes the same Software Map graph, stable architecture/code identities, query/index services and provenance boundary as the Architecture projection. It must not create a second architecture database, fork canonical identity, or make visualization-library nodes/edges authoritative.
+### Snapshot ownership
 
-The initial query/presentation contract is System-first with Subsystem focus. Switching Architecture <-> Flow preserves focused scope, selection and source-navigation identity.
+Flow is first-class rebuildable Physical Map state. `PhysicalMapSnapshot` owns `PhysicalFlowFact[]` plus derived Flow endpoint records alongside graph nodes, structural relationships, evidence and violations.
 
-Flow roles such as Input, Boundary, Processing, Store, External and Output are projection semantics. They may be computed from typed physical relationships and evidence but are not new canonical System / Subsystem / Component kinds.
+Static Flow publishes atomically with the same project identity, analysis generation and source/config/canonical input fingerprint as the rest of the Physical Map. Phase 6 does not introduce a second Flow generation counter, independent durable Flow database or separate mandatory Flow index.
 
-Analyzer/query layers may add evidence-backed Flow facts for supported language/framework surfaces, including route/request/response relationships, deterministically resolved project invocations, persistence reads/writes, job/event/queue producer-consumer relationships and external clients. Optional symbol/type/schema/payload information enriches those interactions when separately evidenced. Every flow edge remains explainable through deterministic source/semantic/framework evidence or explicit recorded-runtime observation. When the path or payload cannot be established, the product preserves that uncertainty rather than inventing a hop or data type.
+Future recorded-runtime observations reuse the same Flow fact/evidence boundary with explicit observation identity. They do not silently redefine the static source/config/canonical fingerprint.
 
-Directional layout is presentation state. It may optimize for input -> processing -> output comprehension while still representing branches, joins, fan-out, cycles, retries, asynchronous boundaries and external round trips.
+### Flow facts and endpoint identity
 
-Phase 6 does not require a model provider, AI Presence, mutation authority, live tracing, or a new durable Flow store. Future runtime observation may enrich the same evidence model without turning static flow inference into observed execution.
+A physical Flow fact is one evidence-backed application execution interaction. Initial semantics are `receives`, `invokes`, `reads`, `writes`, `calls-external`, `publishes`, `consumes` and `responds`.
+
+A deterministically resolved project-code call is sufficient evidence for `invokes` even when argument/return lineage is unknown.
+
+Derived non-architectural Flow endpoints are separate from `GraphNode`. Examples include inbound/outbound HTTP boundaries, datastores, queues/topics/jobs, external services/APIs, file/blob storage and clients where evidenced.
+
+Endpoint identity is deterministic and conservative: normalize only evidenced protocol/method/path/service/store/queue properties. Multiple observations collapse to one endpoint only when equivalence is proven. Otherwise retain narrower source- or connection-scoped identities. Every endpoint keeps source/evidence anchors for architectural context without becoming canonical System / Subsystem / Component / CodeEntity state.
+
+### Truth and enrichment
+
+Permanent negative rule:
+
+```text
+import != invocation
+reference != invocation
+dependency != execution flow
+```
+
+Structural dependency facts may guide discovery but cannot independently become Flow.
+
+Optional argument/return type, HTTP method/path, request/response schema, event/topic/schema and directly evidenced persistence entity/table information may enrich Flow. Broad/unhelpful types and unsupported payload details stay absent/unknown. Phase 6 does not require field-level lineage, alias/property tracking, taint propagation or inferred DTO transformations.
+
+Serialization/deserialization is normally Processing metadata unless it corresponds to a distinct meaningful execution component.
+
+### Query, stitching and aggregation
+
+Flow queries operate provider-independently over the published snapshot and remain project/generation guarded.
+
+Static execution paths stitch only proven Flow facts. Upstream/downstream traversal supports deterministically resolved ordinary calls, async/await continuations, callbacks/promises with proven callback targets, and producer/consumer continuation only when event/queue identity is established.
+
+Static Flow means **possible evidence-backed execution**, not proof that one concrete runtime request took every reachable branch. Reserve Observed Flow for future runtime-observed paths.
+
+System/Subsystem aggregation is path-preserving. An aggregate Flow edge may exist only when lower-level facts form a continuous evidenced origin path and it retains `originFlowFactIds`/provenance. Gaps remain gaps. Repeated equivalent facts may collapse visually, but materially different interaction kinds or data annotations must not be merged into invented semantics.
+
+Branches/fan-out and joins/fan-in are graph topology, not new base interaction kinds. Ordinary async is interaction metadata; real queue/topic/job/event handoffs use explicit derived endpoints. Cycles remain explicit back-edges. Retries and optional/error paths appear only when deterministic evidence proves them.
+
+### Presentation boundary
+
+The existing center Physical Map state owner hosts complementary `Architecture` and `Flow` modes. Switching preserves workspace/project, focused architecture identity, selection and source-navigation context.
+
+The initial Flow view is System-first and overview-first: major Inputs, Outputs, participating architectural scopes, Stores, External endpoints and high-level connections. Selecting an Input or participant highlights relevant Static Flow while unrelated Flow stays subdued for orientation. Explicit upstream/downstream tracing deepens exploration. Code-level invocation detail appears through progressive focus rather than in the initial System overview.
+
+Flow roles such as Input, Boundary, Processing, Store, External and Output are projection semantics, never canonical architecture node kinds.
+
+Directional layout is disposable presentation state and may optimize input -> processing -> output comprehension while still representing branches, joins, cycles and asynchronous/external boundaries.
+
+React Flow/browser presentation does not own Flow discovery, aggregation, evidence or truth.
+
+Phase 6 requires no model provider, AI Presence, mutation authority, mandatory live tracing, Planning Map Flow editing or new durable Flow store.
+
 
 ## Model and provider boundary
 

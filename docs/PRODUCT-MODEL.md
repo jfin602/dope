@@ -211,9 +211,30 @@ Phase 5 presentation and lifecycle semantics are:
 
 ### Phase 6 — Flow
 
-Introduce a provider-free **Flow projection** over the Physical Map. It reuses stable System / Subsystem / Component / CodeEntity identity and evidence-backed physical relationships while presenting directional inputs, transformations, stores, external boundaries and outputs.
+Introduce a provider-free **Flow projection** over the Physical Map so Dope can explain what happens through implemented software, not only how it is structurally organized.
 
-Flow is derived/projection state, not a fourth durable map or architecture authority. Flow roles and layout do not become canonical architecture. Unknown payload/flow details remain unknown unless deterministic evidence or recorded runtime observation supports them.
+Flow is application-level execution/behavioral understanding, not a compiler basic-block CFG. It reuses stable System / Subsystem / Component / CodeEntity identity and adds evidence-backed physical interactions plus derived boundary endpoints.
+
+Initial base interaction semantics are:
+- `receives`;
+- `invokes`;
+- `reads`;
+- `writes`;
+- `calls-external`;
+- `publishes`;
+- `consumes`;
+- `responds`.
+
+A deterministically resolved project-code invocation is useful Flow even when argument/return lineage is unknown. Data/type/schema/event detail is optional enrichment and appears only when independently evidenced.
+
+Derived Flow endpoints such as HTTP boundaries, stores, queues/topics/jobs, external services and clients are physical projection participants, not canonical architecture nodes.
+
+**Static Flow** represents evidence-backed possible execution relationships. A future **Observed Flow** may add recorded-runtime path evidence; static reachability must never be presented as proof that one concrete request took every reachable branch.
+
+The default product experience is System-level overview first and path exploration second. Inputs act as natural behavioral entry points; selection/tracing highlights relevant execution while unrelated known Flow stays subdued for orientation. Code-level invocation detail is progressively disclosed through System -> Subsystem -> Component -> Code focus.
+
+Flow is rebuildable derived Physical Map state, not a fourth durable map or architecture authority. Unknown payloads, unsupported execution surfaces, truncation and missing hops remain visibly unknown/partial rather than being invented for completeness.
+
 
 ### Phase 7-8 — AI collaboration and delegation
 
@@ -363,87 +384,24 @@ It also contains typed relationships, evidence/provenance and optional runtime o
 
 Physical source facts are deterministic or explicitly labeled otherwise. Runtime facts are observations. Architecture discovery is derived interpretation with evidence. Developer-authored canonical architecture remains authoritative for architectural identity and intent, while conflicting physical evidence remains visible as drift rather than being discarded.
 
-### DataFlowProjection
+### FlowProjection
 
-A read-only, evidence-backed directional projection of the Physical Map for a selected architectural scope.
+A read-only, evidence-backed behavioral/execution projection of the Physical Map for a selected architectural scope.
 
-It answers how information moves through implemented software while preserving the same underlying System / Subsystem / Component / CodeEntity identities used by the Architecture projection. Initial scope is System-first with Subsystem focus.
+It answers **what happens through implemented software** while preserving the same underlying System / Subsystem / Component / CodeEntity identities used by the Architecture projection. Initial scope is System-first with Subsystem focus.
 
-A DataFlowProjection may classify presentation roles such as **Input**, **Boundary**, **Transformation**, **Store**, **External** and **Output** and may annotate edges with payload/type/schema/event identity when evidence supports that detail. Those roles and annotations are derived projection semantics, not new canonical architecture node kinds.
+A FlowProjection may include derived physical endpoints for HTTP ingress/egress, stores, queues/topics/jobs, external services/APIs and clients where evidence supports their identity. These endpoints do not become canonical architecture nodes.
 
-The projection may show branches, joins, fan-out, cycles, retries and external round trips. Directional layout is a comprehension aid and must not imply synchronous or strictly linear execution.
+Base interaction semantics are `receives`, `invokes`, `reads`, `writes`, `calls-external`, `publishes`, `consumes` and `responds`. A resolved invocation can exist without proven payload lineage. Optional data/type/schema/event annotations require separate evidence.
 
-Every physical flow relationship retains evidence/provenance. Deterministic source/semantic/framework facts and recorded runtime observations may establish flow. AI may later explain or propose interpretations, but it does not silently create physical flow evidence. Unknown payloads or unproved hops remain explicitly unknown.
+Branches and joins are graph topology. Ordinary async continuation may be interaction metadata; a real queue/event/job handoff is represented by a derived boundary endpoint. Cycles remain explicit. Directional layout is a comprehension aid and must not imply synchronous, strictly linear or runtime-observed execution.
 
-Flow is not separately persisted as canonical truth and does not create a `DataFlowMap` authority. It is reconstructible from Software Map / Physical Map state plus disposable presentation state.
+Architectural aggregation may summarize only continuous evidenced origin paths and retains lower-level provenance. Missing execution hops remain gaps; aggregation cannot bridge them merely to make a cleaner diagram.
 
-### System
+The default Flow UX opens as a quiet architecture-level overview, then uses selection and upstream/downstream tracing for path exploration with progressive disclosure of code-level detail.
 
-A major independently meaningful software, runtime or product boundary.
+Static Flow is reconstructible from deterministic/reproducible Physical Map evidence. Future recorded-runtime observations may enrich the same domain as Observed Flow. AI may later explain Flow, but AI output does not silently establish physical Flow truth.
 
-Deterministic evidence for System synthesis may include applications, deployable/runtime units, entrypoints, workspace topology, process boundaries and framework bootstraps. Repository layout alone does not define System identity. The architecture synthesizer interprets those facts into a proposed System boundary.
-
-The developer owns canonical System identity and may define it before implementation or correct a synthesized proposal.
-
-### Subsystem
-
-The primary modular architecture unit.
-
-A Subsystem has stable canonical identity, purpose, owned implementation, public contracts, allowed dependencies, forbidden dependencies, entry points, owned data, tests and child Components as applicable.
-
-Deterministic evidence for Subsystem synthesis may include dependency cohesion/direction, package or workspace boundaries, public exports, entrypoints, framework registration and runtime/process boundaries. A directory or cluster is evidence, not authority. The synthesizer interprets those facts into proposed Subsystem boundaries.
-
-Developer confirmation/correction establishes canonical Subsystem identity. Analysis then validates implementation against it and surfaces drift.
-
-### Component
-
-A cohesive implementation unit within a Subsystem.
-
-Components bridge architecture-scale reasoning and lower-level modules/files/symbols. Deterministic finer-grained cohesive implementation evidence may support synthesized Component proposals, but canonical Component structure remains developer-owned and may exist before code.
-
-### CodeEntity
-
-A language/framework-level implementation entity such as module, file, class, interface, function, method, symbol, endpoint, job, schema or similar analyzer-defined object.
-
-Language-specific analyzers map their native semantics into Dope-owned CodeEntity and relationship contracts.
-
-### SoftwareMapEvidence
-
-Provenance for a physical node or relationship.
-
-Evidence classes include:
-- deterministic source syntax/structure;
-- semantic symbol/type/reference resolution;
-- deterministic framework extraction;
-- developer-authored architecture declaration;
-- recorded runtime observation;
-- inferred semantic relationship.
-
-Evidence records enough source/runtime identity to explain why Dope believes a physical relationship exists.
-
-### ArchitectureEvidencePacket
-
-The deterministic, provider-independent synthesis input. It contains stable packet-local evidence IDs, normalized facts and enough source/provenance to verify those facts without AI.
-
-The packet exists before model synthesis. Models may reference evidence IDs but do not create, rewrite or promote evidence.
-
-Dope may derive bounded deterministic synthesis views/slices for individual hierarchy stages. Those views retain parent packet identity and original evidence references; they are context-budgeted projections, not new evidence authorities.
-
-### ArchitectureProposal
-
-The provider-independent final structured synthesis output for one logical ArchitectureEvidencePacket, potentially assembled/reconciled from multiple bounded hierarchy-first synthesis stages over deterministic views of that packet.
-
-V1 includes `schemaVersion`, `summary`, `needsMoreEvidence`, `nodes`, `unassignedEvidenceRefs`, `openQuestions` and `evidenceRequests`.
-
-Each proposed node carries temporary `proposalKey`, kind/name/purpose/parent, numeric 0..1 `confidence`, `rationale`, source-backed `evidenceRefs` and human-readable `evidence`.
-
-`evidenceRefs` are machine-verifiable provenance. `evidence` is frontend explanation of those observations. `rationale` is the architectural conclusion drawn from them. Confidence is a synthesis signal rather than a calibrated probability or authority score.
-
-Dope validates structured output, hierarchy and every evidence reference against the complete parent evidence packet before entering review. Proposal identity is not canonical identity.
-
-Hierarchy-first synthesis treats repository-global System discovery as a distinct problem: build a compact global skeleton, discover Systems, challenge candidates for merge/split/rejection, then descend per System into Subsystems/Components, reconcile across Systems and perform targeted verification where uncertainty remains. Materially wrong System boundaries are an architecture-quality failure even when output is schema-valid.
-
-Analysis progress is observable product state while the workflow runs: stage/call purpose, applicable subject, known completed/total units, elapsed time and visible retry/failure state may be rendered without exposing private chain-of-thought. The end-to-end initial Dope-on-Dope qualification objective is eight minutes or less; this is not a runtime cancellation threshold.
 
 ### PlanningMap
 

@@ -1,6 +1,6 @@
 # Product Phase 6 — Flow Plan
 
-Status: **OWNER APPROVED / ACTIVE PLAN — DECISION WORKSHEET IN PROGRESS**
+Status: **OWNER APPROVED / DECISIONS LOCKED / READY FOR PROMPTING**
 Baseline: `0.6.0`
 Activation baseline: `710edb362f9881ab41215705db4f08d8daca6293`
 Execution folder: `p6`
@@ -386,13 +386,12 @@ Phase 6 does not implement:
 - a framework upgrade;
 - arbitrary Node/DB framework coverage.
 
-## Current decision worksheet
+## Prompting readiness
 
-Before executable prompts are written, resolve:
+All ten Phase 6 Flow worksheet decisions are locked and promoted into this plan plus product/architecture/stability authority. The temporary worksheet is retired.
 
-`docs/planning/p6/phase-6-worksheet-temp.md`
+The approved P1-P8 decomposition is ready for `/prompt-ass -> /prompt-plan -> /prompt-write p6`.
 
-The worksheet decisions must be promoted into authority, then the temporary file may be removed.
 
 ## Exit condition
 

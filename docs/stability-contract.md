@@ -386,29 +386,41 @@ Phase 6 qualification is provider-free and must distinguish structural dependenc
 
 Permanent focused coverage must prove:
 - structural `imports`, `references` and aggregated `depends-on` edges alone do not create Flow hops;
-- a deterministically resolved project-code invocation may create an execution Flow hop even when payload/type lineage is unknown;
-- payload/type/schema/event annotations, when shown, have independent evidence and are never inferred merely because an invocation exists;
-- deterministic flow facts require valid evidence and valid endpoint references;
-- unchanged analysis inputs produce stable flow fact IDs, deterministic ordering and equivalent bounded projection results even when the process-local analysis generation advances;
-- source edits that add/remove supported calls/boundaries/persistence interactions update the corresponding flow after fresh analysis;
-- generic TypeScript call extraction resolves only supported project-code call targets and does not classify every identifier reference as a call; control/invocation Flow is valid without data-lineage proof;
-- supported framework extractors distinguish inbound boundary, persistence read/write, external request and output semantics without promoting unsupported patterns;
-- payload/type/schema/event labels are absent/unknown when not evidenced;
-- aggregation preserves origin flow fact IDs/evidence for edge inspection;
-- generation/project guards prevent late flow-query results from rendering into another generation/workspace;
+- a deterministically resolved project-code invocation may create `invokes` Flow even when payload/type lineage is unknown;
+- deterministic Flow facts require valid evidence and valid GraphNode/derived-endpoint references;
+- derived endpoint identity is deterministic and does not merge unrelated generic database/external observations;
+- Flow publishes with the same project/generation/input identity as the Physical Map and stale generations cannot replace newer publication;
+- unchanged analysis inputs produce stable Flow fact/endpoint IDs and deterministic ordering even when process-local generation advances;
+- source edits that add/remove supported calls, HTTP boundaries, persistence interactions or external calls update Flow after fresh analysis;
+- generic TypeScript extraction resolves supported project-code call targets and does not classify imports/references as invocation;
+- supported Adaptive SEO extractors handle Express 5 request/response registration through real helper boundaries, PostgreSQL through the `Database`/`QueryExecutor` abstraction, and deterministic raw/client external calls without hardcoding repository paths/names;
+- at least one differently named/layout synthetic TypeScript fixture exercises the same supported concepts as an anti-hardcoding guard;
+- payload/type/schema/event annotations have independent evidence; unknown or low-information payload detail is omitted rather than guessed;
+- static path stitching uses only proven Flow facts, terminates cycles safely and exposes truncation instead of silently dropping reachable Flow;
+- architectural aggregation requires continuous evidenced origin paths, preserves `originFlowFactIds`, never bridges missing hops, and retains meaningful read/write/invocation/external distinctions plus branch/join shape;
+- Static Flow is presented as possible evidence-backed execution and remains distinct from future runtime Observed Flow;
+- generation/project guards prevent late Flow-query results from rendering into another generation/workspace;
 - Architecture <-> Flow switching preserves focused/selected architecture identity and source round-trip intent;
-- deterministic directional layout retains stable ordering for unchanged inputs and can represent branch/join/cycle fixtures without claiming synchronous execution.
+- the initial System view is a quiet overview rather than a code-call hairball, while selection/upstream/downstream tracing progressively exposes detail;
+- branches/joins render as topology, real async handoffs use explicit endpoints, cycles remain representable, and retries/error paths appear only when evidenced;
+- deterministic directional layout retains stable ordering for unchanged inputs without claiming synchronous or observed execution.
 
-Phase 6 T3 qualification must directly use a mapped real project such as Adaptive SEO with no model configured and prove:
-- focus a representative System and switch Architecture -> Flow;
-- follow one non-trivial real path from an evidence-backed input through processing and persistence and/or an external boundary to an evidence-backed output;
-- inspect representative flow-edge provenance and navigate to source;
-- focus into a Subsystem without forking Software Map identity;
-- observe at least one real branch/fan-out or join, supplemented by a controlled fixture only for unsupported shapes such as cycles/retries when necessary;
-- return to Architecture with selection/focus preserved;
-- restart/reopen and fresh analysis reconstruct equivalent derived flow without a new durable Flow store;
-- current aggregate/restart/browser/Electron/package/native evidence for the exact candidate as assigned to the T3 gate.
+The Phase 6 query contract must surface explicit partial/unsupported/truncated diagnostics. Hidden truncation, a rendered connector across an evidence gap, or a stale-generation result presented as current is Not Green.
 
-Unsupported coverage must be visible as partial/unknown rather than presented as a complete program-wide flow claim.
+Phase 6 T3 qualification must directly use a fresh disposable copy of the accepted mapped Adaptive SEO workspace with no model configured and prove one continuously evidenced real behavior:
+- inbound HTTP boundary;
+- resolved internal invocation chain;
+- persistence and/or deterministic external-service interaction;
+- output/response boundary;
+- at least one genuine real branch/fan-out or join within the qualified behavior;
+- representative Flow-edge provenance and source navigation;
+- System -> Subsystem focus without identity fork;
+- Architecture -> Flow -> Architecture round-trip preserving selection/focus;
+- restart/reopen/fresh analysis reconstructing equivalent derived Flow without a new durable Flow store;
+- exact-candidate aggregate/restart/browser/Electron/package/native evidence assigned to P7.
+
+Missing payload/type/schema annotation is acceptable for Green when execution continuity is fully evidenced. An explicitly surfaced unsupported boundary outside the qualified slice is acceptable. A missing or invented execution hop inside the chosen qualification behavior is Not Green.
+
+Controlled fixtures may qualify rarer topology such as cycles/retries; they cannot replace the real Adaptive SEO behavior.
 
 Whole-program taint analysis, arbitrary cross-language lineage, exhaustive SQL/schema lineage, mandatory runtime tracing and AI-generated missing hops are not Phase 6 qualification requirements.

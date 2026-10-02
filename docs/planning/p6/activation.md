@@ -1,6 +1,6 @@
 # Product Phase 6 — Flow Activation
 
-Status: **OWNER APPROVED — ACTIVE / DECISION WORKSHEET IN PROGRESS**
+Status: **OWNER APPROVED — ACTIVE / DECISIONS LOCKED / READY FOR PROMPTING**
 Date: 2026-10-02
 Package baseline: `0.6.0`
 Activation baseline commit: `710edb362f9881ab41215705db4f08d8daca6293`
@@ -90,11 +90,11 @@ Phase 6 qualification should prove, with no model configured, that a developer c
 
 Payload/type/schema labels are useful enrichment where proven, not a prerequisite for the base execution path.
 
-## Current decision workflow
+## Prompting readiness
 
-Resolve `docs/planning/p6/phase-6-worksheet-temp.md` one question at a time.
+The ten Phase 6 Flow decisions are locked and promoted into current authority. The temporary worksheet is retired.
 
-After answers are promoted into authority:
+Proceed through the standard implementation workflow:
 
 `/prompt-ass -> /prompt-plan -> /prompt-write p6`
 

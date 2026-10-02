@@ -13,7 +13,7 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 **Product Phase 5 — Visual Software Planning is OWNER-CLOSED FOR SEQUENCING.** The retained Phase 5 source at `0.5.11` remained Not Green because P11 never completed one clean end-to-end A-I qualification replay and P12 was not executed. The owner explicitly accepted those gaps for sequencing on 2026-10-02; no failed or missing evidence is relabeled Green. The closeout transition commit `710edb362f9881ab41215705db4f08d8daca6293` established the coherent `0.6.0` successor baseline.
 
-**Product Phase 6 — Flow is ACTIVE / DECISION WORKSHEET IN PROGRESS at `0.6.0`.** ADR 0020 identified the need for a directional Physical Map projection; ADR 0021 broadens that projection from strict Data Flow to application-level **Flow**. `docs/planning/p6/phase-6-plan.md` is amended accordingly. Flow is not a compiler control-flow graph and not a fourth durable map. The approved decomposition remains P1-P8 (`0.6.1`-`0.6.8`), but the temporary Phase 6 worksheet must be resolved before executable prompts are written. General AI Presence remains Product Phase 7.
+**Product Phase 6 — Flow is ACTIVE / DECISIONS LOCKED / READY FOR PROMPTING at `0.6.0`.** ADR 0020 identified the need for a directional Physical Map projection; ADR 0021 broadens that projection from strict Data Flow to application-level **Flow**. The ten Flow decisions are promoted into product/architecture/stability/phase authority. Flow is not a compiler control-flow graph and not a fourth durable map. The approved decomposition remains P1-P8 (`0.6.1`-`0.6.8`) and is authorized for prompt assessment/planning/writing. General AI Presence remains Product Phase 7.
 
 `c5-smap-readability` and the other Phase 5 corrections remain retained implementation/history. Their commit subjects or partial browser observations do not create a standalone Green claim beyond recorded evidence.
 
@@ -250,10 +250,8 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Walk the temporary Phase 6 Flow worksheet one question at a time:
+Create and validate the executable Phase 6 stack from the locked P1-P8 decomposition:
 
-`docs/planning/p6/phase-6-worksheet-temp.md`
-
-Lock each answer, then promote the resolved decisions into Phase 6 authority before `/prompt-ass + /prompt-plan + /prompt-write p6`.
+`/prompt-ass -> /prompt-plan -> /prompt-write p6`
 
 Phase 6 remains provider-free. General AI Presence, Agent Mind, mutation authority and delegation stay in Product Phase 7+.

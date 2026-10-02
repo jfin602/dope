@@ -80,17 +80,17 @@ Phase 6 does not create separate `ControlFlowFact` and `DataFlowFact` domains.
 
 Use one presentation-independent evidence-backed physical Flow fact model. A Flow fact may carry optional data/type/schema/event annotations when separately evidenced.
 
-Initial interaction semantics may include:
-- receives;
-- invokes;
-- reads;
-- writes;
-- calls-external;
-- publishes;
-- consumes;
-- responds.
+Initial Phase 6 interaction semantics are:
+- `receives`;
+- `invokes`;
+- `reads`;
+- `writes`;
+- `calls-external`;
+- `publishes`;
+- `consumes`;
+- `responds`.
 
-Exact enum/type names remain implementation details resolved in the Phase 6 worksheet/prompt plan.
+`returns` is not a separate base interaction in Phase 6; return information enriches invocation/output semantics when evidenced. Data/type/schema/event information remains optional enrichment.
 
 ### Projection roles
 

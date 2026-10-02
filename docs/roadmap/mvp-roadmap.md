@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 6 — Flow is **ACTIVE / PLAN APPLIED** from coherent baseline `0.6.0` established by Phase 5 owner-close transition `710edb362f9881ab41215705db4f08d8daca6293`. Product Phase 5 is owner-closed for sequencing; its P11 remains Not Green and P12 was not executed. The approved Phase 6 decomposition is P1-P8 (`0.6.1`-`0.6.8`); executable prompts are the next workflow.
+Current stage: Product Phase 6 — Flow is **ACTIVE / DECISIONS LOCKED / READY FOR PROMPTING** from coherent baseline `0.6.0` established by Phase 5 owner-close transition `710edb362f9881ab41215705db4f08d8daca6293`. Product Phase 5 is owner-closed for sequencing; its P11 remains Not Green and P12 was not executed. The approved Phase 6 decomposition is P1-P8 (`0.6.1`-`0.6.8`).
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -59,7 +59,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — Physical Map Load | One-off `0.5.11` repair after accepted Adaptive SEO architecture loads in the inspector but the center Physical Map remains stuck at Loading. Remove duplicate Software Map channel/attach ownership if confirmed, preserve one shared published map state, and correct stale Phase 3/theme qualification assertions. P11 remains the qualification gate. |
 | Correction c5 — Planning Basis Isolation | `0.5.11` correction after P11 reached durable Planning Maps but ordinary `.dope/planning-maps.json` persistence changed Physical Map identity and unchanged reanalysis falsely staled plans. Isolate `.dope/` from generic analysis inputs and make generation observation provenance rather than semantic staleness. |
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
-| Product Phase 6 — Flow | **ACTIVE / PLAN APPLIED at `0.6.0`.** Dope explains how information moves through software through evidence-backed Physical Map flow facts and a directional projection. Approved stack: P1-P8 (`0.6.1`-`0.6.8`), with Adaptive SEO direct qualification at P7 and evidence-only closeout at P8. |
+| Product Phase 6 — Flow | **ACTIVE / DECISIONS LOCKED at `0.6.0`.** Dope explains what happens through software using evidence-backed Static Flow over the Physical Map, with optional data enrichment. Approved stack: P1-P8 (`0.6.1`-`0.6.8`), Adaptive SEO direct qualification at P7 and evidence-only closeout at P8. |
 | Product Phase 7 — AI Presence | AI understands Dope through Dope-owned project state, architecture, Flow, Planning Map context and provider-independent read-only assistance. |
 | Product Phase 8 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 9 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
@@ -773,30 +773,47 @@ The correction is authorized now at unchanged `0.5.11` from the recorded activat
 
 ## Product Phase 6 — Flow
 
-Status: **ACTIVE / PLAN APPLIED**
+Status: **ACTIVE / DECISIONS LOCKED / READY FOR PROMPTING**
 Baseline: `0.6.0`
-Authority: ADR 0020 and `docs/planning/p6/phase-6-plan.md`
+Authority: ADR 0020 as amended by ADR 0021 and `docs/planning/p6/phase-6-plan.md`
 
 Purpose:
-Make the Software Map explain **what happens through implemented software**: entry points, internal invocation, processing, state access, async/external boundaries and outputs. Proven data semantics enrich that path when available.
+Make the Software Map explain **what happens through implemented software**: entry points, internal invocation, processing, state access, async/external boundaries and outputs. Proven data/type/schema semantics enrich that execution view when available.
+
+Capability ladder:
+
+```text
+Architecture
+-> Static Flow
+-> optional data enrichment
+-> future Observed Flow
+```
 
 Locked implementation order:
-1. `0.6.1` — physical flow domain/evidence contracts;
+1. `0.6.1` — physical Flow facts/endpoints/evidence contracts;
 2. `0.6.2` — generic TypeScript deterministic invocation Flow extraction;
-3. `0.6.3` — Adaptive SEO boundary vertical slice: supported Express/PostgreSQL/external extraction;
-4. `0.6.4` — generation-scoped Flow query/path aggregation;
+3. `0.6.3` — Adaptive SEO HTTP/persistence/external boundary extraction;
+4. `0.6.4` — generation-scoped Flow query/path aggregation + diagnostics;
 5. `0.6.5` — pure directional projection and deterministic layered layout;
-6. `0.6.6` — Architecture/Flow UI, edge provenance and source navigation;
+6. `0.6.6` — Architecture/Flow UI, tracing, edge provenance and source navigation;
 7. `0.6.7` — direct Adaptive SEO GUI/T3 qualification;
 8. `0.6.8` — evidence-only closeout.
 
 Core truth rule:
-`import/reference/dependency` relationships are not, by themselves, Flow. Deterministically resolved invocation/boundary/state interactions are valid Flow evidence; data/payload labels are optional enrichment and require their own evidence.
 
-Initial scope remains provider-free, System-first with Subsystem focus, and reuses the same stable Software Map identities. No separate Flow database, AI explanation, mandatory runtime tracer or Planning Map flow editing is introduced.
+```text
+import != invocation
+reference != invocation
+dependency != execution flow
+```
+
+Deterministically resolved invocation/boundary/state interactions are valid Flow evidence; data/payload labels are optional enrichment and require their own evidence. Architectural aggregation cannot bridge missing execution hops.
+
+Initial scope remains provider-free, System-first with Subsystem focus, and reuses the same stable Software Map identities. No separate Flow database, AI explanation, mandatory runtime tracer or Planning Map Flow editing is introduced.
 
 Exit condition:
-With no model configured, a developer can focus a real System, switch Architecture -> Flow, follow a non-trivial evidence-backed application execution path from an input/boundary through internal calls and state/external interactions to an output, inspect representative edge provenance/source, observe branch/fan-out or join, focus a Subsystem and return to Architecture without losing identity/context.
+With no model configured, a developer can focus a real System, switch Architecture -> Flow, follow one continuously evidenced real Adaptive SEO behavior from an HTTP input through internal execution to persistence and/or an external service and back to output, inspect representative provenance/source, observe a real branch/fan-out or join, focus a Subsystem and return to Architecture without losing identity/context. Partial/unsupported/truncated coverage remains explicit rather than looking complete.
+
 
 ## Product Phase 7 — AI Presence
 
