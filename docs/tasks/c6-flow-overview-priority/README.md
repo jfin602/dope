@@ -1,6 +1,6 @@
 # Correction 6 — Flow Overview Priority
 
-Status: **PROMPTS WRITTEN / READY FOR VALIDATION + EXECUTION**
+Status: **APPROVED / MANUAL ONE-OFF READY**
 Correction folder: `c6-flow-overview-priority`
 Required unchanged version: `0.6.7`
 Activation source: `59573b0dd66935fc78ec1eb0cc34f60644e4f000`
@@ -58,15 +58,15 @@ Do not change:
 - Phase 7 AI scope;
 - inherited file-search `ENOTDIR` unless it directly blocks correction qualification.
 
-## Stack
+## Execution
 
-| Prompt | Work | Tier | Model | Browser |
-| --- | --- | --- | --- | --- |
-| P1 | repair Flow overview query/scope/trace/truncation + permanent regressions | T2 | GPT-6 Sol High | no |
-| P2 | direct Adaptive SEO replay + exact-candidate T3 + correction closeout | T3 | GPT-6 Sol High | yes |
+This correction is deliberately one manual one-off prompt:
 
-Both prompts require unchanged package version `0.6.7`.
+`one-off-flow-overview-priority.txt`
 
+Use **GPT-6 Sol High** with browser/manual capability. Do not run this folder through `codex:phase`.
+
+The one-off performs the bounded implementation repair, focused regression validation, direct Adaptive SEO GUI replay, final T3 release evidence and correction closeout in one pass.
 ## Exit
 
 Green requires the real Dope GUI to expose and trace the previously blocked Adaptive SEO behavior with truthful bounded coverage:
@@ -84,13 +84,3 @@ The focused view must no longer be flooded by unrelated calls solely through the
 
 A Green correction does not rewrite the original P7 run as Green. It makes Phase 6 eligible to resume the P7/P8 qualification path under fresh evidence.
 
-## Prompt files
-
-- `P1-flow-overview-query-repair.txt` — T2 implementation/regression repair
-- `P2-flow-overview-priority-closeout.txt` — browser/T3 qualification + correction closeout
-
-Validate:
-
-`npm run codex:phase:validate -- c6-flow-overview-priority`
-
-Then run the correction through the phase runner. P2 is the browser/manual handoff.

@@ -254,4 +254,4 @@ Execute the bounded Phase 6 correction:
 
 `c6-flow-overview-priority`
 
-The two-prompt correction stack is written under `docs/tasks/c6-flow-overview-priority/`. Validate it with `npm run codex:phase:validate -- c6-flow-overview-priority`, then execute it. It keeps package version exactly `0.6.7`, repairs Flow overview/query prioritization and scope semantics, installs permanent regression coverage, then directly replays the failed Adaptive SEO Flow qualification. P8 remains blocked until the correction closes Green and the required P7 behavior is requalified.
+The correction is now one manual GPT-6 Sol High prompt at `docs/tasks/c6-flow-overview-priority/one-off-flow-overview-priority.txt`. Do not run it through `codex:phase`. It keeps package version exactly `0.6.7`, repairs Flow overview/query prioritization and scope semantics, installs permanent regression coverage, then directly replays the failed Adaptive SEO Flow qualification. P8 remains blocked until the correction closes Green and the required P7 behavior is requalified.

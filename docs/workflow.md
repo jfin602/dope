@@ -400,3 +400,11 @@ The analyzer produced valid source-backed GET opportunities Flow, but the real S
 Correction `c6-flow-overview-priority` is approved at unchanged `0.6.7`. It repairs semantic overview budgeting/prioritization, fact-relative endpoint scope, compatible overview collapse, trace independence from overview truncation, and bounded truncation presentation. It must preserve the original P7 Not Green evidence.
 
 The correction stack is two prompts: P1 T2 implementation/regression repair; P2 browser/T3 qualification and correction closeout. P8 remains ineligible until the correction closes Green.
+
+### c6-flow-overview-priority execution amendment
+
+The previously planned two-prompt correction stack is replaced by one **manual GPT-6 Sol High** one-off prompt:
+
+`docs/tasks/c6-flow-overview-priority/one-off-flow-overview-priority.txt`
+
+Do not run this folder through `codex:phase`. The one-off combines the bounded implementation repair, permanent regressions, direct Adaptive SEO GUI replay, final T3 evidence and correction closeout at unchanged `0.6.7`.

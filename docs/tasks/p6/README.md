@@ -28,7 +28,7 @@ Active correction:
 
 `docs/tasks/c6-flow-overview-priority/`
 
-The correction keeps version `0.6.7` unchanged. Its P1/P2 executable stack is written under `docs/tasks/c6-flow-overview-priority/`. A successful correction must preserve the original P7 Not Green record, repair overview/query semantics, and directly replay the failed Adaptive SEO behavior before P8 may become eligible.
+The correction keeps version `0.6.7` unchanged. Its single manual GPT-6 Sol High one-off prompt is `docs/tasks/c6-flow-overview-priority/one-off-flow-overview-priority.txt`. A successful correction must preserve the original P7 Not Green record, repair overview/query semantics, and directly replay the failed Adaptive SEO behavior before P8 may become eligible.
 ## Locked truth rules
 
 ```text
