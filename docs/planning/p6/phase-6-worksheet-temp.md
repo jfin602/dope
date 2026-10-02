@@ -251,9 +251,9 @@ Questions to resolve:
 - Which missing execution evidence is Not Green versus acceptable explicit unknown?
 - Are data annotations optional for Green if the execution path itself is fully evidenced?
 
-**Decision:**
+**Decision:** P7 is Green only when one real Adaptive SEO behavior is continuously evidenced from an inbound HTTP boundary through resolved internal execution to persistence and/or an external-service boundary and back to an output/response boundary. The chosen real path must include at least one genuine branch/fan-out or join and representative edge provenance/source navigation. Data/type/schema annotations are optional for Green when the execution path itself is fully evidenced. Flow must expose explicit coverage/diagnostic state for unsupported interaction/framework patterns, unresolved continuations, query truncation, and evidence gaps so the rendered graph never implies unsupported completeness. Missing payload annotation is acceptable; an explicitly surfaced unsupported boundary outside the qualified slice is acceptable. A missing or invented hop inside the chosen qualification path, stale-generation publication, hidden truncation, or failure to establish the required HTTP/internal/persistence-or-external/output chain is Not Green. Controlled fixtures may qualify rare topology such as cycles/retries but cannot replace the real Adaptive SEO path.
 
-**Why:**
+**Why:** Trustworthiness depends more on continuous evidence and honest limits than on broad analyzer coverage. One complete real behavior proves the product value while explicit partial/unsupported diagnostics prevent a polished graph from overstating what Dope knows.
 
 ---
 
@@ -270,6 +270,6 @@ Before `/prompt-write p6`, promote answers into authoritative Phase 6 docs:
 - [x] Q7 architecture aggregation semantics
 - [x] Q8 primary Flow UX
 - [x] Q9 non-linear/async visual grammar
-- [ ] Q10 P7 completeness/qualification bar
+- [x] Q10 P7 completeness/qualification bar
 
 After promotion into authority, remove this temporary worksheet.
