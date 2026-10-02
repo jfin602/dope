@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 6 — Flow is **ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION** from coherent baseline `0.6.0` established by Phase 5 owner-close transition `710edb362f9881ab41215705db4f08d8daca6293`. Product Phase 5 is owner-closed for sequencing; its P11 remains Not Green and P12 was not executed. The approved Phase 6 decomposition is P1-P8 (`0.6.1`-`0.6.8`).
+Current stage: Product Phase 6 — Flow is **ACTIVE / P7 NOT GREEN / P8 BLOCKED**. The coherent Phase 6 baseline remains `0.6.0`; the active candidate/correction version remains `0.6.7`. Product Phase 5 is owner-closed for sequencing; its P11 remains Not Green and P12 was not executed. The approved Phase 6 decomposition remains P1-P8 (`0.6.1`-`0.6.8`).
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -59,7 +59,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — Physical Map Load | One-off `0.5.11` repair after accepted Adaptive SEO architecture loads in the inspector but the center Physical Map remains stuck at Loading. Remove duplicate Software Map channel/attach ownership if confirmed, preserve one shared published map state, and correct stale Phase 3/theme qualification assertions. P11 remains the qualification gate. |
 | Correction c5 — Planning Basis Isolation | `0.5.11` correction after P11 reached durable Planning Maps but ordinary `.dope/planning-maps.json` persistence changed Physical Map identity and unchanged reanalysis falsely staled plans. Isolate `.dope/` from generic analysis inputs and make generation observation provenance rather than semantic staleness. |
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
-| Product Phase 6 — Flow | **ACTIVE / DECISIONS LOCKED at `0.6.0`.** Dope explains what happens through software using evidence-backed Static Flow over the Physical Map, with optional data enrichment. Approved stack: P1-P8 (`0.6.1`-`0.6.8`), Adaptive SEO direct qualification at P7 and evidence-only closeout at P8. |
+| Product Phase 6 — Flow | **ACTIVE / P7 NOT GREEN / P8 BLOCKED.** Dope explains what happens through software using evidence-backed Static Flow over the Physical Map, with optional data enrichment. The overview/query repair has exposed the target Adaptive SEO behavior, but map readability and packaged controlled-shutdown evidence still block P7. Active correction: `c6-map-canvas-priority` at unchanged `0.6.7`. |
 | Product Phase 7 — AI Presence | AI understands Dope through Dope-owned project state, architecture, Flow, Planning Map context and provider-independent read-only assistance. |
 | Product Phase 8 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 9 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
@@ -904,3 +904,26 @@ After Foundation Spike 0:
 5. decompose Product Phase 1
 
 The roadmap should continue to prefer a smaller usable product over prematurely implementing the full vision.
+
+
+## October 2, 2026 — Phase 6 map canvas priority correction
+
+A fresh P7 requalification after the Flow overview/query repair exposed the intended Adaptive SEO GET opportunities behavior in the real Dope GUI: HTTP Input -> handler -> `AdaptiveRepository.list` -> three PostgreSQL reads -> three response branches. The focused trace contained 5 participants / 8 interactions, representative edges exposed source evidence, explicit coverage remained partial, and the same trace rebuilt after restart.
+
+P7 nevertheless remains **Not Green**. The focused Subsystem canvas is too dim to read immediately, and the packaged AppImage reaches ready state but fails controlled shutdown.
+
+The approved UI correction is `c6-map-canvas-priority` at unchanged `0.6.7`.
+
+Its product law is **map canvas first**:
+- Architecture and Flow maximize useful diagram area in the center workspace;
+- map-global controls collapse into one compact icon-first toolbar;
+- every icon action retains tooltip, accessible name, keyboard operation and non-color state;
+- the current center details pane becomes a floating selected-object overlay with expanded, compact and minimized states;
+- overlay state preserves selection/focus/trace/source context and should not force graph re-layout;
+- contextual node/edge actions remain contextual rather than bloating the global toolbar;
+- the left sMap inspector remains the deeper provider-free hierarchy/evidence/source-navigation surface;
+- Dope Dark and supported alternate themes must make active/focused Flow immediately legible, while subdued context remains perceptible.
+
+This correction is presentation-only. It must not reopen Flow extraction, query/aggregation semantics, hard budgets, canonical architecture, Flow persistence or Planning Map semantics.
+
+The packaged controlled-shutdown failure is a separate P7 blocker and is not folded into this UI correction. P8 remains blocked until P7 is Green.
