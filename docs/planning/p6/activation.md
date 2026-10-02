@@ -1,6 +1,6 @@
 # Product Phase 6 — Flow Activation
 
-Status: **OWNER APPROVED — ACTIVE / DECISIONS LOCKED / READY FOR PROMPTING**
+Status: **OWNER APPROVED — ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION**
 Date: 2026-10-02
 Package baseline: `0.6.0`
 Activation baseline commit: `710edb362f9881ab41215705db4f08d8daca6293`
@@ -90,12 +90,12 @@ Phase 6 qualification should prove, with no model configured, that a developer c
 
 Payload/type/schema labels are useful enrichment where proven, not a prerequisite for the base execution path.
 
-## Prompting readiness
+## Execution readiness
 
-The ten Phase 6 Flow decisions are locked and promoted into current authority. The temporary worksheet is retired.
+The ten Phase 6 Flow decisions are locked and the executable P1-P8 stack is written under `docs/tasks/p6/`.
 
-Proceed through the standard implementation workflow:
+Validate:
 
-`/prompt-ass -> /prompt-plan -> /prompt-write p6`
+`npm run codex:phase:validate -- p6`
 
-Do not execute Phase 6 implementation until the executable prompt stack is written and validated.
+Then execute through the runner. P7 is the browser/manual qualification handoff and P8 is evidence-only closeout.

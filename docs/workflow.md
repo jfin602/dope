@@ -389,4 +389,4 @@ ADR 0021 amends ADR 0020. Product Phase 6 is now **Flow**.
 
 Flow is an application-level behavioral/execution projection of the Physical Map, not a compiler CFG and not a fourth durable map. Deterministically resolved invocation, boundary, state and external-interaction facts form the base execution path. Data/payload/type/schema semantics are optional evidence-backed enrichment.
 
-The existing P1-P8 version/decomposition remains valid with renamed/reframed scope. The ten Phase 6 Flow decisions are resolved and promoted into authority; the temporary worksheet is retired and the stack may proceed through `/prompt-ass -> /prompt-plan -> /prompt-write p6`.
+The existing P1-P8 version/decomposition remains valid with renamed/reframed scope. The ten Phase 6 Flow decisions are resolved/promoted, the temporary worksheet is retired, and the executable p6 stack is written. Validate it with `npm run codex:phase:validate -- p6` before execution.

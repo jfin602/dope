@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 6 — Flow is **ACTIVE / DECISIONS LOCKED / READY FOR PROMPTING** from coherent baseline `0.6.0` established by Phase 5 owner-close transition `710edb362f9881ab41215705db4f08d8daca6293`. Product Phase 5 is owner-closed for sequencing; its P11 remains Not Green and P12 was not executed. The approved Phase 6 decomposition is P1-P8 (`0.6.1`-`0.6.8`).
+Current stage: Product Phase 6 — Flow is **ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION** from coherent baseline `0.6.0` established by Phase 5 owner-close transition `710edb362f9881ab41215705db4f08d8daca6293`. Product Phase 5 is owner-closed for sequencing; its P11 remains Not Green and P12 was not executed. The approved Phase 6 decomposition is P1-P8 (`0.6.1`-`0.6.8`).
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -773,7 +773,7 @@ The correction is authorized now at unchanged `0.5.11` from the recorded activat
 
 ## Product Phase 6 — Flow
 
-Status: **ACTIVE / DECISIONS LOCKED / READY FOR PROMPTING**
+Status: **ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION**
 Baseline: `0.6.0`
 Authority: ADR 0020 as amended by ADR 0021 and `docs/planning/p6/phase-6-plan.md`
 

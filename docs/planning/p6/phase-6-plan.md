@@ -1,6 +1,6 @@
 # Product Phase 6 — Flow Plan
 
-Status: **OWNER APPROVED / DECISIONS LOCKED / READY FOR PROMPTING**
+Status: **OWNER APPROVED / PROMPTS WRITTEN / READY FOR EXECUTION**
 Baseline: `0.6.0`
 Activation baseline: `710edb362f9881ab41215705db4f08d8daca6293`
 Execution folder: `p6`
@@ -386,13 +386,11 @@ Phase 6 does not implement:
 - a framework upgrade;
 - arbitrary Node/DB framework coverage.
 
-## Prompting readiness
+## Execution readiness
 
-All ten Phase 6 Flow worksheet decisions are locked and promoted into this plan plus product/architecture/stability authority. The temporary worksheet is retired.
+All ten Flow decisions are promoted into authority. The executable P1-P8 stack, prompt assessment and implementation plan are written under `docs/tasks/p6/`.
 
-The approved P1-P8 decomposition is ready for `/prompt-ass -> /prompt-plan -> /prompt-write p6`.
-
-
+Validate with `npm run codex:phase:validate -- p6` before execution.
 ## Exit condition
 
 Phase 6 is qualified when, on one exact provider-free candidate, a developer can use the real Dope GUI to follow a meaningful evidence-backed application Flow through a real mapped project, prove every representative hop to source/provenance, preserve architectural identity/focus across projection modes, observe non-linear execution shape, and reconstruct equivalent derived Flow after restart/reanalysis—while aggregate/package/native evidence is Green for the designated T3 gate.
