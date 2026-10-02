@@ -345,3 +345,17 @@ Product Phase 4 is owner-closed for sequencing and the bounded package-only clos
 Product Phase 5 — Visual Software Planning is active. Documentation authority is `docs/planning/p5/activation.md`, `docs/planning/p5/phase-5-plan.md`, and ADR 0017. Implementation planning follows the ordinary `/prompt-ass -> /prompt-plan -> /prompt-write p5` workflow.
 
 Phase 5 is intentionally provider-free. Prompt stacks must not pull general AI Presence, Agent Mind, ProposedAction, authority/delegation or Phase 3 Planning compatibility forward. T3 qualification must exercise the human-driven Physical Map -> Planning Map -> transformations -> WorkItems -> implementation -> re-analysis -> reconciliation loop.
+
+## October 2, 2026 — Phase 5 owner closeout and Phase 6 baseline
+
+The owner explicitly closed Product Phase 5 for sequencing from retained `0.5.11` source after P11 remained Not Green and P12 was not executed. `docs/tasks/p5/closeout.md` records the disposition. Owner acceptance of these gaps is a sequencing waiver, not retroactive Green evidence.
+
+Closeout transition `710edb362f9881ab41215705db4f08d8daca6293` advances all live manifests/internal references and baseline assertions to coherent `0.6.0`.
+
+Product Phase 6 — Data Flow is active for planning under ADR 0020 and `docs/planning/p6/activation.md`. Data Flow is provider-free and is a Physical Map projection over existing identities/evidence, not a fourth durable map.
+
+Before implementation, use the ordinary documentation workflow:
+
+`/docs-review -> /docs-apply -> /prompt-ass -> /prompt-plan -> /prompt-write p6`
+
+Do not require Phase 5 P11/P12 Green as an additional sequencing prerequisite; the owner waiver is the entry disposition. Do not erase or rewrite Phase 5 evidence.

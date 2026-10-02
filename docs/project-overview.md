@@ -186,7 +186,7 @@ Foundation Spike 0 — qualify Theia
 -> Phase 8 — Scoped Delegation
 -> Phase 9 — Development Sessions
 
-Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map core remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The later architecture-synthesis corrections remain truthful owner-closed Not Qualified history with useful implementation retained; `c4-smap-storage` and `c4-color-theme` closed Green. Owner closeout advanced only the package baseline to `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 5 — Visual Software Planning is now active from that baseline under ADR 0017 and `docs/planning/p5/`; the fresh provider comparison remains deferred off its critical path.
+Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map core remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The later architecture-synthesis corrections remain truthful owner-closed Not Qualified history with useful implementation retained; `c4-smap-storage` and `c4-color-theme` closed Green. Owner closeout advanced only the package baseline to `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 5 — Visual Software Planning was subsequently owner-closed for sequencing with P11 still Not Green and P12 unexecuted; the retained implementation remains available without a retroactive Green claim. The owner-close transition established coherent `0.6.0` for Product Phase 6 — Data Flow under ADR 0020. The fresh provider comparison remains deferred; general AI Presence is Product Phase 7.
 
 ## Non-goals
 
@@ -221,16 +221,15 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 4 — Physical Map is Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved scope. Phase 5 is not activated.**
+**Product Phase 6 — Data Flow is ACTIVE FOR PLANNING at coherent package baseline `0.6.0` from transition `710edb362f9881ab41215705db4f08d8daca6293`.**
 
-The mandatory current gate is correction `c4-smap-hierarchical-synthesis` at unchanged `0.4.6`. It must preserve the predecessor's deterministic evidence, explicit initialization, local LM Studio/Qwen readiness path and developer authority while replacing one-shot synthesis with bounded global System Discovery, System Challenge, per-System descent, reconciliation/verification, provider-derived context budgets and visible progress/timing under ADR 0012.
+Product Phase 5 is owner-closed for sequencing. Its P11 evidence remains Not Green and P12 was not executed; those gaps are accepted for sequencing only and remain historical truth.
 
-The predecessor `c4-smap-synth` is closed historical evidence. The active hierarchical correction must achieve credible real-Dope System boundaries and the <=8-minute initial-analysis objective without hard-cancelling slower runs. After it closes Green, `c4-smap-storage` becomes the final mandatory pre-Phase-5 gate. It must prove that durable sMap state is recoverable from repository + project-local `.dope/`, with `.dope/architecture.json` and `.dope/smap.json` as the current required files; any additional persisted sMap artifacts must remain under versioned `.dope/` storage. Machine-local caches may be disposable accelerators only.
+Phase 6 is governed by ADR 0020. It extends the existing Physical Map with a provider-free Data Flow projection over the same stable System / Subsystem / Component / Code identities. It must preserve evidence/provenance, source navigation and selection/focus identity while showing directional inputs, transformations, stores, external boundaries and outputs.
 
-Historical Phase 1/2 qualification gaps remain unchanged. Phase 3 remains historical evidence and its live Planning implementation remains removed. Theia stays pinned to 1.75.0 and Electron to 42.8.1 unless a deliberate framework upgrade is separately approved.
+Phase 6 does not introduce a separate canonical Data Flow map/database, general AI Presence, Agent Mind, mutation/tool authority or delegation. Those remain Product Phase 7+.
 
-Phase 5 Visual Software Planning, Phase 6 Data Flow, general AI Presence/model integration, Agent Mind, tool execution, AI mutation, scoped delegation and durable development sessions remain blocked behind their roadmap gates. ADR 0010 authorizes only the narrow pre-Phase-7 architecture-synthesis capability required by sMap initialization, and ADR 0011 selects its first local reference implementation without superseding ADR 0006 for Phase 7.
-
+The immediate workflow is `/docs-review` for Phase 6 alignment, then `/docs-apply`, `/prompt-ass`, `/prompt-plan`, and `/prompt-write p6` only after owner approval.
 ## Phase 3 result — live human-first Planning
 
 Phase 3 added Plan, PlanStep and Task as canonical planning state for the qualified `0.3.6` implementation. Correction `c3-remove-planning-instruments` now removes those live contracts and their runtime/presentation/persistence before Phase 4. Their qualification remains historical evidence only. Plans carry objective/context/status, ordered live steps and human-visible revision/history. Tasks are bounded units of work attached to plan steps, with requirements/constraints, project-relative working-set files, Project Mind links, status, completion notes and developer-entered validation notes.

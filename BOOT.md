@@ -11,14 +11,15 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 ## Current state
 
-**Phase 5 P11 is PAUSED / NOT GREEN at package `0.5.11` behind `c5-physical-map-load`.** The acceptance prerequisite is now cleared: the generated Adaptive SEO review was corrected without regeneration, real `acceptReview` succeeded, and `/home/jfin/dev/adaptive-seo-dope` carries accepted canonical `.dope/architecture.json` plus matching `.dope/smap.json`. The latest P11 rerun on `/tmp/adaptive-seo-dope-p11` proved the inspector can load that accepted architecture, but the center Physical Map remains stuck at **Loading Physical Map...**. The one-off `c5-physical-map-load` correction repairs that center-map integration plus two stale qualification assertions; P11 is then rerun as the qualification gate. P12 / `0.5.12` remains blocked.
+**Product Phase 5 — Visual Software Planning is OWNER-CLOSED FOR SEQUENCING.** The retained Phase 5 source at `0.5.11` remained Not Green because P11 never completed one clean end-to-end A-I qualification replay and P12 was not executed. The owner explicitly accepted those gaps for sequencing on 2026-10-02; no failed or missing evidence is relabeled Green. The closeout transition commit `710edb362f9881ab41215705db4f08d8daca6293` established the coherent `0.6.0` successor baseline.
 
-`c5-synth-observe` is separate historical side work and closed **Evidence Gap / Not Green** at unchanged `0.5.11`; retain its implementation/evidence without reopening it here. See `docs/tasks/c5-synth-observe/closeout.md`.
+**Product Phase 6 — Data Flow is now ACTIVE FOR PLANNING at `0.6.0`.** ADR 0020 defines Data Flow as a provider-free Physical Map projection, not a fourth durable map. No Phase 6 implementation prompt stack exists yet; the next action is Phase 6 documentation review/planning. General AI Presence remains Product Phase 7.
 
+`c5-smap-readability` and the other Phase 5 corrections remain retained implementation/history. Their commit subjects or partial browser observations do not create a standalone Green claim beyond recorded evidence.
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Product Phase 5 — Visual Software Planning is ACTIVE from baseline `0.5.0` at closeout transition commit `016bd8780e89081dfdb5746eae981183dc945baa`.** Product Phase 4 — Physical Map remains Qualified/Green for its approved core scope at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The architecture-discovery follow-ons remain truthful history: `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are owner-closed **Not Qualified** with useful implementation retained. `c4-smap-storage` and `c4-color-theme` are **GREEN / QUALIFIED** at unchanged `0.4.6`. The post-theme failed-analysis-state repair at `c7e0d66269d3f11fd2e31c3f94ecc7ffc843bae9` is part of the owner-accepted Phase 4 baseline. The fresh provider comparison remains deferred off the Phase 5 critical path.
+**Product Phase 5 — Visual Software Planning is owner-closed for sequencing.** Product Phase 4 — Physical Map remains Qualified/Green for its approved core scope at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The architecture-discovery follow-ons remain truthful history: `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are owner-closed **Not Qualified** with useful implementation retained. `c4-smap-storage` and `c4-color-theme` are **GREEN / QUALIFIED** at unchanged `0.4.6`. Product Phase 6 — Data Flow now uses the coherent `0.6.0` baseline established by Phase 5 owner closeout.
 
 **ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first bootstrap; ADR 0012 governs hierarchy-first synthesis/progress/performance; ADR 0013 governs compact shared provider contracts; ADR 0014 governs responsibility-oriented decomposition/review and its owner sequencing amendments; ADR 0015 governs optional root `MODULES.md` bootstrap intent; ADR 0016 governs Dope Dark visual identity and theme boundaries; ADR 0017 governs Phase 5 Planning Maps, transformations, WorkItems, target adoption, staleness/rebase and reconciliation; ADR 0018 governs resumable unaccepted sMap review work; ADR 0019 amends Planning Map basis semantics and Physical Map input isolation; ADR 0020 establishes provider-free Data Flow as a Physical Map projection and inserts it as Product Phase 6 before AI Presence.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**; Data Flow is a Physical Map projection, not a fourth durable map. AI interprets deterministic evidence; it does not create evidence. The developer owns canonical System / Subsystem / Component identity. General Phase 7 AI Presence remains out of scope; the Phase 5 visual planning canvas and provider-free visual workflow are now active scope.
 
@@ -26,7 +27,7 @@ Phase 2's P6 `0.2.6` evidence-only audit remains **Not Qualified**. The owner su
 
 The September 28, 2026 Phase 1 P6 closeout also remains **Not Qualified** at `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). Its historical failures are preserved. Neither the Phase 2 sequencing waiver nor the Phase 3 owner-close changes that evidence.
 
-Phase 3 added human-first live Planning on top of Project Mind and qualified it at `0.3.6`. Correction `c3-remove-planning-instruments` then removed that complete live subsystem before Phase 4 while preserving its historical plans/evidence. Phase 4 started clean at `0.4.0` with no Phase 3 Planning compatibility obligation. ADR 0010/0011 authorize only the narrow pre-Phase-7 sMap synthesis provider needed by c4. **Phase 5 visual planning is now active and provider-free.** General AI Presence/provider integration, Agent Mind, tool calling, AI mutation, scoped delegation and durable Development Sessions remain deferred to their roadmap phases.
+Phase 3 added human-first live Planning on top of Project Mind and qualified it at `0.3.6`. Correction `c3-remove-planning-instruments` then removed that complete live subsystem before Phase 4 while preserving its historical plans/evidence. Phase 4 started clean at `0.4.0` with no Phase 3 Planning compatibility obligation. ADR 0010/0011 authorize only the narrow pre-Phase-7 sMap synthesis provider needed by c4. **Phase 5 visual planning is retained as owner-closed implementation; Phase 6 Data Flow is now the active provider-free planning scope.** General AI Presence/provider integration, Agent Mind, tool calling, AI mutation, scoped delegation and durable Development Sessions remain deferred to their roadmap phases.
 
 The qualified substrate remains:
 
@@ -66,6 +67,7 @@ Current authority:
 - docs/planning/p4/activation.md
 - docs/planning/p5/phase-5-plan.md
 - docs/planning/p5/activation.md
+- docs/planning/p6/activation.md
 - docs/decisions/0004-model-provider-independence.md
 - docs/decisions/0005-progressive-self-development.md
 - docs/decisions/0006-codex-reference-ai-bootstrap.md
@@ -110,18 +112,14 @@ Foundation Spike 0 — qualify Theia
 -> correction c4-coverage — coverage diagnostics + iterative branch review
 -> correction c4-storage — project-local sMap persistence
 -> visual identity alignment — match app palette to Dope logo
--> Phase 5 — Visual Software Planning
--> current 0.5.11 correction c5-smap-readability
--> Phase 5 P11 rerun
--> Phase 5 P12 closeout
--> Phase 6 — Data Flow
+-> Phase 5 — Visual Software Planning (owner-closed for sequencing)
+-> Phase 6 — Data Flow (current)
 -> Phase 7 — AI Presence
 -> Phase 8 — Scoped Delegation
 -> Phase 9 — Development Sessions
 
 Do not pull later-phase concepts forward merely because they already exist in the long-term product model.
 
-`c5-smap-readability` is active now at unchanged `0.5.11` from activation source `158b61d601947b342472e457fe61d78b24bf5152`. Run it before returning to the P11 qualification rerun. It does not itself claim P11 Green or replace P11 evidence.
 
 ## Product shape
 
@@ -249,10 +247,6 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Run the active correction stack:
+Run a fresh `/docs-review` for Product Phase 6 — Data Flow from the coherent `0.6.0` baseline.
 
-`npm run codex:phase -- c5-smap-readability`
-
-The stack stays at package `0.5.11`. P1-P3 are runner-owned; P4 is the manual browser closeout.
-
-After the correction closes Green/Qualified, recreate `/tmp/adaptive-seo-dope-p11` from the accepted `/home/jfin/dev/adaptive-seo-dope` reference and rerun P11. P12 remains blocked until P11 is Green.
+Do not create Phase 6 implementation prompts until that review is approved and applied. Phase 6 remains provider-free; AI Presence, Agent Mind, mutation authority and delegation stay in Product Phase 7+.
