@@ -15,6 +15,18 @@ This file is the running feature idea log for ideas proposed in this chat.
 - **Potential uses:** Visually group related areas, distinguish workstreams or responsibilities, make large maps easier to scan, emphasize important or actively edited regions, and create developer-specific visual organization without restructuring the architecture.
 - **Open questions:** Decide whether colors should be selectable only per node or also inherited by descendants as an optional convenience, and whether the initial palette should be fixed theme-aware swatches or also permit custom colors.
 
+### +M7RK — 2026-10-02 — AI-driven live IDE self-customization
+
+- **Status:** Proposed
+- **Summary:** After Dope reaches a mature baseline, let developers ask Dope in chat to add or change IDE UI and workflow features for themselves, with the customization becoming usable immediately without closing or restarting the IDE.
+- **Description:** A developer should be able to request things such as a new macro, toolbar button, command, shortcut, panel, menu action, status indicator, layout adjustment, or other personal IDE behavior in natural language. Dope should translate the request into a bounded customization, validate it, activate it in the running IDE, and persist it at the appropriate project or user scope.
+- **Core experience:** Requests such as “add a button beside Run that executes my frontend smoke test” or “make a macro that opens the sMap and terminal together” should result in a working customization that appears immediately in the current session.
+- **Architecture boundary:** Prefer a first-class runtime extension/contribution layer over arbitrary live mutation of Dope core source. The layer should support declarative UI contributions where possible, registered commands/actions, macros, panels, menus, shortcuts, and controlled extension code behind explicit capabilities.
+- **Safety and control:** Generated customizations should be inspectable, permission-bounded, reversible, and validated before activation. Dope should support hot load/unload, rollback/version history, conflict detection, and a safe disabled state if a generated customization fails.
+- **Persistence and scope:** Customizations should clearly distinguish user-global, workspace/project, and session-only scope. Persistent customizations should survive restart even though creating or activating them should not require one.
+- **Promotion path:** A mature workflow may allow a proven personal customization to be promoted into normal Dope source code or a distributable extension, while keeping everyday customization separate from core mutation.
+- **Open questions:** Define the initial contribution API, sandbox/capability model, whether larger changes require preview or explicit activation, how generated customizations are represented and versioned, and which Theia/Electron surfaces can be safely hot-reloaded without weakening Dope's provider-independent architecture.
+
 ## Shipped Ideas
 
 ## Maintenance Notes
