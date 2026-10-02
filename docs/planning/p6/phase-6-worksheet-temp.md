@@ -110,9 +110,9 @@ Questions to resolve:
 - Do we support wrapper/helper abstractions used by Adaptive SEO, not only direct library calls?
 - What minimum second fixture prevents Adaptive SEO hardcoding?
 
-**Decision:**
+**Decision:** Phase 6 Green requires deterministic support for four categories in the real Adaptive SEO vertical slice: (1) Express 5 request/response boundaries, including route registration through helper functions rather than only direct declarations in `app.ts`; (2) PostgreSQL access through Adaptive SEO's real `Database` / `QueryExecutor` abstraction, classifying deterministic query operations as `reads` or `writes` and treating transactions as the same store boundary; (3) deterministic external HTTP/client boundaries, including raw Node `http`/`https` use and identifiable provider/client calls even when wrapped by helper functions; and (4) generic resolved internal invocation from P2 to connect those boundaries into an execution path. Worker/job/event Flow is useful secondary scope and may land when naturally supported, but it is not mandatory for the primary P7 Green path. Require one small synthetic TypeScript fixture using the same supported concepts with different names, routes, classes, and layout to guard against Adaptive SEO hardcoding.
 
-**Why:**
+**Why:** These four categories are enough to demonstrate a real application behavior from HTTP input through internal execution to persistence and/or an external boundary and back to output. Supporting the repository's actual helper/wrapper abstractions is necessary for architectural usefulness; direct-library-only detection would disappear at the places where the real application structure matters. Deferring worker/job Flow from the mandatory first path keeps P3 bounded while preserving it as a valid follow-on/secondary qualification surface.
 
 ---
 
@@ -264,7 +264,7 @@ Before `/prompt-write p6`, promote answers into authoritative Phase 6 docs:
 - [x] Q1 Flow-hop semantics and data-enrichment threshold
 - [x] Q2 domain/snapshot/index ownership
 - [x] Q3 derived endpoint identity
-- [ ] Q4 Adaptive SEO supported patterns
+- [x] Q4 Adaptive SEO supported patterns
 - [ ] Q5 execution-path stitching bounds
 - [ ] Q6 data/type/schema enrichment scope
 - [ ] Q7 architecture aggregation semantics
