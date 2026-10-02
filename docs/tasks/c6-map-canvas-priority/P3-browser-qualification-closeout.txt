@@ -1,0 +1,237 @@
+TASK: Correction 6 / P3 — Map canvas priority direct GUI qualification and closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- Execution: MANUAL INTERACTIVE HANDOFF — do not treat as runner-only qualification.
+
+VERSIONING
+- Required unchanged project version: `0.6.7`.
+
+GOAL
+
+Qualify the exact map-canvas-priority correction candidate in the real Dope GUI against a fresh disposable Adaptive SEO workspace, close this correction Green or Not Green, and route back to Phase 6 P7.
+
+This prompt does not qualify or repair the known packaged AppImage controlled-shutdown failure.
+
+PREFLIGHT
+
+Read:
+- BOOT.md / AGENTS.md;
+- current PRODUCT-MODEL.md / ARCHITECTURE.md / roadmap / workflow;
+- docs/tasks/p6/README.md;
+- retained docs/tasks/p6/P7-flow-dogfooding-evidence.md;
+- docs/tasks/c6-flow-overview-priority/README.md;
+- correction README / assessment / plan;
+- P1/P2 prompts and results.
+
+Require:
+- activation source `561ad62678f6e20a6da21b3537d136290d07f0e3` reachable;
+- P1/P2 focused evidence Green;
+- package exactly `0.6.7`;
+- clean intended candidate;
+- original P7 Not Green evidence preserved.
+
+QUALIFICATION WORKSPACE
+
+Create a fresh disposable copy from:
+
+`/home/jfin/dev/adaptive-seo-dope`
+
+Use its accepted `.dope/` state.
+
+Record:
+- source Git status;
+- disposable root;
+- `.dope/` inventory/hashes as appropriate.
+
+Do not regenerate or reaccept the architecture merely for this correction.
+
+AUTOMATED T3 GATE
+
+Run once on the exact candidate:
+- correction-focused map/UI tests from P1/P2;
+- npm run check;
+- git diff --check;
+- package version / internal reference coherence;
+- no-root-lock check;
+- npm run codex:phase:validate -- c6-map-canvas-priority if the current validator supports unchanged-version correction stacks.
+
+Do not run AppImage packaging/native controlled-shutdown qualification solely for this correction.
+
+DIRECT GUI EVIDENCE
+
+Use the real Dope browser workbench on the disposable Adaptive SEO copy.
+
+1. CANVAS-FIRST ARCHITECTURE
+- Open Physical Map Architecture.
+- Confirm the map visibly dominates the center tab.
+- Confirm there is one compact Dope-owned toolbar.
+- Confirm there is no separate React Flow controls cluster.
+- Confirm no large details/work band permanently sits above the diagram.
+
+2. TOOLBAR BASICS
+Exercise:
+- zoom in;
+- zoom out;
+- Fit;
+- Up;
+- Focus;
+- Open source;
+- Open selected tab where applicable;
+- Architecture / Flow switching.
+
+For representative icon-only controls:
+- hover and confirm descriptive tooltip;
+- keyboard-tab to the control and activate it;
+- confirm disabled/pressed state is understandable without color.
+
+3. FLOW TRACE
+Focus the Adaptive Recommendations Subsystem and reproduce the known behavior exposed after the overview-priority correction:
+
+GET opportunities
+-> HTTP Input
+-> route handler
+-> AdaptiveRepository.list
+-> three PostgreSQL reads
+-> three response branches.
+
+Confirm representative source evidence remains available and coverage remains explicitly partial where applicable.
+
+4. FLOW READABILITY
+Immediately after opening/focusing that Flow:
+- node identities are readable;
+- selected/traced path is visually clear;
+- edges/edge labels are readable;
+- subdued unrelated context remains perceptible;
+- the view does not require theme switching or repeated selection merely to become legible.
+
+This is the direct replay of the P7 visual failure.
+
+5. INSPECTION OVERLAY
+Select:
+- a Flow participant;
+- a representative Flow edge.
+
+Exercise:
+- expanded;
+- compact;
+- minimized;
+- restore expanded.
+
+Confirm:
+- current focus remains Adaptive Recommendations;
+- selected participant/edge survives as designed;
+- trace direction survives;
+- map does not visibly refit/re-layout simply because overlay state changed;
+- canvas size does not shrink when expanded;
+- expanded detail still exposes evidence/provenance/source action;
+- minimized state leaves only a small recoverable affordance.
+
+6. ARCHITECTURE ROUND TRIP
+Perform:
+Flow -> Architecture -> Flow.
+
+Confirm the existing focus/selection context contract remains intact.
+
+7. ALTERNATE THEME
+Switch to a compatible non-Dope theme.
+
+Recheck:
+- toolbar controls/tooltips;
+- overlay;
+- selected/traced Flow;
+- subdued context;
+- labels/edge labels.
+
+Confirm color is not the only state cue.
+
+8. PLANNING PRESENTATION REGRESSION
+Open the existing Planning Map surface available in the workspace.
+
+Confirm:
+- unified toolbar/shell does not break Planning mode;
+- Current / Target / Diff remain usable;
+- planning-global controls remain accessible;
+- rich work/details use the floating overlay rather than permanently shrinking the diagram;
+- overlay minimize/restore does not mutate Planning data;
+- no domain behavior is reinterpreted.
+
+9. LEFT INSPECTOR
+Confirm map selection still synchronizes with the left sMap inspector and ordinary source navigation remains available.
+
+The overlay must not have replaced the inspector as architecture/evidence authority.
+
+TINY FIX ALLOWANCE
+
+One bounded directly observed presentation repair is allowed for:
+- toolbar spacing/icon choice;
+- tooltip wording;
+- overlay dimensions/placement;
+- focus-visible styling;
+- subdued-context opacity/contrast;
+- small responsive layout issue.
+
+After a tiny fix:
+- add/update a permanent focused regression;
+- rebuild only what changed;
+- rerun the smallest invalidated tests;
+- recheck the exact GUI behavior.
+
+Do not use the allowance for:
+- Flow query/extraction/aggregation changes;
+- changing hard budgets;
+- controller/state-owner redesign;
+- Planning domain semantics;
+- .dope persistence;
+- native AppImage shutdown repair.
+
+CLOSEOUT
+
+Write:
+`docs/tasks/c6-map-canvas-priority/closeout.md`
+
+Update:
+`docs/tasks/c6-map-canvas-priority/README.md`
+
+Record:
+- activation source;
+- exact candidate SHA;
+- package version;
+- P1/P2 evidence;
+- T3 automated evidence;
+- direct GUI evidence for all nine areas;
+- any tiny fix;
+- residual gaps;
+- final Green / Not Green decision.
+
+Do not overwrite or relabel earlier P7 evidence.
+
+ROUTING
+
+If Green:
+- correction closes Green at unchanged `0.6.7`;
+- route back to a fresh P7 requalification;
+- P8 remains blocked;
+- explicitly carry forward the known packaged AppImage controlled-shutdown failure as an unresolved P7 blocker.
+
+If Not Green:
+- P7/P8 remain blocked;
+- state the narrow failed presentation contract and strongest direct evidence.
+
+FINAL RESPONSE
+
+Report:
+- exact candidate SHA;
+- automated gate;
+- Architecture canvas result;
+- toolbar/icon/tooltip result;
+- real Adaptive SEO Flow trace result;
+- focused readability result;
+- overlay expanded/compact/minimized result;
+- no-refit/no-context-loss result;
+- alternate-theme result;
+- Planning regression result;
+- closeout decision;
+- P7/P8 routing;
+- explicit separate native shutdown blocker.
