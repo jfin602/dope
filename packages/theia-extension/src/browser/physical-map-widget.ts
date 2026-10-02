@@ -16,13 +16,14 @@ import { affectedArchitecture, transformationsForArchitecture } from './planning
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
 import type { PlannedNode, Resolution, WorkItem } from '@dope/visual-planning';
 import { reconciliationRollups } from '@dope/visual-planning/lib/reconciliation';
+import { SmapPresentationState, nodePalette, type NodePalette } from './smap-presentation-state';
 import './dope.css';
 
 export const PHYSICAL_MAP_ID = 'dope-physical-map-canvas';
 
-function MapNode({ data }: { data: { item: CanvasNode & { intent?: string; stale?: boolean; conflict?: boolean }; editable?: boolean } }): React.ReactElement {
+function MapNode({ data }: { data: { item: CanvasNode & { intent?: string; stale?: boolean; conflict?: boolean }; editable?: boolean; color: NodePalette } }): React.ReactElement {
     const item = data.item;
-    return React.createElement('div', { className: `dope-map-node dope-map-${item.kind} dope-map-${item.state}${item.intent ? ` dope-plan-${item.intent}` : ''}${item.stale ? ' dope-plan-stale' : ''}${item.conflict ? ' dope-plan-conflicted' : ''}` },
+    return React.createElement('div', { className: `dope-map-node dope-map-${item.kind} dope-map-${item.state} dope-map-color-${data.color}${item.intent ? ` dope-plan-${item.intent}` : ''}${item.stale ? ' dope-plan-stale' : ''}${item.conflict ? ' dope-plan-conflicted' : ''}` },
         React.createElement('span', { className: 'dope-map-kind' }, `${item.context ? '↗ ' : ''}${item.kind}`),
         React.createElement('strong', null, mapLabel(item.name)),
         React.createElement('small', { className: 'dope-map-badge', title: item.badge }, item.badge),
@@ -50,9 +51,11 @@ export class PhysicalMapWidget extends BaseWidget {
     private readonly focusButton = document.createElement('button');
     private readonly tabButton = document.createElement('button');
     private readonly sourceButton = document.createElement('button');
+    private readonly colorSelect = document.createElement('select');
     private readonly planningBar = document.createElement('section');
     private readonly workPanel = document.createElement('section');
     private readonly planningListener;
+    private readonly colorListener;
     private readonly heading = document.createElement('h2');
     private readonly focusedTab: boolean;
     private draftTitle = '';
@@ -60,7 +63,7 @@ export class PhysicalMapWidget extends BaseWidget {
 
     constructor(map: ConstructorParameters<typeof PhysicalMapController>[0],
         private readonly opener: OpenerService, private readonly openTab: (id: string) => Promise<void>,
-        private readonly planning: PlanningMapController,
+        private readonly planning: PlanningMapController, private readonly colors: SmapPresentationState,
         options?: PhysicalMapTabOptions) {
         super();
         this.focusedTab = !!options;
@@ -93,7 +96,20 @@ export class PhysicalMapWidget extends BaseWidget {
         fit.type = 'button';
         fit.textContent = 'Fit Architecture';
         fit.onclick = () => this.fitArchitecture();
-        bar.append(this.heading, planningToggle, up, this.focusButton, this.tabButton, this.sourceButton, fit);
+        this.colorSelect.setAttribute('aria-label', 'Selected node color');
+        for (const color of nodePalette) {
+            const option = document.createElement('option');
+            option.value = color; option.textContent = color === 'default' ? 'Default' : color[0].toUpperCase() + color.slice(1);
+            this.colorSelect.append(option);
+        }
+        this.colorSelect.onchange = () => {
+            const id = this.controller.selectedId;
+            if (id && !this.colorSelect.disabled) void this.colors.set(id, this.colorSelect.value as NodePalette)
+                .catch(error => { this.status.textContent = `Node color could not be saved: ${String(error)}`; });
+        };
+        const colorLabel = document.createElement('label');
+        colorLabel.append('Node color ', this.colorSelect);
+        bar.append(this.heading, planningToggle, up, this.focusButton, this.tabButton, this.sourceButton, fit, colorLabel);
         this.breadcrumbs.setAttribute('aria-label', 'Map focus');
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
@@ -104,6 +120,7 @@ export class PhysicalMapWidget extends BaseWidget {
         this.node.append(bar, this.planningBar, this.workPanel, this.breadcrumbs, this.status, this.canvas);
         this.controller = new PhysicalMapController(map, () => this.render(), options?.workspace, options?.focusId);
         this.planningListener = planning.onChange(() => this.render());
+        this.colorListener = colors.onChange(() => this.render());
     }
 
     protected override onAfterAttach(msg: Message): void {
@@ -122,6 +139,7 @@ export class PhysicalMapWidget extends BaseWidget {
 
     private render(): void {
         if (!this.root) return;
+        void this.colors.attach(this.controller.mapWorkspace);
         const { loading, error } = this.controller;
         const selectedMap = this.planning.selected;
         const planningMode = this.planning.planningMode;
@@ -155,6 +173,10 @@ export class PhysicalMapWidget extends BaseWidget {
             this.breadcrumbs.append(button);
         }
         const selected = this.controller.selectedId;
+        const selectedNode = projection.nodes.find(node => node.id === selected &&
+            (node.kind === 'system' || node.kind === 'subsystem' || node.kind === 'component'));
+        this.colorSelect.disabled = !this.controller.projectMatches || !selectedNode;
+        this.colorSelect.value = selectedNode ? this.colors.get(selectedNode.id) : 'default';
         const selectedPhysical = !!selected && this.controller.sourceNodes.some(node => node.id === selected);
         const highlighted = planningMode && selectedMap && this.planning.selectedWorkItem ?
             new Set(affectedArchitecture(selectedMap, this.planning.selectedWorkItem.transformationIds, this.controller.sourceNodes)) : new Set<string>();
@@ -171,7 +193,7 @@ export class PhysicalMapWidget extends BaseWidget {
         const nodes: Node[] = projection.nodes.map(item => ({
             id: item.id, type: 'architecture', position: { x: item.x, y: item.y },
             parentId: item.parentId,
-            data: { item, editable: planningMode && !!selectedMap }, draggable: planningMode &&
+            data: { item, editable: planningMode && !!selectedMap, color: this.colors.get(item.id) }, draggable: planningMode &&
                 (item.kind === 'subsystem' || item.kind === 'component'), selectable: true, selected: item.id === selected,
             className: item.id === selected ? 'dope-map-selected' : highlighted.has(item.id) ? 'dope-work-highlight' : item.context ? 'dope-map-context' : undefined,
             style: { width: item.width, height: item.height }
@@ -513,6 +535,7 @@ export class PhysicalMapWidget extends BaseWidget {
 
     override dispose(): void {
         this.planningListener.dispose();
+        this.colorListener.dispose();
         this.controller.dispose();
         this.root?.unmount();
         this.root = undefined;

@@ -83,6 +83,9 @@
 .dope-physical-map-view button { color: var(--theia-button-foreground); background: var(--theia-button-background); border: 1px solid var(--theia-button-background); padding: 5px 9px; cursor: pointer; }
 .dope-physical-map-view button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-physical-map-view button:disabled { opacity: .5; cursor: default; }
+.dope-physical-map-view header select { color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border, var(--theia-focusBorder)); padding: 5px; }
+.dope-physical-map-view header select:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-physical-map-view header select:disabled { opacity: .5; }
 .dope-physical-map-view nav { padding: 6px 16px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); overflow-wrap: anywhere; }
 .dope-physical-map-view nav button { background: transparent; color: var(--theia-editor-foreground); border: 0; white-space: normal; overflow-wrap: anywhere; }
 .dope-physical-map-view > p { margin: 8px 16px; color: var(--theia-descriptionForeground); }
@@ -102,6 +105,10 @@
 .dope-map-drifted { border-style: double; border-width: 5px; border-color: var(--theia-editorWarning-foreground, var(--theia-focusBorder)); }
 .dope-map-selected .dope-map-node { outline: 3px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-map-context .dope-map-node { background: var(--theia-editor-background); }
+.dope-map-node.dope-map-color-blue { background: color-mix(in srgb, var(--theia-charts-blue, var(--theia-focusBorder)) 13%, var(--theia-editorWidget-background, var(--theia-editor-background))); }
+.dope-map-node.dope-map-color-green { background: color-mix(in srgb, var(--theia-charts-green, var(--theia-focusBorder)) 13%, var(--theia-editorWidget-background, var(--theia-editor-background))); }
+.dope-map-node.dope-map-color-orange { background: color-mix(in srgb, var(--theia-charts-orange, var(--theia-focusBorder)) 13%, var(--theia-editorWidget-background, var(--theia-editor-background))); }
+.dope-map-node.dope-map-color-purple { background: color-mix(in srgb, var(--theia-charts-purple, var(--theia-focusBorder)) 13%, var(--theia-editorWidget-background, var(--theia-editor-background))); }
 .dope-map-kind { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--theia-descriptionForeground); }
 .dope-map-badge { align-self: flex-start; font-size: 10px; padding: 2px 5px; border: 1px solid currentColor; border-radius: 3px; }
 .dope-map-edge .react-flow__edge-path { stroke: var(--theia-editor-foreground); stroke-width: 2; }

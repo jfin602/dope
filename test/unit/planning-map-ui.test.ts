@@ -244,7 +244,7 @@ test('focused tabs share one selected map and late project responses are ignored
   assert.equal(physicalMapTabId(physicalMapTabOptions('file:///A', 'a')),
     physicalMapTabId(physicalMapTabOptions('file:///A', 'a')));
   const frontend = readFileSync(resolve(import.meta.dirname, '../../packages/theia-extension/src/browser/frontend-module.ts'), 'utf8');
-  assert.match(frontend, /context\.container\.get\(PlanningMapController\), options/);
+  assert.match(frontend, /context\.container\.get\(PlanningMapController\), context\.container\.get\(SmapPresentationState\), options/);
   let complete!: (value: { projectHandle: string; snapshot: PlanningCollection }) => void;
   h.service.attach = () => new Promise(resolve => { complete = resolve; });
   h.physical.workspace = 'file:///B'; for (const listener of h.listeners) listener();

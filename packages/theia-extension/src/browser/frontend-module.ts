@@ -23,6 +23,7 @@ import { SoftwareMapReviewWidget, SOFTWARE_MAP_REVIEW_ID } from './software-map-
 import { PhysicalMapWidget, PHYSICAL_MAP_ID } from './physical-map-widget';
 import { physicalMapTabOptions, type PhysicalMapTabOptions } from './physical-map-controller';
 import { PlanningMapController } from './planning-map-controller';
+import { SmapPresentationState } from './smap-presentation-state';
 import { VisualPlanningService, visualPlanningServicePath } from '@dope/visual-planning/lib/service';
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
@@ -56,6 +57,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         () => {}, context.container.get(StorageService))).inSingletonScope();
     bind(PlanningMapController).toDynamicValue(context => new PlanningMapController(context.container.get(SoftwareMapController),
         () => ServiceConnectionProvider.createProxy<VisualPlanningService>(context.container, visualPlanningServicePath))).inSingletonScope();
+    bind(SmapPresentationState).toDynamicValue(context => new SmapPresentationState(context.container.get(StorageService))).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_ID, createWidget: () => new SoftwareMapWidget(
         context.container.get(SoftwareMapController), context.container.get(WorkspaceService), context.container.get(OpenerService),
         async () => {
@@ -70,7 +72,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         new PhysicalMapWidget(context.container.get(SoftwareMapController),
             context.container.get(OpenerService), id => openFocusedMap(context.container.get(WidgetManager),
                 context.container.get(ApplicationShell), context.container.get(SoftwareMapController), id),
-            context.container.get(PlanningMapController), options) })).inSingletonScope();
+            context.container.get(PlanningMapController), context.container.get(SmapPresentationState), options) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_REVIEW_ID, createWidget: () =>
         new SoftwareMapReviewWidget(context.container.get(SoftwareMapController), context.container.get(WorkspaceService),
             context.container.get(OpenerService)) })).inSingletonScope();
