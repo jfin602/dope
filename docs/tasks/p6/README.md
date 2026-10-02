@@ -1,6 +1,6 @@
 # Product Phase 6 — Flow Task Stack
 
-Status: **PLANNED / DECISION WORKSHEET ACTIVE / PROMPTS NOT YET WRITTEN**
+Status: **ASSESSMENT + IMPLEMENTATION PLAN COMPLETE / PROMPTS NOT YET WRITTEN**
 Activation baseline: `710edb362f9881ab41215705db4f08d8daca6293`
 Package baseline: `0.6.0`
 Authority: ADR 0020 as amended by ADR 0021, Phase 6 activation/plan
@@ -20,13 +20,13 @@ Authority: ADR 0020 as amended by ADR 0021, Phase 6 activation/plan
 
 ## Current action
 
-Resolve `docs/planning/p6/phase-6-worksheet-temp.md` one question at a time.
+Prompt assessment and implementation planning are complete.
 
-After answers are promoted into Phase 6 authority:
+Next:
 
-`/prompt-ass + /prompt-plan + /prompt-write p6`
+`/prompt-write p6`
 
-No implementation prompt is authorized merely by this README.
+No implementation prompt is authorized until the executable prompt files are written and grammar-validated.
 
 ## Locked truth rules
 
