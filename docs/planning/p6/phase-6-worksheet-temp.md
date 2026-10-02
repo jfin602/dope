@@ -205,9 +205,9 @@ Questions to resolve:
 - At what detail level do code-level invocations appear?
 - How do we prevent Flow from becoming another hairball?
 
-**Decision:**
+**Decision:** Flow opens as a quiet architecture-level overview of the currently focused System. The initial view shows major Inputs, Outputs, participating architectural scopes, Stores, External endpoints, and high-level evidenced connections rather than every code-level invocation. Selecting an Input or Flow participant highlights its relevant Static Flow path or neighborhood while unrelated known Flow remains subdued for orientation rather than hidden by default. Provide explicit `Trace downstream`, `Trace upstream`, and `Clear trace` controls for deeper exploration. Code-level invocation detail is progressively disclosed only as the developer focuses into Subsystems/Components. Known Inputs should be visually easy to find and act as natural behavioral entry points.
 
-**Why:**
+**Why:** The System-level Flow view should explain behavior without degenerating into a call-graph hairball. A quiet overview preserves orientation; selection and tracing provide debugger-like exploration; progressive disclosure keeps the same System -> Subsystem -> Component -> Code mental model used elsewhere in sMap.
 
 ---
 
@@ -268,7 +268,7 @@ Before `/prompt-write p6`, promote answers into authoritative Phase 6 docs:
 - [x] Q5 execution-path stitching bounds
 - [x] Q6 data/type/schema enrichment scope
 - [x] Q7 architecture aggregation semantics
-- [ ] Q8 primary Flow UX
+- [x] Q8 primary Flow UX
 - [ ] Q9 non-linear/async visual grammar
 - [ ] Q10 P7 completeness/qualification bar
 
