@@ -337,6 +337,20 @@ P7 owns direct real-GUI and broad exact-candidate evidence:
 
 P8 is evidence-only. It must not repair P7 failures.
 
+## Flow coverage and trust diagnostics
+
+Flow must never imply completeness beyond supported/evidenced execution surfaces.
+
+The query/UI contract exposes explicit diagnostics for:
+- unsupported interaction/framework patterns encountered;
+- unresolved deterministic continuations;
+- query/path truncation;
+- evidence gaps that prevent continuity.
+
+Missing data/type/schema annotations are acceptable when execution Flow itself is evidenced. Unsupported boundaries outside the qualified slice are acceptable when surfaced explicitly.
+
+A missing or invented execution hop inside the chosen qualification path, stale-generation publication, hidden truncation, or a rendered connector that bridges an evidence gap is Not Green.
+
 ## P7 dogfood target
 
 Use a fresh disposable copy of the mapped accepted Adaptive SEO workspace. Keep the accepted reference unchanged.
@@ -344,16 +358,17 @@ Use a fresh disposable copy of the mapped accepted Adaptive SEO workspace. Keep 
 Directly prove:
 - focus a representative System;
 - Architecture -> Flow switch;
-- one real non-trivial evidence-backed input/boundary -> internal invocation/processing -> persistence and/or external interaction -> output path;
+- one real continuously evidenced Adaptive SEO behavior from inbound HTTP boundary -> resolved internal execution -> persistence and/or external-service boundary -> output/response boundary;
 - representative edge provenance and source navigation;
 - Subsystem focus without identity fork;
-- at least one real branch/fan-out or join;
+- at least one real branch/fan-out or join inside the qualified behavior;
+- explicit partial/unsupported/truncated diagnostics where applicable;
 - Flow -> Architecture return with focus/selection preserved;
 - no model/provider required.
 
 Payload/type/schema labels are enrichment where evidenced, not a prerequisite for the base execution path.
 
-A controlled fixture may supplement cycles/retries/rare shapes but cannot replace the real Adaptive SEO execution path.
+Missing or invented execution hops inside the chosen qualification behavior are Not Green. A controlled fixture may supplement cycles/retries/rare shapes but cannot replace the real Adaptive SEO execution path.
 
 ## Explicit non-goals
 
