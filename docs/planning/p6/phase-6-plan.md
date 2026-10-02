@@ -135,11 +135,28 @@ This phase does not require whole-program argument/return propagation before an 
 
 ### Adaptive SEO boundary vertical slice
 
-Add bounded deterministic extractors sufficient to qualify a real Adaptive SEO execution path. Inspect actual Adaptive SEO source before implementation; expected useful surfaces include:
-- Express-style routes/request/response;
-- PostgreSQL persistence reads/writes;
-- supported external HTTP/client boundaries where present;
-- jobs/events/queues only if the real repository offers a clean deterministic initial example.
+Phase 6 Green requires deterministic support for four real Adaptive SEO categories:
+
+1. **Express 5 request/response boundaries**
+   - detect route registration and request/response boundaries through the actual registration helpers used by the repository, not only route declarations written directly in `app.ts`;
+   - preserve route method/path evidence and handler/source provenance.
+
+2. **PostgreSQL through the real repository abstraction**
+   - support Adaptive SEO's `Database` / `QueryExecutor` path, not only direct `pg.Pool.query` calls;
+   - classify deterministic query operations as `reads` or `writes` where the SQL/evidence supports that distinction;
+   - transactions remain interactions with the same underlying store boundary rather than a second datastore identity.
+
+3. **External HTTP/client boundaries**
+   - support deterministic raw Node `http`/`https` interactions used by the collection path;
+   - support identifiable provider/client calls where the real target can be established, including calls behind bounded helper wrappers;
+   - wrappers must not erase the external boundary.
+
+4. **Generic resolved internal invocation**
+   - P2 invocation Flow connects route, service, repository and boundary interactions into one execution path.
+
+Worker/job/event Flow is valuable secondary scope and may be implemented when it falls naturally out of the same extractor architecture, but it is not mandatory for the primary P7 Green path.
+
+Add at least one small synthetic TypeScript fixture that exercises the same supported concepts with different names, routes, classes and file layout. This is a permanent anti-hardcoding guard.
 
 Extractor contracts must be replaceable and evidence-backed. Do not hardcode Adaptive SEO file paths, IDs or expected answers.
 
