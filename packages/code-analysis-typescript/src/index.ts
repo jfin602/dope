@@ -10,7 +10,10 @@ import { extractFlowBoundaries } from './flow-extractor';
 
 const PRODUCER = '@dope/code-analysis-typescript';
 const VERSION = '5.9.3';
-const compilerLib = dirname(createRequire(__filename).resolve('typescript'));
+const compilerLib = (() => {
+    try { return dirname(createRequire(__filename).resolve('typescript')); }
+    catch { return join((process as NodeJS.Process & { resourcesPath: string }).resourcesPath, 'app/typescript/lib'); }
+})();
 const ignored = new Set(['node_modules', '.git', '.dope', '.theia', 'plugins', 'dist', 'build', 'out', 'coverage', 'generated', 'vendor']);
 const sourceFile = /\.(?:[cm]?[jt]s|[jt]sx)$/i;
 const declarationFile = /\.d\.[cm]?ts$/i;

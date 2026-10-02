@@ -1,0 +1,61 @@
+# Phase 6 P7 — Adaptive SEO Flow dogfooding evidence
+
+Date: 2026-10-02. **Result: Not Green. P8 is not eligible.** The direct GUI cannot expose the required real HTTP-to-state-to-response behavior within its bounded Flow view. This record does not upgrade the retained Phase 5 owner closeout.
+
+## Candidate and preflight
+
+- Predecessor: clean `main` at `2fac11b4667d0ddf800af0ac68525a20773bb397` (`0.6.6`). Reachable P1–P6 commits, in order: `6331e4f86307815deedebac103fba3684dd72efa`, `29e1decc2b7cb546663efd9ace284821b02ce600`, `c864aa2cd4c020d68f764de296298c8f953f438e`, `d4375313b8ada530ebd00b4100b94aea3e11c517`, `d9597d2691dc2b9f30faea724cb511c5939e27b6`, `2fac11b4667d0ddf800af0ac68525a20773bb397`. Their commit bodies report bounded T1/T2 results and explicitly defer GUI qualification.
+- P7 working tree: coherent `0.6.7` root/app/internal manifests and references, plus a native TypeScript library packaging repair, above that base. There is no `0.6.7` commit because P7 is Not Green. The final package identity is `dist/linux/Dope-0.6.7.AppImage`, SHA-256 `be79da37880e1bd50534cec889942be6408ad524ddc3fcbe17156e8e72f6cda4`.
+- Accepted source `/home/jfin/dev/adaptive-seo-dope`: `main...origin/main`, with only `?? .dope/` and `?? MODULES.md`. Immediately before GUI qualification, `cp -a` recreated `/tmp/adaptive-seo-dope-p7`, including dependencies, Git data, and `.dope/`. The copy had the same Git status. Both source and copy had only `.dope/architecture.json` (4,688 bytes; SHA-256 `b5a09a50397149f589a80c2f9987ec66c0023a85c75ad98b4a973ebd1d370208`) and `.dope/smap.json` (122 bytes; SHA-256 `b35801cb0d6ea2100c7fa47c28f2e75b186dab8ff9fae28cdf7fff446b4bc583`). Both hashes and source status were unchanged after qualification. No `.dope/flow.json` appeared.
+- The real Theia browser workbench opened the disposable root at `127.0.0.1:3000/#/tmp/adaptive-seo-dope-p7`. The accepted canonical Adaptive SEO Service and Customer Site Feed Runtime Systems and their Subsystems loaded. Fresh Physical Map analysis published generation 1, `partial`, 4,419 nodes, zero architecture violations. The center Architecture canvas showed a usable 12-object Systems overview. No model/provider was started for Flow.
+- Authority read: BOOT, AGENTS, Phase 6 activation/plan, ADR 0020/0021, p6 prompt assessment/implementation plan/P1–P7 stack, current source/tests, and Phase 5 `docs/tasks/p5/closeout.md`. Phase 5 remains owner-closed for sequencing with P11 Not Green and P12 unexecuted.
+
+## Direct GUI matrix
+
+| Gate | Observation | Result |
+| --- | --- | --- |
+| A. Architecture → Flow | Selected Adaptive SEO Service, opened center Physical Map, switched to Flow, and focused the System. Flow showed **36 participants / 49 interactions** from the first bounded result, many code-level call nodes, and a long truncation frontier. The actual canvas became a narrow, dense graph below the diagnostics. An External node appeared; major HTTP Inputs, Outputs and Store were not jointly visible at System level. | **Not Green:** no quiet System overview. |
+| B. Real behavior | The GUI did not expose the chosen GET opportunities Input or any `receives`/`responds` edge in the bounded System/Subsystem results. The analyzer's raw facts below show the source-backed behavior exists, but raw analysis does not substitute for the required GUI proof. | **Not Green:** continuous behavior unproved in GUI. |
+| C. Tracing | Focused Adaptive Recommendations. The result contained 172 listed edges: 37 `invokes`, 83 `reads`, 52 `writes`, and zero `receives`/`responds`. Unrelated Collection, Feed, Installation, Integration, Project and Topic repository calls appeared through the shared PostgreSQL endpoint. The required Input could not be selected; downstream/upstream/clear and subdued unrelated Flow could not be exercised on that behavior. | **Not Green.** |
+| D. Edge truth/source | Selected a `reads` edge from an anonymous callable at `src/server/adaptive/adaptive-repository.ts:252:46` to the PostgreSQL store identified by `src/server/db/database.ts`. Inspector showed kind, source/target IDs, origin fact ID, semantic `@dope/code-analysis-typescript` evidence at `adaptive-repository.ts:253`, unresolved data semantics and truncated coverage. **Open edge source** opened `adaptive-repository.ts` in an ordinary editor. `invokes` edges were listed. Required behavior's `receives`/`responds` edges were absent from the GUI result. | Partial direct evidence. |
+| E. Coverage | GUI explicitly displayed `Coverage: truncated`, a continue-deeper frontier, partial scope coverage and unresolved Express/PostgreSQL diagnostics. The frontier was an unwieldy list of raw IDs that consumed much of the view. No whole-program-complete claim was made. No unsupported gap was manually filled. | Truthful status, poor usability; no Green claim. |
+| F. Identity/context | Flow → Architecture retained `Project / Adaptive SEO Service / Adaptive Recommendations` focus. Reentering Flow retained that focus. Source navigation opened the matching file and returning to the map retained the Subsystem breadcrumb. The accepted architecture has no Component nodes, so Component-focused tabs were not demonstrated. | Partial direct evidence. |
+| G. Non-linear behavior | Raw source-backed facts show one handler branching to `AdaptiveRepository.list` and HTTP responses, and `list` fanning out to three PostgreSQL reads. The GUI did not render that behavior together. Focused projection tests cover branch/join/back-edge fixtures; those tests do not replace real dogfooding. | **Not Green.** |
+
+The focused Subsystem result demonstrates a query-scope defect: it includes unrelated facts solely because their shared store endpoint is anchored inside or adjacent to the focus. Its fact budget then favors sorted code/SQL facts over the HTTP boundary needed to start a trace. The System result has the same user-visible truncation and code-level clutter. This diagnosis is based on the observed edge list and the `queryStaticFlow` focus/bounds logic; no missing Flow edge was invented to repair the view.
+
+## Chosen real behavior: GET opportunities
+
+Independent `TypeScriptAnalyzer` inspection of the disposable root produced 2,501 Flow facts: 2 external calls, 2,015 invocations, 93 reads, 66 receives, 215 responds and 110 writes; 135 endpoints; overall analysis `partial` with no analyzer errors. The facts below are **raw deterministic evidence, not successful direct GUI qualification**. Static Flow means possible execution, not one observed request. Store→caller return data is not asserted as a separate hop.
+
+| Evidenced connection | Source provenance | Limit |
+| --- | --- | --- |
+| `GET /api/workspaces/:workspaceId/projects/:projectId/opportunities` → inline route handler at `adaptive-routes.ts:51` (`receives`) | Express registration `src/server/http/adaptive-routes.ts:48` | Input/handler relationship is source backed. |
+| Handler → `AdaptiveRepository.list` (`invokes`) | Call at `src/server/http/adaptive-routes.ts:62` | Resolved project callable. |
+| `AdaptiveRepository.list` → PostgreSQL store (`reads`) ×3 | `src/server/adaptive/adaptive-repository.ts:162`, `:166`, `:170`; store identity from `src/server/db/database.ts` | Parallel Promise fan-out is visible in source; no data lineage or return edge inferred. |
+| Handler → HTTP output (`responds`) | `src/server/http/adaptive-routes.ts:54`, `:59`, `:60` | Branches are possible responses, not one observed trace. |
+
+The GUI omission is material even though these raw facts are valid. It prevented direct inspection of their `receives`, `invokes`, three `reads`, and `responds` edges as one behavior, and prevented selecting that Input for trace actions.
+
+## Restart, isolation and host regression
+
+- Stopped and restarted the browser Theia backend, reloaded the same disposable workspace, and explicitly refreshed analysis. Generation restarted at 1, again published `partial`, 4,419 nodes, and the Flow GUI again showed 36 participants / 49 interactions with the target HTTP Input omitted. No Flow persistence file existed.
+- Independent analyzer runs on the unchanged copy before and after restart gave identical sorted semantic ID SHA-256 values: facts `d3afcfd41939b3688cd3e76e2474cf924bf57114a0d1b1d6783fe1c71eaa7236` (2,501) and endpoints `a90c6aff785027e534a0f22d84f152e1de4f8ff7ce73af282af5e9d06bba777b` (135). This proves deterministic rebuild at the analyzer boundary, not a complete GUI behavior replay.
+- A second Theia browser tab attached to `/home/jfin/dev/dope` independently. Its generation 1 Physical Map was `partial`, 8,265 nodes, zero violations; its ordinary Architecture canvas showed a Physical Map System overview. Its Flow showed zero participants/interactions and no Adaptive SEO opportunities route. Backend/project tests reject stale project/generation queries, and controller tests cover late project/generation/mode/focus/trace/evidence results. A live same-tab in-flight workspace race was not directly staged.
+- The host Planning Map opened with title/objective/Create and current/target controls; no host map was created or edited during this qualification. Host Project Mind opened with `Saved · revision 35` and its existing artifact list. This verifies surface availability, not the complete retained Phase 5 workflow or repair of its P11 gaps.
+
+## T3 release and native evidence
+
+| Check | Result |
+| --- | --- |
+| Focused Phase 6 suites | 30/30 passed on final source: Flow domain/query, TypeScript extraction, boundary fixture, index/backend, projection and UI tests. |
+| `npm run check` | Passed on final source: typecheck; 93 runner, 10 baseline, 1 local-install, 197 product, 22 initialization and 1 IDE tests; browser and Electron builds completed with zero errors. |
+| `npm run test:restart` | Passed 3/3 on final source after the native compiler-library repair: Electron restart, Project Mind restart/isolation, and Software Map rebuild. |
+| `npm run codex:phase:validate -- p6` | `VALID`, P1–P8 grammar and routing. |
+| Package | Built with `corepack yarn workspace @dope/electron package:linux` using the Electron build already supplied by `npm run check`. Final AppImage is executable x86-64 ELF, mode 755, 191,004,052 bytes, SHA-256 `be79da37880e1bd50534cec889942be6408ad524ddc3fcbe17156e8e72f6cda4`. Extracted package declares `0.6.7` / Theia `1.75.0`, contains frontend/backend bundles, 91 plugins and the TypeScript compiler library. Electron is `42.8.1`. |
+| Native launch/close | First packaged launch failed at backend startup with `Cannot find module 'typescript'`. The final candidate includes the compiler library as a packaged resource and a runtime lookup fallback; the rebuilt AppImage reached Theia frontend `ready` on the disposable root, then its main process received SIGTERM and no AppImage/mounted child remained. Its log still reported inherited `file-search: Failed to search ... spawn ENOTDIR`. No native visual Flow workflow was observed. |
+| Version/hygiene | All 10 live manifests and internal `@dope/*` references are `0.6.7`; Theia `1.75.0`, Electron `42.8.1`; no root `package-lock.json`. `git diff --check` passed. |
+
+## Disposition and remaining evidence
+
+**Not Green. P8 must not run. No `0.6.7` manual commit was made.** The required quiet System overview, GUI-visible continuous Adaptive SEO path, Input tracing, real GUI branch/fan-out, and representative HTTP edge/source inspection remain unproved. The focus leak and alphabetical fact-budget starvation need correction and one clean A–G replay on a final candidate. The live stale-result race, complete Planning Map workflow and native visual Flow remain Evidence Gaps. The inherited native file-search `ENOTDIR` remains observable; it is not relabeled repaired. Phase 5 P11 stays Not Green and P12 stays unexecuted.
