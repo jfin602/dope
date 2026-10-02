@@ -1,8 +1,9 @@
 # Correction 6 — Map Canvas Priority
 
-Status: **APPROVED / PLANNING READY**
+Status: **APPROVED / PROMPTS WRITTEN / READY FOR EXECUTION**
 Correction folder: `c6-map-canvas-priority`
 Required unchanged version: `0.6.7`
+Activation source: `561ad62678f6e20a6da21b3537d136290d07f0e3`
 Phase context: Product Phase 6 P7 Not Green / P8 blocked
 Authority: current Phase 6 plan, ARCHITECTURE, PRODUCT-MODEL, roadmap, workflow, retained P7 evidence, and the subsequent P7 requalification result
 
@@ -81,44 +82,22 @@ The native controlled-shutdown failure remains a separate P7 blocker.
 
 ## Approved decomposition
 
-Plan this as a small correction stack at unchanged `0.6.7`:
+| Prompt | Scope | Tier | Model | Browser |
+| --- | --- | --- | --- | --- |
+| P1 | canvas-first shared map shell + unified toolbar | T2 | GPT-6 Sol High | no |
+| P2 | inspection overlay + icon controls + focused readability | T2 | GPT-6 Sol High | no |
+| P3 | direct Adaptive SEO GUI qualification + correction closeout | T3 | GPT-6 Sol High | yes |
 
-### P1 — Map workspace shell
+Prompt files:
+- `P1-canvas-first-workspace.txt`
+- `P2-inspection-overlay-icons.txt`
+- `P3-browser-qualification-closeout.txt`
 
-- create/refactor the shared canvas-first Architecture/Flow shell;
-- consolidate map-global controls into one compact toolbar;
-- maximize usable map viewport;
-- preserve current Software Map/Flow controller and state ownership;
-- add focused layout/controller regressions.
+Supporting planning:
+- `prompt-assessment.md`
+- `implementation-plan.md`
 
-Validation target: focused T1/T2 evidence only as required by actual package boundaries.
-
-### P2 — Inspection overlay and icon controls
-
-- move center selection/details UI into an expanded/compact/minimized overlay;
-- iconify applicable toolbar actions;
-- add descriptive tooltips/accessibility/keyboard semantics;
-- preserve selection/focus/trace/source context across overlay state;
-- keep graph geometry stable;
-- repair immediate focused-canvas readability without broad theme redesign.
-
-Validation target: focused UI/controller/theme regressions plus affected builds only where required.
-
-### P3 — Direct GUI qualification
-
-Using the real Dope GUI and the accepted disposable Adaptive SEO P7 workspace:
-
-- exercise Architecture and Flow;
-- exercise System and focused Subsystem views;
-- prove the diagram receives the maximum practical center area;
-- prove focused Flow is readable immediately;
-- open, compact, minimize and restore selected-object details;
-- prove those transitions preserve selection/focus/trace and do not unnecessarily re-layout the graph;
-- exercise icon tooltips and keyboard access;
-- prove Architecture -> Flow -> Architecture preserves context;
-- preserve explicit partial/unsupported coverage behavior.
-
-This qualification does not absorb the independent AppImage controlled-shutdown failure.
+P1-P2 are runner-friendly implementation/integration prompts at unchanged `0.6.7`. P3 is the manual browser handoff.
 
 ## Version and routing
 
@@ -130,4 +109,6 @@ This qualification does not absorb the independent AppImage controlled-shutdown 
 
 ## Next workflow
 
-`/prompt-ass + /prompt-plan + /prompt-write c6-map-canvas-priority`
+Validate the stack, then execute P1/P2 through the normal correction runner flow if supported. Hand off P3 manually for direct GUI qualification.
+
+Do not advance the package version and do not treat correction Green as P7 Green.
