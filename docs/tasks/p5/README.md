@@ -1,6 +1,6 @@
 # Product Phase 5 — Visual Software Planning Task Stack
 
-Status: READY FOR EXECUTION
+Status: **OWNER-CLOSED FOR SEQUENCING — P11 REMAINS NOT GREEN; P12 UNEXECUTED**
 Activation source/package baseline: `016bd8780e89081dfdb5746eae981183dc945baa`, root `0.5.0`
 Theia: `1.75.0`; Electron: `42.8.1`; React: `19.2.8`; Node: 24
 Authority: Phase 5 activation/plan, resolved visual workflow worksheet, ADR 0017
@@ -32,21 +32,19 @@ Run implementation prompts:
 
 `npm run codex:phase -- p5 --closeout`
 
-The runner owns P1-P10 commits and stops for P11 because direct browser GUI evidence is required. After P11 is completed and committed, resume P12 closeout from the exact qualified candidate.
+The runner owns P1-P10 commits and stops for P11 because direct browser GUI evidence is required. Historical execution routing is retained below for audit. The owner closeout supersedes further P11/P12 execution for sequencing; P12 was not run.
 
-## P11 pause — Planning basis isolation one-off
+## Owner closeout disposition — 2026-10-02
 
-P11 is currently paused / Not Green at `0.5.11`.
+The owner explicitly closed Product Phase 5 for sequencing from the retained `0.5.11` implementation despite P11 remaining Not Green and P12 never executing.
 
-The accepted Adaptive SEO hierarchy renders in the corrected center Physical Map and Planning Maps persist, but the latest rerun found false staleness from two coupled defects: `.dope/planning-maps.json` entered Physical Map input identity, and generation-only reanalysis was treated as semantic change.
-
-Run the manual one-off `c5-planning-basis-isolation` Sol High prompt, then rerun P11. There is no separate correction closeout agent.
+This is a sequencing waiver, not retroactive qualification. The P11 evidence file remains authoritative for the failed/interrupted qualification attempts, including the final interrupted clean replay. All c5 fixes and readability work remain retained implementation.
 
 Routing:
 
-`P1-P10 -> accepted sMap -> center map fixed -> P11 false-stale failure -> manual c5-planning-basis-isolation -> fresh P11 workspace -> rerun P11 -> P12`
+`Phase 5 owner-close -> coherent 0.6.0 successor baseline -> Phase 6 Data Flow planning`
 
-After the one-off, recreate `/tmp/adaptive-seo-dope-p11` from `/home/jfin/dev/adaptive-seo-dope` rather than reusing the Planning Maps created under the broken basis contract.
+Do not relabel P11/P12 Green. Any retained Phase 5 gap is revisited only when it materially blocks Phase 6 or later qualification.
 ## Product boundary
 
 Phase 5 proves the human-driven loop:

@@ -1,6 +1,6 @@
 # Product Phase 5 Implementation Plan
 
-Status: APPROVED / READY FOR EXECUTION
+Status: **OWNER-CLOSED FOR SEQUENCING / HISTORICAL IMPLEMENTATION PLAN**
 Activation source/package baseline: `016bd8780e89081dfdb5746eae981183dc945baa`, root `0.5.0`
 Authority: Phase 5 activation/plan, resolved visual-workflow worksheet, ADR 0017, PRODUCT-MODEL, ARCHITECTURE, stability contract
 
@@ -18,7 +18,7 @@ Require:
 
 The root-only `0.5.0` closeout intentionally left workspace packages at `0.4.6`. P1 normalizes all live package/app versions and internal references directly to `0.5.1`.
 
-P1-P10 are runner-owned and do not commit. P11 is direct GUI/T3 qualification and browser-required. P12 is evidence-only closeout.
+P1-P10 were implemented. P11 remained Not Green after repeated direct/debug passes, and P12 was not executed. The owner closed Phase 5 for sequencing on 2026-10-02 without converting those missing qualification results to Green.
 
 No prompt may add Phase 3 Planning compatibility or general AI Presence/Agent Mind/delegation.
 
@@ -242,19 +242,9 @@ Preserve original target and final realized outcome as durable history.
 
 Add integrated tests proving WorkItem completion alone cannot close/reconcile a map.
 
-## P11 interruption gate — manual `c5-planning-basis-isolation`
+## Owner closeout override
 
-The accepted Adaptive SEO architecture and center Physical Map are usable. The latest P11 rerun reached Planning Map creation and restart/copy recovery, then exposed false staleness:
-- TypeScript analyzer input discovery let `.dope/planning-maps.json` alter the Physical Map input fingerprint;
-- Planning Map stale/current checks treated a newer generation as semantic change even when architecture/input fingerprints were unchanged.
-
-Before rerunning P11:
-1. execute `docs/tasks/c5-planning-basis-isolation/one-off-planning-basis-isolation.txt` manually with GPT-6 Sol High at unchanged `0.5.11`;
-2. run its focused implementation validation;
-3. recreate `/tmp/adaptive-seo-dope-p11` from the accepted reference;
-4. rerun P11 as the complete browser/T3 qualification gate.
-
-There is no separate correction closeout prompt. P11 itself determines whether the repair is qualified. Do not advance to `0.5.12` until P11 is Green.
+The remaining P11 interruption history is preserved in the P11 evidence. On 2026-10-02 the owner explicitly closed Phase 5 for sequencing at the retained `0.5.11` implementation. This does not satisfy or waive individual P11 evidence claims; it only authorizes the successor `0.6.0` baseline and Phase 6 planning.
 ## P11 — direct visual workflow qualification (`0.5.11`) — T3 / browser required
 
 Use `/tmp/adaptive-seo-dope-p11` as the primary mapped workspace in the actual Theia GUI. It must be a disposable copy of the accepted `/home/jfin/dev/adaptive-seo-dope`, including `.dope/`. Require a usable canonical/Physical Map in this exact `/tmp` workspace before the direct loop. Keep `/home/jfin/dev/adaptive-seo-dope` unchanged as the accepted reference. Use the Dope repository for host/IDE/Project Mind/sMap regression and exact-candidate builds, package and native launch; Dope's own canonical map need not qualify the visual loop.

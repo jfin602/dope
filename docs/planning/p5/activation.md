@@ -1,6 +1,6 @@
 # Product Phase 5 — Activation
 
-Status: **ACTIVE**
+Status: **OWNER-CLOSED FOR SEQUENCING**
 
 Date: 2026-10-01
 
@@ -84,3 +84,11 @@ Phase 5 must not introduce:
 ```
 
 Implementation prompts follow the repository T1/T2/T3 validation discipline. The final qualification gate must prove the complete human-driven visual loop on a mapped Adaptive SEO copy, with Dope as the host/regression/package fixture.
+
+## October 2, 2026 owner closeout
+
+The owner explicitly closed Phase 5 for sequencing after P11 remained Not Green and P12 was not executed.
+
+This disposition preserves all P11 failures/Evidence Gaps and does not reclassify the phase as Qualified/Green. The retained implementation becomes the source for a coherent `0.6.0` successor baseline so Product Phase 6 — Data Flow can begin planning under ADR 0020.
+
+Historical Phase 5 execution prompts remain evidence records; no further P11/P12 run is required for sequencing under this owner waiver.

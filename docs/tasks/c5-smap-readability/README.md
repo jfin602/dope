@@ -1,6 +1,6 @@
 # Correction 5 — sMap Readability
 
-Status: **ACTIVE / READY**
+Status: **OWNER-CLOSED WITH PHASE 5 — IMPLEMENTATION RETAINED; NO STANDALONE GREEN CLAIM**
 Correction folder: c5-smap-readability
 Required unchanged package version: 0.5.11
 Activation source: `158b61d601947b342472e457fe61d78b24bf5152`
@@ -28,7 +28,7 @@ Execution requires:
 2. package version 0.5.11;
 3. clean intended working tree.
 
-This correction runs before returning to the Phase 5 P11 qualification rerun. It does not itself claim P11 Green or replace P11 evidence.
+This correction ran before the owner closed Phase 5 for sequencing. Its implementation is retained, but the repository does not claim a standalone Green readability qualification from the commit subject alone.
 
 ## Product contract
 
@@ -144,6 +144,6 @@ Green means a developer can open the mapped Adaptive SEO fixture and:
 - use the same behavior in Physical and Planning Map projections;
 - preserve alternate-theme readability.
 
-If Green, return to the Phase 5 P11 qualification rerun. P12 and Phase 6 remain blocked until P11 is Green and P12 subsequently closes Phase 5.
+The owner subsequently closed Phase 5 for sequencing without a Green P11/P12 result. Readability evidence remains bounded to what was actually observed; Phase 6 begins from the owner-approved successor baseline rather than from a retroactive readability/P11 qualification.
 
 Registry entries K7MX and +F6QK are **not** automatically resolved by this stack. Use the explicit /resolve workflow after Green closeout.
