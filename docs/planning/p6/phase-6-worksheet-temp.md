@@ -64,9 +64,9 @@ Questions to resolve:
 - Is a separate in-memory Flow index useful or needless complexity at current scale?
 - Where should future recorded-runtime Flow observations enter?
 
-**Decision:**
+**Decision:** Make `PhysicalFlowFact[]` first-class derived state on `PhysicalMapSnapshot`. Static Flow facts share the snapshot's existing project identity, analysis generation, and source/config/canonical input fingerprint. Do not add a separate Flow index in Phase 6; query and aggregate from the published snapshot first. Future recorded-runtime Flow should enter the same Flow fact/evidence model with explicit runtime evidence/observation identity rather than becoming a second Flow domain or silently changing the meaning of the current static input fingerprint.
 
-**Why:**
+**Why:** Flow is part of Physical Map truth and should publish atomically with the same analyzed software state as nodes/relationships. Keeping one snapshot avoids mixed-generation architecture/Flow views and reduces state ownership complexity. A separate index is premature until real scale/performance evidence requires it. Runtime observations can later enrich the same domain without making Phase 6 design depend on a tracing system that does not yet exist.
 
 ---
 
@@ -262,7 +262,7 @@ Questions to resolve:
 Before `/prompt-write p6`, promote answers into authoritative Phase 6 docs:
 
 - [x] Q1 Flow-hop semantics and data-enrichment threshold
-- [ ] Q2 domain/snapshot/index ownership
+- [x] Q2 domain/snapshot/index ownership
 - [ ] Q3 derived endpoint identity
 - [ ] Q4 Adaptive SEO supported patterns
 - [ ] Q5 execution-path stitching bounds
