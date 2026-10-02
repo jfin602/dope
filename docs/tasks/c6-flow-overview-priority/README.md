@@ -1,6 +1,6 @@
 # Correction 6 — Flow Overview Priority
 
-Status: **APPROVED / ACTIVE — P7 REPAIR GATE**
+Status: **ASSESSMENT + IMPLEMENTATION PLAN COMPLETE / PROMPTS NOT YET WRITTEN**
 Correction folder: `c6-flow-overview-priority`
 Required unchanged version: `0.6.7`
 Activation source: `59573b0dd66935fc78ec1eb0cc34f60644e4f000`
