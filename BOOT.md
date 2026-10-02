@@ -111,7 +111,8 @@ Foundation Spike 0 — qualify Theia
 -> correction c4-storage — project-local sMap persistence
 -> visual identity alignment — match app palette to Dope logo
 -> Phase 5 — Visual Software Planning
--> post-P11 / pre-P12 correction c5-smap-readability
+-> current 0.5.11 correction c5-smap-readability
+-> Phase 5 P11 rerun
 -> Phase 5 P12 closeout
 -> Phase 6 — Data Flow
 -> Phase 7 — AI Presence
@@ -120,7 +121,7 @@ Foundation Spike 0 — qualify Theia
 
 Do not pull later-phase concepts forward merely because they already exist in the long-term product model.
 
-`c5-smap-readability` is planned at unchanged `0.5.11`, blocked until P11 is Green, and runs before P12. It must not be folded into the active P11 repair/qualification work.
+`c5-smap-readability` is active now at unchanged `0.5.11` from activation source `158b61d601947b342472e457fe61d78b24bf5152`. Run it before returning to the P11 qualification rerun. It does not itself claim P11 Green or replace P11 evidence.
 
 ## Product shape
 
@@ -248,10 +249,10 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Run the manual one-off Sol High correction:
+Run the active correction stack:
 
-`docs/tasks/c5-planning-basis-isolation/one-off-planning-basis-isolation.txt`
+`npm run codex:phase -- c5-smap-readability`
 
-Do not run it through `codex:phase`; this folder is no longer a correction stack.
+The stack stays at package `0.5.11`. P1-P3 are runner-owned; P4 is the manual browser closeout.
 
-After focused implementation validation passes, recreate `/tmp/adaptive-seo-dope-p11` from the accepted `/home/jfin/dev/adaptive-seo-dope` reference and rerun P11. P12 remains blocked until P11 is Green.
+After the correction closes Green/Qualified, recreate `/tmp/adaptive-seo-dope-p11` from the accepted `/home/jfin/dev/adaptive-seo-dope` reference and rerun P11. P12 remains blocked until P11 is Green.
