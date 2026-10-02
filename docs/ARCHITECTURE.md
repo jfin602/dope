@@ -97,7 +97,7 @@ Dope's default workbench placement is part of the product architecture, while in
 
 Default placement:
 - **Left primary sidebar / Activity Bar:** project-navigation surfaces, including a dedicated **sMap** button and Software Map inspector. The inspector owns hierarchy, dependency, violation, evidence and source-navigation views for the Physical Map.
-- **Center workspace:** editors and ordinary working surfaces. Product Phase 5 adds the large visual **Physical Map** and **Planning Map** canvases here as editor-like tabs/workspaces. Product Phase 6 adds **Flow** as a directional Physical Map projection in the same center-workspace model.
+- **Center workspace:** editors and ordinary working surfaces. Product Phase 5 adds the large visual **Physical Map** and **Planning Map** canvases here as editor-like tabs/workspaces. Product Phase 6 adds **Flow** as a directional Physical Map projection in the same center-workspace model. Map tabs are canvas-first: the diagram consumes the maximum practical center area, map-global controls are consolidated into one compact icon-first toolbar with tooltips/accessibility semantics, and immediate selection/details UI is a floating overlay rather than a persistent top pane. The overlay may expand, compact or minimize without becoming canonical state or forcing graph re-layout. The left sMap inspector remains the authoritative deep inspection/navigation surface.
 - **Right secondary sidebar:** reserved by default for future **Agent Mind / chat / AI interaction**. The Software Map inspector must not claim this area as its default home.
 - **Bottom panel:** terminal, Problems, tests, runtime and similar execution/diagnostic surfaces.
 
