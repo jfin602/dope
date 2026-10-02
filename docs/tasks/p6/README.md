@@ -1,6 +1,6 @@
 # Product Phase 6 — Flow Task Stack
 
-Status: **PROMPTS WRITTEN / READY FOR VALIDATION + EXECUTION**
+Status: **P7 NOT GREEN / P8 BLOCKED / c6-flow-overview-priority ACTIVE**
 Activation baseline: `710edb362f9881ab41215705db4f08d8daca6293`
 Package baseline: `0.6.0`
 Authority: ADR 0020 as amended by ADR 0021, Phase 6 activation/plan
@@ -18,24 +18,17 @@ Authority: ADR 0020 as amended by ADR 0021, Phase 6 activation/plan
 | P7 | `0.6.7` | Adaptive SEO direct Flow qualification + release evidence | T3 | GPT-6 Sol High | yes |
 | P8 | `0.6.8` | evidence-only closeout | T3 audit | GPT-6 Sol Medium | no |
 
-## Executable stack
+## Current gate
 
-Prompt assessment, implementation planning and P1-P8 prompt writing are complete.
+P1-P6 are implemented. P7 ran on `0.6.7` and is Not Green; P8 is not eligible.
 
-Validate before execution:
+Direct analyzer evidence proved a real GET opportunities behavior, but System/Subsystem Flow overviews truncated before the HTTP Input appeared and shared PostgreSQL endpoint anchoring admitted unrelated focused-scope facts.
 
-`npm run codex:phase:validate -- p6`
+Active correction:
 
-Then run:
+`docs/tasks/c6-flow-overview-priority/`
 
-`npm run codex:phase -- p6`
-
-or implementation plus closeout:
-
-`npm run codex:phase -- p6 --closeout`
-
-P7 is the browser/manual handoff. P8 is evidence-only closeout.
-
+The correction keeps version `0.6.7` unchanged. A successful correction must preserve the original P7 Not Green record, repair overview/query semantics, and directly replay the failed Adaptive SEO behavior before P8 may become eligible.
 ## Locked truth rules
 
 ```text

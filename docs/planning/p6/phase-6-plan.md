@@ -1,6 +1,6 @@
 # Product Phase 6 — Flow Plan
 
-Status: **OWNER APPROVED / PROMPTS WRITTEN / READY FOR EXECUTION**
+Status: **OWNER APPROVED / P7 NOT GREEN / CORRECTION ACTIVE**
 Baseline: `0.6.0`
 Activation baseline: `710edb362f9881ab41215705db4f08d8daca6293`
 Execution folder: `p6`
@@ -391,6 +391,24 @@ Phase 6 does not implement:
 All ten Flow decisions are promoted into authority. The executable P1-P8 stack, prompt assessment and implementation plan are written under `docs/tasks/p6/`.
 
 Validate with `npm run codex:phase:validate -- p6` before execution.
+## P7 correction gate — Flow overview priority
+
+P7 at `0.6.7` proved that physical Flow extraction can recover a real Adaptive SEO GET opportunities path, but the user-visible bounded overview failed qualification.
+
+Correction `c6-flow-overview-priority` is mandatory before P8 and keeps version exactly `0.6.7`.
+
+Locked correction rules:
+- overview budgets apply after semantic scope reduction/aggregation so hidden implementation facts do not consume the visible budget;
+- overview admission uses explicit behavioral priority rather than Flow fact ID lexical order;
+- evidenced Inputs are behavioral anchors: a truncated focused scope must not lose every evidenced Input;
+- shared derived endpoints do not own architecture scope; scope inclusion is determined per Flow fact from its code-side participant(s);
+- equivalent visible interactions may collapse only when source, target, interaction kind, enrichment and behavior semantics are compatible, retaining every `originFlowFactId`/evidence;
+- a valid selected Flow identity may be traced directly within its focus even if absent from the current truncated overview;
+- default truncation UI summarizes continuation count instead of printing an unbounded wall of raw IDs.
+
+The correction does not change the 100-node / 200-fact / 32-hop hard limits, Flow ontology, Adaptive SEO accepted architecture, extractor truth, provider boundary or layout-engine policy.
+
+Original `docs/tasks/p6/P7-flow-dogfooding-evidence.md` remains historical Not Green evidence and must not be rewritten as Green.
 ## Exit condition
 
 Phase 6 is qualified when, on one exact provider-free candidate, a developer can use the real Dope GUI to follow a meaningful evidence-backed application Flow through a real mapped project, prove every representative hop to source/provenance, preserve architectural identity/focus across projection modes, observe non-linear execution shape, and reconstruct equivalent derived Flow after restart/reanalysis—while aggregate/package/native evidence is Green for the designated T3 gate.

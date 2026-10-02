@@ -13,7 +13,7 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 **Product Phase 5 — Visual Software Planning is OWNER-CLOSED FOR SEQUENCING.** The retained Phase 5 source at `0.5.11` remained Not Green because P11 never completed one clean end-to-end A-I qualification replay and P12 was not executed. The owner explicitly accepted those gaps for sequencing on 2026-10-02; no failed or missing evidence is relabeled Green. The closeout transition commit `710edb362f9881ab41215705db4f08d8daca6293` established the coherent `0.6.0` successor baseline.
 
-**Product Phase 6 — Flow is ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION at `0.6.0`.** ADR 0020 identified the need for a directional Physical Map projection; ADR 0021 broadens that projection from strict Data Flow to application-level **Flow**. The ten Flow decisions are promoted into product/architecture/stability/phase authority. Flow is not a compiler control-flow graph and not a fourth durable map. The approved P1-P8 executable stack (`0.6.1`-`0.6.8`) is written under `docs/tasks/p6/`. General AI Presence remains Product Phase 7.
+**Product Phase 6 — Flow is ACTIVE at `0.6.7`, with P7 Not Green and P8 blocked.** P1-P6 are implemented. P7 found valid Adaptive SEO HTTP/internal/PostgreSQL/response Flow evidence, but the bounded System/Subsystem overview spent its budget on hidden/interior detail, leaked unrelated shared-store facts across focus, and omitted the route Input required for tracing. Correction `c6-flow-overview-priority` is the active gate at unchanged `0.6.7`. The accepted Adaptive SEO reference remains unchanged. General AI Presence remains Product Phase 7.
 
 `c5-smap-readability` and the other Phase 5 corrections remain retained implementation/history. Their commit subjects or partial browser observations do not create a standalone Green claim beyond recorded evidence.
 
@@ -250,12 +250,8 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Validate the written stack:
+Execute the bounded Phase 6 correction:
 
-`npm run codex:phase:validate -- p6`
+`c6-flow-overview-priority`
 
-Then execute Phase 6:
-
-`npm run codex:phase -- p6 --closeout`
-
-P7 is the browser/manual Adaptive SEO qualification handoff; P8 is evidence-only closeout. Phase 6 remains provider-free. General AI Presence, Agent Mind, mutation authority and delegation stay in Product Phase 7+.
+It keeps package version exactly `0.6.7`, repairs Flow overview/query prioritization and scope semantics, installs permanent regression coverage, then directly replays the failed Adaptive SEO Flow qualification. P8 remains blocked until the correction closes Green and the required P7 behavior is requalified.

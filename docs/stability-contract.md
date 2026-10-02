@@ -423,4 +423,17 @@ Missing payload/type/schema annotation is acceptable for Green when execution co
 
 Controlled fixtures may qualify rarer topology such as cycles/retries; they cannot replace the real Adaptive SEO behavior.
 
+### c6-flow-overview-priority regression contract
+
+While this correction is active, permanent regression coverage must additionally prove:
+- System/Subsystem overview limits are applied to visible semantic overview participants/interactions after scope reduction rather than to hidden raw CodeEntity detail;
+- dense internal `invokes` cannot starve all evidenced HTTP Inputs from a truncated focused overview;
+- fact ordering is deterministic without using Flow fact ID lexical order as accidental behavioral priority;
+- one shared store/external endpoint used by several architectural scopes does not pull unrelated callers into the focused scope because of one endpoint `anchorNodeId`;
+- equivalent overview interactions may collapse only with compatible kind/enrichment/behavior and retain all origin Flow fact IDs/evidence;
+- `reads` and `writes` never collapse together and incompatible schema/data annotations never merge;
+- tracing a valid selected endpoint/node remains possible even when the current bounded overview omitted that identity;
+- default truncation presentation summarizes continuation count and does not dump an unbounded raw-ID frontier.
+
+Correction qualification must replay the real Adaptive SEO GET opportunities path in the GUI and directly inspect its required `receives`, `invokes`, PostgreSQL `reads`, response branches and source/provenance. P8 remains blocked until that replay is Green.
 Whole-program taint analysis, arbitrary cross-language lineage, exhaustive SQL/schema lineage, mandatory runtime tracing and AI-generated missing hops are not Phase 6 qualification requirements.

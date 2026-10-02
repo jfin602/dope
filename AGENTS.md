@@ -27,7 +27,7 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-**Current roadmap scope:** Product Phase 5 is owner-closed for sequencing with P11 still Not Green and P12 unexecuted. The owner waiver preserves all missing evidence rather than converting it to Green. Product Phase 6 — Flow is **ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION** from coherent `0.6.0` baseline `710edb362f9881ab41215705db4f08d8daca6293` under ADR 0020 as amended by ADR 0021 and `docs/planning/p6/phase-6-plan.md`. The approved P1-P8 executable stack is written under `docs/tasks/p6/`; validate it with `npm run codex:phase:validate -- p6` before execution.
+**Current roadmap scope:** Product Phase 5 remains owner-closed for sequencing with P11 Not Green and P12 unexecuted. Product Phase 6 — Flow reached P7 at `0.6.7`; P7 is **Not Green** and P8 is blocked. Valid raw Adaptive SEO execution Flow exists, but the real GUI truncated away the required HTTP Input and leaked unrelated shared-store interactions into focused views. Correction `c6-flow-overview-priority` is now the active bounded repair at unchanged `0.6.7` from pushed baseline `59573b0dd66935fc78ec1eb0cc34f60644e4f000`. Preserve the original P7 evidence; do not relabel it Green.
 
 Product Phase 5 — Visual Software Planning is **OWNER-CLOSED FOR SEQUENCING**. Its retained P11 result is Not Green and P12 was not executed; see `docs/tasks/p5/closeout.md`. Product Phase 6 — Flow is the current planning scope from `0.6.0`. Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved core scope. Architecture-discovery follow-ons remain historical evidence; `c4-smap-storage` and `c4-color-theme` remain GREEN / QUALIFIED at unchanged `0.4.6`.
 
@@ -53,6 +53,10 @@ Only the narrow provider-independent sMap synthesis boundary and reference adapt
 - Architectural Flow aggregation requires continuous evidenced origin paths and must never bridge an unsupported/missing hop.
 - Static Flow means possible evidence-backed execution; future runtime Observed Flow is a distinct claim.
 - Partial/unsupported/truncated Flow coverage must be explicit rather than visually presented as complete.
+- System/Subsystem overview budgets count the semantic Flow actually rendered, not hidden raw implementation detail.
+- Shared Flow endpoints do not confer architecture-scope ownership on every fact that uses them; focus membership is fact-relative.
+- If a focused scope has evidenced Inputs, truncation may remove interior detail but must not remove every evidenced Input.
+- A valid Flow trace is not dependent on the selected identity surviving the current overview truncation.
 - Architecture and Flow projections share stable Software Map identity, focus, selection and source-navigation context.
 - Initial Phase 6 uses deterministic layered directional layout; do not add an automatic layout-engine dependency unless qualification demonstrates a concrete need.
 - Phase 6 may deepen TypeScript/JavaScript and bounded framework extractors for the Adaptive SEO qualification slice. It does not promise whole-program taint/data-lineage completeness or cross-language completeness.

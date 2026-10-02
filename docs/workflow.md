@@ -390,3 +390,13 @@ ADR 0021 amends ADR 0020. Product Phase 6 is now **Flow**.
 Flow is an application-level behavioral/execution projection of the Physical Map, not a compiler CFG and not a fourth durable map. Deterministically resolved invocation, boundary, state and external-interaction facts form the base execution path. Data/payload/type/schema semantics are optional evidence-backed enrichment.
 
 The existing P1-P8 version/decomposition remains valid with renamed/reframed scope. The ten Phase 6 Flow decisions are resolved/promoted, the temporary worksheet is retired, and the executable p6 stack is written. Validate it with `npm run codex:phase:validate -- p6` before execution.
+
+## October 2, 2026 — Phase 6 P7 Not Green and overview-priority correction
+
+Phase 6 P7 at `0.6.7` is Not Green and P8 is blocked. The accepted Adaptive SEO reference remains unchanged.
+
+The analyzer produced valid source-backed GET opportunities Flow, but the real System/Subsystem Flow overview truncated before the route Input appeared. Deeper review found three coupled query/UI defects: raw implementation facts consumed budget before semantic reduction, shared endpoint anchoring leaked unrelated scope, and tracing was gated on overview survival.
+
+Correction `c6-flow-overview-priority` is approved at unchanged `0.6.7`. It repairs semantic overview budgeting/prioritization, fact-relative endpoint scope, compatible overview collapse, trace independence from overview truncation, and bounded truncation presentation. It must preserve the original P7 Not Green evidence.
+
+The correction stack is two prompts: P1 T2 implementation/regression repair; P2 browser/T3 qualification and correction closeout. P8 remains ineligible until the correction closes Green.
