@@ -1,9 +1,9 @@
 # Correction 5 — sMap Readability
 
-Status: **PLANNED / BLOCKED ON P11 GREEN**
+Status: **ACTIVE / READY**
 Correction folder: c5-smap-readability
-Required unchanged package version after activation: 0.5.11
-Activation source: **TBD — record the exact committed Phase 5 P11 Green candidate before execution**
+Required unchanged package version: 0.5.11
+Activation source: `158b61d601947b342472e457fe61d78b24bf5152`
 Authority: ADR 0008, ADR 0017, ADR 0020, current PRODUCT-MODEL / ARCHITECTURE / roadmap, issue K7MX, feature +F6QK
 
 ## Purpose
@@ -21,14 +21,14 @@ The correction is presentation-first:
 
 ## Activation guard
 
-Do **not** execute this stack until Phase 5 P11 is Green.
+This correction is authorized to run now at unchanged package version 0.5.11 from the recorded activation source.
 
-Activation requires:
-1. P11 Green on the exact committed 0.5.11 candidate;
-2. exact activation commit recorded in this README;
+Execution requires:
+1. activation source `158b61d601947b342472e457fe61d78b24bf5152` reachable;
+2. package version 0.5.11;
 3. clean intended working tree.
 
-This correction keeps package version 0.5.11 unchanged. It runs after P11 and before P12; it must not be folded into the active P11 repair/qualification work.
+This correction runs before returning to the Phase 5 P11 qualification rerun. It does not itself claim P11 Green or replace P11 evidence.
 
 ## Product contract
 
@@ -114,7 +114,7 @@ The current left inspector already exposes selected-node purpose/source/incoming
 | P3 | project-scoped theme-aware node colors | T1 | GPT-6 Sol Medium | no |
 | P4 | direct Adaptive SEO browser qualification + closeout | T3 | GPT-6 Sol High | yes |
 
-P1-P3 are runner-friendly only **after P11 activation**.
+P1-P3 are runner-friendly from the recorded activation source.
 P4 is a manual browser handoff.
 
 ## Non-goals
@@ -144,6 +144,6 @@ Green means a developer can open the mapped Adaptive SEO fixture and:
 - use the same behavior in Physical and Planning Map projections;
 - preserve alternate-theme readability.
 
-If Green, resume Phase 5 P12 closeout. Phase 6 remains blocked until P12 establishes the successor 0.6.0 baseline.
+If Green, return to the Phase 5 P11 qualification rerun. P12 and Phase 6 remain blocked until P11 is Green and P12 subsequently closes Phase 5.
 
 Registry entries K7MX and +F6QK are **not** automatically resolved by this stack. Use the explicit /resolve workflow after Green closeout.

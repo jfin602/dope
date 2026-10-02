@@ -1,6 +1,6 @@
 # Correction 5 Implementation Plan — sMap Readability
 
-Status: **APPROVED PLAN / BLOCKED ON P11 GREEN**
+Status: **APPROVED / READY**
 Correction folder: c5-smap-readability
 Required unchanged package version: 0.5.11
 Assessment: prompt-assessment.md
@@ -322,7 +322,7 @@ Prove the exact 0.5.11 correction candidate in the real Dope browser UI against 
 
 Require:
 - README activation source recorded;
-- Phase 5 P11 Green;
+- activation source `158b61d601947b342472e457fe61d78b24bf5152` reachable;
 - P1-P3 exact candidate;
 - package exactly 0.5.11;
 - no unexpected product-source drift.
@@ -391,10 +391,10 @@ Do not modify known-issues.md or feature-ideas.md automatically. If Green, repor
 
 If Green:
 - correction closes Green/Qualified at unchanged 0.5.11;
-- resume Phase 5 P12 closeout;
-- Phase 6 remains blocked until P12 establishes the 0.6.0 successor baseline;
+- return to the Phase 5 P11 qualification rerun;
+- P12 and Phase 6 remain blocked until P11 is Green and P12 closes Phase 5;
 - no Phase 6 code is implemented here.
 
 If Not Green:
-- keep P12 and Phase 6 blocked;
+- keep P11/P12 and Phase 6 blocked;
 - identify the narrow readability defect and strongest evidence.
