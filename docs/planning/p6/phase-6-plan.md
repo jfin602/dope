@@ -160,6 +160,23 @@ Add at least one small synthetic TypeScript fixture that exercises the same supp
 
 Extractor contracts must be replaceable and evidence-backed. Do not hardcode Adaptive SEO file paths, IDs or expected answers.
 
+## Data/type/schema enrichment
+
+Phase 6 supports direct, low-cost semantic enrichment only when evidence is explicit.
+
+Allowed initial enrichment includes:
+- useful TypeScript argument/return type names when directly resolved;
+- HTTP method/path as boundary metadata;
+- explicit request/response schema identity;
+- event/topic identity and schema;
+- directly evidenced persistence entity/table names.
+
+Suppress broad or low-information types such as `unknown`, `object`, generic record shapes, and framework plumbing types from the main Flow canvas unless they materially aid understanding.
+
+Field-level lineage, property/alias tracking, inferred DTO transformations, taint propagation, and guessed schema relationships are out of scope.
+
+Unknown data is represented by absence of a data annotation on the canvas. Edge inspection may explicitly report that data semantics are not resolved.
+
 ## Query model
 
 Add a provider-independent generation-scoped Flow query over the published Physical Map.
