@@ -243,6 +243,22 @@ Use deterministic layered layout implemented in Dope presentation/projection cod
 
 Do not add Dagre/ELK or another automatic layout dependency in the initial stack. A future bounded correction may add one only if real qualification shows the deterministic layout is inadequate.
 
+## Non-linear and asynchronous Flow grammar
+
+Branches/fan-out and joins/fan-in are represented by graph topology rather than new base interaction kinds.
+
+Ordinary `async`/`await` or Promise continuation is an attribute/visual treatment on an existing Flow interaction when the continuation target is deterministically resolved.
+
+Real asynchronous handoffs such as queue/topic/job/event boundaries use explicit derived Flow endpoints and `publishes` / `consumes` interactions.
+
+Cycles remain explicit back-edges in the otherwise directional layout.
+
+Retries and optional/error paths appear only when deterministic evidence proves them. Represent them as metadata/visual semantics on the relevant Flow facts/path rather than adding new Phase 6 base interaction kinds.
+
+External round trips remain one `calls-external` interaction. Awaited/consumed response evidence may enrich that interaction; do not add a reverse `returns` edge merely for visual symmetry.
+
+P7 must demonstrate at least one real branch/fan-out or join in Adaptive SEO. Retries, cycles, and rarer async shapes may be fixture-qualified rather than mandatory in the real dogfood path.
+
 ## UI integration
 
 The existing center Physical Map workspace gains complementary projection modes:
