@@ -123,6 +123,7 @@ export class PhysicalMapWidget extends BaseWidget {
         const projection = planningMode && selectedMap ? projectPlanningMap(
             this.controller.sourceNodes, this.controller.sourceRelationships, this.controller.sourceViolations,
             selectedMap, this.planning.view, this.controller.focusId, this.planning.stale) : this.controller.projection;
+        this.controller.clearPlannedSelectionIfAbsent(projection.nodes.map(node => node.id));
         this.renderPlanningBar();
         this.renderWorkPanel();
         this.breadcrumbs.replaceChildren();
@@ -138,11 +139,12 @@ export class PhysicalMapWidget extends BaseWidget {
             this.breadcrumbs.append(button);
         }
         const selected = this.controller.selectedId;
+        const selectedPhysical = !!selected && this.controller.sourceNodes.some(node => node.id === selected);
         const highlighted = planningMode && selectedMap && this.planning.selectedWorkItem ?
             new Set(affectedArchitecture(selectedMap, this.planning.selectedWorkItem.transformationIds, this.controller.sourceNodes)) : new Set<string>();
-        this.focusButton.disabled = !selected || !this.controller.projectMatches;
-        this.tabButton.disabled = !selected || !this.controller.projectMatches;
-        this.sourceButton.disabled = !selected || !this.controller.projectMatches;
+        this.focusButton.disabled = !selectedPhysical || !this.controller.projectMatches;
+        this.tabButton.disabled = !selectedPhysical || !this.controller.projectMatches;
+        this.sourceButton.disabled = !selectedPhysical || !this.controller.projectMatches;
         this.status.textContent = !this.controller.projectMatches ? 'This map tab belongs to another project.' :
             this.planning.error ? `Planning Map: ${this.planning.error}` :
             error ? `Physical Map: ${error}` : loading ? 'Loading Physical Map…' :
@@ -166,7 +168,9 @@ export class PhysicalMapWidget extends BaseWidget {
         }));
         this.root.render(React.createElement(ReactFlow, {
             nodes, edges, nodeTypes, nodesDraggable: planningMode, nodesConnectable: planningMode, elementsSelectable: true,
-            onNodeClick: (_event: React.MouseEvent, node: Node) => { this.controller.select(node.id);
+            onNodeClick: (_event: React.MouseEvent, node: Node) => { if (planningMode && !this.controller.sourceNodes.some(item => item.id === node.id))
+                    this.controller.selectPlanned(node.id);
+                else this.controller.select(node.id);
                 if (planningMode && selectedMap) this.planning.selectTransformation(transformationsForArchitecture(selectedMap, node.id, this.controller.sourceNodes)[0]); },
             onNodeDoubleClick: (_event: React.MouseEvent, node: Node) => this.controller.focus(node.id),
             onNodeDragStop: (_event: MouseEvent | TouchEvent, node: Node) => {

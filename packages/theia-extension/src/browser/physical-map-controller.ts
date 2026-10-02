@@ -19,6 +19,7 @@ export class PhysicalMapController {
     private readonly listener;
     private relationships: GraphRelationship[] = [];
     private activeWorkspace?: string;
+    private selectedPlannedId?: string;
     focusId?: string;
 
     constructor(private readonly map: SoftwareMapController, private readonly changed: () => void,
@@ -29,7 +30,7 @@ export class PhysicalMapController {
         void this.refresh();
     }
 
-    get selectedId(): string | undefined { return this.map.selectedId; }
+    get selectedId(): string | undefined { return this.projectMatches ? this.selectedPlannedId ?? this.map.selectedId : undefined; }
     get sourceNodes(): GraphNode[] { return this.projectMatches && !this.loading ? this.map.nodes : []; }
     get sourceRelationships(): GraphRelationship[] { return this.projectMatches && !this.loading ? this.relationships : []; }
     get sourceViolations() { return this.projectMatches && !this.loading ? this.map.violations : []; }
@@ -40,7 +41,11 @@ export class PhysicalMapController {
             node = this.map.nodes.find(item => item.id === node!.parentId)) path.unshift(node);
         return path;
     }
-    select(id: string): void { if (this.available()) void this.map.select(id); }
+    select(id: string): void { if (this.available()) { this.selectedPlannedId = undefined; void this.map.select(id); } }
+    selectPlanned(id: string): void { if (this.available()) { this.selectedPlannedId = id; this.changed(); } }
+    clearPlannedSelectionIfAbsent(ids: string[]): void {
+        if (this.selectedPlannedId && !ids.includes(this.selectedPlannedId)) this.selectedPlannedId = undefined;
+    }
     focus(id = this.selectedId): void {
         if (!this.available() || !id || !this.map.nodes.some(node => node.id === id && node.kind !== 'project')) return;
         this.focusId = id;
@@ -79,6 +84,7 @@ export class PhysicalMapController {
         if (!this.workspace && this.activeWorkspace !== this.map.workspace) {
             this.activeWorkspace = this.map.workspace;
             this.focusId = undefined;
+            this.selectedPlannedId = undefined;
         }
         const status = this.map.status;
         if (!this.available() || this.map.loading || status?.state !== 'ready' || status.generation !== status.publishedGeneration) {

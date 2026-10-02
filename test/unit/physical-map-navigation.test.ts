@@ -68,6 +68,25 @@ test('focus, up, fit and code detail retain shared selection identity', async ()
   controller.dispose();
 });
 
+test('planned-only selection stays local and never replaces physical truth', async () => {
+  const { controller, map } = harness();
+  await flush();
+  controller.select('file');
+  await flush();
+  controller.selectPlanned('future-component');
+  assert.equal(controller.selectedId, 'future-component');
+  assert.equal(map.selectedId, 'file');
+  assert.equal(await controller.source(), undefined);
+  controller.clearPlannedSelectionIfAbsent(['future-component']);
+  assert.equal(controller.selectedId, 'future-component');
+  controller.clearPlannedSelectionIfAbsent(['file']);
+  assert.equal(controller.selectedId, 'file');
+  controller.selectPlanned('future-component');
+  map.workspace = 'file:///B';
+  assert.equal(controller.selectedId, undefined);
+  controller.dispose();
+});
+
 test('focused projection keeps simplified cross-boundary dependency context', () => {
   const view = projectPhysicalMap(nodes, [dependency], [], 's');
   assert.deepEqual(view.nodes.map(node => [node.id, !!node.context]), [['s', false], ['sub', false], ['outside', true]]);
