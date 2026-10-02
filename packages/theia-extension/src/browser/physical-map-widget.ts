@@ -23,13 +23,14 @@ export const PHYSICAL_MAP_ID = 'dope-physical-map-canvas';
 
 function MapNode({ data }: { data: { item: CanvasNode & { intent?: string; stale?: boolean; conflict?: boolean }; editable?: boolean; color: NodePalette } }): React.ReactElement {
     const item = data.item;
+    const connectable = !!data.editable && item.kind === 'subsystem';
+    const hiddenHandle = connectable ? undefined : { opacity: 0, pointerEvents: 'none' as const };
     return React.createElement('div', { className: `dope-map-node dope-map-${item.kind} dope-map-${item.state} dope-map-color-${data.color}${item.intent ? ` dope-plan-${item.intent}` : ''}${item.stale ? ' dope-plan-stale' : ''}${item.conflict ? ' dope-plan-conflicted' : ''}` },
         React.createElement('span', { className: 'dope-map-kind' }, `${item.context ? '↗ ' : ''}${item.kind}`),
         React.createElement('strong', null, mapLabel(item.name)),
         React.createElement('small', { className: 'dope-map-badge', title: item.badge }, item.badge),
-        data.editable && item.kind === 'subsystem' ? React.createElement(React.Fragment, null,
-            React.createElement(Handle, { type: 'target', position: Position.Left }),
-            React.createElement(Handle, { type: 'source', position: Position.Right })) : null);
+        React.createElement(Handle, { type: 'target', position: Position.Left, isConnectable: connectable, style: hiddenHandle }),
+        React.createElement(Handle, { type: 'source', position: Position.Right, isConnectable: connectable, style: hiddenHandle }));
 }
 const nodeTypes = { architecture: MapNode };
 
