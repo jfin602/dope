@@ -174,6 +174,29 @@ The query must:
 - reject stale project/generation publication;
 - distinguish a static possible execution path from future recorded-runtime observed paths.
 
+### Static execution-path stitching
+
+Flow queries stitch deterministic multi-hop execution only across proven Flow facts.
+
+The query layer supports:
+- downstream traversal from known input/boundary or selected nodes;
+- upstream traversal for callers/producers/state dependencies;
+- cycle/recursion termination with visited node/edge guards;
+- `async`/`await` continuity when the target is deterministically resolved;
+- callbacks/promises only when the callback/binding target is deterministic;
+- producer/consumer continuation only when event/queue/topic identity is deterministically established.
+
+Phase 6 does not require argument/return propagation for path construction. Such information remains optional enrichment.
+
+Default query budgets are:
+- at most 100 visible Flow nodes;
+- at most 200 Flow edges;
+- at most 32 hops on one path.
+
+When a budget is exceeded, the query exposes explicit truncated/continue-deeper state. It must not silently drop reachable Flow while presenting the result as complete.
+
+Static deterministic results are labeled **Static Flow**: evidence-backed possible execution relationships. Reserve **Observed Flow** for future runtime-observed execution so statically reachable branches are not presented as proof of one concrete request path.
+
 React Flow/browser presentation must not own Flow discovery, aggregation or truth.
 
 ## Projection and layout
