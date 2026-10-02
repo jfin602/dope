@@ -81,6 +81,18 @@ Flow queries and aggregation operate from the published snapshot first. Add a se
 
 Future recorded-runtime observations should reuse the same Flow fact/evidence domain with explicit runtime evidence/observation identity. They must not silently redefine the current static source/config/canonical input fingerprint contract or create a second Flow authority.
 
+### Derived Flow endpoints
+
+Non-architectural Flow participants are first-class derived Physical Map records separate from `GraphNode`.
+
+Examples include inbound/outbound HTTP boundaries, datastores, queues/topics/jobs, external services/APIs, file/blob storage and client/browser boundaries where evidenced.
+
+Endpoint IDs are deterministic normalized identities built only from properties Dope can prove, such as protocol, HTTP method/path, logical datastore/connection identity, directly known table/entity, queue/topic/job name, or external service/host/path.
+
+Multiple observations share an endpoint only when deterministic evidence establishes endpoint equivalence. When identity is uncertain, retain a narrower source-scoped or connection-scoped derived endpoint rather than collapsing observations into a generic shared node.
+
+Each endpoint retains originating code/evidence references so Flow can place the interaction in architectural context. Derived endpoints never become canonical System / Subsystem / Component / CodeEntity records merely for visualization.
+
 ### FlowRole
 
 Projection roles:
