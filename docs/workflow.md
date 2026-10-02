@@ -227,7 +227,7 @@ Product Phase 4 uses execution folder `p4` and coherent package baseline `0.4.0`
 
 P4 versions are `0.4.1` through `0.4.6`. P1-P4 are runner-owned implementation/integration prompts, P5 is the direct interactive "Dope maps Dope" GUI handoff, and P6 is evidence-only closeout. P5 must inspect the real Dope repository through the actual Theia GUI and trace representative physical relationships/violations to source evidence; automated/headless checks do not replace its direct interaction evidence.
 
-Phase 4 has no model/provider runtime and no Planning Map. It must preserve the distinction between developer-authored architecture declarations/constraints (canonical project state) and extracted physical graph/index data (rebuildable derived state). Phase 5 introduces Visual Software Planning; Phase 6 introduces provider-free Data Flow over the Physical Map; Phase 7 introduces AI Presence.
+Phase 4 has no model/provider runtime and no Planning Map. It must preserve the distinction between developer-authored architecture declarations/constraints (canonical project state) and extracted physical graph/index data (rebuildable derived state). Phase 5 introduces Visual Software Planning; Phase 6 introduces provider-free Flow over the Physical Map; Phase 7 introduces AI Presence.
 
 ### September 29 sMap amendment and correction gate
 
@@ -352,7 +352,7 @@ The owner explicitly closed Product Phase 5 for sequencing from retained `0.5.11
 
 Closeout transition `710edb362f9881ab41215705db4f08d8daca6293` advances all live manifests/internal references and baseline assertions to coherent `0.6.0`.
 
-Product Phase 6 — Data Flow is active for planning under ADR 0020 and `docs/planning/p6/activation.md`. Data Flow is provider-free and is a Physical Map projection over existing identities/evidence, not a fourth durable map.
+Product Phase 6 — Flow is active under ADR 0020 as amended by ADR 0021 and `docs/planning/p6/activation.md`. Flow is provider-free and is a Physical Map projection over existing identities/evidence, not a fourth durable map.
 
 Before implementation, use the ordinary documentation workflow:
 
@@ -360,7 +360,7 @@ Before implementation, use the ordinary documentation workflow:
 
 Do not require Phase 5 P11/P12 Green as an additional sequencing prerequisite; the owner waiver is the entry disposition. Do not erase or rewrite Phase 5 evidence.
 
-## October 2, 2026 — Phase 6 Data Flow plan applied
+## October 2, 2026 — Phase 6 Flow plan applied
 
 Phase 6 documentation review is approved/applied at coherent baseline `0.6.0`.
 
@@ -373,12 +373,20 @@ The approved phase stack is:
 - P1 `0.6.1`: physical flow domain/evidence contracts — T1 — GPT-6 Sol High;
 - P2 `0.6.2`: generic TypeScript internal-call extraction — T1 — GPT-6 Sol High;
 - P3 `0.6.3`: supported Express/PostgreSQL/external boundary vertical slice — T2 — GPT-6 Sol High;
-- P4 `0.6.4`: Data Flow query/path aggregation and generation guards — T2 — GPT-6 Sol High;
+- P4 `0.6.4`: Flow query/path aggregation and generation guards — T2 — GPT-6 Sol High;
 - P5 `0.6.5`: directional projection + deterministic layered layout — T1 — GPT-6 Sol High;
-- P6 `0.6.6`: Architecture/Data Flow UI + edge provenance/source navigation — T2 — GPT-6 Sol High;
+- P6 `0.6.6`: Architecture/Flow UI + edge provenance/source navigation — T2 — GPT-6 Sol High;
 - P7 `0.6.7`: Adaptive SEO direct browser/T3 qualification — GPT-6 Sol High — Browser required;
 - P8 `0.6.8`: evidence-only closeout — GPT-6 Sol Medium.
 
 Prompt files are not created by `/docs-apply`. Next workflow is `/prompt-ass -> /prompt-plan -> /prompt-write p6`.
 
-Phase 6 truth rule: dependency/import/reference relationships alone cannot be emitted as physical Data Flow. Dedicated physical flow evidence is required.
+Phase 6 truth rule: dependency/import/reference relationships alone cannot be emitted as Flow. Deterministically resolved invocation/boundary/state interactions are valid execution Flow; data annotations require separate evidence.
+
+## October 2, 2026 — Phase 6 renamed from Data Flow to Flow
+
+ADR 0021 amends ADR 0020. Product Phase 6 is now **Flow**.
+
+Flow is an application-level behavioral/execution projection of the Physical Map, not a compiler CFG and not a fourth durable map. Deterministically resolved invocation, boundary, state and external-interaction facts form the base execution path. Data/payload/type/schema semantics are optional evidence-backed enrichment.
+
+The existing P1-P8 version/decomposition remains valid with renamed/reframed scope. The temporary Phase 6 worksheet must be resolved before executable prompts are written.

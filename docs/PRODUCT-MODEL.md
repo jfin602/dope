@@ -209,11 +209,11 @@ Phase 5 presentation and lifecycle semantics are:
 - Reconciliation is transformation-centered and preserves intended versus realized outcome.
 - A PlanningMap enters `completed` only through explicit developer closeout after every transformation is resolved, accepted as intentionally different, deferred or abandoned.
 
-### Phase 6 — Data Flow
+### Phase 6 — Flow
 
-Introduce a provider-free **Data Flow projection** over the Physical Map. It reuses stable System / Subsystem / Component / CodeEntity identity and evidence-backed physical relationships while presenting directional inputs, transformations, stores, external boundaries and outputs.
+Introduce a provider-free **Flow projection** over the Physical Map. It reuses stable System / Subsystem / Component / CodeEntity identity and evidence-backed physical relationships while presenting directional inputs, transformations, stores, external boundaries and outputs.
 
-Data Flow is derived/projection state, not a fourth durable map or architecture authority. Flow roles and layout do not become canonical architecture. Unknown payload/flow details remain unknown unless deterministic evidence or recorded runtime observation supports them.
+Flow is derived/projection state, not a fourth durable map or architecture authority. Flow roles and layout do not become canonical architecture. Unknown payload/flow details remain unknown unless deterministic evidence or recorded runtime observation supports them.
 
 ### Phase 7-8 — AI collaboration and delegation
 
@@ -224,7 +224,7 @@ Introduce or activate:
 - ChangeSet
 - Validation integration
 
-AI Presence begins in Phase 7 and may consume Dope-owned architecture, Data Flow, planning and project context. Scoped Delegation follows in Phase 8.
+AI Presence begins in Phase 7 and may consume Dope-owned architecture, Flow, planning and project context. Scoped Delegation follows in Phase 8.
 
 ### Phase 9 — Development Sessions
 
@@ -375,7 +375,7 @@ The projection may show branches, joins, fan-out, cycles, retries and external r
 
 Every physical flow relationship retains evidence/provenance. Deterministic source/semantic/framework facts and recorded runtime observations may establish flow. AI may later explain or propose interpretations, but it does not silently create physical flow evidence. Unknown payloads or unproved hops remain explicitly unknown.
 
-Data Flow is not separately persisted as canonical truth and does not create a `DataFlowMap` authority. It is reconstructible from Software Map / Physical Map state plus disposable presentation state.
+Flow is not separately persisted as canonical truth and does not create a `DataFlowMap` authority. It is reconstructible from Software Map / Physical Map state plus disposable presentation state.
 
 ### System
 
@@ -674,9 +674,11 @@ The draft is allowed to be temporarily invalid. Dope surfaces deterministic **ac
 
 Explicit developer acceptance remains the only transition from review work to canonical `.dope/architecture.json` plus accepted `.dope/smap.json`. Explicit cancellation discards the unaccepted work.
 
-## Product Phase 6 — Data Flow model
+## Product Phase 6 — Flow model
 
-Data Flow is a **derived Physical Map projection** over existing Software Map identities and evidence.
+Flow is intentionally broader than strict data lineage. It answers **what happens through this software** using application-level invocation, boundary, state and external-interaction evidence. It is not a compiler CFG/basic-block visualization. Data/type/schema labels progressively enrich Flow only when Dope can prove them.
+
+Flow is a **derived Physical Map projection** over existing Software Map identities and evidence.
 
 The durable conceptual shape is:
 
@@ -685,15 +687,15 @@ Software Map
   Canonical Architecture
   Physical Map
     Architecture projection
-    Data Flow projection
+    Flow projection
   Planning Maps
 ```
 
-Data Flow does not introduce a canonical `DataFlowMap` artifact or a `.dope/data-flow.json` store.
+Flow does not introduce a canonical `DataFlowMap` artifact or a `.dope/data-flow.json` store.
 
 ### Physical flow facts
 
-Phase 6 introduces a presentation-independent physical-flow fact/query vocabulary inside the Software Map boundary. A physical flow fact represents one evidence-backed directional movement or interaction. It may reference existing architecture/code identities and may use stable derived endpoint identities for real external/store/boundary concepts that are not canonical architecture nodes.
+Phase 6 introduces a presentation-independent physical-flow fact/query vocabulary inside the Software Map boundary. A physical flow fact represents one evidence-backed application-level execution interaction. It need not prove payload lineage. It may reference existing architecture/code identities and may use stable derived endpoint identities for real external/store/boundary concepts that are not canonical architecture nodes.
 
 Representative flow semantics include:
 - inbound input/request/event;
@@ -707,19 +709,19 @@ Representative flow semantics include:
 
 Each physical flow fact retains direct evidence/provenance. Optional payload/type/schema/event metadata is present only when deterministic or recorded-runtime evidence establishes it.
 
-**Structural dependency is not flow evidence.** An import, reference or aggregate dependency can help discover candidates, but it cannot by itself produce a Data Flow hop.
+**Structural dependency is not execution evidence.** An import, reference or aggregate dependency can help discover candidates, but it cannot by itself produce a Flow hop. A deterministically resolved invocation can.
 
 ### Projection roles
 
-`Input`, `Boundary`, `Transformation`, `Store`, `External` and `Output` describe how an entity participates in a selected flow projection. They are contextual projection roles, not replacements for System / Subsystem / Component / Code identity.
+`Input`, `Boundary`, `Processing`, `Store`, `External` and `Output` describe how an entity participates in a selected Flow projection. They are contextual projection roles, not replacements for System / Subsystem / Component / Code identity.
 
 ### Uncertainty
 
-Data Flow preserves uncertainty. An evidence-backed interaction with unknown payload remains visible as unknown payload. A missing hop remains a gap; the UI must not invent a connector to make a path look complete.
+Flow preserves uncertainty. An evidence-backed interaction with unknown payload remains visible as unknown payload. A missing hop remains a gap; the UI must not invent a connector to make a path look complete.
 
 ### Scope and identity
 
-Initial Data Flow is System-first with Subsystem focus. The whole repository is not expanded into every flow detail by default. Architecture <-> Data Flow switching preserves stable selected/focused Software Map identity and source-navigation context.
+Initial Flow is System-first with Subsystem focus. The whole repository is not expanded into every flow detail by default. Architecture <-> Flow switching preserves stable selected/focused Software Map identity and source-navigation context.
 
 ### Provider boundary
 

@@ -22,7 +22,7 @@ Dope presentation adapters and widgets
   |
 Application / orchestration
   |
-Project Intelligence / Software Map / Visual Software Planning / Data Flow / later Agent Runtime
+Project Intelligence / Software Map / Visual Software Planning / Flow / later Agent Runtime
   |
 Persistence / Model / Tool / Authority / Execution adapters
 
@@ -97,7 +97,7 @@ Dope's default workbench placement is part of the product architecture, while in
 
 Default placement:
 - **Left primary sidebar / Activity Bar:** project-navigation surfaces, including a dedicated **sMap** button and Software Map inspector. The inspector owns hierarchy, dependency, violation, evidence and source-navigation views for the Physical Map.
-- **Center workspace:** editors and ordinary working surfaces. Product Phase 5 adds the large visual **Physical Map** and **Planning Map** canvases here as editor-like tabs/workspaces. Product Phase 6 adds **Data Flow** as a directional Physical Map projection in the same center-workspace model.
+- **Center workspace:** editors and ordinary working surfaces. Product Phase 5 adds the large visual **Physical Map** and **Planning Map** canvases here as editor-like tabs/workspaces. Product Phase 6 adds **Flow** as a directional Physical Map projection in the same center-workspace model.
 - **Right secondary sidebar:** reserved by default for future **Agent Mind / chat / AI interaction**. The Software Map inspector must not claim this area as its default home.
 - **Bottom panel:** terminal, Problems, tests, runtime and similar execution/diagnostic surfaces.
 
@@ -180,21 +180,21 @@ Direct visual gestures must compile into typed PlannedTransformation operations 
 
 Focus / Up / Fit Architecture and geometric pan/zoom are presentation navigation. Stable architecture/planning IDs survive tab changes, zoom/focus changes and source round-trips.
 
-## Data Flow projection boundary
+## Flow projection boundary
 
-Product Phase 6 extends the Physical Map with a provider-free directional **Data Flow** projection.
+Product Phase 6 extends the Physical Map with a provider-free directional **Flow** projection of application-level execution/behavior.
 
-Data Flow consumes the same Software Map graph, stable architecture/code identities, query/index services and provenance boundary as the Architecture projection. It must not create a second architecture database, fork canonical identity, or make visualization-library nodes/edges authoritative.
+Flow consumes the same Software Map graph, stable architecture/code identities, query/index services and provenance boundary as the Architecture projection. It must not create a second architecture database, fork canonical identity, or make visualization-library nodes/edges authoritative.
 
-The initial query/presentation contract is System-first with Subsystem focus. Switching Architecture <-> Data Flow preserves focused scope, selection and source-navigation identity.
+The initial query/presentation contract is System-first with Subsystem focus. Switching Architecture <-> Flow preserves focused scope, selection and source-navigation identity.
 
-Flow roles such as Input, Boundary, Transformation, Store, External and Output are projection semantics. They may be computed from typed physical relationships and evidence but are not new canonical System / Subsystem / Component kinds.
+Flow roles such as Input, Boundary, Processing, Store, External and Output are projection semantics. They may be computed from typed physical relationships and evidence but are not new canonical System / Subsystem / Component kinds.
 
-Analyzer/query layers may add evidence-backed flow facts for supported language/framework surfaces, including route/request/response relationships, calls/references, symbol/type/schema movement, persistence reads/writes, job/event/queue producer-consumer relationships and external clients. Every flow edge remains explainable through deterministic source/semantic/framework evidence or explicit recorded-runtime observation. When the path or payload cannot be established, the product preserves that uncertainty rather than inventing a hop or data type.
+Analyzer/query layers may add evidence-backed Flow facts for supported language/framework surfaces, including route/request/response relationships, deterministically resolved project invocations, persistence reads/writes, job/event/queue producer-consumer relationships and external clients. Optional symbol/type/schema/payload information enriches those interactions when separately evidenced. Every flow edge remains explainable through deterministic source/semantic/framework evidence or explicit recorded-runtime observation. When the path or payload cannot be established, the product preserves that uncertainty rather than inventing a hop or data type.
 
 Directional layout is presentation state. It may optimize for input -> processing -> output comprehension while still representing branches, joins, fan-out, cycles, retries, asynchronous boundaries and external round trips.
 
-Phase 6 does not require a model provider, AI Presence, mutation authority, live tracing, or a new durable Data Flow store. Future runtime observation may enrich the same evidence model without turning static flow inference into observed execution.
+Phase 6 does not require a model provider, AI Presence, mutation authority, live tracing, or a new durable Flow store. Future runtime observation may enrich the same evidence model without turning static flow inference into observed execution.
 
 ## Model and provider boundary
 
@@ -645,11 +645,11 @@ Code should use explicit semantic-basis comparison where deciding whether planni
 
 ## Phase 6 physical-flow contracts
 
-Phase 6 deepens the Software Map evidence/query layer before adding directional presentation.
+Phase 6 deepens the Software Map evidence/query layer before adding directional presentation. Flow is application-level execution flow, not a compiler control-flow graph.
 
 ### Domain separation
 
-The existing `GraphRelationship` dependency/structure graph remains useful for architecture. Data Flow must not reinterpret every `imports`, `references` or aggregated `depends-on` edge as information movement.
+The existing `GraphRelationship` dependency/structure graph remains useful for architecture. Flow must not reinterpret every `imports`, `references` or aggregated `depends-on` edge as execution. A deterministically resolved invocation is a valid Flow interaction even when no payload lineage is known.
 
 Add a separate language-independent physical-flow contract in `@dope/software-map` (exact type/file names may follow implementation style). The contract owns:
 - deterministic/stable flow fact identity for unchanged inputs;
@@ -660,25 +660,25 @@ Add a separate language-independent physical-flow contract in `@dope/software-ma
 - optional payload/type/schema/event label only when evidenced;
 - explicit unknown/unsupported detail rather than fabricated values.
 
-Derived physical endpoints such as an HTTP ingress, PostgreSQL store, queue or external service may participate in Data Flow without becoming canonical Systems/Subsystems/Components.
+Derived physical endpoints such as an HTTP ingress, PostgreSQL store, queue or external service may participate in Flow without becoming canonical Systems/Subsystems/Components.
 
 ### Evidence discipline
 
-A physical flow fact is accepted only when supported by deterministic syntax/semantic/framework evidence or explicit recorded-runtime observation.
+A physical flow fact is accepted only when supported by deterministic syntax/semantic/framework evidence or explicit recorded-runtime observation. For internal code, a deterministically resolved call target is sufficient execution evidence for an `invokes` interaction; data/payload annotations require additional evidence.
 
 Negative invariant:
 
 ```text
-import != call
-reference != value flow
-dependency != data flow
+import != invocation
+reference != invocation
+dependency != execution flow
 ```
 
 Dependency relationships may guide candidate discovery or aggregation but cannot independently establish a flow hop.
 
 ### Analyzer strategy
 
-The first implementation remains TypeScript/JavaScript-first and qualifies against Adaptive SEO.
+The first implementation remains TypeScript/JavaScript-first and qualifies against Adaptive SEO. Generic resolved calls establish execution structure first; richer data semantics are layered on afterward.
 
 Phase 6 should add:
 1. generic TypeScript call/invocation evidence using compiler/type-checker-resolved `CallExpression` targets when the callee resolves to project code;
@@ -686,11 +686,11 @@ Phase 6 should add:
 
 Do not promise arbitrary Node framework support or whole-program value/taint analysis.
 
-Architecture-synthesis `FrameworkFact` remains synthesis evidence. Physical Data Flow should use dedicated physical-flow facts/evidence rather than promoting synthesis-oriented document/framework hints into physical truth.
+Architecture-synthesis `FrameworkFact` remains synthesis evidence. Physical Flow should use dedicated physical-flow facts/evidence rather than promoting synthesis-oriented document/framework hints into physical truth.
 
 ### Query boundary
 
-Expose a provider-independent, generation-scoped bounded Data Flow query in the Software Map service. It should:
+Expose a provider-independent, generation-scoped bounded Flow query in the Software Map service. It should:
 - accept focused architecture identity/scope and bounded options;
 - aggregate lower-level flow facts to the active System/Subsystem detail level without losing origin/evidence traceability;
 - preserve branches, joins, cycles and repeated/external round trips;
@@ -702,9 +702,9 @@ The backend, not React Flow, owns flow selection/aggregation semantics.
 
 ### Presentation boundary
 
-The existing center Physical Map tab family owns both Architecture and Data Flow modes. Do not create a second widget/controller state owner solely for Data Flow.
+The existing center Physical Map tab family owns both Architecture and Flow modes. Do not create a second widget/controller state owner solely for Flow.
 
-Architecture/Data Flow switching preserves workspace, focus, selected architecture identity and source-navigation context. Data Flow edges are inspectable; selecting a flow hop must make its evidence/provenance and source location available through Dope-owned UI/service paths.
+Architecture/Flow switching preserves workspace, focus, selected architecture identity and source-navigation context. Flow edges are inspectable; selecting a flow hop must make its evidence/provenance and source location available through Dope-owned UI/service paths.
 
 Initial layout is deterministic layered directional layout implemented in Dope presentation/projection code. An external automatic layout engine is deferred unless real qualification demonstrates the bounded layout is inadequate.
 

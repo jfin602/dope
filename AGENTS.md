@@ -27,28 +27,30 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-**Current roadmap scope:** Product Phase 5 is owner-closed for sequencing with P11 still Not Green and P12 unexecuted. The owner waiver preserves all missing evidence rather than converting it to Green. Product Phase 6 — Data Flow is **ACTIVE / PLAN APPLIED** from coherent `0.6.0` baseline `710edb362f9881ab41215705db4f08d8daca6293` under ADR 0020 and `docs/planning/p6/phase-6-plan.md`. The approved P1-P8 decomposition is ready for `/prompt-ass -> /prompt-plan -> /prompt-write p6`; no executable Phase 6 prompts exist yet.
+**Current roadmap scope:** Product Phase 5 is owner-closed for sequencing with P11 still Not Green and P12 unexecuted. The owner waiver preserves all missing evidence rather than converting it to Green. Product Phase 6 — Flow is **ACTIVE / PLAN APPLIED** from coherent `0.6.0` baseline `710edb362f9881ab41215705db4f08d8daca6293` under ADR 0020 as amended by ADR 0021 and `docs/planning/p6/phase-6-plan.md`. The approved P1-P8 decomposition remains, but the temporary Flow decision worksheet is being resolved before `/prompt-ass -> /prompt-plan -> /prompt-write p6`; no executable Phase 6 prompts exist yet.
 
-Product Phase 5 — Visual Software Planning is **OWNER-CLOSED FOR SEQUENCING**. Its retained P11 result is Not Green and P12 was not executed; see `docs/tasks/p5/closeout.md`. Product Phase 6 — Data Flow is the current planning scope from `0.6.0`. Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved core scope. Architecture-discovery follow-ons remain historical evidence; `c4-smap-storage` and `c4-color-theme` remain GREEN / QUALIFIED at unchanged `0.4.6`.
+Product Phase 5 — Visual Software Planning is **OWNER-CLOSED FOR SEQUENCING**. Its retained P11 result is Not Green and P12 was not executed; see `docs/tasks/p5/closeout.md`. Product Phase 6 — Flow is the current planning scope from `0.6.0`. Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved core scope. Architecture-discovery follow-ons remain historical evidence; `c4-smap-storage` and `c4-color-theme` remain GREEN / QUALIFIED at unchanged `0.4.6`.
 
 ADR 0008 remains the Software Map terminology/workbench-placement authority. ADR 0009 as amended by ADR 0010/0011/0012 requires deterministic, source-backed architecture evidence and hierarchy-first bounded synthesis. ADR 0017 owns the Phase 5 planning boundary: Planning Maps reference canonical/physical identities, express explicit target transformations, derive bounded WorkItems, require explicit target adoption, detect stale bases, and reconcile fresh Physical Map reality after implementation.
 
 Phase 5's retained implementation includes center-workspace Physical/Planning Maps, graph-native planning state, project-local Planning Map persistence, explicit target adoption/rebase and deterministic reconciliation. Its owner closeout is not a qualification claim.
 
-Phase 6 may add only provider-free Data Flow projection capabilities authorized by ADR 0020: evidence-backed directional flow over existing Physical Map identities, source/provenance inspection and architecture/data-flow view switching. It must not create a separate canonical Data Flow database or pull Phase 7 AI Presence, Agent Mind, ProposedAction, tool authority or delegation forward.
+Phase 6 may add only provider-free Flow projection capabilities authorized by ADR 0020 as amended by ADR 0021: evidence-backed directional flow over existing Physical Map identities, source/provenance inspection and architecture/data-flow view switching. It must not create a separate canonical Flow database or pull Phase 7 AI Presence, Agent Mind, ProposedAction, tool authority or delegation forward.
 
-Only the narrow provider-independent sMap synthesis boundary and reference adapters already authorized by ADR 0010/0011/0013 remain valid before Phase 7. Phase 5 visual planning remains retained owner-closed implementation with no model requirement. Product Phase 6 Data Flow is provider-free and current. General AI Presence begins only in Product Phase 7.
+Only the narrow provider-independent sMap synthesis boundary and reference adapters already authorized by ADR 0010/0011/0013 remain valid before Phase 7. Phase 5 visual planning remains retained owner-closed implementation with no model requirement. Product Phase 6 Flow is provider-free and current. General AI Presence begins only in Product Phase 7.
 
 
-### Phase 6 Data Flow laws
+### Phase 6 Flow laws
 
-- Data Flow is derived Physical Map truth, not canonical architecture and not a new persisted map.
-- `import`, `reference`, or architecture `depends-on` alone is never sufficient proof that data moved between two points.
-- A rendered flow hop requires a dedicated deterministic physical flow fact with traceable evidence or an explicit recorded runtime observation.
-- Flow roles such as Input / Boundary / Transformation / Store / External / Output are projection roles and may vary by focused path; they are not new architecture node kinds.
+- Flow is derived Physical Map truth, not canonical architecture and not a new persisted map.
+- Flow means application-level execution/behavioral flow, not compiler basic-block/control-flow graphs.
+- `import`, `reference`, or architecture `depends-on` alone is never sufficient proof of execution flow.
+- A deterministically resolved invocation is valid Flow evidence even when its payload/arguments are not semantically traced.
+- A rendered Flow hop requires a dedicated deterministic physical interaction with traceable evidence or an explicit recorded runtime observation. Data/payload semantics are optional enrichment and require their own evidence.
+- Flow roles such as Input / Boundary / Processing / Store / External / Output are projection roles and may vary by focused path; they are not new architecture node kinds.
 - Unknown payload/path details remain unknown; analyzers must not infer a missing hop simply to complete a path.
 - Flow queries are generation-scoped and bounded. Late results from another project/generation cannot publish into the current projection.
-- Architecture and Data Flow projections share stable Software Map identity, focus, selection and source-navigation context.
+- Architecture and Flow projections share stable Software Map identity, focus, selection and source-navigation context.
 - Initial Phase 6 uses deterministic layered directional layout; do not add an automatic layout-engine dependency unless qualification demonstrates a concrete need.
 - Phase 6 may deepen TypeScript/JavaScript and bounded framework extractors for the Adaptive SEO qualification slice. It does not promise whole-program taint/data-lineage completeness or cross-language completeness.
 

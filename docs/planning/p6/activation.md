@@ -1,10 +1,10 @@
-# Product Phase 6 — Data Flow Activation
+# Product Phase 6 — Flow Activation
 
-Status: **OWNER APPROVED — ACTIVE / PLAN APPLIED**
+Status: **OWNER APPROVED — ACTIVE / DECISION WORKSHEET IN PROGRESS**
 Date: 2026-10-02
 Package baseline: `0.6.0`
 Activation baseline commit: `710edb362f9881ab41215705db4f08d8daca6293`
-Authority: ADR 0020, `docs/planning/p6/phase-6-plan.md`, current Software Map / Physical Map contracts, Phase 5 owner closeout
+Authority: ADR 0020 as amended by ADR 0021, `docs/planning/p6/phase-6-plan.md`, current Software Map / Physical Map contracts, Phase 5 owner closeout
 
 ## Entry disposition
 
@@ -15,33 +15,43 @@ Phase 5 qualification remains explicitly incomplete:
 - P12 was not executed;
 - owner acceptance is a sequencing waiver, not retroactive qualification.
 
-The retained Phase 5 implementation is the substrate for Data Flow. Missing Phase 5 evidence is revisited only when it materially blocks Phase 6 implementation/qualification or later roadmap work.
+The retained Phase 5 implementation is the substrate for Flow. Missing Phase 5 evidence is revisited only when it materially blocks Phase 6 implementation/qualification or later roadmap work.
 
 ## Phase purpose
 
-Phase 6 adds a provider-free **Data Flow** projection to the Physical Map so developers can follow evidence-backed information movement through existing software identities.
+Phase 6 adds a provider-free **Flow** projection to the Physical Map so developers can follow what happens through real software.
 
-Architecture answers what exists and how it is organized. Data Flow answers how information moves through it.
+Architecture answers **what exists and how it is organized**.
 
-Initial direction:
-- System-first, with Subsystem focus;
-- directional layout for readability without implying synchronous/sequential execution;
-- evidence-backed Input / Boundary / Transformation / Store / External / Output projection roles;
-- branch, join, fan-out, cycle, retry and async/external paths remain representable;
-- payload/type/schema/event identity only when evidence supports it;
-- source/provenance navigation on representative hops;
-- Architecture <-> Data Flow switching preserves selected/focused identity.
+Flow answers **what happens next through it**.
+
+Flow is application-level execution/behavioral flow, not a compiler CFG. Deterministically resolved calls, request/response boundaries, persistence reads/writes, events/queues and external interactions may form the execution path. Proven data/type/schema semantics enrich those interactions when available.
 
 ## Architecture boundary
 
-Data Flow is **not**:
+Flow is **not**:
 - a fourth canonical map;
-- a separate durable `DataFlowMap` database;
+- a separate durable Flow database;
+- a compiler basic-block/control-flow graph;
 - new canonical System/Subsystem/Component kinds;
 - AI-inferred physical truth;
 - a Planning Map replacement.
 
-It is a projection of existing Physical Map reality and evidence. Analyzer/query enrichment may deepen the underlying physical relationships, but every physical hop remains explainable through deterministic evidence or recorded runtime observation.
+It is a projection of existing Physical Map reality and evidence.
+
+## Truth boundary
+
+Permanent negative rule:
+
+```text
+import != invocation
+reference != invocation
+dependency != execution flow
+```
+
+A deterministically resolved invocation is valid Flow evidence even when its payload semantics are unknown.
+
+Unknown payload remains unknown. Unknown execution hops remain gaps.
 
 ## Provider boundary
 
@@ -60,32 +70,31 @@ General AI Presence is Product Phase 7.
 ## Framework/version boundary
 
 - Dope package family: `0.6.x`;
-- Theia remains `1.75.0` unless a separate framework-upgrade decision changes it;
+- Theia remains `1.75.0` unless separately changed;
 - Electron remains `42.8.1`;
-- Phase 6 planning starts from the coherent `0.6.0` owner-close baseline;
-- no Phase 6 implementation is included in the baseline transition itself.
+- Phase 6 starts from coherent `0.6.0`;
+- the existing P1-P8 version sequence remains unchanged.
 
 ## Qualification direction
 
-The principal dogfood specimen should remain a real mapped project such as Adaptive SEO.
+The principal dogfood specimen remains a real mapped project such as Adaptive SEO.
 
 Phase 6 qualification should prove, with no model configured, that a developer can:
 - focus a representative System;
-- switch Architecture -> Data Flow;
-- follow a non-trivial evidence-backed path from input through processing and persistence/external boundary to output;
-- inspect representative edge provenance and navigate to source;
+- switch Architecture -> Flow;
+- follow a non-trivial evidence-backed execution path from an input/boundary through internal processing and state/external interaction to output;
+- inspect representative edge provenance and navigate it to source;
 - focus into a Subsystem without forking identity;
-- observe a branch/fan-out or join;
+- observe at least one branch/fan-out or join;
 - return to Architecture with selection/focus preserved.
 
-## Applied Phase 6 plan
+Payload/type/schema labels are useful enrichment where proven, not a prerequisite for the base execution path.
 
-The approved implementation/qualification decomposition is documented in `docs/planning/p6/phase-6-plan.md` and `docs/tasks/p6/README.md`.
+## Current decision workflow
 
-Expected versions:
-- P1 `0.6.1` through P8 `0.6.8`.
+Resolve `docs/planning/p6/phase-6-worksheet-temp.md` one question at a time.
 
-## Next workflow
+After answers are promoted into authority:
 
 `/prompt-ass -> /prompt-plan -> /prompt-write p6`
 

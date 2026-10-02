@@ -101,6 +101,8 @@ Discover / define architecture
 
 AI may reason over this map and propose changes, but it does not silently manufacture physical software facts or canonical architecture.
 
+**Flow is the Phase 6 behavioral projection of the Physical Map.** It shows evidence-backed application-level execution such as resolved invocation, request/response boundaries, state reads/writes, event handoffs and external calls. It is not a compiler CFG. Proven data/type/schema information annotates Flow where available but is not required for a resolved invocation to appear.
+
 ## Project Mind
 
 Project Mind is the developer-facing durable memory of the software project.
@@ -181,12 +183,12 @@ Foundation Spike 0 — qualify Theia
 -> correction c4-color-theme — Dope Dark visual identity
 -> Phase 5 — Visual Software Planning
 -> correction c5-smap-readability — progressive disclosure and map readability
--> Phase 6 — Data Flow
+-> Phase 6 — Flow
 -> Phase 7 — AI Presence
 -> Phase 8 — Scoped Delegation
 -> Phase 9 — Development Sessions
 
-Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map core remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The later architecture-synthesis corrections remain truthful owner-closed Not Qualified history with useful implementation retained; `c4-smap-storage` and `c4-color-theme` closed Green. Owner closeout advanced only the package baseline to `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 5 — Visual Software Planning was subsequently owner-closed for sequencing with P11 still Not Green and P12 unexecuted; the retained implementation remains available without a retroactive Green claim. The owner-close transition established coherent `0.6.0` for Product Phase 6 — Data Flow under ADR 0020. The fresh provider comparison remains deferred; general AI Presence is Product Phase 7.
+Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map core remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The later architecture-synthesis corrections remain truthful owner-closed Not Qualified history with useful implementation retained; `c4-smap-storage` and `c4-color-theme` closed Green. Owner closeout advanced only the package baseline to `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 5 — Visual Software Planning was subsequently owner-closed for sequencing with P11 still Not Green and P12 unexecuted; the retained implementation remains available without a retroactive Green claim. The owner-close transition established coherent `0.6.0` for Product Phase 6 — Flow under ADR 0020. The fresh provider comparison remains deferred; general AI Presence is Product Phase 7.
 
 ## Non-goals
 
@@ -221,13 +223,13 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 6 — Data Flow is ACTIVE FOR PLANNING at coherent package baseline `0.6.0` from transition `710edb362f9881ab41215705db4f08d8daca6293`.**
+**Product Phase 6 — Flow is ACTIVE FOR PLANNING at coherent package baseline `0.6.0` from transition `710edb362f9881ab41215705db4f08d8daca6293`.**
 
 Product Phase 5 is owner-closed for sequencing. Its P11 evidence remains Not Green and P12 was not executed; those gaps are accepted for sequencing only and remain historical truth.
 
-Phase 6 is governed by ADR 0020. It extends the existing Physical Map with a provider-free Data Flow projection over the same stable System / Subsystem / Component / Code identities. It must preserve evidence/provenance, source navigation and selection/focus identity while showing directional inputs, transformations, stores, external boundaries and outputs.
+Phase 6 is governed by ADR 0020. It extends the existing Physical Map with a provider-free Flow projection over the same stable System / Subsystem / Component / Code identities. It must preserve evidence/provenance, source navigation and selection/focus identity while showing directional inputs, transformations, stores, external boundaries and outputs.
 
-Phase 6 does not introduce a separate canonical Data Flow map/database, general AI Presence, Agent Mind, mutation/tool authority or delegation. Those remain Product Phase 7+.
+Phase 6 does not introduce a separate canonical Flow map/database, general AI Presence, Agent Mind, mutation/tool authority or delegation. Those remain Product Phase 7+.
 
 The immediate workflow is `/docs-review` for Phase 6 alignment, then `/docs-apply`, `/prompt-ass`, `/prompt-plan`, and `/prompt-write p6` only after owner approval.
 ## Phase 3 result — live human-first Planning

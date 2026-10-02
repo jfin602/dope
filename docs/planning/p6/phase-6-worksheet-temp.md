@@ -1,39 +1,47 @@
-# Product Phase 6 — Data Flow Temporary Decision Worksheet
+# Product Phase 6 — Flow Temporary Decision Worksheet
 
 Status: **TEMPORARY WORKSHEET — NOT PRODUCT AUTHORITY**
 Date: 2026-10-02
 Baseline: `0.6.0`
-Phase: Product Phase 6 — Data Flow
-Authority to consult: ADR 0020, `docs/planning/p6/phase-6-plan.md`, current Software Map / Physical Map contracts
+Phase: Product Phase 6 — Flow
+Authority to consult: ADR 0020 as amended by ADR 0021, `docs/planning/p6/phase-6-plan.md`, current Software Map / Physical Map contracts
 
-Purpose: resolve the ten highest-leverage open decisions before writing the executable P1-P8 prompt stack.
+Purpose: resolve the ten highest-leverage open Flow decisions before writing the executable P1-P8 prompt stack.
 
-This file is intentionally temporary. Answers should be promoted into the appropriate product/architecture/phase-plan documents during the next documentation update, then this worksheet can be removed.
+This file is intentionally temporary. Lock one answer at a time. Promote resolved answers into product/architecture/phase authority, then remove this worksheet before Phase 6 closeout.
 
 ---
 
-## Q1 — What exactly counts as a Data Flow hop?
+## Q1 — What exactly counts as a Flow hop, and what evidence upgrades that hop with data semantics?
 
-The phase already locks one negative rule:
+Flow is now broader than strict data lineage.
 
-`import != call`
-`reference != value flow`
-`dependency != data flow`
+Locked negative rule:
 
-The remaining question is the positive definition. We need a small set of physical interactions that are strong enough to say "information moved" without drifting into speculative program analysis.
+```text
+import != invocation
+reference != invocation
+dependency != execution flow
+```
 
-Candidate minimum:
-- resolved internal function/method invocation;
-- inbound request/event boundary -> handler;
-- handler/processing -> response/output boundary;
-- persistence read/write;
-- supported external client request/response;
-- supported producer/consumer event relationship.
+ADR 0021 also locks one positive rule: a deterministically resolved project-code invocation may be a Flow hop even when payload semantics are unknown.
+
+Candidate base interaction semantics:
+- receives;
+- invokes;
+- reads;
+- writes;
+- calls-external;
+- publishes;
+- consumes;
+- responds.
 
 Questions to resolve:
-- Is a resolved call always a flow hop, or only when arguments/return/data-bearing values are involved?
-- Is control-only invocation useful enough to include?
-- Do serialization/deserialization steps become their own hop or metadata on a hop?
+- Which interaction kinds belong in the initial Phase 6 contract?
+- Do we model `returns` as a separate interaction or keep return/data information on `invokes`/output boundaries?
+- Is a resolved zero-argument/unused-return call still useful Flow if it is a real execution step?
+- Which extra evidence upgrades an execution edge with argument/type/payload/schema information?
+- Is serialization/deserialization a Processing node/annotation or a separate Flow interaction?
 
 **Decision:**
 
@@ -41,19 +49,20 @@ Questions to resolve:
 
 ---
 
-## Q2 — Where should physical flow live in the domain model?
+## Q2 — Where should physical Flow live in the domain model?
 
-The current Physical Map snapshot owns graph nodes, structural relationships, evidence and violations. Phase 6 could either:
+The current Physical Map snapshot owns graph nodes, structural relationships, evidence and violations.
+
+Options:
 - add first-class `PhysicalFlowFact[]` to the published snapshot/result;
-- keep analyzer flow facts in analysis results and derive/query them separately;
-- or introduce another rebuildable flow index attached to the same generation.
-
-The choice affects snapshot size, query cost, generation safety, testing, and whether future analyzers can contribute flow without coupling to presentation.
+- keep analyzer Flow facts in analysis results and derive/query them separately;
+- introduce a rebuildable in-memory Flow index attached to the same generation.
 
 Questions to resolve:
-- Should flow facts be part of `PhysicalMapSnapshot`?
-- Should flow facts share the same generation/input fingerprint as architecture relationships?
-- Is a separate in-memory flow index warranted, or unnecessary complexity now?
+- Should Flow facts be part of `PhysicalMapSnapshot`?
+- Should Flow share the same generation/input fingerprint as structural relationships?
+- Is a separate in-memory Flow index useful or needless complexity at current scale?
+- Where should future recorded-runtime Flow observations enter?
 
 **Decision:**
 
@@ -61,23 +70,22 @@ Questions to resolve:
 
 ---
 
-## Q3 — How are non-architectural flow endpoints represented and identified?
+## Q3 — How are non-architectural Flow endpoints represented and identified?
 
-Real flows need things that are not canonical Systems/Subsystems/Components:
+Real Flow needs physical endpoints that are not canonical architecture:
 - HTTP ingress/egress;
 - PostgreSQL or another store;
 - queue/topic/job boundary;
 - external service/API;
 - file/blob/object storage;
-- possibly a user/browser/client boundary.
-
-We need stable, deterministic identities without turning these into canonical architecture.
+- user/browser/client boundary where evidenced.
 
 Questions to resolve:
-- Are these typed derived endpoint records separate from GraphNode?
-- Can multiple code sites intentionally resolve to the same external/store endpoint?
-- What information participates in endpoint identity: protocol, host/service, route, DB logical name, queue name?
-- What happens when only a generic "external HTTP" or "database" boundary is knowable?
+- Are endpoints typed derived records separate from `GraphNode`?
+- Can several code sites intentionally resolve to one store/external endpoint?
+- What participates in deterministic endpoint identity: protocol, host/service, route, DB logical name, queue name?
+- What identity do we use when only generic "external HTTP" or "database" is knowable?
+- How do endpoints map back to the owning architecture context without becoming canonical nodes?
 
 **Decision:**
 
@@ -85,22 +93,22 @@ Questions to resolve:
 
 ---
 
-## Q4 — What exact Adaptive SEO patterns are in the initial supported vertical slice?
+## Q4 — What exact Adaptive SEO execution patterns are in the initial supported vertical slice?
 
-P3 is intended to qualify real deterministic flow extraction against Adaptive SEO rather than implement every Node framework.
+P3 should qualify real deterministic Flow against Adaptive SEO rather than implement every Node framework.
 
 Likely categories:
 - Express-style routes/request/response;
 - PostgreSQL query/read/write boundaries;
-- internal service/function calls;
+- internal service/function invocation;
 - external HTTP/client calls where present;
-- jobs/events/queues if the real code gives a clean deterministic example.
+- jobs/events/queues if the real code offers a clean deterministic example.
 
 Questions to resolve:
-- Which concrete libraries/patterns in Adaptive SEO are mandatory for Phase 6 Green?
-- Do we include worker/job flows in the initial slice or defer them?
-- Do we support only direct library calls, or wrapper/helper abstractions used by Adaptive SEO too?
-- What minimum second fixture prevents us from accidentally hardcoding Adaptive SEO?
+- Which concrete Adaptive SEO libraries/wrappers must Phase 6 support?
+- Are worker/job flows part of initial Green or deferred?
+- Do we support wrapper/helper abstractions used by Adaptive SEO, not only direct library calls?
+- What minimum second fixture prevents Adaptive SEO hardcoding?
 
 **Decision:**
 
@@ -108,21 +116,22 @@ Questions to resolve:
 
 ---
 
-## Q5 — How far should static call/path stitching go?
+## Q5 — How far should static execution-path stitching go?
 
-A useful Data Flow view needs more than isolated call facts, but blindly walking the call graph risks pretending that all possible calls form one real data path.
+A useful Flow view needs more than isolated invocation facts, but a static reachable path is not proof that one runtime request executed every branch.
 
 Possible bounds:
-- direct calls only;
-- direct calls plus deterministic path stitching through resolved project calls;
-- bounded multi-hop traversal from known input/output boundaries;
-- limited interprocedural propagation using argument/return relationships.
+- direct interactions only;
+- deterministic multi-hop traversal through resolved project calls;
+- bounded traversal from known input/output boundaries;
+- limited callback/promise/async continuity when statically resolvable.
 
 Questions to resolve:
-- What is the maximum supported path depth or traversal budget?
+- Maximum path depth/node/edge budget?
 - How do recursion/cycles terminate?
-- Do callbacks, promises and async/await count as ordinary call continuity when statically resolvable?
-- How do we distinguish "reachable call path" from "data-bearing path"?
+- How do callbacks, promises and async/await join the execution path?
+- How do we label static possible paths versus future recorded-runtime observed paths?
+- Do we need any argument/return propagation in Phase 6 path stitching, or only as optional annotation?
 
 **Decision:**
 
@@ -130,23 +139,23 @@ Questions to resolve:
 
 ---
 
-## Q6 — How much payload/type/schema information should Phase 6 attempt?
+## Q6 — How much data/type/schema enrichment should Flow attempt?
 
-ADR 0020 allows payload/type/schema/event identity only when evidence supports it.
+Data semantics now enrich Flow rather than gate it.
 
 Possible initial levels:
-1. no payload labels at all;
-2. symbol/type name when directly resolved;
-3. request/response/event schema identity where explicit;
-4. richer field-level lineage.
-
-The richer levels rapidly approach data-lineage/taint-analysis work that Phase 6 explicitly does not require.
+1. no data labels;
+2. direct TypeScript argument/return type name;
+3. explicit HTTP request/response/event schema identity;
+4. persistence entity/table label;
+5. richer field-level lineage.
 
 Questions to resolve:
-- What is the minimum payload label worth showing in the first release?
-- Should TypeScript type names be shown when resolvable but structurally broad?
-- Should SQL table names or HTTP route parameters be labels?
-- What exact UI text represents unknown payload without looking broken?
+- What is the minimum useful enrichment for Phase 6?
+- Should broad/generic TypeScript types be shown?
+- Should HTTP method/path be boundary metadata regardless of payload knowledge?
+- Should SQL table/entity names be shown when directly parseable?
+- What UI language represents unknown data without making Flow look broken?
 
 **Decision:**
 
@@ -154,21 +163,23 @@ Questions to resolve:
 
 ---
 
-## Q7 — How should code-level flow facts aggregate to System/Subsystem views without inventing continuity?
+## Q7 — How should code-level Flow aggregate to System/Subsystem views without inventing continuity?
 
-The default Data Flow experience should be readable at System/Subsystem scope, while evidence originates at code/symbol/boundary level.
+Default Flow must remain readable at architecture scope while evidence originates at code/symbol/boundary level.
 
 Aggregation risks:
-- merging unrelated parallel calls into one misleading "flow";
+- merging unrelated invocation paths;
 - hiding gaps between independently evidenced segments;
-- losing branch/join information;
-- duplicating many identical architectural edges.
+- losing branch/join shape;
+- duplicating many same-boundary interactions;
+- suggesting data continuity where only execution continuity is known.
 
 Questions to resolve:
-- When may multiple lower-level facts collapse into one architectural flow edge?
-- Must an aggregate edge preserve a continuous origin path, or can it summarize all source->target flow facts?
-- How are multiple distinct payloads/semantics between the same boundaries shown?
-- Should gaps split a path visually instead of drawing one aggregate connector?
+- When may multiple lower-level interactions collapse into one architecture Flow edge?
+- Must an aggregate preserve one continuous origin path?
+- How do multiple interaction kinds between the same source/target appear?
+- When should gaps split the visual path?
+- How are optional data annotations combined without inventing one payload?
 
 **Decision:**
 
@@ -176,22 +187,23 @@ Questions to resolve:
 
 ---
 
-## Q8 — What should the Data Flow UX optimize for: path exploration or whole-scope overview?
+## Q8 — What should the Flow UX optimize for: path exploration or whole-scope overview?
 
-The current concept is System-first with Subsystem focus, but the interaction model is still open.
+The concept is System-first with Subsystem focus and progressive disclosure.
 
 Possible primary experiences:
-- show all known flow in the focused System;
-- start from selectable Inputs and highlight one path at a time;
-- start from selected architecture node and show upstream/downstream neighborhood;
-- combine an overview with explicit path tracing.
+- show all high-level Flow in the focused System;
+- start from selectable Inputs and trace downstream;
+- start from the selected architecture node and show upstream/downstream neighborhood;
+- combine a quiet overview with explicit path tracing.
 
 Questions to resolve:
-- What does the user see immediately after clicking **Data Flow**?
-- How does the user choose a particular input/output/path?
-- Should the default hide unrelated flow until selection?
+- What appears immediately after clicking **Flow**?
+- How does the developer choose a behavior/input/path?
+- Should unrelated Flow be hidden/subdued until selection?
 - Should forward/backward tracing be explicit controls?
-- How much detail appears before the view becomes another hairball?
+- At what detail level do code-level invocations appear?
+- How do we prevent Flow from becoming another hairball?
 
 **Decision:**
 
@@ -201,9 +213,9 @@ Questions to resolve:
 
 ## Q9 — How should branches, joins, async boundaries, cycles and retries be represented?
 
-A directional layout must not imply that execution is linear or synchronous.
+Directional layout must not imply synchronous, linear execution.
 
-We need a visual grammar for:
+Need visual grammar for:
 - fan-out;
 - join/fan-in;
 - async handoff;
@@ -214,10 +226,11 @@ We need a visual grammar for:
 - optional/error paths.
 
 Questions to resolve:
-- Which of these need distinct edge/node semantics in Phase 6?
-- Is an async boundary a role, edge attribute, or explicit derived endpoint?
+- Which require distinct edge/node semantics in Phase 6?
+- Is async a Flow-fact attribute, edge treatment or explicit boundary endpoint?
 - How should cycles/back-edges appear without destroying left-to-right readability?
 - Are retry/error paths required for P7, or fixture-only/deferred?
+- How do we distinguish possible branch from observed runtime branch later?
 
 **Decision:**
 
@@ -225,19 +238,18 @@ Questions to resolve:
 
 ---
 
-## Q10 — What evidence/completeness standard must P7 meet to call the Data Flow view trustworthy?
+## Q10 — What evidence/completeness standard must P7 meet to call Flow trustworthy?
 
-Phase 6 should not look complete when analyzer coverage is partial.
-
-The P7 dogfood target is Adaptive SEO, but the exact acceptance bar needs to be explicit.
+Phase 6 must not look complete when supported execution surfaces are partial.
 
 Questions to resolve:
-- What real Adaptive SEO path must be demonstrable end-to-end?
-- Is one real input -> processing -> persistence/external -> output path enough, or do we require multiple categories?
-- Must the real project demonstrate a branch/fan-out or join, or can a controlled fixture supplement it?
-- What coverage/diagnostic indicator tells the developer which flow surfaces are unsupported?
-- Should the UI expose a "partial flow analysis" state analogous to Software Map analysis completeness?
-- What missing evidence is a Not Green blocker versus an acceptable explicit unknown?
+- What real Adaptive SEO behavior/path must be demonstrable end-to-end?
+- Is one real input -> internal invocation -> persistence/external -> output path enough?
+- Must the real project demonstrate branch/fan-out/join, or may a fixture supplement it?
+- What diagnostics tell the developer which frameworks/interactions are unsupported?
+- Should Flow expose a partial-analysis/coverage state separate from overall Software Map completeness?
+- Which missing execution evidence is Not Green versus acceptable explicit unknown?
+- Are data annotations optional for Green if the execution path itself is fully evidenced?
 
 **Decision:**
 
@@ -247,16 +259,16 @@ Questions to resolve:
 
 ## Resolution checklist
 
-Before `/prompt-write p6`, the answers should be reflected in the authoritative Phase 6 docs where applicable:
+Before `/prompt-write p6`, promote answers into authoritative Phase 6 docs:
 
-- [ ] Q1 hop semantics
-- [ ] Q2 domain/snapshot ownership
+- [ ] Q1 Flow-hop semantics and data-enrichment threshold
+- [ ] Q2 domain/snapshot/index ownership
 - [ ] Q3 derived endpoint identity
 - [ ] Q4 Adaptive SEO supported patterns
-- [ ] Q5 traversal/path-stitching bounds
-- [ ] Q6 payload/schema scope
-- [ ] Q7 aggregation semantics
-- [ ] Q8 primary UX model
+- [ ] Q5 execution-path stitching bounds
+- [ ] Q6 data/type/schema enrichment scope
+- [ ] Q7 architecture aggregation semantics
+- [ ] Q8 primary Flow UX
 - [ ] Q9 non-linear/async visual grammar
 - [ ] Q10 P7 completeness/qualification bar
 

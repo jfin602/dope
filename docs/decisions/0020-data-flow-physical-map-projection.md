@@ -1,9 +1,12 @@
 # ADR 0020 — Data Flow as a Physical Map projection and Product Phase 6
 
 Status: Accepted
+Amended by: ADR 0021 — Flow as the Physical Map behavioral projection
 Date: 2026-10-01
 Builds on: ADR 0007, ADR 0008, ADR 0009, ADR 0017, ADR 0019
 Amends future sequencing in: ADR 0005, ADR 0006, ADR 0007
+
+> Historical naming note: ADR 0020 introduced **Data Flow** as Product Phase 6. ADR 0021 keeps the sequencing and Physical Map projection decision but broadens the current product term to **Flow**, with execution/control relationships as the base layer and data semantics as optional enrichment.
 
 ## Context
 
