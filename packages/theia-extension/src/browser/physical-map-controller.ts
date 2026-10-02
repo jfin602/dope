@@ -1,7 +1,7 @@
 import type { GraphNode, GraphRelationship, SoftwareMapPage } from '@dope/software-map';
 import type { SoftwareMapController } from './software-map-controller';
 import { projectPhysicalMap } from './physical-map-projection';
-import type { CanvasProjection } from './physical-map-projection';
+import type { CanvasProjection, SemanticDetail } from './physical-map-projection';
 
 export interface PhysicalMapTabOptions { workspace: string; focusId: string }
 export const physicalMapTabOptions = (workspace: string, focusId: string): PhysicalMapTabOptions => ({ workspace, focusId });
@@ -21,6 +21,7 @@ export class PhysicalMapController {
     private activeWorkspace?: string;
     private selectedPlannedId?: string;
     focusId?: string;
+    detail: SemanticDetail = 'architecture';
 
     constructor(private readonly map: SoftwareMapController, private readonly changed: () => void,
         private readonly workspace?: string, focusId?: string) {
@@ -43,6 +44,11 @@ export class PhysicalMapController {
     }
     select(id: string): void { if (this.available()) { this.selectedPlannedId = undefined; void this.map.select(id); } }
     selectPlanned(id: string): void { if (this.available()) { this.selectedPlannedId = id; this.changed(); } }
+    setDetail(detail: SemanticDetail): void {
+        if (this.detail === detail) return;
+        this.detail = detail;
+        void this.refresh();
+    }
     clearPlannedSelectionIfAbsent(ids: string[]): void {
         if (this.selectedPlannedId && !ids.includes(this.selectedPlannedId)) this.selectedPlannedId = undefined;
     }
@@ -97,7 +103,8 @@ export class PhysicalMapController {
         }
         const workspace = this.map.workspace!;
         if (this.focusId && this.map.nodes.length && !this.map.nodes.some(node => node.id === this.focusId)) this.focusId = undefined;
-        const key = `${workspace}:${status.generation}:${this.map.nodes.length}:${this.map.violations.length}:${this.focusId ?? ''}`;
+        const selectedId = this.map.nodes.some(node => node.id === this.selectedId && node.kind !== 'project') ? this.selectedId : undefined;
+        const key = `${workspace}:${status.generation}:${this.map.nodes.length}:${this.map.violations.length}:${this.focusId ?? ''}:${this.detail}:${selectedId ?? ''}`;
         if (key === this.loadedKey) return;
         const request = ++this.request;
         this.loadedKey = key;
@@ -106,8 +113,11 @@ export class PhysicalMapController {
         this.error = '';
         this.changed();
         try {
-            const visible = this.focusId ? this.map.nodes.filter(node => node.id === this.focusId || node.parentId === this.focusId) :
-                this.map.nodes.filter(node => node.kind === 'system' || node.kind === 'subsystem');
+            const visibleIds = projectPhysicalMap(this.map.nodes, [], this.map.violations, this.focusId,
+                { detail: this.detail }).nodes.map(node => node.id);
+            if (selectedId) visibleIds.push(selectedId);
+            const visible = [...new Set(visibleIds)].map(id => this.map.nodes.find(node => node.id === id))
+                .filter((node): node is GraphNode => !!node);
             const groups = await Promise.all(visible.flatMap(node => (['incoming', 'outgoing'] as const).map(direction => this.pages(offset => this.map.relationshipPage({
                 nodeId: node.id, direction,
                 kinds: node.kind === 'code' ? ['imports', 'depends-on', 'references', 'extends', 'implements'] : ['depends-on'],
@@ -115,7 +125,8 @@ export class PhysicalMapController {
             }, status.generation), status.generation))));
             if (request !== this.request || !this.available() || this.map.workspace !== workspace || this.map.status?.generation !== status.generation) return;
             this.relationships = [...new Map(groups.flat().map(edge => [edge.id, edge])).values()];
-            this.projection = projectPhysicalMap(this.map.nodes, this.relationships, this.map.violations, this.focusId);
+            this.projection = projectPhysicalMap(this.map.nodes, this.relationships, this.map.violations, this.focusId,
+                { detail: this.detail, selectedId });
         } catch (error) {
             if (request === this.request && this.available() && this.map.status?.generation === status.generation) {
                 this.loadedKey = ''; this.error = String(error);

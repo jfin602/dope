@@ -22,7 +22,9 @@ const flush = () => new Promise<void>(resolve => setImmediate(resolve));
 
 function harness() {
   const listeners = new Set<() => void>();
+  const requests: Array<{ nodeId: string; direction: string }> = [];
   const service = { async relationships(request: { nodeId: string; direction: string }) {
+    requests.push(request);
     const items = request.nodeId === 'sub' && request.direction === 'outgoing' ? [dependency] : [];
     return { generation: 1, total: items.length, items };
   } };
@@ -36,8 +38,22 @@ function harness() {
     relationshipPage(request: { nodeId: string; direction: string }) { return service.relationships(request); }
   };
   const controller = new PhysicalMapController(map as unknown as SoftwareMapController, () => {}, 'file:///A');
-  return { controller, map, service, listeners };
+  return { controller, map, service, listeners, requests };
 }
+
+test('selection-only changes reload the selected relationship neighborhood', async () => {
+  const { controller, requests } = harness();
+  await flush();
+  assert.deepEqual(controller.projection.edges.filter(edge => edge.kind === 'dependency'), []);
+  const before = requests.length;
+  controller.select('sub');
+  await flush();
+  assert.ok(requests.length > before);
+  assert.ok(requests.slice(before).some(request => request.nodeId === 'sub' && request.direction === 'outgoing'));
+  assert.ok(requests.slice(before).some(request => request.nodeId === 'sub' && request.direction === 'incoming'));
+  assert.deepEqual(controller.projection.edges.filter(edge => edge.kind === 'dependency').map(edge => edge.id), ['dependency']);
+  controller.dispose();
+});
 
 test('focus, up, fit and code detail retain shared selection identity', async () => {
   const { controller, map } = harness();

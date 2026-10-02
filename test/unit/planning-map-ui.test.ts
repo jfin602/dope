@@ -55,8 +55,8 @@ const map = (id: string, status: PlanningMap['status'] = 'draft', transformation
 
 test('move, contract and relationship states have textual target and diff semantics', () => {
   const planning = map('one');
-  const target = projectPlanningMap(nodes, [edge], [], planning, 'target', 'sys');
-  const diff = projectPlanningMap(nodes, [edge], [], planning, 'diff', 'sys');
+  const target = projectPlanningMap(nodes, [edge], [], planning, 'target', 'sys', undefined, { selectedId: 'a' });
+  const diff = projectPlanningMap(nodes, [edge], [], planning, 'diff', 'sys', undefined, { selectedId: 'a' });
   assert.equal(target.nodes.find(n => n.id === 'a')?.name, 'Renamed');
   assert.match(target.nodes.find(n => n.id === 'b')!.badge, /contract/);
   assert.equal(target.edges.some(e => e.id === 'edge'), true); // physical dependency remains evidence
@@ -65,6 +65,19 @@ test('move, contract and relationship states have textual target and diff semant
   assert.match(diff.edges.find(e => e.id === 'planned-remove:redirect')!.label, /removal/);
   assert.match(projectPlanningMap(nodes, [edge], [], planning, 'diff', 'a').nodes.find(n => n.id === 'cmp')!.badge, /move/);
   assert.match(projectPlanningMap(nodes, [edge], [], planning, 'target', 'b').nodes.find(n => n.id === 'cmp')!.badge, /move/);
+});
+
+test('Planning views share bounded detail and selection without changing target intent', () => {
+  const planning = map('detail');
+  for (const view of ['current', 'target', 'diff'] as const) {
+    const overview = projectPlanningMap(nodes, [edge], [], planning, view, undefined, undefined, { detail: 'overview' });
+    assert.deepEqual(overview.nodes.map(node => node.id), ['sys']);
+    const selected = projectPlanningMap(nodes, [edge], [], planning, view, 'sys', undefined,
+      { detail: 'implementation', selectedId: 'a' });
+    assert.equal(selected.edges.some(item => item.id === 'edge'), true);
+    assert.equal(selected.nodes.find(node => node.id === 'cmp')?.parentId, view === 'current' ? 'a' : 'b');
+    assert.match(selected.nodes.find(node => node.id === 'a')!.badge, view === 'current' ? /Declared only/ : /Planned change/);
+  }
 });
 
 test('adopted target remains visible without claiming Physical Map realization', () => {

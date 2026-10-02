@@ -122,7 +122,8 @@ export class PhysicalMapWidget extends BaseWidget {
         if (!this.focusedTab) this.title.label = planningMode ? 'Planning Map' : 'Physical Map';
         const projection = planningMode && selectedMap ? projectPlanningMap(
             this.controller.sourceNodes, this.controller.sourceRelationships, this.controller.sourceViolations,
-            selectedMap, this.planning.view, this.controller.focusId, this.planning.stale) : this.controller.projection;
+            selectedMap, this.planning.view, this.controller.focusId, this.planning.stale,
+            { detail: this.controller.detail, selectedId: this.controller.selectedId }) : this.controller.projection;
         this.controller.clearPlannedSelectionIfAbsent(projection.nodes.map(node => node.id));
         this.renderPlanningBar();
         this.renderWorkPanel();

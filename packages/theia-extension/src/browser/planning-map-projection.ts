@@ -1,7 +1,7 @@
 import type { GraphNode, GraphRelationship, ArchitectureViolation } from '@dope/software-map';
 import type { PlanningMap, PlannedTransformation, RebaseConflict, RebaseResult, ReconciliationResult, StaleResult } from '@dope/visual-planning';
 import { projectPhysicalMap } from './physical-map-projection';
-import type { CanvasProjection } from './physical-map-projection';
+import type { CanvasProjection, MapPresentation } from './physical-map-projection';
 
 export type PlanningView = 'current' | 'target' | 'diff';
 export const projectReconciliationResult = (result: ReconciliationResult): string =>
@@ -32,8 +32,8 @@ export function projectRebaseConflict(map: PlanningMap, preview: RebaseResult, c
 
 /** A disposable canvas projection. The PlanningMap remains the only target authority. */
 export function projectPlanningMap(nodes: GraphNode[], relationships: GraphRelationship[], violations: ArchitectureViolation[],
-    map: PlanningMap, view: PlanningView, focusId?: string, stale?: StaleResult): PlanningProjection {
-    const current = projectPhysicalMap(nodes, relationships, violations, focusId);
+    map: PlanningMap, view: PlanningView, focusId?: string, stale?: StaleResult, presentation: MapPresentation = {}): PlanningProjection {
+    const current = projectPhysicalMap(nodes, relationships, violations, focusId, presentation);
     const markStale = (result: PlanningProjection): PlanningProjection => {
         if (!stale?.stale) return result;
         const affected = new Set(stale.affectedTransformationIds);
@@ -85,7 +85,7 @@ export function projectPlanningMap(nodes: GraphNode[], relationships: GraphRelat
         }
         if (change.redirect && !change.adopted) for (const id of [change.redirect.from.sourceId, change.redirect.to.sourceId]) mark(id, 'relationship');
     }
-    const projected = projectPhysicalMap([...target.values()], relationships, violations, focusId);
+    const projected = projectPhysicalMap([...target.values()], relationships, violations, focusId, presentation);
     const beforeById = new Map(nodes.map(node => [node.id, node]));
     const detail = (id: string): string => {
         const before = beforeById.get(id), after = target.get(id);

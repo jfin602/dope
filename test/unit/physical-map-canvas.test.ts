@@ -20,7 +20,7 @@ const code = (id: string, systemId?: string, subsystemId?: string): GraphNode =>
   ownership: systemId ? { state: 'assigned', systemId, subsystemId } : { state: 'unassigned' }
 });
 
-test('overview is deterministic and shows only Systems plus immediate Subsystems', () => {
+test('project detail is deterministic and bounded to Systems and immediate Subsystems', () => {
   const nodes = [boundary('sys-b', 'system', 'Beta'), boundary('sub-z', 'subsystem', 'Zulu', 'sys-b'),
     boundary('sys-a', 'system', 'Alpha'), boundary('sub-b', 'subsystem', 'Bravo', 'sys-a'),
     boundary('sub-a', 'subsystem', 'Alpha', 'sys-a'), boundary('cmp', 'component', 'Hidden', 'sub-a'),
@@ -33,6 +33,10 @@ test('overview is deterministic and shows only Systems plus immediate Subsystems
   assert.ok(first.nodes.every(node => Number.isFinite(node.x) && Number.isFinite(node.y)));
   assert.ok(first.nodes.find(node => node.id === 'sub-a')!.parentId === 'sys-a');
   assert.ok(first.nodes.find(node => node.id === 'sys-b')!.x > first.nodes.find(node => node.id === 'sys-a')!.x);
+  assert.deepEqual(projectPhysicalMap(nodes, [], [], undefined, { detail: 'overview' }).nodes.map(node => node.id),
+    ['sys-a', 'sys-b']);
+  assert.deepEqual(projectPhysicalMap(nodes, [], [], undefined, { detail: 'implementation' }).nodes.map(node => node.id),
+    first.nodes.map(node => node.id));
 });
 
 test('one System is the main frame; state and edge meanings survive without color', () => {
@@ -51,15 +55,60 @@ test('one System is the main frame; state and edge meanings survive without colo
     ['canvas:unassigned', 'unassigned', 'Unassigned']
   ]);
   assert.equal(view.edges.filter(edge => edge.kind === 'containment').length, 2);
-  assert.deepEqual(view.edges.find(edge => edge.id === 'dep'), {
+  assert.equal(view.edges.some(edge => edge.kind === 'dependency'), false);
+  const selected = projectPhysicalMap(nodes, [dependency], [violation], undefined, { selectedId: 'a' });
+  assert.deepEqual(selected.edges.find(edge => edge.id === 'dep'), {
     id: 'dep', source: 'a', target: 'b', kind: 'dependency', state: 'drifted', label: 'Dependency · drift'
   });
   const allowed = projectPhysicalMap([...nodes, boundary('c', 'subsystem', 'C', 's')],
-    [dependency, { ...dependency, id: 'allowed', targetId: 'c' }], [violation]);
+    [dependency, { ...dependency, id: 'allowed', targetId: 'c' }], [violation], undefined, { selectedId: 'a' });
   assert.equal(allowed.edges.find(edge => edge.id === 'allowed')?.state, 'realized');
   assert.equal(projectPhysicalMap(nodes.slice(0, 3), [], []).nodes.find(node => node.id === 'a')!.state, 'declared-only');
   assert.deepEqual(projectPhysicalMap([code('orphan')], [], []).nodes.map(node => [node.state, node.badge]),
     [['detected-only', 'Detected only · Unassigned']]);
+});
+
+test('focused detail expands only the active branch and keeps stable nested identities', () => {
+  const nodes = [boundary('s', 'system', 'System'), boundary('a', 'subsystem', 'Alpha', 's'),
+    boundary('b', 'subsystem', 'Beta', 's'), boundary('ca', 'component', 'Component A', 'a'),
+    boundary('cb', 'component', 'Component B', 'b'), code('file-a', 's', 'a'),
+    boundary('other', 'system', 'Other'), boundary('outside', 'subsystem', 'Outside', 'other'),
+    boundary('hidden', 'component', 'Hidden', 'outside')];
+  (nodes.find(node => node.id === 'file-a') as GraphNode).parentId = 'ca';
+  const project = projectPhysicalMap(nodes, [], [], undefined, { detail: 'implementation' });
+  assert.deepEqual(project.nodes.map(node => node.id), ['other', 'outside', 's', 'a', 'b']);
+  const system = projectPhysicalMap(nodes, [], [], 's', { detail: 'implementation' });
+  assert.deepEqual(system.nodes.map(node => node.id), ['s', 'a', 'ca', 'b', 'cb']);
+  assert.equal(system.nodes.find(node => node.id === 'ca')?.parentId, 'a');
+  assert.deepEqual(projectPhysicalMap(nodes, [], [], 'a').nodes.map(node => node.id), ['a', 'ca']);
+  assert.deepEqual(projectPhysicalMap(nodes, [], [], 'a', { detail: 'implementation' }).nodes.map(node => node.id),
+    ['a', 'ca', 'file-a']);
+  assert.deepEqual(projectPhysicalMap(nodes, [], [], 'ca').nodes.map(node => node.id), ['ca', 'file-a']);
+});
+
+test('selection reveals only its dependency neighborhood and long names reflow geometry', () => {
+  const long = 'A very long subsystem identity with enough words to require several complete visible lines';
+  const nodes = [boundary('s', 'system', 'System'), boundary('a', 'subsystem', long, 's'),
+    boundary('b', 'subsystem', 'B', 's'), boundary('c', 'subsystem', 'C', 's'),
+    boundary('other', 'system', 'Other'), boundary('outside', 'subsystem', 'Outside', 'other')];
+  const edges: GraphRelationship[] = [
+    { id: 'ab', kind: 'depends-on', sourceId: 'a', targetId: 'b', evidenceIds: [], originRelationshipIds: ['raw'] },
+    { id: 'bc', kind: 'depends-on', sourceId: 'b', targetId: 'c', evidenceIds: [], originRelationshipIds: ['raw'] },
+    { id: 'ao', kind: 'depends-on', sourceId: 'a', targetId: 'outside', evidenceIds: [], originRelationshipIds: ['raw'] }
+  ];
+  const quiet = projectPhysicalMap(nodes, edges, []);
+  assert.deepEqual(quiet.edges.filter(edge => edge.kind === 'dependency'), []);
+  const selected = projectPhysicalMap(nodes, edges, [], undefined, { selectedId: 'a' });
+  assert.deepEqual(selected.edges.filter(edge => edge.kind === 'dependency').map(edge => edge.id), ['ab', 'ao']);
+  assert.equal(selected.nodes.find(node => node.id === 'outside')?.context, undefined);
+  const focused = projectPhysicalMap(nodes, edges, [], 's');
+  assert.deepEqual(focused.edges.filter(edge => edge.kind === 'dependency').map(edge => edge.id), ['ao']);
+  assert.equal(focused.nodes.find(node => node.id === 'outside')?.context, true);
+  assert.ok(focused.nodes.find(node => node.id === 'a')!.height >
+    projectPhysicalMap([boundary('s', 'system', 'System'), boundary('a', 'subsystem', 'Short', 's')], [], [], 's')
+      .nodes.find(node => node.id === 'a')!.height);
+  assert.ok(focused.nodes.find(node => node.id === 's')!.height >=
+    focused.nodes.find(node => node.id === 'a')!.y + focused.nodes.find(node => node.id === 'a')!.height);
 });
 
 test('React Flow stays in presentation and registration preserves workbench placement', () => {
@@ -82,7 +131,7 @@ test('React Flow stays in presentation and registration preserves workbench plac
   assert.match(css, /\.dope-map-edge-containment .*stroke-dasharray/);
   assert.match(css, /\.dope-map-edge-drifted .*stroke-dasharray/);
   for (const path of ['packages/software-map/src/contracts.ts', 'packages/software-map/src/service.ts',
-    'packages/visual-planning/src/service.ts']) assert.doesNotMatch(read(path), /@xyflow\/react|ReactFlowInstance|\bNode<.*>/);
+    'packages/visual-planning/src/service.ts']) assert.doesNotMatch(read(path), /@xyflow\/react|ReactFlowInstance|\bNode<.*>|SemanticDetail|MapPresentation|selectedId/);
 });
 
 test('published map loads through the inspector handle; failures and stale queries settle', async () => {
