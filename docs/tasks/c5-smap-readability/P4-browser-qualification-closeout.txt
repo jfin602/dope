@@ -6,7 +6,7 @@ MODEL / REASONING / USAGE
 - Execution: MANUAL INTERACTIVE HANDOFF — do not treat as a runner-only prompt.
 
 VERSIONING
-- Required unchanged project version: `0.5.12`.
+- Required unchanged project version: `0.5.11`.
 
 GOAL
 
@@ -22,9 +22,9 @@ Read:
 
 Require:
 - README activation source is exact, not TBD;
-- Phase 5 P11/P12 Green/closed;
+- Phase 5 P11 Green;
 - P1-P3 focused evidence Green;
-- package exactly 0.5.12;
+- package exactly 0.5.11;
 - clean intended candidate.
 
 Create a disposable working copy from:
@@ -147,10 +147,10 @@ Do not update known-issues.md or feature-ideas.md automatically.
 If Green, explicitly report:
 - K7MX is eligible for /resolve K7MX;
 - +F6QK is eligible for /resolve +F6QK;
-- Phase 6 may activate from 0.6.0.
+- Phase 5 P12 may resume.
 
 If Not Green:
-- keep Phase 6 blocked;
+- keep P12 and Phase 6 blocked;
 - identify the narrow failed contract and strongest evidence.
 
 FINAL RESPONSE

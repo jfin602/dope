@@ -5,7 +5,7 @@ MODEL / REASONING / USAGE
 - Browser required: no.
 
 VERSIONING
-- Required unchanged project version: `0.5.12`.
+- Required unchanged project version: `0.5.11`.
 
 GOAL
 
@@ -131,5 +131,5 @@ Report:
 - K7MX rendering fix;
 - orientation/visual grammar changes;
 - focused + browser-build evidence;
-- unchanged 0.5.12;
+- unchanged 0.5.11;
 - readiness for P3.

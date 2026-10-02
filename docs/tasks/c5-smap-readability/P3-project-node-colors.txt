@@ -5,7 +5,7 @@ MODEL / REASONING / USAGE
 - Browser required: no.
 
 VERSIONING
-- Required unchanged project version: `0.5.12`.
+- Required unchanged project version: `0.5.11`.
 
 GOAL
 
@@ -108,5 +108,5 @@ Report:
 - project/restart isolation guarantees;
 - exact changed files;
 - focused test evidence;
-- unchanged 0.5.12;
+- unchanged 0.5.11;
 - readiness for P4 manual qualification.
