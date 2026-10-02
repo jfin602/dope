@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -65,4 +65,32 @@ test('unresolved imports are diagnostics without invented targets; exclusion res
     assert.ok(!clean.nodes.some(node => node.path === 'src/missing.ts'));
     assert.ok(clean.relationships.some(edge => edge.kind === 'references' && edge.sourceId === derivedId('module', 'packages/app/src/index.ts') && edge.targetId.includes('Shared')));
   } finally { rmSync(temporary, { recursive: true, force: true }); }
+});
+
+test('Dope state is excluded even when tsconfig names its sources and project reference', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dope-input-boundary-'));
+  try {
+    cpSync(fixture, root, { recursive: true });
+    mkdirSync(join(root, '.dope'));
+    const config = join(root, 'tsconfig.json');
+    const data = JSON.parse(readFileSync(config, 'utf8'));
+    data.include.push('.dope/**/*.ts');
+    data.files = ['.dope/hidden.ts'];
+    data.references = [{ path: '.dope/tsconfig.json' }];
+    data.extends = '.dope/tsconfig.json';
+    writeFileSync(config, JSON.stringify(data));
+    writeFileSync(join(root, '.dope/tsconfig.json'), JSON.stringify({ files: ['hidden.ts'] }));
+    writeFileSync(join(root, '.dope/hidden.ts'), 'export const hidden = 1;\n');
+    for (const name of ['planning-maps.json', 'project-mind.json', 'smap-analysis.json', 'smap.json'])
+      writeFileSync(join(root, '.dope', name), JSON.stringify({ version: 1 }));
+    const before = analyzer.inputPaths(root);
+    assert.ok(before.sources.some(path => path.endsWith('src/child.ts')));
+    assert.ok(before.configs.some(path => path.endsWith('tsconfig.json')));
+    assert.ok([...before.sources, ...before.configs].every(path => !path.includes('/.dope/')));
+    assert.ok(analyzer.analyze(root).nodes.every(node => !node.path.startsWith('.dope/')));
+    writeFileSync(join(root, '.dope/hidden.ts'), 'export const hidden = 2;\n');
+    for (const name of ['planning-maps.json', 'project-mind.json', 'smap-analysis.json', 'smap.json'])
+      writeFileSync(join(root, '.dope', name), JSON.stringify({ version: 2 }));
+    assert.deepEqual(analyzer.inputPaths(root), before);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

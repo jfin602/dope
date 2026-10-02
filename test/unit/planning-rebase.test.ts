@@ -38,6 +38,29 @@ test('unrelated generation advances only global basis, with no affected branch o
   assert.deepEqual(previewRebase(target, newer()).unaffectedTransformationIds, ['edit-a']);
 });
 
+test('generation-only reanalysis keeps a Planning Map current and leaves target branches alone', () => {
+  const target = map([change('edit-a')]);
+  const current = reality({ basis: { ...basis, physicalGeneration: 2 } });
+  const stale = stalePlanningMap(target, current);
+  assert.equal(stale.stale, false);
+  assert.equal(stale.physicalChanged, false);
+  assert.deepEqual(stale.affectedTransformationIds, []);
+  assert.deepEqual(stale.affectedBranchIds, []);
+  assert.deepEqual(previewRebase(target, current).conflicts, []);
+});
+
+test('creation accepts a semantically identical newer observation and stores its exact generation', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-create-basis-'));
+  try {
+    const store = new PlanningStore();
+    const current = reality({ basis: { ...basis, physicalGeneration: 2 } });
+    const created = await store.mutate(root, 0,
+      { type: 'create', id: 'plan', title: 'Plan', objective: 'Objective', basis }, undefined, async () => current);
+    assert.equal(created.maps[0].basis.physicalGeneration, 2);
+    assert.equal(created.maps[0].basisSnapshot?.basis.physicalGeneration, 2);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('a source edit stales only the owning branch when graph identities stay fixed', () => {
   const code = [
     { id: 'code:a', kind: 'code', name: 'a.ts', parentId: 'a', path: 'src/a.ts', evidenceIds: ['source-a'] },

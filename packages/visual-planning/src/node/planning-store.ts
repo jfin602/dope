@@ -3,7 +3,7 @@ import { constants } from 'node:fs';
 import { lstat, mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { branchMap, canCloseOut, detectActiveConflicts, parsePlanningMap, transitionMap } from '../index';
+import { branchMap, canCloseOut, detectActiveConflicts, parsePlanningMap, sameObservation, sameSemanticBasis, transitionMap } from '../index';
 import { reconcilePlanningMap } from '../reconciliation';
 import { projectTarget } from '../index';
 import { mergeWorkItems, putWorkItem, splitWorkItem } from '../work';
@@ -162,9 +162,9 @@ export class PlanningStore {
       if (op.type === 'create') {
         if (maps.some(map => map.id === op.id)) throw new Error('Planning map already exists');
         const snapshot = await reality?.();
-        if (snapshot && JSON.stringify(snapshot.basis) !== JSON.stringify(op.basis)) throw new Error('Stale Planning Map basis');
+        if (snapshot && !sameSemanticBasis(snapshot.basis, op.basis)) throw new Error('Stale Planning Map basis');
         maps.push(parsePlanningMap({ schemaVersion: 1, id: op.id, projectId, title: op.title, objective: op.objective,
-          status: 'draft', revision: 0, history: [{ revision: 0, action: 'create', at: now }], basis: op.basis,
+          status: 'draft', revision: 0, history: [{ revision: 0, action: 'create', at: now }], basis: snapshot?.basis ?? op.basis,
           ...(snapshot ? { basisSnapshot: snapshot } : {}),
           transformations: [], workItems: [] }));
       } else {
@@ -173,7 +173,7 @@ export class PlanningStore {
         if (index < 0) throw new Error('Unknown planning map');
         const map = maps[index];
         if ('expectedMapRevision' in op && map.revision !== op.expectedMapRevision) throw new Error('Stale Planning Map revision');
-        if ('expectedBasis' in op && JSON.stringify(map.basis) !== JSON.stringify(op.expectedBasis)) throw new Error('Stale Planning Map basis');
+        if ('expectedBasis' in op && (!op.expectedBasis || !sameSemanticBasis(map.basis, op.expectedBasis))) throw new Error('Stale Planning Map basis');
         if ('expectedBasis' in op) {
           const declaration = await this.declaration(root);
           if (createHash('sha256').update(declaration).digest('hex') !== map.basis.architectureFingerprint)
@@ -219,7 +219,7 @@ export class PlanningStore {
             case 'closeout': {
               if (map.status !== 'active' || !canCloseOut(map) || !reality) throw new Error('Unresolved Planning Map closeout');
               const observed = await reality();
-              if (JSON.stringify(map.reconciliation!.basis) !== JSON.stringify(observed.basis))
+              if (!sameSemanticBasis(map.reconciliation!.basis, observed.basis))
                 throw new Error('Stale reconciliation; analyze and reconcile again');
               for (const t of map.transformations.filter(t => t.resolution === 'deferred')) {
                 const destination = maps.find(item => item.id === t.deferredTo?.mapId && (item.status === 'draft' || item.status === 'active'));
@@ -286,10 +286,10 @@ export class PlanningStore {
       if (expectedProjectId && collection.projectId !== expectedProjectId) throw new Error('Planning identity changed; reattach');
       const map = collection.maps.find(item => item.id === request.mapId);
       if (collection.revision !== request.expectedRevision || !map || map.revision !== request.expectedMapRevision ||
-        JSON.stringify(map.basis) !== JSON.stringify(request.expectedBasis)) throw new Error('Stale planning revision');
+        !sameObservation(map.basis, request.expectedBasis)) throw new Error('Stale planning revision');
       if (map.status !== 'draft' && map.status !== 'active') throw new Error('Planning map is closed');
       const current = await reality();
-      if (JSON.stringify(current.basis) !== JSON.stringify(request.expectedCurrentBasis)) throw new Error('Current Software Map basis changed');
+      if (!sameObservation(current.basis, request.expectedCurrentBasis)) throw new Error('Current Software Map basis changed');
       const preview = previewRebase(map, current);
       const changed = acceptRebase(map, preview, request.decisions, new Date().toISOString());
       const next = parsePlanningCollection({ ...collection, revision: collection.revision + 1,
@@ -308,7 +308,7 @@ export class PlanningStore {
   private async adoptionPreview(root: string, request: AdoptionRequest, collection: PlanningCollection): Promise<AdoptionPreview> {
     const map = collection.maps.find(item => item.id === request.mapId);
     if (collection.revision !== request.expectedRevision || !map || map.revision !== request.expectedMapRevision ||
-        JSON.stringify(map.basis) !== JSON.stringify(request.expectedBasis)) throw new Error('Stale planning revision or basis');
+        !sameObservation(map.basis, request.expectedBasis)) throw new Error('Stale planning revision or basis');
     const bytes = await this.declaration(root);
     if (createHash('sha256').update(bytes).digest('hex') !== map.basis.architectureFingerprint)
       throw new Error('Stale Planning Map architecture basis');

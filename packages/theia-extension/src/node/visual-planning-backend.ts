@@ -4,7 +4,7 @@ import { isAbsolute, join, relative } from 'node:path';
 import type { AdoptionAcceptance, AdoptionRequest, PlanningCollection, PlanningMutation, RebaseAcceptance, RebaseRequest, VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { previewTransformation } from '@dope/visual-planning/lib/editing';
-import { detectActiveConflicts } from '@dope/visual-planning';
+import { detectActiveConflicts, sameObservation } from '@dope/visual-planning';
 import { captureReality, previewRebase, stalePlanningMap } from '@dope/visual-planning/lib/rebase';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
 import { readInitialization, replaceArchitecture } from '@dope/code-analysis/lib/node/smap-initialization-file';
@@ -80,9 +80,15 @@ export class VisualPlanningBackend implements VisualPlanningService {
     const map = collection.maps.find(item => item.id === mapId);
     if (collection.revision !== expectedRevision || !map || map.revision !== expectedMapRevision)
       throw new Error('Stale planning revision');
+    const status = this.index?.status(root);
+    if (this.index && (!status || status.state !== 'ready' ||
+      status.inputFingerprint !== map.basis.physicalInputFingerprint ||
+      !await this.index.inputsCurrent(root))) throw new Error('Stale Planning Map basis');
     if ((await readInitialization(root)).declarationFingerprint !== map.basis.architectureFingerprint)
       throw new Error('Stale Planning Map architecture basis');
     const architecture = (await readArchitecture(root)).architecture;
+    if (this.index && this.index.status(root).generation !== status?.generation)
+      throw new Error('Software Map generation changed during preview');
     return previewTransformation(architecture, map, command, transformationId);
   }
   async mutate(request: PlanningMutation) {
@@ -109,9 +115,9 @@ export class VisualPlanningBackend implements VisualPlanningService {
     const root = this.active(request.projectHandle), collection = await this.read(request.projectHandle);
     const map = collection.maps.find(item => item.id === request.mapId);
     if (collection.revision !== request.expectedRevision || !map || map.revision !== request.expectedMapRevision ||
-      JSON.stringify(map.basis) !== JSON.stringify(request.expectedBasis)) throw new Error('Stale planning revision');
+      !sameObservation(map.basis, request.expectedBasis)) throw new Error('Stale planning revision');
     const current = await this.reality(root);
-    if (JSON.stringify(current.basis) !== JSON.stringify(request.expectedCurrentBasis)) throw new Error('Current Software Map basis changed');
+    if (!sameObservation(current.basis, request.expectedCurrentBasis)) throw new Error('Current Software Map basis changed');
     return previewRebase(map, current);
   }
   async acceptRebase(request: RebaseAcceptance) {

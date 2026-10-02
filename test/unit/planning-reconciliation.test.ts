@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -61,7 +62,7 @@ test('fresh source-backed comparison retains all outcomes, unexpected code, and 
   assert.throws(() => reconcilePlanningMap(map(), old, '2026-10-01'), /Fresh/);
 });
 
-test('explicit closeout requires reconciled dispositions and matching published generation; history retains target and realized evidence', async () => {
+test('explicit closeout requires reconciled dispositions and matching semantic basis; history retains target and realized evidence', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-reconcile-'));
   try {
     const store = new PlanningStore();
@@ -75,8 +76,9 @@ test('explicit closeout requires reconciled dispositions and matching published 
     await assert.rejects(store.mutate(root, collection.revision, { type: 'closeout', mapId: 'plan', expectedMapRevision: 3 }, undefined, async () => fresh()), /Unresolved/);
     collection = await store.mutate(root, collection.revision, { type: 'disposition', mapId: 'plan', transformationId: 'edit-a', resolution: 'as-planned' });
     await assert.rejects(store.mutate(root, collection.revision, { type: 'closeout', mapId: 'plan', expectedMapRevision: 4 }, undefined,
-      async () => ({ ...fresh(), basis: { ...fresh().basis, physicalGeneration: 3 } })), /Stale reconciliation/);
-    collection = await store.mutate(root, collection.revision, { type: 'closeout', mapId: 'plan', expectedMapRevision: 4 }, undefined, async () => fresh());
+      async () => ({ ...fresh(), basis: { ...fresh().basis, physicalInputFingerprint: 'changed', physicalGeneration: 3 } })), /Stale reconciliation/);
+    collection = await store.mutate(root, collection.revision, { type: 'closeout', mapId: 'plan', expectedMapRevision: 4 }, undefined,
+      async () => ({ ...fresh(), basis: { ...fresh().basis, physicalGeneration: 3 } }));
     const closed = (await new PlanningStore().read(root)).maps[0];
     assert.equal(closed.status, 'completed');
     assert.equal(closed.transformations[0].futureNodes[0].name, 'Target');
@@ -159,6 +161,68 @@ test('backend performs explicit reanalysis and rejects source edits after reconc
     await assert.rejects(backend.mutate({ projectHandle: handle, expectedRevision: c.revision,
       operation: { type: 'closeout', mapId: 'plan', expectedMapRevision: 4 } }), /inputs or generation changed/);
     assert.equal((await backend.read(handle)).maps[0].status, 'active');
+    backend.dispose();
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('Planning Map persistence and unchanged reanalysis preserve the semantic basis', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-planning-basis-'));
+  try {
+    await mkdir(join(root, 'src/a'), { recursive: true });
+    await mkdir(join(root, '.dope'));
+    await writeFile(join(root, '.dope/architecture.json'), `${JSON.stringify(architecture)}\n`);
+    await writeFile(join(root, 'tsconfig.json'), JSON.stringify({ include: ['src/**/*.ts'] }));
+    const source = join(root, 'src/a/a.ts'), original = 'export const value = 1;\n';
+    await writeFile(source, original);
+    await acceptInitialization(root, (await readInitialization(root)).declarationFingerprint);
+    const analyzer = new TypeScriptAnalyzer();
+    const index = new SoftwareMapIndex(analyzer);
+    await index.analyze(root);
+    const first = index.snapshot(root)!.metadata;
+    const backend = new VisualPlanningBackend(new PlanningStore(), index);
+    const handle = (await backend.attach(pathToFileURL(root).href)).projectHandle;
+    const initialBasis = { architectureRevision: 0, architectureFingerprint: (await readInitialization(root)).declarationFingerprint,
+      physicalInputFingerprint: first.inputFingerprint, physicalGeneration: first.generation };
+    let collection = await backend.mutate({ projectHandle: handle, expectedRevision: 0,
+      operation: { type: 'create', id: 'plan', title: 'Plan', objective: 'Change', basis: initialBasis } });
+    assert.equal(await index.inputsCurrent(root), true);
+    assert.equal(index.snapshot(root)!.metadata.inputFingerprint, first.inputFingerprint);
+    for (const name of ['project-mind.json', 'smap-analysis.json']) {
+      await writeFile(join(root, '.dope', name), JSON.stringify({ revision: 1 }));
+    }
+    const marker = join(root, '.dope/smap.json');
+    await writeFile(marker, `${JSON.stringify(JSON.parse(await readFile(marker, 'utf8')), null, 2)}\n`);
+    assert.equal(await index.inputsCurrent(root), true);
+    await index.analyze(root);
+    const second = index.snapshot(root)!.metadata;
+    assert.ok(second.generation > first.generation);
+    assert.equal(second.inputFingerprint, first.inputFingerprint);
+    const stale = await backend.staleness(handle, 'plan');
+    assert.equal(stale.stale, false);
+    assert.equal(stale.physicalChanged, false);
+    assert.deepEqual(stale.affectedTransformationIds, []);
+    assert.deepEqual(stale.affectedBranchIds, []);
+    const change = await backend.preview(handle, 'plan', collection.revision, collection.maps[0].revision,
+      { kind: 'add', node: { id: 'new', kind: 'component', parentId: 'a', name: 'New', purpose: 'Change', roots: [] } }, 'add-new');
+    collection = await backend.mutate({ projectHandle: handle, expectedRevision: collection.revision,
+      operation: { type: 'put-transformation', mapId: 'plan', expectedMapRevision: collection.maps[0].revision,
+        expectedBasis: initialBasis, transformation: change } });
+    assert.equal(collection.maps[0].transformations.length, 1);
+    assert.equal(await index.inputsCurrent(root), true);
+    await writeFile(source, 'export const value = 2;\n');
+    await index.analyze(root);
+    assert.notEqual(index.snapshot(root)!.metadata.inputFingerprint, first.inputFingerprint);
+    assert.equal((await backend.staleness(handle, 'plan')).physicalChanged, true);
+    await writeFile(source, original);
+    await index.analyze(root);
+    assert.equal((await backend.staleness(handle, 'plan')).stale, false);
+    const changedArchitecture = { ...architecture, systems: [{ ...architecture.systems[0], name: 'Renamed' }] };
+    const bytes = `${JSON.stringify(changedArchitecture)}\n`;
+    await writeFile(join(root, '.dope/architecture.json'), bytes);
+    await writeFile(join(root, '.dope/smap.json'), JSON.stringify({ schemaVersion: 1,
+      architectureFingerprint: createHash('sha256').update(bytes).digest('hex') }));
+    await index.analyze(root);
+    assert.equal((await backend.staleness(handle, 'plan')).architectureChanged, true);
     backend.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }
 });

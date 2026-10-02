@@ -87,6 +87,7 @@ function harness() {
     } };
   let collection: PlanningCollection = { schemaVersion: 1, projectId: 'project', revision: 0, maps: [] };
   const service = { async attach() { return { projectHandle: 'handle', snapshot: collection }; },
+    async preview() { return changes[0]; },
     async staleness(): Promise<StaleResult> { return { schemaVersion: 1, stale: false, architectureChanged: false, physicalChanged: false,
       affectedTransformationIds: [], affectedBranchIds: [], conflicts: [] }; },
     async previewRebase(_request: RebaseRequest): Promise<RebaseResult> { throw new Error('Not configured'); },
@@ -146,6 +147,25 @@ test('Adopt Target requires displayed diff acceptance and clears the preview aft
   assert.equal(writes, 1);
   assert.equal(h.controller.selected?.transformations[0].adopted, true);
   assert.equal(h.controller.adoptionPreview, undefined);
+  h.controller.dispose();
+});
+
+test('unchanged generation refresh permits editing but rejects a late preview from the prior observation', async () => {
+  const h = harness(); await tick();
+  h.collection = { schemaVersion: 1, projectId: 'project', revision: 1, maps: [map('plan')] };
+  await h.controller.refresh();
+  h.physical.status.generation = 2;
+  await h.controller.beginEdit({ kind: 'remove', id: 'a' });
+  assert.ok(h.controller.preview);
+  assert.equal(h.controller.preview?.observationGeneration, 2);
+  h.controller.cancelEdit();
+  let complete!: (value: typeof changes[0]) => void;
+  h.service.preview = () => new Promise(resolve => { complete = resolve; });
+  const pending = h.controller.beginEdit({ kind: 'remove', id: 'a' });
+  h.physical.status.generation = 3;
+  complete(changes[0]);
+  await pending;
+  assert.equal(h.controller.preview, undefined);
   h.controller.dispose();
 });
 

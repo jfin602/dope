@@ -7,6 +7,11 @@ export type TransformationKind = 'add' | 'modify' | 'remove' | 'move' | 'split' 
 export type NodeKind = 'system' | 'subsystem' | 'component';
 export type Resolution = 'as-planned' | 'accepted-different' | 'deferred' | 'abandoned';
 export interface PlanningBasis { architectureRevision: number; architectureFingerprint: string; physicalInputFingerprint: string; physicalGeneration: number }
+export const sameSemanticBasis = (a: PlanningBasis, b: PlanningBasis): boolean =>
+  a.architectureRevision === b.architectureRevision && a.architectureFingerprint === b.architectureFingerprint &&
+  a.physicalInputFingerprint === b.physicalInputFingerprint;
+export const sameObservation = (a: PlanningBasis, b: PlanningBasis): boolean =>
+  sameSemanticBasis(a, b) && a.physicalGeneration === b.physicalGeneration;
 export interface RebaseReality {
   basis: PlanningBasis;
   architecture: ArchitectureDeclaration;
@@ -163,7 +168,7 @@ export function parsePlanningMap(input: unknown): PlanningMap {
   const x = obj(input, 'root'); fields(x, ['schemaVersion', 'id', 'projectId', 'title', 'objective', 'status', 'revision', 'history', 'basis', 'transformations', 'workItems'], ['branchedFrom', 'editHistory', 'basisSnapshot', 'reconciliation'], 'root');
   if (x.schemaVersion !== 1) fail('unsupported schemaVersion');
   const basis = parseBasis(x.basis, 'basis');
-  if (x.basisSnapshot !== undefined && JSON.stringify(parseRebaseReality(x.basisSnapshot).basis) !== JSON.stringify(basis)) fail('basis snapshot mismatch');
+  if (x.basisSnapshot !== undefined && !sameObservation(parseRebaseReality(x.basisSnapshot).basis, basis)) fail('basis snapshot mismatch');
   const history = list(x.history, (raw, at) => { const h = obj(raw, at); fields(h, ['revision', 'action', 'at'], [], at); return { revision: integer(h.revision, `${at}.revision`), action: str(h.action, `${at}.action`), at: str(h.at, `${at}.at`) }; }, 'history').sort((a, b) => a.revision - b.revision);
   const revision = integer(x.revision, 'revision');
   if (history.length && (history[history.length - 1].revision !== revision || history.some((h, i) => i && h.revision <= history[i - 1].revision))) fail('history revision');

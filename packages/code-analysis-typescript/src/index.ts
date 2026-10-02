@@ -8,10 +8,14 @@ import { theiaInversifyExtractor } from './framework-extractor';
 
 const PRODUCER = '@dope/code-analysis-typescript';
 const VERSION = '5.9.3';
-const ignored = new Set(['node_modules', '.git', '.theia', 'plugins', 'dist', 'build', 'out', 'coverage', 'generated', 'vendor']);
+const ignored = new Set(['node_modules', '.git', '.dope', '.theia', 'plugins', 'dist', 'build', 'out', 'coverage', 'generated', 'vendor']);
 const sourceFile = /\.(?:[cm]?[jt]s|[jt]sx)$/i;
 const declarationFile = /\.d\.[cm]?ts$/i;
 const named = (node: ts.Node): node is ts.Node & { name: ts.Node } => 'name' in node && !!(node as { name?: ts.Node }).name;
+const dopeOwned = (root: string, file: string): boolean => {
+    const path = relative(root, resolve(file)).replaceAll('\\', '/');
+    return !!path && path !== '..' && !path.startsWith('../') && path.split('/').includes('.dope');
+};
 
 /** Full rebuild; P3 owns generation, caching and cancellation. */
 export class TypeScriptAnalyzer implements CodeAnalyzer {
@@ -20,6 +24,11 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
     /** Cheap configured inputs for exact fingerprinting, including newly included files. */
     inputPaths(projectRoot: string): { sources: string[]; configs: string[] } {
         const root = resolve(projectRoot);
+        const within = (file: string): boolean => {
+            const path = relative(root, resolve(file)).replaceAll('\\', '/');
+            return !!path && path !== '..' && !path.startsWith('../') && !isAbsolute(path) && !dopeOwned(root, file);
+        };
+        const configHost = { ...ts.sys, readFile: (file: string) => dopeOwned(root, file) ? undefined : ts.sys.readFile(file) };
         const configs = new Set<string>();
         const configFiles = new Set<string>();
         const sources = new Set<string>();
@@ -37,14 +46,13 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
             const config = queue[i];
             const read = ts.readConfigFile(config, ts.sys.readFile);
             if (read.error) continue;
-            const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, resolve(config, '..'), undefined, config);
+            const parsed = ts.parseJsonConfigFileContent(read.config, configHost, resolve(config, '..'), undefined, config);
             for (const file of parsed.fileNames) {
-                const path = relative(root, resolve(file));
-                if (path && path !== '..' && !path.startsWith('../') && !isAbsolute(path) && sourceFile.test(file)) sources.add(resolve(file));
+                if (within(file) && sourceFile.test(file)) sources.add(resolve(file));
             }
             for (const reference of parsed.projectReferences ?? []) {
                 const path = ts.resolveProjectReferencePath(reference);
-                if (!configs.has(path) && (path === root || path.startsWith(`${root}/`))) { configs.add(path); queue.push(path); }
+                if (!configs.has(path) && within(path)) { configs.add(path); queue.push(path); }
             }
         }
         return { sources: [...sources].sort(), configs: [...new Set([...configFiles, ...configs])].sort() };
@@ -57,6 +65,7 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
 
     analyze(projectRoot: string): CodeAnalysisResult {
         const root = resolve(projectRoot);
+        const configHost = { ...ts.sys, readFile: (file: string) => dopeOwned(root, file) ? undefined : ts.sys.readFile(file) };
         let reusedSourceFiles = 0;
         const nodes = new Map<string, CodeEntityNode>();
         const relationships = new Map<string, GraphRelationship>();
@@ -69,7 +78,7 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
         const programs: Array<{ program: ts.Program; files: ts.SourceFile[]; options: ts.CompilerOptions }> = [];
         const pathOf = (file: string): string | undefined => {
             const path = relative(root, resolve(file)).replaceAll('\\', '/');
-            return path && path !== '..' && !path.startsWith('../') && !isAbsolute(path) ? path : undefined;
+            return path && path !== '..' && !path.startsWith('../') && !isAbsolute(path) && !dopeOwned(root, file) ? path : undefined;
         };
         const report = (code: string, message: string, path?: string): void => {
             const item = { producer: PRODUCER, code, message, ...(path ? { path } : {}) };
@@ -131,7 +140,7 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
             try {
                 const read = ts.readConfigFile(config, ts.sys.readFile);
                 if (read.error) { report('config', ts.flattenDiagnosticMessageText(read.error.messageText, '\n'), configPath); continue; }
-                const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, resolve(config, '..'), undefined, config);
+                const parsed = ts.parseJsonConfigFileContent(read.config, configHost, resolve(config, '..'), undefined, config);
                 for (const reference of parsed.projectReferences ?? []) parseConfig(ts.resolveProjectReferencePath(reference));
                 for (const diagnostic of parsed.errors) report(`TS${diagnostic.code}`, ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'), configPath);
                 const fileNames = parsed.fileNames.filter(file => !!pathOf(file) && sourceFile.test(file) && !declarationFile.test(file));

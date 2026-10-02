@@ -1,5 +1,5 @@
 import type { ArchitectureDeclaration, PhysicalMapSnapshot } from '@dope/software-map';
-import { parsePlanningMap, parseRebaseReality } from './index';
+import { parsePlanningMap, parseRebaseReality, sameObservation, sameSemanticBasis } from './index';
 import type { PlannedNode, PlannedTransformation, PlanningMap, RebaseConflict, RebaseReality, RebaseResult, StaleResult } from './index';
 
 export type RebaseDecision = { transformationId: string; identityId: string; reason: RebaseConflict['reason'];
@@ -88,7 +88,7 @@ function realized(change: PlannedTransformation, reality: RebaseReality): boolea
 /** Pure three-way comparison. A changed global fingerprint never stains an unrelated transformation. */
 export function previewRebase(map: PlanningMap, currentReality: RebaseReality): RebaseResult {
   const current = parseRebaseReality(currentReality), old = map.basisSnapshot;
-  const changed = !same(map.basis, current.basis);
+  const changed = !sameSemanticBasis(map.basis, current.basis);
   const conflicts: RebaseConflict[] = [];
   const push = (t: PlannedTransformation, identityId: string, reason: RebaseConflict['reason'], evidence: string[]) => {
     if (!conflicts.some(c => c.transformationId === t.id && c.identityId === identityId && c.reason === reason))
@@ -142,15 +142,14 @@ export function stalePlanningMap(map: PlanningMap, current: RebaseReality): Stal
   const affectedBranchIds = [...new Set(preview.conflicts.flatMap(c => branches(c.identityId, oldNodes, nowNodes)))].sort();
   const architectureChanged = map.basis.architectureRevision !== current.basis.architectureRevision ||
     map.basis.architectureFingerprint !== current.basis.architectureFingerprint;
-  const physicalChanged = map.basis.physicalInputFingerprint !== current.basis.physicalInputFingerprint ||
-    map.basis.physicalGeneration !== current.basis.physicalGeneration;
-  return { schemaVersion: 1, stale: architectureChanged || physicalChanged, architectureChanged,
+  const physicalChanged = map.basis.physicalInputFingerprint !== current.basis.physicalInputFingerprint;
+  return { schemaVersion: 1, stale: !sameSemanticBasis(map.basis, current.basis), architectureChanged,
     physicalChanged,
     affectedTransformationIds, affectedBranchIds, conflicts: preview.conflicts };
 }
 
 export function acceptRebase(map: PlanningMap, preview: RebaseResult, decisions: RebaseDecision[], at: string): PlanningMap {
-  if (!same(map.basis, preview.oldBasis)) throw new Error('Stale Planning Map basis');
+  if (!sameObservation(map.basis, preview.oldBasis)) throw new Error('Stale Planning Map basis');
   const key = (c: Pick<RebaseConflict, 'transformationId' | 'identityId' | 'reason'>) => `${c.transformationId}\0${c.identityId}\0${c.reason}`;
   const conflicts = new Map(preview.conflicts.map(c => [key(c), c]));
   const chosen = new Map(decisions.map(d => [key(d), d]));
