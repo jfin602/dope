@@ -408,3 +408,24 @@ The previously planned two-prompt correction stack is replaced by one **manual G
 `docs/tasks/c6-flow-overview-priority/one-off-flow-overview-priority.txt`
 
 Do not run this folder through `codex:phase`. The one-off combines the bounded implementation repair, permanent regressions, direct Adaptive SEO GUI replay, final T3 evidence and correction closeout at unchanged `0.6.7`.
+
+
+## October 2, 2026 — Phase 6 map canvas priority correction
+
+After the Flow overview-priority repair, a fresh P7 direct GUI requalification exposes the intended Adaptive SEO behavior but remains Not Green because the focused Subsystem canvas is not immediately readable and the packaged AppImage fails controlled shutdown.
+
+The approved bounded UI correction is `c6-map-canvas-priority` at unchanged package version `0.6.7`.
+
+The correction owns presentation only:
+- one compact icon-first map toolbar;
+- descriptive tooltips, accessible names, keyboard operation and non-color control state;
+- maximum practical center-map canvas area;
+- floating selected-object details with expanded/compact/minimized states;
+- stable selection/focus/trace/source context while overlay state changes;
+- no unnecessary graph re-layout from opening/minimizing details;
+- immediate dark-theme and supported-theme map readability;
+- preservation of the left sMap inspector as the deeper inspection/navigation surface.
+
+It must not change Flow extraction, physical facts/endpoints, aggregation/query semantics, query budgets, canonical architecture, Flow persistence or Planning Map semantics.
+
+Plan this correction as a small stack with implementation/regression work followed by direct GUI qualification. Do not advance the package version. After the correction, resume P7 qualification; P8 remains blocked until P7 is Green. The packaged controlled-shutdown failure remains a separate P7 blocker rather than scope for this UI correction.
