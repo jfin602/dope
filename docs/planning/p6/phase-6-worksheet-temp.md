@@ -43,9 +43,9 @@ Questions to resolve:
 - Which extra evidence upgrades an execution edge with argument/type/payload/schema information?
 - Is serialization/deserialization a Processing node/annotation or a separate Flow interaction?
 
-**Decision:**
+**Decision:** Lock the initial Flow interactions as receives, invokes, reads, writes, calls-external, publishes, consumes, and responds. Do not add a separate returns interaction. A deterministically resolved project call counts as invokes even with no arguments or used return. Data/type/schema details are optional enrichment only when separately evidenced. Serialization/deserialization is Processing metadata unless it is a distinct meaningful execution component.
 
-**Why:**
+**Why:** This keeps Phase 6 focused on useful execution behavior first while allowing richer data semantics to be layered on without requiring full data-lineage analysis.
 
 ---
 
@@ -261,7 +261,7 @@ Questions to resolve:
 
 Before `/prompt-write p6`, promote answers into authoritative Phase 6 docs:
 
-- [ ] Q1 Flow-hop semantics and data-enrichment threshold
+- [x] Q1 Flow-hop semantics and data-enrichment threshold
 - [ ] Q2 domain/snapshot/index ownership
 - [ ] Q3 derived endpoint identity
 - [ ] Q4 Adaptive SEO supported patterns
