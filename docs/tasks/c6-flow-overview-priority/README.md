@@ -1,6 +1,6 @@
 # Correction 6 — Flow Overview Priority
 
-Status: **ASSESSMENT + IMPLEMENTATION PLAN COMPLETE / PROMPTS NOT YET WRITTEN**
+Status: **PROMPTS WRITTEN / READY FOR VALIDATION + EXECUTION**
 Correction folder: `c6-flow-overview-priority`
 Required unchanged version: `0.6.7`
 Activation source: `59573b0dd66935fc78ec1eb0cc34f60644e4f000`
@@ -83,3 +83,14 @@ GET opportunities
 The focused view must no longer be flooded by unrelated calls solely through the shared PostgreSQL endpoint. Representative edges must expose provenance/source navigation. Final candidate release/restart/package/native evidence must be refreshed after the query/UI repair.
 
 A Green correction does not rewrite the original P7 run as Green. It makes Phase 6 eligible to resume the P7/P8 qualification path under fresh evidence.
+
+## Prompt files
+
+- `P1-flow-overview-query-repair.txt` — T2 implementation/regression repair
+- `P2-flow-overview-priority-closeout.txt` — browser/T3 qualification + correction closeout
+
+Validate:
+
+`npm run codex:phase:validate -- c6-flow-overview-priority`
+
+Then run the correction through the phase runner. P2 is the browser/manual handoff.

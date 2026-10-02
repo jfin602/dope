@@ -1,6 +1,6 @@
 # Correction 6 Prompt Assessment — Flow Overview Priority
 
-Status: **APPROVED / READY FOR PROMPT WRITING**
+Status: **APPROVED / PROMPTS WRITTEN / READY FOR EXECUTION**
 Correction folder: `c6-flow-overview-priority`
 Required unchanged package version: `0.6.7`
 Activation source: `59573b0dd66935fc78ec1eb0cc34f60644e4f000`

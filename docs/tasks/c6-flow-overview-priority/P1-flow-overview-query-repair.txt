@@ -1,0 +1,189 @@
+TASK: Correction 6 / P1 — Repair Flow overview query priority
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.6.7`.
+
+GOAL
+
+Repair the Flow overview/query defect exposed by Phase 6 P7 so bounded System/Subsystem views preserve behavioral entry points, do not leak unrelated callers through shared endpoints, and allow valid traces independently of overview truncation.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, current Phase 6 authority, `docs/tasks/p6/P7-flow-dogfooding-evidence.md`, and all `docs/tasks/c6-flow-overview-priority/` authority.
+
+Inspect the exact current implementations/tests for:
+- `packages/software-map/src/flow-query.ts`;
+- `packages/theia-extension/src/browser/flow-map-projection.ts`;
+- `packages/theia-extension/src/browser/physical-map-controller.ts`;
+- `packages/theia-extension/src/browser/physical-map-widget.ts`;
+- focused Flow query/projection/UI tests.
+
+Require:
+- reachable correction activation source `59573b0dd66935fc78ec1eb0cc34f60644e4f000`;
+- package/version graph still exactly `0.6.7`;
+- P7 remains Not Green historical evidence;
+- P8 remains blocked;
+- accepted Adaptive SEO reference is not modified;
+- no root `package-lock.json`.
+
+IMPLEMENTATION
+
+1. FACT-RELATIVE FOCUS
+
+Stop using a shared endpoint's single `anchorNodeId` as generic architecture ownership for every Flow fact that touches that endpoint.
+
+For focus membership:
+- node/code -> endpoint: use the node/code side;
+- endpoint -> node/code: use the node/code side;
+- node/code -> node/code: use the participating node ownership/hierarchy according to the current focus/context rules;
+- endpoint-only relationships require direct evidenced relevance and must not inherit arbitrary scope from first-anchor ownership.
+
+Keep endpoint `anchorNodeId` as provenance/navigation metadata. Do not split one real shared PostgreSQL endpoint into fake per-Subsystem endpoints.
+
+2. SEMANTIC OVERVIEW BEFORE BUDGET
+
+Directional traces continue traversing raw proven Flow facts.
+
+For an untraced System overview, perform semantic reduction before applying visible bounds:
+- select raw facts relevant to the System using fact-relative scope;
+- map code participants to visible Subsystem identity;
+- keep derived endpoints as endpoints;
+- remove same-Subsystem interior implementation interactions from the overview;
+- build compatible semantic interactions;
+- collapse equivalent visible interactions;
+- prioritize behavioral anchors;
+- then apply the existing 100-visible-participant / 200-visible-interaction budget.
+
+Do not spend the visible budget on raw CodeEntities/facts that the System projection will discard.
+
+For Subsystem overview:
+- map to Components when Components exist;
+- otherwise bounded code detail may remain visible;
+- use fact-relative scope;
+- preserve behavioral boundaries before interior invocation volume;
+- keep the same hard limits and truthful truncation.
+
+3. EXPLICIT DETERMINISTIC OVERVIEW PRIORITY
+
+Use an explicit stable overview admission policy independent of Flow fact ID lexical order.
+
+Preferred priority classes:
+1. `receives` / Input boundaries;
+2. `responds` / Output boundaries;
+3. `reads`, `writes`, `calls-external`, `publishes`, `consumes`;
+4. cross-visible-scope `invokes`;
+5. interior implementation `invokes`.
+
+Within each class use deterministic stable tie-breaking.
+
+This is a bounded overview selection policy only; it does not change physical truth.
+
+Permanent invariant: if the focused scope contains evidenced HTTP Inputs, truncation cannot remove every evidenced Input.
+
+4. COMPATIBLE OVERVIEW COLLAPSE
+
+Collapse repeated overview interactions only when all visible semantics match:
+- visible source;
+- visible target;
+- interaction kind;
+- normalized enrichment kind/label semantics;
+- async/retry/error semantics.
+
+Collapsed output must retain deterministic sorted union of:
+- every `originFlowFactId`;
+- physical evidence IDs;
+- compatible enrichment evidence;
+- compatible behavior evidence.
+
+Use a deterministic aggregate ID derived from the visible semantic signature, not first-seen origin order.
+
+Never merge:
+- `reads` with `writes`;
+- different interaction kinds;
+- incompatible schema/data/type/event annotations;
+- incompatible async/retry/error semantics.
+
+5. PROJECTION CONSUMES SEMANTIC OVERVIEW
+
+Adjust `projectFlowMap()` only as necessary so System overview can render query-produced semantic aggregates directly without requiring every raw origin fact to also be present in `result.facts`.
+
+Trace projections continue to render raw trace facts.
+
+Keep projection/layout disposable and presentation-only.
+
+6. TRACE INDEPENDENT OF OVERVIEW SURVIVAL
+
+In `PhysicalMapController.refreshFlow()`, do not require a valid retained selected node/endpoint to appear in the just-fetched bounded overview before issuing a directional trace.
+
+Use the retained selection/current focus and let the existing backend/query project, generation, focus and identity validation fail closed.
+
+Preserve race guards for project, generation, mode, focus, trace and disposal.
+
+7. BOUNDED TRUNCATION PRESENTATION
+
+Keep exact `continueFromIds` in the query result.
+
+Change default UI text to summarize truncation with a continuation-point count, for example:
+`Coverage: truncated · 84 continuation points`.
+
+Do not print the complete raw frontier inline. If IDs are shown, keep them in a bounded/collapsible preview.
+
+DO NOT CHANGE
+
+- Flow ontology/base interaction kinds;
+- 100-node / 200-fact / 32-hop hard limits;
+- accepted Adaptive SEO architecture/state;
+- provider/model requirements;
+- Flow persistence policy;
+- layout-engine dependency policy;
+- Phase 7 AI scope;
+- inherited file-search `ENOTDIR`.
+
+Only touch analyzer/extractor production code if a new focused regression proves a tiny producer compatibility fix is strictly required. Do not broaden P1 into analyzer redesign.
+
+PERMANENT REGRESSION COVERAGE
+
+Extend focused tests to prove:
+- dense System fixture with >100 raw participants/hundreds of invokes remains truncated when appropriate but preserves an evidenced HTTP Input;
+- corresponding Output remains visible when semantic budget permits;
+- hidden interior implementation detail is sacrificed before all behavioral anchors;
+- shared-store A/B/C fixture focused on B does not admit A/C solely because endpoint anchor belongs to A;
+- one shared store endpoint identity is preserved;
+- compatible repeated reads collapse with all origins/evidence;
+- read/write do not collapse;
+- incompatible enrichment does not collapse;
+- incompatible behavior metadata does not collapse;
+- valid directional trace runs even when the selected identity is absent from a deliberately bounded overview;
+- Subsystem-without-Components still prioritizes behavioral boundaries;
+- truncation UI does not dump an unbounded raw-ID list;
+- repeated identical input yields deterministic output.
+
+Retain existing bounds/cycle/branch/join/generation/project/source/race coverage.
+
+VALIDATION
+
+This is T2.
+
+Run only the affected integration surface:
+- `test/unit/software-map-flow-query.test.ts`;
+- `test/unit/flow-map-projection.test.ts`;
+- `test/unit/physical-map-flow-ui.test.ts`;
+- directly affected Software Map backend/index tests if service/query behavior changes;
+- `corepack yarn workspace @dope/software-map build`;
+- `corepack yarn workspace @dope/theia-extension build`;
+- browser build if widget/controller presentation changed;
+- `npm run codex:phase:validate -- c6-flow-overview-priority`;
+- unchanged `0.6.7` / Theia / Electron / no-root-lock checks;
+- `git diff --check`.
+
+Do not run full `npm run check`, restart, AppImage/native packaging or manual Adaptive SEO qualification in P1.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report the repaired scope/budget/priority algorithm, aggregate semantics, trace decoupling, truncation UX, permanent regressions, focused validation, unchanged `0.6.7`, and P2 eligibility.
