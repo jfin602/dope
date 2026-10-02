@@ -1,0 +1,201 @@
+TASK: Correction 6 / P2 — Map inspection overlay, icon controls and focused readability
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.6.7`.
+
+GOAL
+
+Complete the canvas-first map experience by moving persistent details/work UI into a floating expanded/compact/minimized overlay, converting applicable map tools to icon-first controls with explanatory tooltips, and repairing the P7 focused-Flow readability failure.
+
+PREFLIGHT
+
+Require Green P1 focused evidence.
+
+Read:
+- correction README / prompt-assessment.md / implementation-plan.md;
+- P1 prompt and result;
+- current physical-map-widget.ts / dope.css;
+- physical-map-flow-ui.test.ts;
+- planning-map-ui.test.ts;
+- smap-readability.test.ts;
+- dope-theme.test.ts.
+
+LOCKED BOUNDARIES
+
+Do not change:
+- Flow query/extraction/aggregation/budgets;
+- Flow projection semantics such as which items are marked subdued;
+- controller authority or async race guards;
+- canonical architecture;
+- Planning domain/edit semantics;
+- .dope persistence;
+- package version.
+
+OVERLAY
+
+1. Add one presentation-only inspection/work overlay inside the canvas stage.
+
+   Required states:
+   - expanded;
+   - compact;
+   - minimized.
+
+2. Expanded state exposes the full currently available details.
+
+   Flow mode must retain:
+   - coverage/truncation;
+   - diagnostics;
+   - participant list;
+   - edge list;
+   - selected edge kind/source/target;
+   - origin Flow facts;
+   - enrichment/data-semantics state;
+   - evidence/provenance;
+   - Open edge source.
+
+   Planning mode must retain the current rich work/details surface without changing Planning data semantics.
+
+3. Compact state keeps the information needed for orientation and immediate action.
+
+   At minimum retain:
+   - current selected identity/edge/work item if one exists;
+   - coverage/state summary;
+   - primary contextual action(s).
+
+4. Minimized state becomes a tiny recoverable affordance/chip.
+
+   It must not clear:
+   - selected node;
+   - selected Flow edge;
+   - focus;
+   - trace direction;
+   - selected Planning work state.
+
+5. Overlay transitions are presentation-only.
+
+   Changing expanded/compact/minimized must not:
+   - trigger Flow queries solely because the overlay changed;
+   - change `mapFitContext`;
+   - call `fitView`;
+   - alter React Flow nodes/edges;
+   - mutate canonical/planning state.
+
+6. Overlay geometry.
+
+   Use bounded width/height with internal scrolling when expanded.
+
+   Place it away from the graph center where practical, e.g. top/right or bottom/right.
+
+   It overlays the canvas; it must not resize or push the React Flow canvas.
+
+   Do not build a new dockable/draggable panel framework.
+
+ICON-FIRST TOOLBAR
+
+7. Convert applicable toolbar buttons to icon-first controls using Theia/codicon conventions already available in the widget.
+
+   Good candidates include:
+   - Up;
+   - Focus;
+   - zoom in/out;
+   - Fit;
+   - Open source;
+   - Open selected tab;
+   - trace downstream/upstream;
+   - clear trace;
+   - overlay expand/compact/minimize.
+
+8. Every icon-only control must provide:
+   - descriptive `title`/hover tooltip;
+   - `aria-label`;
+   - native button keyboard activation;
+   - focus-visible state;
+   - disabled state where appropriate;
+   - `aria-pressed` or equivalent for toggles;
+   - meaning that does not depend on color alone.
+
+9. Do not force icon-only treatment where it harms clarity.
+
+   Architecture / Flow may remain a compact labeled segmented control if an icon-only version is ambiguous.
+
+   Planning-map selectors and node-color selectors may remain compact selects.
+
+   Dope-specific actions should have explanatory tooltip wording, not just their short command name.
+
+READABILITY
+
+10. Repair the direct P7 failure: the focused Subsystem Flow must be readable immediately.
+
+   Current CSS uses `.dope-flow-subdued { opacity: .45; }`.
+
+   Adjust the visual grammar so:
+   - selected/traced path is clearly strongest;
+   - selected node/edge uses outline/weight/shape in addition to color;
+   - subdued context is still visibly legible;
+   - edge labels/text backgrounds remain readable;
+   - Flow node identity text remains readable;
+   - coverage/diagnostic overlay text remains readable.
+
+   Keep theme-token-based styling.
+
+   Do not hard-code a new brand palette or change the semantic `subdued` flag.
+
+11. Alternate-theme safety.
+
+   The styling must remain usable without Dope Dark-specific variables being active.
+
+   Use Theia semantic tokens/fallbacks.
+
+LEFT INSPECTOR
+
+12. Do not replace the left sMap inspector.
+
+   The floating overlay is immediate map inspection only.
+
+   The left inspector remains the deeper hierarchy/responsibility/evidence/source surface.
+
+PERMANENT TESTS
+
+Add/extend focused regressions proving:
+- overlay has expanded/compact/minimized states;
+- state transitions preserve current controller selection/focus/trace/selected edge;
+- overlay transition code does not call fit/query paths;
+- expanded Flow overlay retains edge evidence and source action;
+- Planning work detail renders through the overlay without changing Planning data;
+- old persistent Flow/details work bands no longer shrink the canvas;
+- icon-only controls have title + aria-label;
+- toolbar controls remain keyboard-native;
+- selected/pressed/disabled state is non-color;
+- Flow subdued styling is more legible while selected Flow is stronger;
+- styles remain theme-token-based;
+- alternate-theme contract remains;
+- left inspector authority/source is not moved into overlay state.
+
+VALIDATION — T2
+
+Run:
+- npm run build:extension
+- node --test test/unit/physical-map-canvas.test.ts test/unit/physical-map-navigation.test.ts test/unit/physical-map-flow-ui.test.ts test/unit/planning-map-ui.test.ts test/unit/smap-readability.test.ts test/unit/dope-theme.test.ts
+- P1/new map-workspace tests
+- new overlay/toolbar tests
+- npm run build:browser
+- git diff --check
+- package-version/no-root-lock checks
+
+Do not package or native-launch the AppImage.
+
+FINAL RESPONSE
+
+Report:
+- overlay implementation and three states;
+- Flow/Planning details preserved;
+- icon/tooltip/accessibility behavior;
+- focused Flow readability changes;
+- proof overlay state does not refit/requery/mutate;
+- focused + browser build evidence;
+- unchanged `0.6.7`;
+- readiness for P3.
