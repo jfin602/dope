@@ -1,4 +1,4 @@
-import type { AnalysisStatus, ArchitectureViolation, Evidence, GraphNode, GraphRelationship, RelationshipKind } from './contracts';
+import type { AnalysisStatus, ArchitectureViolation, Evidence, FlowQuery, FlowQueryResult, GraphNode, GraphRelationship, RelationshipKind } from './contracts';
 import type { ArchitectureDeclaration } from './contracts';
 import type { ArchitectureEvidencePacket, ArchitectureProposal, ProposedArchitectureKind } from './synthesis';
 import type { AnalysisProgressEvent, SynthesisCallAttempt } from './hierarchical-synthesis';
@@ -112,5 +112,6 @@ export interface SoftwareMapService {
     relationshipEdges(request: SoftwareMapPageRequest & { relationshipIds: string[] }): Promise<SoftwareMapPage<GraphRelationship>>;
     evidence(request: SoftwareMapPageRequest & { evidenceIds: string[] }): Promise<SoftwareMapPage<Evidence>>;
     violations(request: SoftwareMapPageRequest & { subsystemId?: string; rule?: ArchitectureViolation['rule'] }): Promise<SoftwareMapPage<ArchitectureViolation>>;
+    flow(request: FlowQuery & { projectHandle: string }): Promise<FlowQueryResult>;
     resolveSource(projectHandle: string, evidenceId: string): Promise<SoftwareMapSourceLocation | undefined>;
 }

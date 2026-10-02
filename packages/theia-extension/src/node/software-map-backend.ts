@@ -9,12 +9,12 @@ import { bootstrapDocumentPresence } from '@dope/code-analysis/lib/node/architec
 import { readSynthesisRun, writeSynthesisRun, clearSynthesisRun, saveSynthesisReviewDraft } from '@dope/code-analysis/lib/node/smap-analysis-file';
 import type { SavedSynthesisRun } from '@dope/code-analysis/lib/node/smap-analysis-file';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
-import { hierarchy, projectPath, relationshipsFor, parseArchitecture, parseAnalysisProgressEvent, suggestArchitectureId, reviewDeclaration, reviewDiagnostics,
+import { hierarchy, projectPath, relationshipsFor, queryStaticFlow, parseArchitecture, parseAnalysisProgressEvent, suggestArchitectureId, reviewDeclaration, reviewDiagnostics,
     HierarchicalSynthesisOrchestrator, SynthesisStageCache, validateArchitectureEvidencePacket, planTargetedRefinement, parseTargetedRefinement } from '@dope/software-map';
 import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, SoftwareMapPageRequest, GraphRelationship, SoftwareMapRelationshipRequest,
     PhysicalMapSnapshot, SoftwareMapClient, SoftwareMapService, ArchitectureEvidencePacket, ArchitectureReview, ArchitectureReviewNode,
     ArchitectureDeclaration, SoftwareMapInitializationStatus, SynthesisProvider, SynthesisSetup, SynthesisSetupResult, AnalysisProgressEvent,
-    TargetedRefinementInput, TargetedRefinementResult, SynthesisDryRunReport } from '@dope/software-map';
+    TargetedRefinementInput, TargetedRefinementResult, SynthesisDryRunReport, FlowQuery, FlowQueryResult } from '@dope/software-map';
 import { LmStudioSynthesisProvider } from './lmstudio-synthesis-provider';
 import { GeminiSynthesisProvider } from './gemini-synthesis-provider';
 
@@ -578,6 +578,13 @@ export class SoftwareMapBackend implements SoftwareMapService {
         return this.page(snapshot, request, snapshot.violations.filter(item =>
             (!request.subsystemId || item.sourceSubsystemId === request.subsystemId || item.targetSubsystemId === request.subsystemId) &&
             (!request.rule || item.rule === request.rule)));
+    }
+    async flow(request: FlowQuery & { projectHandle: string }): Promise<FlowQueryResult> {
+        const root = this.active(request.projectHandle);
+        const snapshot = await this.snapshot(request.projectHandle);
+        this.active(request.projectHandle);
+        if (this.root !== root || this.index.snapshot(root) !== snapshot) throw new Error('Superseded Flow generation');
+        return queryStaticFlow(snapshot, request);
     }
     async resolveSource(projectHandle: string, evidenceId: string) {
         const root = this.active(projectHandle);

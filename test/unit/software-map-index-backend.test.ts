@@ -192,6 +192,18 @@ test('typed backend rebinds a connection across roots, bounds queries, resolves 
     ] }] }, (await b.initializationStatus(second.projectHandle)).declarationFingerprint);
     await a.analyze(first.projectHandle);
     await b.analyze(second.projectHandle);
+    const flowRequest = { projectHandle: first.projectHandle, projectId: 'project:root',
+      generation: (await a.status(first.projectHandle)).publishedGeneration, focusId: 'app' };
+    const firstFlow = await a.flow(flowRequest);
+    assert.equal(firstFlow.kind, 'static');
+    assert.ok(firstFlow.facts.some(fact => fact.kind === 'invokes'));
+    assert.equal(firstFlow.generation, flowRequest.generation);
+    await assert.rejects(a.flow({ ...flowRequest, projectHandle: second.projectHandle }), /Invalid/);
+    await assert.rejects(a.flow({ ...flowRequest, projectId: 'other' }), /Stale/);
+    await a.analyze(first.projectHandle);
+    await assert.rejects(a.flow(flowRequest), /Stale/);
+    const freshFlow = await a.flow({ ...flowRequest, generation: (await a.status(first.projectHandle)).publishedGeneration });
+    assert.deepEqual(freshFlow.facts.map(fact => fact.id), firstFlow.facts.map(fact => fact.id));
     assert.ok(updates.length >= 2);
     assert.equal((await a.violations({ projectHandle: first.projectHandle })).total, 1);
     assert.equal((await b.violations({ projectHandle: second.projectHandle })).total, 0);
@@ -217,6 +229,7 @@ test('typed backend rebinds a connection across roots, bounds queries, resolves 
     await writeFile(source, original);
     const rebound = await a.attach(pathToFileURL(secondRoot).href);
     assert.notEqual(rebound.projectHandle, first.projectHandle);
+    await assert.rejects(a.flow(flowRequest), /Invalid/);
     await assert.rejects(a.status(first.projectHandle), /Invalid/);
     assert.equal((await a.status(rebound.projectHandle)).state, 'ready');
     const count = updates.length;

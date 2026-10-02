@@ -154,21 +154,33 @@ export interface FlowCoverage {
 export interface FlowQuery {
     projectId: string;
     generation: number;
+    /** System or Subsystem whose known Flow is shown. */
     focusId?: string;
+    /** Selected GraphNode or derived endpoint. Omit to clear a trace. */
+    selectedId?: string;
     direction?: 'upstream' | 'downstream';
     maxNodes?: number;
     maxFacts?: number;
     maxHops?: number;
 }
 export interface FlowQueryResult {
+    kind: 'static';
     projectId: string;
     generation: number;
     inputFingerprint: string;
+    focusId?: string;
+    selectedId?: string;
+    direction?: 'upstream' | 'downstream';
+    nodes: GraphNode[];
     facts: PhysicalFlowFact[];
+    /** Direct, one-hop architecture summaries. Traversal always uses facts. */
+    aggregates: PhysicalFlowFact[];
     endpoints: PhysicalFlowEndpoint[];
     coverage: FlowCoverage[];
+    coverageStatus: FlowCoverage['status'] | 'unknown';
     diagnostics: FlowDiagnostic[];
     truncated: boolean;
+    truncation: { nodes: boolean; facts: boolean; hops: boolean; continueDeeper: boolean; continueFromIds: string[] };
 }
 export interface ArchitectureViolation {
     id: string;
