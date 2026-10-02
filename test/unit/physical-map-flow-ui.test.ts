@@ -146,7 +146,7 @@ test('grouped System relationship can drill to a member trace and its Subsystem'
     map.flowQuery = query => {
         queries.push(query);
         return Promise.resolve(query.direction ? { ...result(query.generation), direction: query.direction, aggregates: [] } :
-            { ...result(query.generation), facts: [], nodes: [nodes[1]], endpoints: [],
+            { ...result(query.generation), facts: [raw[0]], nodes: [nodes[1]], endpoints: [input],
                 groups: [{ id: 'flow:group:http-input:a', name: 'Inputs · A', role: 'Input' as const, focusId: 'a',
                     memberIds: ['input'], members: [{ id: 'input', name: 'GET /entry' }] }],
                 aggregates: [{ ...raw[0], id: 'summary', sourceId: 'flow:group:http-input:a', targetId: 'a',

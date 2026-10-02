@@ -77,19 +77,21 @@
 .dope-smap-review-layout section { min-width: 0; margin: 0; padding: 0 8px; border: 0; }
 .dope-smap-review-actions { border-top: 1px solid var(--theia-widget-border, var(--theia-input-border)); margin-top: 20px; padding-top: 12px; }
 @media (max-width: 700px) { .dope-smap-review-layout { grid-template-columns: 1fr; } .dope-smap-review-layout nav { border-right: 0; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); } }
-.dope-physical-map-view { display: flex; flex-direction: column; height: 100%; color: var(--theia-editor-foreground); background: var(--theia-editor-background); }
-.dope-physical-map-view header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
-.dope-physical-map-view h2 { margin: 0; font-size: 16px; }
+.dope-physical-map-view { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; color: var(--theia-editor-foreground); background: var(--theia-editor-background); }
+.dope-physical-map-view .dope-map-toolbar { display: flex; flex: none; align-items: center; gap: 6px; min-width: 0; padding: 4px 8px; overflow-x: auto; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
+.dope-physical-map-view .dope-map-toolbar > * { flex: none; }
+.dope-physical-map-view h2 { margin: 0; font-size: 13px; }
 .dope-physical-map-view button { color: var(--theia-button-foreground); background: var(--theia-button-background); border: 1px solid var(--theia-button-background); padding: 5px 9px; cursor: pointer; }
 .dope-physical-map-view button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-physical-map-view button:disabled { opacity: .5; cursor: default; }
 .dope-physical-map-view header select { color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border, var(--theia-focusBorder)); padding: 5px; }
 .dope-physical-map-view header select:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-physical-map-view header select:disabled { opacity: .5; }
-.dope-physical-map-view nav { padding: 6px 16px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); overflow-wrap: anywhere; }
+.dope-physical-map-view nav { padding: 0 4px; }
 .dope-physical-map-view nav button { background: transparent; color: var(--theia-editor-foreground); border: 0; white-space: normal; overflow-wrap: anywhere; }
-.dope-physical-map-view > p { margin: 8px 16px; color: var(--theia-descriptionForeground); }
-.dope-physical-map-canvas { flex: 1; min-height: 240px; }
+.dope-map-stage { position: relative; flex: 1 1 auto; min-height: 0; min-width: 0; }
+.dope-physical-map-canvas { position: absolute; inset: 0; min-width: 0; min-height: 0; }
+.dope-map-stage > p[role="status"] { position: absolute; left: 8px; bottom: 8px; z-index: 2; max-width: min(60%, 40rem); margin: 0; padding: 4px 8px; pointer-events: none; color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border, var(--theia-input-border)); border-radius: 4px; }
 .dope-physical-map-canvas .react-flow { background: var(--theia-editor-background); }
 .dope-physical-map-canvas .react-flow__node { background: transparent; border: 0; }
 .dope-map-node { box-sizing: border-box; width: 100%; min-height: 100%; padding: 12px; display: flex; flex-direction: column; gap: 5px; color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 2px solid var(--theia-widget-border, var(--theia-input-border)); border-radius: 8px; }
@@ -116,11 +118,12 @@
 .dope-map-edge-drifted .react-flow__edge-path { stroke-dasharray: 7 4; stroke-width: 3; }
 .dope-physical-map-canvas .react-flow__edge-text { fill: var(--theia-editor-foreground); }
 .dope-physical-map-canvas .react-flow__edge-textbg { fill: var(--theia-editor-background); }
-.dope-physical-map-canvas .react-flow__controls button { color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border-color: var(--theia-widget-border, var(--theia-input-border)); }
 .dope-map-mode { display: flex; gap: 2px; }
 .dope-map-mode button[aria-pressed="true"], .dope-flow-bar button:focus-visible, .dope-flow-edge-list button[aria-pressed="true"] { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
-.dope-flow-bar, .dope-flow-panel { padding: 6px 16px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
-.dope-flow-panel { max-height: 190px; overflow: auto; }
+.dope-flow-bar { display: flex; align-items: center; gap: 6px; }
+.dope-flow-bar[hidden], .dope-planning-bar[hidden] { display: none; }
+.dope-flow-panel, .dope-planning-inspection { position: absolute; top: 8px; right: 8px; z-index: 2; box-sizing: border-box; width: min(360px, 45%); max-height: calc(100% - 48px); overflow: auto; padding: 8px; background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border, var(--theia-input-border)); border-radius: 4px; }
+.dope-planning-inspection[hidden], .dope-flow-panel[hidden] { display: none; }
 .dope-flow-panel p { margin: 4px 0; overflow-wrap: anywhere; }
 .dope-flow-panel details button { margin: 4px; }
 .dope-flow-edge-list { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -135,9 +138,10 @@
 .dope-flow-edge .react-flow__edge-path { stroke: var(--theia-editor-foreground); stroke-width: 2; }
 .dope-flow-edge.dope-flow-selected .react-flow__edge-path { stroke-width: 4; }
 .dope-flow-edge.dope-flow-back .react-flow__edge-path { stroke-dasharray: 7 4; }
-.dope-planning-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
-.dope-planning-bar select, .dope-planning-bar input { color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border); padding: 5px; }
-.dope-work-panel { max-height: 210px; overflow: auto; padding: 8px 16px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
+.dope-planning-bar { display: flex; align-items: center; gap: 6px; }
+.dope-planning-bar select, .dope-planning-details input, .dope-planning-details select { color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border); padding: 5px; }
+.dope-planning-details, .dope-work-panel { padding: 4px; }
+.dope-planning-details > *, .dope-work-panel > * { max-width: 100%; overflow-wrap: anywhere; }
 .dope-work-panel h3, .dope-work-panel p { margin: 4px 0; }
 .dope-work-panel button { margin: 2px 4px 2px 0; }
 .dope-work-panel .dope-work-highlight { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import { ReactFlow, Background, Controls, Handle, Position, type ReactFlowInstance, type Edge, type Node } from '@xyflow/react';
+import { ReactFlow, Background, Handle, Position, type ReactFlowInstance, type Edge, type Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { BaseWidget, Message, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { OpenerService, open } from '@theia/core/lib/browser';
@@ -64,6 +64,8 @@ export class PhysicalMapWidget extends BaseWidget {
     private readonly sourceButton = document.createElement('button');
     private readonly colorSelect = document.createElement('select');
     private readonly planningBar = document.createElement('section');
+    private readonly planningDetails = document.createElement('section');
+    private readonly planningOverlay = document.createElement('div');
     private readonly workPanel = document.createElement('section');
     private readonly flowBar = document.createElement('section');
     private readonly flowPanel = document.createElement('section');
@@ -90,6 +92,9 @@ export class PhysicalMapWidget extends BaseWidget {
         this.title.closable = true;
         this.addClass('dope-physical-map-view');
         const bar = document.createElement('header');
+        bar.className = 'dope-map-toolbar';
+        bar.setAttribute('role', 'toolbar');
+        bar.setAttribute('aria-label', 'Map controls');
         this.heading.textContent = 'Physical Map';
         const planningToggle = document.createElement('button');
         planningToggle.type = 'button';
@@ -120,6 +125,12 @@ export class PhysicalMapWidget extends BaseWidget {
         fit.type = 'button';
         fit.textContent = 'Fit Architecture';
         fit.onclick = () => this.fitArchitecture();
+        const zoomIn = document.createElement('button');
+        zoomIn.type = 'button'; zoomIn.textContent = 'Zoom in';
+        zoomIn.onclick = () => void this.flow?.zoomIn();
+        const zoomOut = document.createElement('button');
+        zoomOut.type = 'button'; zoomOut.textContent = 'Zoom out';
+        zoomOut.onclick = () => void this.flow?.zoomOut();
         this.colorSelect.setAttribute('aria-label', 'Selected node color');
         for (const color of nodePalette) {
             const option = document.createElement('option');
@@ -133,18 +144,25 @@ export class PhysicalMapWidget extends BaseWidget {
         };
         const colorLabel = document.createElement('label');
         colorLabel.append('Node color ', this.colorSelect);
-        bar.append(this.heading, planningToggle, this.modeBar, up, this.focusButton, this.tabButton, this.sourceButton, fit, colorLabel);
+        bar.append(this.heading, planningToggle, this.modeBar, up, this.focusButton, this.tabButton, this.sourceButton,
+            zoomIn, zoomOut, fit, colorLabel, this.flowBar, this.planningBar, this.breadcrumbs);
         this.breadcrumbs.setAttribute('aria-label', 'Map focus');
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.canvas.className = 'dope-physical-map-canvas';
         this.planningBar.className = 'dope-planning-bar';
+        this.planningDetails.className = 'dope-planning-details';
+        this.planningOverlay.className = 'dope-planning-inspection';
         this.workPanel.className = 'dope-work-panel';
         this.workPanel.setAttribute('aria-label', 'Planning work');
         this.flowBar.className = 'dope-flow-bar';
         this.flowPanel.className = 'dope-flow-panel';
         this.flowPanel.setAttribute('aria-label', 'Flow inspection');
-        this.node.append(bar, this.planningBar, this.workPanel, this.flowBar, this.flowPanel, this.breadcrumbs, this.status, this.canvas);
+        const stage = document.createElement('div');
+        stage.className = 'dope-map-stage';
+        this.planningOverlay.append(this.planningDetails, this.workPanel);
+        stage.append(this.canvas, this.flowPanel, this.planningOverlay, this.status);
+        this.node.append(bar, stage);
         this.controller = new PhysicalMapController(map, () => this.render(), options?.workspace, options?.focusId);
         this.planningListener = planning.onChange(() => {
             if (planning.planningMode && this.controller.mode === 'flow') this.controller.setMode('architecture');
@@ -194,6 +212,7 @@ export class PhysicalMapWidget extends BaseWidget {
         this.controller.clearPlannedSelectionIfAbsent(projection.nodes.map(node => node.id));
         this.renderPlanningBar();
         this.renderWorkPanel();
+        this.planningOverlay.hidden = !planningMode;
         this.breadcrumbs.replaceChildren();
         const overview = document.createElement('button');
         overview.textContent = 'Project';
@@ -262,7 +281,7 @@ export class PhysicalMapWidget extends BaseWidget {
                 if (!this.fitting && !this.fitRequested) this.controller.setDetail(this.viewport.detail(viewport.zoom, this.controller.detail));
             },
             proOptions: { hideAttribution: true }
-        }, React.createElement(Background), React.createElement(Controls, { showInteractive: false })));
+        }, React.createElement(Background)));
         if (nodes.length && !loading) this.queueFit();
     }
 
@@ -420,7 +439,7 @@ export class PhysicalMapWidget extends BaseWidget {
             onEdgeClick: (_event: React.MouseEvent, edge: Edge) => void controller.inspectFlowEdge(edge.id),
             onInit: (flow: ReactFlowInstance) => { this.flow = flow; this.queueFit(); },
             proOptions: { hideAttribution: true }
-        }, React.createElement(Background), React.createElement(Controls, { showInteractive: false })));
+        }, React.createElement(Background)));
         if (nodes.length && !controller.loading) this.queueFit();
     }
 
@@ -448,14 +467,15 @@ export class PhysicalMapWidget extends BaseWidget {
     }
 
     private renderPlanningBar(): void {
-        const bar = this.planningBar;
-        bar.replaceChildren();
-        if (!this.planning.planningMode) { bar.hidden = true; return; }
+        const bar = this.planningBar, details = this.planningDetails;
+        bar.replaceChildren(); details.replaceChildren();
+        if (!this.planning.planningMode) { bar.hidden = true; details.hidden = true; return; }
         bar.hidden = false;
-        const button = (label: string, action: () => void, disabled = false) => {
+        details.hidden = false;
+        const button = (label: string, action: () => void, disabled = false, parent = details) => {
             const control = document.createElement('button');
             control.type = 'button'; control.textContent = label; control.disabled = disabled;
-            control.onclick = action; bar.append(control); return control;
+            control.onclick = action; parent.append(control); return control;
         };
         const maps = document.createElement('select');
         maps.setAttribute('aria-label', 'Planning Map');
@@ -471,12 +491,12 @@ export class PhysicalMapWidget extends BaseWidget {
         const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = this.planning.showHistory;
         checkbox.onchange = () => this.planning.setHistory(checkbox.checked);
         history.append(checkbox, 'History'); bar.append(history);
-        button('Refresh', () => void this.planning.refresh(), this.planning.loading);
+        button('Refresh', () => void this.planning.refresh(), this.planning.loading, bar);
         const title = document.createElement('input'); title.placeholder = 'Map title'; title.setAttribute('aria-label', 'New map title');
         title.value = this.draftTitle; title.oninput = () => { this.draftTitle = title.value; };
         const objective = document.createElement('input'); objective.placeholder = 'Objective'; objective.setAttribute('aria-label', 'New map objective');
         objective.value = this.draftObjective; objective.oninput = () => { this.draftObjective = objective.value; };
-        bar.append(title, objective);
+        details.append(title, objective);
         button('Create', () => { if (title.value.trim() && objective.value.trim()) {
             void this.planning.create(title.value.trim(), objective.value.trim()); this.draftTitle = ''; this.draftObjective = '';
         } },
@@ -521,7 +541,7 @@ export class PhysicalMapWidget extends BaseWidget {
         if (this.planning.stale?.stale) {
             const summary = document.createElement('p'); summary.className = 'dope-plan-stale-summary';
             summary.textContent = `⚠ Stale map · branches: ${this.planning.stale.affectedBranchIds.join(', ') || 'unresolved'} · transformations: ${this.planning.stale.affectedTransformationIds.join(', ')}`;
-            bar.append(summary);
+            details.append(summary);
             button('Review three-way rebase', () => void this.planning.beginRebase(), !editable);
         }
         if (this.planning.rebasePreview) {
@@ -551,7 +571,7 @@ export class PhysicalMapWidget extends BaseWidget {
                 select.onchange = decide; replacement.onchange = decide;
                 row.append(label, threeWay, select, replacement); section.append(row);
             }
-            bar.append(section);
+            details.append(section);
             button('Accept rebase', () => void this.planning.acceptRebase(), !editable || decisions.length !== result.conflicts.length);
             button('Cancel rebase · keep old basis', () => this.planning.cancelRebase());
         }
@@ -559,7 +579,7 @@ export class PhysicalMapWidget extends BaseWidget {
             const preview = document.createElement('pre');
             const change = this.planning.preview.transformation;
             preview.textContent = `Preview ${change.kind}\n${JSON.stringify(change, null, 2)}`;
-            bar.append(preview);
+            details.append(preview);
             button('Commit change', () => void this.planning.commitEdit(), !editable);
             button('Cancel change', () => this.planning.cancelEdit());
         }
@@ -578,7 +598,7 @@ export class PhysicalMapWidget extends BaseWidget {
             const result = this.planning.adoptionPreview.result;
             const preview = document.createElement('pre');
             preview.textContent = `Adopt Target · ${JSON.stringify(result.scope)}\nSelected: ${result.selectedTransformationIds.join(', ')}\nIncluded dependencies: ${result.includedDependentTransformationIds.join(', ') || 'none'}\nCanonical diff:\n${JSON.stringify(result.changes, null, 2)}\nBlockers: ${result.blockers.join('; ') || 'none'}`;
-            bar.append(preview);
+            details.append(preview);
             button('Accept canonical diff and adopt', () => void this.planning.acceptAdoption(), !editable || !!result.blockers.length);
             button('Cancel adoption', () => this.planning.cancelAdoption());
         }
@@ -589,11 +609,11 @@ export class PhysicalMapWidget extends BaseWidget {
             if (report) {
                 const summary = document.createElement('p');
                 summary.textContent = `Reconciliation · Physical generation ${report.basis.physicalGeneration} · input ${report.basis.physicalInputFingerprint} · ${JSON.stringify(reconciliationRollups(selected).map)}`;
-                bar.append(summary);
+                details.append(summary);
                 for (const result of report.results) {
                     const row = document.createElement('p');
                     row.textContent = projectReconciliationResult(result);
-                    bar.append(row);
+                    details.append(row);
                     if (!result.transformationId || selected.status !== 'active') continue;
                     const change = selected.transformations.find(t => t.id === result.transformationId)!;
                     const options = result.outcome === 'implemented-as-planned' ? [['as-planned', 'Resolve as planned']] :
@@ -607,10 +627,10 @@ export class PhysicalMapWidget extends BaseWidget {
                 }
                 const rollups = reconciliationRollups(selected);
                 for (const [id, counts] of Object.entries(rollups.workItems)) {
-                    const row = document.createElement('p'); row.textContent = `WorkItem ${id}: ${JSON.stringify(counts)}`; bar.append(row);
+                    const row = document.createElement('p'); row.textContent = `WorkItem ${id}: ${JSON.stringify(counts)}`; details.append(row);
                 }
                 for (const [id, counts] of Object.entries(rollups.branches)) {
-                    const row = document.createElement('p'); row.textContent = `Branch ${id}: ${JSON.stringify(counts)}`; bar.append(row);
+                    const row = document.createElement('p'); row.textContent = `Branch ${id}: ${JSON.stringify(counts)}`; details.append(row);
                 }
             }
             if (selected.status === 'active') button('Close out Planning Map', () => void this.planning.closeout(), !this.planning.canCloseOut || !editable);
@@ -619,11 +639,11 @@ export class PhysicalMapWidget extends BaseWidget {
             () => void this.planning.transition(status), this.planning.loading);
         for (const view of ['current', 'target', 'diff'] as const) button(
             view === 'current' ? 'Current only' : view === 'target' ? 'Target only' : 'Diff',
-            () => this.planning.setView(view), this.planning.view === view);
+            () => this.planning.setView(view), this.planning.view === view, bar);
         for (const conflict of this.planning.conflicts) {
             const item = document.createElement('span'); item.className = 'dope-plan-conflict';
             item.textContent = `Conflict: ${conflict.identityId} (${conflict.mapIds.join(' / ')})`;
-            bar.append(item);
+            details.append(item);
         }
     }
 
