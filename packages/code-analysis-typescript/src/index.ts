@@ -6,6 +6,7 @@ import { anonymousCallableId, derivedId, flowFactId, relationshipId } from '@dop
 import type { AnalysisError, CodeEntityNode, Evidence, GraphRelationship, PhysicalFlowFact } from '@dope/software-map';
 import type { CodeAnalysisResult, CodeAnalyzer, AnalysisProject, FrameworkFact } from '@dope/code-analysis';
 import { theiaInversifyExtractor } from './framework-extractor';
+import { extractFlowBoundaries } from './flow-extractor';
 
 const PRODUCER = '@dope/code-analysis-typescript';
 const VERSION = '5.9.3';
@@ -74,6 +75,8 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
         const evidence = new Map<string, Evidence>();
         const frameworkFacts = new Map<string, FrameworkFact>();
         const flowFacts = new Map<string, PhysicalFlowFact>();
+        const flowEndpoints = new Map<string, import('@dope/software-map').PhysicalFlowEndpoint>();
+        const flowDiagnostics = new Map<string, import('@dope/software-map').FlowDiagnostic>();
         const errors = new Map<string, AnalysisError>();
         const projects: AnalysisProject[] = [];
         const configs = new Set<string>();
@@ -261,6 +264,7 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
             };
             for (const file of files) {
                 const path = pathOf(file.fileName)!;
+                extractFlowBoundaries({ file, checker, root, callableId, addEvidence, evidence, flowFacts, flowEndpoints, flowDiagnostics });
                 for (const extractor of [theiaInversifyExtractor]) extractor.extract(file, checker, options, (node, metadata) => {
                     const sourceEvidenceId = addEvidence('framework', file, node, `${metadata.concept}:${metadata.name}`, extractor.producer, extractor.producerVersion);
                     const fact: FrameworkFact = { kind: 'framework', path, sourceEvidenceIds: [sourceEvidenceId],
@@ -341,9 +345,13 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
             nodes: ordered(nodes.values()).map(node => ({ ...node, evidenceIds: [...new Set(node.evidenceIds)].sort() })),
             relationships: ordered(relationships.values()).map(edge => ({ ...edge, evidenceIds: [...new Set(edge.evidenceIds)].sort() })),
             evidence: ordered(evidence.values()),
-            flowFacts: ordered(flowFacts.values()), flowEndpoints: [], flowCoverage: [], flowDiagnostics: [],
+            flowFacts: ordered(flowFacts.values()), flowEndpoints: ordered(flowEndpoints.values()),
+            flowCoverage: [...new Set([...flowDiagnostics.values()].map(item => item.scopeId).filter((id): id is string => !!id))]
+                .sort().map(scopeId => ({ scopeId, status: 'partial' as const,
+                    diagnosticIds: ordered([...flowDiagnostics.values()].filter(item => item.scopeId === scopeId)).map(item => item.id) })),
+            flowDiagnostics: ordered(flowDiagnostics.values()),
             frameworkFacts: [...frameworkFacts.values()].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
-            status: { completeness: !projects.length ? 'failed' : errors.size ? 'partial' : 'complete',
+            status: { completeness: !projects.length ? 'failed' : errors.size || flowDiagnostics.size ? 'partial' : 'complete',
                 errors: [...errors.values()].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) }, reusedSourceFiles };
     }
 }
