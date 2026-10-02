@@ -1,10 +1,10 @@
 # Product Phase 6 — Data Flow Activation
 
-Status: **OWNER APPROVED — ACTIVE FOR PLANNING**
+Status: **OWNER APPROVED — ACTIVE / PLAN APPLIED**
 Date: 2026-10-02
 Package baseline: `0.6.0`
 Activation baseline commit: `710edb362f9881ab41215705db4f08d8daca6293`
-Authority: ADR 0020, current Software Map / Physical Map contracts, Phase 5 owner closeout
+Authority: ADR 0020, `docs/planning/p6/phase-6-plan.md`, current Software Map / Physical Map contracts, Phase 5 owner closeout
 
 ## Entry disposition
 
@@ -78,10 +78,15 @@ Phase 6 qualification should prove, with no model configured, that a developer c
 - observe a branch/fan-out or join;
 - return to Architecture with selection/focus preserved.
 
+## Applied Phase 6 plan
+
+The approved implementation/qualification decomposition is documented in `docs/planning/p6/phase-6-plan.md` and `docs/tasks/p6/README.md`.
+
+Expected versions:
+- P1 `0.6.1` through P8 `0.6.8`.
+
 ## Next workflow
 
-Run `/docs-review` for Phase 6 alignment before creating implementation prompts.
+`/prompt-ass -> /prompt-plan -> /prompt-write p6`
 
-After approval:
-
-`/docs-apply -> /prompt-ass -> /prompt-plan -> /prompt-write p6`
+Do not execute Phase 6 implementation until the executable prompt stack is written and validated.

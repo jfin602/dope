@@ -673,3 +673,54 @@ A review work state may be persisted project-locally so the developer can restar
 The draft is allowed to be temporarily invalid. Dope surfaces deterministic **acceptance blockers** such as invalid/duplicate IDs, invalid containment, unsafe or missing roots and ambiguous exact root ownership. Persisting a blocker does not accept it, and diagnostics never silently decide the architecture for the developer.
 
 Explicit developer acceptance remains the only transition from review work to canonical `.dope/architecture.json` plus accepted `.dope/smap.json`. Explicit cancellation discards the unaccepted work.
+
+## Product Phase 6 — Data Flow model
+
+Data Flow is a **derived Physical Map projection** over existing Software Map identities and evidence.
+
+The durable conceptual shape is:
+
+```text
+Software Map
+  Canonical Architecture
+  Physical Map
+    Architecture projection
+    Data Flow projection
+  Planning Maps
+```
+
+Data Flow does not introduce a canonical `DataFlowMap` artifact or a `.dope/data-flow.json` store.
+
+### Physical flow facts
+
+Phase 6 introduces a presentation-independent physical-flow fact/query vocabulary inside the Software Map boundary. A physical flow fact represents one evidence-backed directional movement or interaction. It may reference existing architecture/code identities and may use stable derived endpoint identities for real external/store/boundary concepts that are not canonical architecture nodes.
+
+Representative flow semantics include:
+- inbound input/request/event;
+- internal invocation/call;
+- transformation/processing;
+- persistence read;
+- persistence write;
+- external request/round trip;
+- response/output;
+- producer/consumer event relationships where deterministic support exists.
+
+Each physical flow fact retains direct evidence/provenance. Optional payload/type/schema/event metadata is present only when deterministic or recorded-runtime evidence establishes it.
+
+**Structural dependency is not flow evidence.** An import, reference or aggregate dependency can help discover candidates, but it cannot by itself produce a Data Flow hop.
+
+### Projection roles
+
+`Input`, `Boundary`, `Transformation`, `Store`, `External` and `Output` describe how an entity participates in a selected flow projection. They are contextual projection roles, not replacements for System / Subsystem / Component / Code identity.
+
+### Uncertainty
+
+Data Flow preserves uncertainty. An evidence-backed interaction with unknown payload remains visible as unknown payload. A missing hop remains a gap; the UI must not invent a connector to make a path look complete.
+
+### Scope and identity
+
+Initial Data Flow is System-first with Subsystem focus. The whole repository is not expanded into every flow detail by default. Architecture <-> Data Flow switching preserves stable selected/focused Software Map identity and source-navigation context.
+
+### Provider boundary
+
+Phase 6 is fully useful without a model provider. AI may later explain physical flow in Phase 7, but model output cannot silently create physical flow facts.

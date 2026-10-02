@@ -13,7 +13,7 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 **Product Phase 5 — Visual Software Planning is OWNER-CLOSED FOR SEQUENCING.** The retained Phase 5 source at `0.5.11` remained Not Green because P11 never completed one clean end-to-end A-I qualification replay and P12 was not executed. The owner explicitly accepted those gaps for sequencing on 2026-10-02; no failed or missing evidence is relabeled Green. The closeout transition commit `710edb362f9881ab41215705db4f08d8daca6293` established the coherent `0.6.0` successor baseline.
 
-**Product Phase 6 — Data Flow is now ACTIVE FOR PLANNING at `0.6.0`.** ADR 0020 defines Data Flow as a provider-free Physical Map projection, not a fourth durable map. No Phase 6 implementation prompt stack exists yet; the next action is Phase 6 documentation review/planning. General AI Presence remains Product Phase 7.
+**Product Phase 6 — Data Flow is ACTIVE / PLAN APPLIED at `0.6.0`.** ADR 0020 and `docs/planning/p6/phase-6-plan.md` define a provider-free Physical Map Data Flow projection, not a fourth durable map. The approved decomposition is P1-P8 (`0.6.1`-`0.6.8`); executable prompts are not written yet. The next action is `/prompt-ass + /prompt-plan + /prompt-write p6`. General AI Presence remains Product Phase 7.
 
 `c5-smap-readability` and the other Phase 5 corrections remain retained implementation/history. Their commit subjects or partial browser observations do not create a standalone Green claim beyond recorded evidence.
 
@@ -68,6 +68,7 @@ Current authority:
 - docs/planning/p5/phase-5-plan.md
 - docs/planning/p5/activation.md
 - docs/planning/p6/activation.md
+- docs/planning/p6/phase-6-plan.md
 - docs/decisions/0004-model-provider-independence.md
 - docs/decisions/0005-progressive-self-development.md
 - docs/decisions/0006-codex-reference-ai-bootstrap.md
@@ -84,6 +85,7 @@ Current authority:
 - docs/decisions/0017-visual-planning-map-and-work-model.md
 - docs/decisions/0018-resumable-smap-review-work-state.md
 - docs/decisions/0019-planning-basis-semantic-identity.md
+- docs/decisions/0020-data-flow-physical-map-projection.md
 
 ## Product premise
 
@@ -247,6 +249,8 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Run a fresh `/docs-review` for Product Phase 6 — Data Flow from the coherent `0.6.0` baseline.
+Phase 6 documentation is applied. Create the executable stack from the approved P1-P8 decomposition:
 
-Do not create Phase 6 implementation prompts until that review is approved and applied. Phase 6 remains provider-free; AI Presence, Agent Mind, mutation authority and delegation stay in Product Phase 7+.
+`/prompt-ass + /prompt-plan + /prompt-write p6`
+
+Do not implement Data Flow before the prompt stack is reviewed/written. Phase 6 remains provider-free. General AI Presence, Agent Mind, mutation authority and delegation stay in Product Phase 7+.

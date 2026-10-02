@@ -379,3 +379,34 @@ While ADR 0019 is authoritative, Phase 5 regression coverage must prove:
 - Planning Map editing remains available after unchanged reanalysis.
 
 A test that merely ignores all basis changes is invalid. The correction must demonstrate both sides: no false stale from Dope metadata/generation, and real stale from software/canonical input changes.
+
+## Product Phase 6 — Data Flow qualification
+
+Phase 6 qualification is provider-free and must distinguish structural dependency evidence from physical flow evidence.
+
+Permanent focused coverage must prove:
+- structural `imports`, `references` and aggregated `depends-on` edges alone do not create Data Flow hops;
+- deterministic flow facts require valid evidence and valid endpoint references;
+- unchanged analysis inputs produce stable flow fact IDs, deterministic ordering and equivalent bounded projection results even when the process-local analysis generation advances;
+- source edits that add/remove supported calls/boundaries/persistence interactions update the corresponding flow after fresh analysis;
+- generic TypeScript call extraction resolves only supported project-code call targets and does not classify every identifier reference as a call;
+- supported framework extractors distinguish inbound boundary, persistence read/write, external request and output semantics without promoting unsupported patterns;
+- payload/type/schema/event labels are absent/unknown when not evidenced;
+- aggregation preserves origin flow fact IDs/evidence for edge inspection;
+- generation/project guards prevent late flow-query results from rendering into another generation/workspace;
+- Architecture <-> Data Flow switching preserves focused/selected architecture identity and source round-trip intent;
+- deterministic directional layout retains stable ordering for unchanged inputs and can represent branch/join/cycle fixtures without claiming synchronous execution.
+
+Phase 6 T3 qualification must directly use a mapped real project such as Adaptive SEO with no model configured and prove:
+- focus a representative System and switch Architecture -> Data Flow;
+- follow one non-trivial real path from an evidence-backed input through processing and persistence and/or an external boundary to an evidence-backed output;
+- inspect representative flow-edge provenance and navigate to source;
+- focus into a Subsystem without forking Software Map identity;
+- observe at least one real branch/fan-out or join, supplemented by a controlled fixture only for unsupported shapes such as cycles/retries when necessary;
+- return to Architecture with selection/focus preserved;
+- restart/reopen and fresh analysis reconstruct equivalent derived flow without a new durable Data Flow store;
+- current aggregate/restart/browser/Electron/package/native evidence for the exact candidate as assigned to the T3 gate.
+
+Unsupported coverage must be visible as partial/unknown rather than presented as a complete program-wide flow claim.
+
+Whole-program taint analysis, arbitrary cross-language lineage, exhaustive SQL/schema lineage, mandatory runtime tracing and AI-generated missing hops are not Phase 6 qualification requirements.

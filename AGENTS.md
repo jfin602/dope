@@ -27,7 +27,7 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-**Current roadmap scope:** Product Phase 5 is owner-closed for sequencing with P11 still Not Green and P12 unexecuted. The owner waiver preserves all missing evidence rather than converting it to Green. Product Phase 6 — Data Flow is active for planning from coherent `0.6.0` baseline `710edb362f9881ab41215705db4f08d8daca6293` under ADR 0020. No Phase 6 implementation stack is approved yet.
+**Current roadmap scope:** Product Phase 5 is owner-closed for sequencing with P11 still Not Green and P12 unexecuted. The owner waiver preserves all missing evidence rather than converting it to Green. Product Phase 6 — Data Flow is **ACTIVE / PLAN APPLIED** from coherent `0.6.0` baseline `710edb362f9881ab41215705db4f08d8daca6293` under ADR 0020 and `docs/planning/p6/phase-6-plan.md`. The approved P1-P8 decomposition is ready for `/prompt-ass -> /prompt-plan -> /prompt-write p6`; no executable Phase 6 prompts exist yet.
 
 Product Phase 5 — Visual Software Planning is **OWNER-CLOSED FOR SEQUENCING**. Its retained P11 result is Not Green and P12 was not executed; see `docs/tasks/p5/closeout.md`. Product Phase 6 — Data Flow is the current planning scope from `0.6.0`. Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved core scope. Architecture-discovery follow-ons remain historical evidence; `c4-smap-storage` and `c4-color-theme` remain GREEN / QUALIFIED at unchanged `0.4.6`.
 
@@ -37,7 +37,20 @@ Phase 5's retained implementation includes center-workspace Physical/Planning Ma
 
 Phase 6 may add only provider-free Data Flow projection capabilities authorized by ADR 0020: evidence-backed directional flow over existing Physical Map identities, source/provenance inspection and architecture/data-flow view switching. It must not create a separate canonical Data Flow database or pull Phase 7 AI Presence, Agent Mind, ProposedAction, tool authority or delegation forward.
 
-Only the narrow provider-independent sMap synthesis boundary and reference adapters already authorized by ADR 0010/0011/0013 remain valid before Phase 7. Phase 5 visual planning itself must remain fully useful with no model configured. The active `c5-smap-readability` correction at unchanged `0.5.11` refines only Physical/Planning Map presentation—semantic LOD, progressive relationship disclosure, full visible labels, orientation and project-scoped node colors—before returning to P11 qualification. Product Phase 6 Data Flow is provider-free and current for planning. General AI Presence begins only in Product Phase 7.
+Only the narrow provider-independent sMap synthesis boundary and reference adapters already authorized by ADR 0010/0011/0013 remain valid before Phase 7. Phase 5 visual planning remains retained owner-closed implementation with no model requirement. Product Phase 6 Data Flow is provider-free and current. General AI Presence begins only in Product Phase 7.
+
+
+### Phase 6 Data Flow laws
+
+- Data Flow is derived Physical Map truth, not canonical architecture and not a new persisted map.
+- `import`, `reference`, or architecture `depends-on` alone is never sufficient proof that data moved between two points.
+- A rendered flow hop requires a dedicated deterministic physical flow fact with traceable evidence or an explicit recorded runtime observation.
+- Flow roles such as Input / Boundary / Transformation / Store / External / Output are projection roles and may vary by focused path; they are not new architecture node kinds.
+- Unknown payload/path details remain unknown; analyzers must not infer a missing hop simply to complete a path.
+- Flow queries are generation-scoped and bounded. Late results from another project/generation cannot publish into the current projection.
+- Architecture and Data Flow projections share stable Software Map identity, focus, selection and source-navigation context.
+- Initial Phase 6 uses deterministic layered directional layout; do not add an automatic layout-engine dependency unless qualification demonstrates a concrete need.
+- Phase 6 may deepen TypeScript/JavaScript and bounded framework extractors for the Adaptive SEO qualification slice. It does not promise whole-program taint/data-lineage completeness or cross-language completeness.
 
 Qualification requirements are phase-aware.
 

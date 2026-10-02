@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 6 — Data Flow is **ACTIVE FOR PLANNING** from coherent baseline `0.6.0` established by Phase 5 owner-close transition `710edb362f9881ab41215705db4f08d8daca6293`. Product Phase 5 is owner-closed for sequencing; its P11 remains Not Green and P12 was not executed.
+Current stage: Product Phase 6 — Data Flow is **ACTIVE / PLAN APPLIED** from coherent baseline `0.6.0` established by Phase 5 owner-close transition `710edb362f9881ab41215705db4f08d8daca6293`. Product Phase 5 is owner-closed for sequencing; its P11 remains Not Green and P12 was not executed. The approved Phase 6 decomposition is P1-P8 (`0.6.1`-`0.6.8`); executable prompts are the next workflow.
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -59,7 +59,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — Physical Map Load | One-off `0.5.11` repair after accepted Adaptive SEO architecture loads in the inspector but the center Physical Map remains stuck at Loading. Remove duplicate Software Map channel/attach ownership if confirmed, preserve one shared published map state, and correct stale Phase 3/theme qualification assertions. P11 remains the qualification gate. |
 | Correction c5 — Planning Basis Isolation | `0.5.11` correction after P11 reached durable Planning Maps but ordinary `.dope/planning-maps.json` persistence changed Physical Map identity and unchanged reanalysis falsely staled plans. Isolate `.dope/` from generic analysis inputs and make generation observation provenance rather than semantic staleness. |
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
-| Product Phase 6 — Data Flow | **ACTIVE FOR PLANNING at `0.6.0`.** Dope explains how information moves through software. A developer can follow evidence-backed inputs, transformations, stores, external boundaries and outputs through the same Physical Map identities without a model provider. |
+| Product Phase 6 — Data Flow | **ACTIVE / PLAN APPLIED at `0.6.0`.** Dope explains how information moves through software through evidence-backed Physical Map flow facts and a directional projection. Approved stack: P1-P8 (`0.6.1`-`0.6.8`), with Adaptive SEO direct qualification at P7 and evidence-only closeout at P8. |
 | Product Phase 7 — AI Presence | AI understands Dope through Dope-owned project state, architecture, Data Flow, Planning Map context and provider-independent read-only assistance. |
 | Product Phase 8 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 9 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
@@ -773,32 +773,30 @@ The correction is authorized now at unchanged `0.5.11` from the recorded activat
 
 ## Product Phase 6 — Data Flow
 
+Status: **ACTIVE / PLAN APPLIED**
+Baseline: `0.6.0`
+Authority: ADR 0020 and `docs/planning/p6/phase-6-plan.md`
+
 Purpose:
 Make the Software Map explain how information moves through implemented software, from system inputs through processing, storage and external boundaries to outputs.
 
-Initial scope:
-- provider-free deterministic Data Flow projection over the existing Physical Map;
-- **Architecture / Data Flow** view switching over the same stable Software Map identities;
-- System-first scope, with Subsystem focus and the same Focus / Up / source-navigation context;
-- directional layouts optimized for input -> processing -> output comprehension without claiming execution itself is linear;
-- evidence-backed inputs, outputs, transformations, stores, external boundaries and producer/consumer relationships;
-- payload/type/schema/event identity only when deterministic or recorded-runtime evidence supports it;
-- explicit unknown flow/payload state rather than fabricated certainty;
-- branches, joins, fan-out, cycles, retries and external round trips remain representable;
-- flow evidence/provenance and round-trip source navigation;
-- analyzer/query extensions for HTTP/API boundaries, framework routes, symbol/type flow, persistence, jobs/events/queues and external clients where supported;
-- Input / Boundary / Transformation / Store / External / Output are projection roles, not new canonical architecture node kinds;
-- no model/provider requirement;
-- no AI mutation/delegation;
-- no requirement for live runtime tracing.
+Locked implementation order:
+1. `0.6.1` — physical flow domain/evidence contracts;
+2. `0.6.2` — generic TypeScript internal-call flow extraction;
+3. `0.6.3` — Adaptive SEO boundary vertical slice: supported Express/PostgreSQL/external extraction;
+4. `0.6.4` — generation-scoped Data Flow query/path aggregation;
+5. `0.6.5` — pure directional projection and deterministic layered layout;
+6. `0.6.6` — Architecture/Data Flow UI, edge provenance and source navigation;
+7. `0.6.7` — direct Adaptive SEO GUI/T3 qualification;
+8. `0.6.8` — evidence-only closeout.
 
-Data Flow is a **Physical Map projection**, not a separate `DataFlowMap` database or new architecture authority. Switching Architecture <-> Data Flow preserves selected/focused System / Subsystem / Component / CodeEntity identity. Static source/framework evidence and recorded runtime observations may establish physical flow; AI interpretation never silently becomes flow evidence.
+Core truth rule:
+`import/reference/dependency` relationships are not, by themselves, Data Flow. Every rendered flow hop requires dedicated evidence-backed physical flow semantics.
 
-Phase 6 starts only after Phase 5 qualification/closeout establishes the `0.6.0` successor baseline. The Phase 5 P11/P12 qualification contract is unchanged by this insertion.
+Initial scope remains provider-free, System-first with Subsystem focus, and reuses the same stable Software Map identities. No separate Data Flow database, AI explanation, mandatory runtime tracer or Planning Map flow editing is introduced.
 
 Exit condition:
-
-With no model configured, a developer can open an initialized real project, focus a representative System, switch from Architecture to Data Flow, follow meaningful information through at least one non-trivial path containing an input boundary, transformation, persistence and/or external interaction, downstream processing and output, inspect representative flow evidence, navigate it to source, focus into a Subsystem, observe at least one branch/fan-out or join, and return to Architecture without losing stable identity or context.
+With no model configured, a developer can focus a real System, switch Architecture -> Data Flow, follow a non-trivial evidence-backed input -> processing -> persistence/external -> output path, inspect representative edge provenance/source, observe branch/fan-out or join, focus a Subsystem and return to Architecture without losing identity/context.
 
 ## Product Phase 7 — AI Presence
 

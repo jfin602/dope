@@ -642,3 +642,72 @@ Planning Map basis has two layers:
 A generation increase with unchanged semantic basis means the same inputs were observed again; it is not itself a software change and must not mark a Planning Map stale. Generation remains required for exact snapshot/query/preview race guards so data from different published observations cannot be mixed.
 
 Code should use explicit semantic-basis comparison where deciding whether planning intent is stale and exact-observation comparison where validating a concrete in-flight snapshot. Do not use raw whole-object equality when the intended question is semantic staleness.
+
+## Phase 6 physical-flow contracts
+
+Phase 6 deepens the Software Map evidence/query layer before adding directional presentation.
+
+### Domain separation
+
+The existing `GraphRelationship` dependency/structure graph remains useful for architecture. Data Flow must not reinterpret every `imports`, `references` or aggregated `depends-on` edge as information movement.
+
+Add a separate language-independent physical-flow contract in `@dope/software-map` (exact type/file names may follow implementation style). The contract owns:
+- deterministic/stable flow fact identity for unchanged inputs;
+- source and target references to existing Software Map identities or stable derived physical endpoints;
+- typed directional flow semantics;
+- zero or more contextual projection roles;
+- evidence IDs and optional originating lower-level flow-fact IDs for aggregation;
+- optional payload/type/schema/event label only when evidenced;
+- explicit unknown/unsupported detail rather than fabricated values.
+
+Derived physical endpoints such as an HTTP ingress, PostgreSQL store, queue or external service may participate in Data Flow without becoming canonical Systems/Subsystems/Components.
+
+### Evidence discipline
+
+A physical flow fact is accepted only when supported by deterministic syntax/semantic/framework evidence or explicit recorded-runtime observation.
+
+Negative invariant:
+
+```text
+import != call
+reference != value flow
+dependency != data flow
+```
+
+Dependency relationships may guide candidate discovery or aggregation but cannot independently establish a flow hop.
+
+### Analyzer strategy
+
+The first implementation remains TypeScript/JavaScript-first and qualifies against Adaptive SEO.
+
+Phase 6 should add:
+1. generic TypeScript call/invocation evidence using compiler/type-checker-resolved `CallExpression` targets when the callee resolves to project code;
+2. bounded framework/boundary extractors sufficient for a real Adaptive SEO path, initially targeting supported Express-style inbound request/response handling, PostgreSQL persistence reads/writes and deterministic external-client boundaries where present.
+
+Do not promise arbitrary Node framework support or whole-program value/taint analysis.
+
+Architecture-synthesis `FrameworkFact` remains synthesis evidence. Physical Data Flow should use dedicated physical-flow facts/evidence rather than promoting synthesis-oriented document/framework hints into physical truth.
+
+### Query boundary
+
+Expose a provider-independent, generation-scoped bounded Data Flow query in the Software Map service. It should:
+- accept focused architecture identity/scope and bounded options;
+- aggregate lower-level flow facts to the active System/Subsystem detail level without losing origin/evidence traceability;
+- preserve branches, joins, cycles and repeated/external round trips;
+- report unsupported/truncated/unknown detail honestly;
+- produce deterministic ordering and stable IDs for unchanged inputs;
+- reject mixed-generation or stale-project results.
+
+The backend, not React Flow, owns flow selection/aggregation semantics.
+
+### Presentation boundary
+
+The existing center Physical Map tab family owns both Architecture and Data Flow modes. Do not create a second widget/controller state owner solely for Data Flow.
+
+Architecture/Data Flow switching preserves workspace, focus, selected architecture identity and source-navigation context. Data Flow edges are inspectable; selecting a flow hop must make its evidence/provenance and source location available through Dope-owned UI/service paths.
+
+Initial layout is deterministic layered directional layout implemented in Dope presentation/projection code. An external automatic layout engine is deferred unless real qualification demonstrates the bounded layout is inadequate.
+
+### Persistence
+
+Physical flow facts/projections are rebuildable derived state. Phase 6 introduces no required `.dope/data-flow.json`. Repository source plus canonical `.dope` state must be sufficient to regenerate equivalent flow from identical supported inputs.

@@ -359,3 +359,26 @@ Before implementation, use the ordinary documentation workflow:
 `/docs-review -> /docs-apply -> /prompt-ass -> /prompt-plan -> /prompt-write p6`
 
 Do not require Phase 5 P11/P12 Green as an additional sequencing prerequisite; the owner waiver is the entry disposition. Do not erase or rewrite Phase 5 evidence.
+
+## October 2, 2026 — Phase 6 Data Flow plan applied
+
+Phase 6 documentation review is approved/applied at coherent baseline `0.6.0`.
+
+Authority:
+- ADR 0020;
+- `docs/planning/p6/activation.md`;
+- `docs/planning/p6/phase-6-plan.md`.
+
+The approved phase stack is:
+- P1 `0.6.1`: physical flow domain/evidence contracts — T1 — GPT-6 Sol High;
+- P2 `0.6.2`: generic TypeScript internal-call extraction — T1 — GPT-6 Sol High;
+- P3 `0.6.3`: supported Express/PostgreSQL/external boundary vertical slice — T2 — GPT-6 Sol High;
+- P4 `0.6.4`: Data Flow query/path aggregation and generation guards — T2 — GPT-6 Sol High;
+- P5 `0.6.5`: directional projection + deterministic layered layout — T1 — GPT-6 Sol High;
+- P6 `0.6.6`: Architecture/Data Flow UI + edge provenance/source navigation — T2 — GPT-6 Sol High;
+- P7 `0.6.7`: Adaptive SEO direct browser/T3 qualification — GPT-6 Sol High — Browser required;
+- P8 `0.6.8`: evidence-only closeout — GPT-6 Sol Medium.
+
+Prompt files are not created by `/docs-apply`. Next workflow is `/prompt-ass -> /prompt-plan -> /prompt-write p6`.
+
+Phase 6 truth rule: dependency/import/reference relationships alone cannot be emitted as physical Data Flow. Dedicated physical flow evidence is required.
