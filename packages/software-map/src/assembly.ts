@@ -1,10 +1,14 @@
 import { assignOwnership, aggregateDependencies, createSnapshot, relationshipId, validateSubsystemDependencies } from './graph';
-import type { ArchitectureDeclaration, Evidence, GraphNode, GraphRelationship, PhysicalMapSnapshot, SnapshotMetadata } from './contracts';
+import type { ArchitectureDeclaration, Evidence, FlowCoverage, FlowDiagnostic, GraphNode, GraphRelationship, PhysicalFlowEndpoint, PhysicalFlowFact, PhysicalMapSnapshot, SnapshotMetadata } from './contracts';
 
 export interface AnalyzedCode {
     nodes: Extract<GraphNode, { kind: 'code' }>[];
     relationships: GraphRelationship[];
     evidence: Evidence[];
+    flowFacts?: PhysicalFlowFact[];
+    flowEndpoints?: PhysicalFlowEndpoint[];
+    flowCoverage?: FlowCoverage[];
+    flowDiagnostics?: FlowDiagnostic[];
 }
 
 /** Combine canonical declarations with source facts without persisting the result. */
@@ -37,5 +41,6 @@ export function assemblePhysicalMap(metadata: SnapshotMetadata, architecture: Ar
     const base = createSnapshot(metadata, nodes, relationships, evidence);
     const aggregates = (['component', 'subsystem', 'system'] as const).flatMap(level => aggregateDependencies(base, level));
     return createSnapshot(metadata, nodes, [...relationships, ...aggregates], evidence,
-        validateSubsystemDependencies(architecture, aggregates.filter(edge => nodes.some(node => node.id === edge.sourceId && node.kind === 'subsystem'))));
+        validateSubsystemDependencies(architecture, aggregates.filter(edge => nodes.some(node => node.id === edge.sourceId && node.kind === 'subsystem'))),
+        code.flowFacts, code.flowEndpoints, code.flowCoverage, code.flowDiagnostics);
 }

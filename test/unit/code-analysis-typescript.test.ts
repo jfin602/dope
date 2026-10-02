@@ -5,10 +5,72 @@ import { join } from 'node:path';
 import test from 'node:test';
 import ts from 'typescript';
 import { TypeScriptAnalyzer } from '../../packages/code-analysis-typescript/lib/index.js';
-import { derivedId } from '../../packages/software-map/lib/index.js';
+import { anonymousCallableId, createSnapshot, derivedId } from '../../packages/software-map/lib/index.js';
 
 const fixture = new URL('../fixtures/code-analysis/', import.meta.url).pathname;
 const analyzer = new TypeScriptAnalyzer();
+
+test('project invocations retain callable identity, call-site proof and deterministic output', () => {
+  const first = analyzer.analyze(fixture);
+  const repeat = analyzer.analyze(fixture);
+  assert.deepEqual(first.flowFacts, repeat.flowFacts);
+  const nodes = new Map(first.nodes.map(node => [node.id, node]));
+  const evidence = new Map(first.evidence.map(item => [item.id, item]));
+  const calls = first.flowFacts.filter(fact => evidence.get(fact.evidenceIds[0])?.path === 'src/invocation.ts');
+  const call = (source: string) => calls.find(fact => {
+    const proof = evidence.get(fact.evidenceIds[0])!;
+    const text = readFileSync(join(fixture, proof.path!), 'utf8');
+    return text.slice(proof.span!.start, proof.span!.start + proof.span!.length) === source;
+  });
+  const alias = calls.find(fact => nodes.get(fact.sourceId)?.name === 'execute' && fact.targetId === call('aliased()')?.targetId &&
+    !fact.behavior && evidence.get(fact.evidenceIds[0])?.span?.line === 4)!;
+  assert.equal(nodes.get(alias.sourceId)?.name, 'execute');
+  assert.equal(nodes.get(alias.targetId)?.name, 'ping');
+  assert.equal(nodes.get(call('new Worker().run()')!.targetId)?.name, 'Worker.run');
+  assert.equal(nodes.get(call('cycleA()')!.targetId)?.name, 'cycleA');
+  assert.ok(first.flowFacts.some(fact => nodes.get(fact.sourceId)?.name === 'cycleA' && nodes.get(fact.targetId)?.name === 'cycleB'));
+  assert.ok(first.flowFacts.some(fact => nodes.get(fact.sourceId)?.name === 'cycleB' && nodes.get(fact.targetId)?.name === 'cycleA'));
+  assert.ok(first.flowFacts.some(fact => nodes.get(fact.sourceId)?.name === 'recur' && fact.sourceId === fact.targetId));
+  const callbacks = calls.filter(fact => nodes.get(fact.sourceId)?.analyzerKind === 'anonymous-callable');
+  assert.equal(callbacks.length, 3);
+  for (const fact of callbacks) {
+    const caller = nodes.get(fact.sourceId)!;
+    assert.equal(caller.codeKind, 'other');
+    assert.equal(caller.symbol, undefined);
+    assert.equal(nodes.get(caller.parentId!)?.name, 'execute');
+    const sourceProof = evidence.get(caller.evidenceIds[0])!;
+    assert.equal(caller.id, anonymousCallableId(sourceProof.path!, sourceProof.span!.start, sourceProof.span!.length));
+    assert.equal(nodes.get(fact.targetId)?.name, 'ping');
+  }
+  assert.equal(nodes.get(call('arrow()')!.targetId)?.analyzerKind, 'anonymous-callable');
+  assert.equal(nodes.get(call('expression()')!.targetId)?.analyzerKind, 'anonymous-callable');
+  const awaited = call('aliased()')!;
+  assert.ok(calls.some(fact => fact.targetId === awaited.targetId && fact.behavior?.async));
+  const asyncFact = calls.find(fact => fact.behavior?.async)!;
+  const behaviorProof = evidence.get(asyncFact.behavior!.evidenceIds[0])!;
+  const source = readFileSync(join(fixture, behaviorProof.path!), 'utf8');
+  assert.equal(source.slice(behaviorProof.span!.start, behaviorProof.span!.start + behaviorProof.span!.length), 'await (aliased())');
+  for (const fact of first.flowFacts) {
+    const proof = evidence.get(fact.evidenceIds[0])!;
+    assert.equal(fact.kind, 'invokes');
+    assert.equal(proof.class, 'semantic');
+    assert.equal(proof.flowKind, 'invokes');
+    assert.ok(proof.path && proof.span && proof.span.length > 0);
+    assert.ok(proof.span.start + proof.span.length <= readFileSync(join(fixture, proof.path), 'utf8').length);
+    assert.ok(nodes.has(fact.sourceId) && nodes.has(fact.targetId));
+    assert.equal(fact.enrichment, undefined);
+  }
+  assert.ok(!first.flowFacts.some(fact => evidence.get(fact.evidenceIds[0])?.path === 'src/invocation-reference.ts'));
+  assert.ok(!calls.some(fact => ['Math.max(1, 2)', 'callback()'].includes(readFileSync(join(fixture, 'src/invocation.ts'), 'utf8').slice(evidence.get(fact.evidenceIds[0])!.span!.start, evidence.get(fact.evidenceIds[0])!.span!.start + evidence.get(fact.evidenceIds[0])!.span!.length))));
+  assert.ok(!first.flowFacts.some(fact => evidence.get(fact.evidenceIds[0])?.path === 'src/missing.ts'));
+  assert.ok(!first.flowFacts.some(fact => evidence.get(fact.evidenceIds[0])?.path === 'src/legacy.js'));
+  assert.ok(first.relationships.some(edge => edge.kind === 'imports' && edge.sourceId === derivedId('module', 'src/invocation.ts') && edge.targetId === derivedId('module', 'src/invoked.ts')));
+  const validated = createSnapshot({ projectId: 'project', generation: 1, inputFingerprint: 'fixture', analysis: first.status },
+    [{ id: 'project', kind: 'project', name: 'Project', evidenceIds: [] },
+      ...first.nodes.map(node => node.codeKind === 'file' ? { ...node, parentId: 'project' } : node)],
+    first.relationships, first.evidence, [], first.flowFacts);
+  assert.deepEqual(validated.flowFacts.map(fact => fact.id), first.flowFacts.map(fact => fact.id));
+});
 
 test('configured TS/JS projects, references and semantic edges are deterministic with source evidence', () => {
   const first = analyzer.analyze(fixture);

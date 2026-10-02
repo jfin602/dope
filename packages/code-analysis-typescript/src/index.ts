@@ -2,8 +2,8 @@ import { readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import * as ts from 'typescript';
-import { derivedId, relationshipId } from '@dope/software-map';
-import type { AnalysisError, CodeEntityNode, Evidence, GraphRelationship } from '@dope/software-map';
+import { anonymousCallableId, derivedId, flowFactId, relationshipId } from '@dope/software-map';
+import type { AnalysisError, CodeEntityNode, Evidence, GraphRelationship, PhysicalFlowFact } from '@dope/software-map';
 import type { CodeAnalysisResult, CodeAnalyzer, AnalysisProject, FrameworkFact } from '@dope/code-analysis';
 import { theiaInversifyExtractor } from './framework-extractor';
 
@@ -73,6 +73,7 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
         const relationships = new Map<string, GraphRelationship>();
         const evidence = new Map<string, Evidence>();
         const frameworkFacts = new Map<string, FrameworkFact>();
+        const flowFacts = new Map<string, PhysicalFlowFact>();
         const errors = new Map<string, AnalysisError>();
         const projects: AnalysisProject[] = [];
         const configs = new Set<string>();
@@ -238,6 +239,26 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
         for (const { program, files, options } of programs) {
             const checker = program.getTypeChecker();
             const canonical = (symbol: ts.Symbol | undefined): ts.Symbol | undefined => symbol && symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+            const callableId = (declaration: ts.Node): string | undefined => {
+                const file = declaration.getSourceFile();
+                const path = pathOf(file.fileName);
+                if (!path || !included.has(path)) return undefined;
+                if ((ts.isFunctionDeclaration(declaration) || ts.isMethodDeclaration(declaration)) && declaration.body && named(declaration))
+                    return symbolId(checker.getSymbolAtLocation(declaration.name));
+                if (ts.isArrowFunction(declaration) || ts.isFunctionExpression(declaration)) {
+                    const location = span(file, declaration);
+                    const id = anonymousCallableId(path, location.start, location.length);
+                    let parentId = moduleIds.get(path)!;
+                    for (let parent = declaration.parent; parent && parent !== file; parent = parent.parent) {
+                        if (ts.isFunctionLike(parent)) { parentId = callableId(parent) ?? parentId; break; }
+                    }
+                    addNode(id, path, `${path}:${location.line}:${location.column}`, 'other', 'anonymous-callable', parentId,
+                        addEvidence('syntax', file, declaration, id));
+                    addEdge('contains', parentId, id, file, declaration);
+                    return id;
+                }
+                return undefined;
+            };
             for (const file of files) {
                 const path = pathOf(file.fileName)!;
                 for (const extractor of [theiaInversifyExtractor]) extractor.extract(file, checker, options, (node, metadata) => {
@@ -261,6 +282,28 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
                     }
                     if (ts.isCallExpression(node) && node.expression.getText(file) === 'require' && node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0])) {
                         resolveImport(node.arguments[0], false);
+                    }
+                    if (ts.isCallExpression(node) && !(ts.isIdentifier(node.expression) && node.expression.text === 'require')) {
+                        const declaration = checker.getResolvedSignature(node)?.declaration;
+                        const targetId = declaration && callableId(declaration);
+                        let callerId: string | undefined = moduleId;
+                        for (let parent = node.parent; parent && parent !== file; parent = parent.parent) {
+                            if (ts.isFunctionLike(parent)) { callerId = callableId(parent); break; }
+                        }
+                        if (callerId && targetId) {
+                            const discriminator = `${path}:${node.getStart(file)}:${node.getWidth(file)}`;
+                            const id = flowFactId('invokes', callerId, targetId, discriminator);
+                            const evidenceId = addEvidence('semantic', file, node, id);
+                            evidence.get(evidenceId)!.flowKind = 'invokes';
+                            let expression: ts.Node = node;
+                            while (ts.isParenthesizedExpression(expression.parent)) expression = expression.parent;
+                            const awaited = ts.isAwaitExpression(expression.parent) ? expression.parent : undefined;
+                            const behaviorEvidenceId = awaited ? addEvidence('semantic', file, awaited, `${id}:async`) : undefined;
+                            if (behaviorEvidenceId) evidence.get(behaviorEvidenceId)!.flowBehavior = 'async';
+                            const fact: PhysicalFlowFact = { id, kind: 'invokes', sourceId: callerId, targetId, discriminator, evidenceIds: [evidenceId],
+                                ...(behaviorEvidenceId ? { behavior: { async: true, evidenceIds: [behaviorEvidenceId] } } : {}) };
+                            flowFacts.set(id, fact);
+                        }
                     }
                     if (named(node) && (ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isFunctionDeclaration(node) ||
                         ts.isMethodDeclaration(node) || ts.isMethodSignature(node) || ts.isVariableDeclaration(node) ||
@@ -298,6 +341,7 @@ export class TypeScriptAnalyzer implements CodeAnalyzer {
             nodes: ordered(nodes.values()).map(node => ({ ...node, evidenceIds: [...new Set(node.evidenceIds)].sort() })),
             relationships: ordered(relationships.values()).map(edge => ({ ...edge, evidenceIds: [...new Set(edge.evidenceIds)].sort() })),
             evidence: ordered(evidence.values()),
+            flowFacts: ordered(flowFacts.values()), flowEndpoints: [], flowCoverage: [], flowDiagnostics: [],
             frameworkFacts: [...frameworkFacts.values()].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
             status: { completeness: !projects.length ? 'failed' : errors.size ? 'partial' : 'complete',
                 errors: [...errors.values()].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) }, reusedSourceFiles };
