@@ -83,14 +83,14 @@
 .dope-physical-map-view button { color: var(--theia-button-foreground); background: var(--theia-button-background); border: 1px solid var(--theia-button-background); padding: 5px 9px; cursor: pointer; }
 .dope-physical-map-view button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-physical-map-view button:disabled { opacity: .5; cursor: default; }
-.dope-physical-map-view nav { padding: 6px 16px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
-.dope-physical-map-view nav button { background: transparent; color: var(--theia-editor-foreground); border: 0; }
+.dope-physical-map-view nav { padding: 6px 16px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); overflow-wrap: anywhere; }
+.dope-physical-map-view nav button { background: transparent; color: var(--theia-editor-foreground); border: 0; white-space: normal; overflow-wrap: anywhere; }
 .dope-physical-map-view > p { margin: 8px 16px; color: var(--theia-descriptionForeground); }
 .dope-physical-map-canvas { flex: 1; min-height: 240px; }
 .dope-physical-map-canvas .react-flow { background: var(--theia-editor-background); }
 .dope-physical-map-canvas .react-flow__node { background: transparent; border: 0; }
-.dope-map-node { box-sizing: border-box; width: 100%; height: 100%; padding: 12px; display: flex; flex-direction: column; gap: 5px; overflow: hidden; color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 2px solid var(--theia-widget-border, var(--theia-input-border)); border-radius: 8px; }
-.dope-map-node strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dope-map-node { box-sizing: border-box; width: 100%; min-height: 100%; padding: 12px; display: flex; flex-direction: column; gap: 5px; color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 2px solid var(--theia-widget-border, var(--theia-input-border)); border-radius: 8px; }
+.dope-map-node strong { font-size: 14px; white-space: normal; overflow-wrap: anywhere; }
 .dope-map-system { border-width: 3px; border-radius: 14px; }
 .dope-map-system strong { font-size: 18px; }
 .dope-map-subsystem { border-radius: 5px; }
@@ -101,7 +101,7 @@
 .dope-map-declared-only { border-style: dashed; }
 .dope-map-drifted { border-style: double; border-width: 5px; border-color: var(--theia-editorWarning-foreground, var(--theia-focusBorder)); }
 .dope-map-selected .dope-map-node { outline: 3px solid var(--theia-focusBorder); outline-offset: 2px; }
-.dope-map-context .dope-map-node { border-style: dotted; }
+.dope-map-context .dope-map-node { background: var(--theia-editor-background); }
 .dope-map-kind { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--theia-descriptionForeground); }
 .dope-map-badge { align-self: flex-start; font-size: 10px; padding: 2px 5px; border: 1px solid currentColor; border-radius: 3px; }
 .dope-map-edge .react-flow__edge-path { stroke: var(--theia-editor-foreground); stroke-width: 2; }
@@ -128,6 +128,7 @@
 .dope-plan-stale { outline: 2px dashed var(--theia-editorWarning-foreground); outline-offset: -5px; }
 .dope-plan-conflicted { border-style: dashed; }
 .dope-plan-edge-stale .react-flow__edge-path { stroke-dasharray: 5 3; stroke-width: 3; }
+.dope-map-edge-selected .react-flow__edge-path { stroke-width: 4; }
 .dope-plan-stale-summary, .dope-rebase-conflict { border-left: 3px solid var(--theia-editorWarning-foreground); padding: 4px 8px; }
 .dope-rebase-workspace { display: grid; gap: 6px; border: 1px solid var(--theia-widget-border); padding: 8px; }
 .dope-rebase-conflict { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

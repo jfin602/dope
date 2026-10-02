@@ -8,6 +8,8 @@ import { SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
 import URI from '@theia/core/lib/common/uri';
 import { PhysicalMapController, physicalMapTabId, type PhysicalMapTabOptions } from './physical-map-controller';
 import type { CanvasNode } from './physical-map-projection';
+import { MapViewport, mapFitContext } from './map-viewport';
+import { mapLabel } from './map-label';
 import { PlanningMapController } from './planning-map-controller';
 import { projectPlanningMap, projectRebaseConflict, projectReconciliationResult } from './planning-map-projection';
 import { affectedArchitecture, transformationsForArchitecture } from './planning-work-projection';
@@ -22,7 +24,7 @@ function MapNode({ data }: { data: { item: CanvasNode & { intent?: string; stale
     const item = data.item;
     return React.createElement('div', { className: `dope-map-node dope-map-${item.kind} dope-map-${item.state}${item.intent ? ` dope-plan-${item.intent}` : ''}${item.stale ? ' dope-plan-stale' : ''}${item.conflict ? ' dope-plan-conflicted' : ''}` },
         React.createElement('span', { className: 'dope-map-kind' }, `${item.context ? '↗ ' : ''}${item.kind}`),
-        React.createElement('strong', null, item.name),
+        React.createElement('strong', null, mapLabel(item.name)),
         React.createElement('small', { className: 'dope-map-badge', title: item.badge }, item.badge),
         data.editable && item.kind === 'subsystem' ? React.createElement(React.Fragment, null,
             React.createElement(Handle, { type: 'target', position: Position.Left }),
@@ -39,7 +41,11 @@ export class PhysicalMapWidget extends BaseWidget {
     private readonly canvas = document.createElement('div');
     private root?: Root;
     private flow?: ReactFlowInstance;
-    private renderedGraph = '';
+    private readonly viewport = new MapViewport();
+    private fitContext = '';
+    private fitRequested = true;
+    private fitQueued = false;
+    private fitting = false;
     private readonly breadcrumbs = document.createElement('nav');
     private readonly focusButton = document.createElement('button');
     private readonly tabButton = document.createElement('button');
@@ -73,10 +79,10 @@ export class PhysicalMapWidget extends BaseWidget {
         const up = document.createElement('button');
         up.type = 'button';
         up.textContent = 'Up';
-        up.onclick = () => this.controller.up();
+        up.onclick = () => { this.controller.setDetail('architecture'); this.controller.up(); };
         this.focusButton.type = 'button';
         this.focusButton.textContent = 'Focus';
-        this.focusButton.onclick = () => this.controller.focus();
+        this.focusButton.onclick = () => { this.controller.setDetail('architecture'); this.controller.focus(); };
         this.tabButton.type = 'button';
         this.tabButton.textContent = 'Open Selected Tab';
         this.tabButton.onclick = () => { const id = this.controller.selectedId; if (id) void this.openTab(id); };
@@ -86,7 +92,7 @@ export class PhysicalMapWidget extends BaseWidget {
         const fit = document.createElement('button');
         fit.type = 'button';
         fit.textContent = 'Fit Architecture';
-        fit.onclick = () => this.controller.fit();
+        fit.onclick = () => this.fitArchitecture();
         bar.append(this.heading, planningToggle, up, this.focusButton, this.tabButton, this.sourceButton, fit);
         this.breadcrumbs.setAttribute('aria-label', 'Map focus');
         this.status.setAttribute('role', 'status');
@@ -110,6 +116,7 @@ export class PhysicalMapWidget extends BaseWidget {
         this.root?.unmount();
         this.root = undefined;
         this.flow = undefined;
+        this.fitRequested = true;
         super.onBeforeDetach(msg);
     }
 
@@ -118,6 +125,14 @@ export class PhysicalMapWidget extends BaseWidget {
         const { loading, error } = this.controller;
         const selectedMap = this.planning.selected;
         const planningMode = this.planning.planningMode;
+        const context = mapFitContext(this.controller.mapWorkspace, this.controller.mapGeneration, this.controller.focusId,
+            planningMode ? 'planning' : 'physical', planningMode ? selectedMap?.id : undefined,
+            planningMode ? this.planning.view : 'current');
+        if (context !== this.fitContext) {
+            this.fitContext = context;
+            this.fitRequested = true;
+            if (this.controller.detail !== 'architecture') { this.controller.setDetail('architecture'); return; }
+        }
         this.heading.textContent = planningMode ? 'Planning Map' : 'Physical Map';
         if (!this.focusedTab) this.title.label = planningMode ? 'Planning Map' : 'Physical Map';
         const projection = planningMode && selectedMap ? projectPlanningMap(
@@ -130,13 +145,13 @@ export class PhysicalMapWidget extends BaseWidget {
         this.breadcrumbs.replaceChildren();
         const overview = document.createElement('button');
         overview.textContent = 'Project';
-        overview.onclick = () => this.controller.fit();
+        overview.onclick = () => this.fitArchitecture();
         this.breadcrumbs.append(overview);
         for (const item of this.controller.breadcrumbs) {
             this.breadcrumbs.append(' / ');
             const button = document.createElement('button');
             button.textContent = item.name;
-            button.onclick = () => this.controller.focus(item.id);
+            button.onclick = () => { this.controller.setDetail('architecture'); this.controller.focus(item.id); };
             this.breadcrumbs.append(button);
         }
         const selected = this.controller.selectedId;
@@ -163,17 +178,17 @@ export class PhysicalMapWidget extends BaseWidget {
         }));
         const edges: Edge[] = projection.edges.map(item => ({
             id: item.id, source: item.source, target: item.target, label: item.kind === 'dependency' ? item.label : undefined,
-            className: `dope-map-edge dope-map-edge-${item.kind} dope-map-edge-${item.state}${'intent' in item && item.intent ? ` dope-plan-edge-${item.intent}` : ''}${'stale' in item && item.stale ? ' dope-plan-edge-stale' : ''}`,
+            className: `dope-map-edge dope-map-edge-${item.kind} dope-map-edge-${item.state}${item.kind === 'dependency' && (item.source === selected || item.target === selected) ? ' dope-map-edge-selected' : ''}${'intent' in item && item.intent ? ` dope-plan-edge-${item.intent}` : ''}${'stale' in item && item.stale ? ' dope-plan-edge-stale' : ''}`,
             type: item.kind === 'containment' ? 'straight' : 'smoothstep',
             selectable: false
         }));
         this.root.render(React.createElement(ReactFlow, {
-            nodes, edges, nodeTypes, nodesDraggable: planningMode, nodesConnectable: planningMode, elementsSelectable: true,
+            nodes, edges, nodeTypes, minZoom: 0.01, nodesDraggable: planningMode, nodesConnectable: planningMode, elementsSelectable: true,
             onNodeClick: (_event: React.MouseEvent, node: Node) => { if (planningMode && !this.controller.sourceNodes.some(item => item.id === node.id))
                     this.controller.selectPlanned(node.id);
                 else this.controller.select(node.id);
                 if (planningMode && selectedMap) this.planning.selectTransformation(transformationsForArchitecture(selectedMap, node.id, this.controller.sourceNodes)[0]); },
-            onNodeDoubleClick: (_event: React.MouseEvent, node: Node) => this.controller.focus(node.id),
+            onNodeDoubleClick: (_event: React.MouseEvent, node: Node) => { this.controller.setDetail('architecture'); this.controller.focus(node.id); },
             onNodeDragStop: (_event: MouseEvent | TouchEvent, node: Node) => {
                 const kind = (node.data.item as CanvasNode).kind;
                 const parents = this.flow?.getIntersectingNodes(node).filter(item =>
@@ -184,12 +199,35 @@ export class PhysicalMapWidget extends BaseWidget {
             },
             onConnect: connection => { if (connection.source && connection.target) void this.planning.beginEdit({
                 kind: 'draw-relationship', sourceId: connection.source, targetId: connection.target }); },
-            fitView: true, fitViewOptions: { padding: 0.14 }, onInit: (flow: ReactFlowInstance) => { this.flow = flow; void flow.fitView({ padding: 0.14 }); },
+            onInit: (flow: ReactFlowInstance) => { this.flow = flow; this.queueFit(); },
+            onMoveEnd: (_event: MouseEvent | TouchEvent | null, viewport: { zoom: number }) => {
+                if (!this.fitting && !this.fitRequested) this.controller.setDetail(this.viewport.detail(viewport.zoom, this.controller.detail));
+            },
             proOptions: { hideAttribution: true }
         }, React.createElement(Background), React.createElement(Controls, { showInteractive: false })));
-        const graph = `${this.controller.focusId ?? ''}:${nodes.map(node => node.id).join('|')}`;
-        if (nodes.length && graph !== this.renderedGraph) requestAnimationFrame(() => { if (!this.isDisposed) void this.flow?.fitView({ padding: 0.14 }); });
-        this.renderedGraph = graph;
+        if (nodes.length && !loading) this.queueFit();
+    }
+
+    private fitArchitecture(): void {
+        this.fitRequested = true;
+        this.controller.setDetail('architecture');
+        this.controller.fit();
+        this.queueFit();
+    }
+
+    private queueFit(): void {
+        if (!this.fitRequested || this.fitQueued || this.fitting || !this.flow || this.controller.loading || !this.controller.projection.nodes.length) return;
+        this.fitQueued = true;
+        requestAnimationFrame(async () => {
+            this.fitQueued = false;
+            if (!this.fitRequested || !this.flow || this.isDisposed || this.controller.loading) return;
+            this.fitRequested = false;
+            this.fitting = true;
+            try {
+                await this.flow.fitView({ padding: 0.14 });
+                this.viewport.fitted(this.flow.getZoom());
+            } finally { this.fitting = false; this.queueFit(); }
+        });
     }
 
     private renderPlanningBar(): void {

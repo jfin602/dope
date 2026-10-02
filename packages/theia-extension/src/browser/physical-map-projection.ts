@@ -30,8 +30,8 @@ const badge: Record<CanvasState, string> = {
 // Deterministic browser estimate for wrapping; no DOM or domain measurement.
 function size(name: string, minimum: number): { width: number; height: number } {
     const longest = Math.max(...name.split(/[\s/._:-]+/).map(part => part.length));
-    const width = Math.max(minimum, Math.min(520, longest * 8 + 32));
-    return { width, height: 58 + Math.max(1, Math.ceil(name.length * 8 / (width - 32))) * 20 };
+    const width = Math.max(minimum, Math.min(520, longest * 11 + 40));
+    return { width, height: 72 + Math.max(1, Math.ceil(name.length * 11 / (width - 40))) * 24 };
 }
 
 /** Disposable browser geometry; canonical graph and planning state never own detail or coordinates. */
