@@ -93,6 +93,7 @@ export class PhysicalMapWidget extends BaseWidget {
     private readonly colorListener;
     private readonly heading = document.createElement('h2');
     private readonly focusedTab: boolean;
+    private readonly flowId: string;
     private draftTitle = '';
     private draftObjective = '';
 
@@ -103,6 +104,8 @@ export class PhysicalMapWidget extends BaseWidget {
         super();
         this.focusedTab = !!options;
         this.id = options ? physicalMapTabId(options) : PHYSICAL_MAP_ID;
+        // Retained map tabs need distinct, URL-safe SVG pattern references.
+        this.flowId = `smap-${Array.from(this.id, char => char.charCodeAt(0).toString(16).padStart(2, '0')).join('')}`;
         this.title.label = options ? `Map: ${options.focusId}` : 'Physical Map';
         this.title.caption = 'Physical Map — current architecture';
         this.title.iconClass = codicon('type-hierarchy');
@@ -314,6 +317,7 @@ export class PhysicalMapWidget extends BaseWidget {
             selectable: false
         }));
         this.root.render(React.createElement(ReactFlow, {
+            id: this.flowId,
             nodes, edges, nodeTypes, minZoom: 0.01, nodesDraggable: planningMode, nodesConnectable: planningMode, elementsSelectable: true,
             onNodeClick: (_event: React.MouseEvent, node: Node) => { if (planningMode && !this.controller.sourceNodes.some(item => item.id === node.id))
                     this.controller.selectPlanned(node.id);
@@ -335,7 +339,7 @@ export class PhysicalMapWidget extends BaseWidget {
                 if (!this.fitting && !this.fitRequested) this.controller.setDetail(this.viewport.detail(viewport.zoom, this.controller.detail));
             },
             proOptions: { hideAttribution: true }
-        }, React.createElement(Background)));
+        }, React.createElement(Background, { id: this.flowId })));
         if (nodes.length && !loading) this.queueFit();
     }
 
@@ -499,14 +503,14 @@ export class PhysicalMapWidget extends BaseWidget {
             type: item.backEdge ? 'smoothstep' : 'default', animated: item.async,
             className: `dope-flow-edge${item.subdued ? ' dope-flow-subdued' : ''}${item.selected ? ' dope-flow-selected' : ''}${item.backEdge ? ' dope-flow-back' : ''}`,
             selectable: true, selected: controller.selectedFlowEdgeId === item.id })) ?? [];
-        this.root?.render(React.createElement(ReactFlow, { nodes, edges, nodeTypes: flowNodeTypes,
+        this.root?.render(React.createElement(ReactFlow, { id: this.flowId, nodes, edges, nodeTypes: flowNodeTypes,
             minZoom: 0.01, nodesDraggable: false, nodesConnectable: false, elementsSelectable: true,
             onNodeClick: (_event: React.MouseEvent, node: Node) => controller.select(node.id),
             onNodeDoubleClick: (_event: React.MouseEvent, node: Node) => controller.focus(node.id),
             onEdgeClick: (_event: React.MouseEvent, edge: Edge) => void controller.inspectFlowEdge(edge.id),
             onInit: (flow: ReactFlowInstance) => { this.flow = flow; this.queueFit(); },
             proOptions: { hideAttribution: true }
-        }, React.createElement(Background)));
+        }, React.createElement(Background, { id: this.flowId })));
         if (nodes.length && !controller.loading) this.queueFit();
     }
 

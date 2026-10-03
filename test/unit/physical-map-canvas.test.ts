@@ -3,12 +3,15 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import test from 'node:test';
 import { createRequire } from 'node:module';
+import * as React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { ReactFlow, Background } from '@xyflow/react';
 import type { ArchitectureViolation, GraphNode, GraphRelationship } from '../../packages/software-map/src/contracts.ts';
 import { projectPhysicalMap } from '../../packages/theia-extension/src/browser/physical-map-projection.ts';
 const require = createRequire(import.meta.url);
 const { SoftwareMapController } = require('../../packages/theia-extension/lib/browser/software-map-controller.js') as
   typeof import('../../packages/theia-extension/src/browser/software-map-controller.ts');
-const { PhysicalMapController } = require('../../packages/theia-extension/lib/browser/physical-map-controller.js') as
+const { PhysicalMapController, physicalMapTabId, physicalMapTabOptions } = require('../../packages/theia-extension/lib/browser/physical-map-controller.js') as
   typeof import('../../packages/theia-extension/src/browser/physical-map-controller.ts');
 
 const root = resolve(import.meta.dirname, '../..');
@@ -126,12 +129,41 @@ test('React Flow stays in presentation and registration preserves workbench plac
   assert.match(frontend, /bindViewContribution\(bind, ProjectMindView\)/);
   assert.match(frontend, /id: PROJECT_MIND_ID, createWidget/);
   assert.doesNotMatch(canvas, /area: 'left'|area: 'right'|nodesDraggable: true/);
-  assert.match(canvas, /Fit current map to canvas/);
+  assert.match(canvas, /Fit current map at a readable scale/);
   assert.match(css, /\.dope-map-declared-only \{ border-style: dashed;/);
   assert.match(css, /\.dope-map-edge-containment .*stroke-dasharray/);
   assert.match(css, /\.dope-map-edge-drifted .*stroke-dasharray/);
   for (const path of ['packages/software-map/src/contracts.ts', 'packages/software-map/src/service.ts',
     'packages/visual-planning/src/service.ts']) assert.doesNotMatch(read(path), /@xyflow\/react|ReactFlowInstance|\bNode<.*>|SemanticDetail|MapPresentation/);
+});
+
+test('retained map tabs keep distinct dotted background patterns through view and focus changes', () => {
+  const canvas = read('packages/theia-extension/src/browser/physical-map-widget.ts');
+  assert.match(canvas, /this\.flowId = `smap-\$\{Array\.from\(this\.id,/);
+  assert.equal((canvas.match(/React\.createElement\(ReactFlow, \{\s*id: this\.flowId/g) ?? []).length, 2);
+  assert.equal((canvas.match(/React\.createElement\(Background, \{ id: this\.flowId \}\)/g) ?? []).length, 2);
+  assert.doesNotMatch(canvas, /React\.createElement\(ReactFlow, \{[^}]*key:/);
+
+  const widgetIds = ['dope-physical-map-canvas',
+    physicalMapTabId(physicalMapTabOptions('file:///project', 'system')),
+    physicalMapTabId(physicalMapTabOptions('file:///project', 'subsystem'))];
+  const flowIds = widgetIds.map(id => `smap-${Array.from(id, char => char.charCodeAt(0).toString(16).padStart(2, '0')).join('')}`);
+  const nodes = [{ id: 'a', position: { x: 0, y: 0 }, data: { label: 'A' }, width: 100, height: 40 },
+    { id: 'b', position: { x: 150, y: 0 }, data: { label: 'B' }, width: 100, height: 40 }];
+  const edges = [{ id: 'ab', source: 'a', target: 'b' }];
+  for (let transition = 0; transition < 24; transition++) {
+    const html = renderToStaticMarkup(React.createElement('div', null, ...flowIds.map((id, index) =>
+      React.createElement(ReactFlow, { id, nodes, edges, width: 500, height: 400,
+        colorMode: transition % 2 ? 'dark' : 'light', 'data-view': transition % 3 === index ? 'flow' : 'architecture' },
+      React.createElement(Background, { id })) )));
+    const patterns = [...html.matchAll(/<pattern id="([^"]+)"/g)].map(match => match[1]);
+    const fills = [...html.matchAll(/<rect[^>]*fill="url\(#([^)]+)\)"/g)].map(match => match[1]);
+    assert.equal(patterns.length, widgetIds.length);
+    assert.equal(new Set(patterns).size, widgetIds.length);
+    assert.deepEqual(fills, patterns);
+    assert.equal((html.match(/class="react-flow__node react-flow__node-default/g) ?? []).length, widgetIds.length * nodes.length);
+    assert.equal((html.match(/class="react-flow__edges"/g) ?? []).length, widgetIds.length);
+  }
 });
 
 test('published map loads through the inspector handle; failures and stale queries settle', async () => {
