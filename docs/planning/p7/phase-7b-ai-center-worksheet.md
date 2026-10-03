@@ -424,7 +424,39 @@ Make **Test Connection** a bounded synthetic no-project-data check that proves t
 
 **Decision**
 
-TBD.
+Locked: **Test Connection** answers one bounded question: **can Dope successfully execute a minimal conversational request through this connection right now?**
+
+The default test:
+- validates current connection configuration;
+- validates required credential availability without exposing secret material;
+- reaches the provider/runtime;
+- selects one currently usable/default model for that connection;
+- executes one tiny synthetic conversational text request containing **zero project data**;
+- verifies that a valid completion can be received and parsed;
+- may record useful ephemeral latency/basic usage metadata when available.
+
+Hosted tests are real provider calls and may consume a very small amount of quota/tokens; AI Center should disclose that plainly. Local tests may incidentally load a model into memory, but that incidental effect is not a durable warm-residency guarantee.
+
+The default action is connection-level. AI Center may additionally expose a bounded **Test Model** action for a specific model where useful, but Phase 7B does not become a generalized capability-diagnostics laboratory.
+
+A successful generic Test Connection proves only the minimum general conversational execution path. It does **not** by itself prove:
+- structured output;
+- streaming semantics;
+- tool calling;
+- large-context behavior;
+- reasoning-control support;
+- Software Map synthesis quality/readiness;
+- feature-specific capability contracts;
+- durable model warm/load state.
+
+Software Map keeps its own stronger ADR 0022 workflow, including explicit provider/model choice, synthetic structured-output probe where required, warm-up, and evidence-egress authorization before project evidence is sent. AI Center Test Connection never substitutes for that flow.
+
+Test results are **ephemeral runtime evidence**, not canonical or permanent connection truth. AI Center may show last-tested time/result and safe latency/error information, but relevant connection configuration, credential or model changes invalidate the prior result. Reconnect/runtime changes or sufficient age may mark it stale.
+
+Normalized result classes are at least **Passed**, **Failed**, and **Cancelled**, with safe reasons such as Authentication failed, Provider unavailable, Model unavailable, Request rejected, Invalid response, or Timed out.
+
+If no usable model exists, Test Connection reports that condition rather than claiming transport-only success.
+
 
 ---
 
