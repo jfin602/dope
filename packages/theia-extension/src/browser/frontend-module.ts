@@ -25,6 +25,8 @@ import { physicalMapTabOptions, type PhysicalMapTabOptions } from './physical-ma
 import { PlanningMapController } from './planning-map-controller';
 import { SmapPresentationState } from './smap-presentation-state';
 import { VisualPlanningService, visualPlanningServicePath } from '@dope/visual-planning/lib/service';
+import { ChatService, chatServicePath } from '@dope/chat/lib/service';
+import type { ChatClient } from '@dope/chat/lib/service';
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(FrontendApplicationContribution).toDynamicValue(context => ({
@@ -51,6 +53,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             { execute: () => openPhysicalMap(context.container.get(WidgetManager), context.container.get(ApplicationShell)) }) })).inSingletonScope();
     bind(NoteService).toDynamicValue(context => ServiceConnectionProvider.createProxy<NoteService>(context.container, noteServicePath)).inSingletonScope();
     bind(ProjectMindService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ProjectMindService & RpcServer<ProjectMindClient>>(context.container, projectMindServicePath));
+    bind(ChatService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ChatService & RpcServer<ChatClient>>(context.container, chatServicePath));
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();
     bind(SoftwareMapController).toDynamicValue(context => new SoftwareMapController(
         () => context.container.get(SoftwareMapService) as SoftwareMapService & RpcServer<SoftwareMapClient>,

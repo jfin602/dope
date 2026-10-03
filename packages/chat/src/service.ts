@@ -24,6 +24,8 @@ export interface ChatSearchRequest { projectHandle: string; query: string; limit
 export interface ChatSearchHit { chatId: ChatId; messageId: string; title: string; excerpt: string; createdAt: string }
 export interface ChatLeaseRequest { projectHandle: string; chatId: ChatId; ownerId: string }
 export type ChatLeaseResult = { acquired: true; token: string } | { acquired: false; ownerId: string };
+export interface ChatDeltaRequest { projectHandle: string; chatId: ChatId; messageId: string;
+    executionId: string; sequence: number; delta: string; leaseToken: string }
 export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'changed' | 'lease-changed'; chatId?: ChatId }
     /** Transient visible output; persistence happens at turn lifecycle boundaries. */
@@ -42,4 +44,5 @@ export interface ChatService {
     claim(request: ChatLeaseRequest): Promise<ChatLeaseResult>;
     renew(projectHandle: string, chatId: ChatId, token: string): Promise<void>;
     release(projectHandle: string, chatId: ChatId, token: string): Promise<void>;
+    publishDelta(request: ChatDeltaRequest): Promise<void>;
 }

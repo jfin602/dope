@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath, parseChat,
     parseChatCollection, parseChatFolderPath, parseChatMessage, parseChatSettings, withAutomaticChatTitle } from '../index';
 import type { Chat, ChatCollection, ChatFolder } from '../index';
-import type { ChatLeaseResult, ChatOperation, ChatSearchHit } from '../service';
+import type { ChatEvent, ChatLeaseResult, ChatOperation, ChatSearchHit } from '../service';
 
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const DEFAULT_SETTINGS = { schemaVersion: 1 as const, context: { maxInputTokens: 8192, reservedOutputTokens: 1024,
@@ -16,6 +16,7 @@ const leaseDuration = 60_000;
 type Entry = { id: string; folderPath: string; file: string; revision: number };
 type Manifest = { schemaVersion: 1; revision: number; folders: ChatFolder[]; entries: Entry[] };
 type Lease = { schemaVersion: 1; chatId: string; ownerId: string; token: string; pid: number; expiresAt: number; root: string };
+type RepositoryEvent = ChatEvent extends infer E ? E extends ChatEvent ? Omit<E, 'projectHandle'> : never : never;
 
 function uuid(value: unknown): string {
     if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value))
@@ -102,6 +103,16 @@ async function syncedJson(path: string, value: unknown): Promise<void> {
 }
 
 export class ChatRepository {
+    private readonly listeners = new Set<(root: string, event: RepositoryEvent) => void>();
+    onChange(listener: (root: string, event: RepositoryEvent) => void): () => void {
+        this.listeners.add(listener);
+        return () => this.listeners.delete(listener);
+    }
+    private emit(root: string, event: RepositoryEvent): void {
+        for (const listener of this.listeners) {
+            try { listener(root, event); } catch { /* A disconnected client cannot undo a committed write. */ }
+        }
+    }
     async root(uri: string): Promise<string> {
         if (typeof uri !== 'string') throw new Error('Chat requires a local folder');
         let url: URL;
@@ -251,6 +262,7 @@ export class ChatRepository {
         if (!changed) return current;
         const next = parseChatCollection({ ...current, revision: current.revision + 1, chats });
         await this.write(root, next);
+        this.emit(root, { revision: next.revision, kind: 'changed' });
         return next;
     }
     async read(root: string): Promise<ChatCollection> {
@@ -352,6 +364,8 @@ export class ChatRepository {
             }
             const next = parseChatCollection({ schemaVersion: 1, revision: current.revision + 1, folders, chats });
             await this.write(root, next);
+            this.emit(root, { revision: next.revision, kind: 'changed',
+                ...('chatId' in operation ? { chatId: operation.chatId } : {}) });
             return next;
         });
     }
@@ -366,6 +380,7 @@ export class ChatRepository {
             const token = randomUUID();
             await syncedJson(join(base, '.leases', `${chatId}.json`), { schemaVersion: 1, chatId, ownerId, token,
                 pid: process.pid, expiresAt: Date.now() + leaseDuration, root: base });
+            this.emit(root, { revision: (await this.raw(root)).revision, kind: 'lease-changed', chatId });
             return { acquired: true, token };
         });
     }
@@ -381,7 +396,23 @@ export class ChatRepository {
             const lease = await this.lease(base, uuid(chatId));
             if (!lease || lease.token !== token) throw new Error('Chat lease lost');
             await rm(join(base, '.leases', `${chatId}.json`));
+            this.emit(root, { revision: (await this.raw(root)).revision, kind: 'lease-changed', chatId });
         });
+    }
+    async publishDelta(root: string, chatId: string, messageId: string, executionId: string,
+        sequence: number, delta: string, token: string): Promise<void> {
+        const { base, exists } = await this.paths(root);
+        if (!exists || !Number.isSafeInteger(sequence) || sequence < 0 || typeof delta !== 'string' ||
+            !delta || delta.length > 65_536)
+            throw new Error('Invalid Chat delta');
+        const lease = await this.lease(base, uuid(chatId));
+        if (!lease || !this.active(lease) || lease.token !== token) throw new Error('Chat ownership lease required');
+        const snapshot = await this.read(root);
+        const message = snapshot.chats.find(chat => chat.id === chatId)?.messages.find(item => item.id === messageId);
+        if (!message || message.role !== 'assistant' || message.execution.id !== executionId ||
+            message.execution.status !== 'streaming') throw new Error('Assistant execution is not streaming');
+        this.emit(root, { revision: snapshot.revision, kind: 'assistant-delta', chatId,
+            messageId, executionId, sequence, delta });
     }
     async search(root: string, query: string, limit: number, excludeChatId?: string): Promise<ChatSearchHit[]> {
         const needle = query.trim().toLocaleLowerCase('en-US');
