@@ -1,6 +1,6 @@
 # Correction 6 — Map Color Grammar
 
-Status: **OWNER APPROVED / NOT IMPLEMENTED**
+Status: **GREEN / QUALIFIED** for this bounded presentation correction at unchanged `0.6.7`; see [closeout](closeout.md). Product Phase 6 P7 remains Not Green and P8 remains blocked.
 Correction folder: `c6-map-color-grammar`
 Required unchanged version: `0.6.7`
 Activation source: `8625df1f468c2c8db1c1a03244a4d45b39ef2731`
