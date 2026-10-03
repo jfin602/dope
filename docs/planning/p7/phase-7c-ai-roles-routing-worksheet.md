@@ -472,7 +472,33 @@ Persist compact provider-neutral routing provenance per execution: requested rol
 
 **Decision**
 
-TBD.
+Locked: every routed execution durably records compact provider-neutral routing provenance sufficient to answer **Why did Dope use this model?** without reading logs.
+
+Persist at least:
+- requested role, when role routing participated;
+- resolution source, such as explicit per-turn model, Chat pinned model, Chat following Interactive, Software Map role or Background role;
+- relevant non-secret effective hard constraints that materially shaped eligibility;
+- role-policy identity/revision used for resolution;
+- preferred candidate;
+- actual selected immutable connection/model IDs;
+- useful execution-time provider/model/display metadata so history remains understandable after later rename/removal;
+- bounded fallback attempt/result history when fallback occurred.
+
+Historical routing provenance is immutable with respect to later policy, connection, alias or capability changes. Do not require the current live registry/policy to reconstruct what happened.
+
+Fallback provenance records routing facts only—for example unavailable, rate limited, transient timeout, success—not private chain-of-thought or model-quality narration.
+
+User-facing model provenance exposes a concise **Why this model?** explanation where appropriate. The explanation shows the requested role/resolution source, applicable hard constraints, preferred/selected target, and bounded fallback reason/path. It may explicitly explain exclusions such as Phase 8 local-only constraints.
+
+Routing provenance/explanations never expose:
+- API keys/tokens or credential material;
+- secure-store identifiers that reveal secret state unnecessarily;
+- raw provider authentication payloads;
+- hidden chain-of-thought;
+- undisclosed private scoring/ranking internals.
+
+Initial 7C does not require a full execution-history analytics dashboard in AI Center. Existing Chat/execution provenance plus focused routing explanation is sufficient; broader routing analytics may follow later if useful.
+
 
 ---
 
