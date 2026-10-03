@@ -1,6 +1,6 @@
 # Product Phase 6 — Flow Task Stack
 
-Status: **P7 NOT GREEN / P8 BLOCKED / c6-map-canvas-priority ACTIVE**
+Status: **P7 NOT GREEN / P8 BLOCKED / c6-flow-projection-contract ACTIVE**
 Activation baseline: `710edb362f9881ab41215705db4f08d8daca6293`
 Package baseline: `0.6.0`
 Authority: ADR 0020 as amended by ADR 0021, Phase 6 activation/plan
@@ -22,21 +22,22 @@ Authority: ADR 0020 as amended by ADR 0021, Phase 6 activation/plan
 
 P1-P6 are implemented. P7 remains Not Green on `0.6.7`; P8 is not eligible.
 
-The original P7 run proved valid source-backed GET opportunities Flow but failed because the bounded System/Subsystem overview omitted the HTTP Input and leaked unrelated calls through shared PostgreSQL endpoint anchoring. That failure remains preserved in `P7-flow-dogfooding-evidence.md`.
+The retained evidence chain is:
 
-Correction `c6-flow-overview-priority` repaired the overview/query path sufficiently for the subsequent direct GUI requalification to expose the intended behavior: GET opportunities traced from the HTTP Input through the handler and `AdaptiveRepository.list` to three PostgreSQL reads and three response branches, with representative source evidence and explicit partial coverage. The same 5-participant, 8-interaction trace rebuilt after restart.
+1. Original P7 proved the real GET opportunities Flow facts existed, but overview budgeting/scope prevented the GUI from exposing the behavior.
+2. `c6-flow-overview-priority` repaired the overview/query semantics and a later GUI replay exposed the intended HTTP Input -> handler -> `AdaptiveRepository.list` -> three PostgreSQL reads -> response branches.
+3. `c6-map-canvas-priority` implemented the canvas-first shell, compact toolbar and floating inspection overlay, but its P3 replay at `d4f17c7338196aaf78f5851dce42622527c166e4` was Not Green.
+4. That P3 failure is now isolated to the presentation projection boundary: overview queries publish visible relationships in `FlowQueryResult.aggregates`, while `projectFlowMap()` still begins from raw `facts`. Adaptive Recommendations therefore reported 27 summarized relationships in inspection while rendering 0 canvas participants / 0 edges.
 
-That requalification is still Not Green for two separate reasons:
-- the focused Subsystem canvas is too dim to read immediately;
-- the packaged AppImage reaches ready state but fails controlled shutdown.
+The active correction is:
 
-The active presentation correction is:
+`docs/tasks/c6-flow-projection-contract/`
 
-`docs/tasks/c6-map-canvas-priority/`
+It keeps version `0.6.7` unchanged and repairs only the query-result -> canvas relationship-selection contract plus the stale backend overview assertion. System/SubSystem overview must project `aggregates`; detail/trace must project raw `facts`.
 
-It keeps version `0.6.7` unchanged and is narrowly responsible for the canvas-first map shell, unified icon toolbar, floating/minimizable selection details and immediate map readability. It must not change Flow truth, query semantics, extraction, aggregation, budgets, canonical architecture or Planning Map semantics.
+The historical `c6-map-canvas-priority/closeout.md` remains Not Green evidence. If the projection correction and focused supplemental GUI replay are Green, map-canvas may close Green by supplemental evidence and Phase 6 returns to a fresh P7 requalification.
 
-The native controlled-shutdown failure is outside this presentation correction and remains an independent P7 blocker that must be resolved or separately requalified before P8.
+The packaged AppImage controlled-shutdown failure remains a separate unresolved P7 blocker and is outside the projection correction.
 
 ## Locked truth rules
 
