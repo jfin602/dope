@@ -165,7 +165,9 @@ Project Mind, Agent Mind, Sessions, Decisions, Authority, and Validation are Dop
 
 Provider-specific IDs, context formats, sessions, and capabilities remain adapter concerns. One Dope Chat may route different messages to different connected models without adopting any provider-native session as conversation identity.
 
-Provider abstraction must not force every model into a lowest-common-denominator feature set.
+Phase 7B adds **AI Center** as the one user-global management surface for provider/runtime connections and models, opened from the bottom-left AI launcher while account/profile management moves under Settings. Phase 7C adds policy-based roles—Interactive, Deep Reasoning, Background, Software Map and Coding Agent—over those connected models. Roles carry capabilities/constraints/fallback policy rather than hard-coding one provider, and explicit user model choices remain authoritative.
+
+Global routing preference never grants feature authority: Software Map evidence egress remains explicit, and Phase 8 background alignment remains local-only with no hosted fallback. Provider abstraction must not force every model into a lowest-common-denominator feature set.
 
 ## Initial roadmap
 
@@ -190,7 +192,9 @@ Foundation Spike 0 — qualify Theia
 -> correction c6-smap-outline — compact synchronized left Architecture outline
 -> correction c6-edit-architecture — permanent Edit Architecture workspace
 -> correction c6-branch-seam — synthesis strategy / Model Runtime seam
--> Phase 7 — AI Presence
+-> Phase 7A — AI Presence
+-> Phase 7B — AI Center
+-> Phase 7C — AI Roles & Routing
 -> Phase 8 — Living Software Knowledge Model
 -> Phase 9 — Scoped Delegation
 -> Phase 10 — Development Sessions
@@ -234,7 +238,7 @@ Desired completion feeling:
 
 **Product Phase 6 — Flow is owner-closed for sequencing at package `0.6.8`; P8 remains Not Qualified.** The accepted exact-candidate G/H evidence gaps remain historical truth in `docs/tasks/p6/closeout.md`.
 
-**Product Phase 7 — AI Presence is ACTIVE at coherent `0.7.0` activation commit `59c7f72`.** ADR 0025, the Phase 7 plan/activation and executable `docs/tasks/p7/` stack define durable Chat/ChatPanel, per-message connected-model routing, context composition and read-only assistance. Validate/execute `p7`; mutation/delegation authority remains deferred.
+**Product Phase 7 is ACTIVE at coherent `0.7.0` activation commit `59c7f72`.** ADR 0025 defines the Phase 7A Chat/ChatPanel AI Presence boundary and ADR 0026 adds Phase 7B AI Center plus Phase 7C role routing. Execute the currently written P1-P12 as 7A only; the existing P13 closeout is superseded and must be regenerated as part of the P13+ continuation after P12. Mutation/delegation authority remains deferred.
 
 Phase 7 keeps the project—not chat—as the center of gravity. Chats persist and are reusable, but canonical Project Mind, Architecture, Planning and Physical/Flow evidence retain their own authority.
 
