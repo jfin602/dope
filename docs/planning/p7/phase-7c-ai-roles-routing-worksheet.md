@@ -1,6 +1,6 @@
 # Product Phase 7C — AI Roles & Routing Planning Worksheet
 
-Status: RESOLVED / READY FOR DOCS REVIEW  
+Status: RESOLVED / PROMOTED TO PHASE 7 AUTHORITY  
 Date: October 3, 2026  
 Target slice: Product Phase 7C — AI Roles & Routing  
 Assumption: Product Phase 7A and Phase 7B are fully implemented and qualified before this worksheet is resolved.
@@ -625,4 +625,4 @@ This worksheet is subordinate to:
 - `docs/stability-contract.md`
 - `docs/roadmap/mvp-roadmap.md`
 
-Resolved answers should be promoted into those authorities through `/docs-review -> /docs-apply`. The worksheet remains planning context rather than competing canonical product authority.
+Resolved answers have been promoted into the current Phase 7 authorities. This worksheet remains planning context rather than competing canonical product authority.
