@@ -1,6 +1,6 @@
 # Correction 6 — Edit Architecture
 
-Status: **APPROVED / READY FOR IMPLEMENTATION PLANNING**
+Status: **APPROVED / PROMPTS WRITTEN / READY FOR EXECUTION**
 Correction folder: `c6-edit-architecture`
 Required unchanged package version: `0.6.7`
 Date approved: 2026-10-02
@@ -115,9 +115,34 @@ Do not change:
 - project persistence outside the existing canonical architecture boundary unless implementation evidence proves a minimal bounded change is required;
 - package version.
 
+## Prompt stack
+
+Activation/source baseline: `b447d925ee4c12891ff072f235368e7b29a6854d`.
+
+Required predecessor `c6-smap-outline` is Green at implementation candidate `ac7fd5a29fb9d6dca4fc2f137f8fdef7f2a20439`.
+
+| Prompt | Scope | Tier | Model |
+| --- | --- | --- | --- |
+| P1 | lossless canonical Architecture read/edit/save service seam | T2 | GPT-6 Sol High |
+| P2 | permanent Edit Architecture workspace + initialized left action | T2 | GPT-6 Sol High |
+| P3 | accepted-map Search Deeper + provider/evidence integration | T2 | GPT-6 Sol High |
+| P4 | direct browser qualification + evidence-only closeout | T3 | GPT-6 Sol High |
+
+All prompts keep package version exactly `0.6.7`.
+
+Prompt files:
+- `P1-canonical-architecture-edit-service.txt`;
+- `P2-edit-architecture-workspace.txt`;
+- `P3-accepted-search-deeper.txt`;
+- `P4-browser-qualification-closeout.txt`.
+
+Planning artifacts:
+- `prompt-assessment.md`;
+- `implementation-plan.md`.
+
 ## Sequencing
 
-Finish/land `c6-smap-outline` first where the two corrections overlap in the left Software Map action row.
+`c6-smap-outline` is already Green and its compact initialized action row is the predecessor seam for this stack.
 
 `c6-branch-seam` remains independent.
 
@@ -125,6 +150,10 @@ Retained Phase 6 P7 and map-canvas Not Green evidence remains historical truth. 
 
 ## Next workflow
 
-`/prompt-ass -> /prompt-plan -> /prompt-write c6-edit-architecture`
+Validate the correction prompt stack if supported, then execute P1-P3 in order and perform P4 as the manual/browser T3 handoff.
 
-No executable implementation prompt is created by this documentation application.
+`npm run codex:phase:validate -- c6-edit-architecture`
+
+`npm run codex:phase -- c6-edit-architecture`
+
+P4 is the direct GUI/provider qualification and closeout gate.
