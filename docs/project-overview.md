@@ -234,7 +234,7 @@ Desired completion feeling:
 
 **Product Phase 6 — Flow is owner-closed for sequencing at package `0.6.8`; P8 remains Not Qualified.** The accepted exact-candidate G/H evidence gaps remain historical truth in `docs/tasks/p6/closeout.md`.
 
-**Product Phase 7 — AI Presence is OWNER-APPROVED FOR PLANNING at the unchanged `0.6.8` source baseline.** ADR 0025 and `docs/planning/p7/phase-7-plan.md` define the durable Chat/ChatPanel, per-message connected-model routing, context composition and read-only assistance boundary. `/prompt-ass` is next. Documentation approval does not itself establish `0.7.0`, implementation evidence or mutation/delegation authority.
+**Product Phase 7 — AI Presence is ACTIVE at coherent `0.7.0` activation commit `59c7f72`.** ADR 0025, the Phase 7 plan/activation and executable `docs/tasks/p7/` stack define durable Chat/ChatPanel, per-message connected-model routing, context composition and read-only assistance. Validate/execute `p7`; mutation/delegation authority remains deferred.
 
 Phase 7 keeps the project—not chat—as the center of gravity. Chats persist and are reusable, but canonical Project Mind, Architecture, Planning and Physical/Flow evidence retain their own authority.
 

@@ -1,0 +1,62 @@
+TASK: Phase 7 / P1 — Durable Chat domain core
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.1`.
+
+GOAL
+
+Create the provider/framework-independent durable Chat domain that every Phase 7 surface will share.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, all current Phase 7 authority, ADR 0025, p7 assessment/implementation plan, current workspace/package contracts and existing Project Mind/Visual Planning domain patterns.
+
+Require reachable activation baseline `59c7f72a29dcdecdf9b908176754bfd02179b004`, coherent `0.7.0`, clean intended Git state, Node 24, no root package-lock, Theia 1.75.0 and Electron 42.8.1.
+
+IMPLEMENT
+
+Create `packages/chat` / `@dope/chat` and keep it free of Theia/provider/filesystem imports.
+
+Define strict versioned contracts/parsers for:
+- Chat with stable ID, title, `titleSource: auto | user`, created/updated/lastInteracted timestamps, revision, organization path/folder and persistent ChatSettings;
+- ChatMessage / assistant execution identity with visible roles sufficient for developer/assistant/system-tool-event product history;
+- assistant lifecycle `pending | streaming | complete | failed | cancelled` without hidden chain-of-thought;
+- durable requested/actual provider+model execution provenance and usage/error summary fields that do not expose provider-native session objects;
+- typed ChatContextRef/provenance for file/selection, Project Mind, Architecture/Physical Map/Flow, Planning and saved-Chat excerpts;
+- per-Chat model/context policy with safe bounds and provider-neutral model references;
+- deterministic saved-chat query/result DTO foundations for later bounded retrieval.
+
+Add pure helpers for strict validation, title/user-override rules, last-interaction ordering, safe nested organization path normalization, context-policy bounds and deterministic transcript/list projections.
+
+Stable Chat/message IDs must not depend on title, folder path, provider/model or widget/panel identity.
+
+Do not add filesystem persistence, Theia UI, Model Runtime calls, automatic title inference, mutation tools or ProjectArtifact conversion.
+
+INTEGRATION
+
+Add the package to the root workspace/build composition. Advance root/apps/all live internal package versions and internal `@dope/*` references coherently to `0.7.1`. Add its focused test to aggregate product-test composition without running the aggregate here.
+
+TESTS
+
+Validation is T1.
+
+Add focused `test/unit/chat.test.ts` covering parsing, IDs/path independence, nested folder validation, title precedence, timestamps/order, message/execution lifecycle, context/settings bounds and provider-neutral provenance.
+
+Run only:
+- the new Chat domain test;
+- `corepack yarn workspace @dope/chat build`;
+- `node --test test/unit/theia-baseline.test.ts`;
+- explicit version/internal-reference/no-root-lock checks;
+- `git diff --check`.
+
+Do not run root aggregate tests/builds, restart, packaging, provider calls or phase validation.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report Chat domain contracts/invariants, coherent `0.7.1` transition, focused validation and P2 eligibility.

@@ -1,0 +1,74 @@
+TASK: Phase 7 / P7 — Bounded project context and read-only AI Presence
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.7`.
+
+GOAL
+
+Make Chat genuinely understand the current project through bounded Dope-owned context and expose Ask / Explain / Trace / Find Related without mutation authority.
+
+PREFLIGHT
+
+Read P1-P6 source/tests, Project Mind service/domain, Software Map Architecture/Physical Map/Flow query/evidence services, Visual Planning service, editor/workspace APIs, ADR 0025 context rules and analysis-input isolation.
+
+Require coherent `0.7.6` predecessor.
+
+CONTEXT COMPOSER
+
+Add a typed application context composer that produces model-facing text/items plus durable `ChatContextRef` provenance.
+
+Support bounded explicit context for:
+- current editor file;
+- current selection/range;
+- project-relative file;
+- Project Mind artifact;
+- canonical Architecture System/Subsystem/Component;
+- current Physical Map/Flow focus, trace/evidence or selected identity;
+- Planning Map/WorkItem;
+- selected saved-Chat excerpts.
+
+Frontend captures current editor/selection. Backend validates workspace-relative paths and resolves domain IDs through their existing authorities. Do not read outside project root or fabricate missing context.
+
+BUDGET / HISTORY
+
+Enforce per-Chat allowed-source policy and total/history budgets. Use selected-model capabilities/token estimation where available; use conservative deterministic estimation otherwise.
+
+Active Chat history is direct context under budget. Other Chats are not automatic transcript payload. Implement bounded deterministic title/content saved-chat search with explicit selection/results; semantic embeddings are not required.
+
+TOOLBAR / AI PRESENCE
+
+Populate the P6 context/tool seam with real actions for current file/selection and project-domain/saved-chat selection. Context chips/items are inspectable/removable before Send.
+
+Implement Ask / Explain / Trace / Find Related as read-only Chat behaviors/templates that use the same composer/runtime/context path. They may query deterministic Dope services and ask the model to explain, but cannot create physical evidence or canonical state.
+
+AUTOMATIC TITLE
+
+After the first successful exchange of an auto-titled Chat, request a small title using the same actual selected model/provider as that exchange. It is non-blocking, does not switch/fallback providers and cannot delay the assistant answer.
+
+If title generation fails, use a deterministic bounded title from the first developer message. If `titleSource=user`, never auto-update.
+
+PROVENANCE
+
+Persist the included typed context references/bounds with the execution. Do not persist hidden reasoning or provider-private chain-of-thought.
+
+Advance to `0.7.7`.
+
+TESTS
+
+Validation is T2 because multiple existing product authorities are read through one context boundary.
+
+Add focused context tests for every source kind, project/path containment, stale project/generation IDs, deterministic saved-chat search bounds, token-budget truncation with explicit diagnostics, removable per-turn context, history budgeting, provenance persistence, title success/fallback/user-lock and read-only behavior.
+
+Run new context/AI Presence tests plus directly affected Project Mind/Software Map Flow/Planning/Chat regressions, affected builds/browser bundle, `.dope/chats` isolation check, baseline/version/no-lock checks and `git diff --check`.
+
+Do not run live providers, direct GUI, restart/package or root aggregate check.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report bounded context sources/budgets/provenance, AI Presence behaviors/title semantics and P8 qualification readiness.

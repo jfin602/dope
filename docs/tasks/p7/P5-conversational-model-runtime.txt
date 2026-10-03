@@ -1,0 +1,68 @@
+TASK: Phase 7 / P5 — Conversational Model Runtime and Model Connections
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.5`.
+
+GOAL
+
+Extend ADR 0022's provider-neutral runtime into the general conversational execution boundary used by Chat, while preserving existing Software Map synthesis.
+
+PREFLIGHT
+
+Read ADR 0004/0006/0022/0025, current `model-runtime.ts`, LM Studio/Gemini synthesis providers/tests, Software Map backend/setup, frontend StorageService use, Theia backend wiring and P1-P4 Chat contracts.
+
+Require coherent `0.7.4` predecessor.
+
+RUNTIME CONTRACT
+
+Refactor/extend provider-neutral contracts without breaking structured generation:
+- future-extensible provider connection ID and model descriptor (do not keep general Chat closed to `local | gemini`);
+- model capabilities including conversational text, streaming, structured output where supported, context limits and supported reasoning controls;
+- conversational request carrying Dope-composed messages/context and AbortSignal;
+- normalized streaming delta/completion/usage/failure events/results;
+- actual requested/selected model identity suitable for durable Chat provenance.
+
+Keep sMap's `generateStructured` path valid. A conversational provider need not own sMap synthesis strategy.
+
+MODEL CONNECTIONS
+
+Add a dedicated application-level Model Runtime/Connections service, separate from project Chat and separate from Software Map synthesis provider selection.
+
+Persist only non-secret connection preferences/metadata through user/application storage where useful. Provider credentials/tokens must come from environment or session-only secret entry and must not be written to `.dope/` or ordinary plaintext StorageService.
+
+Expose connected/usable model inventory to the frontend. Reconnection/discovery invalidates readiness truthfully.
+
+PROVIDERS
+
+Implement conversational adapters for:
+- OpenAI using the Responses API as the first reference hosted path; Dope Chat history is authoritative and provider response/conversation IDs remain optional adapter metadata;
+- Local/LM Studio using its OpenAI-compatible local transport without importing sMap synthesis prompts;
+- Gemini using the existing SDK transport generalized behind conversational capability contracts.
+
+Use current supported provider mechanisms; do not hardcode one flagship model. Discovery/model capability filtering must be conservative.
+
+Normalize cancellation, auth, transport/upstream, quota/provider rejection and malformed stream/response failures. Never silently fall back to another provider/model.
+
+Preserve existing Local/Gemini sMap setup, readiness/warm-up, structured generation and tests. General Chat connection configuration must not implicitly change sMap provider choice, and sMap choice must not authorize Chat.
+
+Advance to `0.7.5`.
+
+TESTS
+
+Validation is T2 because shared contracts/adapters/service wiring affect synthesis and future Chat.
+
+Add focused conversational runtime/model-connections tests using deterministic mocked transports for model discovery, streaming order, usage/provenance, cancellation, error sanitization, connection change invalidation, no fallback and secret non-persistence.
+
+Run existing LM Studio/Gemini synthesis provider tests plus software-map synthesis regressions directly affected by the refactor, affected package/extension builds, baseline/version/no-lock checks and `git diff --check`.
+
+Do not require live provider calls, direct GUI, restart/package or root aggregate check here; P8 owns live provider evidence.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report runtime/connection/provider boundaries, preserved synthesis evidence, no-fallback behavior and P6 eligibility.

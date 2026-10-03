@@ -1,0 +1,61 @@
+TASK: Phase 7 / P3 — Multi-area ChatPanel and saved-chat selector
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.3`.
+
+GOAL
+
+Add the reusable multi-instance ChatPanel workbench surface and make Select Chat a real shared project navigator.
+
+PREFLIGHT
+
+Read current frontend module/WidgetFactory patterns, ApplicationShell public APIs, Project Mind/Software Map widget/controller race patterns, p7 P1-P2 source/contracts and Dope theme CSS.
+
+Require coherent `0.7.2` predecessor.
+
+IMPLEMENT
+
+Create focused Chat presentation/controller files; do not substantially grow `dope-workbench.ts`, Software Map widgets or Project Mind.
+
+Register a multi-instance ChatPanel WidgetFactory with unique stable instance IDs/options and supported commands/actions to open a new ChatPanel in each Theia area: left, right, main/center and bottom. Do not force a single global Chat sidebar.
+
+Every panel has exactly two primary modes:
+- Select Chat;
+- Chat.
+
+Implement Select Chat against the shared ChatService:
+- nested folder hierarchy;
+- New Chat and New Folder;
+- rename/move Chat/folder using service operations;
+- chat title plus human-readable created/last-interacted date;
+- deterministic last-interacted ordering within folders;
+- keyboard/focus-operable disclosure and selection;
+- selecting a Chat opens it in that panel for now; P4 adds focus-existing ownership behavior.
+
+Implement basic Chat mode top bar/transcript from durable messages with Back/Chats action and a right-justified settings-cog seam. Do not add a fake/nonfunctional composer tool row; P6 owns the real composer.
+
+Use shared service change events so folder/title/message changes refresh every panel without panel-local copies of Chat data.
+
+Guard one local workspace/project, project switch and stale async responses. Keep layout/panel mode presentation state separate from Chat durability.
+
+Advance to `0.7.3`.
+
+TESTS
+
+Validation is T2 for service + multi-instance Theia presentation integration.
+
+Add focused ChatPanel/controller tests for all four area commands/factory options, multi-instance IDs, Select Chat/Chat modes, nested folder rendering/order, CRUD/move intents, shared refresh, dates/title rendering, workspace guards, keyboard/theme semantics and no panel-owned transcript store.
+
+Run only new/changed Chat UI/controller tests, directly affected frontend registration tests, extension build, one browser build if needed to prove WidgetFactory bundling, baseline/version/no-lock checks and `git diff --check`.
+
+Do not run direct GUI, restart, Electron/package, provider calls or root aggregate check.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report multi-area ChatPanel/selector behavior, shared repository projection, focused evidence and P4 eligibility.

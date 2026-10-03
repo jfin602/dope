@@ -1,0 +1,70 @@
+TASK: Phase 7 / P6 — Chat composer, per-turn model selection and settings
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.6`.
+
+GOAL
+
+Complete the real Chat conversation surface with the locked two-row composer, per-message connected-model choice and persistent per-Chat settings.
+
+PREFLIGHT
+
+Read P1-P5 source/tests, ChatPanel/controller, Model Connections service, ADR 0025 composer/settings rules and current Dope CSS/accessibility patterns.
+
+Require coherent `0.7.5` predecessor.
+
+IMPLEMENT CHAT MODE
+
+Render durable transcript with clear developer/Dope turns, timestamps/status and subtle actual model/provider provenance for assistant executions. Failed/cancelled/interrupted turns remain visibly non-complete.
+
+Add a persistent composer:
+- first row: multiline text input;
+- second always-present row: context/tool entry seam on the left, compact connected-model selector, send/cancel/retry controls;
+- no fake enabled tool buttons; P7 adds real context actions into the seam.
+
+MODEL SELECTION
+
+Initial selector resolves the Chat's persistent default model when usable. The developer may select another connected model for the next message only.
+
+On Send, snapshot that model ID into the turn and submit only to it. Per-turn choice must not rewrite ChatSettings. After submission/completion, return the selector to the Chat default unless the developer changes the persistent default through settings.
+
+If no usable model is selected, block Send with a useful connection/setup route. Failure never silently selects another model.
+
+CHAT SETTINGS
+
+The top-bar cog is right-justified and opens settings owned by Chat identity:
+- default connected model;
+- supported model-specific reasoning controls discovered from capabilities;
+- history/context budget/strategy bounds;
+- allowed context source categories;
+- saved-chat retrieval permission.
+
+Link to Model Connections management without copying global credentials/endpoints into Chat settings.
+
+TURN LIFECYCLE
+
+Persist developer message + assistant pending execution before runtime request. Stream normalized text deltas to the owning panel only while project/chat/execution generation is current. Complete/fail/cancel through ChatService with actual provider/model usage/provenance.
+
+Retry is explicit and creates a new execution attempt. It may use a different selected model only by developer choice; preserve the failed attempt history.
+
+Advance to `0.7.6`.
+
+TESTS
+
+Validation is T2.
+
+Add focused composer/settings/controller tests for persistent second row, model inventory/default/one-turn override-reset, no model/no fallback, settings persistence across panel switch, reasoning capability controls, stream/cancel/retry lifecycle, stale delta guards and transcript provenance/status.
+
+Run new Chat UI/runtime integration tests, directly affected ownership/service tests, extension/browser build, baseline/version/no-lock checks and `git diff --check`.
+
+Do not run live providers, direct GUI, restart/package or root aggregate check.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report composer/model/settings semantics, stream lifecycle evidence and P7 eligibility.

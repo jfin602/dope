@@ -1,0 +1,71 @@
+TASK: Phase 7 / P9 — AI Presence closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.9`.
+
+GOAL
+
+Perform an evidence-only Product Phase 7 closeout from the exact P8 candidate. Do not repair behavior and do not create Phase 8 implementation prompts.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, all current Phase 7 authority, p7 assessment/implementation plan, exact reachable P1-P8 commits/results, P8 direct evidence, current manifests/tests and retained Phase 5/6 evidence.
+
+Require coherent `0.7.8` predecessor and an exact P8 evidence record. A version subject alone is not qualification evidence.
+
+Advance root/apps/all live internal package versions/internal references coherently to `0.7.9`.
+
+AUDIT
+
+Assess Green / Not Green / Evidence Gap for:
+
+A. Chat domain truth — stable identity, title/timestamps/order, message lifecycle, settings/context/provenance, provider independence and non-canonical transcript boundary.
+
+B. Persistence/service — `.dope/chats/` readability, nested folders/moves, revisions/locks/leases, corrupt/future/path safety, interrupted-turn recovery and project isolation.
+
+C. ChatPanel — left/right/main/bottom multi-instance behavior, Select Chat/Chat modes, shared repository projection and no panel-owned conversation state.
+
+D. Ownership/restoration — one live panel per Chat, focus-existing/release, cross-window writer protection, duplicate restoration and workspace/race guards.
+
+E. Model Runtime — connected-model descriptors, OpenAI/Local/Gemini conversational adapters, streaming/cancel/usage/errors, preserved sMap structured synthesis and no silent fallback.
+
+F. Composer/settings — persistent second row, per-turn model snapshot, Chat default separation, settings cog/persistence, failed/retry provenance and secret boundary.
+
+G. Context/AI Presence — bounded history/context budgets, editor/Project Mind/Architecture/Flow/Planning/saved-chat refs, provenance, automatic title semantics and read-only Ask/Explain/Trace/Find Related.
+
+H. Direct/regression/release — real multi-panel dogfood, real connected-model matrix, selected-model failure, restart, project and `.dope/chats` analysis isolation, existing product preservation, aggregate/package/native exact-candidate evidence.
+
+Retain Phase 5/6 historical qualification truth. Phase 7 does not retroactively qualify them.
+
+RERUN
+
+P8 owns broad T3 evidence. Do not blindly repeat it.
+
+Run only:
+- focused Phase 7 tests needed to prove the `0.7.9` coherence transition;
+- affected typecheck/build required by version/internal-reference changes;
+- `npm run codex:phase:validate -- p7`;
+- exact version/Theia/Electron/React/no-root-lock checks;
+- `git diff --check`.
+
+Repeat GUI/live-provider/restart/aggregate/package/native evidence only if the closeout transition or observed failure invalidated P8 evidence.
+
+Do not repair failures during closeout.
+
+OUTPUT
+
+Create `docs/tasks/p7/closeout.md` with activation and exact P1-P8 identities, A-H decision table, direct provider/model/context evidence, persistence/panel/restoration results, restart/isolation/package/native result, retained history, residual gaps and final Qualified / Not Qualified decision.
+
+Update `docs/tasks/p7/README.md` truthfully.
+
+If Qualified, report Phase 7 eligible for owner `/closeout phase 7` and subsequent Phase 8 documentation review. Do not create Phase 8 prompts.
+
+If Not Qualified, preserve blockers and route to a bounded Phase 7 correction or explicit owner disposition.
+
+FINAL RESPONSE
+
+Report A-H decision, useful Phase 7 AI Presence capability, exact evidence/residual gaps, docs updated and next action.

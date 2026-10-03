@@ -1,0 +1,105 @@
+TASK: Phase 7 / P8 — AI Presence dogfooding and qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.8`.
+
+GOAL
+
+Qualify the complete Phase 7 durable Chat/AI Presence experience on the exact candidate through the real Dope GUI, real connected models where available, restart/isolation and packaged/native evidence.
+
+PREFLIGHT
+
+Read all p7 authority/assessment/implementation plan, exact reachable P1-P7 commits/results, Phase 7 stability requirements and retained Phase 5/6 evidence.
+
+Require coherent `0.7.7` predecessor.
+
+Use disposable workspaces. Preserve the real `/home/jfin/dev/dope` repository and accepted `/home/jfin/dev/adaptive-seo-dope` reference.
+
+Create a fresh `/tmp/dope-p7-ai-presence` from current Dope source including the useful `.dope/` project state required for Architecture/Flow/Planning/Project Mind context. Create a second disposable local project (prefer a fresh copy of `/home/jfin/dev/adaptive-seo-dope`) for isolation. Record source status and relevant `.dope` preflight; do not modify the originals.
+
+Advance all live versions/internal references coherently to `0.7.8` before final exact-candidate qualification.
+
+DIRECT GUI MATRIX
+
+A. Saved Chat and folders
+- open a ChatPanel and create nested Chat folders;
+- create multiple Chats;
+- verify automatic title behavior, then manually edit one title and prove it is not overwritten;
+- verify created/last-interacted dates and ordering changes only on conversation activity;
+- move a Chat between folders without changing identity/history.
+
+B. Multi-panel behavior
+- open ChatPanels in at least three different supported areas, including center/main and one side/bottom area;
+- open different Chats concurrently;
+- attempt to open an already-owned Chat from another selector and prove the existing owner is focused rather than duplicated;
+- close/back/switch/reopen and prove ownership releases correctly.
+
+C. Per-Chat settings and composer
+- verify top-right settings cog persists per Chat across panel relocation;
+- inspect the always-present second composer row;
+- set a default model and context policy;
+- make a per-turn model override and prove it does not silently rewrite the default;
+- inspect durable requested/actual model provenance.
+
+D. Real model execution
+- configure real connected providers/models using the supported Model Connections path without persisting secrets in project state;
+- send real messages with streaming/cancellation/retry behavior;
+- in one Chat, use at least two genuinely connected models (prefer different providers) when the environment permits;
+- deliberately make the selected model unavailable/failing and prove there is no silent fallback/context transfer;
+- if fewer than two real models can be connected, record the cross-model gate as Evidence Gap; mocks do not satisfy it.
+
+E. Real Dope context
+Use actual Dope project context in Chat:
+- current file and selection;
+- one Project Mind artifact;
+- one Architecture/Physical Map or Flow identity/evidence path;
+- one Planning Map/WorkItem when present;
+- saved-Chat search/excerpt.
+
+Inspect the context chips/references and resulting durable turn provenance. Confirm unsupported/missing/stale context fails visibly rather than being fabricated.
+
+Use Ask / Explain / Trace / Find Related on representative real project questions. The assistant may explain deterministic evidence but must not mutate canonical state.
+
+F. Restart and recovery
+- restart/reopen the exact candidate;
+- recover Chats/folders/transcripts/settings/order and panel states;
+- prove duplicate stale panel restoration resolves to one owner;
+- prove interrupted/failed executions remain honest;
+- verify provider-native session IDs are unnecessary for continuity.
+
+G. Project isolation and analysis isolation
+- switch to the second project and prove it cannot see/mutate the first project's Chats;
+- return and recover the first project;
+- create/send/move Chat content and verify Software Map physical input identity is unchanged and existing Planning Map semantic staleness is not caused by Chat writes.
+
+H. Existing product regression
+Verify ordinary editor/Project Mind/Architecture/Flow/Planning surfaces remain usable. Do not reinterpret retained Phase 5/6 Not Qualified evidence as repaired unless directly proven.
+
+T3 RELEASE EVIDENCE
+
+Run:
+- focused Phase 7 domain/store/panel/runtime/context suites;
+- `npm run check`;
+- `npm run test:restart`;
+- `npm run codex:phase:validate -- p7`;
+- Linux AppImage packaging, inspection, native launch and normal controlled close as supported by the environment;
+- exact `0.7.8` / Theia 1.75.0 / Electron 42.8.1 / React 19.2.8 / no-root-lock coherence;
+- `git diff --check`.
+
+`npm run check` already builds browser and Electron; do not rerun them separately unless later changes invalidate that evidence.
+
+EVIDENCE
+
+Create `docs/tasks/p7/P8-ai-presence-dogfooding-evidence.md` with exact source/candidate identities, provider/model connection matrix (without secrets), A-H observations, context provenance examples, restart/isolation, aggregate/package/native results and every Evidence Gap/Not Green item.
+
+If a required direct or T3 gate fails, preserve truthful evidence and stop short of P9 eligibility.
+
+If the candidate is coherent and the direct gate is complete enough to continue, create exactly one manual commit with subject `0.7.8` so the runner can resume safely. Do not create a Green claim where an Evidence Gap remains.
+
+FINAL RESPONSE
+
+Report exact candidate, durable Chat/multi-panel/model/context results, no-fallback behavior, restart/isolation/package evidence, residual gaps and whether P9 is eligible.

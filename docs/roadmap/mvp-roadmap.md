@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 7 — AI Presence is **OWNER-APPROVED FOR PLANNING** from the coherent `0.6.8` Phase 6 owner-close baseline. ADR 0025 and `docs/planning/p7/phase-7-plan.md` define the approved durable Chat/ChatPanel, context-composition and provider-independent read-only AI Presence boundary. Phase 6 P8 remains Not Qualified and Phase 5 remains owner-closed with P11 Not Green/P12 unexecuted. Next: `/prompt-ass`; no `0.7.0` transition has occurred yet.
+Current stage: Product Phase 7 — AI Presence is **ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION** at coherent `0.7.0` activation commit `59c7f72a29dcdecdf9b908176754bfd02179b004`. ADR 0025, the Phase 7 plan/activation and `docs/tasks/p7/` define the durable Chat/ChatPanel, context-composition and provider-independent read-only AI Presence stack. Phase 6 P8 remains Not Qualified and Phase 5 remains owner-closed with P11 Not Green/P12 unexecuted. Next: validate and execute `p7`; P1 targets `0.7.1`.
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -61,7 +61,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — Planning Basis Isolation | `0.5.11` correction after P11 reached durable Planning Maps but ordinary `.dope/planning-maps.json` persistence changed Physical Map identity and unchanged reanalysis falsely staled plans. Isolate `.dope/` from generic analysis inputs and make generation observation provenance rather than semantic staleness. |
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
 | Product Phase 6 — Flow | **OWNER-CLOSED FOR SEQUENCING / P8 NOT QUALIFIED.** Evidence-backed provider-free Static Flow over the Physical Map is retained. The P8 exact-candidate direct restart/isolation and chosen-path provenance gaps remain in `docs/tasks/p6/closeout.md`; historical P7/map-canvas Not Green results remain intact. |
-| Product Phase 7 — AI Presence | **OWNER-APPROVED FOR PLANNING.** Durable Dope-owned Chats and movable ChatPanels provide provider-independent, per-message model routing and bounded read-only context over editor/project state, Project Mind, Architecture, Physical Map, Flow, Planning Maps and saved Chats without making conversation canonical truth. |
+| Product Phase 7 — AI Presence | **ACTIVE at `0.7.0`.** Durable Dope-owned Chats and movable ChatPanels provide provider-independent per-message model routing and bounded read-only context over editor/project state, Project Mind, Architecture, Physical Map, Flow, Planning Maps and saved Chats without making conversation canonical truth. |
 | Product Phase 8 — Living Software Knowledge Model | Dope continuously checks whether source/runtime evidence, canonical Software Map state, documentation and formal contracts still describe the same software. Deterministic impact analysis narrows work first; bounded local-model semantic checks maintain alignment in the background and surface drift findings without silently mutating project truth. |
 | Product Phase 9 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 10 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
@@ -851,8 +851,8 @@ Existing Local and Gemini sMap paths still execute through provider-neutral runt
 
 ## Product Phase 7 — AI Presence
 
-Status: **OWNER-APPROVED FOR PLANNING**
-Planning baseline: coherent `0.6.8` Phase 6 owner-close source
+Status: **ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION**
+Activation baseline: coherent `0.7.0` at `59c7f72a29dcdecdf9b908176754bfd02179b004`
 Authority: ADR 0004, ADR 0006, ADR 0022, ADR 0025 and `docs/planning/p7/phase-7-plan.md`
 
 Purpose:

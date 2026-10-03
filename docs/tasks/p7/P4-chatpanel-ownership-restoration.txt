@@ -1,0 +1,53 @@
+TASK: Phase 7 / P4 — ChatPanel ownership and restoration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.4`.
+
+GOAL
+
+Enforce one live ChatPanel owner per Chat and restore panel state without ever making workbench layout the conversation source of truth.
+
+PREFLIGHT
+
+Read P1-P3 source/tests, P2 claim/lease contract, Theia 1.75 public widget/layout restoration APIs actually available in this repository and current workspace-switch/disposal patterns.
+
+Require coherent `0.7.3` predecessor.
+
+IMPLEMENT
+
+Add a project-scoped frontend ChatOpenRegistry (or equivalent focused owner) used by every ChatPanel.
+
+Rules:
+- activating a not-open Chat claims it for that panel through frontend registry plus backend ChatService lease;
+- selecting a Chat already owned in this workbench reveals/focuses the existing widget and leaves the selecting panel in Select Chat;
+- returning to Select Chat, switching Chat, panel disposal/close or project switch releases ownership;
+- backend lease/revision conflict prevents a second process/window from silently becoming another writer;
+- read-only list visibility is allowed; active composer ownership is exclusive.
+
+Implement supported Theia panel state restoration for area/mode/chat ID. Conversation/history/settings remain in ChatRepository.
+
+If restoration tries to open one Chat in multiple panels, choose one deterministically and return others to Select Chat with visible explanation. If a stale/backend lease blocks restore, fail closed to Select Chat rather than stealing silently.
+
+Guard delayed attach/list/chat events, workspace change, widget disposal and stale lease release.
+
+Advance to `0.7.4`.
+
+TESTS
+
+Validation is T2.
+
+Add focused ownership/restoration tests for focus-existing, release paths, duplicate restore, stale layout, backend lease conflict, project switch, late events/disposal and independent panels showing different Chats.
+
+Run only new/changed Chat ownership/panel/service tests, extension/browser build only if restoration bundling requires it, baseline/version/no-lock checks and `git diff --check`.
+
+Do not run direct GUI, full restart process suite, package/native or providers here; P8 owns exact end-to-end restoration.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report exclusivity/restoration/lease behavior and P5 eligibility.

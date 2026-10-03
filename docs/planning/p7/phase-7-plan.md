@@ -1,8 +1,8 @@
 # Product Phase 7 — AI Presence Plan
 
-Status: **OWNER APPROVED / PROMPT PLANNING NEXT**
-Planning source baseline: coherent `0.6.8` at Phase 6 owner-close commit `a52334d3b191efb721323964ce9d27c91bfabf03`
-Version transition: not performed by documentation approval; Phase 7 implementation/version activation is assigned by the subsequent prompt/activation workflow
+Status: **ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION**
+Activation baseline: coherent `0.7.0` at commit `59c7f72a29dcdecdf9b908176754bfd02179b004`
+Version transition: coherent `0.7.0` activation is complete; executable prompts use `0.7.1` through `0.7.9`
 Primary decision: ADR 0025
 
 ## Goal
@@ -142,12 +142,4 @@ Use the real Dope repository and the packaged/native path where applicable. Dire
 
 Phase 7 is qualified when durable project Chats and ChatPanels are useful as a real provider-independent AI Presence surface: persistence, organization, multi-panel projection, model selection/provenance, per-Chat settings, bounded project context, read-only assistance, restart/project isolation and provider-failure behavior all work together on an exact candidate without turning chat or provider state into canonical project truth.
 
-After documentation approval, the next workflow is:
-
-```text
-/prompt-ass
--> /prompt-plan
--> /prompt-write <Phase 7 folder>
-```
-
-The prompt stack determines implementation versions and qualification gates. This document alone does not advance package version from `0.6.8`.
+Prompt assessment, implementation planning and `p7` writing are complete. Validate with `npm run codex:phase:validate -- p7`, then execute through the runner. P8 is the direct browser/provider qualification handoff and P9 is evidence-only closeout.
