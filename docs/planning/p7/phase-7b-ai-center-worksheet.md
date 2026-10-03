@@ -353,7 +353,49 @@ Use a small normalized state machine with provider-specific detail behind it. Co
 
 **Decision**
 
-TBD.
+Locked: connection health and individual model usability are separate normalized state machines. Provider/runtime-specific detail may be retained beneath them, but AI Center presents one consistent health vocabulary.
+
+Connection states are:
+
+- **Unknown**
+- **Checking**
+- **Ready**
+- **Degraded**
+- **Needs Authentication**
+- **Unavailable**
+- **Invalid Configuration**
+- **Disabled**
+
+Model states are:
+
+- **Unknown**
+- **Ready**
+- **Unavailable**
+- **Disabled**
+
+Connection **Ready** means the configured connection is currently usable at the application/runtime level: configuration is valid, required authentication is available, the transport/provider is reachable, and the basic registry/runtime handshake or equivalent readiness evidence succeeds. It does **not** imply every model has completed a fresh inference test.
+
+Model **Ready** means the model is known/configured, its connection is usable, it is not disabled in Dope, and the provider/runtime does not currently report it unavailable. Mandatory fresh inference is not required merely to show a model as usable.
+
+**Degraded** is reserved for meaningful partial usability—for example a connection remains usable while model discovery/refresh or another important non-fatal capability is impaired. Minor informational warnings do not automatically degrade the entire connection.
+
+Local model residency/warm state is separate from usability. A known Local model may be **Ready / not loaded** or equivalent. Unloaded/cold does not mean unavailable; explicit feature warm-up or ordinary execution may load it later.
+
+Health/readiness is updated from bounded events rather than continuous background polling:
+- application/registry initialization where justified;
+- connection/configuration changes;
+- credential-source changes;
+- reconnect/runtime inventory-change signals where supported;
+- explicit Refresh/Test actions;
+- stale-while-revalidate AI Center refresh where justified;
+- real model execution success/failure.
+
+Actual executions are valid health evidence and should update registry state rather than triggering redundant probes immediately afterward.
+
+A single transient request timeout/failure does not automatically produce persistent launcher warning state. The bottom-left AI launcher shows restrained, non-color-only warning decoration only for **persistent/actionable connection problems**, such as missing/rejected credentials, invalid configuration, or no usable enabled connection where user action is required.
+
+AI Center uses normalized user-facing error summaries while retaining safe provider-specific diagnostic detail where useful. Raw upstream/provider error payloads must not bypass secret redaction or become the primary status language.
+
 
 ---
 
