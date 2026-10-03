@@ -555,3 +555,22 @@ The correction must not change canonical architecture, Software Map evidence/que
 
 `c6-smap-outline` remains Green historical evidence and is not reopened. `c6-edit-architecture` and `c6-branch-seam` remain independent follow-ons. This correction does not relabel P7 or unblock P8 by itself.
 
+
+
+## October 3, 2026 — Phase 7 AI Center and role-routing amendment
+
+ADR 0026 extends Product Phase 7 after the initial Chat/AI Presence implementation.
+
+Locked sequencing:
+- Phase 7A = the currently written P1-P12 Chat/AI Presence implementation and qualification;
+- Phase 7B = global AI Center over the application Model Connections registry;
+- Phase 7C = role policies/routing for Interactive, Deep Reasoning, Background, Software Map and Coding Agent;
+- one new final integrated Phase 7 qualification/closeout follows 7B/7C.
+
+The currently written P13 evidence-only closeout is superseded. Do not execute it and do not run the current `p7` folder with `--closeout`. After P12, use `/prompt-ass -> /prompt-plan -> /prompt-write p7` to regenerate the contiguous P13+ continuation and exactly one final closeout. This is normal forward Phase 7 capability and must not be disguised as a `c7-*` correction.
+
+When regenerating `p7`, preserve the runner grammar: prompt numbering remains contiguous from P1, target versions remain `0.7.<prompt-number>`, and exactly one unambiguous final closeout must be last. Preserve already-executed P1-P12 prompt text/history if execution has begun; only the unexecuted continuation is replaced.
+
+AI Center is the canonical global connection-management surface. It reuses the Phase 7A Model Connections registry, is opened from the bottom-left AI launcher, and moves account/profile management under Settings. Connection inventory/model discovery/role policy are user/application state; credentials remain secret runtime state and never enter `.dope/`, Chat persistence or ordinary plaintext preferences.
+
+Role routing never weakens explicit authority: explicit per-message model choice does not silently fall back; Software Map preference does not grant repository-evidence egress consent; Phase 8 continuous Background work remains local-only with hosted fallback forbidden.
