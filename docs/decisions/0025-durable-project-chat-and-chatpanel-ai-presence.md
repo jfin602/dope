@@ -63,13 +63,15 @@ The selector lists usable connected models through Model Runtime capability disc
 Every open Chat exposes a right-justified settings cog in its top bar. These settings belong to the Chat identity and persist with it across panel relocation/restart.
 
 Per-Chat settings may include:
-- default model and supported model-specific reasoning/context preferences;
+- model policy and supported model-specific reasoning/context preferences;
 - eligible automatic context sources;
 - conversation-history/context budget and compaction/retrieval strategy;
 - whether bounded saved-Chat search/retrieval may contribute context;
 - other conversation behavior that does not override project authority/security rules.
 
 The composer controls the next turn. A per-message model/context override does not silently rewrite persistent Chat settings. Conversely, changing persistent settings does not rewrite historical message provenance.
+
+Phase 7A initially persists an exact default model. ADR 0026 extends the forward Chat model-policy contract in Phase 7C so a Chat may either **pin an exact model** or **Follow Interactive role**. Existing Phase 7A exact defaults are preserved/migrated as exact policies; new Phase 7C Chats default to Follow Interactive. If Interactive is unconfigured/broken, the developer may still explicitly select an exact usable model for a turn.
 
 Provider credentials, endpoints, connection setup and globally available model inventory remain application/runtime configuration rather than project Chat state.
 
@@ -121,4 +123,4 @@ The exact prompt stack and version transition are planned separately. Accepting 
 
 ## Amendment — ADR 0026
 
-ADR 0026 extends Phase 7 after the initial AI Presence slice with the global AI Center and role-based model routing. ADR 0025 remains authoritative for Chat identity, persistence, ChatPanel behavior, per-message explicit model choice, per-Chat settings and no-silent-fallback semantics. Global connection inventory and role policy remain application/runtime concerns outside Chat state, and an explicit per-message choice continues to override lower-precedence routing policy.
+ADR 0026 extends Phase 7 after the initial AI Presence slice with the global AI Center and role-based model routing. ADR 0025 remains authoritative for Chat identity, persistence, ChatPanel behavior, per-message explicit model choice, per-Chat settings and no-silent-fallback semantics. Global connection inventory and role policy remain application/runtime concerns outside Chat state. Phase 7C extends ChatSettings from an exact default-model-only concept to an exact-or-Follow-Interactive model policy while preserving existing exact defaults. An explicit per-message exact model remains the highest Chat routing authority and continues to forbid silent fallback.
