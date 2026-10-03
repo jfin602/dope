@@ -6,7 +6,7 @@ This document is the compact routing contract for Dope's product identity. Deepe
 
 ## Single-sentence definition
 
-Dope is a software-map-centered AI-native development environment that keeps the developer at the center of engineering, combining a full IDE with a deterministic living Software Map (sMap), subsystem-first architecture, visual planning tied directly to implementation, durable project knowledge, visible AI collaboration, and scoped automation so developers can accomplish dramatically more without giving up understanding, authorship, skill, or the satisfaction of building software themselves.
+Dope is a software-map-centered AI-native development environment that keeps the developer at the center of engineering, combining a full IDE with a living evidence-backed Software Knowledge Model projected through the Software Map (sMap), subsystem-first architecture, visual planning tied directly to implementation, durable project knowledge, visible AI collaboration, and scoped automation so developers can accomplish dramatically more without giving up understanding, authorship, skill, or the satisfaction of building software themselves.
 
 ## Why Dope exists
 
@@ -185,8 +185,11 @@ Foundation Spike 0 — qualify Theia
 -> correction c5-smap-readability — progressive disclosure and map readability
 -> Phase 6 — Flow
 -> Phase 7 — AI Presence
--> Phase 8 — Scoped Delegation
--> Phase 9 — Development Sessions
+-> Phase 8 — Living Software Knowledge Model
+-> Phase 9 — Scoped Delegation
+-> Phase 10 — Development Sessions
+
+Phase 8 turns the accepted Software Map into a continuously checked Living Software Knowledge Model before mutation-capable delegation begins. Source/runtime evidence, canonical map state, documentation and formal contracts become linked knowledge evidence; deterministic impact analysis runs first, while compact local-model semantic checks maintain alignment in the background and surface durable drift findings. Continuous monitoring is local-first and resource-aware; hosted inference is explicit escalation only and never a silent paid/background fallback.
 
 Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map core remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The later architecture-synthesis corrections remain truthful owner-closed Not Qualified history with useful implementation retained; `c4-smap-storage` and `c4-color-theme` closed Green. Owner closeout advanced only the package baseline to `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 5 — Visual Software Planning was subsequently owner-closed for sequencing with P11 still Not Green and P12 unexecuted; the retained implementation remains available without a retroactive Green claim. The owner-close transition established coherent `0.6.0` for Product Phase 6 — Flow under ADR 0020. The fresh provider comparison remains deferred; general AI Presence is Product Phase 7.
 
