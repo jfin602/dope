@@ -30,6 +30,8 @@ Replace the current vertical stack of independent map bars with a shared layout 
 ```text
 map workspace
   toolbar
+  project context strip
+    Project / <workspace path>
   canvas stage
     React Flow canvas
     lightweight floating status/orientation affordances
@@ -39,6 +41,8 @@ map workspace
 The exact DOM/component decomposition is implementation-owned.
 
 The toolbar should remain a single compact row when normal width permits and may wrap/overflow gracefully on narrow widths without recreating several persistent vertical tool bands.
+
+The read-only project/workspace location is not a toolbar control. Give it a dedicated compact row directly beneath the toolbar so long paths do not compete with map actions. The row should be left-aligned, span essentially the available map width, remain single-line, and use visually secondary plain text in a lightly styled, closely padded container. It must not use orange/action-button chrome. For exceptionally long paths, preserve access to the full value, preferring horizontal overflow/scroll over destructive truncation.
 
 ### Toolbar ownership
 
@@ -81,15 +85,22 @@ Do not break `MapViewport` semantic zoom baseline/hysteresis.
 
 Toolbar zoom must behave like ordinary geometric zoom and must not silently focus a node or alter domain state.
 
-### Breadcrumbs and status
+### Project context, breadcrumbs and status
 
-Do not keep breadcrumbs/status as large independent rows if that prevents maximum canvas area.
+Treat the workspace project-location string separately from map-global controls and architecture navigation:
+
+- render `Project / <workspace path>` as the dedicated compact project context strip immediately beneath the toolbar;
+- left-align it and let it use essentially the full map width;
+- keep it single-line and reachable for long paths without squeezing toolbar controls;
+- keep the strip presentation-only: it must not add fit/refit, focus, selection, persistence or controller semantics.
+
+Do not keep architecture breadcrumbs/status as large independent rows if that prevents maximum canvas area.
 
 Preferred:
-- integrate breadcrumbs/orientation into the toolbar or a single compact overlay/rail;
+- architecture hierarchy/orientation may remain integrated into the toolbar or a compact overlay/rail;
 - keep the status live region for accessibility, but visual status may be a small floating pill/line over the canvas.
 
-Preserve full breadcrumb identity and existing Focus/Up semantics.
+Preserve full breadcrumb identity and existing Focus/Up semantics. The dedicated workspace project path does not replace the Project -> System -> Subsystem -> Component architecture breadcrumb contract.
 
 ### Canvas sizing
 
@@ -114,6 +125,8 @@ Preserve the existing `mapFitContext`, `fitRequested`, and semantic-LOD no-snap 
 
 Add/extend focused tests to prove:
 - one shared Dope toolbar exists;
+- a dedicated read-only project context strip exists beneath the toolbar and is not styled/owned as a second toolbar;
+- normal and deliberately long project paths remain usable without compressing map controls, including at a narrower workbench width;
 - old separate Flow toolbar is no longer a second permanent control band;
 - React Flow built-in `Controls` is not rendered as a separate cluster;
 - zoom in/out/fit actions route through the existing flow instance;
@@ -393,6 +406,8 @@ If Not Green:
 ```text
 PhysicalMapWidget
   one compact map toolbar
+  compact project context strip
+    Project / <workspace path>
   canvas stage
     React Flow canvas
     compact map status/orientation
