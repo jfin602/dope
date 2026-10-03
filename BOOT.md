@@ -13,7 +13,7 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 **Product Phase 5 — Visual Software Planning is OWNER-CLOSED FOR SEQUENCING.** The retained Phase 5 source at `0.5.11` remained Not Green because P11 never completed one clean end-to-end A-I qualification replay and P12 was not executed. The owner explicitly accepted those gaps for sequencing on 2026-10-02; no failed or missing evidence is relabeled Green. The closeout transition commit `710edb362f9881ab41215705db4f08d8daca6293` established the coherent `0.6.0` successor baseline.
 
-**Product Phase 6 — Flow is ACTIVE at `0.6.7`, with P7 Not Green and P8 blocked.** P1-P6 are implemented. P7 found valid Adaptive SEO HTTP/internal/PostgreSQL/response Flow evidence, but the bounded System/Subsystem overview spent its budget on hidden/interior detail, leaked unrelated shared-store facts across focus, and omitted the route Input required for tracing. Correction `c6-flow-overview-priority` is the active gate at unchanged `0.6.7`. The accepted Adaptive SEO reference remains unchanged. General AI Presence remains Product Phase 7.
+**Product Phase 6 — Flow is ACTIVE at `0.6.7`, with P7 Not Green and P8 blocked.** P1-P6 are implemented. The retained P7 and map-canvas evidence has produced a sequence of bounded corrections without relabeling failed runs: `c6-flow-overview-priority` owns the overview-priority/query repair history, `c6-map-canvas-priority` retains its Not Green P3 result, and `c6-flow-projection-contract` owns the aggregate-versus-facts projection mismatch exposed by that replay. `c6-smap-outline` is now an approved independent presentation-only follow-on for the left Software Map inspector at unchanged `0.6.7`: compact text hierarchy, fully collapsed initial state, type-first labels, shared selection reveal, and bidirectional selection through the existing Software Map selection identity. P8 remains blocked until fresh P7 qualification is Green. The accepted Adaptive SEO reference remains unchanged. General AI Presence remains Product Phase 7.
 
 `c5-smap-readability` and the other Phase 5 corrections remain retained implementation/history. Their commit subjects or partial browser observations do not create a standalone Green claim beyond recorded evidence.
 
@@ -118,6 +118,7 @@ Foundation Spike 0 — qualify Theia
 -> visual identity alignment — match app palette to Dope logo
 -> Phase 5 — Visual Software Planning (owner-closed for sequencing)
 -> Phase 6 — Flow (current)
+-> correction c6-smap-outline — compact left sMap outline + shared selection reveal
 -> correction c6-branch-seam — synthesis strategy / Model Runtime seam
 -> Phase 7 — AI Presence
 -> Phase 8 — Scoped Delegation
@@ -252,8 +253,14 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Execute the bounded pre-Phase-7 architecture correction:
+Plan the newly approved bounded presentation correction:
 
-`c6-branch-seam`
+`c6-smap-outline`
 
-It is a manual one-off GPT-6 Sol High task at unchanged package version `0.6.7`. It separates Software Map synthesis strategy from provider/runtime lifecycle and establishes only the minimal reusable Model Runtime seam already required by existing Local/Gemini synthesis. It must not change Flow behavior, optimize Local synthesis yet, introduce Phase 7 Agent/chat/tool scope, relabel the retained P7 result, unblock P8 or close Phase 6. Phase 6 qualification/sequencing remains a separate owner decision.
+Use the normal implementation-planning workflow:
+
+`/prompt-ass -> /prompt-plan -> /prompt-write c6-smap-outline`
+
+Keep package version exactly `0.6.7`. This correction is limited to the left Software Map inspector's presentation and navigation behavior: compact text-tree rows, type-first labels, fully collapsed initial state, shared-selection ancestor reveal/scrolling, preserved manual expansion, and compact top actions. It must not change canonical architecture, Software Map evidence/query truth, Flow semantics, Planning Map semantics, synthesis/provider behavior, or project persistence.
+
+`c6-branch-seam` remains an independent pre-Phase-7 architecture correction and may proceed separately. Neither correction relabels retained P7 evidence, unblocks P8 by itself, or authorizes general Phase 7 AI Presence.
