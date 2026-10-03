@@ -257,19 +257,52 @@ Chat is an interface for understanding and proposing project work. Promotion int
 
 ### Phase 7B-7C — AI Center, connections and role policy
 
-`AIConnection` is a user/application-scoped provider/runtime connection identity. It represents configuration and lifecycle for a Local runtime, hosted provider or future execution backend without becoming project truth.
+`AIConnection` is a machine-local/application-global provider/runtime connection identity. Its Dope-owned ID is immutable across endpoint, alias, credential, readiness and model-inventory changes. Enabled/Disabled/Removed lifecycle is distinct from transient health.
 
-`AIModel` is a model identity discovered/configured beneath an `AIConnection`, with provider-neutral capability/readiness metadata. A connection may expose multiple models; a model does not own connection credentials or feature authority.
+`AIModel` is connection-scoped identity formed from connection ID + provider model key. Display labels and current capability/readiness may change without changing identity.
 
-`AIRolePolicy` is user/application routing policy. Initial roles are Interactive, Deep Reasoning, Background, Software Map and Coding Agent. A policy may name preferred targets, ordered permitted fallbacks, capability requirements and locality/privacy/egress constraints. It is not a canonical project artifact and must not be copied into `.dope/` merely because a project uses it.
+The application registry is one logical revisioned authority shared across projects/windows for one OS user/Dope installation. It is not project state and does not live in `.dope/`. Cross-machine sync is deferred.
 
-**AI Center** is the user-facing management surface for `AIConnection`, `AIModel` and `AIRolePolicy`. It is opened from the persistent bottom-left AI launcher; account/profile management belongs under Settings. AI Center projects the shared Model Connections registry established by Phase 7A rather than creating a second provider store.
+Connection secrets use Environment, Session-only or OS secure storage. There is no plaintext persistent fallback.
 
-General resolution precedence is explicit per-message/feature model choice -> persistent Chat model policy where applicable -> feature-requested role + constraints -> global role policy -> permitted fallback. Explicit model selection never silently falls back. Role fallback is legal only when the initiating feature allows it and the fallback satisfies all constraints.
+**AI Center** is the singleton user-facing management surface opened from the bottom-left AI launcher. It projects the shared registry and owns connection/model management. Account/profile management belongs under Settings.
 
-Routing policy does not grant feature authority. Software Map provider/evidence-egress approval remains explicit under ADR 0022. Phase 8 continuous Background alignment requests a local-only/no-hosted-fallback constraint under ADR 0023 regardless of broader generic Background preferences.
+`AIModel` carries normalized local/hosted classification, capabilities, limits, readiness and metadata source/quality sufficient for provider-neutral eligibility queries. Unknown capability support does not satisfy hard requirements.
 
-Connection/model configuration and role policy are user/application state. Credentials/tokens are secret runtime/application state; persistent secret storage requires a secure-store boundary and never belongs in `.dope/`, Chat persistence or ordinary plaintext preference state.
+`AIRolePolicy` is user/application routing policy. Initial fixed roles are:
+- Interactive;
+- Deep Reasoning;
+- Background;
+- Software Map;
+- Coding Agent.
+
+Initial 7C has no arbitrary custom roles.
+
+A role policy contains a preferred exact/constraint target plus ordered fallback entries. Routing is deterministic rather than score-ranked. Hard constraints and soft preferences are separate; locality is represented as one typed constraint such as any/local-only/hosted-only.
+
+Role policy may restrict egress but cannot grant egress authority. Feature/request constraints only narrow policy.
+
+Chat model policy after 7C is either:
+- **Exact model**; or
+- **Follow Interactive role**.
+
+Existing Phase 7A exact defaults remain exact on migration. New Phase 7C Chats default to Follow Interactive. Per-message model choice remains an exact one-turn override.
+
+Role-policy health is derived (for example Ready, Using fallback, Needs configuration, Broken, Unavailable), not independent canonical state.
+
+Live policy references to removed targets may retain bounded non-secret last-known descriptors for explanation/repair without retaining active connection configuration or credentials.
+
+Every routed execution records compact immutable `RoutingProvenance` sufficient to explain requested role/resolution source, effective hard constraints, policy revision, preferred/actual target and bounded fallback attempts. A user-facing **Why this model?** projection may render that provenance.
+
+Initial feature bindings are:
+- role-following Chat -> Interactive;
+- explicit heavy foreground analysis -> Deep Reasoning;
+- Analyze Project/Search Deeper -> Software Map default-target policy while keeping explicit run authority;
+- Phase 8 maintenance -> Background + hard local-only/no-hosted-fallback;
+- Phase 9 delegation -> Coding Agent when that consumer ships.
+
+Connection/model configuration and role policy are application state. They never become canonical project truth merely because a project uses them.
+
 
 ### Phase 7-9 — AI collaboration, knowledge alignment and delegation
 
