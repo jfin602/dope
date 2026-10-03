@@ -1,6 +1,6 @@
 # Product Phase 7B — AI Center Planning Worksheet
 
-Status: RESOLVED / READY FOR DOCS REVIEW  
+Status: RESOLVED / PROMOTED TO PHASE 7 AUTHORITY  
 Date: October 3, 2026  
 Target slice: Product Phase 7B — AI Center  
 Assumption: Product Phase 7A is fully implemented and qualified before this worksheet is resolved.
@@ -13,7 +13,7 @@ This worksheet assumes all Phase 7A capabilities already exist and are working: 
 
 This worksheet does **not** implement or fully design Phase 7C role routing. It may define the connection/model contracts and UI seams that 7C will consume so Phase 7B does not need to be rewritten later.
 
-All ten primary decisions are now resolved. They should be promoted into ADR 0026, the Phase 7 plan, architecture/product contracts, roadmap text, or a follow-on ADR through `/docs-review -> /docs-apply` before Phase 7B prompt decomposition.
+All ten primary decisions are resolved and promoted into ADR 0026, the Phase 7 plan, Architecture, Product Model, Stability and roadmap authority. This worksheet remains explanatory planning history.
 
 ## Already locked
 
@@ -642,4 +642,4 @@ This worksheet is subordinate to:
 - `docs/stability-contract.md`
 - `docs/roadmap/mvp-roadmap.md`
 
-Resolved answers should be promoted into those authorities through `/docs-review -> /docs-apply`. The worksheet remains planning context rather than competing canonical product authority.
+Resolved answers have been promoted into the current Phase 7 authorities. This worksheet remains planning context rather than competing canonical product authority.
