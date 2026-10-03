@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { SoftwareMapSynthesisStrategy } from '../../packages/software-map/lib/index.js';
 import { createArchitectureEvidenceView, parseSynthesisStageResult, synthesisStageResultSchemas,
   SynthesisProviderFailure } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidencePacket, SynthesisStageRequest } from '../../packages/software-map/lib/index.js';
 import { GeminiSynthesisProvider, geminiStageSchema } from
   '../../packages/theia-extension/lib/node/gemini-synthesis-provider.js';
 import { COMPONENT_DISCOVERY_INSTRUCTION, SUBSYSTEM_CHALLENGE_INSTRUCTION, SUBSYSTEM_DISCOVERY_INSTRUCTION,
-  SYSTEM_DISCOVERY_INSTRUCTION } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
+  SYSTEM_DISCOVERY_INSTRUCTION } from '../../packages/software-map/lib/index.js';
 
 const key = 'synthetic-test-secret';
 const packet: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'gemini-fixture', items: [
@@ -62,7 +63,7 @@ test('Gemini SDK applies the API key, selected model, compact schema and provide
   assert.equal(capability.contextWindowTokens, 1048576);
   assert.equal(capability.maxInputTokens, 65536);
   assert.ok(capability.maxInputTokens < capability.contextWindowTokens / 8);
-  const executed = await provider.runStage(request);
+  const executed = await new SoftwareMapSynthesisStrategy(provider).runStage(request);
   assert.deepEqual(parseSynthesisStageResult(executed.output, request, packet), output);
   assert.deepEqual(executed.usage, { providerKind: 'gemini', modelLabel: modelId,
     requestBytes: Buffer.byteLength(JSON.stringify(request)), outputBytes: Buffer.byteLength(JSON.stringify(output)),
@@ -140,7 +141,7 @@ test('schema projection retains supported constraints and full Dope validation r
     { type: 'string', enum: ['yes'] });
   const provider = await prepared({ apiKey: key, fetch: async (url) => json(
     String(url).endsWith(':generateContent') ? completion(JSON.stringify({ ...output, rationale: 'surplus' })) : model) });
-  const executed = await provider.runStage(request);
+  const executed = await new SoftwareMapSynthesisStrategy(provider).runStage(request);
   assert.throws(() => parseSynthesisStageResult(executed.output, request, packet), /fields/);
 });
 
@@ -150,10 +151,10 @@ test('Gemini normalizes absent usage and sanitizes malformed response and JSON',
     const provider = await prepared({ apiKey: key, fetch: async url => json(
       String(url).endsWith(':generateContent') ? reply : model) });
     if (valid) {
-      const executed = await provider.runStage(request);
+      const executed = await new SoftwareMapSynthesisStrategy(provider).runStage(request);
       assert.equal(executed.usage.tokenMeasurement, 'unavailable');
       assert.equal(executed.usage.inputTokens, undefined);
-    } else await assert.rejects(provider.runStage(request), error => {
+    } else await assert.rejects(new SoftwareMapSynthesisStrategy(provider).runStage(request), error => {
       assert.equal((error as SynthesisProviderFailure).failureClass, 'invalid-json');
       return /Invalid Gemini stage JSON/.test(String(error));
     });
@@ -164,7 +165,7 @@ test('Gemini reports stage truncation without exposing response text', async () 
   const provider = await prepared({ apiKey: key, fetch: async url => json(
     String(url).endsWith(':generateContent') ? { ...completion(key), candidates: [{
       ...completion(key).candidates[0], finishReason: 'MAX_TOKENS' }] } : model) });
-  await assert.rejects(provider.runStage(request), error => {
+  await assert.rejects(new SoftwareMapSynthesisStrategy(provider).runStage(request), error => {
     assert.equal((error as SynthesisProviderFailure).failureClass, 'nonretryable-provider');
     assert.match((error as Error).message, /Gemini stage output truncated at token limit/);
     assert.ok(!String(error).includes(key));
@@ -179,7 +180,7 @@ test('Gemini reconciliation instructs one unresolved entry per candidate', async
     instruction = JSON.parse(String(init?.body)).systemInstruction.parts[0].text;
     return json(completion('{}'));
   } });
-  await provider.runStage({ ...request, stage: 'reconciliation' });
+  await new SoftwareMapSynthesisStrategy(provider).runStage({ ...request, stage: 'reconciliation' });
   assert.match(instruction, /Each unresolved candidateKey may appear only once/);
 });
 
@@ -214,7 +215,7 @@ test('Local instructions and Gemini schemas route the same three compact lower s
       body = JSON.parse(String(init?.body));
       return json(completion(JSON.stringify(response)));
     } });
-    const executed = await provider.runStage(stageRequest);
+    const executed = await new SoftwareMapSynthesisStrategy(provider).runStage(stageRequest);
     assert.equal(body.systemInstruction.parts[0].text, instruction);
     assert.match(instruction, /Never use dependency, topology, configuration, test, or document refs as ownership/);
     assert.deepEqual(body.generationConfig.responseJsonSchema,
@@ -242,7 +243,7 @@ test('Gemini configuration, auth, quota, upstream and arbitrary errors never exp
   await assert.rejects(provider.capabilities(), error => !String(error).includes(key));
   const stageProvider = await prepared({ apiKey: key, fetch: async url =>
     String(url).endsWith(':generateContent') ? json({ error: { code: 429, message: key } }, 429) : json(model) });
-  await assert.rejects(stageProvider.runStage(request), error => {
+  await assert.rejects(new SoftwareMapSynthesisStrategy(stageProvider).runStage(request), error => {
     assert.match((error as Error).message, /quota/);
     assert.ok(!String(error).includes(key));
     return true;
@@ -258,7 +259,7 @@ test('Gemini stage cancellation and timeout are sanitized', async () => {
         if (cancelled) queueMicrotask(() => controller.abort());
         return new Promise<Response>((_, reject) => init?.signal?.addEventListener('abort', () => reject(new Error(key))));
       } });
-    await assert.rejects(provider.runStage(request, controller.signal), error => {
+    await assert.rejects(new SoftwareMapSynthesisStrategy(provider).runStage(request, controller.signal), error => {
       assert.match((error as Error).message, /cancelled or timed out/);
       assert.ok(!String(error).includes(key));
       return true;
@@ -274,7 +275,7 @@ test('Gemini marks only sanitized stage transport and upstream failures retryabl
   ] as const) {
     const provider = await prepared({ apiKey: key, fetch: async url =>
       String(url).endsWith(':generateContent') ? response() : json(model) });
-    await assert.rejects(provider.runStage(request), error => {
+    await assert.rejects(new SoftwareMapSynthesisStrategy(provider).runStage(request), error => {
       assert.equal(error instanceof SynthesisProviderFailure ? error.failureClass : undefined, failureClass);
       assert.equal(String(error).includes(key), false);
       return true;

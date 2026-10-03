@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import test from 'node:test';
-import { challengeCandidateSystems, discoverCandidateSystems, planArchitectureEvidence,
+import { SoftwareMapSynthesisStrategy, challengeCandidateSystems, discoverCandidateSystems, planArchitectureEvidence,
   validateSynthesisStageRequest } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidencePacket, ChallengeDecision, SynthesisProvider, SynthesisStageRequest,
   SystemCandidate } from '../../packages/software-map/lib/index.js';
-import { LmStudioSynthesisProvider, SYSTEM_CHALLENGE_INSTRUCTION } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
+import { LmStudioSynthesisProvider } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
+import { SYSTEM_CHALLENGE_INSTRUCTION } from '../../packages/software-map/lib/index.js';
 
 const fact = (id: string, kind: 'entrypoint' | 'semantic' | 'dependency', path: string, targetPath?: string) => {
   const base = { id, kind, path, sourceEvidenceIds: [`physical:${id}`] };
@@ -154,8 +155,9 @@ test('local provider sends independent structured challenge call after discovery
     const adapter = new LmStudioSynthesisProvider({ endpoint: `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`,
       contextWindowTokens: 65536 });
     await adapter.discoverModels(); adapter.selectModel('local-qwen'); await adapter.probe();
-    const discovery = await discoverCandidateSystems(packet, adapter);
-    const challenged = await challengeCandidateSystems(packet, discovery, adapter);
+    const strategy = new SoftwareMapSynthesisStrategy(adapter);
+    const discovery = await discoverCandidateSystems(packet, strategy);
+    const challenged = await challengeCandidateSystems(packet, discovery, strategy);
     assert.equal(challenged.result.decisions.length, 4);
     assert.deepEqual(calls.map(call => call.name), ['readiness', 'readiness', 'system_discovery', 'system_challenge']);
     assert.equal(calls[3].body.response_format.json_schema.schema.properties.decisions.type, 'array');

@@ -1,9 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
-import { architectureProposalSchema, assertSynthesisInputBudget, synthesisStageResultSchemas, SynthesisProviderFailure } from '@dope/software-map';
-import type { SynthesisCapabilities, SynthesisStageExecution, SynthesisStageRequest, TargetedRefinementRequest } from '@dope/software-map';
-import { COMPONENT_DISCOVERY_INSTRUCTION, RECONCILIATION_INSTRUCTION, SUBSYSTEM_CHALLENGE_INSTRUCTION,
-    SUBSYSTEM_DISCOVERY_INSTRUCTION, SYSTEM_CHALLENGE_INSTRUCTION,
-    SYSTEM_DISCOVERY_INSTRUCTION, TARGET_REFINEMENT_INSTRUCTION, VERIFICATION_INSTRUCTION } from './lmstudio-synthesis-provider';
+import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
+import type { StructuredGenerationRequest, ModelCapabilities, ModelGenerationExecution } from '@dope/contracts/lib/model-runtime';
 
 const DEFAULT_TIMEOUT_MS = 900_000;
 const schemaKeywords = new Set(['type', 'enum', 'items', 'minItems', 'maxItems', 'minimum', 'maximum',
@@ -31,28 +28,31 @@ function count(value: unknown): number | undefined {
 function sanitized(error: unknown, aborted: boolean): Error {
     if (aborted || (error as { name?: unknown } | null)?.name === 'AbortError' ||
         (error as { name?: unknown } | null)?.name === 'TimeoutError')
-        return new SynthesisProviderFailure('Gemini synthesis cancelled or timed out', 'cancelled');
+        return new ModelRuntimeFailure('Gemini synthesis cancelled or timed out', 'cancelled');
     const status = (error as { status?: unknown } | null)?.status;
     if (error instanceof Error && ['Invalid model capacity', 'Invalid readiness response'].includes(error.message)) return error;
     if (status === 401 || status === 403)
-        return new SynthesisProviderFailure(`Gemini authentication failed (HTTP ${status})`, 'authentication');
-    if (status === 429) return new SynthesisProviderFailure('Gemini quota or rate limit exceeded (HTTP 429)', 'nonretryable-provider');
+        return new ModelRuntimeFailure(`Gemini authentication failed (HTTP ${status})`, 'authentication');
+    if (status === 429) return new ModelRuntimeFailure('Gemini quota or rate limit exceeded (HTTP 429)', 'nonretryable-provider');
     if (typeof status === 'number' && status >= 500 && status <= 599)
-        return new SynthesisProviderFailure(`Gemini upstream service failed (HTTP ${status})`, 'transient-upstream');
+        return new ModelRuntimeFailure(`Gemini upstream service failed (HTTP ${status})`, 'transient-upstream');
     if (typeof status === 'number' && status >= 400)
-        return new SynthesisProviderFailure(`Gemini request rejected (HTTP ${status})`, 'nonretryable-provider');
-    if (error instanceof TypeError) return new SynthesisProviderFailure('Gemini SDK or transport type error', 'transient-transport');
-    if (error instanceof SyntaxError) return new SynthesisProviderFailure('Gemini response JSON error', 'invalid-json');
-    return new SynthesisProviderFailure('Gemini synthesis request failed', 'nonretryable-provider');
+        return new ModelRuntimeFailure(`Gemini request rejected (HTTP ${status})`, 'nonretryable-provider');
+    if (error instanceof TypeError) return new ModelRuntimeFailure('Gemini SDK or transport type error', 'transient-transport');
+    if (error instanceof SyntaxError) return new ModelRuntimeFailure('Gemini response JSON error', 'invalid-json');
+    return new ModelRuntimeFailure('Gemini synthesis request failed', 'nonretryable-provider');
 }
 
 export class GeminiSynthesisProvider {
     readonly kind = 'gemini' as const;
     private readonly client: GoogleGenAI;
     private readonly timeoutMs: number;
-    private capability?: SynthesisCapabilities;
+    private capability?: ModelCapabilities;
     private models: string[] = [];
     private model?: string;
+    private probed = false;
+    get runtimeIdentity(): string { return this.kind; }
+    get isReady(): boolean { return this.probed; }
 
     constructor(options: { apiKey: string; timeoutMs?: number; fetch?: typeof globalThis.fetch }) {
         if (typeof options.apiKey !== 'string' || !options.apiKey.trim() || /\s/.test(options.apiKey))
@@ -68,6 +68,7 @@ export class GeminiSynthesisProvider {
         this.models = [];
         this.model = undefined;
         this.capability = undefined;
+        this.probed = false;
         try {
             const pager = await this.client.models.list({ config: { httpOptions: { timeout: this.timeoutMs } } });
             const models: string[] = [];
@@ -85,6 +86,7 @@ export class GeminiSynthesisProvider {
         if (!this.models.includes(modelId)) throw new Error('Select a discovered Gemini model');
         this.model = modelId;
         this.capability = undefined;
+        this.probed = false;
     }
 
     get selectedModel(): string | undefined { return this.model; }
@@ -97,6 +99,7 @@ export class GeminiSynthesisProvider {
     /** Synthetic structured-output check; repository evidence is never used. */
     async probe(): Promise<void> {
         const model = this.requireModel();
+        this.probed = false;
         await this.capabilities();
         try {
             const response = await this.client.models.generateContent({ model,
@@ -108,10 +111,11 @@ export class GeminiSynthesisProvider {
             let ready: unknown;
             try { ready = JSON.parse(response.text ?? '')?.ready; } catch { throw new Error('Invalid readiness response'); }
             if (ready !== true) throw new Error('Invalid readiness response');
+            this.probed = true;
         } catch (error) { throw new Error(`Gemini readiness: ${sanitized(error, false).message}`); }
     }
 
-    async capabilities(): Promise<SynthesisCapabilities> {
+    async capabilities(): Promise<ModelCapabilities> {
         if (this.capability) return this.capability;
         const selectedModel = this.requireModel();
         try {
@@ -131,26 +135,14 @@ export class GeminiSynthesisProvider {
     /** Local byte estimate avoids countTokens calls in the evidence planner's search loop. */
     async estimateTokens(input: string): Promise<number> { return Buffer.byteLength(input); }
 
-    async runRefinement(request: TargetedRefinementRequest, signal?: AbortSignal): Promise<SynthesisStageExecution> { return this.runStage(request, signal); }
-
-    async runStage(request: SynthesisStageRequest | TargetedRefinementRequest, signal?: AbortSignal): Promise<SynthesisStageExecution> {
-        if (signal?.aborted) throw sanitized(undefined, true);
+    async generateStructured(request: StructuredGenerationRequest): Promise<ModelGenerationExecution> {
+        if (request.signal?.aborted) throw sanitized(undefined, true);
         const model = this.requireModel();
-        const capability = await this.capabilities();
-        const input = JSON.stringify(request);
-        await assertSynthesisInputBudget(this, capability, input);
-        const instruction = request.stage === 'system-challenge' ? SYSTEM_CHALLENGE_INSTRUCTION :
-            request.stage === 'target-refinement' ? TARGET_REFINEMENT_INSTRUCTION :
-            request.stage === 'subsystem-discovery' ? SUBSYSTEM_DISCOVERY_INSTRUCTION :
-            request.stage === 'subsystem-challenge' ? SUBSYSTEM_CHALLENGE_INSTRUCTION :
-            request.stage === 'component-discovery' ? COMPONENT_DISCOVERY_INSTRUCTION :
-            request.stage === 'reconciliation' ? RECONCILIATION_INSTRUCTION :
-            request.stage === 'verification' ? VERIFICATION_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION;
-        const schema = geminiStageSchema(request.stage === 'target-refinement' ? architectureProposalSchema : synthesisStageResultSchemas[request.stage]);
-        const body = { model, contents: input, config: { systemInstruction: instruction,
+        const schema = geminiStageSchema(request.schema);
+        const body = { model, contents: request.input, config: { systemInstruction: request.instruction,
             responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0, maxOutputTokens: 32768 } };
         const timeout = AbortSignal.timeout(this.timeoutMs);
-        const abortSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
+        const abortSignal = request.signal ? AbortSignal.any([request.signal, timeout]) : timeout;
         let response;
         try {
             response = await this.client.models.generateContent({ ...body,
@@ -158,20 +150,20 @@ export class GeminiSynthesisProvider {
         } catch (error) { throw sanitized(error, abortSignal.aborted); }
         if (abortSignal.aborted) throw sanitized(undefined, true);
         if (response.candidates?.[0]?.finishReason === 'MAX_TOKENS')
-            throw new SynthesisProviderFailure('Gemini stage output truncated at token limit', 'nonretryable-provider');
+            throw new ModelRuntimeFailure('Gemini stage output truncated at token limit', 'nonretryable-provider');
         let output: unknown;
         let content: string;
         try {
             content = response.text!;
             if (typeof content !== 'string' || !content.trim()) throw new Error('Empty response');
             output = JSON.parse(content);
-        } catch { throw new SynthesisProviderFailure('Invalid Gemini stage JSON', 'invalid-json'); }
+        } catch { throw new ModelRuntimeFailure('Invalid Gemini stage JSON', 'invalid-json'); }
         const usage = response.usageMetadata;
         const inputTokens = count(usage?.promptTokenCount);
         const outputTokens = count(usage?.candidatesTokenCount);
         const totalTokens = count(usage?.totalTokenCount);
         return { output, usage: { providerKind: 'gemini', modelLabel: model,
-            requestBytes: Buffer.byteLength(input), outputBytes: Buffer.byteLength(content),
+            requestBytes: Buffer.byteLength(request.input), outputBytes: Buffer.byteLength(content),
             ...(inputTokens === undefined ? {} : { inputTokens }),
             ...(outputTokens === undefined ? {} : { outputTokens }),
             ...(totalTokens === undefined ? {} : { totalTokens }),

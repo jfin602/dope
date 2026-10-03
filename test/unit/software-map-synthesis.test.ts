@@ -123,7 +123,7 @@ const subsystem = { candidateKey: 'candidate:server', kind: 'subsystem' as const
 const component = { candidateKey: 'candidate:main', kind: 'component' as const, parentCandidateKey: subsystem.candidateKey,
   name: 'Main', responsibility: 'Start server', confidence: 1, ambiguityCodes: [], evidenceRefs: ['entry'], ownershipEvidenceRefs: ['entry'] };
 const subtree: SystemSubtree = { systemKey: systemCandidate.candidateKey, nodes: [subsystem, component] };
-test('cache retries only classified transient or malformed Gemini failures and reports the next attempt', async () => {
+test('cache retries only classified transient or malformed runtime failures and reports the next attempt', async () => {
   const valid = result('system-discovery', { systems: [systemCandidate] });
   for (const failureClass of ['transient-transport', 'invalid-json'] as const) {
     const cache = new SynthesisStageCache();

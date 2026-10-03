@@ -8,6 +8,7 @@ export * from './assembly';
 export * from './service';
 export * from './synthesis';
 export * from './hierarchical-synthesis';
+export * from './synthesis-strategy';
 export * from './evidence-planner';
 export * from './system-discovery';
 export * from './system-challenge';

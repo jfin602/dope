@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import test from 'node:test';
-import { discoverCandidateSystems } from '../../packages/software-map/lib/index.js';
+import { SoftwareMapSynthesisStrategy, discoverCandidateSystems } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidencePacket, SynthesisStageRequest } from '../../packages/software-map/lib/index.js';
-import { LmStudioSynthesisProvider, SYSTEM_DISCOVERY_INSTRUCTION } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
+import { LmStudioSynthesisProvider } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
+import { SYSTEM_DISCOVERY_INSTRUCTION } from '../../packages/software-map/lib/index.js';
 
 const model = 'local-qwen';
 const topology = (id: string, path: string, name: string) =>
@@ -63,8 +64,8 @@ test('global view groups Browser and Electron packages under one responsibility 
   const server = await serverFor(request => result(request, [candidate('workbench', 'Workbench', ['browser-start', 'electron-start', 'workbench'])]));
   try {
     const provider = await configured(server.endpoint);
-    const first = await discoverCandidateSystems(oneResponsibility, provider);
-    const second = await discoverCandidateSystems(oneResponsibility, provider);
+    const first = await discoverCandidateSystems(oneResponsibility, new SoftwareMapSynthesisStrategy(provider));
+    const second = await discoverCandidateSystems(oneResponsibility, new SoftwareMapSynthesisStrategy(provider));
     assert.equal(first.result.systems.length, 1);
     assert.deepEqual(first.result, second.result);
     assert.deepEqual(server.calls.map(call => call.body?.response_format.json_schema.name ?? 'models'),
@@ -89,7 +90,7 @@ test('one repository can return multiple independent Systems from one global vie
     candidate('api', 'API', ['api-start', 'api-contract']), candidate('compiler', 'Compiler', ['compiler-start', 'compiler-contract']),
   ]));
   try {
-    const { result: discovered, plan } = await discoverCandidateSystems(multipleResponsibilities, await configured(server.endpoint));
+    const { result: discovered, plan } = await discoverCandidateSystems(multipleResponsibilities, new SoftwareMapSynthesisStrategy(await configured(server.endpoint)));
     assert.deepEqual(discovered.systems.map(item => item.name), ['API', 'Compiler']);
     assert.ok(plan.request.view.items.some(item => item.id === 'api-start'));
     assert.ok(plan.request.view.items.some(item => item.id === 'compiler-start'));
@@ -104,7 +105,7 @@ test('strict stage result rejects lower hierarchy, fabricated refs and fixture-o
         mode === 'component' ? [{ ...node, components: [] }] : [node]);
     });
     try {
-      await assert.rejects(discoverCandidateSystems(oneResponsibility, await configured(server.endpoint)),
+      await assert.rejects(discoverCandidateSystems(oneResponsibility, new SoftwareMapSynthesisStrategy(await configured(server.endpoint))),
         mode === 'subsystem' ? /kind/ : mode === 'component' ? /fields/ :
           mode === 'fixture' ? /unknown|production evidence/ : /unknown/);
       assert.equal(server.calls.filter(call => call.body?.response_format.json_schema.name === 'system_discovery').length, 1);
@@ -119,7 +120,7 @@ test('root manifest and start script are context, not direct System responsibili
   ] };
   const server = await serverFor(request => result(request, [candidate('app', 'App', ['root', 'start'])]));
   try {
-    await assert.rejects(discoverCandidateSystems(manifest, await configured(server.endpoint)), /direct production evidence/);
+    await assert.rejects(discoverCandidateSystems(manifest, new SoftwareMapSynthesisStrategy(await configured(server.endpoint))), /direct production evidence/);
     assert.match(SYSTEM_DISCOVERY_INSTRUCTION, /One cohesive product may be one System/);
     assert.match(SYSTEM_DISCOVERY_INSTRUCTION, /start scripts provide context/);
   } finally { await server.close(); }
@@ -130,7 +131,7 @@ test('root manifest and start script are context, not direct System responsibili
   ] };
   const frameworkServer = await serverFor(request => result(request, [candidate('app', 'App', ['binding'])]));
   try {
-    await assert.rejects(discoverCandidateSystems(registration, await configured(frameworkServer.endpoint)),
+    await assert.rejects(discoverCandidateSystems(registration, new SoftwareMapSynthesisStrategy(await configured(frameworkServer.endpoint))),
       /direct production evidence/);
   } finally { await frameworkServer.close(); }
   const documentation: ArchitectureEvidencePacket = { schemaVersion: 1, inputFingerprint: 'docs-only', items: [
@@ -138,7 +139,7 @@ test('root manifest and start script are context, not direct System responsibili
   ] };
   const docsServer = await serverFor(request => result(request, [candidate('app', 'App', ['guide'])]));
   try {
-    await assert.rejects(discoverCandidateSystems(documentation, await configured(docsServer.endpoint)),
+    await assert.rejects(discoverCandidateSystems(documentation, new SoftwareMapSynthesisStrategy(await configured(docsServer.endpoint))),
       /unknown|direct production evidence/);
   } finally { await docsServer.close(); }
 });
@@ -148,21 +149,21 @@ test('warm failure blocks evidence; reconnect and model change require new probe
   try {
     const provider = await configured(server.endpoint);
     assert.equal(provider.isProbed, true);
-    await assert.rejects(discoverCandidateSystems(oneResponsibility, provider), /HTTP 503/);
+    await assert.rejects(discoverCandidateSystems(oneResponsibility, new SoftwareMapSynthesisStrategy(provider)), /HTTP 503/);
     assert.equal(provider.isProbed, false);
     assert.equal(server.calls.filter(call => call.body?.response_format.json_schema.name === 'system_discovery').length, 0);
-    await assert.rejects(discoverCandidateSystems(oneResponsibility, provider), /probe required/);
+    await assert.rejects(discoverCandidateSystems(oneResponsibility, new SoftwareMapSynthesisStrategy(provider)), /probe required/);
     await provider.probe();
     assert.equal(provider.isProbed, true);
-    await discoverCandidateSystems(oneResponsibility, provider);
+    await discoverCandidateSystems(oneResponsibility, new SoftwareMapSynthesisStrategy(provider));
     await provider.discoverModels();
-    await assert.rejects(discoverCandidateSystems(oneResponsibility, provider), /probe required/);
+    await assert.rejects(discoverCandidateSystems(oneResponsibility, new SoftwareMapSynthesisStrategy(provider)), /probe required/);
     await provider.probe();
-    await discoverCandidateSystems(oneResponsibility, provider);
+    await discoverCandidateSystems(oneResponsibility, new SoftwareMapSynthesisStrategy(provider));
     provider.selectModel('other');
-    await assert.rejects(discoverCandidateSystems(oneResponsibility, provider), /probe required/);
+    await assert.rejects(discoverCandidateSystems(oneResponsibility, new SoftwareMapSynthesisStrategy(provider)), /probe required/);
     await provider.probe();
-    await discoverCandidateSystems(oneResponsibility, provider);
+    await discoverCandidateSystems(oneResponsibility, new SoftwareMapSynthesisStrategy(provider));
     assert.equal(server.calls.filter(call => call.body?.response_format.json_schema.name === 'system_discovery').length, 3);
     assert.equal(server.calls.filter(call => call.body?.response_format.json_schema.name === 'readiness').length, 8);
   } finally { await server.close(); }

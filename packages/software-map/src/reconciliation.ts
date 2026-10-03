@@ -1,6 +1,7 @@
 import { assembleArchitectureProposal, parseSynthesisStageResult, SYNTHESIS_STAGE_VERSION, SynthesisProviderFailure,
     buildCoverageLedger } from './hierarchical-synthesis';
 import { planArchitectureEvidence } from './evidence-planner';
+import { retrySynthesisFailure } from './synthesis-strategy';
 import { isProductionEvidencePath, validateArchitectureEvidencePacket } from './synthesis';
 import type { ArchitectureEvidencePacket, ArchitectureProposal } from './synthesis';
 import type { AnalysisProgressEvent, SynthesisCallAttempt } from './hierarchical-synthesis';
@@ -12,7 +13,6 @@ export const SYNTHESIS_PROMPT_VERSION = 6;
 export const MAX_VERIFICATION_CALLS = 2;
 export const MAX_VERIFICATION_TARGETS = 4;
 export const MAX_EVIDENCE_REFINEMENT_ROUNDS = 2;
-export const MAX_GEMINI_ATTEMPTS = 3;
 
 export interface SynthesisTiming {
     operation: 'planning' | 'stage-call' | 'verification-call' | 'assembly';
@@ -176,9 +176,7 @@ export class SynthesisStageCache {
                 catch (error) { this.results.delete(identity); attempt.consumed = false; throw error; }
                 if (this.results.size > this.maximum) this.results.delete(this.results.keys().next().value!);
             }
-            const retrying = provider.kind === 'gemini' && (failure instanceof SynthesisProviderFailure &&
-                (['transient-transport', 'transient-upstream'].includes(failure.failureClass) && number < MAX_GEMINI_ATTEMPTS ||
-                    failure.failureClass === 'invalid-json' && number < 2));
+            const retrying = retrySynthesisFailure(failure, number);
             onAttempt?.(structuredClone(attempt), retrying);
             if (result) {
                 return { result, reused: false, durationMs, usage: execution!.usage,

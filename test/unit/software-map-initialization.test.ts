@@ -32,7 +32,8 @@ const execution = (request: SynthesisStageRequest, fields: object) => ({ output:
   usage: { providerKind: 'local' as const, modelLabel: 'fixture-model', requestBytes: 1, outputBytes: 1,
     tokenMeasurement: 'unavailable' as const } });
 const fakeProvider = (observe?: (request: SynthesisStageRequest) => Promise<void> | void): SynthesisProvider => ({
-  kind: 'local',
+  kind: 'local', runtimeIdentity: 'fixture', isReady: true,
+  discoverModels: async () => ['fixture-model'], selectModel: () => {}, probe: async () => {},
   capabilities: async () => ({ modelLabel: 'fixture-model', contextWindowTokens: 100000, maxInputTokens: 90000,
     reservedInstructionTokens: 1000, reservedOutputTokens: 2000, reservedOverheadTokens: 1000, tokenEstimate: 'conservative' }),
   estimateTokens: async text => text.length,
@@ -863,16 +864,19 @@ test('Gemini environment and session setup remain in memory, fail closed, and ne
   const makeGemini = (key: string) => {
     keys.push(key);
     let selected = '';
-    return { kind: 'gemini', discoverModels: async () => { selected = ''; return ['gemini-3.6-flash', 'gemini-3.8-flash']; },
-      selectModel: (id: string) => { selected = id; }, probe: async () => { calls.push(`probe:${selected}`); },
+    let ready = false;
+    return { kind: 'gemini', runtimeIdentity: 'gemini', get isReady() { return ready; },
+      discoverModels: async () => { selected = ''; ready = false; return ['gemini-3.6-flash', 'gemini-3.8-flash']; },
+      selectModel: (id: string) => { selected = id; ready = false; },
+      probe: async () => { calls.push(`probe:${selected}`); ready = true; },
       capabilities: async () => ({ modelLabel: selected, contextWindowTokens: 100000,
         maxInputTokens: 90000, reservedInstructionTokens: 1000, reservedOutputTokens: 2000,
         reservedOverheadTokens: 1000, tokenEstimate: 'conservative' }),
       estimateTokens: async (text: string) => text.length,
-      runStage: async () => {
+      generateStructured: async () => {
         calls.push(`gemini:${selected}`);
         await assert.rejects(service.selectSynthesisModel(handle, 'gemini-3.8-flash'), /analysis is active/);
-        throw new Error(`raw provider error ${key}`);
+        throw new SynthesisProviderFailure('Gemini request rejected (HTTP 400)', 'nonretryable-provider');
       } } as any;
   };
   try {
@@ -893,7 +897,7 @@ test('Gemini environment and session setup remain in memory, fail closed, and ne
     assert.equal(await service.synthesisReady(handle), false);
     await service.selectSynthesisModel(handle, 'gemini-3.6-flash');
     await service.probeSynthesis(handle);
-    await assert.rejects(service.startInitialization(handle), /Gemini analysis failed/);
+    await assert.rejects(service.startInitialization(handle), /Synthesis analysis failed/);
     assert.deepEqual(calls, ['probe:gemini-3.6-flash', 'probe:gemini-3.6-flash', 'gemini:gemini-3.6-flash']);
     assert.ok(JSON.stringify(events).includes('gemini-3.6-flash'));
     assert.equal(JSON.stringify(events).includes('environment-secret'), false);
@@ -953,15 +957,18 @@ test('Gemini key survives backend restart in the machine credential store, outsi
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('Gemini stage exposes only fixed safe failure diagnostics', async () => {
+test('normalized stage failures expose only fixed safe diagnostics', async () => {
   const root = await fixture();
   const failures = ['Gemini request rejected (HTTP 400)', 'System Discovery produced no Systems to challenge'];
-  const provider = { ...fakeProvider(() => { throw new Error(failures.shift()); }), kind: 'gemini' as const };
+  const provider = { ...fakeProvider(() => {
+    const message = failures.shift()!;
+    throw message.startsWith('Gemini') ? new SynthesisProviderFailure(message, 'nonretryable-provider') : new Error(message);
+  }), kind: 'gemini' as const };
   const service = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), provider);
   try {
     const handle = await attach(service, root);
-    await assert.rejects(service.startInitialization(handle), /Gemini analysis failed: Gemini request rejected \(HTTP 400\)/);
-    await assert.rejects(service.startInitialization(handle), /Gemini analysis failed: System Discovery produced no Systems to challenge/);
+    await assert.rejects(service.startInitialization(handle), /Synthesis analysis failed: Gemini request rejected \(HTTP 400\)/);
+    await assert.rejects(service.startInitialization(handle), /Synthesis analysis failed: System Discovery produced no Systems to challenge/);
     assert.equal((await readdir(root)).includes('.dope'), true);
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });

@@ -1,5 +1,4 @@
-import { architectureProposalSchema, assertSynthesisInputBudget, synthesisStageResultSchemas } from '@dope/software-map';
-import type { SynthesisCapabilities, SynthesisStageRequest, SynthesisStageExecution, TargetedRefinementRequest } from '@dope/software-map';
+import type { StructuredGenerationRequest, ModelCapabilities, ModelGenerationExecution } from '@dope/contracts/lib/model-runtime';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
@@ -9,17 +8,6 @@ const readySchema = {
     type: 'object', additionalProperties: false, required: ['ready'],
     properties: { ready: { type: 'boolean', enum: [true] } },
 } as const;
-const COMPACT_RULES = `Return only strict JSON for the supplied stage/version, parentPacketFingerprint and viewId. Use temporary candidate keys matching ^candidate:[A-Za-z0-9._-]+$ and supplied evidence IDs only. Name <=80 characters; responsibility is a semantic label <=160 characters. Use only schema-defined ambiguityCodes and finding codes. Do not emit explanations, rationale, uncertainty strings or other prose fields. view.documents are Documented context, never observed implementation evidence or canonical truth. Root MODULES.md is strong System/Subsystem intent; root README.md is secondary project orientation. Corroborate documented claims with implementation facts before proposing implemented boundaries. Prefer unresolved to invention. Never invent physical facts or canonical IDs.`;
-export const SYSTEM_DISCOVERY_INSTRUCTION = `Discover repository-global Systems by independently meaningful software responsibility. One cohesive product may be one System. Return zero Systems only when production evidence supports no System responsibility. Responsibilities may span client, API, persistence and worker source areas; responsibilitySignals are derived cues, not architecture facts. Packages, runtime tiers, framework integrations, root manifests and start scripts provide context but cannot alone establish responsibility. Cite at least one direct source-backed production behavior fact per System. Do not force a count. ${COMPACT_RULES}`;
-export const SYSTEM_CHALLENGE_INSTRUCTION = `Challenge every input System boundary against source-backed counter-evidence. For a one-System candidate, test umbrella collapse: does it merely name the repository or product while hiding independently meaningful System responsibilities? Check runtime, process, state and external contract boundaries for supported splits; keep one when behavior forms one coherent responsibility. Cover each source candidate exactly once: keep one with its key, merge two or more into one new key, split one into two or more new keys, or reject one with no output. Context facts such as manifests and start scripts cannot alone establish responsibility; cite direct production behavior for every output. Do not force a count. ${COMPACT_RULES}`;
-const OWNERSHIP_RULE = 'ownershipEvidenceRefs must also appear in evidenceRefs and cite production view.items of kind semantic or entrypoint, or framework except import/container-module/manifest-extension. Never use dependency, topology, configuration, test, or document refs as ownership. Omit a boundary that lacks valid ownership.';
-export const SUBSYSTEM_DISCOVERY_INSTRUCTION = `Discover Subsystems only under context.subjectSystemKey. Seek enduring responsibilities that may cross UI, HTTP/API, service, repository/state, worker/job and delivery/provider source areas. A technical plane or folder is evidence, not automatically a responsibility. ${OWNERSHIP_RULE} Return zero candidates when no useful subdivision is supported. ${COMPACT_RULES}`;
-export const SUBSYSTEM_CHALLENGE_INSTRUCTION = `Challenge all initial Subsystems under context.subjectSystemKey. Inspect whether each boundary mainly mirrors client/server, frontend/backend, HTTP, persistence/database/repository, framework, worker/process or package/directory topology. Keep a technical-plane Subsystem when direct evidence shows that plane owns an independent responsibility, including an execution platform. Seek enduring responsibilities across source areas. Cover each source exactly once: keep one with its key, merge two or more into one fresh key, split one into two or more fresh keys, or reject one with no output. Optionally return recovered (at most four) for omitted responsibilities tied to an uncovered behavior responsibilitySignals cueKey and direct source-backed ownership. Do not recover from documents alone or duplicate covered ownership. If there are no source candidates, decisions is empty; recovery may still be source-backed. ${OWNERSHIP_RULE} Cite bounded counter evidence for every output. ${COMPACT_RULES}`;
-export const COMPONENT_DISCOVERY_INSTRUCTION = `Discover Components only within the exact challenged context.subjectSubsystemKey under context.subjectSystemKey. ${OWNERSHIP_RULE} If components is empty, include exactly one disposition with kind leaf-responsibility, insufficient-evidence, responsibility-belongs-elsewhere, or no-stable-component-boundary; systemKey/subsystemKey must match the challenged parents, parentPacketFingerprint/viewId must match the request, and evidenceRefs must cite source-backed implementation ownership of the parent in the view. Omit disposition when components is nonempty. Prefer a truthful empty disposition to generic service/controller/database Components or folder mirrors with weak evidence. Documents including MODULES.md cannot prove a leaf. ${COMPACT_RULES}`;
-export const RECONCILIATION_INSTRUCTION = `Review cross-System ownership, overlap, dependency, weak support and context.subtrees componentDescents. A leaf-responsibility is terminal, not a defect; insufficient-evidence remains unresolved; responsibility-belongs-elsewhere requires ownership challenge; no-stable-component-boundary remains explicit uncertainty. Return only typed findings with candidateKeys, evidenceRefs, status and code, plus unresolved candidateKey/code pairs. Each unresolved candidateKey may appear only once. Do not alter the hierarchy. ${COMPACT_RULES}`;
-export const VERIFICATION_INSTRUCTION = `Check only context.boundaryCode for context.targetCandidateKeys using this bounded view. Return typed supported, uncertain or contradicted findings. Do not alter the hierarchy. ${COMPACT_RULES}`;
-export const TARGET_REFINEMENT_INSTRUCTION = `Search deeper only within the supplied current edited target branch. Respect its manual names, parents, additions and removals. Return strict ArchitectureProposal JSON with schemaVersion 1, summary, needsMoreEvidence false, nodes, unassignedEvidenceRefs [], openQuestions, evidenceRequests []. Use proposal keys matching ^proposal:[A-Za-z0-9._-]+$, never canonical IDs. For a System target, propose only replacement System(s) and descendants. For a Subsystem target, include one context System parent as an unchanged anchor and propose replacement Subsystem(s) with Components only under that anchor; the anchor is never applied. Cite only view.items evidence IDs for every proposed boundary, including direct production behavior. coverageCues are diagnostic; documents are Documented orientation only and cannot prove implementation. Do not move content into siblings or other Systems. This is one bounded call, not recursive search.`;
-
 export function normalizeSynthesisEndpoint(value = DEFAULT_ENDPOINT): string {
     let url: URL;
     try { url = new URL(value); } catch { throw new Error('Invalid synthesis endpoint'); }
@@ -61,6 +49,8 @@ export class LmStudioSynthesisProvider {
 
     get selectedModel(): string | undefined { return this.modelId; }
     get isProbed(): boolean { return this.probed; }
+    get isReady(): boolean { return this.probed; }
+    get runtimeIdentity(): string { return this.endpoint; }
 
     /** Calling discovery again represents a reconnect and invalidates readiness. */
     async discoverModels(): Promise<string[]> {
@@ -106,7 +96,7 @@ export class LmStudioSynthesisProvider {
         this.warmPromise = undefined;
     }
 
-    async capabilities(): Promise<SynthesisCapabilities> {
+    async capabilities(): Promise<ModelCapabilities> {
         const model = this.requireModel();
         if (!this.contextWindowTokens) throw new Error('Synthesis context capacity must be configured');
         return { modelLabel: model, contextWindowTokens: this.contextWindowTokens,
@@ -125,32 +115,19 @@ export class LmStudioSynthesisProvider {
         await this.ensureWarm(model);
     }
 
-    async runRefinement(request: TargetedRefinementRequest): Promise<SynthesisStageExecution> { return this.runStage(request); }
-
-    async runStage(request: SynthesisStageRequest | TargetedRefinementRequest): Promise<SynthesisStageExecution> {
+    async generateStructured(request: StructuredGenerationRequest): Promise<ModelGenerationExecution> {
         const model = this.requireModel();
         if (!this.probed) throw new Error('Synthesis capability probe required');
-        const capability = await this.capabilities();
-        const input = JSON.stringify(request);
-        await assertSynthesisInputBudget(this, capability, input);
         const generation = this.generation;
         await this.ensureWarm(model);
         if (generation !== this.generation || model !== this.modelId || !this.probed)
             throw new Error('Synthesis connection changed before stage submission');
         try {
-            const stage = request.stage;
-            const response = await this.chat(model, stage === 'target-refinement' ? architectureProposalSchema : synthesisStageResultSchemas[stage],
-                stage.replaceAll('-', '_'), stage === 'system-challenge' ? SYSTEM_CHALLENGE_INSTRUCTION :
-                    stage === 'target-refinement' ? TARGET_REFINEMENT_INSTRUCTION :
-                    stage === 'subsystem-discovery' ? SUBSYSTEM_DISCOVERY_INSTRUCTION :
-                    stage === 'subsystem-challenge' ? SUBSYSTEM_CHALLENGE_INSTRUCTION :
-                    stage === 'component-discovery' ? COMPONENT_DISCOVERY_INSTRUCTION :
-                    stage === 'reconciliation' ? RECONCILIATION_INSTRUCTION :
-                    stage === 'verification' ? VERIFICATION_INSTRUCTION : SYSTEM_DISCOVERY_INSTRUCTION, input);
+            const response = await this.chat(model, request.schema, request.name, request.instruction, request.input);
             if (generation !== this.generation || model !== this.modelId) throw new Error('Synthesis connection changed');
             try {
                 const content = this.content(response);
-                const requestBytes = Buffer.byteLength(input);
+                const requestBytes = Buffer.byteLength(request.input);
                 const reported = (response as { usage?: { prompt_tokens?: unknown; completion_tokens?: unknown;
                     total_tokens?: unknown } }).usage;
                 const count = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0 ? value as number : undefined;
@@ -165,7 +142,7 @@ export class LmStudioSynthesisProvider {
                     ...(totalTokens === undefined ? {} : { totalTokens }),
                     tokenMeasurement: hasReported ? 'provider-reported' : 'estimated' } };
             }
-            catch (error) { if (error instanceof SyntaxError) throw new Error(`Invalid ${stage} JSON`); throw error; }
+            catch (error) { if (error instanceof SyntaxError) throw new Error(`Invalid ${request.name.replaceAll('_', '-')} JSON`); throw error; }
         } catch (error) {
             this.invalidateWarmState();
             throw error;

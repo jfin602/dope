@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createArchitectureEvidenceView, detectReconciliationConflicts, HierarchicalSynthesisOrchestrator,
   parseArchitectureProposal, planArchitectureEvidence, SynthesisStageCache, stageWorkIdentity,
-  MAX_VERIFICATION_CALLS, MAX_GEMINI_ATTEMPTS, SynthesisProviderFailure } from '../../packages/software-map/lib/index.js';
+  MAX_VERIFICATION_CALLS, MAX_TRANSIENT_ATTEMPTS, SynthesisProviderFailure } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidencePacket, SynthesisProvider, SynthesisStageRequest, SystemSubtree,
   SystemCandidate } from '../../packages/software-map/lib/index.js';
 
@@ -190,7 +190,21 @@ test('failed stage has zero automatic retries and is never cached', async () => 
   assert.equal(calls, 2);
 });
 
-test('Gemini transient retry retains failed and consumed attempts with exact request/model identity', async () => {
+test('retry decisions follow normalized failure, independent of provider identity', async () => {
+  for (const kind of ['local', 'gemini'] as const) {
+    const cache = new SynthesisStageCache();
+    let calls = 0;
+    const provider = { kind, runStage: async (input: SynthesisStageRequest) => {
+      if (++calls === 1) throw new SynthesisProviderFailure('safe transient failure', 'transient-transport');
+      return executed(input, { systems: [system('a', 'a')] });
+    } } as SynthesisProvider;
+    await cache.run(request('system-discovery'), packet, provider, `${kind}/model`);
+    assert.equal(calls, 2);
+    assert.deepEqual(cache.attempts().map(item => item.consumed), [false, true]);
+  }
+});
+
+test('Normalized transient retry retains failed and consumed attempts with exact request/model identity', async () => {
   const cache = new SynthesisStageCache();
   const req = request('system-discovery');
   const seen: SynthesisStageRequest[] = [];
@@ -220,7 +234,7 @@ test('Gemini transient retry retains failed and consumed attempts with exact req
   assert.equal(cache.attempts()[0].modelLabel, 'gemini-fixed');
 });
 
-test('Gemini retries one malformed stage result and retains both attempts', async () => {
+test('Normalized failure retries one malformed stage result and retains both attempts', async () => {
   const cache = new SynthesisStageCache();
   const req = request('system-discovery');
   let calls = 0;
@@ -236,7 +250,7 @@ test('Gemini retries one malformed stage result and retains both attempts', asyn
   assert.equal(cache.attempts()[1].retryOf, cache.attempts()[0].attemptId);
 });
 
-test('Gemini retry caps and nonretryable provider failures remain explicit', async () => {
+test('Strategy retry caps and nonretryable provider failures remain explicit', async () => {
   const req = request('system-discovery');
   for (const failure of ['upstream', 'invalid-json', 'schema', 'content', 'auth'] as const) {
     const cache = new SynthesisStageCache();
@@ -250,7 +264,7 @@ test('Gemini retry caps and nonretryable provider failures remain explicit', asy
         ...(failure === 'schema' ? { extra: true } : { evidenceRefs: ['fabricated'] }) }] });
     } } as SynthesisProvider;
     await assert.rejects(cache.run(req, packet, provider, 'gemini/model'));
-    assert.equal(calls, failure === 'upstream' ? MAX_GEMINI_ATTEMPTS : failure === 'invalid-json' ? 2 : 1, failure);
+    assert.equal(calls, failure === 'upstream' ? MAX_TRANSIENT_ATTEMPTS : failure === 'invalid-json' ? 2 : 1, failure);
     assert.equal(cache.attempts().length, calls);
     assert.ok(cache.attempts().every(item => !item.consumed));
     if (failure === 'invalid-json') assert.equal(cache.attempts()[0].failureClass, 'invalid-json');

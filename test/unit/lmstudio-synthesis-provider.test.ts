@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import test from 'node:test';
-import { createArchitectureEvidenceView } from '../../packages/software-map/lib/index.js';
+import { SoftwareMapSynthesisStrategy } from '../../packages/software-map/lib/index.js';
+import { createArchitectureEvidenceView, SUBSYSTEM_DISCOVERY_INSTRUCTION } from '../../packages/software-map/lib/index.js';
 import type { ArchitectureEvidencePacket, SynthesisStageRequest } from '../../packages/software-map/lib/index.js';
-import { DEFAULT_SYNTHESIS_TIMEOUT_MS, LmStudioSynthesisProvider, normalizeSynthesisEndpoint,
-  SUBSYSTEM_DISCOVERY_INSTRUCTION } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
+import { DEFAULT_SYNTHESIS_TIMEOUT_MS, LmStudioSynthesisProvider, normalizeSynthesisEndpoint } from
+  '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
 
 const modelId = 'publisher/Qwen3-Coder-30B-A3B-Instruct-GGUF';
 const secret = 'PROJECT_SECRET_FRAMEWORK_EVIDENCE';
@@ -77,7 +78,7 @@ test('local adapter runs one structured per-System call and declares serial gene
       context: { systems: [{ candidateKey: 'candidate:app', kind: 'system', name: 'App', responsibility: 'Serve',
         confidence: 0.8, ambiguityCodes: [], evidenceRefs: ['framework:1'] }],
         subjectSystemKey: 'candidate:app', subsystems: [], subjectSubsystemKey: null, subtrees: [], targetCandidateKeys: [] } };
-    const execution = await provider.runStage(request);
+    const execution = await new SoftwareMapSynthesisStrategy(provider).runStage(request);
     const result = execution.output as { systemKey: string; subsystems: unknown[] };
     assert.equal(result.systemKey, 'candidate:app'); assert.deepEqual(result.subsystems, []);
     assert.equal(server.requests.at(-1)!.body.response_format.json_schema.name, 'subsystem_discovery');
@@ -92,23 +93,23 @@ test('local adapter runs one structured per-System call and declares serial gene
       evidenceRefs: ['framework:1'], ownershipEvidenceRefs: ['framework:1'] };
     const challengeRequest: SynthesisStageRequest = { ...request, stage: 'subsystem-challenge',
       context: { ...request.context, subsystems: [lower] } };
-    const challengeOutput = (await provider.runStage(challengeRequest)).output as any;
+    const challengeOutput = (await new SoftwareMapSynthesisStrategy(provider).runStage(challengeRequest)).output as any;
     assert.equal(server.requests.at(-1)!.body.response_format.json_schema.name, 'subsystem_challenge');
     assert.match(server.requests.at(-1)!.body.messages[0].content, /technical-plane/i);
     const componentRequest: SynthesisStageRequest = { ...request, stage: 'component-discovery',
       context: { ...challengeRequest.context, subjectSubsystemKey: lower.candidateKey, challengedBy: challengeOutput } };
-    await provider.runStage(componentRequest);
+    await new SoftwareMapSynthesisStrategy(provider).runStage(componentRequest);
     assert.equal(server.requests.at(-1)!.body.response_format.json_schema.name, 'component_discovery');
     assert.match(server.requests.at(-1)!.body.messages[0].content, /exact challenged/i);
     assert.deepEqual(server.requests.slice(1, 3).map(r => r.body.response_format.json_schema.name), ['readiness', 'readiness']);
     const subtree = { systemKey: 'candidate:app', nodes: [] };
     const reconciliation: SynthesisStageRequest = { ...request, stage: 'reconciliation',
       context: { ...request.context, subjectSystemKey: null, subsystems: [], subjectSubsystemKey: null, subtrees: [subtree] } };
-    await provider.runStage(reconciliation);
+    await new SoftwareMapSynthesisStrategy(provider).runStage(reconciliation);
     const verification: SynthesisStageRequest = { ...reconciliation, stage: 'verification',
       context: { ...reconciliation.context, targetCandidateKeys: ['candidate:app'],
         boundaryCode: 'boundary-overlap' } };
-    await provider.runStage(verification);
+    await new SoftwareMapSynthesisStrategy(provider).runStage(verification);
     assert.deepEqual(server.requests.slice(-2).map(r => r.body.response_format.json_schema.name), ['reconciliation', 'verification']);
     assert.match(server.requests.at(-2)!.body.messages[0].content, /cross-System/i);
     assert.match(server.requests.at(-1)!.body.messages[0].content, /boundaryCode/);
@@ -129,7 +130,7 @@ test('staged adapter rejects malformed JSON and refusal after synthetic readines
       const request: SynthesisStageRequest = { schemaVersion: 1, stageVersion: 3, stage: 'system-discovery',
         parentPacketFingerprint: packet.inputFingerprint, view: createArchitectureEvidenceView(packet, ['framework:1']),
         context: { systems: [], subjectSystemKey: null, subsystems: [], subjectSubsystemKey: null, subtrees: [], targetCandidateKeys: [] } };
-      await assert.rejects(provider.runStage(request), error);
+      await assert.rejects(new SoftwareMapSynthesisStrategy(provider).runStage(request), error);
       assert.deepEqual(server.requests.slice(1, 3).map(r => r.body.response_format.json_schema.name), ['readiness', 'readiness']);
       assert.ok(server.requests.slice(1, 3).every(r => !JSON.stringify(r.body).includes(secret)));
     } finally { await server.close(); }
@@ -151,19 +152,19 @@ test('local usage distinguishes provider counts from conservative input estimate
     const provider = new LmStudioSynthesisProvider({ endpoint: server.endpoint, contextWindowTokens: 16384 });
     await provider.discoverModels(); provider.selectModel(modelId); await provider.probe();
     const request = stageRequest();
-    const fresh = await provider.runStage(request);
+    const fresh = await new SoftwareMapSynthesisStrategy(provider).runStage(request);
     assert.deepEqual(fresh.usage, { providerKind: 'local', modelLabel: modelId,
       requestBytes: Buffer.byteLength(JSON.stringify(request)),
       outputBytes: Buffer.byteLength(JSON.stringify(fresh.output)), inputTokens: 17,
       outputTokens: 9, totalTokens: 26, tokenMeasurement: 'provider-reported' });
     reported = 'absent';
-    const estimated = await provider.runStage(request);
+    const estimated = await new SoftwareMapSynthesisStrategy(provider).runStage(request);
     assert.equal(estimated.usage.tokenMeasurement, 'estimated');
     assert.equal(estimated.usage.inputTokens, Buffer.byteLength(JSON.stringify(request)));
     assert.equal(estimated.usage.outputTokens, undefined);
     assert.equal(estimated.usage.totalTokens, undefined);
     reported = 'empty';
-    assert.equal((await provider.runStage(request)).usage.inputTokens, Buffer.byteLength(JSON.stringify(request)));
+    assert.equal((await new SoftwareMapSynthesisStrategy(provider).runStage(request)).usage.inputTokens, Buffer.byteLength(JSON.stringify(request)));
   } finally { await server.close(); }
 });
 

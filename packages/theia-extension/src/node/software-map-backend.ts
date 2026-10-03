@@ -10,7 +10,7 @@ import { readSynthesisRun, writeSynthesisRun, clearSynthesisRun, saveSynthesisRe
 import type { SavedSynthesisRun } from '@dope/code-analysis/lib/node/smap-analysis-file';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
 import { hierarchy, projectPath, relationshipsFor, queryStaticFlow, parseArchitecture, parseAnalysisProgressEvent, suggestArchitectureId, reviewDeclaration, reviewDiagnostics,
-    HierarchicalSynthesisOrchestrator, SynthesisStageCache, validateArchitectureEvidencePacket, planTargetedRefinement, parseTargetedRefinement } from '@dope/software-map';
+    HierarchicalSynthesisOrchestrator, SoftwareMapSynthesisStrategy, SynthesisStageCache, SynthesisProviderFailure, validateArchitectureEvidencePacket, planTargetedRefinement, parseTargetedRefinement } from '@dope/software-map';
 import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, SoftwareMapPageRequest, GraphRelationship, SoftwareMapRelationshipRequest,
     PhysicalMapSnapshot, SoftwareMapClient, SoftwareMapService, ArchitectureEvidencePacket, ArchitectureReview, ArchitectureReviewNode,
     ArchitectureDeclaration, SoftwareMapInitializationStatus, SynthesisProvider, SynthesisSetup, SynthesisSetupResult, AnalysisProgressEvent,
@@ -21,14 +21,12 @@ import { GeminiSynthesisProvider } from './gemini-synthesis-provider';
 const geminiCredentialService = 'Dope Gemini';
 const geminiCredentialAccount = 'AI Studio API key';
 
-function geminiAnalysisError(error: unknown): Error {
+function synthesisAnalysisError(error: unknown): Error | undefined {
     const message = error instanceof Error ? error.message : '';
     if (/^Invalid hierarchical synthesis: [A-Za-z0-9 .\[\]/-]+$/.test(message) ||
-        ['Invalid Gemini stage JSON', 'Gemini stage output truncated at token limit',
-            'System Discovery produced no Systems to challenge', 'System Challenge rejected every System'].includes(message) ||
-        /^Gemini (synthesis cancelled or timed out|synthesis request failed|SDK or transport type error|response JSON error|authentication failed \(HTTP 40[13]\)|quota or rate limit exceeded \(HTTP 429\)|upstream service failed \(HTTP 5\d\d\)|request rejected \(HTTP 4\d\d\))$/.test(message))
-        return new Error(`Gemini analysis failed: ${message}`);
-    return new Error('Gemini analysis failed. Review setup and retry.');
+        ['System Discovery produced no Systems to challenge', 'System Challenge rejected every System'].includes(message) ||
+        error instanceof SynthesisProviderFailure)
+        return new Error(`Synthesis analysis failed: ${message}`);
 }
 
 export class SoftwareMapBackend implements SoftwareMapService {
@@ -44,9 +42,6 @@ export class SoftwareMapBackend implements SoftwareMapService {
     private provider?: SynthesisProvider;
     private readonly synthesisCache = new SynthesisStageCache(Number.MAX_SAFE_INTEGER);
     private analysisStarted?: number;
-    private localProvider?: LmStudioSynthesisProvider;
-    private geminiProvider?: GeminiSynthesisProvider;
-    private geminiProbed = false;
     private readonly unlisten: () => void;
     private idleStatus() {
         return { generation: 0, publishedGeneration: 0, state: 'idle' as const,
@@ -75,9 +70,6 @@ export class SoftwareMapBackend implements SoftwareMapService {
             this.run++;
             this.phase = undefined;
             this.pending = undefined;
-            this.localProvider = undefined;
-            this.geminiProvider = undefined;
-            this.geminiProbed = false;
         } else {
             this.clearProvider();
         }
@@ -125,9 +117,6 @@ export class SoftwareMapBackend implements SoftwareMapService {
         this.pending = undefined;
         this.analysisStarted = undefined;
         this.provider = undefined;
-        this.localProvider = undefined;
-        this.geminiProvider = undefined;
-        this.geminiProbed = false;
         this.synthesisCache.clear();
     }
     async clearSynthesis(projectHandle: string): Promise<void> {
@@ -152,8 +141,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
             const models = await provider.discoverModels();
             this.active(projectHandle);
             if (run !== this.run) throw new Error('Superseded synthesis setup');
-            this.localProvider = provider;
-            this.provider = provider;
+            this.provider = new SoftwareMapSynthesisStrategy(provider);
             return { models };
         }
         if (options.kind !== 'gemini') throw new Error('Invalid synthesis provider');
@@ -177,17 +165,15 @@ export class SoftwareMapBackend implements SoftwareMapService {
             this.active(projectHandle);
             if (run !== this.run) throw new Error('Superseded synthesis setup');
         }
-        this.geminiProvider = provider;
-        this.provider = provider;
+        this.provider = new SoftwareMapSynthesisStrategy(provider);
         return { models };
     }
     async refreshSynthesisModels(projectHandle: string): Promise<SynthesisSetupResult> {
         this.active(projectHandle);
         if (this.phase === 'analyzing') throw new Error('Synthesis analysis is active');
-        if (!this.geminiProvider) throw new Error('Gemini is not configured');
-        this.geminiProbed = false;
+        if (!this.provider) throw new Error('Synthesis provider is not configured');
         const run = ++this.run;
-        const models = await this.geminiProvider.discoverModels();
+        const models = await this.provider.discoverModels();
         this.active(projectHandle);
         if (run !== this.run) throw new Error('Superseded synthesis setup');
         return { models };
@@ -195,26 +181,22 @@ export class SoftwareMapBackend implements SoftwareMapService {
     async selectSynthesisModel(projectHandle: string, modelId: string): Promise<void> {
         this.active(projectHandle);
         if (this.phase === 'analyzing') throw new Error('Synthesis analysis is active');
-        if (this.localProvider) this.localProvider.selectModel(modelId);
-        else if (this.geminiProvider) { ++this.run; this.geminiProbed = false; this.geminiProvider.selectModel(modelId); }
-        else throw new Error('Synthesis provider is not configured');
+        if (!this.provider) throw new Error('Synthesis provider is not configured');
+        ++this.run;
+        this.provider.selectModel(modelId);
     }
     async probeSynthesis(projectHandle: string): Promise<void> {
         this.active(projectHandle);
         if (this.phase === 'analyzing') throw new Error('Synthesis analysis is active');
         const run = this.run;
-        if (this.localProvider) await this.localProvider.probe();
-        else if (this.geminiProvider) {
-            this.geminiProbed = false;
-            await this.geminiProvider.probe();
-        } else throw new Error('Synthesis provider is not configured');
+        if (!this.provider) throw new Error('Synthesis provider is not configured');
+        await this.provider.probe();
         this.active(projectHandle);
         if (run !== this.run) throw new Error('Superseded synthesis setup');
-        if (this.geminiProvider) this.geminiProbed = true;
     }
     async synthesisReady(projectHandle: string): Promise<boolean> {
         this.active(projectHandle);
-        return !!this.provider && (this.localProvider?.isProbed ?? (this.geminiProvider ? this.geminiProbed : true));
+        return !!this.provider?.isReady;
     }
     async synthesisAttempts(projectHandle: string) {
         this.active(projectHandle);
@@ -353,10 +335,9 @@ export class SoftwareMapBackend implements SoftwareMapService {
                 this.still(projectHandle, root, run);
                 this.analysisRun = next;
             };
-            const localProvider = this.localProvider;
             const orchestrator = new HierarchicalSynthesisOrchestrator(provider,
-                localProvider?.endpoint ?? provider.kind, undefined, undefined, emit,
-                () => this.still(projectHandle, root, run), localProvider ? () => localProvider.warmUp() : undefined,
+                provider.runtimeIdentity, undefined, undefined, emit,
+                () => this.still(projectHandle, root, run), provider.warmUp ? () => provider.warmUp!() : undefined,
                 this.synthesisCache);
             const { proposal, coverageLedger, componentDescents } = await orchestrator.analyze(packet);
             this.still(projectHandle, root, run);
@@ -397,10 +378,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
                 this.analysisStarted = undefined;
                 if (this.analysisRun) {
                     const capability = await provider.capabilities().catch(() => undefined);
-                    const message = error instanceof Error && (/^Invalid hierarchical synthesis:/.test(error.message) ||
-                        error.message === 'System Discovery produced no Systems to challenge' ||
-                        error.message === 'System Challenge rejected every System') ? error.message :
-                        provider.kind === 'gemini' ? geminiAnalysisError(error).message : 'Provider request failed. Retry the failed stage.';
+                    const message = synthesisAnalysisError(error)?.message ?? 'Provider request failed. Retry the failed stage.';
                     this.analysisRun = { ...this.analysisRun, status: 'failed', attempts: this.synthesisCache.attempts(),
                         failure: { stage: this.analysisRun.current?.stage ?? 'system-discovery',
                             subject: this.analysisRun.current?.subject, message,
@@ -411,7 +389,8 @@ export class SoftwareMapBackend implements SoftwareMapService {
                     message: this.analysisRun?.failure?.message ?? `Analysis failed during ${currentStage.replaceAll('-', ' ')}.`,
                     subject: this.analysisRun?.failure?.subject ?? currentStage });
             }
-            throw provider.kind === 'gemini' && this.run === run ? geminiAnalysisError(error) : error;
+            const safe = synthesisAnalysisError(error);
+            throw this.run === run && safe ? safe : error;
         }
     }
     async review(projectHandle: string): Promise<ArchitectureReview | undefined> {
@@ -447,7 +426,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
         const modelLabel = (await provider.capabilities()).modelLabel;
         if (accepted && (provider.kind !== input.providerKind || modelLabel !== input.modelLabel))
             throw new Error('Selected synthesis provider or model changed');
-        if (accepted) { await this.localProvider?.warmUp(); this.still(projectHandle, root, run); }
+        if (accepted) { await provider.warmUp?.(); this.still(projectHandle, root, run); }
         const packet = accepted ? await this.index.collectEvidence(root) : pending!.packet;
         if (accepted) validateArchitectureEvidencePacket(packet);
         const request = await planTargetedRefinement(input, packet, pending && !accepted ? pending.coverageLedger ?? [] : [],
@@ -484,7 +463,8 @@ export class SoftwareMapBackend implements SoftwareMapService {
             return structuredClone(result);
         } catch (error) {
             failureClass = execution ? 'invalid-stage-result' : this.run !== run ? 'cancelled' : 'provider-failure';
-            throw provider.kind === 'gemini' && this.run === run ? geminiAnalysisError(error) : error;
+            const safe = synthesisAnalysisError(error);
+            throw this.run === run && safe ? safe : error;
         } finally {
             if (this.run === run) this.synthesisCache.recordTargetAttempt({ stage: 'target-refinement', subject: input.targetKey,
                 providerKind: provider.kind, modelLabel,

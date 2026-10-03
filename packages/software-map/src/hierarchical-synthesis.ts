@@ -1,45 +1,21 @@
 import { ArchitectureEvidenceItem, ArchitectureEvidencePacket, ArchitectureProposal, ProposedArchitectureNode, DocumentSupport,
     validateArchitectureEvidencePacket, parseArchitectureProposal, isProductionEvidencePath,
     isDirectSystemResponsibilityEvidence } from './synthesis';
+import type { ModelCapabilities, ModelGenerationExecution, ModelGenerationUsage, ModelRuntimeSession } from '@dope/contracts/lib/model-runtime';
+import { ModelRuntimeFailure as SynthesisProviderFailure } from '@dope/contracts/lib/model-runtime';
+export { ModelRuntimeFailure as SynthesisProviderFailure } from '@dope/contracts/lib/model-runtime';
 
 /** The adapter supplies model-specific limits and a conservative estimate when exact counting is unavailable. */
-export interface SynthesisCapabilities {
-    modelLabel: string;
-    contextWindowTokens: number;
-    /** Provider input ceiling, including instructions and provider overhead but excluding generated output. */
-    maxInputTokens: number;
-    reservedInstructionTokens: number;
-    reservedOutputTokens: number;
-    reservedOverheadTokens: number;
-    tokenEstimate: 'exact' | 'conservative';
-    /** Omitted means one active generation. Values above one require explicit provider qualification. */
-    maxConcurrentGenerations?: number;
-}
-export interface SynthesisProvider {
+export type SynthesisCapabilities = ModelCapabilities;
+export interface SynthesisProvider extends ModelRuntimeSession {
     readonly kind: 'local' | 'gemini';
     capabilities(): Promise<SynthesisCapabilities>;
     estimateTokens(input: string): Promise<number>;
     runStage(request: SynthesisStageRequest, signal?: AbortSignal): Promise<SynthesisStageExecution>;
     runRefinement?(request: import('./refinement').TargetedRefinementRequest, signal?: AbortSignal): Promise<SynthesisStageExecution>;
 }
-export interface SynthesisStageUsage {
-    providerKind: 'local' | 'gemini';
-    modelLabel: string;
-    requestBytes: number;
-    outputBytes: number;
-    inputTokens?: number;
-    outputTokens?: number;
-    totalTokens?: number;
-    tokenMeasurement: 'provider-reported' | 'tokenizer' | 'estimated' | 'unavailable';
-}
-export interface SynthesisStageExecution { output: unknown; usage: SynthesisStageUsage }
-/** Adapter-classified, safe failure. Raw provider errors must never cross this boundary. */
-export class SynthesisProviderFailure extends Error {
-    constructor(message: string, readonly failureClass: 'transient-transport' | 'transient-upstream' |
-        'cancelled' | 'invalid-json' | 'authentication' | 'nonretryable-provider') {
-        super(message);
-    }
-}
+export type SynthesisStageUsage = ModelGenerationUsage;
+export type SynthesisStageExecution = ModelGenerationExecution;
 export interface SynthesisCallAttempt {
     callId: string;
     attemptId: string;
