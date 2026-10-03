@@ -34,6 +34,21 @@ test('deterministic left-to-right layout preserves branches, joins and cycle bac
     assert.equal(first.edges.find(edge => edge.id === 'j-e')!.backEdge, true);
     assert.deepEqual(first.edges.filter(edge => edge.source === 'entry').map(edge => edge.target), ['left', 'right']);
     assert.deepEqual(first.edges.filter(edge => edge.target === 'join').map(edge => edge.source), ['left', 'right']);
+    assert.equal(position('left').paletteIndex, position('right').paletteIndex);
+    assert.ok(position('join').paletteIndex > position('left').paletteIndex);
+    assert.equal(first.edges.find(edge => edge.id === 'j-e')!.paletteIndex, position('entry').paletteIndex);
+});
+
+test('directional palette compresses deep Flow without wrapping and is input-order stable', () => {
+    const nodes = Array.from({ length: 15 }, (_, index) => code(`n${index}`));
+    const facts = Array.from({ length: 14 }, (_, index) => fact(`f${index}`, `n${index}`, `n${index + 1}`));
+    const view = projectFlowMap(query(nodes, facts));
+    const stages = Array.from({ length: 15 }, (_, index) => view.nodes.find(node => node.id === `n${index}`)!.paletteIndex);
+    assert.equal(stages[0], 0);
+    assert.equal(stages.at(-1), 9);
+    assert.ok(stages.every((stage, index) => index === 0 || stage >= stages[index - 1]));
+    assert.ok(stages.some((stage, index) => index > 0 && stage === stages[index - 1]));
+    assert.deepEqual(view, projectFlowMap(query([...nodes].reverse(), [...facts].reverse())));
 });
 
 test('dense focused Flow keeps all 18 participants, 27 labeled relationships and deterministic geometry', () => {

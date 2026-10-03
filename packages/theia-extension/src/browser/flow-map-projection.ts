@@ -5,7 +5,7 @@ export type FlowShape = 'entry' | 'boundary' | 'process' | 'store' | 'external' 
 export interface FlowCanvasNode {
     id: string; name: string; role: FlowRole; shape: FlowShape;
     x: number; y: number; width: number; height: number;
-    selected: boolean; subdued: boolean;
+    selected: boolean; subdued: boolean; paletteIndex: number;
 }
 export interface FlowCanvasEdge {
     id: string; source: string; target: string; kind: PhysicalFlowFact['kind']; label: string;
@@ -15,7 +15,7 @@ export interface FlowCanvasEdge {
     enrichment: { kind: 'data' | 'type' | 'schema' | 'event'; label: string; evidenceIds: string[] }[];
     behaviorEvidenceIds: string[];
     backEdge: boolean; async: boolean; retry: boolean; error: boolean;
-    selected: boolean; subdued: boolean;
+    selected: boolean; subdued: boolean; paletteIndex: number;
 }
 export interface FlowCanvasProjection {
     kind: FlowQueryResult['kind'];
@@ -81,7 +81,7 @@ export function projectFlowMap(result: FlowQueryResult, focus: FlowArchitectureF
         enrichment: fact.enrichment?.map(item => ({ ...item, evidenceIds: [...item.evidenceIds] })) ?? [],
         behaviorEvidenceIds: [...(fact.behavior?.evidenceIds ?? [])], backEdge: false,
         async: fact.behavior?.async === true, retry: fact.behavior?.retry === true, error: fact.behavior?.error === true,
-        selected: activeFacts.has(fact.id), subdued: emphasis && !activeFacts.has(fact.id)
+        selected: activeFacts.has(fact.id), subdued: emphasis && !activeFacts.has(fact.id), paletteIndex: 0
     }));
     const bySource = new Map<string, FlowCanvasEdge[]>();
     for (const edge of canvasEdges) bySource.set(edge.source, [...(bySource.get(edge.source) ?? []), edge]);
@@ -99,6 +99,9 @@ export function projectFlowMap(result: FlowQueryResult, focus: FlowArchitectureF
     for (const id of finished.reverse()) for (const edge of bySource.get(id) ?? []) if (!edge.backEdge)
         layer.set(edge.target, Math.max(layer.get(edge.target) ?? 0, (layer.get(id) ?? 0) + 1));
     for (const edge of canvasEdges) if ((layer.get(edge.target) ?? 0) <= (layer.get(edge.source) ?? 0)) edge.backEdge = true;
+    const maxLayer = Math.max(0, ...layer.values());
+    const paletteIndex = (depth: number): number => maxLayer < 10 ? depth : Math.floor(depth * 9 / maxLayer);
+    for (const edge of canvasEdges) edge.paletteIndex = paletteIndex(layer.get(edge.target) ?? 0);
     const inbound = new Set(canvasEdges.map(edge => edge.target));
     const outbound = new Set(canvasEdges.map(edge => edge.source));
     const canvasNodes: FlowCanvasNode[] = [...shown].map(id => {
@@ -110,7 +113,7 @@ export function projectFlowMap(result: FlowQueryResult, focus: FlowArchitectureF
             node && node.kind !== 'code' ? 'Processing' :
             !inbound.has(id) && outbound.has(id) ? 'Input' : inbound.has(id) && !outbound.has(id) ? 'Output' : 'Processing');
         const name = group?.name ?? (endpoint ? endpointName(endpoint) : node?.name ?? id);
-        return { id, name, role, shape: shapeOf(role, endpoint), x: 0, y: 0, ...size(name),
+        return { id, name, role, shape: shapeOf(role, endpoint), x: 0, y: 0, ...size(name), paletteIndex: paletteIndex(layer.get(id) ?? 0),
             selected: !!selectedId && (id === selectedId || systemOverview && id === owner(selectedId)),
             subdued: emphasis && !activeNodes.has(id) };
     });

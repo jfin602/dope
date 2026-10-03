@@ -17,7 +17,7 @@ import { affectedArchitecture, transformationsForArchitecture } from './planning
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
 import type { PlannedNode, Resolution, WorkItem } from '@dope/visual-planning';
 import { reconciliationRollups } from '@dope/visual-planning/lib/reconciliation';
-import { SmapPresentationState, nodePalette, type NodePalette } from './smap-presentation-state';
+import { SmapPresentationState, architectureColors, nodePalette, type NodePalette } from './smap-presentation-state';
 import './dope.css';
 
 export const PHYSICAL_MAP_ID = 'dope-physical-map-canvas';
@@ -36,7 +36,7 @@ function MapNode({ data }: { data: { item: CanvasNode & { intent?: string; stale
 const nodeTypes = { architecture: MapNode };
 function FlowNode({ data }: { data: { item: FlowCanvasNode } }): React.ReactElement {
     const item = data.item;
-    return React.createElement('div', { className: `dope-flow-node dope-flow-${item.shape}` },
+    return React.createElement('div', { className: `dope-flow-node dope-flow-${item.shape} dope-map-color-${nodePalette[item.paletteIndex + 1]}` },
         React.createElement('span', { className: 'dope-map-kind' }, item.role),
         React.createElement('strong', null, mapLabel(item.name)),
         React.createElement(Handle, { type: 'target', position: Position.Left, style: { opacity: 0 } }),
@@ -73,7 +73,8 @@ export class PhysicalMapWidget extends BaseWidget {
     private readonly focusButton = document.createElement('button');
     private readonly tabButton = document.createElement('button');
     private readonly sourceButton = document.createElement('button');
-    private readonly colorSelect = document.createElement('select');
+    private readonly colorSelect = document.createElement('button');
+    private readonly colorOptions = document.createElement('div');
     private readonly planningBar = document.createElement('section');
     private readonly planningDetails = document.createElement('section');
     private readonly planningOverlay = document.createElement('div');
@@ -145,19 +146,58 @@ export class PhysicalMapWidget extends BaseWidget {
         const zoomOut = document.createElement('button');
         iconButton(zoomOut, 'Zoom out on map', 'zoom-out');
         zoomOut.onclick = () => void this.flow?.zoomOut();
+        this.colorSelect.type = 'button';
         this.colorSelect.setAttribute('aria-label', 'Selected node color');
-        for (const color of nodePalette) {
-            const option = document.createElement('option');
-            option.value = color; option.textContent = color === 'default' ? 'Default' : color[0].toUpperCase() + color.slice(1);
-            this.colorSelect.append(option);
-        }
-        this.colorSelect.onchange = () => {
-            const id = this.controller.selectedId;
-            if (id && !this.colorSelect.disabled) void this.colors.set(id, this.colorSelect.value as NodePalette)
-                .catch(error => { this.status.textContent = `Node color could not be saved: ${String(error)}`; });
+        this.colorSelect.setAttribute('aria-haspopup', 'listbox');
+        this.colorSelect.setAttribute('aria-expanded', 'false');
+        this.colorOptions.id = `${this.flowId}-color-options`;
+        this.colorOptions.setAttribute('role', 'listbox');
+        this.colorOptions.setAttribute('aria-label', 'Node color choices');
+        this.colorOptions.popover = 'auto';
+        this.colorOptions.ontoggle = () => this.colorSelect.setAttribute('aria-expanded', String(this.colorOptions.matches(':popover-open')));
+        this.colorSelect.setAttribute('aria-controls', this.colorOptions.id);
+        const closeColors = () => { if (this.colorOptions.matches(':popover-open')) this.colorOptions.hidePopover(); this.colorSelect.setAttribute('aria-expanded', 'false'); };
+        const colorItems = () => [...this.colorOptions.querySelectorAll<HTMLButtonElement>('button')];
+        this.colorSelect.onclick = () => {
+            if (this.colorSelect.disabled) return;
+            if (this.colorOptions.matches(':popover-open')) { closeColors(); return; }
+            const rect = this.colorSelect.getBoundingClientRect();
+            this.colorOptions.style.left = `${rect.left}px`; this.colorOptions.style.top = `${rect.bottom + 2}px`;
+            this.colorOptions.showPopover();
+            this.colorSelect.setAttribute('aria-expanded', 'true');
+            (colorItems().find(option => option.getAttribute('aria-selected') === 'true') ?? colorItems()[0])?.focus();
         };
-        const colorLabel = document.createElement('label');
-        colorLabel.append('Node color ', this.colorSelect);
+        this.colorSelect.onkeydown = event => { if (event.key === 'ArrowDown') { event.preventDefault(); this.colorSelect.click(); } };
+        this.colorOptions.onkeydown = event => {
+            const items = colorItems(), index = items.indexOf(document.activeElement as HTMLButtonElement);
+            if (event.key === 'Escape') { closeColors(); this.colorSelect.focus(); return; }
+            const next = event.key === 'ArrowDown' ? (index + 1) % items.length : event.key === 'ArrowUp' ?
+                (index + items.length - 1) % items.length : event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : -1;
+            if (next >= 0) { event.preventDefault(); items[next].focus(); }
+        };
+        for (const color of nodePalette) {
+            const option = document.createElement('button');
+            option.type = 'button'; option.dataset.color = color;
+            option.setAttribute('role', 'option');
+            option.className = `dope-map-color-option dope-map-color-${color}`;
+            const label = color === 'default' ? 'Automatic' : color[0].toUpperCase() + color.slice(1);
+            const swatch = document.createElement('span');
+            swatch.className = 'dope-map-color-swatch'; swatch.setAttribute('aria-hidden', 'true');
+            option.append(swatch, label);
+            option.onclick = () => {
+                const id = this.controller.selectedId;
+                closeColors(); this.colorSelect.focus();
+                if (id && !this.colorSelect.disabled) void this.colors.set(id, color)
+                    .catch(error => { this.status.textContent = `Node color could not be saved: ${String(error)}`; });
+            };
+            this.colorOptions.append(option);
+        }
+        const colorLabel = document.createElement('div');
+        colorLabel.className = 'dope-map-color-picker';
+        colorLabel.append(this.colorSelect, this.colorOptions);
+        colorLabel.addEventListener('focusout', event => {
+            if (!colorLabel.contains(event.relatedTarget as globalThis.Node | null)) closeColors();
+        });
         bar.append(this.heading, planningToggle, this.modeBar, this.upButton, this.focusButton, this.tabButton, this.sourceButton,
             zoomIn, zoomOut, fit, colorLabel, this.flowBar, this.planningBar);
         this.breadcrumbs.className = 'dope-map-breadcrumbs';
@@ -288,7 +328,20 @@ export class PhysicalMapWidget extends BaseWidget {
         const selectedNode = projection.nodes.find(node => node.id === selected &&
             (node.kind === 'system' || node.kind === 'subsystem' || node.kind === 'component'));
         this.colorSelect.disabled = !this.controller.projectMatches || !selectedNode;
-        this.colorSelect.value = selectedNode ? this.colors.get(selectedNode.id) : 'default';
+        const explicit = selectedNode ? this.colors.get(selectedNode.id) : 'default';
+        const effectiveColor = architectureColors(projection.nodes, this.controller.sourceNodes, id => this.colors.get(id));
+        const effective = selectedNode ? effectiveColor(selectedNode.id) : 'default';
+        const swatch = document.createElement('span');
+        swatch.className = `dope-map-color-swatch dope-map-color-${effective}`; swatch.setAttribute('aria-hidden', 'true');
+        const label = explicit === 'default' ? 'Automatic' : explicit[0].toUpperCase() + explicit.slice(1);
+        this.colorSelect.replaceChildren(swatch, label);
+        this.colorSelect.title = `Node color: ${label}${effective !== 'default' ? ` (showing ${effective})` : ''}`;
+        for (const option of this.colorOptions.querySelectorAll<HTMLButtonElement>('button')) {
+            option.setAttribute('aria-selected', String(option.dataset.color === explicit));
+            option.classList.toggle('dope-map-color-inherited', option.dataset.color === 'default' && effective !== 'default');
+            if (option.dataset.color === 'default') (option.querySelector('.dope-map-color-swatch') as HTMLElement).className =
+                `dope-map-color-swatch dope-map-color-${effective}`;
+        }
         const selectedPhysical = !!selected && this.controller.sourceNodes.some(node => node.id === selected);
         const highlighted = planningMode && selectedMap && this.planning.selectedWorkItem ?
             new Set(affectedArchitecture(selectedMap, this.planning.selectedWorkItem.transformationIds, this.controller.sourceNodes)) : new Set<string>();
@@ -305,7 +358,7 @@ export class PhysicalMapWidget extends BaseWidget {
         const nodes: Node[] = projection.nodes.map(item => ({
             id: item.id, type: 'architecture', position: { x: item.x, y: item.y },
             parentId: item.parentId,
-            data: { item, editable: planningMode && !!selectedMap, color: this.colors.get(item.id) }, draggable: planningMode &&
+            data: { item, editable: planningMode && !!selectedMap, color: effectiveColor(item.id) }, draggable: planningMode &&
                 (item.kind === 'subsystem' || item.kind === 'component'), selectable: true, selected: item.id === selected,
             className: item.id === selected ? 'dope-map-selected' : highlighted.has(item.id) ? 'dope-work-highlight' : item.context ? 'dope-map-context' : undefined,
             style: { width: item.width, height: item.height }
@@ -501,7 +554,7 @@ export class PhysicalMapWidget extends BaseWidget {
             label: [item.label, ...item.enrichment.map(value => value.label), item.async ? 'async' : '',
                 item.retry ? 'retry' : '', item.error ? 'error' : ''].filter(Boolean).join(' · '),
             type: item.backEdge ? 'smoothstep' : 'default', animated: item.async,
-            className: `dope-flow-edge${item.subdued ? ' dope-flow-subdued' : ''}${item.selected ? ' dope-flow-selected' : ''}${item.backEdge ? ' dope-flow-back' : ''}`,
+            className: `dope-flow-edge dope-map-color-${nodePalette[item.paletteIndex + 1]}${item.subdued ? ' dope-flow-subdued' : ''}${item.selected ? ' dope-flow-selected' : ''}${item.backEdge ? ' dope-flow-back' : ''}`,
             selectable: true, selected: controller.selectedFlowEdgeId === item.id })) ?? [];
         this.root?.render(React.createElement(ReactFlow, { id: this.flowId, nodes, edges, nodeTypes: flowNodeTypes,
             minZoom: 0.01, nodesDraggable: false, nodesConnectable: false, elementsSelectable: true,
