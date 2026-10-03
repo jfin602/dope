@@ -61,7 +61,17 @@ Use one singleton/revealable center-workspace AI Center with a compact connectio
 
 **Decision**
 
-TBD.
+Locked: AI Center is a **singleton/revealable center-workspace tab** using a two-pane **connection list + selected connection detail** layout.
+
+The connection list is the primary navigation surface. Each connection row shows only compact scan-level information: provider/runtime, user-facing alias/name, normalized status, and usable model count/readiness summary. Models do not remain broadly expanded beneath every connection; they are shown inside the selected connection detail so the center remains readable as providers and model inventories grow.
+
+The selected connection detail owns configuration, credential source/status, connection health, discovered/known models, model capabilities, refresh/reconnect, Test Connection, Disable and Remove actions.
+
+The bottom-left **AI** launcher reveals/focuses the existing AI Center rather than opening duplicate instances. Healthy state stays visually quiet. The launcher may show a restrained non-color-dependent warning/status treatment only when an actionable connection problem needs attention; ordinary success does not receive a permanent green indicator, spinner or model count.
+
+The no-connection state is an intentional onboarding surface with a clear **Add Connection** action and concise Local-versus-hosted orientation.
+
+Ordinary application/account settings remain outside AI Center. Account/profile management belongs under Settings. AI Center is organized around **connections**, not permanent provider tabs, so multiple connections of the same provider/runtime type remain a natural product shape.
 
 ---
 
