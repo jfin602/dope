@@ -156,7 +156,8 @@ export class PhysicalMapWidget extends BaseWidget {
         const colorLabel = document.createElement('label');
         colorLabel.append('Node color ', this.colorSelect);
         bar.append(this.heading, planningToggle, this.modeBar, this.upButton, this.focusButton, this.tabButton, this.sourceButton,
-            zoomIn, zoomOut, fit, colorLabel, this.flowBar, this.planningBar, this.breadcrumbs);
+            zoomIn, zoomOut, fit, colorLabel, this.flowBar, this.planningBar);
+        this.breadcrumbs.className = 'dope-map-breadcrumbs';
         this.breadcrumbs.setAttribute('aria-label', 'Map focus');
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
@@ -189,7 +190,7 @@ export class PhysicalMapWidget extends BaseWidget {
         stage.className = 'dope-map-stage';
         this.planningOverlay.append(this.planningDetails, this.workPanel);
         stage.append(this.canvas, this.inspection, this.status);
-        this.node.append(bar, stage);
+        this.node.append(bar, this.breadcrumbs, stage);
         this.controller = new PhysicalMapController(map, () => this.render(), options?.workspace, options?.focusId);
         this.planningListener = planning.onChange(() => {
             if (planning.planningMode && this.controller.mode === 'flow') this.controller.setMode('architecture');

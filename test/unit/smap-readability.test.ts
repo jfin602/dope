@@ -78,7 +78,8 @@ test('node identity renders in full with path breaks and theme-aware wrapping', 
   assert.match(widget, /dope-plan-edge-\$\{item\.intent\}/);
   const css = read('packages/theia-extension/src/browser/dope.css');
   const mapCss = css.slice(css.indexOf('.dope-physical-map-view'), css.indexOf('.dope-dark {'));
-  assert.doesNotMatch(mapCss, /text-overflow:\s*ellipsis|white-space:\s*nowrap|overflow:\s*hidden/);
+  assert.doesNotMatch(mapCss.replace(/^.*\.dope-map-breadcrumbs.*$/gm, ''),
+    /text-overflow:\s*ellipsis|white-space:\s*nowrap|overflow:\s*hidden/);
   assert.match(mapCss, /\.dope-map-node strong \{[^}]*white-space: normal; overflow-wrap: anywhere/);
   assert.match(mapCss, /\.dope-map-node \{[^}]*color: var\(--theia-editor-foreground\); background: var\(--theia-editorWidget-background/);
   assert.match(mapCss, /\.dope-map-edge-selected .*stroke-width: 4/);

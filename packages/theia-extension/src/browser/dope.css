@@ -89,6 +89,8 @@
 .dope-physical-map-view header select:disabled { opacity: .5; }
 .dope-physical-map-view nav { padding: 0 4px; }
 .dope-physical-map-view nav button { background: transparent; color: var(--theia-editor-foreground); border: 0; white-space: normal; overflow-wrap: anywhere; }
+.dope-physical-map-view .dope-map-breadcrumbs { flex: none; box-sizing: border-box; width: 100%; min-width: 0; padding: 5px 8px; overflow-x: auto; white-space: nowrap; background: var(--theia-editorWidget-background, var(--theia-editor-background)); border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
+.dope-physical-map-view .dope-map-breadcrumbs button { padding: 0; white-space: nowrap; }
 .dope-map-stage { position: relative; flex: 1 1 auto; min-height: 0; min-width: 0; }
 .dope-physical-map-canvas { position: absolute; inset: 0; min-width: 0; min-height: 0; }
 .dope-map-stage > p[role="status"] { position: absolute; left: 8px; bottom: 8px; z-index: 2; max-width: min(60%, 40rem); margin: 0; padding: 4px 8px; pointer-events: none; color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border, var(--theia-input-border)); border-radius: 4px; }
