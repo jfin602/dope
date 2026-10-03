@@ -489,30 +489,108 @@ test('failed cancel keeps review available for retry', async () => {
   controller.dispose();
 });
 
-test('review has one controller, center hierarchy, focused detail and explicit accept', () => {
+test('review and initialized editing share one center widget with focused detail and explicit accept/save', () => {
   const sidebar = readFileSync(new URL('../../packages/theia-extension/src/browser/software-map-widget.ts', import.meta.url), 'utf8');
   const editor = readFileSync(new URL('../../packages/theia-extension/src/browser/software-map-review-widget.ts', import.meta.url), 'utf8');
   const wiring = readFileSync(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
-  assert.match(sidebar, /Open Architecture Review/);
+  assert.match(sidebar, /this\.button\('Edit Architecture', \(\) => void this\.openReview\(\)\)/);
   assert.doesNotMatch(sidebar.slice(sidebar.indexOf('private renderReview()'), sidebar.indexOf('private renderDraft(')), /fieldset|renderPacketFact/);
   assert.match(wiring, /bind\(SoftwareMapController\).*inSingletonScope\(\)/s);
   assert.match(wiring, /area: 'main'/);
-  assert.match(editor, /this\.controller\.draft/);
+  assert.match(editor, /this\.acceptedDraft \?\? this\.controller\.draft/);
   assert.match(editor, /list\(node\.proposalKey\)/);
   assert.match(editor, /aria-current/);
   assert.match(editor, /find\(node => node\.proposalKey === this\.selectedKey\)/);
   assert.match(editor, /this\.renderDetail\(selected, detail\)/);
   assert.match(editor, /reviewSource\(ref\)/);
-  assert.match(editor, /Accept architecture/);
-  assert.match(editor, /this\.controller\.draftDiagnostics\(\)/);
-  assert.match(editor, /Acceptance blocked:/);
+  assert.match(editor, /Accept Architecture/);
+  assert.match(editor, /Save Architecture/);
+  assert.match(editor, /reviewDiagnostics\(draft\)/);
+  assert.match(editor, /'Acceptance' : 'Save'/);
   assert.match(editor, /node\.kind !== 'component'[\s\S]*Search Deeper/);
   for (const label of ['Observed', 'Documented', 'Inferred', 'Accept refinement', 'Reject refinement']) assert.match(editor, new RegExp(label));
   assert.match(editor, /reviewDocument\(path\)/);
-  assert.match(editor, /Advanced: canonical ID and implementation roots/);
+  assert.match(editor, /Advanced: canonical ID, implementation roots and dependencies/);
   assert.match(css, /dope-smap-review-layout/);
   assert.match(css, /var\(--theia-list-activeSelectionBackground\)/);
+});
+
+test('accepted Architecture read/save uses its canonical fingerprint and keeps selection local', async () => {
+  const c = connection();
+  (c as any).initializationStatus = () => Promise.resolve({ state: 'initialized', declarationPresent: true, declarationFingerprint: 'basis' });
+  const declaration = { schemaVersion: 1, systems: [{ id: 'sys', name: 'System', purpose: 'System', subsystems: [
+    { id: 'sub', name: 'Subsystem', purpose: 'Subsystem', roots: ['src/sub'], allowedDependencies: ['peer'], forbiddenDependencies: [], components: [] },
+    { id: 'peer', name: 'Peer', purpose: 'Peer', roots: ['src/peer'], components: [] },
+  ] }] };
+  let saved: any;
+  (c as any).readArchitecture = () => Promise.resolve({ declaration, declarationFingerprint: 'basis' });
+  (c as any).saveArchitecture = (handle: string, fingerprint: string, full: any) => {
+    saved = { handle, fingerprint, full };
+    return Promise.resolve({ committed: true, declarationFingerprint: 'next', status: idle });
+  };
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attached = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attached;
+  const current = await controller.readCurrentArchitecture();
+  const { architectureDraft } = require('../../packages/software-map/lib/review-diagnostics.js');
+  const draft = architectureDraft(current.declaration);
+  assert.deepEqual(draft.find((node: any) => node.id === 'sub').allowedDependencies, ['peer']);
+  draft[0].name = 'Edited System';
+  controller.selectedId = 'map-only';
+  assert.equal(saved, undefined);
+  await controller.saveCurrentArchitecture(current.declarationFingerprint, declarationFromDraft(draft));
+  assert.equal(saved.handle, 'a');
+  assert.equal(saved.fingerprint, 'basis');
+  assert.equal(saved.full.systems[0].name, 'Edited System');
+  assert.deepEqual(saved.full.systems[0].subsystems.find((subsystem: any) => subsystem.id === 'sub').allowedDependencies, ['peer']);
+  assert.equal(controller.selectedId, 'map-only');
+  assert.equal(controller.initialization.declarationFingerprint, 'next');
+  controller.dispose();
+});
+
+test('workspace switches reject late accepted Architecture reads and saves', async () => {
+  const a = connection(), b = connection();
+  const pendingRead = deferred(), pendingSave = deferred();
+  (a as any).initializationStatus = (b as any).initializationStatus = () => Promise.resolve({ state: 'initialized', declarationPresent: true, declarationFingerprint: 'basis' });
+  (a as any).readArchitecture = () => pendingRead.promise;
+  (a as any).saveArchitecture = () => pendingSave.promise;
+  let count = 0;
+  const controller = new SoftwareMapController(() => ++count === 1 ? a : b, () => {});
+  const attachingA = controller.attach('file:///A'); a.attachPending.resolve({ projectHandle: 'a', status: idle }); await attachingA;
+  const reading = controller.readCurrentArchitecture();
+  const saving = controller.saveCurrentArchitecture('basis', { schemaVersion: 1, systems: [] });
+  const attachingB = controller.attach('file:///B'); b.attachPending.resolve({ projectHandle: 'b', status: idle }); await attachingB;
+  pendingRead.resolve({ declaration: { schemaVersion: 1, systems: [] }, declarationFingerprint: 'old' });
+  pendingSave.resolve({ committed: true, declarationFingerprint: 'old', status: idle });
+  await assert.rejects(reading, /Workspace changed/);
+  await assert.rejects(saving, /Workspace changed/);
+  assert.equal(controller.workspace, 'file:///B');
+  assert.notEqual(controller.initialization.declarationFingerprint, 'old');
+  controller.dispose();
+});
+
+test('Edit Architecture remains one widget with an in-memory accepted draft and no map selection coupling', () => {
+  const sidebar = readFileSync(new URL('../../packages/theia-extension/src/browser/software-map-widget.ts', import.meta.url), 'utf8');
+  const editor = readFileSync(new URL('../../packages/theia-extension/src/browser/software-map-review-widget.ts', import.meta.url), 'utf8');
+  const wiring = readFileSync(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
+  assert.match(wiring, /getOrCreateWidget<SoftwareMapReviewWidget>\(SOFTWARE_MAP_REVIEW_ID\)/);
+  assert.equal(wiring.match(/id: SOFTWARE_MAP_REVIEW_ID, createWidget/g)?.length, 1);
+  assert.match(sidebar, /this\.button\('EDIT ARCHITECTURE', \(\) => void this\.openReview\(\)\)/);
+  assert.match(sidebar, /if \(id && id !== this\.openedReviewId\).*this\.openReview\(\)/);
+  assert.match(editor, /this\.title\.label = this\.title\.caption = 'Edit Architecture'/);
+  assert.match(editor, /private acceptedDraft\?: ArchitectureReviewNode\[\]/);
+  assert.match(editor, /architectureDraft\(current\.declaration\)/);
+  assert.match(editor, /this\.controller\.saveCurrentArchitecture\(expectedFingerprint, declarationFromDraft\(draft\)\)/);
+  assert.match(editor, /this\.acceptedBaseline = JSON\.stringify\(draft\)/);
+  assert.match(editor, /accept\.disabled = !!issues\.length \|\| \(pending \? this\.controller\.setupBusy : this\.acceptedBusy/);
+  assert.match(editor, /this\.selectedKey = node\.proposalKey; this\.render\(\)/);
+  assert.match(editor, /this\.node\.scrollTop = scrollTop/);
+  assert.match(editor, /this\.clearAccepted\(\);/);
+  assert.match(editor, /Allowed' : 'Forbidden'/);
+  assert.match(editor, /review && node\.kind !== 'component'/);
+  assert.doesNotMatch(editor, /selectedId|saveReviewDraft|\.dope\//);
+  assert.doesNotMatch(editor, /setData|localStorage|sessionStorage/);
+  assert.doesNotMatch(editor, /sMap Architecture Review|Proposed hierarchy|Edit Hierarchy/);
 });
 
 test('Search Deeper previews current edits, preserves siblings, rejects stale and switches roots safely', async () => {

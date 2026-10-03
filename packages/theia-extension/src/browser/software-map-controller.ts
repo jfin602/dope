@@ -1,5 +1,5 @@
 import { parseArchitecture, parseAnalysisProgressEvent, branchFingerprint, targetBranch, suggestArchitectureId, reviewDeclaration, reviewDiagnostics } from '@dope/software-map';
-import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, Evidence, FlowQuery, FlowQueryResult, GraphNode, SoftwareMapPage, SoftwareMapRelationshipRequest, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup, SynthesisDryRunReport, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
+import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, CurrentArchitecture, SaveArchitectureResult, Evidence, FlowQuery, FlowQueryResult, GraphNode, SoftwareMapPage, SoftwareMapRelationshipRequest, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup, SynthesisDryRunReport, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
 
 export type SoftwareMapConnection = SoftwareMapService & { setClient(client: SoftwareMapClient | undefined): void };
 export interface SynthesisPreferenceStore {
@@ -547,6 +547,24 @@ export class SoftwareMapController {
         try { declarationFromDraft(this.draft); return undefined; } catch (error) { return String(error); }
     }
     draftDiagnostics() { return reviewDiagnostics(this.draft); }
+    async readCurrentArchitecture(): Promise<CurrentArchitecture> {
+        if (!this.connection || !this.handle || this.initialization?.state !== 'initialized') throw new Error('Architecture is not initialized');
+        const project = this.project, connection = this.connection, handle = this.handle;
+        const current = await connection.readArchitecture(handle);
+        if (project !== this.project || connection !== this.connection) throw new Error('Workspace changed while loading Architecture');
+        return current;
+    }
+    async saveCurrentArchitecture(expectedFingerprint: string, declaration: ArchitectureDeclaration): Promise<SaveArchitectureResult> {
+        if (!this.connection || !this.handle || this.initialization?.state !== 'initialized') throw new Error('Architecture is not initialized');
+        const project = this.project, connection = this.connection, handle = this.handle;
+        const result = await connection.saveArchitecture(handle, expectedFingerprint, declaration);
+        if (project !== this.project || connection !== this.connection) throw new Error('Workspace changed while saving Architecture');
+        this.initialization = { ...this.initialization, declarationFingerprint: result.declarationFingerprint };
+        this.status = result.status;
+        this.notify();
+        if (result.status.state === 'ready') void this.load(result.status);
+        return result;
+    }
     async accept(): Promise<void> {
         if (!this.connection || !this.handle || !this.initialization || this.draftError()) return;
         const project = this.project;

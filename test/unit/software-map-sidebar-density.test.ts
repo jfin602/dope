@@ -5,7 +5,7 @@ import test from 'node:test';
 const widget = readFileSync(new URL('../../packages/theia-extension/src/browser/software-map-widget.ts', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
 
-test('initialized controls are two compact rows without a fake editor action', () => {
+test('initialized controls are two compact rows with the real editor action', () => {
     assert.doesNotMatch(widget, /heading\.textContent = 'Software Map'/);
     assert.match(widget, /this\.title\.caption = 'sMap — Software Map'/);
     assert.match(widget, /this\.title\.label = 'SMAP CONTROLS'/);
@@ -16,13 +16,14 @@ test('initialized controls are two compact rows without a fake editor action', (
     assert.match(widget, /this\.button\('REFRESH', \(\) => void model\.analyze\(\)\)/);
     assert.match(widget, /open\.setAttribute\('aria-label', 'Open Physical Map'\)/);
     assert.match(widget, /refresh\.setAttribute\('aria-label', 'Refresh Software Map'\)/);
-    assert.match(widget, /edit\.disabled = true/);
+    assert.match(widget, /this\.button\('EDIT ARCHITECTURE', \(\) => void this\.openReview\(\)\)/);
+    assert.doesNotMatch(widget, /edit\.disabled = true/);
     assert.match(widget, /this\.controls\.append\(firstRow, edit\)/);
     assert.match(css, /\.dope-smap-control-row \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
     assert.match(css, /\.dope-smap-compact-actions button \{[^}]*width: 100%/);
     assert.match(widget, /this\.button\('Analyze Project'/);
     assert.match(widget, /this\.element\('h3', 'Synthesis setup'\)/);
-    assert.match(widget, /this\.button\('Accept architecture'/);
+    assert.match(widget, /this\.button\('Accept Architecture'/);
     assert.match(css, /\.dope-smap-view \.dope-smap-compact-actions/);
 });
 

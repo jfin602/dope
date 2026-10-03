@@ -2,9 +2,9 @@ import { BaseWidget, codicon, Message } from '@theia/core/lib/browser/widgets/wi
 import { OpenerService, open } from '@theia/core/lib/browser';
 import URI from '@theia/core/lib/common/uri';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
-import { suggestArchitectureId } from '@dope/software-map';
+import { architectureDraft, reviewDiagnostics, suggestArchitectureId } from '@dope/software-map';
 import type { ArchitectureReviewNode } from '@dope/software-map';
-import { SoftwareMapController } from './software-map-controller';
+import { declarationFromDraft, SoftwareMapController } from './software-map-controller';
 import './dope.css';
 
 export const SOFTWARE_MAP_REVIEW_ID = 'dope-software-map-review';
@@ -15,12 +15,20 @@ export class SoftwareMapReviewWidget extends BaseWidget {
     private readonly content = document.createElement('div');
     private selectedKey?: string;
     private workspaceRequest = 0;
+    private workspaceChanging = false;
+    private acceptedWorkspace?: string;
+    private acceptedDraft?: ArchitectureReviewNode[];
+    private acceptedBaseline = '';
+    private acceptedFingerprint?: string;
+    private acceptedBusy = false;
+    private acceptedMessage = '';
+    private acceptedRequest = 0;
 
     constructor(private readonly controller: SoftwareMapController, private readonly workspaces: WorkspaceService,
         private readonly opener: OpenerService) {
         super();
         this.id = SOFTWARE_MAP_REVIEW_ID;
-        this.title.label = this.title.caption = 'sMap Architecture Review';
+        this.title.label = this.title.caption = 'Edit Architecture';
         this.title.iconClass = codicon('type-hierarchy');
         this.title.closable = true;
         this.addClass('dope-smap-view');
@@ -28,7 +36,12 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         this.node.tabIndex = 0;
         this.node.append(this.content);
         this.listener = controller.onChange(() => this.render());
-        this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.attach(); });
+        this.rootsListener = workspaces.onWorkspaceChanged(() => {
+            this.workspaceChanging = true;
+            this.clearAccepted();
+            this.content.replaceChildren(this.element('h2', 'Edit Architecture'), this.element('p', 'Loading workspace…'));
+            void this.attach();
+        });
         void this.attach();
         this.render();
     }
@@ -38,6 +51,68 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         if (this.isDisposed || request !== this.workspaceRequest) return;
         const workspace = roots.length === 1 ? roots[0].resource.toString() : undefined;
         if (workspace !== this.controller.workspace) await this.controller.attach(workspace);
+        if (request === this.workspaceRequest) { this.workspaceChanging = false; this.render(); }
+    }
+    private clearAccepted(): void {
+        ++this.acceptedRequest;
+        this.acceptedWorkspace = undefined;
+        this.acceptedDraft = undefined;
+        this.acceptedFingerprint = undefined;
+        this.acceptedBaseline = '';
+        this.acceptedBusy = false;
+        this.acceptedMessage = '';
+        this.selectedKey = undefined;
+        this.node.scrollTop = 0;
+    }
+    private async loadAccepted(): Promise<void> {
+        const workspace = this.controller.workspace;
+        if (!workspace || this.controller.initialization?.state !== 'initialized') return;
+        const request = ++this.acceptedRequest;
+        this.acceptedWorkspace = workspace;
+        this.acceptedDraft = undefined;
+        this.acceptedBusy = true;
+        this.acceptedMessage = 'Loading canonical Architecture…';
+        this.render();
+        try {
+            const current = await this.controller.readCurrentArchitecture();
+            if (request !== this.acceptedRequest || workspace !== this.controller.workspace) return;
+            this.acceptedDraft = architectureDraft(current.declaration);
+            this.acceptedBaseline = JSON.stringify(this.acceptedDraft);
+            this.acceptedFingerprint = current.declarationFingerprint;
+            this.selectedKey = this.acceptedDraft[0]?.proposalKey;
+            this.acceptedMessage = 'Canonical Architecture loaded. Changes stay in this editor until Save Architecture.';
+        } catch (error) {
+            if (request === this.acceptedRequest) this.acceptedMessage = String(error);
+        } finally {
+            if (request === this.acceptedRequest) { this.acceptedBusy = false; this.render(); }
+        }
+    }
+    private draft(): ArchitectureReviewNode[] { return this.acceptedDraft ?? this.controller.draft; }
+    private draftChanged(): void {
+        if (this.controller.initialization?.state === 'initialized') { this.acceptedMessage = ''; this.render(); }
+        else this.controller.draftChanged();
+    }
+    private async saveAccepted(): Promise<void> {
+        if (!this.acceptedDraft || !this.acceptedFingerprint || this.acceptedBusy || reviewDiagnostics(this.acceptedDraft).length ||
+            JSON.stringify(this.acceptedDraft) === this.acceptedBaseline) return;
+        const workspace = this.controller.workspace, request = ++this.acceptedRequest;
+        const draft = structuredClone(this.acceptedDraft), expectedFingerprint = this.acceptedFingerprint;
+        this.acceptedBusy = true;
+        this.acceptedMessage = 'Saving canonical Architecture…';
+        this.render();
+        try {
+            const result = await this.controller.saveCurrentArchitecture(expectedFingerprint, declarationFromDraft(draft));
+            if (request !== this.acceptedRequest || workspace !== this.controller.workspace) return;
+            this.acceptedFingerprint = result.declarationFingerprint;
+            this.acceptedBaseline = JSON.stringify(draft);
+            this.acceptedMessage = result.status.state === 'ready'
+                ? 'Canonical Architecture saved. Software Map analysis is ready.'
+                : `Canonical Architecture saved. Software Map analysis ${result.status.state}; inspect Software Map diagnostics.`;
+        } catch (error) {
+            if (request === this.acceptedRequest) this.acceptedMessage = `Save Architecture failed: ${String(error)}`;
+        } finally {
+            if (request === this.acceptedRequest) { this.acceptedBusy = false; this.render(); }
+        }
     }
     private element<K extends keyof HTMLElementTagNameMap>(tag: K, value?: string): HTMLElementTagNameMap[K] {
         const node = document.createElement(tag);
@@ -59,51 +134,62 @@ export class SoftwareMapReviewWidget extends BaseWidget {
     }
     private render(): void {
         if (this.isDisposed) return;
+        if (this.workspaceChanging) return;
+        const scrollTop = this.node.scrollTop;
         const focused = this.content.contains(document.activeElement) ? document.activeElement as HTMLElement : undefined;
         const focusedField = focused?.closest('label')?.firstChild?.textContent;
         const focusedButton = focused?.tagName === 'BUTTON' ? focused.textContent : undefined;
         const cursor = focused instanceof HTMLInputElement || focused instanceof HTMLTextAreaElement ? focused.selectionStart : null;
         const advancedOpen = this.content.querySelector<HTMLDetailsElement>('.dope-smap-review-layout details')?.open ?? false;
         const review = this.controller.review;
-        if (this.controller.flow !== 'review' || this.controller.initialization?.state !== 'review_required' || !review) {
-            this.content.replaceChildren(this.element('h2', 'sMap Architecture Review'),
-                this.element('p', 'No architecture review is pending for this project.'));
+        const accepted = this.controller.initialization?.state === 'initialized';
+        if (accepted && this.controller.workspace !== this.acceptedWorkspace) { void this.loadAccepted(); return; }
+        if (!accepted && this.acceptedWorkspace) this.clearAccepted();
+        const pending = this.controller.flow === 'review' && this.controller.initialization?.state === 'review_required' && !!review;
+        if (!pending && !accepted) {
+            this.content.replaceChildren(this.element('h2', 'Edit Architecture'),
+                this.element('p', 'Architecture is not ready to edit for this project.'));
             this.selectedKey = undefined;
             return;
         }
-        const draft = this.controller.draft;
+        if (accepted && !this.acceptedDraft) {
+            this.content.replaceChildren(this.element('h2', 'Edit Architecture'), this.element('p', this.acceptedMessage));
+            if (!this.acceptedBusy) this.content.append(this.button('Retry loading Architecture', () => void this.loadAccepted()));
+            return;
+        }
+        const draft = this.draft();
         if (!draft.some(node => node.proposalKey === this.selectedKey)) this.selectedKey = draft[0]?.proposalKey;
         const selected = draft.find(node => node.proposalKey === this.selectedKey);
-        const heading = this.element('h2', 'sMap Architecture Review');
-        const summary = this.element('p', review.proposal.summary);
-        const ambiguity = this.element('p', `${review.proposal.openQuestions.length} open questions · ${review.proposal.unassignedEvidenceRefs.length} unassigned evidence facts`);
+        const heading = this.element('h2', 'Edit Architecture');
+        const summary = this.element('p', pending ? review!.proposal.summary : 'Edit the accepted canonical Architecture. Save Architecture is the only canonical write.');
+        const ambiguity = pending ? this.element('p', `${review!.proposal.openQuestions.length} open questions · ${review!.proposal.unassignedEvidenceRefs.length} unassigned evidence facts`) : undefined;
         const questions = this.element('details');
         questions.append(this.element('summary', 'Open questions and unassigned evidence'));
-        for (const question of review.proposal.openQuestions) questions.append(this.element('p', question));
-        for (const ref of review.proposal.unassignedEvidenceRefs) {
-            const item = review.packet.items.find(fact => fact.id === ref);
+        for (const question of review?.proposal.openQuestions ?? []) questions.append(this.element('p', question));
+        for (const ref of review?.proposal.unassignedEvidenceRefs ?? []) {
+            const item = review?.packet.items.find(fact => fact.id === ref);
             questions.append(this.button(`${item?.kind ?? 'Evidence'} · ${item?.path ?? ref}`, () => void this.openSource(ref)));
         }
         const coverage = this.element('details');
-        coverage.append(this.element('summary', `Source-backed coverage · ${review.coverageLedger?.filter(item => item.status === 'unresolved').length ?? 0} unresolved cues`));
-        for (const cue of review.coverageLedger ?? []) {
+        coverage.append(this.element('summary', `Source-backed coverage · ${review?.coverageLedger?.filter(item => item.status === 'unresolved').length ?? 0} unresolved cues`));
+        for (const cue of review?.coverageLedger ?? []) {
             const row = this.element('p', `${cue.status}: ${cue.concept} → ${cue.candidateKeys.join(', ') || 'unresolved'}`);
             coverage.append(row);
             for (const ref of cue.evidenceRefs) {
-                const item = review.packet.items.find(fact => fact.id === ref);
+                const item = review?.packet.items.find(fact => fact.id === ref);
                 coverage.append(this.button(item?.path ?? ref, () => void this.openSource(ref)));
             }
         }
-        for (const descent of review.componentDescents ?? []) {
+        for (const descent of review?.componentDescents ?? []) {
             coverage.append(this.element('p', `${descent.subsystemKey}: ${descent.kind}`));
             for (const ref of descent.evidenceRefs) {
-                const item = review.packet.items.find(fact => fact.id === ref);
+                const item = review?.packet.items.find(fact => fact.id === ref);
                 coverage.append(this.button(item?.path ?? ref, () => void this.openSource(ref)));
             }
         }
         const layout = this.element('div'); layout.className = 'dope-smap-review-layout';
         const tree = this.element('nav'); tree.setAttribute('aria-label', 'Architecture hierarchy');
-        tree.append(this.element('h3', 'Proposed hierarchy'));
+        tree.append(this.element('h3', 'Architecture'));
         const list = (parent: string | null): HTMLUListElement => {
             const ul = this.element('ul');
             for (const node of draft.filter(item => item.parentProposalKey === parent)) {
@@ -120,19 +206,32 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         if (selected) this.renderDetail(selected, detail);
         layout.append(tree, detail);
         const validation = this.element('div'); validation.setAttribute('role', 'status');
-        const accept = this.button('Accept architecture', () => void this.controller.accept());
-        const issues = this.controller.draftDiagnostics();
-        validation.append(this.element('p', issues.length ? `Acceptance blocked: ${issues.length} blocker${issues.length === 1 ? '' : 's'}` : 'Review ready for acceptance.'));
+        const accept = this.button(pending ? 'Accept Architecture' : 'Save Architecture', () => {
+            if (pending) void this.controller.accept(); else void this.saveAccepted();
+        });
+        const issues = reviewDiagnostics(draft);
+        validation.append(this.element('p', issues.length ? `${pending ? 'Acceptance' : 'Save'} blocked: ${issues.length} blocker${issues.length === 1 ? '' : 's'}` :
+            pending ? 'Review ready for acceptance.' : this.acceptedMessage || (JSON.stringify(draft) === this.acceptedBaseline ? 'No unsaved changes.' : 'Unsaved Architecture changes.')));
         if (issues.length) {
             const list = this.element('ul');
             for (const issue of issues) list.append(this.element('li', `${issue.code}: ${issue.message}${issue.paths.length ? ` · ${issue.paths.join(', ')}` : ''}${issue.proposalKeys.length ? ` · ${issue.proposalKeys.join(', ')}` : ''}`));
             validation.append(list);
         }
-        accept.disabled = !!issues.length || this.controller.setupBusy;
+        accept.disabled = !!issues.length || (pending ? this.controller.setupBusy : this.acceptedBusy || JSON.stringify(draft) === this.acceptedBaseline);
         const actions = this.element('div'); actions.className = 'dope-smap-review-actions';
-        actions.append(this.button('Add System', () => this.add('system')), validation, accept,
-            this.button('Decline review', () => void this.controller.cancel()));
-        this.content.replaceChildren(heading, summary, ambiguity, questions, coverage, layout, actions);
+        actions.append(this.button('Add System', () => this.add('system')), validation, accept);
+        if (pending) actions.append(this.button('Decline review', () => void this.controller.cancel()));
+        else {
+            const discard = this.button('Discard changes / Reload Architecture', () => void this.loadAccepted());
+            discard.disabled = this.acceptedBusy;
+            actions.append(discard, this.button('Cancel editing', () => {
+                this.clearAccepted(); this.content.replaceChildren(this.element('h2', 'Edit Architecture'), this.element('p', 'Editing canceled. Reopen Edit Architecture to load canonical state.'));
+                this.close();
+            }));
+        }
+        this.content.replaceChildren(heading, summary, ...(pending ? [ambiguity!, questions, coverage] : []), layout, actions);
+        this.node.scrollTop = scrollTop;
+        if (accepted && this.acceptedBusy) for (const control of this.content.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLButtonElement>('input, textarea, select, button')) control.disabled = true;
         const advanced = this.content.querySelector<HTMLDetailsElement>('.dope-smap-review-layout details');
         if (advanced) advanced.open = advancedOpen;
         if (focusedField) {
@@ -143,26 +242,27 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         else if (focusedButton) [...this.content.querySelectorAll('button')].find(button => button.textContent === focusedButton)?.focus();
     }
     private renderDetail(node: ArchitectureReviewNode, target: HTMLElement): void {
-        const proposal = this.controller.refinedEvidence.get(node.proposalKey) ??
-            this.controller.review!.proposal.nodes.find(item => item.proposalKey === node.proposalKey);
+        const review = this.controller.initialization?.state === 'review_required' ? this.controller.review : undefined;
+        const proposal = review && (this.controller.refinedEvidence.get(node.proposalKey) ??
+            review.proposal.nodes.find(item => item.proposalKey === node.proposalKey));
         target.append(this.element('h3', `${node.kind}: ${node.name || '(unnamed)'}`));
         const edit = (key: 'name' | 'purpose') => this.field(key === 'name' ? 'Name' : 'Purpose / responsibility', node[key], value => {
-            const otherIds = this.controller.draft.filter(item => item !== node).map(item => item.id);
+            const otherIds = this.draft().filter(item => item !== node).map(item => item.id);
             const oldSuggestedId = key === 'name' ? suggestArchitectureId(node.name, otherIds) : '';
             node[key] = value;
-            if (key === 'name' && (!node.id || node.id === oldSuggestedId)) node.id = suggestArchitectureId(value, otherIds);
-            this.controller.draftChanged();
+            if (key === 'name' && (!node.id || (review && node.id === oldSuggestedId))) node.id = suggestArchitectureId(value, otherIds);
+            this.draftChanged();
         }, key === 'purpose');
         target.append(edit('name'), edit('purpose'));
         if (node.kind !== 'system') {
             const label = this.element('label', 'Parent boundary');
             const select = this.element('select');
-            for (const parent of this.controller.draft.filter(item => item.kind === (node.kind === 'subsystem' ? 'system' : 'subsystem'))) {
+            for (const parent of this.draft().filter(item => item.kind === (node.kind === 'subsystem' ? 'system' : 'subsystem'))) {
                 const option = this.element('option', parent.name || parent.proposalKey);
                 option.value = parent.proposalKey; option.selected = parent.proposalKey === node.parentProposalKey;
                 select.append(option);
             }
-            select.onchange = () => { node.parentProposalKey = select.value; this.controller.draftChanged(); };
+            select.onchange = () => { node.parentProposalKey = select.value; this.draftChanged(); };
             label.append(select); target.append(label);
         }
         target.append(this.element('p', `Implementation roots: ${node.roots.length}${node.roots.length ? ` · ${node.roots.slice(0, 3).join(', ')}${node.roots.length > 3 ? '…' : ''}` : ''}`));
@@ -177,17 +277,17 @@ export class SoftwareMapReviewWidget extends BaseWidget {
             }
             target.append(this.element('h4', 'Observed'));
             for (const ref of proposal.evidenceRefs) {
-                const item = this.controller.review!.packet.items.find(fact => fact.id === ref);
+                const item = review!.packet.items.find(fact => fact.id === ref);
                 target.append(this.button(`${item?.kind ?? 'Evidence'} · ${item?.path ?? ref}`, () => void this.openSource(ref)));
             }
-        } else target.append(this.element('p', 'Developer-added boundary.'));
-        const docs = this.controller.review!.packet.documents?.filter(doc =>
+        } else if (review) target.append(this.element('p', 'Developer-added boundary.'));
+        const docs = review?.packet.documents?.filter(doc =>
             ['modules-seed', 'readme-orientation'].includes(doc.class) || node.roots.some(root => doc.path.startsWith(root.split('/').slice(0, 2).join('/')))).slice(0, 6) ?? [];
         if (docs.length) {
             target.append(this.element('h4', 'Documented'));
             for (const doc of docs) target.append(this.button(`${doc.class} · ${doc.path}`, () => void this.openDocument(doc.path)));
         }
-        if (node.kind !== 'component') {
+        if (review && node.kind !== 'component') {
             const search = this.button('Search Deeper', () => void this.controller.searchDeeper(node.proposalKey));
             search.disabled = !!this.controller.refinementBusyKey || this.controller.setupBusy;
             target.append(search);
@@ -205,7 +305,7 @@ export class SoftwareMapReviewWidget extends BaseWidget {
                 for (const proposed of preview.proposal.nodes.filter(item => !(preview.targetKind === 'subsystem' && item.kind === 'system'))) {
                     section.append(this.element('p', `Inferred: ${proposed.rationale}`));
                     for (const ref of proposed.evidenceRefs) {
-                        const item = this.controller.review!.packet.items.find(fact => fact.id === ref);
+                        const item = review.packet.items.find(fact => fact.id === ref);
                         section.append(this.button(`Observed: ${item?.path ?? ref}`, () => void this.openSource(ref)));
                     }
                 }
@@ -215,20 +315,47 @@ export class SoftwareMapReviewWidget extends BaseWidget {
             }
         }
         const advanced = this.element('details');
-        advanced.append(this.element('summary', 'Advanced: canonical ID and implementation roots'),
-            this.field('Canonical ID', node.id, value => { node.id = value; this.controller.draftChanged(); }),
+        advanced.append(this.element('summary', 'Advanced: canonical ID, implementation roots and dependencies'),
+            this.field('Canonical ID', node.id, value => { node.id = value; this.draftChanged(); }),
             this.field('Implementation roots (one project-relative path per line)', node.roots.join('\n'), value => {
-                node.roots = value.split('\n').map(path => path.trim()).filter(Boolean); this.controller.draftChanged();
+                node.roots = value.split('\n').map(path => path.trim()).filter(Boolean); this.draftChanged();
             }, true));
+        if (node.kind === 'subsystem') for (const field of ['allowedDependencies', 'forbiddenDependencies'] as const) {
+            advanced.append(this.field(`${field === 'allowedDependencies' ? 'Allowed' : 'Forbidden'} dependencies (Subsystem IDs, one per line)`,
+                node[field]?.join('\n') ?? '', value => {
+                    const values = value.split('\n').map(id => id.trim()).filter(Boolean);
+                    node[field] = values.length ? values : undefined;
+                    this.draftChanged();
+                }, true));
+        }
         target.append(advanced);
         if (node.kind !== 'component') target.append(this.button(`Add ${node.kind === 'system' ? 'Subsystem' : 'Component'}`, () =>
             this.add(node.kind === 'system' ? 'subsystem' : 'component', node.proposalKey)));
-        target.append(this.button(`Remove ${node.kind} and descendants`, () => { this.controller.remove(node.proposalKey); }));
+        target.append(this.button(`Remove ${node.kind} and descendants`, () => this.remove(node.proposalKey)));
     }
     private add(kind: ArchitectureReviewNode['kind'], parent: string | null = null): void {
-        this.controller.add(kind, parent);
-        this.selectedKey = this.controller.draft.at(-1)?.proposalKey;
+        if (this.acceptedDraft) {
+            const key = `draft:${crypto.randomUUID()}`;
+            this.acceptedDraft.push({ proposalKey: key, kind, parentProposalKey: parent, id: '', name: '', purpose: '', roots: [] });
+            this.selectedKey = key;
+            this.draftChanged();
+        } else {
+            this.controller.add(kind, parent);
+            this.selectedKey = this.controller.draft.at(-1)?.proposalKey;
+        }
         this.render();
+    }
+    private remove(key: string): void {
+        if (!this.acceptedDraft) { this.controller.remove(key); return; }
+        const removed = new Set([key]);
+        for (let changed = true; changed;) {
+            changed = false;
+            for (const node of this.acceptedDraft) if (node.parentProposalKey && removed.has(node.parentProposalKey) && !removed.has(node.proposalKey)) {
+                removed.add(node.proposalKey); changed = true;
+            }
+        }
+        this.acceptedDraft = this.acceptedDraft.filter(node => !removed.has(node.proposalKey));
+        this.draftChanged();
     }
     private async openSource(ref: string): Promise<void> {
         try {
@@ -243,5 +370,5 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         } catch (error) { this.content.append(this.element('p', `Document navigation failed: ${String(error)}`)); }
     }
     protected override onActivateRequest(msg: Message): void { super.onActivateRequest(msg); this.node.focus(); }
-    override dispose(): void { ++this.workspaceRequest; this.listener.dispose(); this.rootsListener.dispose(); super.dispose(); }
+    override dispose(): void { ++this.workspaceRequest; this.clearAccepted(); this.listener.dispose(); this.rootsListener.dispose(); super.dispose(); }
 }

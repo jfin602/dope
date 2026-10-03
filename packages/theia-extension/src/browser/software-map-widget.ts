@@ -114,10 +114,8 @@ export class SoftwareMapWidget extends BaseWidget {
             const refresh = this.button('REFRESH', () => void model.analyze());
             refresh.setAttribute('aria-label', 'Refresh Software Map');
             firstRow.append(open, refresh);
-            const edit = this.element('button', 'EDIT ARCHITECTURE');
-            edit.type = 'button';
-            edit.disabled = true;
-            edit.title = 'Edit Architecture is not available yet';
+            const edit = this.button('EDIT ARCHITECTURE', () => void this.openReview());
+            edit.setAttribute('aria-label', 'Edit Architecture');
             edit.className = 'dope-smap-edit-architecture';
             this.controls.append(firstRow, edit);
             return;
@@ -340,7 +338,7 @@ export class SoftwareMapWidget extends BaseWidget {
         this.controls.append(this.element('h3', 'Architecture review ready'),
             this.element('p', review.proposal.summary),
             this.element('p', `${this.controller.draft.filter(node => node.kind === 'system').length} Systems · ${this.controller.draft.filter(node => node.kind === 'subsystem').length} Subsystems · ${this.controller.draft.filter(node => node.kind === 'component').length} Components`),
-            this.button('Open Architecture Review', () => void this.openReview()),
+            this.button('Edit Architecture', () => void this.openReview()),
             this.button('Decline review', () => void this.controller.cancel()));
     }
     private renderDraft(title: string): void {
@@ -349,7 +347,7 @@ export class SoftwareMapWidget extends BaseWidget {
         editor.append(this.element('h3', title));
         const validation = this.element('p');
         validation.setAttribute('role', 'status');
-        const accept = this.button('Accept architecture', () => void model.accept());
+        const accept = this.button('Accept Architecture', () => void model.accept());
         const refreshValidation = () => { const error = model.draftError(); validation.textContent = error ? `Cannot accept: ${error}` : 'Canonical architecture is valid.'; accept.disabled = !!error || model.setupBusy; };
         for (const node of model.draft) {
             const row = this.element('fieldset');
