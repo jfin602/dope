@@ -34,6 +34,12 @@ The map-canvas P3 gate is cleared by the [supplemental closeout](../c6-map-canva
 
 The packaged AppImage controlled-shutdown failure remains a separate unresolved P7 blocker.
 
+### Final-state aggregate replay (2026-10-03)
+
+At clean candidate `395522291ce62bbbb15e62722680259c6b3a5ec8` / `0.6.7`, 135 focused tests, typecheck, browser/Electron builds, packaging and a fresh disposable Adaptive SEO browser replay passed their exercised gates. System Flow rendered 15 participants/31 interactions; dense Subsystem Flow rendered 18/27 at readable `1.0×`, with manual pan/zoom and explicit Fit. Sidebar, dedicated Edit Architecture draft behavior, palette persistence and Dope Dark/Light (Theia) were exercised. The rebuilt AppImage reached ready and shut down cleanly via SIGTERM, but normal window close was not qualified; native file-search `spawn ENOTDIR` remains observable.
+
+**P7 remains Not Green; P8 remains blocked.** The Physical Map breadcrumb under the toolbar shows only `Project` and focus names, omitting the required readable project path. The [new P7 evidence](P7-flow-dogfooding-evidence.md#final-state-aggregate-replay--2026-10-03) gives direct reproduction and residual evidence limits. Keep `0.6.7`; repair this bounded presentation defect and replay the affected GUI gate plus normal packaged window close before closeout.
+
 ## Locked truth rules
 
 ```text
