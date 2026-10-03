@@ -1,0 +1,170 @@
+TASK: Correction 6 / P1 — Lossless canonical Architecture edit service seam
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.6.7`.
+
+ACTIVATION
+- Require activation/source baseline `b447d925ee4c12891ff072f235368e7b29a6854d` reachable.
+- Require `c6-smap-outline` Green at `ac7fd5a29fb9d6dca4fc2f137f8fdef7f2a20439` or a descendant containing that Green behavior.
+- Require package exactly `0.6.7` and a clean intended working tree.
+
+GOAL
+
+Add the provider-independent read/edit/save authority needed by permanent Edit Architecture, without creating a second canonical store and without losing any current Architecture schema fields.
+
+PREFLIGHT
+
+Read:
+- BOOT.md / AGENTS.md;
+- ADR 0024;
+- current PRODUCT-MODEL.md / ARCHITECTURE.md / workflow;
+- docs/tasks/c6-edit-architecture/README.md;
+- prompt-assessment.md;
+- implementation-plan.md;
+- c6-smap-outline closeout.
+
+Inspect current source/tests before editing:
+- packages/software-map/src/service.ts;
+- packages/software-map/src/review-diagnostics.ts;
+- packages/software-map/src/contracts.ts;
+- packages/code-analysis/src/node/smap-initialization-file.ts;
+- packages/code-analysis/src/node/architecture-file.ts;
+- packages/theia-extension/src/node/software-map-backend.ts;
+- packages/theia-extension/src/node/visual-planning-backend.ts;
+- test/unit/software-map-initialization.test.ts;
+- test/unit/smap-review-diagnostics.test.ts;
+- relevant Visual Planning adoption/storage tests.
+
+LOCKED BOUNDARIES
+
+- `.dope/architecture.json` plus matching `.dope/smap.json` remain canonical.
+- Reuse existing `replaceArchitecture`; do not write canonical files directly.
+- Do not add a new architecture revision/history file or accepted-edit draft store.
+- Do not rewrite/rebase Planning Maps during direct Architecture editing.
+- Do not add provider/model/UI behavior in P1.
+- Do not change Flow or Planning semantics.
+- Keep package exactly `0.6.7`.
+
+IMPLEMENT
+
+1. Make the editor draft projection lossless.
+
+   Current `ArchitectureReviewNode` / `reviewDeclaration` omit canonical Subsystem dependency constraints.
+
+   Establish one shared editor-draft projection that can round-trip every current `ArchitectureDeclaration` field, including:
+   - stable canonical IDs;
+   - name/purpose;
+   - System optional roots;
+   - Subsystem required roots;
+   - Component roots;
+   - parentage;
+   - Subsystem `allowedDependencies`;
+   - Subsystem `forbiddenDependencies`.
+
+   Prefer evolving the current review/editor node + projection helpers rather than creating a second competing editor model.
+
+   Add a deterministic canonical-declaration -> editor-draft helper with stable editor keys suitable for later branch editing.
+
+   Preserve initial synthesis review behavior.
+
+2. Preserve diagnostics and validation.
+
+   `reviewDeclaration(...)` or its shared successor must reconstruct a full canonical declaration without dropping dependency constraints.
+
+   Invalid dependency targets/conflicts created by edits must surface as deterministic blockers through the existing parser/diagnostic path.
+
+   Do not silently repair or discard constraints.
+
+3. Add a narrow initialized Architecture read API to `SoftwareMapService`.
+
+   It must:
+   - require a valid attached project handle;
+   - require initialized Software Map;
+   - read canonical Architecture through the existing safe reader;
+   - return a clone plus current declaration fingerprint/basis.
+
+   Do not expose raw filesystem paths as authority.
+
+4. Add a stale-guarded initialized Architecture save API.
+
+   It must:
+   - require initialized Software Map;
+   - accept expected current declaration fingerprint;
+   - validate the full replacement declaration;
+   - call existing `replaceArchitecture`;
+   - use a no-op companion transaction for direct editing rather than touching PlanningStore;
+   - reject stale architecture/marker state;
+   - preserve project-handle isolation.
+
+   Do not modify `replaceArchitecture` unless genuinely necessary. If you do, preserve Visual Planning adoption rollback semantics and prove them with focused tests.
+
+5. Re-analyze after canonical commit.
+
+   After successful canonical replacement, invoke ordinary `SoftwareMapIndex.analyze(root)` so the Physical Map reconciles against the new Architecture.
+
+   The service response must make the outcome unambiguous:
+   - canonical save committed;
+   - new fingerprint/basis;
+   - resulting Software Map status.
+
+   If deterministic re-analysis returns failed after the canonical commit, report that failed map status truthfully. Do not claim the canonical save rolled back unless it actually did.
+
+6. Keep accepted-edit work non-persistent.
+
+   P1 must not create or write:
+   - `.dope/smap-analysis.json` for accepted editing;
+   - a new editor-session file;
+   - architecture history/revision storage.
+
+PERMANENT TESTS
+
+Add/extend focused tests proving:
+- full canonical declaration -> editor draft -> canonical declaration round-trip, including allowed/forbidden dependencies;
+- stable draft keys for the same canonical declaration;
+- invalid dependency target/conflict is a blocker;
+- initialized Architecture read returns current declaration/fingerprint;
+- Save Architecture changes architecture + marker coherently;
+- stale expected fingerprint rejects without write;
+- malformed/invalid replacement rejects without write;
+- wrong/detached project handle rejects;
+- project B cannot save using project A basis;
+- successful save triggers index re-analysis;
+- post-commit analysis failure is surfaced without falsifying save outcome;
+- no accepted-edit analysis/history file is created.
+
+If shared `replaceArchitecture` changes, also prove existing Visual Planning adoption transaction/rollback remains Green.
+
+VALIDATION — T2
+
+Run only:
+- focused Software Map initialization/persistence/diagnostic tests changed by this prompt;
+- focused Visual Planning adoption/storage test only if shared `replaceArchitecture` changed;
+- `npm run build:extension`;
+- exact package/internal-reference/no-root-lock checks;
+- `git diff --check`.
+
+Do not run:
+- browser/manual GUI;
+- live provider calls;
+- `npm run check`;
+- restart/package/native qualification;
+- broad Phase 6 P7 evidence.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report:
+- exact service/edit-draft contract added;
+- proof dependency constraints round-trip losslessly;
+- canonical write path and stale guard;
+- marker/fingerprint behavior;
+- post-save analysis behavior;
+- Planning Map non-mutation;
+- focused validation;
+- unchanged `0.6.7`;
+- P2 eligibility.
