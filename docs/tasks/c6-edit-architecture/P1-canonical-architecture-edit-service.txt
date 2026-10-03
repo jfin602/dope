@@ -1,170 +1,107 @@
 TASK: Correction 6 / P1 — Lossless canonical Architecture edit service seam
 
 MODEL / REASONING / USAGE
-- Recommended configuration: `GPT-6 Sol High`.
+- Recommended: GPT-6 Sol High.
 - Browser required: no.
+- Validation: T2.
+- Version remains exactly 0.6.7.
 
-VERSIONING
-- Required unchanged project version: `0.6.7`.
+ENTRY
 
-ACTIVATION
-- Require activation/source baseline `b447d925ee4c12891ff072f235368e7b29a6854d` reachable.
-- Require `c6-smap-outline` Green at `ac7fd5a29fb9d6dca4fc2f137f8fdef7f2a20439` or a descendant containing that Green behavior.
-- Require package exactly `0.6.7` and a clean intended working tree.
+Require:
+- current branch contains Green c6-smap-outline behavior;
+- package is exactly 0.6.7;
+- intended working tree is clean.
+
+Read BOOT.md, AGENTS.md, ADR 0024, the c6-edit-architecture README/assessment/plan, and inspect the current Software Map architecture/service/persistence tests before editing.
 
 GOAL
 
-Add the provider-independent read/edit/save authority needed by permanent Edit Architecture, without creating a second canonical store and without losing any current Architecture schema fields.
-
-PREFLIGHT
-
-Read:
-- BOOT.md / AGENTS.md;
-- ADR 0024;
-- current PRODUCT-MODEL.md / ARCHITECTURE.md / workflow;
-- docs/tasks/c6-edit-architecture/README.md;
-- prompt-assessment.md;
-- implementation-plan.md;
-- c6-smap-outline closeout.
-
-Inspect current source/tests before editing:
-- packages/software-map/src/service.ts;
-- packages/software-map/src/review-diagnostics.ts;
-- packages/software-map/src/contracts.ts;
-- packages/code-analysis/src/node/smap-initialization-file.ts;
-- packages/code-analysis/src/node/architecture-file.ts;
-- packages/theia-extension/src/node/software-map-backend.ts;
-- packages/theia-extension/src/node/visual-planning-backend.ts;
-- test/unit/software-map-initialization.test.ts;
-- test/unit/smap-review-diagnostics.test.ts;
-- relevant Visual Planning adoption/storage tests.
+Add the smallest provider-independent read/save seam needed by permanent Edit Architecture. Reuse existing canonical persistence and make the editor draft lossless for the current Architecture schema.
 
 LOCKED BOUNDARIES
 
-- `.dope/architecture.json` plus matching `.dope/smap.json` remain canonical.
-- Reuse existing `replaceArchitecture`; do not write canonical files directly.
-- Do not add a new architecture revision/history file or accepted-edit draft store.
-- Do not rewrite/rebase Planning Maps during direct Architecture editing.
-- Do not add provider/model/UI behavior in P1.
+- .dope/architecture.json + matching .dope/smap.json remain canonical.
+- Reuse existing replaceArchitecture; do not create another writer/store.
+- No accepted-edit draft/history persistence.
+- No provider/UI work in P1.
+- Do not rewrite/rebase Planning Maps.
 - Do not change Flow or Planning semantics.
-- Keep package exactly `0.6.7`.
 
 IMPLEMENT
 
-1. Make the editor draft projection lossless.
+1. Lossless shared editor draft
 
-   Current `ArchitectureReviewNode` / `reviewDeclaration` omit canonical Subsystem dependency constraints.
+The current review draft projection drops Subsystem allowedDependencies/forbiddenDependencies.
 
-   Establish one shared editor-draft projection that can round-trip every current `ArchitectureDeclaration` field, including:
-   - stable canonical IDs;
-   - name/purpose;
-   - System optional roots;
-   - Subsystem required roots;
-   - Component roots;
-   - parentage;
-   - Subsystem `allowedDependencies`;
-   - Subsystem `forbiddenDependencies`.
+Evolve the existing review/editor draft helpers, or introduce one shared equivalent, so ArchitectureDeclaration -> editable nodes -> ArchitectureDeclaration preserves every current schema field:
+- IDs, name, purpose;
+- System optional roots;
+- Subsystem roots and dependency constraints;
+- Component roots;
+- parentage.
 
-   Prefer evolving the current review/editor node + projection helpers rather than creating a second competing editor model.
+Use deterministic editor keys that stay stable while the user edits canonical IDs. Preserve initial synthesis-review behavior.
 
-   Add a deterministic canonical-declaration -> editor-draft helper with stable editor keys suitable for later branch editing.
+Existing deterministic diagnostics must continue to block invalid IDs/roots/parents and must also surface invalid/conflicting dependency constraints. Never silently drop or repair constraints.
 
-   Preserve initial synthesis review behavior.
+2. Initialized Architecture read service
 
-2. Preserve diagnostics and validation.
+Add a narrow SoftwareMapService operation that:
+- requires a valid attached initialized project;
+- returns the current canonical Architecture plus current declaration fingerprint/basis;
+- reads through the existing safe architecture reader;
+- returns cloned product data, not filesystem authority.
 
-   `reviewDeclaration(...)` or its shared successor must reconstruct a full canonical declaration without dropping dependency constraints.
+3. Stale-guarded Save Architecture service
 
-   Invalid dependency targets/conflicts created by edits must surface as deterministic blockers through the existing parser/diagnostic path.
+Add a narrow initialized save operation that:
+- accepts expected current declaration fingerprint plus the full validated replacement;
+- rejects stale/invalid/project-mismatched requests;
+- calls existing replaceArchitecture with a no-op companion transaction;
+- does not touch PlanningStore or synthesis review state;
+- after commit runs the ordinary SoftwareMapIndex analysis/reconciliation.
 
-   Do not silently repair or discard constraints.
+Return an unambiguous result containing:
+- canonical save committed/new fingerprint;
+- resulting Software Map status.
 
-3. Add a narrow initialized Architecture read API to `SoftwareMapService`.
+If re-analysis fails after commit, report failed analysis truthfully; do not pretend the canonical save rolled back.
 
-   It must:
-   - require a valid attached project handle;
-   - require initialized Software Map;
-   - read canonical Architecture through the existing safe reader;
-   - return a clone plus current declaration fingerprint/basis.
+4. No new accepted-edit persistence
 
-   Do not expose raw filesystem paths as authority.
+Do not create/write smap-analysis.json, an edit-session file, or history state for initialized editing.
 
-4. Add a stale-guarded initialized Architecture save API.
+PERMANENT REGRESSIONS
 
-   It must:
-   - require initialized Software Map;
-   - accept expected current declaration fingerprint;
-   - validate the full replacement declaration;
-   - call existing `replaceArchitecture`;
-   - use a no-op companion transaction for direct editing rather than touching PlanningStore;
-   - reject stale architecture/marker state;
-   - preserve project-handle isolation.
+Cover the minimum complete set:
+- canonical declaration -> draft -> declaration round-trip including allowed/forbidden dependencies;
+- deterministic/stable editor keys;
+- invalid dependency target/conflict blocker;
+- initialized read + fingerprint;
+- successful save updates architecture and marker coherently;
+- stale/invalid/wrong-handle/cross-project save rejection without write;
+- successful save triggers re-analysis;
+- post-commit analysis failure is distinguished from save failure;
+- no accepted-edit work/history file is created.
 
-   Do not modify `replaceArchitecture` unless genuinely necessary. If you do, preserve Visual Planning adoption rollback semantics and prove them with focused tests.
+Only if replaceArchitecture itself changes, also run/protect the existing Visual Planning adoption rollback regression.
 
-5. Re-analyze after canonical commit.
+VALIDATION
 
-   After successful canonical replacement, invoke ordinary `SoftwareMapIndex.analyze(root)` so the Physical Map reconciles against the new Architecture.
+Run:
+- the focused Software Map initialization/diagnostic/service tests affected by this prompt;
+- if replaceArchitecture changed, the focused Visual Planning adoption/storage regression;
+- corepack yarn workspace @dope/software-map build;
+- corepack yarn workspace @dope/code-analysis build if touched;
+- corepack yarn workspace @dope/theia-extension build;
+- exact 0.6.7 / internal-reference / no-root-lock checks;
+- git diff --check.
 
-   The service response must make the outcome unambiguous:
-   - canonical save committed;
-   - new fingerprint/basis;
-   - resulting Software Map status.
-
-   If deterministic re-analysis returns failed after the canonical commit, report that failed map status truthfully. Do not claim the canonical save rolled back unless it actually did.
-
-6. Keep accepted-edit work non-persistent.
-
-   P1 must not create or write:
-   - `.dope/smap-analysis.json` for accepted editing;
-   - a new editor-session file;
-   - architecture history/revision storage.
-
-PERMANENT TESTS
-
-Add/extend focused tests proving:
-- full canonical declaration -> editor draft -> canonical declaration round-trip, including allowed/forbidden dependencies;
-- stable draft keys for the same canonical declaration;
-- invalid dependency target/conflict is a blocker;
-- initialized Architecture read returns current declaration/fingerprint;
-- Save Architecture changes architecture + marker coherently;
-- stale expected fingerprint rejects without write;
-- malformed/invalid replacement rejects without write;
-- wrong/detached project handle rejects;
-- project B cannot save using project A basis;
-- successful save triggers index re-analysis;
-- post-commit analysis failure is surfaced without falsifying save outcome;
-- no accepted-edit analysis/history file is created.
-
-If shared `replaceArchitecture` changes, also prove existing Visual Planning adoption transaction/rollback remains Green.
-
-VALIDATION — T2
-
-Run only:
-- focused Software Map initialization/persistence/diagnostic tests changed by this prompt;
-- focused Visual Planning adoption/storage test only if shared `replaceArchitecture` changed;
-- `npm run build:extension`;
-- exact package/internal-reference/no-root-lock checks;
-- `git diff --check`.
-
-Do not run:
-- browser/manual GUI;
-- live provider calls;
-- `npm run check`;
-- restart/package/native qualification;
-- broad Phase 6 P7 evidence.
+Do not run browser/manual evidence, live providers, npm run check, restart/package/native qualification, or broad Phase 6 P7 evidence.
 
 Do not commit; runner owns commit boundaries.
 
 FINAL RESPONSE
 
-Report:
-- exact service/edit-draft contract added;
-- proof dependency constraints round-trip losslessly;
-- canonical write path and stale guard;
-- marker/fingerprint behavior;
-- post-save analysis behavior;
-- Planning Map non-mutation;
-- focused validation;
-- unchanged `0.6.7`;
-- P2 eligibility.
+Report the final draft/service contracts, lossless dependency round-trip, stale-safe canonical write behavior, re-analysis outcome semantics, focused validation, and P2 eligibility.
