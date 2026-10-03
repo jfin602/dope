@@ -144,7 +144,22 @@ Make Phase 7B connection metadata **machine-local, application-global, and share
 
 **Decision**
 
-TBD.
+Locked: the Phase 7B connection registry is **machine-local, application-global, and shared across all Dope projects/windows for the same OS user/Dope installation**.
+
+Connections are not project state. Opening, copying, cloning, moving or deleting a repository has no effect on the global AI connection inventory, and no connection metadata is stored beneath project-local `.dope/`.
+
+One backend-owned application registry is the authoritative state owner. All frontend windows and projects observe that same registry. Adding, editing, disabling, removing or refreshing a connection in one window publishes the updated state to other open Dope windows without requiring restart.
+
+Application-global connection state is revisioned and concurrency-safe rather than ordinary last-writer-wins preference data. Mutations carry the expected current revision; stale concurrent writes are rejected/reloaded instead of silently overwriting a newer connection edit.
+
+AI Center and the connection registry remain usable when no project is open. Provider/runtime configuration therefore belongs to the Dope application lifecycle rather than any workspace lifecycle.
+
+Phase 7B intentionally **defers account/cloud synchronization across machines**. A laptop and desktop may have independent connection registries even for the same developer. Future sync or migration can be added later without changing the project-state boundary.
+
+Non-secret connection configuration should remain structurally export/import-ready for a future feature, but Phase 7B does not need to ship cross-machine export/import. Any future profile transfer may include safe fields such as provider/runtime type, display alias, endpoint, enabled state and non-secret options, but never API keys/tokens or other credential material.
+
+Application-global availability does not imply project execution authority. A project may see that a connection exists, but feature-specific privacy/egress/consent rules still govern whether project data may be sent through it.
+
 
 ---
 
