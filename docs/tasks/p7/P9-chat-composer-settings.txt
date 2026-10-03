@@ -1,0 +1,37 @@
+TASK: Phase 7 / P9 — Chat composer, per-turn model selection and settings
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.9`.
+
+GOAL
+
+Complete Chat mode with the locked two-row composer, per-message connected-model choice and persistent per-Chat settings.
+
+PREFLIGHT
+
+Use the shared p7 preflight. Inspect P4/P5 ChatPanel/controller and P6-P8 Model Connections/runtime contracts only.
+
+IMPLEMENT
+- render durable transcript with timestamps/status and subtle actual provider/model provenance; interrupted/failed/cancelled executions remain visibly non-complete;
+- composer first row is multiline input; second row is always present with context/tool seam, compact usable-model selector, send/cancel/retry;
+- resolve Chat default model when usable; a per-turn override is snapshotted on Send and does not rewrite the default; after submission return to the persistent default;
+- block Send with a useful setup route when no usable model exists; never auto-select a fallback after failure;
+- right-justified settings cog edits Chat-owned default model, supported reasoning controls, history/context budget, allowed context categories and saved-chat retrieval permission; global credentials/connections remain outside ChatSettings;
+- persist developer message + assistant pending attempt before runtime submission; render stream deltas only while project/chat/attempt is current; complete/fail/cancel through ChatService with actual provenance;
+- Retry creates a new attempt and preserves the failed attempt; different model only by explicit developer choice.
+
+Advance to `0.7.9`.
+
+TESTS
+
+T2 focused composer/settings/controller tests for two-row persistence, default/one-turn override/reset, no-model/no-fallback, settings persistence across panel relocation, capability controls, stream/cancel/retry, stale delta guards and transcript provenance. Build extension; run baseline/version/no-lock and diff check. No browser build or live providers.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report composer/settings/turn lifecycle and P10 eligibility.

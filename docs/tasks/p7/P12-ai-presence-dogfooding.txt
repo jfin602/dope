@@ -1,0 +1,58 @@
+TASK: Phase 7 / P12 — AI Presence dogfooding and qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.12`.
+
+GOAL
+
+Qualify the exact Phase 7 candidate through real Dope GUI use, real connected models where available, restart/isolation and package/native evidence.
+
+PREFLIGHT
+
+Read the p7 assessment/plan and exact P1-P11 commits/results. Do not reread unchanged design docs unless evidence conflicts. Require coherent `0.7.11` predecessor.
+
+WORKSPACES
+
+Use disposable copies; do not modify `/home/jfin/dev/dope` or `/home/jfin/dev/adaptive-seo-dope` originals. Create one Dope Phase 7 test workspace with useful `.dope` Project Mind/Architecture/Flow/Planning state and a second local project for isolation. Record source status and relevant `.dope` inventory.
+
+Advance all live versions/internal references to `0.7.12` before final exact-candidate qualification.
+
+DIRECT MATRIX
+
+A. Chats/folders: create nested folders and Chats; verify auto-title then user title lock; dates/order; move Chat without identity/history loss.
+B. Panels: open at least three ChatPanels across main/side/bottom; use different Chats; prove duplicate-open focuses the owner; release/reopen correctly.
+C. Settings/composer: verify top-right settings, persistent two-row composer, Chat default model, one-turn override without default mutation and durable actual model provenance.
+D. Real models: configure real connections without project secret persistence; exercise streaming/cancel/retry; use at least two genuinely connected models in one Chat when available. If only one is available, record cross-model direct evidence as Evidence Gap, not mocked Green.
+E. Failure authority: deliberately make the selected model unavailable/failing and prove no silent fallback/context transfer.
+F. Context: use current file/selection, one Project Mind item, Architecture/Physical/Flow context, Planning context when present and saved-Chat retrieval; inspect durable context refs and missing/stale handling.
+G. AI behaviors: exercise Ask/Explain/Trace/Find Related on real project questions; verify no canonical mutation.
+H. Restart/isolation: restart/reopen Chats/folders/settings/order/panel ownership; interrupted attempts stay honest; second project cannot see/mutate first-project Chats; provider-native session state is not needed.
+I. Analysis isolation: Chat writes/moves/messages do not change Software Map physical input identity or create Planning staleness.
+J. Existing product: ordinary editor/Project Mind/Architecture/Flow/Planning remain usable; do not relabel prior Phase 5/6 evidence.
+
+T3 RELEASE EVIDENCE
+
+Run once on the final candidate:
+- focused Phase 7 suites;
+- `npm run check`;
+- `npm run test:restart`;
+- `npm run codex:phase:validate -- p7`;
+- Linux AppImage packaging/inspection/native launch/normal close as supported;
+- exact version/Theia/Electron/React/no-root-lock checks;
+- `git diff --check`.
+
+`npm run check` already builds browser and Electron. Do not rerun either unless a later change invalidates that evidence.
+
+EVIDENCE
+
+Create `docs/tasks/p7/P12-ai-presence-dogfooding-evidence.md` with exact candidate/workspaces, provider/model matrix without secrets, A-J observations, commands/results and every Not Green/Evidence Gap item.
+
+If a required direct/T3 item fails, preserve it truthfully. Create the manual `0.7.12` checkpoint only for a coherent completed candidate/evidence state; do not manufacture Green.
+
+FINAL RESPONSE
+
+Report exact candidate, direct Chat/panel/model/context/failure/restart/package results, residual gaps and P13 eligibility.

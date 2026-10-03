@@ -1,105 +1,66 @@
 # Product Phase 7 Prompt Assessment
 
-Status: **APPROVED / READY FOR EXECUTION**
+Status: **STREAMLINED / READY FOR EXECUTION**
 Activation source/package baseline: `59c7f72a29dcdecdf9b908176754bfd02179b004`, `0.7.0`
 Authority: ADR 0004, ADR 0006, ADR 0022, ADR 0025, Phase 7 plan/activation, PRODUCT-MODEL, ARCHITECTURE, stability contract
 
 ## Conclusion
 
-Use nine ordered prompts.
+Use thirteen ordered prompts. The prior 9-prompt draft was too coarse in three places: persistence+RPC, runtime+three adapters, and context+AI behavior. Splitting those boundaries costs a few runner startups but avoids the larger waste of 15-minute overruns, partial work and broad retesting.
 
-Phase 7 is a durable **read-only AI Presence** stack. Keep pure Chat truth separate from filesystem/backend integration; keep reusable ChatPanel construction separate from ownership/restoration; establish the general conversational Model Runtime before wiring the composer; then integrate bounded project context and AI behaviors before one expensive direct qualification.
-
-| Prompt | Boundary | Tier | Routing |
+| Prompt | Boundary | Tier | Model |
 | --- | --- | --- | --- |
-| P1 | `@dope/chat` pure domain/contracts | T1 | GPT-6 Sol High |
-| P2 | `.dope/chats/` persistence + service/backend + lease/conflict safety | T2 | GPT-6 Sol High |
-| P3 | multi-area ChatPanel + Select Chat organization UI | T2 | GPT-6 Sol High |
-| P4 | one-live-panel ownership + restoration/race behavior | T2 | GPT-6 Sol High |
-| P5 | conversational Model Runtime + Model Connections + OpenAI/Local/Gemini adapters | T2 | GPT-6 Sol High |
-| P6 | transcript composer + per-message model selector + per-Chat settings | T2 | GPT-6 Sol High |
-| P7 | bounded context composition + saved-chat search + Ask/Explain/Trace/Find Related + auto-title | T2 | GPT-6 Sol High |
-| P8 | Dope dogfooding, multi-model/failure/restart/package qualification | T3 | GPT-6 Sol High |
-| P9 | evidence-only Phase 7 closeout | T3 | GPT-6 Sol Medium |
+| P1 | pure `@dope/chat` domain + service DTOs | T1 | GPT-6 Sol High |
+| P2 | `.dope/chats/` repository/store + analysis isolation | T1 | GPT-6 Sol High |
+| P3 | Chat service/backend/RPC lifecycle | T2 | GPT-6 Sol High |
+| P4 | multi-area ChatPanel + selector | T2 | GPT-6 Sol High |
+| P5 | live ownership + restoration | T2 | GPT-6 Sol High |
+| P6 | conversational Model Runtime contracts + connections registry | T2 | GPT-6 Sol High |
+| P7 | Local + Gemini conversational adapters | T2 | GPT-6 Sol High |
+| P8 | OpenAI conversational adapter | T2 | GPT-6 Sol High |
+| P9 | composer + per-turn model + Chat settings | T2 | GPT-6 Sol High |
+| P10 | bounded context composer + saved-chat retrieval | T2 | GPT-6 Sol High |
+| P11 | Ask/Explain/Trace/Find Related + auto-title + integrated browser build | T2 | GPT-6 Sol High |
+| P12 | direct GUI/live-provider/restart/package qualification | T3 | GPT-6 Sol High |
+| P13 | evidence-only closeout | T3 | GPT-6 Sol Medium |
 
-Versions are exactly `0.7.1` through `0.7.9`.
+Versions are exactly `0.7.1` through `0.7.13`.
 
-P1-P7 are runner-owned implementation/integration prompts. P8 is a browser/manual handoff and records durable direct evidence. P9 is final evidence-only closeout.
+## Why these splits are efficient
 
-## Current source findings
+- P2 owns filesystem correctness only; P3 consumes it through typed service/RPC instead of debugging store + Theia wiring at once.
+- P6 establishes the generic runtime/registry once; P7 reuses existing Local/Gemini transports; P8 adds the new OpenAI path without making one prompt touch three provider implementations plus core contracts.
+- P10 owns context collection/budget/provenance; P11 consumes that stable seam for user-facing AI behaviors and title generation.
+- P12 is the only live-provider/direct-GUI/restart/package gate. P13 does not repeat P12.
 
-- The activation baseline is coherent `0.7.0`; ten existing live manifests/internal references and `theia-baseline.test.ts` were advanced without product behavior changes.
-- There is no current `@dope/chat` package or durable project Chat service. Create a distinct domain rather than treating Project Mind or Theia/provider session state as conversation authority.
-- `packages/contracts/src/model-runtime.ts` is intentionally minimal and structured-generation-first. Its usage provider kind is currently closed to `local | gemini`; Phase 7 needs a future-extensible connected-model descriptor and conversational/streaming capability without breaking structured synthesis.
-- `LmStudioSynthesisProvider` and `GeminiSynthesisProvider` are synthesis-scoped adapters. Reuse/refactor transport/runtime primitives where useful, but do not make their Software Map setup/selected model the general Chat connection authority.
-- `SoftwareMapController` persists non-secret synthesis choice metadata through application `StorageService`, while entered tokens/API keys are cleared/transient and environment credentials may be used. Follow that safety direction: Chat provider secrets do not belong in `.dope/` or ordinary persisted workbench JSON.
-- `@dope/theia-extension` currently has no OpenAI runtime adapter. For the Phase 7 first reference hosted integration, use the current OpenAI Responses API through a provider adapter; provider conversation/response IDs remain adapter metadata and Dope Chat supplies canonical conversation history.
-- Node 24 provides `fetch`; adding an OpenAI SDK is not required merely to prove the adapter. If implementation chooses an SDK, justify the dependency and keep its types behind the adapter.
-- `frontend-module.ts` already registers WidgetFactory-backed center widgets and singleton views. ChatPanel must be a focused multi-instance WidgetFactory/presentation path rather than adding more state to `dope-workbench.ts` or forcing a singleton `AbstractViewContribution`.
-- `ProjectMindWidget`, Software Map widgets/controllers and Planning controllers show the existing workspace-switch/race lessons. Chat gets dedicated controller/widget files and project-generation guards.
-- `ProjectMindStore` and Visual Planning storage are prior art for project-root containment, readable JSON, atomic replacement, revisions, locks, corrupt/future fail-closed handling and external recovery. Chat persistence should reuse principles, not copy a canonical Project Mind schema.
-- ADR 0019 already excludes ordinary `.dope/` work state from generic physical-analysis inputs. Install a focused regression specifically proving `.dope/chats/` activity cannot affect Physical Map input identity or Planning Map semantic staleness.
-- Current frontend/backend communication uses typed JSON-RPC service paths and callbacks. Chat streaming should use typed events/deltas over a dedicated service/client contract, not provider-native SSE/WebSocket objects in browser product state.
-- Phase 7 does not require Agent Mind, ProposedAction, Tool Runtime or mutation authority. Do not re-expand scope from older roadmap wording that is no longer in the approved Phase 7 plan.
+## Current source constraints
 
-## Architecture decisions
+- `model-runtime.ts` is structured-generation-first and currently narrows usage provider kind to Local/Gemini; general Chat needs future-extensible connected-model identities while preserving sMap structured generation.
+- existing LM Studio/Gemini classes are synthesis-scoped; their transport/runtime mechanics may be reused, but sMap prompts/selection are not Chat authority.
+- no OpenAI product adapter exists yet; Node 24 `fetch` is sufficient unless implementation can justify an SDK.
+- current WidgetFactory patterns support custom center widgets; ChatPanel needs a multi-instance factory with focused files, not more state in `dope-workbench.ts`.
+- ProjectMindStore/Visual Planning storage provide prior art for containment/revision/locks; Chat must preserve its own domain and nested folder semantics.
+- typed JSON-RPC/callback patterns already exist; browser state must receive normalized Chat/runtime events, never provider-native stream objects.
 
-### One Chat domain
+## Security/authority constraints
 
-Create `packages/chat` / `@dope/chat`.
+- provider tokens/API keys are environment/session secrets, never project Chat state or ordinary plaintext StorageService;
+- selected-model failure never falls back silently;
+- Phase 7 tools are read/context only;
+- conversation never becomes Project Mind/Architecture/Planning/physical truth implicitly.
 
-It owns provider/framework-independent Chat identity, messages, settings/context policy, folders/path metadata, message/turn status, context-reference provenance, deterministic ordering, title-source semantics, strict parsing/validation and service DTOs.
+## Execution-efficiency rules
 
-Do not make Chat a `ProjectArtifact`. Do not make provider response IDs or panel/widget IDs Chat identity.
+Every implementation prompt uses the shared preflight below. Do not reread the full roadmap/ADR set unless the prompt explicitly names a decision or current source contradicts the accepted plan.
 
-### Persistence shape
+Shared preflight:
+- read BOOT, AGENTS, this assessment/plan, the current prompt, the immediately preceding p7 commit/result, and only the directly affected source/tests;
+- require reachable activation baseline `59c7f72a29dcdecdf9b908176754bfd02179b004`, the expected predecessor version, clean intended Git state, Node 24, no root package-lock, Theia 1.75.0, Electron 42.8.1 and React 19.2.8;
+- preserve Phase 5/6 historical evidence and the Phase 7 read-only authority boundary.
 
-Persist beneath `.dope/chats/` with real nested organization folders and stable Chat IDs independent from paths. Exact bundle/file format may be selected during implementation, but it must be readable, versioned, safely movable, atomic/recoverable and support transcripts/settings without one global provider-owned database.
-
-User messages are committed before provider execution. Assistant turn state must distinguish pending/streaming/complete/failed/cancelled so restart/provider failure cannot fabricate a complete answer. Avoid rewriting durable storage for every streamed token; persist lifecycle boundaries/final content and recover interrupted pending turns honestly.
-
-### Panel shape
-
-`ChatPanel` is presentation only. Use stable per-instance IDs/options so multiple panels can exist in `left`, `right`, `main`, and `bottom`. Provide explicit supported commands/actions to open a new ChatPanel in each area. Selector/folder changes update every panel through the shared service.
-
-A frontend open-owner registry handles same-workbench focus/reveal. Backend/store revision/lease safety handles cross-window/process duplicate writers. Layout restoration cannot create a second active writer.
-
-### Model connections and runtime
-
-Extend the ADR 0022 runtime rather than replacing it.
-
-Introduce provider-neutral connected model descriptors/capabilities and conversational streaming requests/events. Preserve structured generation for sMap. The general Model Connections registry is application/user state and separately configured from Software Map synthesis.
-
-Reference adapters:
-- OpenAI: Responses API, stateless with respect to Dope Chat identity; discover/list usable models conservatively and stream visible response text/usage/errors.
-- Local/LM Studio: OpenAI-compatible local model discovery/chat transport, reusing safe endpoint/token/readiness concepts without importing sMap synthesis instructions.
-- Gemini: existing SDK transport generalized behind the same conversational capability boundary.
-
-No adapter fallback. A selected model failure remains that turn's visible failure until the developer explicitly chooses Retry/another model.
-
-### Context composition
-
-Chat context is bounded application orchestration, not provider memory.
-
-Frontend contributes current editor/selection as explicit workspace-scoped context. Backend/application adapters resolve Project Mind, Architecture/Physical Map/Flow, Planning and saved-Chat references through their existing service/domain authorities. Every included item gets a typed provenance reference. Validate project/path identity before reading source.
-
-Saved-chat retrieval in this phase may be deterministic lexical/title/content search with strict result/token bounds; semantic embeddings are not required.
-
-### Automatic titles
-
-After the first successful exchange, attempt a small title request using the same selected runtime/model for that exchange only. It must not block the chat and must not switch providers on failure. Fall back deterministically to a bounded first-user-message title. Once `titleSource=user`, never auto-overwrite it.
-
-## Preserved behavior / non-goals
-
-- Preserve sMap synthesis behavior and explicit synthesis provider selection.
-- Preserve Project Mind, Architecture, Physical Map, Flow and Planning authority/persistence.
-- Preserve ordinary IDE/workbench layout and existing map/panel behavior.
-- No provider-native conversation as canonical state.
-- No plaintext project credential persistence.
-- No mutation-capable Chat tools, process/Git actions, autonomous coding or Phase 8 background alignment.
-- No automatic promotion from Chat into canonical project state.
-- No all-chat bulk injection into model requests.
-
-## Validation concentration
-
-P1 uses T1. P2-P7 use bounded T2 only where contracts cross persistence/backend/presentation/runtime/context seams; each prompt must still use the smallest focused command set. P8 alone owns aggregate `npm run check`, restart, real-provider GUI, phase validation, AppImage/native evidence and exact-candidate multi-project replay. P9 reuses valid P8 evidence and reruns only the coherence-transition minimum.
+Testing rule:
+- ordinary prompts run focused tests plus the narrowest affected package build/typecheck;
+- do not run browser builds merely for reassurance; P11 owns the first integrated browser build and P12 owns aggregate/browser/Electron/package qualification;
+- no live provider calls before P12;
+- phase validation is run before execution and again in P12/P13, not after every prompt;
+- after a repair, rerun only evidence invalidated by that repair.

@@ -1,0 +1,52 @@
+TASK: Phase 7 / P13 — AI Presence closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.13`.
+
+GOAL
+
+Perform an evidence-only Phase 7 audit and coherence transition. Do not repair product behavior or create Phase 8 prompts.
+
+PREFLIGHT
+
+Read p7 assessment/plan, exact P1-P12 commits/results/evidence and current manifests. Require coherent `0.7.12` predecessor plus the P12 evidence record.
+
+Advance all live versions/internal references to `0.7.13`.
+
+AUDIT
+
+Classify Green / Not Green / Evidence Gap for:
+A. Chat domain truth;
+B. persistence/service safety and project isolation;
+C. multi-area ChatPanel/shared repository;
+D. one-owner/restoration/race behavior;
+E. Model Runtime/connections/provider adapters and preserved sMap synthesis;
+F. composer/per-turn model/settings/no-fallback/secret boundary;
+G. bounded context/provenance/AI behaviors/auto-title;
+H. direct GUI/live-model/restart/analysis-isolation/regression/package evidence.
+
+Retain all Phase 5/6 historical qualification truth.
+
+VALIDATION
+
+P12 owns broad T3 evidence. Because P13 changes version/docs only, run only:
+- `node --test test/unit/theia-baseline.test.ts`;
+- `npm run codex:phase:validate -- p7`;
+- exact version/internal-reference/Theia/Electron/React/no-root-lock checks;
+- `git diff --check`.
+
+Do not rerun product suites, builds, live providers, GUI, restart or packaging unless the closeout transition itself exposes a concrete inconsistency.
+
+OUTPUT
+
+Create `docs/tasks/p7/closeout.md` with activation and P1-P12 identities, A-H table, P12 direct/provider/context/restart/package evidence, retained history, residual gaps and final Qualified / Not Qualified decision. Update README truthfully.
+
+If Qualified, report eligible for owner `/closeout phase 7` and later Phase 8 docs review. If Not Qualified, preserve blockers and route a bounded Phase 7 correction or explicit owner disposition.
+
+FINAL RESPONSE
+
+Report A-H decision, evidence reused, residual gaps and next action.
