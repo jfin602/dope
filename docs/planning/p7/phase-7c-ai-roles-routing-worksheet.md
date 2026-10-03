@@ -1,6 +1,6 @@
 # Product Phase 7C — AI Roles & Routing Planning Worksheet
 
-Status: OPEN PLANNING WORKSHEET  
+Status: RESOLVED / READY FOR DOCS REVIEW  
 Date: October 3, 2026  
 Target slice: Product Phase 7C — AI Roles & Routing  
 Assumption: Product Phase 7A and Phase 7B are fully implemented and qualified before this worksheet is resolved.
@@ -527,7 +527,33 @@ Preserve explicit policy intent. Removed/disabled/ineligible targets are retaine
 
 **Decision**
 
-TBD.
+Locked: role policies preserve **explicit developer intent** while routing eligibility is recomputed from the current connection/model inventory.
+
+Inventory or capability changes affect whether a configured target is currently eligible; they do not silently rewrite what the developer configured.
+
+A role target may become:
+- **Unavailable**;
+- **Disabled**;
+- **Removed**;
+- **Ineligible** because current capability/constraint metadata no longer satisfies the role/request.
+
+In all cases, the policy reference remains visible rather than being silently replaced. If later configured fallbacks remain eligible and fallback is permitted, routing may use them while preserving the original preferred target.
+
+Temporary unavailability never promotes a fallback into the preferred slot. When the preferred target becomes eligible again, deterministic routing automatically returns to it.
+
+Capability metadata changes trigger eligibility re-evaluation without policy mutation. If a hard requirement such as structured output or minimum known context is no longer satisfied, that target becomes ineligible and the ordered fallback sequence is evaluated. If support becomes valid again later, the target becomes eligible again automatically.
+
+Stable identity governs restoration. A temporarily missing model that reappears with the same immutable connection/model identity automatically resumes its existing policy relationship. A genuinely recreated connection/model with a new immutable ID does **not** silently inherit an old role reference merely because its provider, endpoint, model name or display alias looks similar. Dope may recommend a likely replacement, but the developer explicitly accepts reassignment.
+
+Role policy uses the same machine-local/application-global revisioned concurrency model as Phase 7B connection state:
+- mutations carry expected revision;
+- stale writes are rejected/reloaded rather than silently overwriting newer policy;
+- accepted changes are broadcast live to other open Dope windows/projects.
+
+Initial 7C defers full role-policy edit history/undo. Durable execution provenance still records which policy revision was used for each routed execution.
+
+Broken/unresolved role state is surfaced prominently in the Roles UI, but the bottom-left AI launcher warns only when the broken policy blocks a currently relevant/currently used product capability. Unused future roles such as Coding Agent before Phase 9 do not create noisy global warnings.
+
 
 ## Secondary implementation questions
 
@@ -563,6 +589,24 @@ The most architecture-sensitive decisions are:
 9. role-policy behavior under changing inventory.
 
 The Roles UI should project these policy semantics rather than define them.
+
+## Resolution
+
+All ten Phase 7C primary decisions are resolved.
+
+The locked design establishes:
+- five fixed built-in roles with stable semantics;
+- deterministic ordered routing rather than dynamic score-based ranking;
+- typed hard constraints and soft preferences with feature constraints only narrowing policy;
+- bounded conservative fallback with no silent provider switching after explicit selection or meaningful partial output;
+- global role policy plus Chat/feature exact-model override scopes without project/window role layers;
+- explicit repairable behavior for unconfigured/broken roles with no silent auto-assignment;
+- a first-class role-focused AI Center UI;
+- explicit feature-to-role bindings while preserving Software Map and Phase 8 authority;
+- durable routing provenance with a user-facing **Why this model?** explanation;
+- preserved policy intent under changing inventory/capabilities, with revisioned application-global concurrency.
+
+This worksheet remains planning history. Promoted authority governs implementation if wording later differs.
 
 ## Relationship to existing authority
 
