@@ -361,6 +361,8 @@ The umbrella architecture representation for one software project.
 
 The Software Map is the product concept. Its normalized graph is an implementation/query substrate, not the user-facing name. The map remains independent from Theia, diagram libraries and AI/model providers.
 
+**Architecture** is the canonical user-facing term for the System -> Subsystem -> Component structural organization and its editing surface. **Hierarchy** remains valid as a technical description of tree shape, traversal and hierarchy-first synthesis, but it is not a competing product workspace, mode or primary action name. The umbrella feature remains Software Map; Architecture does not replace the Software Map product term.
+
 The Software Map deliberately separates:
 - **Architecture Evidence** — deterministic/reproducible source, semantic, framework and recorded-runtime facts packaged as an independently verifiable ArchitectureEvidencePacket.
 - **Architecture Proposal** — provider-independent final structured interpretation over one logical evidence packet into proposed Systems / Subsystems / Components. It may be assembled through multiple bounded hierarchy-first synthesis stages over deterministic evidence views, with temporary proposal identity, numeric confidence, rationale, machine-verifiable evidence references and human-readable evidence explanations.
@@ -677,6 +679,21 @@ A review work state may be persisted project-locally so the developer can restar
 The draft is allowed to be temporarily invalid. Dope surfaces deterministic **acceptance blockers** such as invalid/duplicate IDs, invalid containment, unsafe or missing roots and ambiguous exact root ownership. Persisting a blocker does not accept it, and diagnostics never silently decide the architecture for the developer.
 
 Explicit developer acceptance remains the only transition from review work to canonical `.dope/architecture.json` plus accepted `.dope/smap.json`. Explicit cancellation discards the unaccepted work.
+
+## Edit Architecture Workspace
+
+**Edit Architecture** is the permanent center-workspace editor for developer-owned System -> Subsystem -> Component architecture.
+
+During initial synthesis it edits the pending Architecture Proposal/Review draft and finishes with explicit **Accept Architecture** or decline. After initialization it starts from current canonical architecture, maintains an independent editable draft, and finishes with explicit **Save Architecture** or discard/cancel.
+
+The accepted-map editor does not synchronize selection, expansion, scroll, focus or Search Deeper state with the Physical Map, Flow projection or left Software Map outline. Those surfaces share stable architecture data/identity, not transient editor presentation state. The existing left-outline <-> center-map shared selection remains a separate presentation contract.
+
+Accepted-map edits are draft-first. Typing, add/remove/reparent operations and accepted Search Deeper refinements do not write canonical architecture. Save Architecture is the explicit canonical mutation boundary and must validate architecture, reject stale/conflicting writes, preserve stable identity where not intentionally changed, then trigger ordinary deterministic Software Map analysis/reconciliation. Saving does not automatically run full synthesis.
+
+Search Deeper remains branch-local and preview-first for Systems and Subsystems. It operates from the current edited branch, preserves unrelated manual edits, rejects stale branch results, and requires an explicitly ready provider only when invoked. Accepting a refinement changes only the editor draft until Architecture is explicitly accepted/saved.
+
+ADR 0024 owns this workspace and terminology contract. The first `c6-edit-architecture` correction does not add architecture revision browsing/history or durable post-acceptance edit-session persistence.
+
 
 ## Product Phase 6 — Flow model
 
