@@ -148,9 +148,9 @@ These are views into the same project.
 
 The development session is the fundamental interaction unit.
 
-A session can include manual coding, AI-assisted coding, delegated work, research, decisions, plan changes, tests, runtime inspection, ideas, and review.
+A session can include manual coding, AI-assisted coding, delegated work, research, decisions, plan changes, tests, runtime inspection, ideas, review, and multiple durable Chats.
 
-Durable development state must not be trapped inside chat history.
+Phase 7 makes Chat history durable project context under `.dope/chats/` so useful conversation survives panel/app restart and can be found again. That does **not** make conversation synonymous with Project Mind or other canonical project truth. Decisions, Architecture, Planning intent, validation and implementation facts continue to use their own explicit product authorities.
 
 ## Model and provider independence
 
@@ -161,9 +161,9 @@ First-class compatibility targets include:
 - local models and local inference runtimes
 - future providers through replaceable capability-based adapters
 
-Project Mind, Agent Mind, Sessions, Decisions, Authority, and Validation are Dope-owned state. Phase 3 Plans/PlanSteps/Tasks are Dope-owned state for the qualified `0.3.6` implementation, but are not guaranteed as the forward planning ontology.
+Project Mind, Agent Mind, Sessions, Decisions, Authority, and Validation are Dope-owned state. Phase 3 Plans/PlanSteps/Tasks are Dope-owned state for the qualified `0.3.6` implementation, but are not guaranteed as the forward planning ontology. Phase 7 Chats are also Dope-owned durable project context, but their transcript is not automatically canonical Project Mind/Architecture/Planning truth.
 
-Provider-specific IDs, context formats, sessions, and capabilities remain adapter concerns.
+Provider-specific IDs, context formats, sessions, and capabilities remain adapter concerns. One Dope Chat may route different messages to different connected models without adopting any provider-native session as conversation identity.
 
 Provider abstraction must not force every model into a lowest-common-denominator feature set.
 
@@ -232,17 +232,12 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 6 — Flow is owner-closed for sequencing at package `0.6.8`; P8 remains Not Qualified.** The owner accepted its exact-candidate evidence gaps for sequencing only. Product Phase 7 AI Presence is next for a fresh `/docs-review`. See `docs/tasks/p6/closeout.md`.
+**Product Phase 6 — Flow is owner-closed for sequencing at package `0.6.8`; P8 remains Not Qualified.** The accepted exact-candidate G/H evidence gaps remain historical truth in `docs/tasks/p6/closeout.md`.
 
-Product Phase 5 is owner-closed for sequencing. Its P11 evidence remains Not Green and P12 was not executed; those gaps are accepted for sequencing only and remain historical truth.
+**Product Phase 7 — AI Presence is OWNER-APPROVED FOR PLANNING at the unchanged `0.6.8` source baseline.** ADR 0025 and `docs/planning/p7/phase-7-plan.md` define the durable Chat/ChatPanel, per-message connected-model routing, context composition and read-only assistance boundary. `/prompt-ass` is next. Documentation approval does not itself establish `0.7.0`, implementation evidence or mutation/delegation authority.
 
-Phase 6 remains governed by ADR 0020 as amended by ADR 0021. It extends the existing Physical Map with a provider-free Flow projection over the same stable System / Subsystem / Component / Code identities. Retained Not Green evidence is not relabeled by bounded corrections.
+Phase 7 keeps the project—not chat—as the center of gravity. Chats persist and are reusable, but canonical Project Mind, Architecture, Planning and Physical/Flow evidence retain their own authority.
 
-At unchanged `0.6.7`, `c6-smap-outline` owns the compact synchronized left Architecture outline. ADR 0024 and `c6-edit-architecture` now own the permanent **Edit Architecture** center workspace: initial synthesis review and accepted-map editing share one Architecture editor, accepted edits are draft-first with explicit Save Architecture, Search Deeper remains branch-local/preview-first, and the editor does not synchronize transient selection/navigation state with the map or left outline. `c6-edit-architecture` follows `c6-smap-outline` where both touch the left action row. `c6-branch-seam` remains independent.
-
-Phase 6 does not introduce a separate canonical Flow map/database, general AI Presence, Agent Mind, mutation/tool authority or delegation. Those remain Product Phase 7+.
-
-The next implementation-planning workflow for this approved correction is `/prompt-ass -> /prompt-plan -> /prompt-write c6-edit-architecture` after the overlapping `c6-smap-outline` work is complete.
 ## Phase 3 result — live human-first Planning
 
 Phase 3 added Plan, PlanStep and Task as canonical planning state for the qualified `0.3.6` implementation. Correction `c3-remove-planning-instruments` now removes those live contracts and their runtime/presentation/persistence before Phase 4. Their qualification remains historical evidence only. Plans carry objective/context/status, ordered live steps and human-visible revision/history. Tasks are bounded units of work attached to plan steps, with requirements/constraints, project-relative working-set files, Project Mind links, status, completion notes and developer-entered validation notes.

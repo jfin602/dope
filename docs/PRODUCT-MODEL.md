@@ -239,6 +239,22 @@ The default product experience is System-level overview first and path explorati
 Flow is rebuildable derived Physical Map state, not a fourth durable map or architecture authority. Unknown payloads, unsupported execution surfaces, truncation and missing hops remain visibly unknown/partial rather than being invented for completeness.
 
 
+### Phase 7 — Durable Chat and AI Presence
+
+Phase 7 introduces Dope-owned durable conversational context without redefining Project Mind.
+
+`Chat` is a stable project-scoped conversation identity. `ChatMessage` records visible developer/assistant/tool-event conversation content and execution provenance. `ChatSettings` records persistent per-Chat context/model policy. These are durable project context, but they are not `ProjectArtifact` variants and do not automatically become canonical Decisions, Architecture, Planning intent or implementation truth.
+
+Chats persist beneath `.dope/chats/` in a readable, versioned representation. User-created nested folders organize Chats and serve as the saved-chat selection hierarchy. A Chat ID, not its path, is identity; moving a Chat or folder preserves conversation identity. Created/updated/last-interacted timestamps are durable. Automatic titles are editable, and explicit user titles cannot be overwritten by later automatic generation.
+
+A Dope Chat is provider-independent. One Chat may contain assistant turns executed by different connected models/providers. Each submitted turn snapshots the selected model and composed context, and each completed/failed assistant execution records the actual provider/model provenance necessary for inspection. Provider-native response/session/context IDs remain adapter metadata.
+
+All created/used Chats are retained unless an explicit future lifecycle action removes/archives them. Other saved Chats form an available context corpus, not automatic prompt payload. Retrieval/attachment must be bounded and visible. Turn context may record references to editor selections, files, Project Mind artifacts, Architecture/Physical Map/Flow identities, Planning state and saved-chat excerpts that were supplied to the model. Hidden provider chain-of-thought is not durable product state.
+
+Per-Chat settings may define eligible automatic context sources, context/history budget/strategy, default model and model-specific preferences supported by capabilities. Per-message composer controls may override those defaults for one turn without silently rewriting the persistent policy. Credentials, provider endpoints and global model connections remain application/runtime configuration outside the Chat.
+
+Chat is an interface for understanding and proposing project work. Promotion into Project Mind or other canonical domains remains explicit developer-controlled behavior.
+
 ### Phase 7-9 — AI collaboration, knowledge alignment and delegation
 
 Introduce or activate:
@@ -250,7 +266,7 @@ Introduce or activate:
 - ChangeSet
 - Validation integration
 
-AI Presence begins in Phase 7 and may consume Dope-owned architecture, Flow, planning and project context. Phase 8 uses that provider-independent runtime to maintain a Living Software Knowledge Model through deterministic-first, local-first background alignment. Scoped Delegation follows in Phase 9; Phase 8 findings never silently mutate source, documentation, contracts or canonical architecture.
+AI Presence begins in Phase 7 through the Dope-owned durable Chat/ChatPanel and context-composition boundary defined by ADR 0025. It may consume Dope-owned architecture, Flow, planning, Project Mind, editor/project and bounded saved-Chat context without making conversation canonical truth. Phase 8 uses that provider-independent runtime to maintain a Living Software Knowledge Model through deterministic-first, local-first background alignment. Scoped Delegation follows in Phase 9; Phase 8 findings never silently mutate source, documentation, contracts or canonical architecture.
 
 Before Phase 7 general AI Presence, correction `c6-branch-seam` establishes only the minimal Model Runtime/provider-session boundary already needed by existing sMap synthesis. Software Map authority, sMap synthesis strategy and provider execution are separate concerns: Local and hosted synthesis share final evidence/proposal/validation/acceptance semantics but may use different model-appropriate prompt packing and stage strategies. This correction is infrastructure reuse, not early Agent Mind/chat/delegation scope.
 
@@ -589,7 +605,7 @@ Future Agent Runtime consumes updated canonical state.
 
 ## Provider independence
 
-No canonical Project Mind, Plan, Task, Agent Mind, Session, Decision, ChangeSet, or Validation object may require one provider's native schema.
+No canonical Project Mind, Plan, Task, Agent Mind, Session, Decision, ChangeSet, or Validation object may require one provider's native schema. Dope-owned durable Chat identity/history/settings are likewise provider-independent even though Chat transcript is non-canonical project context.
 
 Provider-native response IDs, conversation/session identifiers, context handles, tool formats, and capability metadata are adapter state unless explicitly promoted through a Dope-owned contract.
 
@@ -645,7 +661,7 @@ Never silently promote derived UI/framework/provider state into canonical projec
 
 Theia layout is presentation state.
 
-Theia AI or provider chat sessions are framework/provider state.
+Theia AI or provider-native chat sessions are framework/provider state. Dope-owned Phase 7 `Chat` / `ChatMessage` / `ChatSettings` are durable project context, but the transcript remains non-canonical with respect to Project Mind, Architecture, Planning and implementation truth.
 
 Model narration is provisional.
 

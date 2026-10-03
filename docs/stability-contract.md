@@ -117,6 +117,33 @@ Directly exercise the real Theia GUI on the Dope repository: create and edit Not
 
 Preserve all failed observations and Evidence Gaps. A stalled workbench is a qualification failure even if domain tests pass. A saved-state claim requires committed durable bytes, not a frontend notification. The Phase 2 exit decision must audit exact source/package/GUI candidates and remaining inherited gaps.
 
+## Product Phase 7 — Durable Chat and AI Presence qualification
+
+Phase 7 qualification applies when the durable Chat/ChatPanel and general Model Runtime capabilities exist. Chat durability is project context durability, not promotion into canonical project truth.
+
+Require executable evidence for:
+- readable/versioned `.dope/chats/` persistence with stable Chat/message identity, timestamps, automatic/user titles and nested folder organization;
+- moving/renaming Chats/folders without changing Chat identity, and deterministic ordering by actual last interaction rather than view/restoration;
+- project isolation, path/symlink containment, malformed/unsupported-state fail-closed behavior, recoverable write failure and stale-revision/cross-process writer protection;
+- multiple ChatPanels in different supported workbench areas sharing one Chat repository without data forks;
+- the one-Chat/one-live-panel invariant, including focus-existing behavior and deterministic restart restoration when stale layout state references the same Chat twice;
+- Select Chat and Chat modes surviving ordinary panel recreation without making workbench layout the source of conversation truth;
+- persistent per-Chat settings remaining attached to Chat identity across panel relocation/restart;
+- the two-row composer, per-turn context controls and compact connected-model selector;
+- per-message model routing through provider-independent Model Runtime capability discovery, with actual provider/model provenance recorded per execution;
+- changing models between turns inside one Chat without forking/reconstructing conversation state;
+- explicit failure when the selected model is unavailable or fails; no silent provider/model fallback;
+- streaming/cancellation/timeout/malformed response/provider restart leaving an honest failed/incomplete turn without corrupting prior messages or canonical project state;
+- bounded context composition from editor/project state, Project Mind, Architecture, Physical Map, Flow, Planning Maps/WorkItems and explicitly/retrieval-selected saved Chats;
+- context provenance sufficient to inspect relevant supplied project references without persisting hidden provider chain-of-thought;
+- `.dope/chats/` writes remaining excluded from generic analysis inputs, Physical Map input fingerprints and Planning Map staleness;
+- provider credentials/endpoints/global model configuration remaining outside project Chat persistence;
+- direct GUI dogfooding on the Dope repository using more than one ChatPanel and, where the configured environment permits, more than one connected model in the same durable Chat.
+
+A Chat response is not evidence that a referenced source/Architecture/Flow/Planning fact is true. Existing domain provenance remains authoritative. A model-generated title, summary, explanation or suggestion is conversation output until explicitly promoted through the appropriate developer-controlled product workflow.
+
+Phase 7 qualification does not require mutation tools, ProposedAction execution, autonomous coding or Scoped Delegation.
+
 ## Agent Mind
 
 Applicable when AI Presence introduces Agent Mind.
@@ -241,7 +268,9 @@ If conceptual description and actual diff diverge, the discrepancy is a failure 
 
 Applicable when model/provider execution is introduced.
 
-Streaming errors, malformed structured output, timeout, cancellation, and provider restart must not corrupt canonical project/task state.
+Streaming errors, malformed structured output, timeout, cancellation, and provider restart must not corrupt canonical project/task state or prior durable Chat history.
+
+When a developer explicitly selects a model/provider for a Chat turn, failure must be surfaced rather than silently routing project context to another provider. Retry on a different model requires an explicit developer choice.
 
 Provider-native identifiers are optimization/adapter state, not sole project history.
 

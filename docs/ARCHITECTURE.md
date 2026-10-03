@@ -22,7 +22,7 @@ Dope presentation adapters and widgets
   |
 Application / orchestration
   |
-Project Intelligence / Software Map / Visual Software Planning / Flow / later Living Software Knowledge Model / Agent Runtime
+Project Intelligence / Software Map / Visual Software Planning / Flow / Chat + Context / later Living Software Knowledge Model / Agent Runtime
   |
 Persistence / Model / Tool / Authority / Execution adapters
 
@@ -580,6 +580,44 @@ It does not need to prove:
 - scoped delegation
 
 That result keeps substrate qualification separate from product/AI implementation. Product Phase 1 consumes the qualified IDE substrate without promoting the spike Note, Planning view, or WorkspaceMode projection into later product-domain authority.
+
+## Phase 7 durable Chat architecture
+
+Phase 7 introduces a Dope-owned Chat domain while preserving both architectural constraints: GUI-first must not become GUI-coupled, and AI-native must not become provider-coupled.
+
+The intended dependency shape is:
+
+```text
+ChatPanel(s)
+    |
+ChatService
+   / \
+ChatRepository   Context Composer
+    |              |
+.dope/chats/      +-- editor/selection
+                   +-- Project Mind
+                   +-- Architecture / Physical Map / Flow
+                   +-- Planning Maps / WorkItems
+                   +-- bounded saved-Chat retrieval
+                         |
+                    Model Runtime
+                  /      |       \
+              Local    Gemini    OpenAI / future
+```
+
+`ChatPanel` is a Theia presentation adapter. It may be instantiated in left, right, center or bottom shell areas, but it does not own conversation persistence, provider sessions or canonical project state. Every instance draws from one project Chat repository and has two primary states: Select Chat and Chat.
+
+ChatService owns project-scoped Chat identity, message lifecycle, title/settings mutations, folder/query operations and frontend/backend events. ChatRepository owns safe readable persistence beneath `.dope/chats/`, schema/revision/conflict behavior and project/path containment. Chat IDs remain stable across folder moves. Chat files are Dope work state and are excluded from generic repository source/config analysis; writing them cannot change Physical Map input identity or Planning Map semantic basis.
+
+A project-level live-open registry coordinates ChatPanel ownership: one Chat may have at most one live composer/panel owner. Selecting an already-open Chat reveals/focuses the current owner instead of creating a duplicate writer. Panel close, navigation back to Select Chat or switching Chats releases ownership. Workbench layout/restoration state may remember which ChatPanel instance/location referenced a Chat, but the conversation itself remains in ChatRepository. Cross-process/project-window writers require backend revision/locking/lease protection rather than trusting frontend ownership alone.
+
+The composer has a persistent second toolbar row. It provides contextual tool/attachment controls, a compact connected-model selector and send/cancel/retry state. The selected model is snapshotted when Send is pressed and determines which connected Model Runtime capability receives that message. A single Chat may therefore contain turns from different providers/models. Failure of the selected model is surfaced; Dope does not silently redirect the request to another model/provider.
+
+Each Chat has persistent settings reached from a right-justified cog in the ChatPanel top bar. These settings belong to the Chat identity, not the panel location. They may govern context eligibility/budget/history/retrieval and default model/model-specific capability preferences. Global provider connections, credentials and endpoints remain application/runtime configuration and must not be copied into project Chat state.
+
+Context composition is Dope-owned orchestration. Active conversation history is direct context subject to budgeting; other saved Chats are an available corpus reached through explicit attachment/search/bounded retrieval. Context may reference source/editor state and existing Dope domains, and turn provenance may record which references were supplied. It must not persist hidden provider reasoning or reinterpret model narration as deterministic evidence/canonical project truth.
+
+Phase 7 Chat tools are observation/context capabilities only. Mutation-capable filesystem/process/Git/network actions remain behind future Tool Runtime + Authority/ProposedAction boundaries and are not authorized by ChatPanel existence.
 
 ## Frontend/backend communication
 
