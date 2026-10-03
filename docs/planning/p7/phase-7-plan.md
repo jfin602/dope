@@ -1,9 +1,10 @@
 # Product Phase 7 — AI Presence Plan
 
-Status: **ACTIVE / PHASE 7A P1-P12 WRITTEN / PHASE 7B-7C APPROVED**
+Status: **ACTIVE / PHASE 7A P1-P12 WRITTEN / PHASE 7B-7C RESOLVED + PROMOTED**
 Activation baseline: coherent `0.7.0` at commit `59c7f72a29dcdecdf9b908176754bfd02179b004`
 Package family: `0.7.x`
 Primary decisions: ADR 0025 and ADR 0026
+Resolved planning history: `phase-7b-ai-center-worksheet.md`, `phase-7c-ai-roles-routing-worksheet.md`
 
 ## Goal
 
@@ -42,7 +43,10 @@ After 7A qualification:
 - expose discovered models, capabilities, readiness/health, refresh/reconnect and connection testing;
 - persist only safe non-secret user/application configuration;
 - keep credentials/tokens out of `.dope/`, Chat state and ordinary plaintext preferences;
-- design the UI/contracts as role-ready without creating a second provider registry.
+- design the UI/contracts as role-ready without creating a second provider registry;
+- use one logical machine-local/application-global revisioned registry across projects/windows/processes;
+- use Environment / Session-only / OS secure-storage credentials with no plaintext fallback;
+- preserve immutable connection/model identity, bounded model discovery, normalized health and synthetic zero-project-data Test Connection semantics.
 
 ### Phase 7C — AI Roles & Routing
 
@@ -54,7 +58,11 @@ After AI Center:
 - explicit user model choices remain authoritative and do not silently fall back;
 - feature privacy/egress/locality/authority constraints cannot be weakened by global preferences;
 - Phase 8 Background execution must be local-only with hosted fallback forbidden;
-- Software Map preference does not replace ADR 0022's explicit provider/readiness/evidence-egress authority.
+- Software Map preference does not replace ADR 0022's explicit provider/readiness/evidence-egress authority;
+- use five fixed role IDs with deterministic preferred + ordered fallback routing, typed hard constraints vs soft preferences and no dynamic score ranking;
+- migrate Chat model policy so existing 7A Chats preserve exact defaults while new 7C Chats default to Follow Interactive;
+- keep role fallback bounded/conservative, preserve unresolved target intent, and record durable routing provenance with a Why this model? explanation;
+- global role policy may restrict egress but never grant feature/user egress consent.
 
 The currently written P13 evidence-only closeout predates ADR 0026 and is **superseded / must not execute as the final Phase 7 closeout**. After P12, regenerate the contiguous P13+ continuation and exactly one new final closeout using `/prompt-ass -> /prompt-plan -> /prompt-write p7`. Do not disguise 7B/7C as a correction stack.
 
