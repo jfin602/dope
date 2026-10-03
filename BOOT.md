@@ -13,11 +13,7 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 **Product Phase 5 — Visual Software Planning is OWNER-CLOSED FOR SEQUENCING.** The retained Phase 5 source at `0.5.11` remained Not Green because P11 never completed one clean end-to-end A-I qualification replay and P12 was not executed. The owner explicitly accepted those gaps for sequencing on 2026-10-02; no failed or missing evidence is relabeled Green. The closeout transition commit `710edb362f9881ab41215705db4f08d8daca6293` established the coherent `0.6.0` successor baseline.
 
-<<<<<<< HEAD
-**Product Phase 6 — Flow is ACTIVE at `0.6.7`, with P7 Not Green and P8 blocked.** P1-P6 are implemented. The retained P7 and map-canvas evidence has produced a sequence of bounded corrections without relabeling failed runs: `c6-flow-overview-priority` owns the overview-priority/query repair history, `c6-map-canvas-priority` retains its Not Green P3 result, and `c6-flow-projection-contract` owns the aggregate-versus-facts projection mismatch exposed by that replay. `c6-smap-outline` is now an approved independent presentation-only follow-on for the left Software Map inspector at unchanged `0.6.7`: compact text Architecture outline, fully collapsed initial state, type-first labels, shared selection reveal, and bidirectional selection through the existing Software Map selection identity. ADR 0024 also approves follow-on `c6-edit-architecture` at unchanged `0.6.7`: a permanent center-workspace **Edit Architecture** surface reused for initial acceptance and accepted-map editing, launched beside Open/Refresh after initialization, with independent editor UI state and branch-local Search Deeper. It follows `c6-smap-outline` where their left action-row changes overlap. P8 remains blocked until fresh P7 qualification is Green. The accepted Adaptive SEO reference remains unchanged. General AI Presence remains Product Phase 7.
-=======
-**Product Phase 6 — Flow is ACTIVE at `0.6.7`, with P7 Not Green and P8 blocked.** P1-P6 are implemented. The retained P7 and map-canvas evidence has produced a sequence of bounded corrections without relabeling failed runs: `c6-flow-overview-priority` owns the overview-priority/query repair history, `c6-map-canvas-priority` retains its original Not Green P3 result and now has a supplemental Green readability replay, and `c6-flow-projection-contract` owns the aggregate-versus-facts projection mismatch exposed by that replay. The map-canvas P3 gate is cleared by supplemental evidence; fresh P7 qualification, including the separate packaged AppImage controlled-shutdown blocker, remains. `c6-smap-outline` is an approved independent presentation-only follow-on for the left Software Map inspector at unchanged `0.6.7`: compact text hierarchy, fully collapsed initial state, type-first labels, shared selection reveal, and bidirectional selection through the existing Software Map selection identity. P8 remains blocked until fresh P7 qualification is Green. The accepted Adaptive SEO reference remains unchanged. General AI Presence remains Product Phase 7.
->>>>>>> 7192afd (Improve focused Flow readability and record supplemental replay)
+**Product Phase 6 — Flow is ACTIVE at `0.6.7`, with P7 Not Green and P8 blocked.** P1-P6 are implemented. The retained P7/map-canvas history remains truthful: `c6-flow-overview-priority` owns the overview-priority/query repair history; `c6-map-canvas-priority` retains its original Not Green P3 record and has supplemental Green readability evidence; `c6-flow-projection-contract` owns the aggregate-versus-facts projection mismatch; the separate packaged AppImage controlled-shutdown blocker remains for fresh P7 qualification. The bounded presentation follow-ons now include Green `c6-smap-outline` and Green `c6-map-color-grammar`. `c6-smap-sidebar-density` is approved at unchanged `0.6.7` as the next presentation-only pass on the left inspector: remove the redundant large body title, add compact `SMAP CONTROLS`, condense synthesis/status into one line, reduce hierarchy indentation/gutter, and color only entity-kind tokens without reusing map node-color overrides. ADR 0024 separately approves `c6-edit-architecture` at unchanged `0.6.7`; if it lands after sidebar density it must reuse that action-row layout, and if it lands first the density correction styles the real action rather than shipping a fake enabled placeholder. P8 remains blocked until fresh P7 qualification is Green. The accepted Adaptive SEO reference remains unchanged. General AI Presence remains Product Phase 7.
 
 `c5-smap-readability` and the other Phase 5 corrections remain retained implementation/history. Their commit subjects or partial browser observations do not create a standalone Green claim beyond recorded evidence.
 
@@ -125,6 +121,7 @@ Foundation Spike 0 — qualify Theia
 -> Phase 5 — Visual Software Planning (owner-closed for sequencing)
 -> Phase 6 — Flow (current)
 -> correction c6-smap-outline — compact left Architecture outline + shared selection reveal
+-> correction c6-smap-sidebar-density — compact controls/status + dense kind-coded outline
 -> correction c6-edit-architecture — permanent Edit Architecture workspace
 -> correction c6-branch-seam — synthesis strategy / Model Runtime seam
 -> Phase 7 — AI Presence
@@ -261,22 +258,21 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Finish the approved bounded presentation correction first:
+Implement the approved bounded presentation correction:
 
-`c6-smap-outline`
+`c6-smap-sidebar-density`
 
-using:
+Use one manual **GPT-6 Sol High** one-off prompt at unchanged package version `0.6.7`. This is not a `codex:phase` stack.
 
-`/prompt-ass -> /prompt-plan -> /prompt-write c6-smap-outline`
+The one-off owns only the initialized left Software Map inspector density pass:
+- remove the redundant large body `Software Map` heading;
+- use compact `SMAP CONTROLS`;
+- arrange `OPEN` / `REFRESH` inline with the Edit Architecture second-row seam;
+- condense generation/completeness/node/violation status into one synthesis line while preserving separate actionable diagnostics;
+- materially reduce nested indentation and disclosure gutter without flattening hierarchy;
+- color stable entity-kind tokens (System/Subsystem/Component/file or supported code kind) independently from center-map node-color preferences;
+- preserve the Green `c6-smap-outline` selection/reveal/wrapping contract.
 
-Then plan the approved follow-on:
+If `c6-edit-architecture` is already implemented when this one-off runs, style its real action. If not, prepare the second-row layout without shipping an enabled no-op. `c6-edit-architecture` and `c6-branch-seam` remain independent approved follow-ons.
 
-`c6-edit-architecture`
-
-using:
-
-`/prompt-ass -> /prompt-plan -> /prompt-write c6-edit-architecture`
-
-Keep package version exactly `0.6.7` for both. `c6-smap-outline` is limited to the left Software Map Architecture outline and its existing shared map-selection behavior. `c6-edit-architecture` promotes the center review surface into permanent **Edit Architecture**, adds the initialized left action beside Open/Refresh, edits accepted architecture through an independent draft, keeps editor UI state unsynchronized from the map/outline, and extends branch-local Search Deeper without silently mutating canonical architecture.
-
-`c6-branch-seam` remains an independent pre-Phase-7 architecture correction and may proceed separately. These corrections do not relabel retained P7 evidence, unblock P8 by themselves, or authorize general Phase 7 AI Presence.
+This correction does not relabel retained P7 evidence, unblock P8 by itself, change canonical architecture/Flow/Planning/synthesis truth, or authorize Phase 7 AI Presence.
