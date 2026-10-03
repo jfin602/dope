@@ -36,6 +36,18 @@ test('deterministic left-to-right layout preserves branches, joins and cycle bac
     assert.deepEqual(first.edges.filter(edge => edge.target === 'join').map(edge => edge.source), ['left', 'right']);
 });
 
+test('dense focused Flow keeps all 18 participants, 27 labeled relationships and deterministic geometry', () => {
+    const nodes = Array.from({ length: 18 }, (_, index) => code(`node-${index}`, `src/adaptive/path-${index}/Handler.process`));
+    const facts = [...Array.from({ length: 17 }, (_, index) => fact(`step-${index}`, `node-${index}`, `node-${index + 1}`)),
+        ...Array.from({ length: 10 }, (_, index) => fact(`branch-${index}`, `node-${index}`, `node-${index + 2}`))];
+    const first = projectFlowMap(query(nodes, facts, [], { focusId: 'a' }));
+    assert.equal(first.nodes.length, 18);
+    assert.equal(first.edges.length, 27);
+    assert.deepEqual(first.nodes.map(node => node.name).sort(), nodes.map(node => node.name).sort());
+    assert.ok(first.edges.every(edge => edge.label === 'invokes'));
+    assert.deepEqual(first, projectFlowMap(query([...nodes].reverse(), [...facts].reverse(), [], { focusId: 'a' })));
+});
+
 test('System focus uses proven summaries and boundary facts, hiding internal code calls', () => {
     const nodes = [code('entry', 'Entry', 'a'), code('inside', 'Inside', 'a'), code('worker', 'Worker', 'b'),
         { id: 'a', name: 'A', kind: 'subsystem', purpose: '', evidenceIds: [] } as GraphNode,

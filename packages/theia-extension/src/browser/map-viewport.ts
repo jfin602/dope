@@ -1,5 +1,11 @@
 import type { SemanticDetail } from './physical-map-projection';
 
+/** Floor for automatic focused Flow fits; user zoom keeps React Flow's lower limit. */
+export const FOCUSED_FLOW_READABLE_ZOOM = 1;
+export const mapFitOptions = (focusedFlow: boolean): { padding: number; minZoom?: number } => ({
+    padding: 0.14, minZoom: focusedFlow ? FOCUSED_FLOW_READABLE_ZOOM : undefined
+});
+
 /** Relative to the last fitted architecture, with separate enter/exit limits. */
 export class MapViewport {
     private baseline?: number;

@@ -1,6 +1,6 @@
 # Correction 6 — Map Canvas Priority
 
-Status: **P3 NOT GREEN / P7 AND P8 BLOCKED**
+Status: **P3 GREEN BY SUPPLEMENTAL READABILITY REPLAY; RETAINED P3 NOT GREEN EVIDENCE / P7 NOT GREEN / P8 BLOCKED**
 Correction folder: `c6-map-canvas-priority`
 Required unchanged version: `0.6.7`
 Activation source: `561ad62678f6e20a6da21b3537d136290d07f0e3`
@@ -143,3 +143,7 @@ The separate `docs/tasks/c6-flow-projection-contract/` correction repaired the a
 The aggregate-only projection and backend assertion were repaired at `e688b7d4e54f12c14dccb037d7c4027fbdce88f3` without changing `0.6.7`. The [additive P3 Flow replay](P3-flow-replay-projection-repair.md) confirmed that the real Adaptive SEO overview and source-backed GET opportunities path render.
 
 The complete fresh-workspace, nine-area direct GUI replay on clean code candidate `2c11bc6100858920157588afc61214caa5bf65d8` is appended to [closeout.md](closeout.md). The focused Flow still first-fits at **0.564×** in a 1199×939px stage, making node and edge labels too small for immediate reading. P3 therefore remains **Not Green** despite the passing automated gate. No tiny fix was made; focused layout/readability needs a separate bounded correction. The original P7 Not Green evidence is preserved, P7/P8 remain blocked, and the packaged AppImage controlled-shutdown failure remains a separate unresolved P7 blocker. Do not advance the package version or relabel earlier evidence.
+
+## Supplemental readability correction
+
+The one-off focused Flow readability repair at unchanged `0.6.7` is recorded in the final supplement to [closeout.md](closeout.md). Its direct GUI replay clears the remaining map-canvas P3 readability gate. Earlier P3 Not Green runs remain historical evidence. Route next to a fresh Phase 6 P7 qualification; P7 itself remains Not Green and P8 blocked. The packaged AppImage controlled-shutdown failure remains separate and unresolved.

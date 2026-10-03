@@ -154,6 +154,7 @@
 .dope-flow-selected .dope-flow-node { outline: 4px solid var(--theia-focusBorder); outline-offset: 2px; border-width: 3px; }
 .dope-flow-node strong { color: var(--theia-editor-foreground); font-weight: 700; }
 .dope-flow-edge .react-flow__edge-path { stroke: var(--theia-editor-foreground); stroke-width: 2; }
+.dope-flow-edge .react-flow__edge-text { font-size: 13px; font-weight: 600; }
 .dope-flow-edge.dope-flow-selected .react-flow__edge-path { stroke: var(--theia-focusBorder); stroke-width: 5; }
 .dope-flow-edge.dope-flow-selected .react-flow__edge-text { font-weight: 700; }
 .dope-flow-edge .react-flow__edge-textbg { fill: var(--theia-editorWidget-background, var(--theia-editor-background)); }

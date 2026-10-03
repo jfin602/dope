@@ -71,3 +71,24 @@ Date: 2026-10-02 (America/Chicago). **Not Green.** This section adds a complete 
 No tiny fix was made. The remaining defect is the focused Flow presentation density and first-fit scale, not a query, extraction or aggregate-to-canvas truth failure. It needs a separately bounded layout/readability correction and a permanent focused regression; changing Flow budgets or semantics would exceed this P3 allowance. The committed README conflict markers were resolved as documentation hygiene in this closeout update.
 
 **Final decision: P3 Not Green at `2c11bc6` / `0.6.7`.** P7 remains Not Green and P8 blocked. Do not reinterpret this correction or the projection repair as fresh P7 qualification. The packaged AppImage controlled-shutdown failure remains a separate unresolved P7 blocker; this run did not package or test it.
+
+## Supplemental focused Flow readability correction
+
+Date: 2026-10-02 (America/Chicago). **Green for the remaining map-canvas P3 readability gate at unchanged `0.6.7`.** The earlier P3 Not Green results above remain intact. This was a bounded presentation repair, not a new Phase 6 qualification.
+
+The cause of the `0.564295×` first view was the shared `fitView({ padding: 0.14 })` call fitting the entire 18-participant graph without a Flow-specific floor. React Flow's edge labels were also rendering at its `10px` default. Focused Flow now passes `minZoom: 1` to that fit call only. React Flow centers the graph at `1.0×` when the full extent would be smaller, while its ordinary `minZoom: 0.01` still permits intentional zoom-out. Toolbar Fit uses the same readable fit on the current graph and preserves the focused Subsystem; the Project breadcrumb remains the action that returns to the overview. Flow edge labels use `13px` and weight 600, with the selected edge retaining stronger weight. Deterministic projection spacing and all Flow semantics were unchanged.
+
+The direct browser replay used fresh disposable copy `/tmp/adaptive-seo-dope-c6-readability-ndrdHo` from `/home/jfin/dev/adaptive-seo-dope`. Both source and copy retained Git status `?? .dope/` and `?? MODULES.md`. Their accepted `.dope/architecture.json` SHA-256 remained `b5a09a50397149f589a80c2f9987ec66c0023a85c75ad98b4a973ebd1d370208`; `.dope/smap.json` remained `b35801cb0d6ea2100c7fa47c28f2e75b186dab8ff9fae28cdf7fff446b4bc583`. No architecture was regenerated or reaccepted. Refresh published generation 1, `partial`, 4,419 nodes and zero architecture violations.
+
+| Direct GUI check | Observed result |
+| --- | --- |
+| Immediate focused Flow | Adaptive SEO Service → Adaptive Recommendations → Flow rendered **18 participants / 27 edges / 27 edge labels**. Automatic viewport scale was **`1.0×`** in the 884×939px stage, with content available by panning. Node identities and enlarged edge labels were readable immediately in Dope Dark. |
+| Manual controls and Fit | Two Zoom Out actions reached **`0.694444×`**, below the automatic floor. Zoom In and canvas drag changed scale/translation. Fit restored **`1.0×`** and retained both focus breadcrumbs, all 18 participants and all 27 edges. |
+| GET opportunities trace | The GET opportunities Input selected and downstream trace highlighted **5 edges**, subdued **22**, and kept its selected node outline. Panning revealed its Input, handler, repository and response area; subdued context remained perceptible. |
+| Inspection overlay | Compact → minimized → expanded left the viewport transform at `translate(-134px, 89.5px) scale(1)` and retained the five selected trace edges. |
+| Architecture/Flow round trip | Flow → Architecture → Flow retained Adaptive Recommendations focus and returned to the readable **`1.0×`** fit with **18 / 27**. The existing trace-direction clearing on mode switch was unchanged. |
+| Alternate theme | **Dark (Theia)** retained the **`1.0×`** initial fit, all **18 / 27** semantics, `13px` edge labels, and five selected / 22 subdued trace edges with visible selected and subdued states. Dope Dark was restored after the replay. |
+
+The focused viewport, projection, overlay, shell and Flow UI tests passed **22/22**. Extension and browser builds passed. The final full `npm run check` result and hygiene are recorded below. The map-canvas P3 readability blocker is cleared by this supplement. A fresh Phase 6 P7 qualification is still required; **P7 remains Not Green and P8 blocked**. The packaged AppImage controlled-shutdown failure is a separate unresolved P7 blocker and was not repaired or requalified here.
+
+Final gate: `npm run check` passed, including typecheck, repository tests, browser build and Electron build. `git diff --check` passed. Root/app/package manifests and internal `@dope/*` references remain `0.6.7`; no root `package-lock.json` exists.

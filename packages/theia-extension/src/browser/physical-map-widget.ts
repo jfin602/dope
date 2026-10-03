@@ -9,7 +9,7 @@ import URI from '@theia/core/lib/common/uri';
 import { PhysicalMapController, physicalMapTabId, type PhysicalMapTabOptions } from './physical-map-controller';
 import type { CanvasNode } from './physical-map-projection';
 import type { FlowCanvasNode } from './flow-map-projection';
-import { MapViewport, mapFitContext } from './map-viewport';
+import { MapViewport, mapFitContext, mapFitOptions } from './map-viewport';
 import { mapLabel } from './map-label';
 import { PlanningMapController } from './planning-map-controller';
 import { projectPlanningMap, projectRebaseConflict, projectReconciliationResult } from './planning-map-projection';
@@ -134,8 +134,8 @@ export class PhysicalMapWidget extends BaseWidget {
         iconButton(this.sourceButton, 'Open selected object source', 'go-to-file');
         this.sourceButton.onclick = () => void this.openSource();
         const fit = document.createElement('button');
-        iconButton(fit, 'Fit current map to canvas', 'screen-full');
-        fit.onclick = () => this.fitArchitecture();
+        iconButton(fit, 'Fit current map at a readable scale', 'screen-full');
+        fit.onclick = () => this.fitCurrentMap();
         const zoomIn = document.createElement('button');
         iconButton(zoomIn, 'Zoom in on map', 'zoom-in');
         zoomIn.onclick = () => void this.flow?.zoomIn();
@@ -269,7 +269,7 @@ export class PhysicalMapWidget extends BaseWidget {
         this.breadcrumbs.replaceChildren();
         const overview = document.createElement('button');
         overview.textContent = 'Project';
-        overview.onclick = () => this.fitArchitecture();
+        overview.onclick = () => { this.controller.setDetail('architecture'); this.controller.fit(); };
         this.breadcrumbs.append(overview);
         for (const item of this.controller.breadcrumbs) {
             this.breadcrumbs.append(' / ');
@@ -509,10 +509,9 @@ export class PhysicalMapWidget extends BaseWidget {
         if (nodes.length && !controller.loading) this.queueFit();
     }
 
-    private fitArchitecture(): void {
+    private fitCurrentMap(): void {
         this.fitRequested = true;
-        this.controller.setDetail('architecture');
-        this.controller.fit();
+        if (this.controller.mode !== 'flow') this.controller.setDetail('architecture');
         this.queueFit();
     }
 
@@ -526,7 +525,7 @@ export class PhysicalMapWidget extends BaseWidget {
             this.fitRequested = false;
             this.fitting = true;
             try {
-                await this.flow.fitView({ padding: 0.14 });
+                await this.flow.fitView(mapFitOptions(this.controller.mode === 'flow' && !!this.controller.focusId));
                 this.viewport.fitted(this.flow.getZoom());
             } finally { this.fitting = false; this.queueFit(); }
         });

@@ -62,7 +62,7 @@ test('icon controls use native buttons with labels, hover help and non-color sta
   assert.equal(button.title, button.label);
   assert.equal(element.className, 'codicon codicon-arrow-right');
   for (const label of ['Move up one map level', 'Focus selected map object', 'Zoom in on map', 'Zoom out on map',
-    'Fit current map to canvas', 'Open selected object source', 'Open selected object in a map tab',
+    'Fit current map at a readable scale', 'Open selected object source', 'Open selected object in a map tab',
     'Trace possible execution downstream from selection', 'Trace possible execution upstream from selection',
     'Clear current Flow trace', 'Expand map inspection', 'Compact map inspection', 'Minimize map inspection'])
     assert.ok(widget.includes(label), label);
@@ -74,6 +74,7 @@ test('icon controls use native buttons with labels, hover help and non-color sta
 });
 
 test('Flow context is legible and selected paths remain stronger across themes', () => {
+  assert.match(css, /\.dope-flow-edge \.react-flow__edge-text \{ font-size: 13px; font-weight: 600; \}/);
   assert.doesNotMatch(css, /\.dope-flow-subdued \{ opacity: \.45/);
   assert.match(css, /\.react-flow__node\.dope-flow-subdued,[\s\S]*?\.react-flow__edge\.dope-flow-subdued \{ opacity: \.82/);
   assert.match(css, /\.react-flow__node\.dope-flow-selected,[\s\S]*?\.react-flow__edge\.dope-flow-selected \{ opacity: 1/);

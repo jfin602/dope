@@ -5,9 +5,10 @@ import { resolve } from 'node:path';
 import test from 'node:test';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { getViewportForBounds } from '@xyflow/react';
 
 const require = createRequire(import.meta.url);
-const { MapViewport, mapFitContext } = require('../../packages/theia-extension/lib/browser/map-viewport.js') as
+const { FOCUSED_FLOW_READABLE_ZOOM, MapViewport, mapFitContext, mapFitOptions } = require('../../packages/theia-extension/lib/browser/map-viewport.js') as
   typeof import('../../packages/theia-extension/src/browser/map-viewport.ts');
 const { mapLabel } = require('../../packages/theia-extension/lib/browser/map-label.js') as
   typeof import('../../packages/theia-extension/src/browser/map-label.ts');
@@ -32,13 +33,32 @@ test('fit identity changes for navigation but stays stable across LOD node chang
   assert.equal(original, mapFitContext('workspace', 1, undefined, 'physical', undefined, 'current'));
   assert.notEqual(original, mapFitContext('workspace', 1, 'system', 'physical', undefined, 'current'));
   assert.notEqual(original, mapFitContext('workspace', 2, undefined, 'physical', undefined, 'current'));
+  assert.notEqual(original, mapFitContext('workspace', 1, undefined, 'flow', undefined, 'current'));
+  assert.equal(mapFitContext('workspace', 1, 'subsystem', 'flow', undefined, 'current'),
+    mapFitContext('workspace', 1, 'subsystem', 'flow', undefined, 'current'));
   const widget = read('packages/theia-extension/src/browser/physical-map-widget.ts');
   assert.match(widget, /if \(context !== this\.fitContext\)[\s\S]*?this\.fitRequested = true/);
   assert.match(widget, /onMoveEnd:[\s\S]*?this\.controller\.setDetail\(this\.viewport\.detail/);
-  assert.match(widget, /private fitArchitecture\(\)[\s\S]*?this\.fitRequested = true/);
+  assert.match(widget, /private fitCurrentMap\(\)[\s\S]*?this\.fitRequested = true/);
+  assert.doesNotMatch(widget.match(/private fitCurrentMap\(\)[\s\S]*?\n    \}/)?.[0] ?? '', /this\.controller\.fit\(\)/);
   assert.match(widget, /if \(!this\.fitRequested \|\| this\.fitQueued/);
   assert.doesNotMatch(widget, /renderedGraph|fitView: true/);
   assert.equal((widget.match(/\.fitView\(/g) ?? []).length, 1);
+});
+
+test('focused Flow fit centers a large graph at readable scale without restricting manual zoom', () => {
+  const bounds = { x: 32, y: 32, width: 2300, height: 1250 };
+  const full = getViewportForBounds(bounds, 1199, 939, 0.01, 2, 0.14);
+  const options = mapFitOptions(true);
+  const readable = getViewportForBounds(bounds, 1199, 939, options.minZoom!, 2, options.padding);
+  assert.ok(full.zoom < FOCUSED_FLOW_READABLE_ZOOM);
+  assert.equal(readable.zoom, FOCUSED_FLOW_READABLE_ZOOM);
+  assert.deepEqual(mapFitOptions(false), { padding: 0.14, minZoom: undefined });
+  const widget = read('packages/theia-extension/src/browser/physical-map-widget.ts');
+  assert.match(widget, /this\.flow\.fitView\(mapFitOptions\(this\.controller\.mode === 'flow' && !!this\.controller\.focusId\)\)/);
+  assert.match(widget, /minZoom: 0\.01, nodesDraggable: false/);
+  assert.match(widget, /zoomOut\.onclick = \(\) => void this\.flow\?\.zoomOut\(\)/);
+  assert.match(widget, /if \(!this\.fitRequested \|\| this\.fitQueued \|\| this\.fitting/);
 });
 
 test('node identity renders in full with path breaks and theme-aware wrapping', () => {

@@ -30,7 +30,7 @@ test('one React Flow surface uses toolbar zoom and explicit fit without shell-tr
   assert.doesNotMatch(widget, /\bControls\b|showInteractive/);
   assert.match(widget, /zoomIn\.onclick = \(\) => void this\.flow\?\.zoomIn\(\)/);
   assert.match(widget, /zoomOut\.onclick = \(\) => void this\.flow\?\.zoomOut\(\)/);
-  assert.match(widget, /fit\.onclick = \(\) => this\.fitArchitecture\(\)/);
+  assert.match(widget, /fit\.onclick = \(\) => this\.fitCurrentMap\(\)/);
   assert.match(widget, /button\('Trace downstream', \(\) => controller\.trace\('downstream'\)/);
   assert.match(widget, /button\('Trace upstream', \(\) => controller\.trace\('upstream'\)/);
   assert.match(widget, /button\('Clear trace', \(\) => controller\.trace\(\)/);
