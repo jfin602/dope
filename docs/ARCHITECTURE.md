@@ -22,7 +22,7 @@ Dope presentation adapters and widgets
   |
 Application / orchestration
   |
-Project Intelligence / Software Map / Visual Software Planning / Flow / later Agent Runtime
+Project Intelligence / Software Map / Visual Software Planning / Flow / later Living Software Knowledge Model / Agent Runtime
   |
 Persistence / Model / Tool / Authority / Execution adapters
 
@@ -299,6 +299,52 @@ Dope chooses behavior based on capabilities.
 A provider may expose richer features without forcing every provider to emulate them.
 
 Canonical product state must remain valid when the active provider changes.
+
+## Living Software Knowledge Model and background alignment boundary
+
+Product Phase 8 adds a knowledge-alignment layer over existing Software Map identities after general AI Presence exists and before mutation-capable Scoped Delegation.
+
+The durable conceptual layering is:
+
+```text
+source / runtime / docs / ADRs / contracts / schemas
+                     |
+             evidence + provenance
+                     |
+               Software Map
+                     |
+       Living Software Knowledge Model
+                     |
+          alignment / impact engine
+                     |
+       background analysis scheduler
+                     |
+                Model Runtime
+                     |
+          local / hosted adapters
+```
+
+The Living Software Knowledge Model is not a second canonical architecture database. Canonical architecture remains developer-owned, Physical Map facts remain deterministically evidenced or recorded observations, and documentation/contracts remain separately attributable representations. The alignment layer links those representations through stable Software Map identity and preserves disagreement rather than forcing synchronization.
+
+Background alignment is event-driven and impact-scoped. Repository/workspace changes first update deterministic fingerprints and evidence dependencies. Only assertions whose supporting basis changed are invalidated. Unaffected assertions must not be sent back through a model merely because unrelated files changed.
+
+Deterministic-first is a hard rule:
+- use source analysis, fingerprints, schema/API checks, ownership, identity and contract validation wherever the result can be established mechanically;
+- invoke semantic inference only when interpretation is actually required;
+- never ask a model to replace a cheaper deterministic check.
+
+Local-first is a hard rule for continuous semantic maintenance:
+- normal background semantic checks use a configured local runtime through the provider-independent Model Runtime;
+- requests are compact, structured micro-inference over the smallest sufficient evidence package;
+- local uncertainty produces a finding/needs-review state rather than silent provider escalation;
+- hosted/frontier inference requires explicit developer-controlled escalation and must never be triggered merely because a background local check is uncertain;
+- no background path silently incurs hosted-provider cost or sends project evidence off-device.
+
+The background scheduler owns debounce, deduplication, impact batching, queue priority, cancellation and resource arbitration. It is execution/application state, not canonical knowledge. Foreground editor interaction, explicit AI work, builds/tests and other developer-directed work have priority over background inference. Resource pressure, battery-sensitive operation or provider/model contention may pause or reduce background work without changing knowledge truth.
+
+Alignment results are derived findings. They may identify source/map drift, source/documentation drift, source/contract disagreement, contract/map disagreement, orphaned evidence or unrepresented implementation. Model output may classify or explain a finding but cannot silently mutate source, documentation, contracts, canonical architecture or Physical Map truth.
+
+General-purpose ambient intelligence remains deferred. Phase 8 authorizes bounded ambient/background behavior only for maintaining the Living Software Knowledge Model.
 
 ## Theia AI boundary
 
