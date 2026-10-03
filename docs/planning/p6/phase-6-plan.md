@@ -243,6 +243,12 @@ Use deterministic layered layout implemented in Dope presentation/projection cod
 
 Do not add Dagre/ELK or another automatic layout dependency in the initial stack. A future bounded correction may add one only if real qualification shows the deterministic layout is inadequate.
 
+### Directional color reinforcement
+
+Flow may use the shared curated map palette as projection-specific directional reinforcement instead of strictly inheriting Architecture parent colors. Map visible source -> downstream layers deterministically through the bounded palette so the eye can follow progression from Inputs toward later Processing, Store/External and Output stages; nearby layers may share a color when the visible path is deeper than the palette. Branches at the same approximate downstream stage may share treatment, joins adopt the later-stage treatment, and cycles/back-edges remain explicitly directional rather than being represented as a false linear gradient.
+
+Color never establishes Flow truth or ordering by itself. Direction must remain readable through deterministic layout, arrowheads, routing, labels, trace/selection treatment and other non-color cues. Optional node/edge tinting may reinforce the progression, but must stay subordinate to those cues and remain readable in supported themes and color-vision-deficiency use cases. Flow projection coloring must not mutate the shared architecture identity or its persisted Architecture color preference; any future explicit Flow-only override is separate presentation state.
+
 ## Non-linear and asynchronous Flow grammar
 
 Branches/fan-out and joins/fan-in are represented by graph topology rather than new base interaction kinds.

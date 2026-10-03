@@ -483,3 +483,26 @@ The correction is presentation-only. It must not change canonical architecture, 
 
 This correction is independent of `c6-branch-seam` and of the Flow projection truth repair. It does not relabel earlier P7/P3 evidence or unblock P8 by itself. Complete it before the next intended fresh P7 GUI candidate if its inspector behavior is to be part of that candidate.
 
+## October 2, 2026 — Phase 6 map color grammar correction
+
+The owner approved a bounded presentation correction for Software Map color readability at unchanged package version `0.6.7`.
+
+The correction is `c6-map-color-grammar`.
+
+Locked behavior:
+- use one curated palette of no more than ten map-safe colors;
+- show a visible swatch plus readable label for every color choice and expose `Automatic`;
+- give Architecture/Physical Map Systems deterministic default colors from first render;
+- inherit color down System -> Subsystem -> Component -> deeper mapped implementation, using the nearest explicit/default ancestor;
+- let an explicit developer override become the inherited root for its branch; clearing it returns to Automatic;
+- persist only explicit user color preferences under the existing project-scoped presentation boundary; deterministic defaults/inheritance remain derived presentation state;
+- preserve Architecture color identity in Planning Map projections;
+- allow Flow to depart from parent inheritance and use deterministic palette progression to reinforce evidenced source -> downstream direction;
+- keep branches, joins, cycles and back-edges topology-first, with arrows/layout/labels/trace state and other non-color cues authoritative;
+- keep Flow projection color separate from ordinary Architecture color preferences;
+- qualify supported themes and color-vision-deficiency readability.
+
+The correction is presentation-only. It must not change canonical architecture, Physical Map evidence/facts, Flow extraction/query/aggregation/truth, Planning Map semantics, synthesis/model/provider behavior, project-domain persistence, or package version.
+
+Use one bounded manual **GPT-6 Sol High** one-off implementation prompt with focused permanent regressions and direct GUI qualification. Do not run this correction through `codex:phase`. Preserve all earlier P7 and map-canvas Not Green evidence; this correction does not relabel historical results or unblock P8 by itself.
+

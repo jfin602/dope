@@ -181,7 +181,7 @@ Introduce:
 
 The forward ontology is **PlanningMap -> PlannedTransformation -> WorkItem**. Phase 5 does not resurrect `Plan -> PlanStep -> Task`. The Phase 3 domain, `.dope/planning.json`, RPC, UI and associated tests remain historical and removed.
 
-Visual software planning remains useful with no model configured. A diagram is a projection of project state, not an independent source of architectural truth. Canvas coordinates, viewport, semantic LOD, focus, selection, relationship visibility, node colors and tab/layout state are presentation state. Project-scoped presentation preferences may survive restart, but deleting them must not change canonical architecture, Physical Map evidence/realization, Planning Map transformations, staleness or reconciliation.
+Visual software planning remains useful with no model configured. A diagram is a projection of project state, not an independent source of architectural truth. Canvas coordinates, viewport, semantic LOD, focus, selection, relationship visibility, explicit node-color preferences and tab/layout state are presentation state. Automatic Architecture colors, parent-color inheritance and Flow directional coloring are derived presentation state. Project-scoped explicit color preferences may survive restart, but clearing them returns to deterministic Automatic resolution; deleting/resetting presentation state must not change canonical architecture, Physical Map evidence/realization, Planning Map transformations, staleness or reconciliation. A Flow projection may temporarily render a shared architecture identity with a different directional treatment without changing that identity or its ordinary Architecture color preference.
 
 #### Locked Phase 5 visual semantics
 
