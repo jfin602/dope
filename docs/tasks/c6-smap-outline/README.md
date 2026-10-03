@@ -1,6 +1,6 @@
 # Correction 6 — sMap Outline
 
-Status: **APPROVED / READY FOR IMPLEMENTATION PLANNING**
+Status: **GREEN — bounded correction complete**
 Correction folder: `c6-smap-outline`
 Required unchanged package version: `0.6.7`
 Date approved: 2026-10-02
@@ -123,8 +123,6 @@ Retained P7 and map-canvas Not Green evidence remains historical truth. This cor
 
 If the next fresh P7 GUI candidate is intended to include this inspector behavior, finish and validate this correction before that requalification.
 
-## Next workflow
+## Closeout
 
-`/prompt-ass -> /prompt-plan -> /prompt-write c6-smap-outline`
-
-No executable implementation prompt is created by this documentation application.
+The one-off correction was implemented and replayed directly in the browser GUI at unchanged `0.6.7`. See [closeout.md](closeout.md) for the exact candidate, focused checks, GUI observations and evidence limits. This Green result applies only to `c6-smap-outline`; Phase 6 P7 remains Not Green and P8 remains blocked.
