@@ -8,6 +8,7 @@ import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import type { Evidence, GraphNode, GraphRelationship, AnalysisProgressStage } from '@dope/software-map';
 import { SoftwareMapConnection, SoftwareMapController } from './software-map-controller';
+import { outlineLabel, revealOutlineAncestors } from './software-map-outline';
 import './dope.css';
 
 export const SOFTWARE_MAP_ID = 'dope-software-map';
@@ -36,6 +37,9 @@ export class SoftwareMapWidget extends BaseWidget {
     private readonly violations = document.createElement('section');
     private readonly controls = document.createElement('section');
     private readonly expanded = new Set<string>();
+    private outlineWorkspace?: string;
+    private revealedSelection?: string;
+    private unassignedOpen = false;
     private readonly progressClock = document.createElement('span');
     private localSetupOpen = true;
     private geminiSetupOpen = false;
@@ -102,6 +106,7 @@ export class SoftwareMapWidget extends BaseWidget {
     private renderOnboarding(): void {
         const model = this.controller;
         this.controls.replaceChildren();
+        this.controls.classList.toggle('dope-smap-compact-actions', model.initialization?.state === 'initialized');
         if (!model.workspace || !model.initialization) return;
         if (model.initialization.state === 'initialized') {
             this.controls.append(this.button('Open Physical Map', () => void this.openPhysicalMap()));
@@ -375,8 +380,15 @@ export class SoftwareMapWidget extends BaseWidget {
         const focusedLabel = focusedControl?.closest('label')?.firstChild?.textContent;
         const focusedButton = focusedControl?.tagName === 'BUTTON' ? focusedControl.textContent : undefined;
         const focusedNode = (document.activeElement as HTMLElement | null)?.dataset.nodeId;
+        const focusedDisclosure = (document.activeElement as HTMLElement | null)?.dataset.disclosureId;
         const focusedEdge = (document.activeElement as HTMLElement | null)?.dataset.edgeId;
         const model = this.controller;
+        if (this.outlineWorkspace !== model.workspace) {
+            this.outlineWorkspace = model.workspace;
+            this.expanded.clear();
+            this.revealedSelection = undefined;
+            this.unassignedOpen = false;
+        }
         const status = model.status;
         this.status.textContent = !model.workspace ? 'Open one local project folder to inspect its Software Map.' :
             model.error ? `Error: ${model.error}` :
@@ -411,25 +423,45 @@ export class SoftwareMapWidget extends BaseWidget {
             children.set(parent, group);
         }
         for (const group of children.values()) group.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
+        const revealSelection = !!model.selectedId && model.selectedId !== this.revealedSelection &&
+            revealOutlineAncestors(nodes, model.selectedId, this.expanded);
+        if (revealSelection) this.revealedSelection = model.selectedId;
+        if (!model.selectedId) this.revealedSelection = undefined;
         const renderNode = (node: GraphNode): HTMLElement => {
             const row = this.element('li');
             const descendants = children.get(node.id) ?? [];
-            const button = this.button(`${node.name} · ${node.kind}${node.kind === 'code' ? ` · ${node.codeKind}` : ''}`, () => void model.select(node.id));
+            const line = this.element('div');
+            line.className = 'dope-smap-outline-row';
+            const label = outlineLabel(node);
+            if (descendants.length) {
+                const disclosure = this.button(this.expanded.has(node.id) ? '▾' : '▸', () => {
+                    if (this.expanded.has(node.id)) this.expanded.delete(node.id);
+                    else this.expanded.add(node.id);
+                    this.render();
+                });
+                disclosure.className = 'dope-smap-outline-disclosure';
+                disclosure.dataset.disclosureId = node.id;
+                disclosure.setAttribute('aria-label', `${this.expanded.has(node.id) ? 'Collapse' : 'Expand'} ${label}`);
+                disclosure.setAttribute('aria-expanded', String(this.expanded.has(node.id)));
+                line.append(disclosure);
+            } else {
+                const spacer = this.element('span');
+                spacer.className = 'dope-smap-outline-spacer';
+                spacer.setAttribute('aria-hidden', 'true');
+                line.append(spacer);
+            }
+            const button = this.button(label, () => void model.select(node.id));
+            button.className = 'dope-smap-outline-label';
             button.dataset.nodeId = node.id;
             button.setAttribute('aria-current', String(model.selectedId === node.id));
-            if (descendants.length) {
-                const details = this.element('details');
-                details.open = node.kind !== 'code' || this.expanded.has(node.id);
-                details.ontoggle = () => details.open ? this.expanded.add(node.id) : this.expanded.delete(node.id);
-                const summary = this.element('summary');
-                summary.append(button);
-                details.append(summary, list(descendants));
-                row.append(details);
-            } else row.append(button);
+            line.append(button);
+            row.append(line);
+            if (descendants.length && this.expanded.has(node.id)) row.append(list(descendants));
             return row;
         };
         const list = (items: GraphNode[]): HTMLUListElement => {
             const ul = this.element('ul');
+            ul.className = 'dope-smap-outline';
             for (const item of items) ul.append(renderNode(item));
             return ul;
         };
@@ -437,9 +469,23 @@ export class SoftwareMapWidget extends BaseWidget {
         const systems = nodes.filter(node => node.kind === 'system');
         this.tree.append(systems.length ? list(systems) : this.element('p', 'No declared Systems.'));
         const unassigned = nodes.filter(node => node.kind === 'code' && node.ownership.state === 'unassigned' && !nodes.some(parent => parent.id === node.parentId && parent.kind === 'code'));
-        this.tree.append(this.element('h3', `Unassigned / unknown implementation (${unassigned.length} roots)`));
-        if (unassigned.length) this.tree.append(list(unassigned));
-        else this.tree.append(this.element('p', nodes.length ? 'No unassigned code roots.' : 'No implementation found.'));
+        const unassignedIds = new Set(unassigned.map(node => node.id));
+        if (revealSelection && model.selectedId) {
+            const byId = new Map(nodes.map(node => [node.id, node]));
+            const seen = new Set<string>();
+            for (let id: string | undefined = model.selectedId; id && !seen.has(id); id = byId.get(id)?.parentId) {
+                if (unassignedIds.has(id)) { this.unassignedOpen = true; break; }
+                seen.add(id);
+            }
+        }
+        const unassignedSection = this.element('details');
+        unassignedSection.className = 'dope-smap-unassigned';
+        unassignedSection.open = this.unassignedOpen;
+        unassignedSection.ontoggle = () => { this.unassignedOpen = unassignedSection.open; };
+        unassignedSection.append(this.element('summary', `Unassigned / unknown implementation (${unassigned.length} roots)`));
+        if (unassigned.length) unassignedSection.append(list(unassigned));
+        else unassignedSection.append(this.element('p', nodes.length ? 'No unassigned code roots.' : 'No implementation found.'));
+        this.tree.append(unassignedSection);
         if (model.selectedId) this.renderNodeDetail(nodes.find(node => node.id === model.selectedId));
         if (model.selectedViolation) this.renderViolationDetail();
         this.violations.append(this.element('h3', `Architecture violations (${model.violations.length})`));
@@ -449,7 +495,10 @@ export class SoftwareMapWidget extends BaseWidget {
                 () => void model.selectViolation(violation)));
         }
         if (focusedNode) [...this.tree.querySelectorAll<HTMLButtonElement>('button[data-node-id]')].find(button => button.dataset.nodeId === focusedNode)?.focus();
+        if (focusedDisclosure) [...this.tree.querySelectorAll<HTMLButtonElement>('button[data-disclosure-id]')].find(button => button.dataset.disclosureId === focusedDisclosure)?.focus();
         if (focusedEdge) [...this.detail.querySelectorAll<HTMLButtonElement>('button[data-edge-id]')].find(button => button.dataset.edgeId === focusedEdge)?.focus();
+        if (revealSelection) [...this.tree.querySelectorAll<HTMLButtonElement>('button[data-node-id]')]
+            .find(button => button.dataset.nodeId === model.selectedId)?.scrollIntoView({ block: 'nearest' });
     }
     private renderNodeDetail(node?: GraphNode): void {
         if (!node) return;
