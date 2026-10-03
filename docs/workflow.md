@@ -429,3 +429,27 @@ The correction owns presentation only:
 It must not change Flow extraction, physical facts/endpoints, aggregation/query semantics, query budgets, canonical architecture, Flow persistence or Planning Map semantics.
 
 Plan this correction as a small stack with implementation/regression work followed by direct GUI qualification. Do not advance the package version. After the correction, resume P7 qualification; P8 remains blocked until P7 is Green. The packaged controlled-shutdown failure remains a separate P7 blocker rather than scope for this UI correction.
+
+
+## October 2, 2026 — Phase 6 Flow projection-contract correction
+
+The map-canvas P3 replay at `0.6.7` is Not Green because the Flow query-result/presentation contract diverged: overview-visible relationships are in `aggregates`, while the canvas projector still begins from `facts`.
+
+The approved bounded correction is `c6-flow-projection-contract` at unchanged `0.6.7`.
+
+Use one manual **GPT-6 Sol High** one-off prompt:
+`docs/tasks/c6-flow-projection-contract/one-off-flow-projection-contract.txt`
+
+Do not run this correction through `codex:phase`.
+
+The one-off may:
+- repair `projectFlowMap()` to consume `aggregates` for System/SubSystem overview and raw `facts` for detail/trace;
+- preserve aggregate provenance and trace-origin emphasis;
+- correct the stale backend overview test assertion;
+- add focused permanent regressions;
+- run focused validation and `npm run check`;
+- replay only the map-canvas P3 Flow areas blocked by the empty canvas.
+
+It must not change Flow extraction, overview aggregation policy, hard budgets, canonical architecture, Planning semantics, map-shell architecture, persistence or package version.
+
+Preserve the original map-canvas P3 Not Green closeout. A successful replay is supplemental evidence, not a rewrite of history. After Green, return to fresh Phase 6 P7 requalification. P8 remains blocked, and the packaged AppImage controlled-shutdown failure remains a separate P7 blocker.
