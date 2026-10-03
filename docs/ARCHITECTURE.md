@@ -98,9 +98,9 @@ Dope is dark-first: first-run/default presentation uses the Dope-owned **Dope Da
 Dope's default workbench placement is part of the product architecture, while individual user layout customization remains presentation state.
 
 Default placement:
-- **Left primary sidebar / Activity Bar:** project-navigation surfaces, including a dedicated **sMap** button and Software Map inspector. The inspector owns hierarchy, dependency, violation, evidence and source-navigation views for the Physical Map.
-- **Center workspace:** editors and ordinary working surfaces. Product Phase 5 adds the large visual **Physical Map** and **Planning Map** canvases here as editor-like tabs/workspaces. Product Phase 6 adds **Flow** as a directional Physical Map projection in the same center-workspace model. **Edit Architecture** is the permanent center-workspace editor for System -> Subsystem -> Component architecture, reused for initial proposal acceptance and later accepted-map edits. Map tabs are canvas-first: the diagram consumes the maximum practical center area, map-global controls are consolidated into one compact icon-first toolbar with tooltips/accessibility semantics, and immediate selection/details UI is a floating overlay rather than a persistent top pane. The overlay may expand, compact or minimize without becoming canonical state or forcing graph re-layout. The left sMap inspector remains the authoritative deep inspection/navigation surface.
-- **Right secondary sidebar:** reserved by default for future **Agent Mind / chat / AI interaction**. The Software Map inspector must not claim this area as its default home.
+- **Left primary sidebar / Activity Bar:** project-navigation surfaces, including a dedicated **sMap** button and Software Map inspector. The inspector owns hierarchy, dependency, violation, evidence and source-navigation views for the Physical Map. The persistent bottom-left account/profile action is replaced in Phase 7B by an **AI** launcher; account/profile management moves under Settings.
+- **Center workspace:** editors and ordinary working surfaces. Product Phase 5 adds the large visual **Physical Map** and **Planning Map** canvases here as editor-like tabs/workspaces. Product Phase 6 adds **Flow** as a directional Physical Map projection in the same center-workspace model. **Edit Architecture** is the permanent center-workspace editor for System -> Subsystem -> Component architecture, reused for initial proposal acceptance and later accepted-map edits. Phase 7B adds the dedicated **AI Center** as a center-workspace management tab over the application Model Connections registry. Map tabs are canvas-first: the diagram consumes the maximum practical center area, map-global controls are consolidated into one compact icon-first toolbar with tooltips/accessibility semantics, and immediate selection/details UI is a floating overlay rather than a persistent top pane. The overlay may expand, compact or minimize without becoming canonical state or forcing graph re-layout. The left sMap inspector remains the authoritative deep inspection/navigation surface.
+- **Right secondary sidebar:** reserved by default for **ChatPanel / Agent Mind / AI interaction**. The Software Map inspector must not claim this area as its default home, and ChatPanels remain movable to any supported shell area.
 - **Bottom panel:** terminal, Problems, tests, runtime and similar execution/diagnostic surfaces.
 
 This is a default product-layout contract, not canonical project state and not a ban on user rearrangement.
@@ -299,6 +299,32 @@ Dope chooses behavior based on capabilities.
 A provider may expose richer features without forcing every provider to emulate them.
 
 Canonical product state must remain valid when the active provider changes.
+
+## AI Center and role-routing boundary
+
+ADR 0026 extends the Phase 7 Model Runtime with one user-global control plane without making provider configuration canonical project state.
+
+The application-level Model Connections registry owns configured provider/runtime connections and discovered/known models. **AI Center** is a presentation/application projection over that registry, not a second provider store. A connection and a model are distinct; features consume provider-neutral connection/model IDs and advertised capabilities through Model Runtime.
+
+Connection inventory, safe non-secret configuration and role preferences are user/application state by default. Credentials/tokens remain secret runtime state; persistent credentials require an appropriate secure-store boundary and must never enter `.dope/`, Chat persistence, ordinary plaintext preferences, logs or project provenance.
+
+Phase 7C adds `AIRolePolicy` as routing policy rather than canonical project truth. Initial roles are Interactive, Deep Reasoning, Background, Software Map and Coding Agent. Policies may express preferred targets, ordered fallback candidates, required capabilities, context/reasoning requirements and locality/privacy/egress constraints.
+
+Resolution precedence is:
+
+```text
+explicit per-message / explicit feature model choice
+    -> persistent Chat model policy where applicable
+    -> feature-requested role + constraints
+    -> global AI Center role policy
+    -> permitted fallback candidates
+```
+
+An explicit developer model choice never silently falls back. Role-based fallback is allowed only when the initiating feature/policy permits it and every higher-priority constraint remains satisfied.
+
+AI Center preference does not grant feature execution authority. Software Map Analyze Project/Search Deeper continue to own explicit provider readiness and repository-evidence egress under ADR 0022. Product Phase 8 Background alignment continues to require local-only execution with hosted fallback forbidden under ADR 0023 even if another generic Background consumer could use a broader policy.
+
+Provider-specific setup UI may temporarily exist where disclosure or feature-specific consent differs, but global connection ownership must converge on the shared registry. New features must not create independent provider inventories merely for convenience.
 
 ## Living Software Knowledge Model and background alignment boundary
 
