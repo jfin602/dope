@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
-import { ChatPanelController, chatTree } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
+import { ChatOpenOwners, ChatPanelController, chatTree } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
 import { CHAT_PANEL_ID, chatAreas, chatPanelOptions, chatPanelWidgetId, openChatPanel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { ChatCollection } from '../../packages/chat/lib/index.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
@@ -16,6 +16,10 @@ import type { ChatConnection } from '../../packages/theia-extension/src/browser/
 async function until(ready: () => boolean): Promise<void> {
     for (let i = 0; i < 100; i++) { if (ready()) return; await new Promise(resolve => setTimeout(resolve, 10)); }
     assert.fail('Timed out waiting for Chat event');
+}
+async function untilAsync(ready: () => Promise<boolean>): Promise<void> {
+    for (let i = 0; i < 100; i++) { if (await ready()) return; await new Promise(resolve => setTimeout(resolve, 10)); }
+    assert.fail('Timed out waiting for Chat ownership');
 }
 function connect(repository: ChatRepository): ChatConnection {
     let client: ChatClient | undefined;
@@ -65,8 +69,10 @@ test('two panels share service changes while navigation remains panel-local and 
     const first = await mkdtemp(join(tmpdir(), 'dope-chat-panel-'));
     const second = await mkdtemp(join(tmpdir(), 'dope-chat-panel-'));
     const repository = new ChatRepository();
-    const a = new ChatPanelController(() => connect(repository), () => {});
-    const b = new ChatPanelController(() => connect(repository), () => {});
+    const owners = new ChatOpenOwners();
+    let focused = 0;
+    const a = new ChatPanelController(() => connect(repository), () => {}, owners, 'panel-a', () => { focused++; });
+    const b = new ChatPanelController(() => connect(repository), () => {}, owners, 'panel-b');
     try {
         await Promise.all([a.attach(pathToFileURL(first).href), b.attach(pathToFileURL(first).href)]);
         assert.equal(a.mode, 'select-chat');
@@ -79,29 +85,34 @@ test('two panels share service changes while navigation remains panel-local and 
         assert.equal(b.mode, 'select-chat');
         const chatId = a.chatId!;
         assert.equal(b.snapshot?.chats[0].id, chatId);
-        assert.equal(b.select(chatId), true);
-        assert.equal(b.mode, 'chat');
+        assert.equal(await b.select(chatId), false);
+        assert.equal(b.mode, 'select-chat');
+        assert.equal(focused, 1);
+        assert.match(b.error, /already open/);
         const writer = connect(repository);
         try {
             const attached = await writer.attach(pathToFileURL(first).href);
             const claim = await writer.claim({ projectHandle: attached.projectHandle, chatId, ownerId: 'test-writer' });
-            assert.equal(claim.acquired, true);
-            if (!claim.acquired) throw new Error('Expected Chat lease');
+            assert.equal(claim.acquired, false);
+            await a.select(undefined);
+            const acquired = await writer.claim({ projectHandle: attached.projectHandle, chatId, ownerId: 'test-writer' });
+            assert.equal(acquired.acquired, true);
+            if (!acquired.acquired) throw new Error('Expected Chat lease');
             await writer.mutate({ projectHandle: attached.projectHandle, expectedRevision: attached.snapshot.revision,
-                leaseToken: claim.token, operation: { type: 'append-user', chatId, message: {
+                leaseToken: acquired.token, operation: { type: 'append-user', chatId, message: {
                     schemaVersion: 1, id: randomUUID(), role: 'user', createdAt: new Date().toISOString(),
                     content: 'Saved transcript', contextRefs: [] } } });
-            await until(() => b.chat?.messages[0]?.content === 'Saved transcript' &&
+            await until(() => b.snapshot?.chats[0].messages[0]?.content === 'Saved transcript' &&
                 a.snapshot?.chats[0].messages[0]?.content === 'Saved transcript');
             assert.equal(a.snapshot?.chats[0].messages[0].content, 'Saved transcript');
+            await writer.release(attached.projectHandle, chatId, acquired.token);
         } finally { writer.dispose(); }
-        a.select(undefined);
         assert.equal(a.mode, 'select-chat');
-        assert.equal(b.mode, 'chat');
+        assert.equal(b.mode, 'select-chat');
         await b.attach(pathToFileURL(second).href);
         assert.equal(b.mode, 'select-chat');
         assert.deepEqual(b.snapshot?.chats, []);
-        assert.equal(b.select(chatId), false);
+        assert.equal(await b.select(chatId), false);
         assert.equal(a.snapshot?.chats[0].id, chatId);
         await b.attach(undefined);
         assert.equal(b.snapshot, undefined);
@@ -125,6 +136,7 @@ test('late attach and read responses cannot replace a newer workspace or revisio
     }) as unknown as ChatConnection;
     const panel = new ChatPanelController(() => connection(true), () => {});
     const old = panel.attach('old');
+    await until(() => typeof resolveAttach === 'function');
     await panel.attach(undefined);
     resolveAttach({ projectHandle: 'old', snapshot: empty(9) });
     await old;
@@ -142,6 +154,125 @@ test('late attach and read responses cannot replace a newer workspace or revisio
     reads.shift()?.(empty(3));
     assert.equal(current.snapshot, undefined);
     current.dispose();
+});
+
+test('restoration resolves duplicate panels, permits different Chats, and releases on switch, back and dispose', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-chat-owners-'));
+    const workspace = pathToFileURL(root).href;
+    const repository = new ChatRepository(), owners = new ChatOpenOwners();
+    const first = new ChatPanelController(() => connect(repository), () => {}, owners, 'first');
+    const second = new ChatPanelController(() => connect(repository), () => {}, owners, 'second');
+    const third = new ChatPanelController(() => connect(repository), () => {}, owners, 'third');
+    try {
+        await Promise.all([first.attach(workspace), second.attach(workspace), third.attach(workspace)]);
+        assert.equal(await first.newChat(''), true);
+        const one = first.chatId!;
+        await first.select(undefined);
+        assert.equal(await first.newChat(''), true);
+        const two = first.chatId!;
+        await until(() => second.snapshot?.chats.length === 2 && third.snapshot?.chats.length === 2);
+        second.restore(workspace, 'chat', one);
+        await until(() => second.chatId === one);
+        third.restore(workspace, 'chat', one);
+        await until(() => third.error.includes('already restored'));
+        assert.equal(third.mode, 'select-chat');
+        assert.equal(await third.select(two), false);
+        assert.equal(await first.select(one), false);
+        await first.select(undefined);
+        assert.equal(await third.select(two), true);
+        assert.equal(await second.select(two), false);
+        assert.equal(second.mode, 'select-chat');
+        assert.equal(await first.select(one), true);
+        third.dispose();
+        const replacement = new ChatPanelController(() => connect(repository), () => {}, owners, 'replacement');
+        try {
+            await replacement.attach(workspace);
+            await untilAsync(() => replacement.select(two));
+        } finally { replacement.dispose(); }
+    } finally {
+        first.dispose(); second.dispose(); third.dispose();
+        await rm(root, { recursive: true, force: true });
+    }
+});
+
+test('project switch waits for a late claim to release before disposing its connection', async () => {
+    const chatId = randomUUID(), events: string[] = [];
+    const snapshot = { schemaVersion: 1, revision: 0, folders: [], chats: [{ id: chatId }] } as ChatCollection;
+    let resolveClaim!: (value: { acquired: true; token: string }) => void;
+    const connection = (name: string) => ({
+        setClient() {},
+        dispose() { events.push(`${name}:dispose`); },
+        attach: async () => ({ projectHandle: name, snapshot }),
+        claim: () => new Promise<{ acquired: true; token: string }>(resolve => { resolveClaim = resolve; }),
+        release: async () => { events.push(`${name}:release`); },
+    }) as unknown as ChatConnection;
+    let next = 0;
+    const panel = new ChatPanelController(() => connection(++next === 1 ? 'old' : 'new'), () => {});
+    try {
+        await panel.attach('old');
+        const selecting = panel.select(chatId);
+        await until(() => typeof resolveClaim === 'function');
+        const switching = panel.attach('new');
+        resolveClaim({ acquired: true, token: 'old-token' });
+        assert.equal(await selecting, false);
+        await switching;
+        assert.deepEqual(events.slice(0, 2), ['old:release', 'old:dispose']);
+        assert.equal(panel.workspace, 'new');
+        assert.equal(panel.mode, 'select-chat');
+    } finally { panel.dispose(); }
+});
+
+test('saved panel selection waits for repository attach and never rewrites conversation state', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-chat-restore-'));
+    const other = await mkdtemp(join(tmpdir(), 'dope-chat-other-'));
+    const workspace = pathToFileURL(root).href, repository = new ChatRepository();
+    const original = new ChatPanelController(() => connect(repository), () => {});
+    const restored = new ChatPanelController(() => connect(repository), () => {});
+    try {
+        await original.attach(workspace);
+        assert.equal(await original.newChat(''), true);
+        const chatId = original.chatId!, revision = original.snapshot!.revision;
+        await original.select(undefined);
+        restored.restore(workspace, 'chat', chatId);
+        await restored.attach(workspace);
+        await until(() => restored.chatId === chatId);
+        assert.equal(restored.mode, 'chat');
+        assert.equal(restored.snapshot?.revision, revision);
+        assert.equal((await repository.read(root)).revision, revision);
+        await restored.attach(pathToFileURL(other).href);
+        assert.equal(restored.mode, 'select-chat');
+        assert.equal(await original.select(chatId), true);
+        await original.select(undefined);
+        restored.restore('some-other-project', 'chat', chatId);
+        assert.equal(restored.mode, 'select-chat');
+    } finally {
+        original.dispose(); restored.dispose();
+        await rm(root, { recursive: true, force: true });
+        await rm(other, { recursive: true, force: true });
+    }
+});
+
+test('dispose during a late claim releases the token and ignores the late selection', async () => {
+    const chatId = randomUUID(), events: string[] = [];
+    let resolveClaim!: (value: { acquired: true; token: string }) => void;
+    const connection = () => ({
+        setClient() {}, dispose() { events.push('dispose'); },
+        attach: async () => ({ projectHandle: 'project', snapshot: {
+            schemaVersion: 1, revision: 0, folders: [], chats: [{ id: chatId }]
+        } as ChatCollection }),
+        claim: () => new Promise<{ acquired: true; token: string }>(resolve => { resolveClaim = resolve; }),
+        release: async () => { events.push('release'); },
+    }) as unknown as ChatConnection;
+    const panel = new ChatPanelController(connection, () => {});
+    await panel.attach('project');
+    const selecting = panel.select(chatId);
+    await until(() => typeof resolveClaim === 'function');
+    panel.dispose();
+    resolveClaim({ acquired: true, token: 'late-token' });
+    assert.equal(await selecting, false);
+    await until(() => events.includes('dispose'));
+    assert.deepEqual(events, ['release', 'dispose']);
+    assert.equal(panel.chatId, undefined);
 });
 
 test('selector and transcript retain keyboard and dark theme surfaces', async () => {

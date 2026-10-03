@@ -28,6 +28,7 @@ import { VisualPlanningService, visualPlanningServicePath } from '@dope/visual-p
 import { ChatService, chatServicePath } from '@dope/chat/lib/service';
 import type { ChatClient } from '@dope/chat/lib/service';
 import { ChatPanelWidget } from './chat-panel-widget';
+import { ChatOpenOwners } from './chat-panel-controller';
 import { CHAT_PANEL_ID, chatAreas, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
@@ -62,6 +63,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(NoteService).toDynamicValue(context => ServiceConnectionProvider.createProxy<NoteService>(context.container, noteServicePath)).inSingletonScope();
     bind(ProjectMindService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ProjectMindService & RpcServer<ProjectMindClient>>(context.container, projectMindServicePath));
     bind(ChatService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ChatService & RpcServer<ChatClient>>(context.container, chatServicePath));
+    bind(ChatOpenOwners).toSelf().inSingletonScope();
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();
     bind(SoftwareMapController).toDynamicValue(context => new SoftwareMapController(
         () => context.container.get(SoftwareMapService) as SoftwareMapService & RpcServer<SoftwareMapClient>,
@@ -93,6 +95,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     ) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         new ChatPanelWidget(() => context.container.get(ChatService) as ChatService & RpcServer<ChatClient>,
-            context.container.get(WorkspaceService), options) })).inSingletonScope();
+            context.container.get(WorkspaceService), context.container.get(ApplicationShell),
+            context.container.get(ChatOpenOwners), options) })).inSingletonScope();
     rebind(WindowTitleService).to(DopeWindowTitleService).inSingletonScope();
 });

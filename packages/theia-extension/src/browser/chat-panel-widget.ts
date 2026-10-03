@@ -1,30 +1,45 @@
 import { BaseWidget } from '@theia/core/lib/browser/widgets/widget';
+import { ApplicationShell, type StatefulWidget } from '@theia/core/lib/browser';
 import { SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import type { ChatOperation } from '@dope/chat/lib/service';
-import { ChatPanelController, chatTree } from './chat-panel-controller';
+import { ChatOpenOwners, ChatPanelController, chatTree } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
 import { chatPanelWidgetId, type ChatPanelOptions } from './chat-panel-presentation';
 
-export class ChatPanelWidget extends BaseWidget {
+export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     readonly controller: ChatPanelController;
     private readonly rootsListener;
     private readonly status = document.createElement('p');
     private readonly content = document.createElement('div');
     private workspaceRequest = 0;
 
-    constructor(connect: () => ChatConnection, private readonly workspaces: WorkspaceService, options: ChatPanelOptions) {
+    constructor(connect: () => ChatConnection, private readonly workspaces: WorkspaceService,
+        private readonly shell: ApplicationShell, owners: ChatOpenOwners, options: ChatPanelOptions) {
         super();
         this.id = chatPanelWidgetId(options);
         this.title.label = this.title.caption = 'Chat';
         this.title.closable = true;
         this.addClass('dope-chat-panel');
-        this.controller = new ChatPanelController(connect, () => this.render());
+        this.controller = new ChatPanelController(connect, () => this.render(), owners, this.id,
+            () => { void this.shell.activateWidget(this.id); });
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.node.append(this.status, this.content);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.attach(); });
         void this.attach();
+    }
+
+    storeState(): object {
+        return { version: 1, area: this.shell.getAreaFor(this), workspace: this.controller.workspace,
+            mode: this.controller.mode, chatId: this.controller.chatId };
+    }
+    restoreState(state: object): void {
+        const value = state as Record<string, unknown>;
+        if (value?.version === 1 && typeof value.workspace === 'string' &&
+            (value.mode === 'select-chat' || value.mode === 'chat') &&
+            (value.mode === 'select-chat' || typeof value.chatId === 'string'))
+            this.controller.restore(value.workspace, value.mode, value.chatId as string | undefined);
     }
 
     private async attach(): Promise<void> {
