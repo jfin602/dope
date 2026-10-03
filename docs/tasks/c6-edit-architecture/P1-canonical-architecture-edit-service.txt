@@ -1,10 +1,10 @@
 TASK: Correction 6 / P1 — Lossless canonical Architecture edit service seam
 
 MODEL / REASONING / USAGE
-- Recommended: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
 - Validation: T2.
-- Version remains exactly 0.6.7.
+- Required unchanged project version: `0.6.7`.
 
 ENTRY
 
