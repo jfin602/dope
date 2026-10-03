@@ -59,7 +59,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — Physical Map Load | One-off `0.5.11` repair after accepted Adaptive SEO architecture loads in the inspector but the center Physical Map remains stuck at Loading. Remove duplicate Software Map channel/attach ownership if confirmed, preserve one shared published map state, and correct stale Phase 3/theme qualification assertions. P11 remains the qualification gate. |
 | Correction c5 — Planning Basis Isolation | `0.5.11` correction after P11 reached durable Planning Maps but ordinary `.dope/planning-maps.json` persistence changed Physical Map identity and unchanged reanalysis falsely staled plans. Isolate `.dope/` from generic analysis inputs and make generation observation provenance rather than semantic staleness. |
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
-| Product Phase 6 — Flow | **ACTIVE / P7 NOT GREEN / P8 BLOCKED.** Dope explains what happens through software using evidence-backed Static Flow over the Physical Map, with optional data enrichment. The overview/query repair has exposed the target Adaptive SEO behavior, but map readability and packaged controlled-shutdown evidence still block P7. Active correction: `c6-map-canvas-priority` at unchanged `0.6.7`. |
+| Product Phase 6 — Flow | **ACTIVE / P7 NOT GREEN / P8 BLOCKED.** Dope explains what happens through software using evidence-backed Static Flow over the Physical Map, with optional data enrichment. Map-canvas P3 isolated an aggregate-to-canvas projection mismatch after the overview repair. Active correction: `c6-flow-projection-contract` at unchanged `0.6.7`; packaged controlled shutdown remains a separate P7 blocker. |
 | Product Phase 7 — AI Presence | AI understands Dope through Dope-owned project state, architecture, Flow, Planning Map context and provider-independent read-only assistance. |
 | Product Phase 8 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 9 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
@@ -959,3 +959,26 @@ Its product law is **map canvas first**:
 This correction is presentation-only. It must not reopen Flow extraction, query/aggregation semantics, hard budgets, canonical architecture, Flow persistence or Planning Map semantics.
 
 The packaged controlled-shutdown failure is a separate P7 blocker and is not folded into this UI correction. P8 remains blocked until P7 is Green.
+
+
+## October 2, 2026 — Phase 6 Flow projection-contract correction
+
+The `c6-map-canvas-priority` P3 direct GUI replay is preserved as **Not Green** at candidate `d4f17c7338196aaf78f5851dce42622527c166e4`, package `0.6.7`.
+
+The canvas-first Architecture shell, compact toolbar, floating inspection overlay and bounded Planning presentation passed their observed checks. Flow qualification failed for a narrower reason: Adaptive Recommendations inspection reported 27 summarized relationships while React Flow rendered zero participants/edges.
+
+The failure is at the query-result -> presentation boundary. `queryStaticFlow()` already publishes System/SubSystem overview-visible relationships in `FlowQueryResult.aggregates` and detail/trace relationships in `FlowQueryResult.facts`, with `projectionLevel` identifying the semantic level. `projectFlowMap()` still begins from raw `facts`, so an aggregate-only overview can render empty.
+
+Correction `c6-flow-projection-contract` is approved at unchanged `0.6.7`.
+
+Locked repair:
+- `projectionLevel: system | subsystem` -> project `aggregates`;
+- `projectionLevel: detail` -> project raw `facts`;
+- preserve aggregate origin/provenance/variant/behavior metadata;
+- raw trace fact IDs still emphasize matching aggregate origins;
+- correct the stale backend overview assertion rather than repopulating overview facts;
+- do not reopen extraction, aggregation policy, budgets, architecture, Planning semantics, map-shell design or persistence.
+
+The correction uses one manual GPT-6 Sol High one-off with focused automated repair plus a fresh replay of only the Flow evidence blocked by the empty canvas. If Green, record supplemental P3 evidence and return to fresh Phase 6 P7 qualification.
+
+The packaged AppImage controlled-shutdown failure remains a separate unresolved P7 blocker. P8 remains blocked.
