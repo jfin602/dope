@@ -265,7 +265,31 @@ Keep global roles application-wide. Do not add generic project-level role overri
 
 **Decision**
 
-TBD.
+Locked: initial Phase 7C uses a small, explicit override hierarchy:
+
+```text
+explicit per-turn / explicit feature exact-model choice
+    -> persistent Chat model policy where applicable
+    -> feature-requested role + stronger constraints
+    -> global application-wide role policy
+```
+
+A new Chat defaults to **Follow Interactive role** rather than copying the currently resolved model ID. A Chat may instead persist an **exact pinned model** as its default. Chats that follow Interactive automatically use later global Interactive-policy changes on subsequent turns; pinned Chats remain pinned until the developer changes them.
+
+Per-message composer selection remains **exact-model and one-turn only**. Initial 7C does not add a per-message role selector to the ordinary composer. Choosing a model for one turn does not rewrite the Chat default or any global role policy.
+
+Features normally request their canonical role plus any stronger feature/request constraints. A feature may still expose an explicit exact-model choice when developer authority or feature-specific consent requires it—for example Software Map Analyze Project. In that case the exact selection overrides the Software Map role for that execution without mutating the role policy.
+
+Initial 7C does **not** add generic project-level, workspace-level or window-level role overrides. Global application roles plus Chat-specific policy and feature-specific execution choices cover the current product needs without adding another policy/persistence layer prematurely.
+
+Lower-scope choices never mutate higher-scope policy:
+- one-turn model choice does not change Chat/global defaults;
+- pinning a Chat does not change Interactive;
+- an explicit Software Map run target does not change the Software Map role;
+- feature constraints do not rewrite global role policy.
+
+Historical executions retain the model/routing provenance that actually occurred and are unaffected by later default/role changes.
+
 
 ---
 
