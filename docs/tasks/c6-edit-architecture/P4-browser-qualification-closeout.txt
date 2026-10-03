@@ -1,10 +1,10 @@
 TASK: Correction 6 / P4 — Edit Architecture direct GUI qualification and closeout
 
 MODEL / REASONING / USAGE
-- Recommended: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: yes.
 - Execution: manual interactive T3 handoff.
-- Version remains exactly 0.6.7.
+- Required unchanged project version: `0.6.7`.
 
 GOAL
 
