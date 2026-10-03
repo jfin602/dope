@@ -27,7 +27,7 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-**Current roadmap scope:** Product Phase 5 remains owner-closed for sequencing with P11 Not Green and P12 unexecuted. Product Phase 6 — Flow reached P7 at `0.6.7`; P7 is **Not Green** and P8 is blocked. Valid raw Adaptive SEO execution Flow exists, but the real GUI truncated away the required HTTP Input and leaked unrelated shared-store interactions into focused views. Correction `c6-flow-overview-priority` is now the active bounded repair at unchanged `0.6.7` from pushed baseline `59573b0dd66935fc78ec1eb0cc34f60644e4f000`. It is a single manual GPT-6 Sol High one-off prompt at `docs/tasks/c6-flow-overview-priority/one-off-flow-overview-priority.txt`; do not run it through `codex:phase`. Preserve the original P7 evidence; do not relabel it Green.
+**Current roadmap scope:** Product Phase 5 remains owner-closed for sequencing with P11 Not Green and P12 unexecuted. Product Phase 6 — Flow reached P7 at `0.6.7`; P7 is **Not Green** and P8 is blocked. Preserve every retained Not Green result rather than rewriting history. The bounded Phase 6 correction chain now includes `c6-flow-overview-priority`, retained Not Green `c6-map-canvas-priority` P3 evidence, and `c6-flow-projection-contract` for the aggregate-versus-facts canvas contract. The newly approved `c6-smap-outline` correction is an independent presentation-only refinement of the left Software Map inspector at unchanged `0.6.7`; it must not change Software Map truth, Flow extraction/query/aggregation, canonical architecture, Planning semantics, persistence, or provider/runtime behavior. `c6-branch-seam` remains separately bounded to synthesis strategy / Model Runtime and does not authorize general Phase 7 AI Presence.
 
 Product Phase 5 — Visual Software Planning is **OWNER-CLOSED FOR SEQUENCING**. Its retained P11 result is Not Green and P12 was not executed; see `docs/tasks/p5/closeout.md`. Product Phase 6 — Flow is the current planning scope from `0.6.0`. Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved core scope. Architecture-discovery follow-ons remain historical evidence; `c4-smap-storage` and `c4-color-theme` remain GREEN / QUALIFIED at unchanged `0.4.6`.
 
@@ -60,6 +60,20 @@ Only the narrow provider-independent sMap synthesis boundary and reference adapt
 - Architecture and Flow projections share stable Software Map identity, focus, selection and source-navigation context.
 - Initial Phase 6 uses deterministic layered directional layout; do not add an automatic layout-engine dependency unless qualification demonstrates a concrete need.
 - Phase 6 may deepen TypeScript/JavaScript and bounded framework extractors for the Adaptive SEO qualification slice. It does not promise whole-program taint/data-lineage completeness or cross-language completeness.
+
+### c6-smap-outline presentation laws
+
+- The left sMap inspector remains the deep hierarchy, responsibility, relationship, evidence, source-navigation and diagnostics surface defined by ADR 0008.
+- Architecture hierarchy rows are outline/navigation rows, not a grid of filled primary-action buttons. Brand orange is an interaction/selection accent, not the background of every node.
+- Labels are type-first and human-scannable: `system - Name`, `subsystem - Name`, `component - Name`, and for code at minimum `file - project/relative/path`; deeper code kinds may use the same grammar where useful.
+- Important names and paths must remain readable. Prefer wrapping over ellipsis/truncation.
+- Fresh inspector state starts with every expandable architecture branch collapsed.
+- Shared architecture selection remains owned by the existing Software Map controller identity. Do not add an inspector-only selected architecture ID.
+- When the center map selects an architecture identity, the inspector opens only the missing ancestor chain required to reveal it, scrolls it into view, and marks it selected. Preserve unrelated branches the user manually expanded rather than collapsing them as a side effect.
+- Sidebar row selection must continue to drive the same shared architecture selection observed by the center map.
+- Disclosure and selection are distinct interactions: the chevron/disclosure toggles expansion, while the row label selects. Preserve keyboard access, focus-visible treatment, and non-color state cues.
+- Expanded/collapsed state is workbench presentation state only. Do not write it into `.dope/`, Software Map DTOs, architecture declarations, Flow state, Planning state, or project persistence.
+- Compacting `Open Physical Map` / `Refresh Software Map` is allowed as presentation cleanup, but must not introduce a new toolbar/domain architecture or remove existing inspector diagnostics/details/evidence/source behavior.
 
 Qualification requirements are phase-aware.
 
