@@ -251,8 +251,7 @@ Run:
 - focused Software Map UI/controller tests;
 - c6-smap-outline regression;
 - any new Edit Architecture tests;
-- `npm run build:extension`;
-- `npm run build:browser`;
+- `npm run build:browser` (already includes the extension build);
 - `git diff --check`;
 - exact `0.6.7` / no-root-lock checks.
 
@@ -357,8 +356,7 @@ Run:
 - targeted refinement unit tests;
 - Software Map initialization/backend tests affected by the new canonical refinement method;
 - accepted editor/controller/widget tests;
-- `npm run build:extension`;
-- `npm run build:browser`;
+- `npm run build:browser` (already includes the extension build);
 - `git diff --check`;
 - exact `0.6.7` / no-root-lock checks.
 
@@ -387,8 +385,8 @@ Do not regenerate the accepted Architecture merely to test editing.
 ### Automated T3 gate
 
 Run once on exact candidate:
-- correction-focused P1-P3 tests;
 - `npm run check`;
+- any correction-focused test not already included in the aggregate command;
 - `git diff --check`;
 - exact package/internal reference coherence;
 - no-root-lock check;
