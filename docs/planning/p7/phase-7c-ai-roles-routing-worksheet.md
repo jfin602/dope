@@ -13,7 +13,7 @@ This worksheet assumes Phase 7A already provides durable Chats/ChatPanels, conve
 
 Phase 7C should add **policy and deterministic target resolution**, not rebuild provider setup, connection health, model discovery or feature-specific authority.
 
-Resolved answers should be promoted into ADR 0026, the Phase 7 plan, architecture/product contracts, roadmap text, or a follow-on ADR through the normal documentation workflow.
+All ten primary decisions are resolved and promoted into ADR 0026, the Phase 7 plan, Architecture, Product Model, Stability and roadmap authority. This worksheet remains explanatory planning history.
 
 ## Already locked
 
