@@ -55,6 +55,7 @@ export class SoftwareMapController {
     draft: ArchitectureReviewNode[] = [];
     refinementPreview?: TargetedRefinementResult;
     readonly refinedEvidence = new Map<string, ProposedArchitectureNode>();
+    readonly refinedSources = new Map<string, TargetedRefinementResult['evidence']>();
     refinementBusyKey?: string;
     refinementError?: { key: string; message: string };
     private refinementRequest = 0;
@@ -152,6 +153,7 @@ export class SoftwareMapController {
         this.draftDirty = false;
         this.refinementPreview = undefined; this.refinementBusyKey = undefined; this.refinementError = undefined; ++this.refinementRequest;
         this.refinedEvidence.clear();
+        this.refinedSources.clear();
         this.models = [];
         this.geminiModels = [];
         this.geminiConfigured = false;
@@ -232,11 +234,11 @@ export class SoftwareMapController {
         this.error = '';
         this.notify();
     }
-    async setup(): Promise<void> {
+    async setup(forAccepted = false): Promise<void> {
         if (!this.handle || !this.connection) return;
         const project = this.project;
         const request = ++this.setupRequest;
-        this.flow = 'setup';
+        if (!forAccepted) this.flow = 'setup';
         this.setupReady = false;
         this.error = '';
         this.notify();
@@ -489,59 +491,87 @@ export class SoftwareMapController {
         for (const key of removed) this.refinedEvidence.delete(key);
         this.draftChanged();
     }
-    async searchDeeper(key: string): Promise<void> {
-        if (!this.connection || !this.handle || !this.review || this.flow !== 'review' || this.refinementBusyKey) return;
-        const target = this.draft.find(node => node.proposalKey === key);
+    invalidateRefinement(notify = true): void {
+        ++this.refinementRequest;
+        this.refinementPreview = undefined; this.refinementBusyKey = undefined; this.refinementError = undefined;
+        if (notify) this.notify();
+    }
+    async searchDeeper(key: string, accepted?: { draft: ArchitectureReviewNode[]; fingerprint: string; current: () => boolean }): Promise<void> {
+        if (!this.connection || !this.handle || this.refinementBusyKey ||
+            !accepted && (!this.review || this.flow !== 'review') ||
+            accepted && (!this.setupReady || this.setupBusy || this.initialization?.state !== 'initialized')) {
+            if (accepted) { this.refinementError = { key, message: 'Set up and test a selected provider/model before Search Deeper.' }; this.notify(); }
+            return;
+        }
+        const draft = accepted?.draft ?? this.draft;
+        const target = draft.find(node => node.proposalKey === key);
         if (!target || target.kind === 'component') return;
-        const project = this.project, reviewId = this.review.reviewId, request = ++this.refinementRequest;
-        const branch = structuredClone(targetBranch(this.draft, key));
-        const parentContext = this.draft.find(node => node.proposalKey === target.parentProposalKey);
+        const project = this.project, reviewId = this.review?.reviewId, request = ++this.refinementRequest;
+        const providerKind = this.providerKind, modelLabel = providerKind === 'local' ? this.model : this.geminiModel;
+        const branch = structuredClone(targetBranch(draft, key));
+        const parentContext = draft.find(node => node.proposalKey === target.parentProposalKey);
         const fingerprint = branchFingerprint(branch, parentContext);
         this.refinementPreview = undefined; this.refinementError = undefined; this.refinementBusyKey = key; this.notify();
         try {
-            const result = await this.connection.searchDeeper(this.handle, { reviewId, targetKey: key,
+            const result = await this.connection.searchDeeper(this.handle, { ...(accepted ? {
+                expectedCanonicalFingerprint: accepted.fingerprint, providerKind, modelLabel } : { reviewId: reviewId! }), targetKey: key,
                 targetKind: target.kind, parentKey: target.parentProposalKey,
                 ...(parentContext ? { parentContext: structuredClone(parentContext) } : {}), branchFingerprint: fingerprint, branch });
-            if (project !== this.project || request !== this.refinementRequest || this.review?.reviewId !== reviewId) return;
-            if (result.reviewId !== reviewId || result.targetKey !== key || result.branchFingerprint !== fingerprint ||
-                branchFingerprint(targetBranch(this.draft, key), this.draft.find(node => node.proposalKey === target.parentProposalKey)) !== fingerprint)
+            if (project !== this.project || request !== this.refinementRequest ||
+                (accepted ? !accepted.current() : this.review?.reviewId !== reviewId)) return;
+            if (result.reviewId !== reviewId || result.expectedCanonicalFingerprint !== accepted?.fingerprint ||
+                result.targetKey !== key || result.branchFingerprint !== fingerprint ||
+                accepted && (!this.setupReady || this.providerKind !== providerKind ||
+                    (providerKind === 'local' ? this.model : this.geminiModel) !== modelLabel ||
+                    result.providerKind !== providerKind || result.modelLabel !== modelLabel) ||
+                accepted && this.initialization?.declarationFingerprint !== accepted.fingerprint ||
+                branchFingerprint(targetBranch(draft, key), draft.find(node => node.proposalKey === target.parentProposalKey)) !== fingerprint)
                 throw new Error('Target branch changed during Search Deeper');
             this.refinementPreview = result;
         } catch (error) {
-            if (project === this.project && request === this.refinementRequest)
+            if (project === this.project && request === this.refinementRequest && (!accepted || accepted.current()))
                 this.refinementError = { key, message: String(error) };
         } finally {
             if (project === this.project && request === this.refinementRequest) { this.refinementBusyKey = undefined; this.notify(); }
         }
     }
     rejectRefinement(): void { this.refinementPreview = undefined; this.notify(); }
-    acceptRefinement(): void {
+    acceptRefinement(acceptedDraft?: ArchitectureReviewNode[]): ArchitectureReviewNode[] | undefined {
         const preview = this.refinementPreview;
-        if (!preview || this.review?.reviewId !== preview.reviewId ||
-            branchFingerprint(targetBranch(this.draft, preview.targetKey),
-                this.draft.find(node => node.proposalKey === preview.parentKey)) !== preview.branchFingerprint) {
+        const draft = acceptedDraft ?? this.draft;
+        if (!preview || (acceptedDraft ? !preview.expectedCanonicalFingerprint ||
+            this.initialization?.declarationFingerprint !== preview.expectedCanonicalFingerprint :
+            this.review?.reviewId !== preview.reviewId) ||
+            branchFingerprint(targetBranch(draft, preview.targetKey),
+                draft.find(node => node.proposalKey === preview.parentKey)) !== preview.branchFingerprint) {
             this.refinementPreview = undefined; this.refinementError = preview ? { key: preview.targetKey, message: 'Target branch changed' } : undefined;
-            this.notify(); return;
+            this.notify(); return undefined;
         }
         const omittedAnchor = preview.targetKind === 'subsystem' ? preview.proposal.nodes.find(node => node.kind === 'system')?.proposalKey : undefined;
         const replacements = preview.proposal.nodes.filter(node => node.proposalKey !== omittedAnchor);
         const keys = new Map(replacements.map(node => [node.proposalKey, `draft:${++this.nextKey}`]));
-        const removed = new Set(targetBranch(this.draft, preview.targetKey).map(node => node.proposalKey));
-        const usedIds = new Set(this.draft.filter(node => !removed.has(node.proposalKey)).map(node => node.id));
+        const removed = new Set(targetBranch(draft, preview.targetKey).map(node => node.proposalKey));
+        const usedIds = new Set(draft.filter(node => !removed.has(node.proposalKey)).map(node => node.id));
         const replacementNodes: ArchitectureReviewNode[] = replacements.map(node => {
             const roots = [...new Set(node.evidenceRefs.flatMap(ref => {
-                const item = this.review!.packet.items.find(fact => fact.id === ref);
-                return item?.kind === 'configuration' ? item.sourcePaths ?? [] : item ? [item.path] : [];
+                const item = this.review?.packet.items.find(fact => fact.id === ref) ?? preview.evidence?.find(fact => fact.id === ref);
+                return item?.kind === 'configuration' && 'sourcePaths' in item ? item.sourcePaths ?? [] : item ? [item.path] : [];
             }))].sort();
             const id = suggestArchitectureId(node.name, usedIds);
             usedIds.add(id);
             return { proposalKey: keys.get(node.proposalKey)!, kind: node.kind, id, name: node.name, purpose: node.purpose,
                 parentProposalKey: node.parentProposalKey === null || node.parentProposalKey === omittedAnchor ? preview.parentKey : keys.get(node.parentProposalKey)!, roots };
         });
-        for (const key of removed) this.refinedEvidence.delete(key);
-        for (const node of replacements) this.refinedEvidence.set(keys.get(node.proposalKey)!, node);
-        this.draft = [...this.draft.filter(node => !removed.has(node.proposalKey)), ...replacementNodes];
-        this.refinementPreview = undefined; this.draftChanged();
+        for (const key of removed) { this.refinedEvidence.delete(key); this.refinedSources.delete(key); }
+        for (const node of replacements) {
+            this.refinedEvidence.set(keys.get(node.proposalKey)!, node);
+            if (preview.evidence) this.refinedSources.set(keys.get(node.proposalKey)!, preview.evidence);
+        }
+        const next = [...draft.filter(node => !removed.has(node.proposalKey)), ...replacementNodes];
+        if (!acceptedDraft) this.draft = next;
+        this.refinementPreview = undefined;
+        if (acceptedDraft) this.notify(); else this.draftChanged();
+        return next;
     }
     draftError(): string | undefined {
         try { declarationFromDraft(this.draft); return undefined; } catch (error) { return String(error); }
@@ -583,6 +613,7 @@ export class SoftwareMapController {
             this.refinementPreview = undefined;
             this.refinementBusyKey = undefined; this.refinementError = undefined; ++this.refinementRequest;
             this.refinedEvidence.clear();
+            this.refinedSources.clear();
             this.status = status;
             if (status.state === 'ready') await this.load(status);
         } catch (error) {
@@ -629,6 +660,7 @@ export class SoftwareMapController {
             this.configuredSetup = undefined; this.geminiConfigured = false; this.models = []; this.geminiModels = [];
             this.refinementPreview = undefined; this.refinementBusyKey = undefined; this.refinementError = undefined; ++this.refinementRequest;
             this.refinedEvidence.clear();
+            this.refinedSources.clear();
             this.analysisStartedAt = undefined;
             if (this.initialization?.state !== 'initialized' && this.initialization) this.initialization = { ...this.initialization, state: 'uninitialized' };
         } catch (error) {

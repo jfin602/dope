@@ -4,26 +4,28 @@ import { isDirectSystemResponsibilityEvidence, parseArchitectureProposal } from 
 import type { ArchitectureReviewNode } from './service';
 import type { CoverageLedgerEntry, SynthesisProvider } from './hierarchical-synthesis';
 
-export interface TargetedRefinementInput {
-    reviewId: string;
+export type RefinementBasis = { reviewId: string; expectedCanonicalFingerprint?: never; providerKind?: never; modelLabel?: never } |
+    { expectedCanonicalFingerprint: string; reviewId?: never; providerKind: 'local' | 'gemini'; modelLabel: string };
+export type TargetedRefinementInput = RefinementBasis & {
     targetKey: string;
     targetKind: 'system' | 'subsystem';
     parentKey: string | null;
     parentContext?: ArchitectureReviewNode;
     branchFingerprint: string;
     branch: ArchitectureReviewNode[];
-}
-export interface TargetedRefinementRequest extends TargetedRefinementInput {
+};
+export type TargetedRefinementRequest = TargetedRefinementInput & {
     stage: 'target-refinement';
     parentPacketFingerprint: string;
     view: ReturnType<typeof createArchitectureEvidenceView>;
     coverageCues: CoverageLedgerEntry[];
     documents: DocumentSupport[];
-}
-export interface TargetedRefinementResult extends TargetedRefinementInput {
+};
+export type TargetedRefinementResult = TargetedRefinementInput & {
     parentPacketFingerprint: string;
     proposal: ArchitectureProposal;
-}
+    evidence?: { id: string; kind: string; path: string; uri: string; sourcePaths?: string[] }[];
+};
 
 /** Branch order does not affect revision; every editable field and descendant does. */
 export function branchFingerprint(branch: ArchitectureReviewNode[], parentContext?: ArchitectureReviewNode): string {
@@ -43,7 +45,9 @@ export function targetBranch(draft: ArchitectureReviewNode[], key: string): Arch
     return draft.filter(node => descendants.has(node.proposalKey));
 }
 export function validateTarget(input: TargetedRefinementInput): void {
-    if (!input.reviewId || !input.targetKey || !['system', 'subsystem'].includes(input.targetKind) ||
+    if ((!input.reviewId && !input.expectedCanonicalFingerprint) || !!input.reviewId === !!input.expectedCanonicalFingerprint ||
+        input.expectedCanonicalFingerprint && (!input.providerKind || !input.modelLabel) ||
+        !input.targetKey || !['system', 'subsystem'].includes(input.targetKind) ||
         !Array.isArray(input.branch) || !input.branch.length || input.branch.length > 100 ||
         input.branchFingerprint !== branchFingerprint(input.branch, input.parentContext)) throw new Error('Invalid refinement branch');
     const root = input.branch.find(node => node.proposalKey === input.targetKey);
@@ -59,7 +63,7 @@ export function validateTarget(input: TargetedRefinementInput): void {
             input.targetKind === 'subsystem' && node.kind !== 'component'))) throw new Error('Invalid refinement target');
 }
 
-/** Select original review evidence only; current filesystem docs cannot silently enter this review. */
+/** Select evidence from the explicitly pinned review or accepted-edit packet. */
 export async function planTargetedRefinement(input: TargetedRefinementInput, packet: ArchitectureEvidencePacket,
     ledger: CoverageLedgerEntry[], provider: SynthesisProvider, original?: ArchitectureProposal): Promise<TargetedRefinementRequest> {
     validateTarget(input);
@@ -110,7 +114,9 @@ export function parseTargetedRefinement(output: unknown, request: TargetedRefine
         proposal.nodes.some(node => node.kind !== 'system' && !node.evidenceRefs.some(ref =>
             isDirectSystemResponsibilityEvidence(packet.items.find(item => item.id === ref)!))))
         throw new Error('Invalid targeted refinement boundary');
-    return { reviewId: request.reviewId, targetKey: request.targetKey, targetKind: request.targetKind,
+    return { ...(request.reviewId ? { reviewId: request.reviewId } : { expectedCanonicalFingerprint: request.expectedCanonicalFingerprint!,
+        providerKind: request.providerKind!, modelLabel: request.modelLabel! }),
+        targetKey: request.targetKey, targetKind: request.targetKind,
         parentKey: request.parentKey, ...(request.parentContext ? { parentContext: request.parentContext } : {}),
         branchFingerprint: request.branchFingerprint, branch: request.branch,
         parentPacketFingerprint: request.parentPacketFingerprint, proposal };

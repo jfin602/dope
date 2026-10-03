@@ -435,15 +435,26 @@ export class SoftwareMapBackend implements SoftwareMapService {
     }
     async searchDeeper(projectHandle: string, input: TargetedRefinementInput): Promise<TargetedRefinementResult> {
         const root = this.active(projectHandle), pending = this.pending, run = this.run;
-        if (this.phase !== 'review_required' || !pending || pending.reviewId !== input.reviewId)
-            throw new Error('No matching architecture review');
+        const accepted = !!input.expectedCanonicalFingerprint;
+        const current = accepted ? await readInitialization(root) : undefined;
+        if (accepted ? !current?.initialized || current.declarationFingerprint !== input.expectedCanonicalFingerprint :
+            this.phase !== 'review_required' || !pending || pending.reviewId !== input.reviewId)
+            throw new Error(accepted ? 'Stale canonical Architecture basis' : 'No matching architecture review');
         const provider = this.provider;
         const refine = provider?.runRefinement;
         if (!provider || !(await this.synthesisReady(projectHandle)) || !refine)
             throw new Error('Synthesis provider is not ready');
         const modelLabel = (await provider.capabilities()).modelLabel;
-        const request = await planTargetedRefinement(input, pending.packet, pending.coverageLedger ?? [], provider, pending.proposal);
+        if (accepted && (provider.kind !== input.providerKind || modelLabel !== input.modelLabel))
+            throw new Error('Selected synthesis provider or model changed');
+        if (accepted) { await this.localProvider?.warmUp(); this.still(projectHandle, root, run); }
+        const packet = accepted ? await this.index.collectEvidence(root) : pending!.packet;
+        if (accepted) validateArchitectureEvidencePacket(packet);
+        const request = await planTargetedRefinement(input, packet, pending && !accepted ? pending.coverageLedger ?? [] : [],
+            provider, accepted ? undefined : pending!.proposal);
         this.still(projectHandle, root, run);
+        if (accepted && (await readInitialization(root)).declarationFingerprint !== input.expectedCanonicalFingerprint)
+            throw new Error('Stale canonical Architecture basis');
         const startedAt = new Date().toISOString(), start = performance.now();
         let execution: Awaited<ReturnType<NonNullable<SynthesisProvider['runRefinement']>>> | undefined;
         let result: TargetedRefinementResult | undefined;
@@ -451,8 +462,25 @@ export class SoftwareMapBackend implements SoftwareMapService {
         try {
             execution = await refine.call(provider, request);
             this.still(projectHandle, root, run);
-            if (this.pending?.reviewId !== input.reviewId) throw new Error('Stale architecture review');
-            result = parseTargetedRefinement(execution.output, request, pending.packet);
+            if (accepted) {
+                if ((await readInitialization(root)).declarationFingerprint !== input.expectedCanonicalFingerprint)
+                    throw new Error('Stale canonical Architecture basis');
+            } else if (this.pending?.reviewId !== input.reviewId) throw new Error('Stale architecture review');
+            result = parseTargetedRefinement(execution.output, request, packet);
+            if (accepted) {
+                const refs = new Set(result.proposal.nodes.flatMap(node => node.evidenceRefs));
+                result.evidence = [];
+                for (const item of request.view.items.filter(item => refs.has(item.id))) {
+                    const canonical = await realpath(join(root, projectPath(item.path)));
+                    this.still(projectHandle, root, run);
+                    const local = relative(root, canonical);
+                    if (!local || local === '..' || local.startsWith(`..${sep}`)) throw new Error('Unsafe Software Map source path');
+                    result.evidence.push({ id: item.id, kind: item.kind, path: item.path, uri: pathToFileURL(canonical).href,
+                        ...(item.kind === 'configuration' && item.sourcePaths ? { sourcePaths: item.sourcePaths } : {}) });
+                }
+                if ((await readInitialization(root)).declarationFingerprint !== input.expectedCanonicalFingerprint)
+                    throw new Error('Stale canonical Architecture basis');
+            }
             return structuredClone(result);
         } catch (error) {
             failureClass = execution ? 'invalid-stage-result' : this.run !== run ? 'cancelled' : 'provider-failure';

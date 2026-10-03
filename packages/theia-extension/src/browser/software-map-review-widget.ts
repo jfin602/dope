@@ -2,7 +2,7 @@ import { BaseWidget, codicon, Message } from '@theia/core/lib/browser/widgets/wi
 import { OpenerService, open } from '@theia/core/lib/browser';
 import URI from '@theia/core/lib/common/uri';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
-import { architectureDraft, reviewDiagnostics, suggestArchitectureId } from '@dope/software-map';
+import { architectureDraft, branchFingerprint, targetBranch, reviewDiagnostics, suggestArchitectureId } from '@dope/software-map';
 import type { ArchitectureReviewNode } from '@dope/software-map';
 import { declarationFromDraft, SoftwareMapController } from './software-map-controller';
 import './dope.css';
@@ -56,6 +56,8 @@ export class SoftwareMapReviewWidget extends BaseWidget {
     private clearAccepted(): void {
         ++this.acceptedRequest;
         this.acceptedWorkspace = undefined;
+        this.controller.invalidateRefinement(false);
+        this.controller.refinedEvidence.clear(); this.controller.refinedSources.clear();
         this.acceptedDraft = undefined;
         this.acceptedFingerprint = undefined;
         this.acceptedBaseline = '';
@@ -68,6 +70,8 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         const workspace = this.controller.workspace;
         if (!workspace || this.controller.initialization?.state !== 'initialized') return;
         const request = ++this.acceptedRequest;
+        this.controller.invalidateRefinement(false);
+        this.controller.refinedEvidence.clear(); this.controller.refinedSources.clear();
         this.acceptedWorkspace = workspace;
         this.acceptedDraft = undefined;
         this.acceptedBusy = true;
@@ -81,6 +85,7 @@ export class SoftwareMapReviewWidget extends BaseWidget {
             this.acceptedFingerprint = current.declarationFingerprint;
             this.selectedKey = this.acceptedDraft[0]?.proposalKey;
             this.acceptedMessage = 'Canonical Architecture loaded. Changes stay in this editor until Save Architecture.';
+            void this.controller.setup(true);
         } catch (error) {
             if (request === this.acceptedRequest) this.acceptedMessage = String(error);
         } finally {
@@ -89,7 +94,13 @@ export class SoftwareMapReviewWidget extends BaseWidget {
     }
     private draft(): ArchitectureReviewNode[] { return this.acceptedDraft ?? this.controller.draft; }
     private draftChanged(): void {
-        if (this.controller.initialization?.state === 'initialized') { this.acceptedMessage = ''; this.render(); }
+        if (this.controller.initialization?.state === 'initialized') {
+            const preview = this.controller.refinementPreview;
+            if (preview && this.acceptedDraft && branchFingerprint(targetBranch(this.acceptedDraft, preview.targetKey),
+                this.acceptedDraft.find(node => node.proposalKey === preview.parentKey)) !== preview.branchFingerprint)
+                this.controller.invalidateRefinement();
+            this.acceptedMessage = ''; this.render();
+        }
         else this.controller.draftChanged();
     }
     private async saveAccepted(): Promise<void> {
@@ -124,9 +135,47 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         node.type = 'button'; node.onclick = action;
         return node;
     }
-    private field(label: string, value: string, update: (value: string) => void, multiline = false): HTMLElement {
+    private renderRefinementSetup(): HTMLElement {
+        const model = this.controller;
+        const setup = this.element('details');
+        setup.setAttribute('aria-label', 'Search Deeper provider setup');
+        setup.append(this.element('summary', `Search Deeper provider · ${model.setupReady ? `${model.providerKind} ready` : 'setup required'}`));
+        const choice = this.element('select');
+        for (const kind of ['local', 'gemini'] as const) {
+            const option = this.element('option', kind === 'local' ? 'Local' : 'Gemini');
+            option.value = kind; option.selected = model.providerKind === kind; choice.append(option);
+        }
+        choice.onchange = () => model.chooseProvider(choice.value as 'local' | 'gemini');
+        const providerLabel = this.element('label', 'Provider'); providerLabel.append(choice); setup.append(providerLabel);
+        if (model.providerKind === 'local') {
+            setup.append(this.field('Endpoint', model.endpoint, value => model.changeEndpoint(value)),
+                this.field('Loaded context tokens', String(model.contextWindowTokens), value => model.changeContextTokens(value)),
+                this.field('Optional session token', model.token, value => model.changeToken(value), false, true));
+            setup.append(this.button('Discover Local models', () => void model.discover()));
+            const select = this.element('select');
+            for (const id of model.models) { const option = this.element('option', id); option.value = id; option.selected = id === model.model; select.append(option); }
+            select.onchange = () => model.changeModel(select.value);
+            const modelLabel = this.element('label', 'Local model'); modelLabel.append(select);
+            setup.append(modelLabel, this.button('Test selected Local model', () => void model.probe()));
+        } else {
+            setup.append(this.element('p', model.geminiEnvironmentKeyAvailable ? 'Gemini key available on this machine.' : 'Enter an AI Studio API key.'),
+                this.field('AI Studio API key', model.geminiKey, value => model.changeGeminiKey(value), false, true));
+            setup.append(this.button('Discover Gemini models', () => void model.discoverGemini()));
+            const select = this.element('select');
+            for (const id of model.geminiModels) { const option = this.element('option', id); option.value = id; option.selected = id === model.geminiModel; select.append(option); }
+            select.onchange = () => void model.changeGeminiModel(select.value);
+            const modelLabel = this.element('label', 'Gemini model'); modelLabel.append(select);
+            setup.append(modelLabel, this.button('Test selected Gemini model', () => void model.probeGemini()));
+        }
+        setup.append(this.element('p', model.error || (model.setupBusy ? 'Checking provider…' : model.setupReady ?
+            'Selected model is ready for Search Deeper.' : 'Discover and test a selected model before Search Deeper.')));
+        for (const button of setup.querySelectorAll('button')) button.disabled = model.setupBusy;
+        return setup;
+    }
+    private field(label: string, value: string, update: (value: string) => void, multiline = false, secret = false): HTMLElement {
         const wrapper = this.element('label', label);
         const input = this.element(multiline ? 'textarea' : 'input');
+        if (secret && input instanceof HTMLInputElement) input.type = 'password';
         input.value = value;
         input.oninput = () => update(input.value);
         wrapper.append(input);
@@ -141,6 +190,7 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         const focusedButton = focused?.tagName === 'BUTTON' ? focused.textContent : undefined;
         const cursor = focused instanceof HTMLInputElement || focused instanceof HTMLTextAreaElement ? focused.selectionStart : null;
         const advancedOpen = this.content.querySelector<HTMLDetailsElement>('.dope-smap-review-layout details')?.open ?? false;
+        const setupOpen = this.content.querySelector<HTMLDetailsElement>('details[aria-label="Search Deeper provider setup"]')?.open ?? false;
         const review = this.controller.review;
         const accepted = this.controller.initialization?.state === 'initialized';
         if (accepted && this.controller.workspace !== this.acceptedWorkspace) { void this.loadAccepted(); return; }
@@ -229,11 +279,13 @@ export class SoftwareMapReviewWidget extends BaseWidget {
                 this.close();
             }));
         }
-        this.content.replaceChildren(heading, summary, ...(pending ? [ambiguity!, questions, coverage] : []), layout, actions);
+        this.content.replaceChildren(heading, summary, ...(pending ? [ambiguity!, questions, coverage] : [this.renderRefinementSetup()]), layout, actions);
         this.node.scrollTop = scrollTop;
         if (accepted && this.acceptedBusy) for (const control of this.content.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLButtonElement>('input, textarea, select, button')) control.disabled = true;
         const advanced = this.content.querySelector<HTMLDetailsElement>('.dope-smap-review-layout details');
         if (advanced) advanced.open = advancedOpen;
+        const setup = this.content.querySelector<HTMLDetailsElement>('details[aria-label="Search Deeper provider setup"]');
+        if (setup) setup.open = setupOpen;
         if (focusedField) {
             const input = [...this.content.querySelectorAll('label')].find(label => label.firstChild?.textContent === focusedField)?.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select');
             input?.focus();
@@ -243,8 +295,8 @@ export class SoftwareMapReviewWidget extends BaseWidget {
     }
     private renderDetail(node: ArchitectureReviewNode, target: HTMLElement): void {
         const review = this.controller.initialization?.state === 'review_required' ? this.controller.review : undefined;
-        const proposal = review && (this.controller.refinedEvidence.get(node.proposalKey) ??
-            review.proposal.nodes.find(item => item.proposalKey === node.proposalKey));
+        const proposal = this.controller.refinedEvidence.get(node.proposalKey) ??
+            review?.proposal.nodes.find(item => item.proposalKey === node.proposalKey);
         target.append(this.element('h3', `${node.kind}: ${node.name || '(unnamed)'}`));
         const edit = (key: 'name' | 'purpose') => this.field(key === 'name' ? 'Name' : 'Purpose / responsibility', node[key], value => {
             const otherIds = this.draft().filter(item => item !== node).map(item => item.id);
@@ -277,8 +329,9 @@ export class SoftwareMapReviewWidget extends BaseWidget {
             }
             target.append(this.element('h4', 'Observed'));
             for (const ref of proposal.evidenceRefs) {
-                const item = review!.packet.items.find(fact => fact.id === ref);
-                target.append(this.button(`${item?.kind ?? 'Evidence'} · ${item?.path ?? ref}`, () => void this.openSource(ref)));
+                const item = review?.packet.items.find(fact => fact.id === ref) ?? this.controller.refinedSources.get(node.proposalKey)?.find(fact => fact.id === ref);
+                target.append(this.button(`${item?.kind ?? 'Evidence'} · ${item?.path ?? ref}`, () => item && 'uri' in item ?
+                    void open(this.opener, new URI(item.uri)) : void this.openSource(ref)));
             }
         } else if (review) target.append(this.element('p', 'Developer-added boundary.'));
         const docs = review?.packet.documents?.filter(doc =>
@@ -287,8 +340,14 @@ export class SoftwareMapReviewWidget extends BaseWidget {
             target.append(this.element('h4', 'Documented'));
             for (const doc of docs) target.append(this.button(`${doc.class} · ${doc.path}`, () => void this.openDocument(doc.path)));
         }
-        if (review && node.kind !== 'component') {
-            const search = this.button('Search Deeper', () => void this.controller.searchDeeper(node.proposalKey));
+        if (node.kind !== 'component') {
+            const search = this.button('Search Deeper', () => {
+                if (!this.acceptedDraft) { void this.controller.searchDeeper(node.proposalKey); return; }
+                const draft = this.acceptedDraft, fingerprint = this.acceptedFingerprint, request = this.acceptedRequest;
+                if (draft && fingerprint) void this.controller.searchDeeper(node.proposalKey, { draft, fingerprint,
+                    current: () => !this.isDisposed && request === this.acceptedRequest && draft === this.acceptedDraft &&
+                        fingerprint === this.acceptedFingerprint && this.controller.workspace === this.acceptedWorkspace });
+            });
             search.disabled = !!this.controller.refinementBusyKey || this.controller.setupBusy;
             target.append(search);
             if (this.controller.refinementBusyKey === node.proposalKey) target.append(this.element('p', 'Searching this branch…'));
@@ -305,11 +364,17 @@ export class SoftwareMapReviewWidget extends BaseWidget {
                 for (const proposed of preview.proposal.nodes.filter(item => !(preview.targetKind === 'subsystem' && item.kind === 'system'))) {
                     section.append(this.element('p', `Inferred: ${proposed.rationale}`));
                     for (const ref of proposed.evidenceRefs) {
-                        const item = review.packet.items.find(fact => fact.id === ref);
-                        section.append(this.button(`Observed: ${item?.path ?? ref}`, () => void this.openSource(ref)));
+                        const item = review?.packet.items.find(fact => fact.id === ref) ?? preview.evidence?.find(fact => fact.id === ref);
+                        section.append(this.button(`Observed: ${item?.path ?? ref}`, () => item && 'uri' in item ?
+                            void open(this.opener, new URI(item.uri)) : void this.openSource(ref)));
                     }
                 }
-                section.append(this.button('Accept refinement', () => this.controller.acceptRefinement()),
+                section.append(this.button('Accept refinement', () => {
+                    if (this.acceptedDraft) {
+                        const next = this.controller.acceptRefinement(this.acceptedDraft);
+                        if (next) { this.acceptedDraft = next; this.draftChanged(); }
+                    } else this.controller.acceptRefinement();
+                }),
                     this.button('Reject refinement', () => this.controller.rejectRefinement()));
                 target.append(section);
             }

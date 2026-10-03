@@ -587,7 +587,12 @@ test('Edit Architecture remains one widget with an in-memory accepted draft and 
   assert.match(editor, /this\.node\.scrollTop = scrollTop/);
   assert.match(editor, /this\.clearAccepted\(\);/);
   assert.match(editor, /Allowed' : 'Forbidden'/);
-  assert.match(editor, /review && node\.kind !== 'component'/);
+  assert.match(editor, /if \(node\.kind !== 'component'\)/);
+  assert.match(editor, /Search Deeper provider setup/);
+  assert.match(editor, /this\.controller\.setup\(true\)/);
+  assert.match(editor, /this\.controller\.searchDeeper\(node\.proposalKey, \{ draft, fingerprint/);
+  assert.match(editor, /this\.controller\.acceptRefinement\(this\.acceptedDraft\)/);
+  assert.match(editor, /input\.type = 'password'/);
   assert.doesNotMatch(editor, /selectedId|saveReviewDraft|\.dope\//);
   assert.doesNotMatch(editor, /setData|localStorage|sessionStorage/);
   assert.doesNotMatch(editor, /sMap Architecture Review|Proposed hierarchy|Edit Hierarchy/);
@@ -734,6 +739,76 @@ test('Subsystem refinement replaces only that Subsystem inside its parent System
   assert.equal(controller.draft.find((node: any) => node.proposalKey === 'proposal:t').name, 'T');
   assert.deepEqual(controller.draft.filter((node: any) => node.name === 'S1' || node.name === 'S2').map((node: any) => node.parentProposalKey),
     ['proposal:a', 'proposal:a']);
+  controller.dispose();
+});
+
+test('accepted refinement is ready-only, preview-first, branch-local and drops late results', async () => {
+  const c = connection();
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attached = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attached;
+  controller.initialization = { state: 'initialized', declarationFingerprint: 'canonical', declarationPresent: true };
+  controller.providerKind = 'local'; controller.model = 'chosen-model';
+  const draft = [
+    { proposalKey: 'system', kind: 'system', parentProposalKey: null, id: 'system', name: 'Manual system', purpose: 'System', roots: ['src'] },
+    { proposalKey: 'sub', kind: 'subsystem', parentProposalKey: 'system', id: 'sub', name: 'Manual sub', purpose: 'Sub', roots: ['src/api'], forbiddenDependencies: ['secret'] },
+    { proposalKey: 'sibling', kind: 'system', parentProposalKey: null, id: 'sibling', name: 'Sibling', purpose: 'Unrelated edit', roots: [] },
+  ] as any[];
+  const current = () => true;
+  await controller.searchDeeper('system', { draft, fingerprint: 'canonical', current });
+  assert.match(controller.refinementError?.message ?? '', /Set up and test/);
+  controller.setupReady = true;
+  let sent: any;
+  const waiting = deferred();
+  c.searchDeeper = (_handle: string, input: any) => { sent = input; return waiting.promise; };
+  const search = controller.searchDeeper('system', { draft, fingerprint: 'canonical', current });
+  assert.equal(sent.reviewId, undefined);
+  assert.equal(sent.providerKind, 'local'); assert.equal(sent.modelLabel, 'chosen-model');
+  assert.deepEqual(sent.branch.map((node: any) => node.name), ['Manual system', 'Manual sub']);
+  const proposal = { nodes: [{ proposalKey: 'new-system', kind: 'system', parentProposalKey: null,
+    name: 'Refined', purpose: 'Refined', evidenceRefs: ['fact'] }] };
+  waiting.resolve({ ...sent, proposal, evidence: [{ id: 'fact', kind: 'semantic', path: 'src/api/a.ts', uri: 'file:///A/src/api/a.ts' }] });
+  await search;
+  assert.equal(draft[0].name, 'Manual system');
+  controller.rejectRefinement(); assert.equal(draft[0].name, 'Manual system');
+  c.searchDeeper = (_handle: string, input: any) => Promise.resolve({ ...input, proposal });
+  await controller.searchDeeper('system', { draft, fingerprint: 'canonical', current });
+  const next = controller.acceptRefinement(draft)!;
+  assert.equal(next.find(node => node.proposalKey === 'sibling')?.purpose, 'Unrelated edit');
+  assert.equal(draft[0].name, 'Manual system');
+  assert.equal(c.accepted, 0); assert.equal(c.analyzed, 0);
+  const late = deferred();
+  c.searchDeeper = (_handle: string, input: any) => { sent = input; return late.promise; };
+  const stale = controller.searchDeeper('sub', { draft, fingerprint: 'canonical', current });
+  draft[1].name = 'Changed during request';
+  late.resolve({ ...sent, proposal }); await stale;
+  assert.equal(controller.refinementPreview, undefined);
+  assert.match(controller.refinementError?.message ?? '', /changed/);
+  const newRequest = deferred(); c.searchDeeper = (_handle: string, input: any) => { sent = input; return newRequest.promise; };
+  const pending = controller.searchDeeper('sub', { draft, fingerprint: 'canonical', current });
+  controller.invalidateRefinement();
+  c.searchDeeper = (_handle: string, input: any) => Promise.resolve({ ...input, proposal });
+  await controller.searchDeeper('sub', { draft, fingerprint: 'canonical', current });
+  const newest = controller.refinementPreview;
+  newRequest.resolve({ ...sent, proposal }); await pending;
+  assert.equal(controller.refinementPreview, newest);
+  controller.rejectRefinement();
+  const discarded = deferred(); c.searchDeeper = (_handle: string, input: any) => { sent = input; return discarded.promise; };
+  let editorOpen = true;
+  const closing = controller.searchDeeper('sub', { draft, fingerprint: 'canonical', current: () => editorOpen });
+  editorOpen = false;
+  discarded.resolve({ ...sent, proposal }); await closing;
+  assert.equal(controller.refinementPreview, undefined);
+  const canonicalChange = deferred(); c.searchDeeper = (_handle: string, input: any) => { sent = input; return canonicalChange.promise; };
+  const changing = controller.searchDeeper('sub', { draft, fingerprint: 'canonical', current });
+  controller.initialization.declarationFingerprint = 'new-canonical';
+  canonicalChange.resolve({ ...sent, proposal }); await changing;
+  assert.equal(controller.refinementPreview, undefined);
+  controller.initialization.declarationFingerprint = 'canonical';
+  const switchedCall = deferred(); c.searchDeeper = (_handle: string, input: any) => { sent = input; return switchedCall.promise; };
+  const switching = controller.searchDeeper('sub', { draft, fingerprint: 'canonical', current });
+  await controller.attach('file:///B');
+  switchedCall.resolve({ ...sent, proposal }); await switching;
+  assert.equal(controller.refinementPreview, undefined);
   controller.dispose();
 });
 

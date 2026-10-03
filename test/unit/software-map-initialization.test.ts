@@ -11,7 +11,7 @@ import { acceptInitialization, readInitialization } from '../../packages/code-an
 import { readSynthesisRun } from '../../packages/code-analysis/lib/node/smap-analysis-file.js';
 import { SoftwareMapBackend } from '../../packages/theia-extension/lib/node/software-map-backend.js';
 import type { SynthesisProvider, SynthesisStageRequest, SoftwareMapClient, AnalysisProgressEvent } from '../../packages/software-map/lib/index.js';
-import { branchFingerprint, isDirectSystemResponsibilityEvidence, parseArchitecture, SynthesisProviderFailure } from '../../packages/software-map/lib/index.js';
+import { architectureDraft, branchFingerprint, targetBranch, isDirectSystemResponsibilityEvidence, parseArchitecture, SynthesisProviderFailure } from '../../packages/software-map/lib/index.js';
 
 const declaration = { schemaVersion: 1 as const, systems: [{ id: 'app', name: 'App', purpose: 'App', subsystems: [
   { id: 'api', name: 'API', purpose: 'API', roots: ['src/api'], forbiddenDependencies: ['secret'] },
@@ -670,6 +670,80 @@ test('targeted backend call uses pending packet and edited branch, validates evi
     await assert.rejects(service.resolveReviewDocument(handle, review.reviewId, 'MODULES.md'), /Unsafe/);
     await assert.rejects(service.searchDeeper(handle, { ...input, branchFingerprint: 'wrong' }), /Invalid refinement branch/);
     await assert.rejects(service.searchDeeper(handle, { ...input, reviewId: 'wrong' }), /matching/);
+    service.dispose();
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('accepted refinement uses fresh request evidence, explicit provider and canonical basis without review work', async () => {
+  const root = await fixture();
+  try {
+    const before = await readInitialization(root);
+    await acceptInitialization(root, before.declarationFingerprint, declaration);
+    await writeFile(join(root, 'README.md'), '# Fresh accepted evidence');
+    let seen: any;
+    const provider: SynthesisProvider = { ...fakeProvider(), runRefinement: async request => {
+      seen = request;
+      const fact = request.view.items.find(isDirectSystemResponsibilityEvidence)!;
+      assert.ok(fact);
+      const node = (key: string, kind: 'system' | 'subsystem', parent: string | null) => ({ proposalKey: key,
+        kind, name: key, purpose: key, parentProposalKey: parent, confidence: .8, rationale: fact.path,
+        evidenceRefs: [fact.id], evidence: [fact.path] });
+      return { output: { schemaVersion: 1, summary: 'Accepted refinement', needsMoreEvidence: false,
+        nodes: request.targetKind === 'system' ? [node('proposal:new-system', 'system', null)] :
+          [node('proposal:anchor', 'system', null), node('proposal:one', 'subsystem', 'proposal:anchor'),
+            node('proposal:two', 'subsystem', 'proposal:anchor')],
+        unassignedEvidenceRefs: [], openQuestions: [], evidenceRequests: [] },
+        usage: { providerKind: 'local', modelLabel: 'fixture-model', requestBytes: 1, outputBytes: 1,
+          tokenMeasurement: 'unavailable' } };
+    } };
+    const service = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), provider);
+    const handle = await attach(service, root);
+    const canonical = (await service.readArchitecture(handle)).declarationFingerprint;
+    const draft = architectureDraft(declaration);
+    const system = draft.find(node => node.kind === 'system')!;
+    const edited = [{ ...system, name: 'Manual accepted edit' }, ...draft.filter(node => node !== system)];
+    const systemBranch = targetBranch(edited, system.proposalKey);
+    const basis = { expectedCanonicalFingerprint: canonical, providerKind: 'local' as const, modelLabel: 'fixture-model',
+      targetKey: system.proposalKey, targetKind: 'system' as const, parentKey: null, branch: systemBranch,
+      branchFingerprint: branchFingerprint(systemBranch) };
+    const unreadyIndex = new SoftwareMapIndex(new TypeScriptAnalyzer());
+    let collected = 0;
+    const collect = unreadyIndex.collectEvidence.bind(unreadyIndex);
+    unreadyIndex.collectEvidence = async path => { collected++; return collect(path); };
+    const unready = backend(unreadyIndex);
+    await assert.rejects(unready.searchDeeper(await attach(unready, root), basis), /provider is not ready/);
+    assert.equal(collected, 0);
+    unready.dispose();
+    const bytes = await projectBytes(root);
+    const result = await service.searchDeeper(handle, basis);
+    assert.equal(seen.branch[0].name, 'Manual accepted edit');
+    assert.equal(seen.documents.find((doc: any) => doc.path === 'README.md').content, '# Fresh accepted evidence');
+    assert.equal(result.reviewId, undefined);
+    assert.ok(result.evidence?.[0].uri.startsWith('file:'));
+    assert.deepEqual(await projectBytes(root), bytes);
+    assert.equal(await readSynthesisRun(root), undefined);
+    const subsystem = draft.find(node => node.kind === 'subsystem')!;
+    const subBranch = [{ ...subsystem, purpose: 'Manual branch purpose' }];
+    const subInput = { ...basis, targetKey: subsystem.proposalKey, targetKind: 'subsystem' as const,
+      parentKey: system.proposalKey, parentContext: system, branch: subBranch,
+      branchFingerprint: branchFingerprint(subBranch, system) };
+    assert.equal((await service.searchDeeper(handle, subInput)).proposal.nodes.filter(node => node.kind === 'subsystem').length, 2);
+    assert.equal(seen.branch[0].purpose, 'Manual branch purpose');
+    await assert.rejects(service.searchDeeper(handle, { ...basis, providerKind: 'gemini' }), /Selected synthesis provider/);
+    await assert.rejects(service.searchDeeper(handle, { ...basis, expectedCanonicalFingerprint: 'stale' }), /Stale canonical/);
+    const run = provider.runRefinement!;
+    let started!: () => void, release!: () => void;
+    const entered = new Promise<void>(resolve => { started = resolve; });
+    const paused = new Promise<void>(resolve => { release = resolve; });
+    provider.runRefinement = async request => { started(); await paused; return run(request); };
+    const late = service.searchDeeper(handle, basis);
+    await entered;
+    const changed = structuredClone(declaration);
+    changed.systems[0].purpose = 'Changed while refining';
+    await service.saveArchitecture(handle, canonical, changed);
+    release();
+    await assert.rejects(late, /Stale canonical/);
+    assert.equal(await readSynthesisRun(root), undefined);
     service.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
