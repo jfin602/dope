@@ -117,3 +117,8 @@ Chat existence does not grant filesystem/process/Git/network mutation authority.
 Phase 7 qualification must cover persistence/restart, folder moves, titles/timestamps/order, project isolation, malformed/conflict recovery, multiple ChatPanels, duplicate-open prevention, per-Chat settings, per-turn model routing/provenance, explicit provider failure/no fallback, bounded context provenance, `.dope/chats` analysis isolation and direct Dope-on-Dope GUI use.
 
 The exact prompt stack and version transition are planned separately. Accepting this ADR at repository version `0.6.8` does not itself create `0.7.0` or implementation evidence.
+
+
+## Amendment — ADR 0026
+
+ADR 0026 extends Phase 7 after the initial AI Presence slice with the global AI Center and role-based model routing. ADR 0025 remains authoritative for Chat identity, persistence, ChatPanel behavior, per-message explicit model choice, per-Chat settings and no-silent-fallback semantics. Global connection inventory and role policy remain application/runtime concerns outside Chat state, and an explicit per-message choice continues to override lower-precedence routing policy.
