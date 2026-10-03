@@ -21,6 +21,9 @@ The correction addresses the fresh P7 presentation failure in which the intended
    - Architecture/Flow mode and genuinely map-global actions share one compact toolbar.
    - The toolbar overlays or minimally borders the map rather than creating a large permanent region above it.
    - Context-specific node/edge actions remain contextual rather than bloating the global toolbar.
+   - The read-only project/workspace location is not a toolbar control. Render `Project / <workspace path>` in a dedicated compact context strip directly beneath the toolbar, left-aligned and able to use essentially the full map width.
+   - The project context strip is visually secondary plain text in a lightly styled, closely padded container; it must not use orange/action-button chrome or compete with/compress toolbar controls.
+   - Keep the project path on one line and preserve access to exceptionally long paths, preferring horizontal overflow/scroll over destructive truncation when needed.
 
 2. **Icon-first controls**
    - Replace ordinary text-heavy map tool buttons with recognizable icons where a clear visual representation exists.
@@ -58,6 +61,7 @@ The correction addresses the fresh P7 presentation failure in which the intended
 
 - shared Physical Map / Flow center workspace presentation shell;
 - toolbar consolidation;
+- compact read-only project/workspace context strip beneath the toolbar;
 - icon controls and tooltips;
 - overlay details presentation and minimize/restore behavior;
 - responsive canvas sizing;
@@ -98,6 +102,27 @@ Supporting planning:
 - `implementation-plan.md`
 
 P1-P2 are runner-friendly implementation/integration prompts at unchanged `0.6.7`. P3 is the manual browser handoff.
+
+## Owner clarification — project context placement
+
+The project/workspace location no longer shares horizontal space with map-global controls. The intended shell is:
+
+```text
+Physical Map workspace
+  compact map toolbar
+    Physical Map / Planning Map
+    Architecture / Flow
+    map-global controls
+
+  project context strip
+    Project / <workspace path>
+
+  canvas stage
+    React Flow canvas
+    floating status/inspection surfaces
+```
+
+This is a presentation-only clarification at unchanged `0.6.7`. The context strip is not a second toolbar and introduces no new domain, controller, fit/refit, focus, selection or persistence semantics. Qualification of this bounded change must cover a normal path, a deliberately long path, a narrow workbench width, unchanged toolbar usability, path reachability, and unchanged Architecture / Flow / Planning switching.
 
 ## Version and routing
 
