@@ -1,8 +1,8 @@
 # Product Phase 7 Implementation Plan
 
-Status: **STREAMLINED / P1-P13 READY FOR EXECUTION**
+Status: **PHASE 7A P1-P12 READY / P13+ REPLAN REQUIRED BY ADR 0026**
 Activation source/package baseline: `59c7f72a29dcdecdf9b908176754bfd02179b004`, `0.7.0`
-Authority: Phase 7 plan/activation, ADR 0004/0006/0022/0025, prompt assessment
+Authority: Phase 7 plan/activation, ADR 0004/0006/0022/0025/0026, prompt assessment
 
 ## Execution-efficiency rules
 
@@ -17,7 +17,7 @@ Testing rule:
 - ordinary prompts run focused tests plus the narrowest affected package build/typecheck;
 - do not run browser builds merely for reassurance; P11 owns the first integrated browser build and P12 owns aggregate/browser/Electron/package qualification;
 - no live provider calls before P12;
-- phase validation is run before execution and again in P12/P13, not after every prompt;
+- phase validation is run before execution and again in P12; after P12 the regenerated P13+ continuation must be validated before execution;
 - after a repair, rerun only evidence invalidated by that repair.
 
 ## P1 — Chat domain + service DTOs (`0.7.1`) — T1
@@ -56,8 +56,8 @@ Wire context toolbar actions plus Ask/Explain/Trace/Find Related and non-blockin
 ## P12 — qualification (`0.7.12`) — T3
 Directly dogfood multi-panel durable Chat, multiple real models where available, no-fallback failure, context/provenance, restart/isolation and package/native exact-candidate behavior. Own the broad aggregate checks.
 
-## P13 — closeout (`0.7.13`) — T3
-Evidence-only audit/version coherence. No product repair and no duplicate broad evidence.
+## P13 — superseded closeout slot
+The previously written `0.7.13` evidence-only closeout is superseded by ADR 0026 and must not execute. After P12, reassess the actual P6-P12 Model Connections/runtime/UI implementation and regenerate a contiguous P13+ continuation for Phase 7B AI Center, Phase 7C role routing, integrated qualification and exactly one new final Phase 7 closeout. Preserve already-executed P1-P12 history; do not disguise the follow-on as a correction stack.
 
 ## Expected production shape
 
@@ -70,4 +70,4 @@ Evidence-only audit/version coherence. No product repair and no duplicate broad 
   -> multi-instance ChatPanel/composer/settings
 ```
 
-No provider-native canonical conversation, mutation/delegation, or Phase 8 background alignment.
+No provider-native canonical conversation, mutation/delegation, or Phase 8 background alignment. Phase 7B/7C extend this production shape with AI Center over the same Model Connections registry plus user/application-scoped `AIRolePolicy`; they must not create a second provider store or weaken Software Map/Phase 8 authority constraints.
