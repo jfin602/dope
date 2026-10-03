@@ -1,9 +1,9 @@
 # Product Phase 7 — AI Presence Plan
 
-Status: **ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION**
+Status: **ACTIVE / PHASE 7A P1-P12 WRITTEN / PHASE 7B-7C APPROVED**
 Activation baseline: coherent `0.7.0` at commit `59c7f72a29dcdecdf9b908176754bfd02179b004`
-Version transition: coherent `0.7.0` activation is complete; executable prompts use `0.7.1` through `0.7.9`
-Primary decision: ADR 0025
+Package family: `0.7.x`
+Primary decisions: ADR 0025 and ADR 0026
 
 ## Goal
 
@@ -11,7 +11,52 @@ Make AI a durable, movable, provider-independent collaborator inside Dope while 
 
 A developer should be able to create and organize project Chats, open different Chats in different workbench areas, choose which connected model receives each message, configure per-Chat context/model policy, reuse bounded project and saved-chat context, and return after restart without depending on provider-native session state.
 
-Phase 7 remains read-only with respect to general project mutation. It prepares the collaboration/runtime/context foundation that later Scoped Delegation can use without granting mutation authority early.
+Phase 7 also establishes one user-global **AI Center** for provider/runtime connections and a policy-based role-routing layer so later features can request appropriate AI capability without inventing their own provider configuration. Phase 7 remains read-only with respect to general project mutation. It prepares the collaboration/runtime/context/routing foundation that later Scoped Delegation can use without granting mutation authority early.
+
+## Phase 7 sequencing
+
+Phase 7 is one roadmap phase with three ordered slices:
+
+### Phase 7A — AI Presence
+
+The existing P1-P12 stack owns:
+- durable Chat domain/persistence/service;
+- reusable ChatPanel and saved-chat organization;
+- one-live-panel-per-Chat ownership/restoration;
+- conversational Model Runtime extension;
+- application-level Model Connections registry;
+- Local/Gemini/OpenAI conversational adapters;
+- per-message model selection and per-Chat settings;
+- bounded project/saved-chat context composition;
+- read-only Ask / Explain / Trace / Find Related behavior;
+- direct GUI/live-provider/restart/package qualification.
+
+### Phase 7B — AI Center
+
+After 7A qualification:
+- repurpose the bottom-left account/profile action into an **AI** launcher;
+- open/reveal a dedicated center-workspace **AI Center**;
+- move account/profile management under Settings;
+- project the existing Model Connections registry as one global connection-management surface;
+- manage Local/LM Studio, OpenAI, Gemini and future connections in one place;
+- expose discovered models, capabilities, readiness/health, refresh/reconnect and connection testing;
+- persist only safe non-secret user/application configuration;
+- keep credentials/tokens out of `.dope/`, Chat state and ordinary plaintext preferences;
+- design the UI/contracts as role-ready without creating a second provider registry.
+
+### Phase 7C — AI Roles & Routing
+
+After AI Center:
+- add global `AIRolePolicy` configuration over connected models;
+- initial roles are **Interactive**, **Deep Reasoning**, **Background**, **Software Map**, and **Coding Agent**;
+- roles express preferred targets, permitted fallbacks, required capabilities and constraints rather than one fixed model alias;
+- features may request a role + constraints instead of hard-coding provider names;
+- explicit user model choices remain authoritative and do not silently fall back;
+- feature privacy/egress/locality/authority constraints cannot be weakened by global preferences;
+- Phase 8 Background execution must be local-only with hosted fallback forbidden;
+- Software Map preference does not replace ADR 0022's explicit provider/readiness/evidence-egress authority.
+
+The currently written P13 evidence-only closeout predates ADR 0026 and is **superseded / must not execute as the final Phase 7 closeout**. After P12, regenerate the contiguous P13+ continuation and exactly one new final closeout using `/prompt-ass -> /prompt-plan -> /prompt-write p7`. Do not disguise 7B/7C as a correction stack.
 
 ## Locked product contracts
 
@@ -48,6 +93,15 @@ Phase 7 remains read-only with respect to general project mutation. It prepares 
 - Per-turn composer overrides do not silently rewrite Chat defaults.
 - Provider credentials/endpoints/global connection inventory remain application/runtime configuration.
 
+### AI connection and routing contracts
+- `AIConnection`, `AIModel` and `AIRolePolicy` are distinct concepts.
+- Connections and role policies are user/application state by default, not project truth.
+- Features consume the shared Model Runtime/connection registry rather than owning independent provider inventories.
+- Persistent secrets require a secure application/runtime boundary; they never live in `.dope/` or ordinary plaintext persisted state.
+- Resolution precedence is explicit per-message/feature choice -> Chat policy where applicable -> feature-requested role + constraints -> global role policy -> permitted fallback.
+- Role fallback is allowed only when the initiating policy permits it and all feature constraints remain satisfied.
+- Connection/routing preference never grants feature-level evidence-egress or mutation authority.
+
 ### Context
 - Active Chat history is direct context subject to budgeting.
 - Other saved Chats remain available through explicit attachment/search/bounded retrieval, not bulk automatic injection.
@@ -63,83 +117,65 @@ Phase 7 remains read-only with respect to general project mutation. It prepares 
 
 ## Architecture direction
 
-Use clear ownership boundaries rather than one large Theia chat widget:
+Use clear ownership boundaries rather than one large Theia chat widget or feature-owned provider stores:
 
 ```text
+AI Center
+    -> Model Connections / Model Registry
+        -> Model Runtime -> provider adapters
+    -> Role Policies
+
 ChatPanel(s)
     -> ChatService
         -> ChatRepository -> .dope/chats/
         -> Context Composer -> Dope project/domain readers
-        -> Model Runtime -> provider adapters
+        -> Model Runtime / role resolution
 ```
 
-The current ADR 0022 Model Runtime seam should be extended, not replaced. sMap synthesis strategy remains separate from general conversational orchestration. Provider adapters do not own Chat identity, settings, context policy or product semantics.
-
-## Prompt-planning workstreams
-
-The subsequent `/prompt-ass` should choose the smallest coherent prompt count and preserve the ordinary <=8-minute target / 15-minute hard budget. Expected workstreams are:
-
-1. **Chat contracts + persistence** — framework-independent Chat/message/settings/folder contracts, safe `.dope/chats/` repository, identity/revision/migration/recovery/project isolation and analysis exclusion.
-2. **Chat application service** — queries/events/title/order/move/settings operations plus cross-process conflict/write ownership.
-3. **ChatPanel shell + selector** — reusable multi-area panel, Select Chat/Chat modes, folder hierarchy and core keyboard/dark-first behavior.
-4. **Panel ownership/restoration** — one-live-panel-per-Chat registry, focus-existing semantics and deterministic restart/layout conflict recovery.
-5. **Model Runtime conversational extension** — connected-model enumeration, chat generation/streaming/cancellation, capabilities, normalized error/usage/provenance and no-silent-fallback behavior.
-6. **Composer + Chat settings** — two-row composer, per-turn model/context controls, top-bar settings cog and persistent per-Chat policy.
-7. **Context composition** — bounded editor/project/Project Mind/Architecture/Physical Map/Flow/Planning/saved-chat context with visible/auditable provenance.
-8. **AI Presence behaviors** — Ask / Explain / Trace / Find Related through the common Chat pipeline rather than separate state owners.
-9. **Integration/qualification** — exact candidate persistence/restart/project isolation/multi-panel/multi-model/failure/GUI/package evidence.
-
-Do not assume these are final P1-P9 boundaries. `/prompt-ass` owns decomposition after source/test inspection and should merge/split workstreams to keep implementation coherent and fast.
+ADR 0022 Model Runtime remains the provider execution seam. sMap synthesis strategy remains separate from general conversational orchestration. ADR 0026 adds the global AI Center/role-policy layer without allowing it to bypass Software Map or Phase 8 authority constraints. Provider adapters do not own Chat identity, settings, context policy, role policy or product semantics.
 
 ## Validation strategy
 
-### T1 implementation evidence
-- pure Chat domain/repository/service tests;
-- focused panel/controller/state tests;
-- Model Runtime adapter/capability/error tests;
-- context-composition/provenance tests;
-- `.dope/chats` source-analysis isolation regression coverage;
-- affected package typecheck/build only where justified;
-- version/framework/internal-reference and `git diff --check` guards.
+### Phase 7A
+Use the already-written P1-P12 focused/integration/qualification plan. P12 is the direct GUI/live-provider/restart/package qualification handoff for the AI Presence slice.
 
-### T2 integration evidence
-- frontend/backend Chat persistence and events;
-- multiple ChatPanel instances over one repository;
-- live-owner/focus-existing behavior;
-- restart restoration and stale panel state;
-- real connected reference-provider streaming/cancellation/failure where environment is available;
-- context composition across existing Dope domain services.
+### Phase 7B
+Qualification must directly prove:
+- the bottom-left AI launcher opens/reveals AI Center and account/profile management remains available under Settings;
+- Local/OpenAI/Gemini connections are represented through one registry without duplicate ownership;
+- model discovery/readiness/refresh/test state is accurate and recoverable;
+- connection configuration is user/application scoped rather than copied with project `.dope/`;
+- secrets are absent from project/Chat/plaintext preference persistence;
+- existing Chat and sMap provider consumers still use the shared Model Runtime/registry seams.
 
-### T3 qualification
-Use the real Dope repository and the packaged/native path where applicable. Directly prove:
-- create several Chats and nested folders; automatic title then user edit;
-- move a Chat between folders without identity/history loss;
-- open multiple ChatPanels in different workbench areas;
-- prevent one Chat from being actively duplicated across panels;
-- configure per-Chat settings and preserve them after restart;
-- send successive turns in one Chat to at least two connected models when the qualification environment has them configured; if only one is available, the missing cross-provider direct evidence is an explicit Evidence Gap rather than mocked Green;
-- inspect durable actual provider/model provenance;
-- exercise selected-model failure with no silent fallback;
-- use real current-file/editor plus Architecture/Flow/Project Mind/Planning or saved-Chat context and inspect the recorded context references;
-- restart/reopen and recover Chats/folders/settings/history/order;
-- verify a second local project cannot see/mutate the first project's Chats;
-- verify Chat writes do not change Software Map physical input identity or stale Planning Maps;
-- preserve existing Phase 5/6 qualification history rather than inferring it Green from Phase 7.
+### Phase 7C
+Qualification must directly prove:
+- role policies select compatible connected models by capability/constraint;
+- explicit per-message choice wins and failure does not silently route elsewhere;
+- permitted role fallback works only within policy constraints;
+- Software Map preference does not silently authorize repository evidence transfer;
+- Phase 8-compatible Background constraints reject hosted fallback;
+- Chat/model provenance records actual execution target after role resolution.
+
+### Final Phase 7 qualification
+The final closeout may occur only after 7A, 7B and 7C are implemented/qualified on one coherent `0.7.x` candidate without turning Chat, connection state, role policy or provider state into canonical project truth.
 
 ## Non-goals
 
 - no mutation-capable AI/tool execution;
-- no ProposedAction/Authority/Tool Runtime implementation merely to support Chat;
+- no ProposedAction/Authority/Tool Runtime implementation merely to support Chat/routing;
 - no autonomous coding loop;
-- no Phase 8 background drift/alignment monitoring;
+- no Phase 8 background drift/alignment monitoring itself;
 - no requirement that provider-native sessions survive or be canonical;
 - no automatic conversion of chat output into Project Mind/Architecture/Planning;
 - no automatic injection of the entire saved-chat archive into prompts;
 - no ChatPanel-specific copy of Chat persistence;
-- no silent model/provider fallback.
+- no feature-owned duplicate provider registry;
+- no silent model/provider fallback after explicit selection;
+- no global preference that bypasses privacy/egress/locality/authority constraints.
 
 ## Exit condition
 
-Phase 7 is qualified when durable project Chats and ChatPanels are useful as a real provider-independent AI Presence surface: persistence, organization, multi-panel projection, model selection/provenance, per-Chat settings, bounded project context, read-only assistance, restart/project isolation and provider-failure behavior all work together on an exact candidate without turning chat or provider state into canonical project truth.
+Phase 7 is qualified when durable project Chats/ChatPanels, one global AI Center, and policy-based AI role routing work together as a provider-independent read-only AI collaboration substrate. The developer can manage connections/models centrally, explicitly steer individual turns, define default roles without hard-coding providers, preserve Software Map and background privacy authority, and recover across restart/project/provider failures without provider or routing state becoming canonical project truth.
 
-Prompt assessment, implementation planning and `p7` writing are complete. Validate with `npm run codex:phase:validate -- p7`, then execute through the runner. P8 is the direct browser/provider qualification handoff and P9 is evidence-only closeout.
+Execute the current P1-P12 Phase 7A stack only. Do **not** run the currently written P13 closeout. After P12, reassess the implemented connection/runtime surfaces and regenerate P13+ for AI Center, roles/routing, final integrated qualification and final Phase 7 closeout.
