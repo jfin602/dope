@@ -26,12 +26,18 @@ import { PlanningMapController } from './planning-map-controller';
 import { SmapPresentationState } from './smap-presentation-state';
 import { VisualPlanningService, visualPlanningServicePath } from '@dope/visual-planning/lib/service';
 import { ChatService, chatServicePath } from '@dope/chat/lib/service';
+import { ModelConnectionsService, modelConnectionsServicePath } from '@dope/contracts/lib/model-connections-service';
+import type { ModelConnectionsClient } from '@dope/contracts/lib/model-connections-service';
 import type { ChatClient } from '@dope/chat/lib/service';
 import { ChatPanelWidget } from './chat-panel-widget';
 import { ChatOpenOwners } from './chat-panel-controller';
 import { CHAT_PANEL_ID, chatAreas, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
+    bind(ModelConnectionsService).toDynamicValue(context =>
+        ServiceConnectionProvider.createProxy<ModelConnectionsService & RpcServer<ModelConnectionsClient>>(
+            context.container, modelConnectionsServicePath,
+            { notifyModelConnectionsChanged() {} } satisfies ModelConnectionsClient)).inSingletonScope();
     bind(FrontendApplicationContribution).toDynamicValue(context => ({
         initialize: () => context.container.get(ThemeService).register(dopeDarkTheme),
     })).inSingletonScope();

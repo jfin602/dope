@@ -1,4 +1,4 @@
-/** Only the provider-neutral capabilities needed by current structured generation. */
+/** Structured-generation limits remain the Software Map synthesis contract. */
 export interface ModelCapabilities {
     modelLabel: string;
     contextWindowTokens: number;
@@ -25,7 +25,8 @@ export interface ModelGenerationExecution { output: unknown; usage: ModelGenerat
 /** Adapter-classified, safe failure. Raw provider errors stay inside the adapter. */
 export class ModelRuntimeFailure extends Error {
     constructor(message: string, readonly failureClass: 'transient-transport' | 'transient-upstream' |
-        'cancelled' | 'invalid-json' | 'authentication' | 'nonretryable-provider') {
+        'cancelled' | 'invalid-json' | 'authentication' | 'nonretryable-provider' |
+        'connection-unavailable' | 'model-unavailable' | 'unsupported-capability') {
         super(message);
     }
 }
@@ -53,4 +54,46 @@ export interface ModelRuntime extends ModelRuntimeSession {
     capabilities(): Promise<ModelCapabilities>;
     estimateTokens(input: string): Promise<number>;
     generateStructured(request: StructuredGenerationRequest): Promise<ModelGenerationExecution>;
+}
+
+/** IDs are opaque and stable within a connection; neither encodes provider behavior. */
+export type ModelConnectionId = string;
+export type ModelId = string;
+export interface ModelSelection { connectionId: ModelConnectionId; modelId: ModelId }
+
+export interface ConversationModelCapabilities {
+    conversationalText: boolean;
+    streaming: boolean;
+    contextWindowTokens?: number;
+    maxInputTokens?: number;
+    maxOutputTokens?: number;
+    /** Adapter-defined controls and their supported values, e.g. reasoning effort. */
+    reasoningControls?: ReadonlyArray<{ id: string; values: readonly string[] }>;
+}
+export interface ConnectedModel {
+    id: ModelId;
+    label: string;
+    capabilities: ConversationModelCapabilities;
+}
+export interface ConversationMessage { role: 'system' | 'user' | 'assistant'; content: string }
+export interface ConversationRequest {
+    modelId: ModelId;
+    messages: readonly ConversationMessage[];
+    controls?: Readonly<Record<string, string>>;
+    signal?: AbortSignal;
+}
+export interface ConversationUsage {
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+    tokenMeasurement: ModelGenerationUsage['tokenMeasurement'];
+}
+export type ConversationEvent =
+    | { type: 'delta'; text: string }
+    | { type: 'complete'; text: string; usage: ConversationUsage; finishReason?: string };
+
+/** A conversational adapter never chooses another model after explicit routing. */
+export interface ConversationalModelRuntime {
+    discoverModels(): Promise<ConnectedModel[]>;
+    generateConversation(request: ConversationRequest): AsyncIterable<ConversationEvent>;
 }

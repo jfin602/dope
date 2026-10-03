@@ -18,6 +18,8 @@ import { VisualPlanningBackend } from './visual-planning-backend';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { chatServicePath, type ChatClient } from '@dope/chat/lib/service';
 import { ChatBackend } from './chat-backend';
+import { modelConnectionsServicePath, type ModelConnectionsClient } from '@dope/contracts/lib/model-connections-service';
+import { ModelConnectionsBackend, ModelConnectionsRegistry } from './model-connections';
 
 export default new ContainerModule(bind => {
     bind(NoteStore).toSelf().inSingletonScope();
@@ -25,6 +27,12 @@ export default new ContainerModule(bind => {
     bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
     bind(PlanningStore).toSelf().inSingletonScope();
     bind(ChatRepository).toSelf().inSingletonScope();
+    bind(ModelConnectionsRegistry).toDynamicValue(() => new ModelConnectionsRegistry()).inSingletonScope();
+    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<ModelConnectionsClient>(modelConnectionsServicePath, client => {
+        const backend = new ModelConnectionsBackend(context.container.get(ModelConnectionsRegistry), client);
+        client.onDidCloseConnection(() => backend.dispose());
+        return backend;
+    })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<ChatClient>(chatServicePath, client => {
         const backend = new ChatBackend(context.container.get(ChatRepository), client);
         client.onDidCloseConnection(() => backend.dispose());
