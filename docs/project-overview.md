@@ -165,9 +165,11 @@ Project Mind, Agent Mind, Sessions, Decisions, Authority, and Validation are Dop
 
 Provider-specific IDs, context formats, sessions, and capabilities remain adapter concerns. One Dope Chat may route different messages to different connected models without adopting any provider-native session as conversation identity.
 
-Phase 7B adds **AI Center** as the one user-global management surface for provider/runtime connections and models, opened from the bottom-left AI launcher while account/profile management moves under Settings. Phase 7C adds policy-based roles—Interactive, Deep Reasoning, Background, Software Map and Coding Agent—over those connected models. Roles carry capabilities/constraints/fallback policy rather than hard-coding one provider, and explicit user model choices remain authoritative.
+Phase 7B adds **AI Center** as the one application-global management surface for provider/runtime connections and models, opened from the bottom-left AI launcher while account/profile management moves under Settings. The logical registry is machine-local, revisioned and shared across Dope projects/windows without becoming project state. Credentials use Environment, Session-only or OS secure storage; there is no plaintext persistent fallback.
 
-Global routing preference never grants feature authority: Software Map evidence egress remains explicit, and Phase 8 background alignment remains local-only with no hosted fallback. Provider abstraction must not force every model into a lowest-common-denominator feature set.
+Phase 7C adds five fixed roles—Interactive, Deep Reasoning, Background, Software Map and Coding Agent—over stable connection/model identities. Routing is deterministic preferred + ordered fallback with typed hard constraints and soft preferences rather than provider-name conditionals or hidden model scoring. Existing Phase 7A Chats keep exact defaults; new role-following Chats default to Interactive.
+
+Global routing preference never grants feature authority: it may restrict egress but never authorize project-data egress. Software Map evidence transfer remains explicit, and Phase 8 background alignment remains local-only with no hosted fallback. Routed executions retain compact provenance sufficient for a **Why this model?** explanation. Provider abstraction must not force every model into a lowest-common-denominator feature set.
 
 ## Initial roadmap
 
@@ -238,7 +240,7 @@ Desired completion feeling:
 
 **Product Phase 6 — Flow is owner-closed for sequencing at package `0.6.8`; P8 remains Not Qualified.** The accepted exact-candidate G/H evidence gaps remain historical truth in `docs/tasks/p6/closeout.md`.
 
-**Product Phase 7 is ACTIVE at coherent `0.7.0` activation commit `59c7f72`.** ADR 0025 defines the Phase 7A Chat/ChatPanel AI Presence boundary and ADR 0026 adds Phase 7B AI Center plus Phase 7C role routing. Execute the currently written P1-P12 as 7A only; the existing P13 closeout is superseded and must be regenerated as part of the P13+ continuation after P12. Mutation/delegation authority remains deferred.
+**Product Phase 7 is ACTIVE at coherent `0.7.0` activation commit `59c7f72`.** ADR 0025 defines Phase 7A; ADR 0026 now contains the fully promoted Phase 7B AI Center and Phase 7C deterministic role-routing contracts. Execute the currently written P1-P12 as 7A only; the existing P13 closeout remains superseded and must be regenerated as part of the P13+ continuation after P12. Mutation/delegation authority remains deferred.
 
 Phase 7 keeps the project—not chat—as the center of gravity. Chats persist and are reusable, but canonical Project Mind, Architecture, Planning and Physical/Flow evidence retain their own authority.
 
