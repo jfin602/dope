@@ -317,7 +317,27 @@ Fail explicit and user-controlled. Dope may recommend eligible candidates but sh
 
 **Decision**
 
-TBD.
+Locked: role policies are **never silently auto-created, auto-assigned or rewritten**. Dope may calculate and display eligible/recommended assignments, but the developer explicitly accepts any enduring role policy.
+
+Initial 7C migration preserves existing exact-model Chat defaults from Phase 7A. Those Chats are not rewritten to follow Interactive. New Chats created after 7C default to **Follow Interactive role** unless the developer pins an exact model.
+
+Broken/removed/ineligible role references remain visible as unresolved policy intent rather than being silently replaced. Example: if the preferred model is removed but a configured later fallback remains eligible, routing may use that fallback according to the existing policy while the preferred target stays visibly unresolved. If the preferred model becomes valid again under the same stable identity, deterministic routing naturally returns to it.
+
+A role may expose derived policy-health states such as:
+- **Ready**;
+- **Using fallback**;
+- **Needs configuration**;
+- **Broken**;
+- **Unavailable**.
+
+These are computed status projections, not independent persisted lifecycle identity.
+
+If no eligible target exists, Dope does not select an arbitrary usable model. The requesting feature fails clearly and offers a direct repair path into the relevant role in AI Center, for example **Configure Background** or **Configure Interactive**. The Roles surface should present eligible candidates using the Phase 7B eligibility seam so repair is focused.
+
+Unconfigured roles do not create global warnings merely because they exist. In particular, Coding Agent may remain unconfigured before Product Phase 9 without warning. A role becomes actionable when a current product feature actually requires it or when the developer explicitly inspects/configures it.
+
+The bottom-left AI launcher follows the same restraint: unconfigured/broken role state only contributes to global warning treatment when it blocks an active/current capability and requires developer action.
+
 
 ---
 
