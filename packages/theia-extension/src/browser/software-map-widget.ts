@@ -49,7 +49,7 @@ export class SoftwareMapWidget extends BaseWidget {
         private readonly openReview: () => Promise<void>, private readonly openPhysicalMap: () => Promise<void>) {
         super();
         this.id = SOFTWARE_MAP_ID;
-        this.title.label = 'sMap';
+        this.title.label = 'SMAP CONTROLS';
         this.title.caption = 'sMap — Software Map';
         this.title.iconClass = codicon('type-hierarchy');
         this.title.closable = true;
@@ -63,11 +63,9 @@ export class SoftwareMapWidget extends BaseWidget {
             if (id && id !== this.openedReviewId) { this.openedReviewId = id; void this.openReview(); }
             if (!id) this.openedReviewId = undefined;
         });
-        const heading = document.createElement('h2');
-        heading.textContent = 'Software Map';
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
-        this.node.append(heading, this.status, this.controls, this.tree, this.detail, this.violations);
+        this.node.append(this.controls, this.status, this.tree, this.detail, this.violations);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.attach(); });
         this.clockTimer = setInterval(() => {
             if (this.controller.initialization?.state === 'analyzing')
@@ -109,8 +107,19 @@ export class SoftwareMapWidget extends BaseWidget {
         this.controls.classList.toggle('dope-smap-compact-actions', model.initialization?.state === 'initialized');
         if (!model.workspace || !model.initialization) return;
         if (model.initialization.state === 'initialized') {
-            this.controls.append(this.button('Open Physical Map', () => void this.openPhysicalMap()));
-            this.controls.append(this.button('Refresh Software Map', () => void model.analyze()));
+            const firstRow = this.element('div');
+            firstRow.className = 'dope-smap-control-row';
+            const open = this.button('OPEN', () => void this.openPhysicalMap());
+            open.setAttribute('aria-label', 'Open Physical Map');
+            const refresh = this.button('REFRESH', () => void model.analyze());
+            refresh.setAttribute('aria-label', 'Refresh Software Map');
+            firstRow.append(open, refresh);
+            const edit = this.element('button', 'EDIT ARCHITECTURE');
+            edit.type = 'button';
+            edit.disabled = true;
+            edit.title = 'Edit Architecture is not available yet';
+            edit.className = 'dope-smap-edit-architecture';
+            this.controls.append(firstRow, edit);
             return;
         }
         if (model.flow === 'none') {
@@ -390,6 +399,8 @@ export class SoftwareMapWidget extends BaseWidget {
             this.unassignedOpen = false;
         }
         const status = model.status;
+        this.status.classList.toggle('dope-smap-synthesis-status', !!model.workspace && !model.error && !model.loading &&
+            model.initialization?.state === 'initialized' && status?.state === 'ready' && status.generation === status.publishedGeneration);
         this.status.textContent = !model.workspace ? 'Open one local project folder to inspect its Software Map.' :
             model.error ? `Error: ${model.error}` :
             model.loading ? `Analyzing or loading generation ${status?.generation ?? '…'}; previous results hidden.` :
@@ -397,7 +408,7 @@ export class SoftwareMapWidget extends BaseWidget {
                 model.initialization?.state === 'review_required' ? 'Architecture review pending.' : 'Software Map is uninitialized.' :
             !status || status.state === 'idle' ? 'Ready to refresh. No derived graph is loaded.' :
             status.state === 'failed' ? `Analysis failed at generation ${status.generation}.` :
-            `Generation ${status.publishedGeneration} · ${status.analysis.completeness} · ${model.nodes.length} nodes · ${model.violations.length} violations`;
+            `SYNTHESIS  G${status.publishedGeneration} | ${status.analysis.completeness} | ${model.nodes.length} nodes | ${model.violations.length} violations`;
         this.tree.replaceChildren();
         this.detail.replaceChildren();
         this.violations.replaceChildren();
@@ -454,6 +465,9 @@ export class SoftwareMapWidget extends BaseWidget {
             button.className = 'dope-smap-outline-label';
             button.dataset.nodeId = node.id;
             button.setAttribute('aria-current', String(model.selectedId === node.id));
+            const kind = this.element('span', node.kind === 'code' ? node.codeKind : node.kind);
+            kind.className = `dope-smap-kind-${node.kind === 'code' ? node.codeKind : node.kind}`;
+            button.replaceChildren(kind, document.createTextNode(label.slice(kind.textContent.length)));
             line.append(button);
             row.append(line);
             if (descendants.length && this.expanded.has(node.id)) row.append(list(descendants));

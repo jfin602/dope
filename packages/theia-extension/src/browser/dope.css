@@ -291,16 +291,24 @@
     color: var(--dope-background);
 }
 
-.dope-smap-view .dope-smap-compact-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.dope-smap-view .dope-smap-compact-actions { border: 0; margin: 0; }
+.dope-smap-view .dope-smap-control-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 .dope-smap-view .dope-smap-compact-actions button {
+    box-sizing: border-box;
+    width: 100%;
     color: var(--theia-foreground);
     background: transparent;
     border-color: var(--theia-widget-border, var(--theia-input-border));
-    padding: 3px 6px;
-    margin: 2px 0;
+    padding: 3px 5px;
+    margin: 0;
+    text-align: center;
+    font-size: 11px;
 }
-.dope-smap-view .dope-smap-compact-actions button:hover { background: var(--theia-list-hoverBackground); }
-.dope-smap-view .dope-smap-outline { padding-left: 14px; min-width: 0; }
+.dope-smap-view .dope-smap-compact-actions .dope-smap-edit-architecture { margin-top: 4px; }
+.dope-smap-view .dope-smap-compact-actions button:hover:not(:disabled) { background: var(--theia-list-hoverBackground); }
+.dope-smap-view .dope-smap-synthesis-status { margin: 8px 0 0; font-size: 11px; line-height: 1.35; white-space: normal; }
+.dope-smap-view .dope-smap-outline { padding-left: 0; min-width: 0; }
+.dope-smap-view .dope-smap-outline .dope-smap-outline { padding-left: 7px; }
 .dope-smap-view .dope-smap-outline > li { margin: 0; min-width: 0; }
 .dope-smap-view .dope-smap-outline-row { display: flex; align-items: flex-start; min-width: 0; }
 .dope-smap-view .dope-smap-outline button {
@@ -308,22 +316,30 @@
     background: transparent;
     border: 0;
     margin: 0;
-    padding: 2px 3px;
+    padding: 2px 1px;
     line-height: 1.35;
 }
 .dope-smap-view .dope-smap-outline button:hover { background: var(--theia-list-hoverBackground); }
 .dope-smap-view .dope-smap-outline .dope-smap-outline-disclosure,
-.dope-smap-view .dope-smap-outline-spacer { flex: 0 0 18px; width: 18px; text-align: center; }
+.dope-smap-view .dope-smap-outline-spacer { flex: 0 0 13px; width: 13px; text-align: center; }
 .dope-smap-view .dope-smap-outline .dope-smap-outline-label {
     flex: 1; min-width: 0; text-align: left; white-space: normal; overflow-wrap: anywhere;
     border-left: 2px solid transparent;
 }
+.dope-smap-view .dope-smap-kind-system { color: color-mix(in srgb, var(--theia-charts-blue, var(--theia-focusBorder)) 70%, var(--theia-editor-foreground)); }
+.dope-smap-view .dope-smap-kind-subsystem { color: color-mix(in srgb, var(--theia-charts-green, var(--theia-focusBorder)) 70%, var(--theia-editor-foreground)); }
+.dope-smap-view .dope-smap-kind-component { color: color-mix(in srgb, var(--theia-charts-purple, var(--theia-focusBorder)) 70%, var(--theia-editor-foreground)); }
+.dope-smap-view .dope-smap-kind-file,
+.dope-smap-view .dope-smap-kind-module,
+.dope-smap-view .dope-smap-kind-symbol,
+.dope-smap-view .dope-smap-kind-other { color: var(--theia-descriptionForeground); }
 .dope-smap-view .dope-smap-outline .dope-smap-outline-label[aria-current="true"] {
-    color: var(--theia-list-activeSelectionForeground);
-    background: var(--theia-list-activeSelectionBackground);
+    color: var(--theia-editor-foreground);
+    background: color-mix(in srgb, var(--theia-focusBorder) 24%, var(--theia-editor-background));
     border-left-color: var(--theia-focusBorder);
     font-weight: 600;
 }
+.dope-smap-view .dope-smap-outline .dope-smap-outline-label[aria-current="true"] span { color: inherit; }
 .dope-smap-view .dope-smap-unassigned { margin-top: 12px; }
 .dope-smap-view .dope-smap-unassigned > summary { font-weight: 600; overflow-wrap: anywhere; }
 .dope-dark .dope-smap-view .dope-smap-outline button:active { background: var(--theia-list-hoverBackground); color: var(--theia-foreground); }

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Correction 6 — sMap Sidebar Density
 
 Status: **APPROVED / READY FOR ONE-OFF IMPLEMENTATION**
@@ -158,3 +159,21 @@ This correction does not relabel Phase 6 P7, unblock P8 by itself, or authorize 
 Write/run one manual GPT-6 Sol High one-off prompt for `c6-smap-sidebar-density`.
 
 Do not create a multi-prompt phase stack for this correction.
+=======
+# c6-smap-sidebar-density
+
+Status: **Green — bounded presentation correction complete** (2026-10-02)
+
+This one-off correction keeps all live versions at `0.6.7`. It makes the initialized left Software Map inspector denser without changing Software Map, Flow, Planning, architecture, synthesis, provider or persistence truth. Phase 6 P7 remains Not Green and P8 remains blocked.
+
+## Implemented boundary
+
+- The panel topbar says **SMAP CONTROLS**. The redundant Software Map body heading is gone; the widget caption and Activity Bar identity remain.
+- OPEN and REFRESH share the first compact row, with their full accessible action names retained. A disabled EDIT ARCHITECTURE second row marks the separately approved future action without claiming it works.
+- A ready published generation shows generation, completeness, node count and violation count in one wrapping synthesis line. Partial warnings, errors, diagnostics, loading and review states remain separate.
+- Outline nesting is 7px, the disclosure gutter is 13px, and row padding is 1px horizontally. Labels continue to wrap.
+- Only the visible entity-kind token receives stable theme-aware System, Subsystem, Component or code-kind color. The selected row uses its own foreground, tinted background, left border and heavier text. Map node color preferences do not feed this styling.
+- Shared selection, ancestor reveal, manual expansion, details, relationships, evidence, source navigation, violations and collapsed unassigned implementation retain their existing behavior.
+
+The task folder README did not exist at the pre-task HEAD. This file records the completed correction; [closeout.md](closeout.md) records validation and GUI evidence.
+>>>>>>> 2fdc77b (Refine sMap sidebar density)

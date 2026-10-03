@@ -10,7 +10,8 @@ test('one canonical sMap Activity Bar contribution defaults left and preserves o
   const frontend = read('packages/theia-extension/src/browser/frontend-module.ts');
   assert.match(widget, /SOFTWARE_MAP_ID = 'dope-software-map'/);
   assert.match(widget, /this\.id = SOFTWARE_MAP_ID/);
-  assert.match(widget, /this\.title\.label = 'sMap'/);
+  assert.match(widget, /this\.title\.label = 'SMAP CONTROLS'/);
+  assert.match(widget, /this\.title\.caption = 'sMap — Software Map'/);
   assert.match(widget, /this\.title\.iconClass = codicon\('type-hierarchy'\)/);
   assert.match(widget, /widgetId: SOFTWARE_MAP_ID, widgetName: 'sMap', defaultWidgetOptions: \{ area: 'left', rank: 200 \}/);
   assert.match(widget, /onDidInitializeLayout\(\)[\s\S]*?await this\.openView\(\)/);

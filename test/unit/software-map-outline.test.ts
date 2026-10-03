@@ -50,8 +50,8 @@ test('widget keeps expansion local and selection shared with separate accessible
     assert.match(widget, /disclosure\.setAttribute\('aria-expanded'/);
     assert.match(widget, /button\.setAttribute\('aria-current'/);
     assert.match(widget, /scrollIntoView\(\{ block: 'nearest' \}\)/);
-    assert.match(widget, /this\.button\('Open Physical Map'/);
-    assert.match(widget, /this\.button\('Refresh Software Map'/);
+    assert.match(widget, /this\.button\('OPEN'/);
+    assert.match(widget, /this\.button\('REFRESH'/);
     assert.match(widget, /dope-smap-compact-actions/);
     assert.match(widget, /this\.button\('Analyze Project'/);
     assert.match(widget, /this\.renderEvidence\(/);
