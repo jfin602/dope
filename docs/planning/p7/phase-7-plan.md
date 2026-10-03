@@ -97,7 +97,7 @@ The currently written P13 evidence-only closeout predates ADR 0026 and is **supe
 - Right-justified cog in Chat top bar.
 - Settings belong to Chat identity, not ChatPanel instance/location.
 - Persistent context policy may govern eligible sources, history/retrieval/context budget/strategy.
-- Persistent model policy may define default model and supported model-specific controls.
+- Persistent Chat model policy is exact-model in Phase 7A; Phase 7C extends it to either **Exact model** or **Follow Interactive role**, preserving existing exact defaults. Supported model-specific controls remain capability-driven.
 - Per-turn composer overrides do not silently rewrite Chat defaults.
 - Provider credentials/endpoints/global connection inventory remain application/runtime configuration.
 
