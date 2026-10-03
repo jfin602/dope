@@ -1,199 +1,131 @@
 TASK: Correction 6 / P2 — Permanent Edit Architecture workspace
 
 MODEL / REASONING / USAGE
-- Recommended configuration: `GPT-6 Sol High`.
+- Recommended: GPT-6 Sol High.
 - Browser required: no.
+- Validation: T2.
+- Version remains exactly 0.6.7.
 
-VERSIONING
-- Required unchanged project version: `0.6.7`.
+ENTRY
 
-ACTIVATION
-- Require P1 Green on the current branch.
-- Require package exactly `0.6.7`.
-- Require `c6-smap-outline` Green behavior still present.
+Require P1 Green and Green c6-smap-outline behavior.
+
+Read the correction README/assessment/plan and P1 result. Inspect the current review widget, Software Map controller/sidebar wiring, frontend module, CSS, P1 service contracts, and focused UI/outline tests.
 
 GOAL
 
-Promote the one-time center Architecture Review into permanent **Edit Architecture**, reuse it for initial proposal acceptance and accepted-map editing, and add the initialized left-panel entry without synchronizing editor UI state to the map/outline.
-
-PREFLIGHT
-
-Read correction README/assessment/plan and P1 result.
-
-Inspect:
-- packages/theia-extension/src/browser/software-map-review-widget.ts;
-- software-map-controller.ts;
-- software-map-widget.ts;
-- frontend-module.ts;
-- dope.css;
-- P1 SoftwareMapService contracts;
-- test/unit/software-map-ui.test.ts;
-- test/unit/software-map-outline.test.ts;
-- test/unit/smap-review-diagnostics.test.ts;
-- related placement/terminology tests.
+Turn the one-time Architecture Review into permanent **Edit Architecture**, reused for pending synthesis review and accepted canonical Architecture editing.
 
 LOCKED BOUNDARIES
 
-- User-facing structural term is **Architecture**.
-- Do not introduce Edit Hierarchy / Save Hierarchy / a Hierarchy product mode.
-- The left outline <-> Physical Map shared `SoftwareMapController.selectedId` contract from c6-smap-outline remains unchanged.
-- Edit Architecture selection/expansion/focus must remain independent from that shared map selection.
-- Accepted edits remain in-memory until explicit Save Architecture.
+- User-facing structural term is Architecture, not Hierarchy.
+- Preserve the existing left outline <-> Physical Map shared selectedId contract.
+- Edit Architecture selection/expansion/focus is independent from that shared map selection.
+- Accepted edits are in-memory until explicit Save Architecture.
 - No accepted-edit persistence/history.
-- No provider/Search Deeper expansion yet beyond preserving existing review behavior; P3 owns accepted-map Search Deeper.
-- Package stays `0.6.7`.
+- Preserve pending-review Search Deeper; P3 owns accepted-map Search Deeper.
 
 IMPLEMENT
 
-1. Evolve the center widget into **Edit Architecture**.
+1. One Edit Architecture center surface
 
-   Use one center-workspace surface for:
-   - pending initial proposal mode;
-   - accepted canonical Architecture mode.
+Evolve the current review widget instead of building a second editor.
 
-   A clean internal rename from review-only class/widget IDs is allowed if source inspection finds no concrete persisted/external compatibility requirement. Do not add compatibility scaffolding solely for old pre-stability internal names.
+Live tab/title/heading/action terminology must use:
+- Edit Architecture;
+- Accept Architecture;
+- Save Architecture.
 
-   Live title/caption/heading must use **Edit Architecture**.
+Remove live product labels such as sMap Architecture Review / Proposed hierarchy. Technical uses of “hierarchy” may remain where they describe tree structure.
 
-   Replace live product wording such as `Proposed hierarchy` with Architecture wording.
+A clean internal widget/class rename is allowed only if no real persisted/external compatibility dependency exists; do not add a compatibility shim just for pre-stability names.
 
-2. Preserve pending-review behavior.
+2. Preserve pending proposal mode
 
-   In initial `review_required` mode preserve:
-   - existing persisted review draft;
-   - proposal summary/questions/coverage/evidence;
-   - Add/Remove/Reparent/edit controls;
-   - Search Deeper as currently supported;
-   - deterministic blockers;
-   - explicit **Accept Architecture**;
-   - Decline review.
+When initialization is review_required, keep the current:
+- persisted review draft;
+- proposal/evidence/questions/coverage;
+- editing/Add/Remove/Reparent controls;
+- deterministic blockers;
+- pending-review Search Deeper;
+- Accept Architecture / decline behavior.
 
-   Auto-opening when synthesis reaches review should open/focus the same Edit Architecture widget.
+Synthesis reaching review must open/focus this same Edit Architecture tab.
 
-3. Add accepted Architecture mode.
+3. Add accepted canonical mode
 
-   On an initialized Software Map, controller/editor must be able to:
-   - call the P1 current-Architecture read service;
-   - create a local editable draft;
-   - retain expected canonical fingerprint/basis;
-   - show deterministic validation blockers;
-   - Save Architecture explicitly through P1;
-   - discard/reload/cancel local accepted edits.
+For initialized projects:
+- load canonical Architecture + fingerprint through P1;
+- create a local editable draft;
+- expose deterministic blockers;
+- Save Architecture through P1;
+- provide clear discard/reload/cancel behavior for unsaved accepted edits.
 
-   Do not overload onboarding `flow` state in a way that makes initialized Architecture look like `review_required`.
+Keep accepted-editor mode distinct from onboarding/review_required state.
 
-4. Extend the Green initialized action row.
+4. Add initialized left action
 
-   Current compact actions are Open Physical Map and Refresh Software Map.
+Extend the existing compact action row to:
 
-   Add:
-   - **Edit Architecture**
+Open Physical Map | Refresh Software Map | Edit Architecture
 
-   Clicking it opens or focuses the existing center editor.
+Repeated Edit Architecture activation focuses the existing center widget; no duplicate editor tabs.
 
-   Repeated clicks must not create duplicate tabs/widgets.
+5. Keep editor state independent
 
-5. Keep editor state independent.
+The editor owns its own selected boundary, disclosure/expansion if present, scroll/focus, dirty state and save status.
 
-   Editor owns its own:
-   - selected boundary;
-   - disclosure/expansion state if implemented;
-   - scroll/focus;
-   - dirty state;
-   - save error/status.
+Do not use controller.selectedId as the editor selection. Map/outline selection changes must not replace editor selection, and editor selection must not move map/outline selection.
 
-   Do not use `controller.selectedId` as the editor selection.
+Workspace changes must supersede stale loads/saves and clear project-local accepted draft state.
 
-   Prove a map/outline selection change can notify/re-render without replacing the editor-selected boundary or disclosure state.
+6. Keep all canonical fields editable
 
-6. Keep accepted edits draft-only.
+Preserve current name/purpose/parent/ID/roots/Add/Remove controls.
 
-   Typing, rename, purpose, canonical ID, roots, reparent, Add, Remove and dependency-constraint edits must only mutate the in-memory draft.
+For Subsystems, expose allowedDependencies/forbiddenDependencies in an Advanced control sufficient to preserve and repair them. Do not create invisible Save blockers.
 
-   No canonical service save call until **Save Architecture**.
+Accepted mode must not invent synthesis confidence/rationale/evidence for canonical developer-owned nodes.
 
-7. Make all current canonical fields usable.
+7. Save UX
 
-   Preserve current controls:
-   - name;
-   - purpose/responsibility;
-   - parent;
-   - canonical ID;
-   - implementation roots;
-   - Add System/Subsystem/Component;
-   - Remove branch.
+Save Architecture:
+- disabled while deterministic blockers exist;
+- sends full draft + expected fingerprint;
+- on success updates the local baseline/fingerprint;
+- distinguishes “saved canonical Architecture” from resulting map-analysis status;
+- does not create history or autosave accepted edits.
 
-   For Subsystems carrying `allowedDependencies` / `forbiddenDependencies`, expose enough Advanced editing to preserve and repair those lists. Do not leave the developer with an invisible constraint that can block Save but cannot be fixed.
+PERMANENT REGRESSIONS
 
-8. Accepted-mode presentation must not invent synthesis facts.
+Cover:
+- initialized sidebar action + one-widget focus behavior;
+- Architecture terminology;
+- pending review still uses the same editor and Accept Architecture path;
+- accepted mode loads canonical draft/fingerprint including dependency constraints;
+- ordinary field edits do not call save;
+- Save sends full draft + expected fingerprint;
+- blockers disable Save;
+- map/outline selectedId changes do not change editor-local selection, and vice versa;
+- workspace switch drops stale accepted draft/load/save state;
+- c6-smap-outline behavior remains Green;
+- no accepted-edit persistence path appears.
 
-   Do not show synthesis confidence/rationale/open-question counts for canonical nodes unless that data truly exists from a pending review.
-
-   Accepted mode may label developer-owned canonical Architecture clearly.
-
-9. Save UX.
-
-   Save Architecture:
-   - disabled while deterministic blockers exist;
-   - uses current expected fingerprint;
-   - on success updates editor baseline/fingerprint from saved canonical state;
-   - reports canonical save separately from resulting Software Map analysis status;
-   - does not silently create history or close/reopen another tab.
-
-10. Async/workspace guards.
-
-   Workspace switch must supersede pending accepted Architecture load/save responses and clear project-local in-memory accepted draft/refinement UI state.
-
-   Unsaved accepted edits must never leak into a newly attached project.
-
-PERMANENT TESTS
-
-Add/extend focused tests for:
-- initialized action row contains Edit Architecture beside Open/Refresh;
-- one editor widget instance / repeated activation focuses existing;
-- title/live labels use Architecture terminology;
-- pending review still opens the same widget and Accept Architecture path remains intact;
-- accepted mode loads canonical draft/fingerprint;
-- dependency constraints remain visible/preserved;
-- field edits do not call canonical save;
-- Save calls P1 service with full draft + expected fingerprint;
-- deterministic blockers disable Save;
-- `selectedId` changes from map/outline do not change editor-local selected boundary;
-- editor selection does not call map/outline selection;
-- workspace switch supersedes load/save and clears local draft;
-- no accepted-edit persistence path is introduced;
-- c6-smap-outline disclosure/selection behavior remains Green.
-
-VALIDATION — T2
+VALIDATION
 
 Run:
-- focused Software Map UI/controller tests;
-- `test/unit/software-map-outline.test.ts`;
-- terminology/placement tests affected by rename;
-- new Edit Architecture tests;
-- `npm run build:extension`;
-- `npm run build:browser`;
-- exact `0.6.7` / no-root-lock checks;
-- `git diff --check`.
+- focused Software Map UI/controller/Edit Architecture tests;
+- test/unit/software-map-outline.test.ts;
+- affected terminology/placement tests;
+- npm run build:browser;
+- exact 0.6.7 / no-root-lock checks;
+- git diff --check.
 
-Do not run:
-- live Search Deeper provider requests;
-- `npm run check`;
-- manual browser qualification;
-- AppImage/native qualification.
+Do not separately run build:extension; build:browser already runs it.
+Do not run live provider requests, npm run check, manual GUI, or native/package qualification.
 
 Do not commit; runner owns commit boundaries.
 
 FINAL RESPONSE
 
-Report:
-- final widget/controller mode shape;
-- left Open/Refresh/Edit Architecture action behavior;
-- one-tab behavior;
-- pending review regression;
-- accepted draft/save behavior;
-- dependency-constraint UX;
-- proof editor selection is independent from map/outline;
-- focused validation;
-- unchanged `0.6.7`;
-- P3 eligibility.
+Report the final two-mode editor shape, left action/one-tab behavior, pending-review preservation, accepted draft/save UX, independent editor/map state proof, focused validation, and P3 eligibility.
