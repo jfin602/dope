@@ -60,7 +60,20 @@ Keep the five built-in roles as fixed stable product IDs with clear semantics. A
 
 **Decision**
 
-TBD.
+Locked: initial Phase 7C uses exactly five fixed built-in role IDs with stable canonical product meaning:
+
+- **Interactive** — normal foreground AI assistance where responsiveness and ordinary Chat/IDE interaction are primary.
+- **Deep Reasoning** — deliberately heavier foreground reasoning for difficult analysis where additional latency/cost is acceptable.
+- **Background** — non-interactive work that may run without blocking the developer; individual features may impose stronger constraints, such as Phase 8 local-only/no-hosted-fallback.
+- **Software Map** — model-assisted Software Map/architecture work, including Analyze Project, Search Deeper and related bounded semantic architecture analysis.
+- **Coding Agent** — tool-using/delegated coding work. It is configurable in Phase 7C so later consumers have a stable policy target, but mutation-capable use remains deferred until Product Phase 9.
+
+Users may configure the policy for each built-in role but may not create, delete or rename role types in initial Phase 7C. Custom roles are deferred until real consumers demonstrate a need that the five built-ins cannot express cleanly.
+
+Role identity describes **what kind of work is being requested**, not the exact reasoning-control setting of a selected model. For example, Deep Reasoning may resolve to a stronger model, while that model's own supported reasoning-effort control remains a separate execution setting. Role policy and model-specific reasoning controls must not be conflated.
+
+Built-in role IDs/names remain canonical product vocabulary. User-friendly aliases belong on connections/models, not on role identity, so feature bindings remain understandable and deterministic across projects/windows.
+
 
 ---
 
