@@ -28,6 +28,7 @@ Theia
 -> sMap readability correction
 -> Flow
 -> AI Presence
+-> Living Software Knowledge Model
 -> Scoped Delegation
 -> Development Sessions
 
@@ -61,8 +62,9 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
 | Product Phase 6 — Flow | **ACTIVE / P7 NOT GREEN / P8 BLOCKED.** Dope explains what happens through software using evidence-backed Static Flow over the Physical Map, with optional data enrichment. Map-canvas P3 isolated an aggregate-to-canvas projection mismatch after the overview repair. Active correction: `c6-flow-projection-contract` at unchanged `0.6.7`; packaged controlled shutdown remains a separate P7 blocker. |
 | Product Phase 7 — AI Presence | AI understands Dope through Dope-owned project state, architecture, Flow, Planning Map context and provider-independent read-only assistance. |
-| Product Phase 8 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
-| Product Phase 9 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
+| Product Phase 8 — Living Software Knowledge Model | Dope continuously checks whether source/runtime evidence, canonical Software Map state, documentation and formal contracts still describe the same software. Deterministic impact analysis narrows work first; bounded local-model semantic checks maintain alignment in the background and surface drift findings without silently mutating project truth. |
+| Product Phase 9 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
+| Product Phase 10 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
 
 Self-development never receives privileged authority.
 
@@ -870,7 +872,37 @@ Exit condition:
 
 AI can understand and assist with the project using Dope-owned project, architecture, flow and planning context without owning canonical product state or requiring Dope to become chat-first.
 
-## Product Phase 8 — Scoped Delegation
+## Product Phase 8 — Living Software Knowledge Model
+
+Purpose:
+Turn the Software Map into a living, evidence-backed software knowledge model that continuously checks whether implementation, runtime evidence, canonical architecture, documentation and formal contracts still describe the same software state.
+
+This phase consumes the provider-independent Model Runtime established by Phase 7 but remains observation-first. It does not authorize source, documentation, contract or canonical-map mutation on behalf of the model. Scoped mutation remains Phase 9.
+
+Initial scope:
+- first-class provenance-bearing links from Systems, Subsystems, Components, Flow identities and code entities to relevant documentation, ADRs, API/interface contracts, schemas and recorded runtime evidence;
+- typed knowledge assertions that distinguish observed implementation/runtime facts, documented claims, normative contracts/decisions, future/planning statements and historical material;
+- incremental evidence dependency and impact tracking so a changed file, symbol, route, schema, contract or document invalidates only the knowledge assertions that depend on it;
+- deterministic-first alignment checks for objective facts such as source ownership, symbol/file existence, API and schema shape, contract validation, map evidence fingerprints and deleted/orphaned entities;
+- bounded semantic alignment checks for questions that require interpretation, such as whether prose documentation still describes changed implementation behavior or whether an architectural claim remains supported;
+- a background alignment scheduler that debounces and deduplicates change events, batches related work, prioritizes findings and yields to foreground developer work;
+- local-first semantic background inference through compact structured micro-calls. Normal continuous alignment must not require paid hosted inference;
+- explicit developer-controlled hosted escalation for harder reasoning. Background monitoring never silently sends project evidence to a hosted provider or incurs provider cost because a local check is uncertain;
+- resource-aware scheduling that may reduce, pause or defer background inference during foreground model work, builds/tests, memory pressure, battery-sensitive operation or other contention;
+- durable alignment findings and alert lifecycle with affected identities, evidence, severity/confidence, last validated basis and resolution/acknowledgement state;
+- developer resolution paths such as inspect evidence, Search Deeper, update map, update documentation, update contract, fix implementation or dismiss/acknowledge a finding;
+- continuous incremental revalidation after meaningful edits/saves/commits without treating every keystroke as a model request.
+
+Background intelligence law:
+Deterministic analysis narrows the problem first. Local models are the preferred high-volume semantic maintenance layer. Model output creates findings/interpretation, not physical evidence or canonical truth, and foreground developer interaction always outranks background inference.
+
+General-purpose ambient intelligence remains outside this phase. Phase 8 authorizes only bounded background work required to maintain the Living Software Knowledge Model.
+
+Exit condition:
+
+On a real project, Dope can detect representative source/map, source/documentation, source/contract and orphan/unrepresented-state drift in the background, revalidate unaffected knowledge without unnecessary model work, use a configured local model for bounded semantic checks, preserve foreground responsiveness, surface actionable evidence-backed alerts across restart and avoid both silent hosted escalation and silent canonical mutation.
+
+## Product Phase 9 — Scoped Delegation
 
 Purpose:
 Give AI bounded hands without giving away the developer's authorship or control.
@@ -889,7 +921,7 @@ Exit condition:
 
 A developer can delegate a bounded portion of work, see what the agent believes and intends, intervene during execution, and retain control over mutation.
 
-## Product Phase 9 — Development Sessions
+## Product Phase 10 — Development Sessions
 
 Purpose:
 Make the development session durable for the developer, not only for the model.
@@ -914,7 +946,7 @@ Returning to a project restores the developer's mental context well enough to co
 These remain valid parts of the vision but must not block the initial product:
 - dedicated Research workspace
 - semantic project-wide search
-- advanced ambient intelligence
+- general-purpose advanced ambient intelligence beyond the bounded Phase 8 knowledge-alignment monitor
 - automatic Ideas capture
 - sophisticated model routing
 - multi-agent orchestration
