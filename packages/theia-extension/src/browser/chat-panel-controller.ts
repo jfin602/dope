@@ -5,6 +5,16 @@ import type { ChatModelSelection } from '@dope/chat';
 
 export type ChatConnection = ChatService & { setClient(client: ChatClient | undefined): void; dispose(): void };
 export type ChatMode = 'select-chat' | 'chat';
+export type ReadOnlyBehavior = 'Ask' | 'Explain' | 'Trace' | 'Find Related';
+export function readOnlyPrompt(kind: ReadOnlyBehavior, draft = ''): string {
+    const prompts = {
+        Ask: 'Answer this question using the attached project context. Distinguish verified project facts from interpretation:',
+        Explain: 'Explain the selected project context. Cite the supplied evidence and label unknowns:',
+        Trace: 'Trace possible execution using only evidenced Flow hops. State truncation and unknown hops:',
+        'Find Related': 'Find related project identities using the supplied context. Separate direct evidence from suggestions:',
+    };
+    return `${prompts[kind]}${draft.trim() ? `\n\n${draft.trim()}` : ''}`;
+}
 export interface ChatTree { path: ChatFolderPath; folders: ChatTree[]; chats: Chat[] }
 
 /** A renderer-local reservation, keyed by project URI and durable Chat identity. */
@@ -324,7 +334,11 @@ export class ChatPanelController {
             }
         }
     }
-    addContext(selection: ChatContextSelection): void { this.context.push(selection); this.lastContext = undefined; this.changed(); }
+    addContext(selection: ChatContextSelection): void {
+        if (this.context.length >= 20) throw new Error('Too many context selections');
+        this.context.push(selection); this.lastContext = undefined; this.changed();
+    }
+    removeContext(index: number): void { this.context.splice(index, 1); this.lastContext = undefined; this.changed(); }
     clearContext(): void { this.context = []; this.lastContext = undefined; this.changed(); }
     async previewContext(model: ChatModelSelection): Promise<void> {
         const lease = this.lease;

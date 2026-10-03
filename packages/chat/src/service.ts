@@ -12,7 +12,7 @@ export type ChatOperation =
     | { type: 'create-chat'; id: ChatId; folderPath: ChatFolderPath; title?: string }
     | { type: 'move-chat'; chatId: ChatId; folderPath: ChatFolderPath }
     | { type: 'rename-chat'; chatId: ChatId; title: string }
-    | { type: 'automatic-title'; chatId: ChatId; title: string }
+    | { type: 'automatic-title'; chatId: ChatId; title: string; firstUserMessageId: string; firstAssistantMessageId: string }
     | { type: 'set-settings'; chatId: ChatId; settings: ChatSettings }
     | { type: 'append-user'; chatId: ChatId; message: ChatMessage & { role: 'user' } }
     | { type: 'begin-assistant'; chatId: ChatId; message: ChatMessage & { role: 'assistant' } }

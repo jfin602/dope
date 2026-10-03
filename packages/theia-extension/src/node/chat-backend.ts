@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
     ChatTurnRequest, ChatOperation, ChatContextPreview } from '@dope/chat/lib/service';
-import type { ChatAssistantMessage, ChatModelProvenance, ChatUserMessage } from '@dope/chat';
+import { suggestedChatTitle, type ChatAssistantMessage, type ChatModelProvenance, type ChatUserMessage } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import { ModelConnectionsRegistry } from './model-connections';
@@ -153,8 +153,15 @@ export class ChatBackend implements ChatService {
                 } else {
                     output = event.text;
                     if (event.provenance) actual = { schemaVersion: 1, ...event.provenance };
-                    await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
+                    const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                         outcome: 'complete', content: output, actualModel: actual });
+                    const titledChat = completed.chats.find(item => item.id === key);
+                    const index = titledChat?.messages.findIndex(message => message.id === assistant!.id) ?? -1;
+                    const preceding = index > 0 ? titledChat!.messages[index - 1] : undefined;
+                    if (titledChat?.titleSource === 'placeholder' && preceding?.role === 'user' &&
+                        !titledChat.messages.slice(0, index).some(message =>
+                            message.role === 'assistant' && message.execution.status === 'complete'))
+                        void this.automaticTitle(root, key, preceding, assistant.id, output, actual);
                     return preview;
                 }
             }
@@ -173,6 +180,39 @@ export class ChatBackend implements ChatService {
             if (this.turns.get(key)?.abort === abort) this.turns.delete(key);
             if (this.pendingCancel.get(key) === request.leaseToken) this.pendingCancel.delete(key);
         }
+    }
+    private async automaticTitle(root: string, chatId: string, user: ChatUserMessage, assistantId: string,
+        answer: string, actual: ChatModelProvenance): Promise<void> {
+        let title = suggestedChatTitle(user.content);
+        try {
+            if (this.disposed || this.root !== root || !this.models) return;
+            const connection = (await this.models.list()).connections.find(item => item.id === actual.connectionId);
+            if (!connection?.ready || connection.providerId !== actual.providerId ||
+                !connection.models.some(item => item.id === actual.modelId && item.usable))
+                throw new Error('Original model unavailable');
+            let response = '';
+            for await (const event of this.models.generate({ connectionId: actual.connectionId, modelId: actual.modelId }, {
+                messages: [{ role: 'user', content: `Write a short title (at most 80 characters) for this exchange. Return only the title.\nUser: ${user.content.slice(0, 300)}\nAssistant: ${answer.slice(0, 300)}` }],
+                signal: AbortSignal.timeout(10_000),
+            })) {
+                if (event.type === 'delta') response += event.text;
+                else { response = event.text; break; }
+                if (response.length > 240) throw new Error('Title response too long');
+            }
+            title = suggestedChatTitle(response.replace(/[\r\n]+/g, ' ').replace(/^['"\s]+|['"\s]+$/g, ''));
+        } catch { /* Keep the deterministic first-message title. */ }
+        if (this.disposed || this.root !== root) return;
+        try {
+            for (let attempt = 0; attempt < 3; attempt++) {
+                const snapshot = await this.repository.read(root);
+                if (snapshot.chats.find(item => item.id === chatId)?.titleSource !== 'placeholder') return;
+                try {
+                    await this.repository.mutate(root, snapshot.revision, { type: 'automatic-title', chatId,
+                        title, firstUserMessageId: user.id, firstAssistantMessageId: assistantId });
+                    return;
+                } catch (error) { if (!String(error).includes('Stale Chat revision')) return; }
+            }
+        } catch { /* A title never changes the answer outcome. */ }
     }
     async cancelTurn(projectHandle: string, chatId: string, leaseToken: string): Promise<void> {
         this.active(projectHandle);

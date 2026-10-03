@@ -8,7 +8,7 @@ import type { ChatSettings, ChatContextKind, ChatModelSelection } from '@dope/ch
 import type { ChatContextSelection } from '@dope/chat/lib/service';
 import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
-import { ChatOpenOwners, ChatPanelController, chatTree } from './chat-panel-controller';
+import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
 import { chatPanelWidgetId, type ChatPanelOptions } from './chat-panel-presentation';
 
@@ -101,14 +101,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         try { this.models = await this.modelConnections.list(); this.render(); }
         catch (error) { this.status.textContent = String(error); }
     }
-    private async addContext(): Promise<void> {
+    private async addContext(kind: ChatContextKind): Promise<void> {
         const chat = this.controller.chat;
         if (!chat) return;
         const allowed = chat.settings.context.allowedSources;
         if (!allowed.length) { this.status.textContent = 'Enable context sources in Chat settings.'; return; }
-        const kind = await this.name(`Context source: ${allowed.join(', ')}`, allowed[0]);
-        if (!kind) return;
-        if (!allowed.includes(kind as ChatContextKind)) { this.status.textContent = 'Context source is disabled.'; return; }
+        if (!allowed.includes(kind)) { this.status.textContent = 'Context source is disabled.'; return; }
+        const workspace = this.controller.workspace, chatId = chat.id;
         try {
             let selection: ChatContextSelection;
             if (kind === 'editor' || kind === 'selection') {
@@ -130,7 +129,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const map = this.map;
                 if (!map?.selectedId || !map.status || map.workspace !== this.controller.workspace)
                     throw new Error('Select a current Physical Map identity first');
-                selection = { kind, id: map.selectedId, projectId: 'project:root', generation: map.status.generation };
+                selection = { kind, id: map.selectedId, projectId: 'project:root', generation: map.status.generation,
+                    ...(kind === 'flow' ? { direction: 'downstream' as const } : {}) };
             } else if (kind === 'saved-chat') {
                 const query = await this.name('Search saved Chats by content');
                 if (!query) return;
@@ -147,8 +147,19 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 if (!id) return;
                 selection = { kind: kind as ChatContextKind, id };
             }
+            if (this.controller.workspace !== workspace || this.controller.chatId !== chatId) return;
             this.controller.addContext(selection);
         } catch (error) { this.status.textContent = String(error); }
+    }
+    private behavior(kind: 'Ask' | 'Explain' | 'Trace' | 'Find Related'): void {
+        const state = this.controller;
+        const selected = this.map && this.map.workspace === state.workspace ? this.map.selectedId : undefined;
+        state.draft = readOnlyPrompt(kind, state.draft);
+        if (kind !== 'Ask' && selected) {
+            const contextKind = kind === 'Trace' ? 'flow' : 'physical-map';
+            void this.addContext(contextKind);
+        }
+        this.render();
     }
     private usableModels(): Array<{ selection: ChatModelSelection; label: string;
         controls: readonly { id: string; values: readonly string[] }[] }> {
@@ -377,8 +388,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         input.setAttribute('aria-label', 'Message'); input.value = state.draft;
         input.oninput = () => { state.draft = input.value; };
         const toolbar = document.createElement('div'); toolbar.className = 'dope-chat-composer-toolbar';
-        toolbar.append(this.button(`Context${state.context.length ? ` (${state.context.length})` : ''}`,
-            () => void this.addContext()), this.button('Tools', () => {}, true));
+        const sources = document.createElement('select');
+        sources.setAttribute('aria-label', 'Context source');
+        for (const kind of chat.settings.context.allowedSources)
+            sources.append(new Option(kind.replace(/-/g, ' '), kind));
+        toolbar.append(sources, this.button('Add context', () => void this.addContext(sources.value as ChatContextKind),
+            !sources.options.length));
+        for (const kind of ['Ask', 'Explain', 'Trace', 'Find Related'] as const)
+            toolbar.append(this.button(kind, () => this.behavior(kind)));
         if (state.context.length) toolbar.append(this.button('Clear context', () => state.clearContext()));
         const modelSelector = document.createElement('select'); modelSelector.setAttribute('aria-label', 'Model for next turn');
         const usable = this.usableModels();
@@ -405,12 +422,32 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             toolbar.append(this.button('Send', () => { if (selected) void state.runTurn(selected); }, !selected || state.pending));
         }
         composer.append(input, toolbar);
+        if (state.context.length) {
+            const selectedContext = document.createElement('ul');
+            selectedContext.className = 'dope-chat-selected-context';
+            state.context.forEach((item, index) => {
+                const row = document.createElement('li');
+                const label = document.createElement('span');
+                label.textContent = `${item.kind}: ${item.id}${item.start !== undefined ? `:${item.start}-${item.end}` : ''}`;
+                row.append(label, this.button('Remove', () => state.removeContext(index)));
+                selectedContext.append(row);
+            });
+            composer.append(selectedContext);
+        }
         if (state.lastContext) {
             const details = document.createElement('small');
             details.textContent = `Context ${state.lastContext.usedTokens}/${state.lastContext.budgetTokens} estimated tokens; ` +
                 `${state.lastContext.refs.length} sources included. ` + state.lastContext.diagnostics.map(item =>
                     `${item.source}: ${item.message}`).join(' ');
             composer.append(details);
+            const included = document.createElement('ul');
+            included.setAttribute('aria-label', 'Included context preview');
+            for (const ref of state.lastContext.refs) {
+                const item = document.createElement('li');
+                item.textContent = `${ref.kind}: ${ref.label} (${ref.estimatedTokens} estimated tokens)`;
+                included.append(item);
+            }
+            composer.append(included);
         }
         this.content.append(composer);
     }

@@ -117,7 +117,7 @@ test('send persists only included references and supplies their bounded text to 
     const registry = { list: async () => ({ connections: [{ id: 'connected', ready: true, providerId: 'local',
       models: [{ id: 'model', label: 'Model', usable: true, capabilities: model }] }] }),
       async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
-        sent = request.messages.at(-1)?.content ?? '';
+        sent ||= request.messages.at(-1)?.content ?? '';
         yield { type: 'complete' as const, text: 'Answer', usage: { tokenMeasurement: 'estimated' as const } };
       } };
     const service = new ChatBackend(repository, { notifyChatEvent() {} }, registry as never, composer);

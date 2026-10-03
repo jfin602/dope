@@ -325,7 +325,17 @@ export class ChatRepository {
                 }
                 case 'move-chat': update(c => ({ ...c, folderPath: parseChatFolderPath(operation.folderPath) })); break;
                 case 'rename-chat': update(c => ({ ...c, title: operation.title.trim(), titleSource: 'developer' })); break;
-                case 'automatic-title': update(c => withAutomaticChatTitle(c, operation.title)); break;
+                case 'automatic-title': {
+                    const chat = chats[index];
+                    const assistantIndex = chat?.messages.findIndex(message => message.id === operation.firstAssistantMessageId) ?? -1;
+                    const assistant = chat?.messages[assistantIndex];
+                    if (!chat || chat.titleSource !== 'placeholder' || assistantIndex < 1 ||
+                        chat.messages[assistantIndex - 1].id !== operation.firstUserMessageId ||
+                        assistant?.role !== 'assistant' || assistant.execution.status !== 'complete' ||
+                        chat.messages.slice(0, assistantIndex).some(message =>
+                            message.role === 'assistant' && message.execution.status === 'complete')) break;
+                    update(c => withAutomaticChatTitle(c, operation.title)); break;
+                }
                 case 'set-settings': update(c => ({ ...c, settings: parseChatSettings(operation.settings) })); break;
                 case 'append-user': {
                     const message = parseChatMessage(operation.message);
