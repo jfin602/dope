@@ -239,7 +239,36 @@ Use one shared **Add Connection** flow with a provider/runtime picker and a comm
 
 **Decision**
 
-TBD.
+Locked: AI Center provides one universal **Add Connection** workflow and one common connection-management shell. The developer first chooses a provider/runtime type, then configures that connection inside the shared AI Center lifecycle.
+
+AI Center/core owns the cross-provider product contract:
+- immutable connection identity;
+- display alias/name;
+- enabled/disabled/removed lifecycle;
+- persistence and revision/concurrency behavior;
+- credential-source references and secure-secret boundaries;
+- normalized status/readiness projection;
+- Test Connection orchestration;
+- Save/Cancel/Remove interaction;
+- AI Center navigation and selected-connection detail.
+
+Provider/runtime adapters may contribute only the configuration behavior that genuinely differs:
+- bounded provider-specific fields;
+- field validation;
+- credential requirements;
+- provider-specific disclosures;
+- model-discovery hooks/capabilities;
+- connection/test transport hooks;
+- a bounded custom setup component when a future provider cannot be represented clearly by ordinary fields.
+
+The architectural rule is: **provider adapters may customize how a connection is configured, but not what a connection is**. Provider adapters do not own connection identity, persistence, lifecycle, global navigation or a separate provider store.
+
+**OpenAI** and **OpenAI-compatible** are distinct runtime/provider types. OpenAI-compatible endpoints must not be represented as if they are OpenAI merely because they share a wire protocol. This provides a clean path for self-hosted gateways, enterprise proxies, local servers and future compatible runtimes.
+
+Local runtime onboarding may perform best-effort detection of well-known local endpoints and offer a one-action **Use detected runtime** path. Detection is convenience only; manual endpoint/configuration entry always remains available.
+
+Phase 7B does not require all provider onboarding to be generated from a static schema. The adapter contract should support simple declarative fields by default while permitting bounded provider-specific presentation when necessary without leaking provider ownership into AI Center core.
+
 
 ---
 
