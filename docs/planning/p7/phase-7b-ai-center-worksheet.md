@@ -296,7 +296,35 @@ Treat provider discovery as capability-driven. Refresh automatically at bounded 
 
 **Decision**
 
-TBD.
+Locked: model inventory is **connection-scoped and capability-driven**. Phase 7B supports automatic discovery, explicit configured inventory, or a bounded hybrid depending on the provider/runtime adapter rather than pretending every provider exposes the same model-list API.
+
+A model's stable Dope identity is formed from the immutable connection identity plus the provider/runtime's stable model key:
+
+```text
+AIModel identity = connectionId + providerModelKey
+```
+
+Display names, aliases, provider marketing labels, availability and capability metadata may change without changing that identity. The same provider-facing model exposed through two different connections is intentionally two distinct Dope model targets.
+
+Model discovery/refresh occurs at bounded lifecycle points:
+- connection creation;
+- relevant connection/configuration changes;
+- successful reconnect or runtime inventory-change signal where supported;
+- explicit **Refresh Models**;
+- optional stale-while-revalidate behavior when AI Center opens and cached inventory is old enough to justify refresh.
+
+Do not continuously poll provider inventories merely because AI Center exists or receives focus.
+
+Previously known models are not immediately erased when temporarily unavailable or absent from a later discovery response. AI Center may retain them as known non-usable entries with states such as Unavailable / No longer discovered / Unknown and useful last-observed metadata. This preserves understandable Chat/default/future-role references while keeping provider inventory truth visible.
+
+AI Center may show the broader known/discovered inventory. Ordinary execution consumers such as the Chat composer receive only models that are currently **usable and enabled in Dope**.
+
+Phase 7B may support a user/application preference that disables/hides an individual discovered model from ordinary Dope selection without pretending the provider stopped exposing that model. Provider inventory and Dope eligibility are separate facts.
+
+Providers/runtimes without safe/reliable generic model discovery may use explicit configured model IDs. The adapter validates/configures those models through its supported runtime path rather than fabricating discovery.
+
+Capability/context metadata retains source/quality where relevant—for example provider-reported, adapter-known, explicitly configured or unknown. Dope must not present inferred/configured limits as universally authoritative provider facts.
+
 
 ---
 
