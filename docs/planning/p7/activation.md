@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Activation
 
-Status: **OWNER APPROVED — ACTIVE / PHASE 7A P1-P12 READY / PHASE 7B-7C APPROVED**
+Status: **OWNER APPROVED — ACTIVE / PHASE 7A P1-P12 READY / PHASE 7B-7C RESOLVED + PROMOTED**
 Date: 2026-10-03
 Package baseline: `0.7.0`
 Activation baseline commit: `59c7f72a29dcdecdf9b908176754bfd02179b004`
@@ -22,7 +22,7 @@ Phase 7 is one `0.7.x` product phase with three ordered slices:
 
 Phase 7 does not add mutation/delegation or Phase 8 background alignment itself.
 
-General Chat uses the application-level Model Connections boundary separate from Software Map synthesis strategy/authority. AI Center centralizes connection inventory but does not grant sMap evidence-egress consent. Phase 8-compatible Background work remains local-only/no-hosted-fallback. Secrets do not belong in `.dope/`, Chat persistence or ordinary plaintext persisted workbench state.
+General Chat uses the application-level Model Connections boundary separate from Software Map synthesis strategy/authority. Phase 7B promotes that boundary into one logical machine-local/application-global revisioned AI registry with secure credential sources and no plaintext fallback. Phase 7C adds deterministic role policy over stable connection/model identities. AI Center/role policy never grants sMap evidence-egress consent; global role constraints may restrict but never broaden feature authority. Phase 8-compatible Background work remains local-only/no-hosted-fallback. Existing 7A Chat exact defaults are preserved; new 7C Chats default to Follow Interactive. Secrets do not belong in `.dope/`, Chat persistence or ordinary plaintext persisted workbench state.
 
 ## Framework/version boundary
 
