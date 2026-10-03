@@ -1,6 +1,6 @@
 # Product Phase 6 — Flow Task Stack
 
-Status: **P7 NOT GREEN / P8 BLOCKED / MAP-CANVAS P3 GREEN BY SUPPLEMENT**
+Status: **P7 GREEN / P8 READY (UNEXECUTED) / MAP-CANVAS P3 GREEN BY SUPPLEMENT**
 Activation baseline: `710edb362f9881ab41215705db4f08d8daca6293`
 Package baseline: `0.6.0`
 Authority: ADR 0020 as amended by ADR 0021, Phase 6 activation/plan
@@ -20,7 +20,7 @@ Authority: ADR 0020 as amended by ADR 0021, Phase 6 activation/plan
 
 ## Current gate
 
-P1-P6 are implemented. P7 remains Not Green on `0.6.7`; P8 is not eligible.
+P1-P6 are implemented. P7 is Green on `0.6.7` by bounded supplemental closeout; P8 is eligible but has not run. The original Not Green records remain retained.
 
 The retained evidence chain is:
 
@@ -30,15 +30,13 @@ The retained evidence chain is:
 4. `c6-flow-projection-contract` repaired that aggregate-versus-facts presentation mismatch. A fresh complete P3 replay rendered 18 participants / 27 edges but retained a Not Green result because the first fit was `0.564295×` and unreadable.
 5. The one-off focused Flow readability repair now opens that same 18 / 27 graph at `1.0×`, enlarges Flow edge labels, and preserves manual zoom, pan and focused Fit. Its direct Dope Dark and Dark (Theia) replay is supplemental Green evidence for the map-canvas P3 gate. The earlier Not Green records remain intact.
 
-The map-canvas P3 gate is cleared by the [supplemental closeout](../c6-map-canvas-priority/closeout.md). Return to fresh P7 qualification at unchanged `0.6.7`; this correction did not itself qualify P7. P8 remains blocked until P7 is Green.
-
-The packaged AppImage controlled-shutdown failure remains a separate unresolved P7 blocker.
+The map-canvas P3 gate is cleared by the [supplemental closeout](../c6-map-canvas-priority/closeout.md). The later P7 replay and bounded path/window-close correction are recorded in the [P7 evidence](P7-flow-dogfooding-evidence.md#bounded-p7-closeout--2026-10-03). P8 may now audit the `0.6.7` candidate; Phase 6 is not yet Green.
 
 ### Final-state aggregate replay (2026-10-03)
 
 At clean candidate `395522291ce62bbbb15e62722680259c6b3a5ec8` / `0.6.7`, 135 focused tests, typecheck, browser/Electron builds, packaging and a fresh disposable Adaptive SEO browser replay passed their exercised gates. System Flow rendered 15 participants/31 interactions; dense Subsystem Flow rendered 18/27 at readable `1.0×`, with manual pan/zoom and explicit Fit. Sidebar, dedicated Edit Architecture draft behavior, palette persistence and Dope Dark/Light (Theia) were exercised. The rebuilt AppImage reached ready and shut down cleanly via SIGTERM, but normal window close was not qualified; native file-search `spawn ENOTDIR` remains observable.
 
-**P7 remains Not Green; P8 remains blocked.** The Physical Map breadcrumb under the toolbar shows only `Project` and focus names, omitting the required readable project path. The [new P7 evidence](P7-flow-dogfooding-evidence.md#final-state-aggregate-replay--2026-10-03) gives direct reproduction and residual evidence limits. Keep `0.6.7`; repair this bounded presentation defect and replay the affected GUI gate plus normal packaged window close before closeout.
+**P7 Green by later closeout; P8 ready and unexecuted.** The final-state replay immediately above remains its historical Not Green observation. A subsequent bounded correction restored the Physical Map workspace path and a rebuilt AppImage exited cleanly after normal window close. See the [supplemental P7 closeout](P7-flow-dogfooding-evidence.md#bounded-p7-closeout--2026-10-03). Keep `0.6.7` for P8; do not claim Phase 6 Green until that audit passes.
 
 ## Locked truth rules
 

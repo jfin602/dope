@@ -88,3 +88,13 @@ test('node identity renders in full with path breaks and theme-aware wrapping', 
   for (const intent of ['add', 'modify', 'remove', 'move', 'relationship', 'contract'])
     assert.match(mapCss, new RegExp(`\\.dope-plan-${intent}\\b`));
 });
+
+test('Physical Map context shows the active workspace path beneath the toolbar', () => {
+  const widget = read('packages/theia-extension/src/browser/physical-map-widget.ts');
+  const css = read('packages/theia-extension/src/browser/dope.css');
+  assert.match(widget, /this\.node\.append\(bar, this\.breadcrumbs, stage\)/);
+  assert.match(widget, /path\.textContent = new URI\(this\.controller\.mapWorkspace\)\.path\.toString\(\)/);
+  assert.match(widget, /this\.breadcrumbs\.append\(' \/ ', path\)/);
+  assert.match(css, /\.dope-map-breadcrumbs \{[^}]*overflow-x: auto; white-space: nowrap/);
+  assert.match(css, /\.dope-map-workspace-path \{[^}]*padding: 2px 6px;[^}]*background: var\(--theia-input-background\)/);
+});

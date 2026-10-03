@@ -315,6 +315,12 @@ export class PhysicalMapWidget extends BaseWidget {
         overview.textContent = 'Project';
         overview.onclick = () => { this.controller.setDetail('architecture'); this.controller.fit(); };
         this.breadcrumbs.append(overview);
+        if (this.controller.mapWorkspace) {
+            const path = document.createElement('span');
+            path.className = 'dope-map-workspace-path';
+            path.textContent = new URI(this.controller.mapWorkspace).path.toString();
+            this.breadcrumbs.append(' / ', path);
+        }
         for (const item of this.controller.breadcrumbs) {
             this.breadcrumbs.append(' / ');
             const button = document.createElement('button');
