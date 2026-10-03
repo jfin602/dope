@@ -99,7 +99,25 @@ Use stable Dope-owned connection IDs independent from provider, endpoint and dis
 
 **Decision**
 
-TBD.
+Locked: every `AIConnection` receives an **immutable Dope-owned connection ID** at creation. Identity is independent from provider/runtime type, endpoint, display name, credentials, model inventory and readiness state. Editing any of those properties does not create a new connection identity.
+
+Multiple simultaneous connections of the same provider/runtime type are allowed. Examples include separate Personal/Work OpenAI connections, several Local/LM Studio endpoints, or multiple OpenAI-compatible servers. Dope may warn when a new configuration appears to duplicate an existing provider+endpoint combination, but duplicate-looking connections are not forbidden because credentials, aliases and future policy may differ.
+
+Durable lifecycle and runtime readiness are separate concerns. A configured connection continues to exist when its endpoint is offline, authentication fails or no models are currently usable.
+
+The persistent lifecycle distinguishes at least:
+- **Enabled/configured** — eligible for ordinary use when runtime readiness permits;
+- **Disabled** — reversibly excluded from new execution while preserving ID and configuration;
+- **Removed** — no longer part of the active connection registry/configuration.
+
+Runtime/application status such as Checking, Refreshing, Reconnecting, Unavailable, Needs Authentication or Invalid Configuration does not replace connection identity.
+
+**Disable** is reversible and preserves connection identity, non-secret configuration and references. **Remove** deletes active configuration and makes the connection ineligible for new use, but it must never invalidate or rewrite historical execution provenance.
+
+Historical assistant/model execution records therefore persist enough descriptive provenance to remain understandable without the live connection registry. At minimum they retain the stable connection ID plus provider/model identity and useful execution-time display metadata. If the live connection no longer exists, historical UI may identify it as a removed connection while still showing which provider/model actually produced the execution.
+
+Phase 7B does not require a user-visible deleted-connections graveyard. Historical provenance is durable in the owning Chat/execution record; active connection management remains uncluttered.
+
 
 ---
 
