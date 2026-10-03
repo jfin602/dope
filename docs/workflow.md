@@ -527,3 +527,31 @@ The correction is presentation-only. It must not change canonical architecture, 
 
 Use one bounded manual **GPT-6 Sol High** one-off implementation prompt with focused permanent regressions and direct GUI qualification. Do not run this correction through `codex:phase`. Preserve all earlier P7 and map-canvas Not Green evidence; this correction does not relabel historical results or unblock P8 by itself.
 
+## October 2, 2026 — Phase 6 sMap sidebar density correction
+
+The Green `c6-smap-outline` corrected the inspector's hierarchy/navigation model. A follow-up direct review approved one more presentation-only density pass at unchanged `0.6.7`.
+
+The correction is `c6-smap-sidebar-density`.
+
+Use one manual **GPT-6 Sol High** one-off implementation prompt. Do not create a multi-prompt `codex:phase` stack for this correction.
+
+Locked behavior:
+- remove the redundant large body `Software Map` heading from the initialized inspector;
+- use compact `SMAP CONTROLS`;
+- render `OPEN` and `REFRESH` inline on the first row;
+- establish the aligned second-row `EDIT ARCHITECTURE` seam without shipping an enabled no-op: style the real action if `c6-edit-architecture` is present, otherwise leave capability implementation to that approved correction;
+- condense normal generation/completeness/node/violation state into one compact `SYNTHESIS` line while preserving separate actionable partial/error diagnostics;
+- materially reduce nested indentation and disclosure/spacer gutter so more identity text fits horizontally without flattening hierarchy;
+- keep full names/paths wrapping rather than truncating;
+- visually distinguish System, Subsystem, Component and supported file/code kinds using stable kind-token/prefix color or an equally compact treatment;
+- keep sidebar kind color independent from `c6-map-color-grammar` map node/branch hue, inheritance and explicit overrides;
+- keep selection/focus and future warning/error/status markers as separate semantic channels;
+- do not reserve empty width for future icons;
+- preserve all Green `c6-smap-outline` shared-selection, reveal, collapse, wrapping, evidence/source and diagnostic behavior.
+
+Validation is T2 plus targeted GUI evidence on the accepted Adaptive SEO reference. Do not package AppImage or rerun the full Phase 6 qualification matrix solely for this correction.
+
+The correction must not change canonical architecture, Software Map evidence/query truth, Flow/Physical Map/Planning truth, Edit Architecture save/Search Deeper behavior, synthesis/provider/runtime behavior, project persistence, or package version.
+
+`c6-smap-outline` remains Green historical evidence and is not reopened. `c6-edit-architecture` and `c6-branch-seam` remain independent follow-ons. This correction does not relabel P7 or unblock P8 by itself.
+
