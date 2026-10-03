@@ -34,7 +34,8 @@ export default new ContainerModule(bind => {
         return backend;
     })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<ChatClient>(chatServicePath, client => {
-        const backend = new ChatBackend(context.container.get(ChatRepository), client);
+        const backend = new ChatBackend(context.container.get(ChatRepository), client,
+            context.container.get(ModelConnectionsRegistry));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

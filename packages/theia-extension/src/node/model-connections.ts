@@ -7,6 +7,8 @@ import type { ConnectedModel, ConversationEvent, ConversationRequest, Conversati
     ModelSelection } from '@dope/contracts/lib/model-runtime';
 import type { ModelConnectionMetadata, ModelConnectionsClient, ModelConnectionsService,
     ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
+import { LocalConversationalProvider, GeminiConversationalProvider } from './conversational-providers';
+import { OpenAIConversationalProvider } from './openai-conversational-provider';
 
 export interface ModelConnectionStore {
     read(): Promise<ModelConnectionMetadata[]>;
@@ -122,6 +124,20 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
     }
     /** For provider setup on the backend only; never part of the RPC inventory. */
     sessionCredential(connectionId: string): string | undefined { return this.credentials.get(connectionId); }
+    async activate(connectionId: string): Promise<ModelConnectionsSnapshot> {
+        await this.loaded;
+        const entry = this.connections.get(connectionId);
+        if (!entry) throw new ModelRuntimeFailure('Connection unavailable', 'connection-unavailable');
+        const credential = this.credentials.get(connectionId);
+        let runtime: ConversationalModelRuntime;
+        if (entry.providerId === 'local') runtime = new LocalConversationalProvider();
+        else if (entry.providerId === 'gemini' && credential) runtime = new GeminiConversationalProvider({ apiKey: credential });
+        else if (entry.providerId === 'openai' && credential && entry.preferredModelId)
+            runtime = new OpenAIConversationalProvider({ apiKey: credential, models: [{ id: entry.preferredModelId }] });
+        else throw new ModelRuntimeFailure('Connection needs a model and session credential', 'connection-unavailable');
+        await this.connect(connectionId, runtime);
+        return this.list();
+    }
     /** Runtime bindings and credentials are session-only and never enter the store. */
     async connect(connectionId: string, runtime: ConversationalModelRuntime): Promise<void> {
         await this.loaded;
@@ -186,5 +202,6 @@ export class ModelConnectionsBackend implements ModelConnectionsService {
     setSessionCredential(connectionId: string, credential: string | null) {
         return this.registry.setSessionCredential(connectionId, credential);
     }
+    activate(connectionId: string) { return this.registry.activate(connectionId); }
     dispose(): void { this.unlisten(); }
 }

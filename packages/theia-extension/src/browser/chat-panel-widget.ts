@@ -3,9 +3,19 @@ import { ApplicationShell, type StatefulWidget } from '@theia/core/lib/browser';
 import { SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import type { ChatOperation } from '@dope/chat/lib/service';
+import type { ChatSettings, ChatContextKind, ChatModelSelection } from '@dope/chat';
+import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
 import { ChatOpenOwners, ChatPanelController, chatTree } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
 import { chatPanelWidgetId, type ChatPanelOptions } from './chat-panel-presentation';
+
+class SecretInputDialog extends SingleTextInputDialog {
+    constructor(title: string) {
+        super({ title, confirmButtonLabel: 'Connect' });
+        this.inputField.type = 'password';
+        this.inputField.autocomplete = 'off';
+    }
+}
 
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     readonly controller: ChatPanelController;
@@ -13,9 +23,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private readonly status = document.createElement('p');
     private readonly content = document.createElement('div');
     private workspaceRequest = 0;
+    private models: ModelConnectionsSnapshot = { connections: [] };
+    private settingsOpen = false;
+    private settingsDraft?: ChatSettings;
+    private settingsChatId?: string;
 
     constructor(connect: () => ChatConnection, private readonly workspaces: WorkspaceService,
-        private readonly shell: ApplicationShell, owners: ChatOpenOwners, options: ChatPanelOptions) {
+        private readonly shell: ApplicationShell, owners: ChatOpenOwners, options: ChatPanelOptions,
+        private readonly modelConnections?: ModelConnectionsService) {
         super();
         this.id = chatPanelWidgetId(options);
         this.title.label = this.title.caption = 'Chat';
@@ -28,6 +43,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.node.append(this.status, this.content);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.attach(); });
         void this.attach();
+        void this.loadModels();
     }
 
     storeState(): object {
@@ -63,6 +79,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const result = await new SingleTextInputDialog({ title, initialValue: value, confirmButtonLabel: 'Save' }).open();
         return result?.trim() || undefined;
     }
+    private async secret(title: string): Promise<string | undefined> {
+        return (await new SecretInputDialog(title).open())?.trim() || undefined;
+    }
     private async folderChoice(title: string, current: string, excluded = ''): Promise<string | undefined> {
         const paths = ['', ...(this.controller.snapshot?.folders.map(folder => folder.path) ?? [])]
             .filter(path => !excluded || path !== excluded && !path.startsWith(`${excluded}/`));
@@ -73,6 +92,118 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         return path;
     }
     private mutate(operation: ChatOperation): void { void this.controller.mutate(operation); }
+    private async loadModels(): Promise<void> {
+        if (!this.modelConnections) return;
+        try { this.models = await this.modelConnections.list(); this.render(); }
+        catch (error) { this.status.textContent = String(error); }
+    }
+    private usableModels(): Array<{ selection: ChatModelSelection; label: string;
+        controls: readonly { id: string; values: readonly string[] }[] }> {
+        return this.models.connections.flatMap(connection => connection.ready ? connection.models
+            .filter(model => model.usable).map(model => ({ selection: { connectionId: connection.id, modelId: model.id },
+                label: `${connection.label} · ${model.label}`, controls: model.capabilities.reasoningControls ?? [] })) : []);
+    }
+    private sameModel(a?: ChatModelSelection, b?: ChatModelSelection): boolean {
+        return !!a && !!b && a.connectionId === b.connectionId && a.modelId === b.modelId;
+    }
+    private selectedModel(): ChatModelSelection | undefined {
+        const state = this.controller, usable = this.usableModels();
+        const preferred = state.turnModel ?? state.chat?.settings.defaultModel;
+        return preferred ? usable.find(model => this.sameModel(model.selection, preferred))?.selection : usable[0]?.selection;
+    }
+    private async setupModels(): Promise<void> {
+        if (!this.modelConnections) return;
+        const providerId = (await this.name('Model provider: local, gemini or openai', 'local'))?.toLowerCase();
+        if (!providerId) return;
+        if (!['local', 'gemini', 'openai'].includes(providerId)) { this.status.textContent = 'Choose local, gemini or openai.'; return; }
+        const label = await this.name('Connection name', providerId);
+        if (!label) return;
+        const modelId = providerId === 'openai' ? await this.name('OpenAI model ID') : undefined;
+        if (providerId === 'openai' && !modelId) return;
+        const id = crypto.randomUUID();
+        try {
+            await this.modelConnections.upsert({ id, providerId, label, ...(modelId ? { preferredModelId: modelId } : {}) });
+            if (providerId !== 'local') {
+                const credential = await this.secret(`${providerId} session API key`);
+                if (!credential) return;
+                await this.modelConnections.setSessionCredential(id, credential);
+            }
+            this.models = await this.modelConnections.activate(id);
+            this.render();
+        } catch (error) { this.status.textContent = String(error); void this.loadModels(); }
+    }
+    private async reconnect(connectionId: string): Promise<void> {
+        const connection = this.models.connections.find(item => item.id === connectionId);
+        if (!connection || !this.modelConnections) return;
+        try {
+            if (connection.providerId !== 'local') {
+                const credential = await this.secret(`${connection.label} session API key`);
+                if (!credential) return;
+                await this.modelConnections.setSessionCredential(connectionId, credential);
+            }
+            this.models = await this.modelConnections.activate(connectionId);
+            this.render();
+        } catch (error) { this.status.textContent = String(error); }
+    }
+    private renderSettings(chatId: string): HTMLElement {
+        const form = document.createElement('section');
+        form.className = 'dope-chat-settings-form';
+        form.setAttribute('aria-label', 'Chat settings');
+        const draft = this.settingsDraft!;
+        const field = (label: string, input: HTMLElement) => {
+            const row = document.createElement('label'); row.textContent = label; row.append(input); form.append(row);
+        };
+        const model = document.createElement('select');
+        model.append(new Option('No default model', ''));
+        for (const entry of this.usableModels()) model.append(new Option(entry.label,
+            JSON.stringify(entry.selection)));
+        model.value = draft.defaultModel ? JSON.stringify(draft.defaultModel) : '';
+        model.onchange = () => { draft.defaultModel = model.value ? JSON.parse(model.value) as ChatModelSelection : undefined;
+            draft.reasoningControls = undefined; this.render(); };
+        field('Default model', model);
+        const active = this.usableModels().find(entry => this.sameModel(entry.selection, draft.defaultModel));
+        for (const control of active?.controls ?? []) {
+            const select = document.createElement('select');
+            select.append(new Option('Default', ''), ...control.values.map(value => new Option(value, value)));
+            select.value = draft.reasoningControls?.[control.id] ?? '';
+            select.onchange = () => {
+                draft.reasoningControls = { ...draft.reasoningControls };
+                if (select.value) draft.reasoningControls[control.id] = select.value;
+                else delete draft.reasoningControls[control.id];
+            };
+            field(`Reasoning: ${control.id}`, select);
+        }
+        const history = document.createElement('select');
+        history.append(new Option('Recent history', 'recent'), new Option('No history', 'none'));
+        history.value = draft.context.history;
+        history.onchange = () => { draft.context.history = history.value as 'recent' | 'none'; };
+        field('Conversation history', history);
+        for (const [label, key] of [['Input token budget', 'maxInputTokens'], ['Output token reserve', 'reservedOutputTokens']] as const) {
+            const input = document.createElement('input'); input.type = 'number'; input.min = key === 'maxInputTokens' ? '1' : '0';
+            input.value = String(draft.context[key]);
+            input.onchange = () => { draft.context[key] = Number(input.value); };
+            field(label, input);
+        }
+        const sources: ChatContextKind[] = ['editor', 'selection', 'file', 'project-mind', 'architecture',
+            'physical-map', 'flow', 'planning-map', 'work-item', 'saved-chat'];
+        for (const source of sources) {
+            const input = document.createElement('input'); input.type = 'checkbox';
+            input.checked = draft.context.allowedSources.includes(source);
+            input.onchange = () => { draft.context.allowedSources = input.checked ?
+                [...draft.context.allowedSources, source] : draft.context.allowedSources.filter(item => item !== source); };
+            field(`Allow ${source} context`, input);
+        }
+        const saved = document.createElement('input'); saved.type = 'checkbox'; saved.checked = draft.context.savedChatSearch;
+        saved.onchange = () => { draft.context.savedChatSearch = saved.checked; };
+        field('Allow saved Chat retrieval', saved);
+        form.append(this.button('Save settings', () => void this.controller.mutate({ type: 'set-settings', chatId,
+            settings: draft }).then(saved => {
+            if (saved && this.settingsChatId === chatId) {
+                this.settingsOpen = false; this.settingsDraft = undefined; this.render();
+            }
+        }), this.controller.running));
+        return form;
+    }
     private renderTree(node: ChatTree): HTMLElement {
         const list = document.createElement('ul');
         for (const folder of node.folders) {
@@ -129,6 +260,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             return;
         }
         if (state.mode === 'select-chat') {
+            this.settingsOpen = false; this.settingsDraft = undefined; this.settingsChatId = undefined;
             const header = document.createElement('header');
             const heading = document.createElement('h2');
             heading.textContent = 'Select Chat';
@@ -142,13 +274,21 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         const chat = state.chat;
         if (!chat) { state.select(undefined); return; }
+        if (this.settingsChatId !== chat.id) {
+            this.settingsOpen = false; this.settingsDraft = undefined; this.settingsChatId = chat.id;
+        }
         const header = document.createElement('header');
         const back = this.button('Back / Chats', () => state.select(undefined));
         const heading = document.createElement('h2');
         heading.textContent = chat.title;
-        const settings = this.button('⚙', () => {}, true);
+        const settings = this.button('⚙', () => {
+            this.settingsOpen = !this.settingsOpen;
+            this.settingsDraft = this.settingsOpen ? structuredClone(chat.settings) : undefined;
+            this.settingsChatId = chat.id;
+            this.render();
+        });
         settings.className = 'dope-chat-settings';
-        settings.setAttribute('aria-label', 'Chat settings (available in P9)');
+        settings.setAttribute('aria-label', 'Chat settings');
         header.append(back, heading, settings);
         const transcript = document.createElement('ol');
         transcript.className = 'dope-chat-transcript';
@@ -157,14 +297,57 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const who = document.createElement('strong');
             who.textContent = message.role === 'user' ? 'You' : 'Assistant';
             const content = document.createElement('p');
-            content.textContent = message.content || (message.role === 'assistant' ? `(${message.execution.status})` : '');
+            content.textContent = message.content || (message.role === 'assistant' && state.stream?.messageId === message.id ?
+                state.stream.content : '');
             const time = document.createElement('time');
             time.dateTime = message.createdAt;
             time.textContent = new Date(message.createdAt).toLocaleString();
             item.append(who, time, content);
+            if (message.role === 'assistant') {
+                const status = document.createElement('small');
+                status.textContent = ` ${message.execution.status}${message.execution.failure ? ` · ${message.execution.failure}` : ''}`;
+                item.append(status);
+                if (message.execution.actualModel) {
+                    const provenance = document.createElement('small');
+                    provenance.className = 'dope-chat-provenance';
+                    provenance.textContent = ` ${message.execution.actualModel.providerId} · ${message.execution.actualModel.modelLabel}`;
+                    item.append(provenance);
+                }
+            }
             transcript.append(item);
         }
-        this.content.append(header, transcript);
+        this.content.append(header);
+        if (this.settingsOpen) this.content.append(this.renderSettings(chat.id));
+        this.content.append(transcript);
+        const composer = document.createElement('div'); composer.className = 'dope-chat-composer';
+        const input = document.createElement('textarea'); input.rows = 3; input.placeholder = 'Message';
+        input.setAttribute('aria-label', 'Message'); input.value = state.draft;
+        input.oninput = () => { state.draft = input.value; };
+        const toolbar = document.createElement('div'); toolbar.className = 'dope-chat-composer-toolbar';
+        toolbar.append(this.button('Context', () => {}, true), this.button('Tools', () => {}, true));
+        const modelSelector = document.createElement('select'); modelSelector.setAttribute('aria-label', 'Model for next turn');
+        const usable = this.usableModels();
+        for (const entry of usable) modelSelector.append(new Option(entry.label, JSON.stringify(entry.selection)));
+        const selected = this.selectedModel();
+        if (selected) modelSelector.value = JSON.stringify(selected);
+        else modelSelector.append(new Option(chat.settings.defaultModel ? 'Default model unavailable' : 'No usable model', '', true, true));
+        modelSelector.onchange = () => { state.turnModel = JSON.parse(modelSelector.value) as ChatModelSelection; };
+        toolbar.append(modelSelector);
+        if (!selected) {
+            toolbar.append(this.button('Set up models', () => void this.setupModels()));
+            for (const connection of this.models.connections.filter(item => !item.ready))
+                toolbar.append(this.button(`Connect ${connection.label}`, () => void this.reconnect(connection.id)));
+        }
+        toolbar.append(this.button('Refresh models', () => void this.loadModels()));
+        if (state.running) toolbar.append(this.button('Cancel', () => void state.cancel()));
+        else {
+            const retry = [...chat.messages].reverse().find(message => message.role === 'assistant' &&
+                ['failed', 'cancelled'].includes(message.execution.status));
+            if (retry) toolbar.append(this.button('Retry', () => { if (selected) void state.runTurn(selected, retry.id); }, !selected));
+            toolbar.append(this.button('Send', () => { if (selected) void state.runTurn(selected); }, !selected || state.pending));
+        }
+        composer.append(input, toolbar);
+        this.content.append(composer);
     }
     override dispose(): void {
         ++this.workspaceRequest;

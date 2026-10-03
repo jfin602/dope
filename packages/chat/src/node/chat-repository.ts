@@ -267,8 +267,12 @@ export class ChatRepository {
     }
     async read(root: string): Promise<ChatCollection> {
         const current = await this.raw(root);
-        if (!current.chats.some(chat => chat.messages.some(m => m.role === 'assistant' &&
-            ['pending', 'streaming'].includes(m.execution.status)))) return current;
+        const active = current.chats.filter(chat => chat.messages.some(m => m.role === 'assistant' &&
+            ['pending', 'streaming'].includes(m.execution.status)));
+        if (!active.length) return current;
+        const { base } = await this.paths(root);
+        if ((await Promise.all(active.map(chat => this.lease(base, chat.id)))).every(lease => this.active(lease)))
+            return current;
         return this.locked(root, base => this.recover(root, base));
     }
     async mutate(root: string, expectedRevision: number, operation: ChatOperation, leaseToken?: string): Promise<ChatCollection> {
@@ -350,9 +354,7 @@ export class ChatRepository {
                         throw new Error('Assistant execution is not active');
                     if (message.execution.actualModel && operation.actualModel &&
                         (message.execution.actualModel.connectionId !== operation.actualModel.connectionId ||
-                        message.execution.actualModel.modelId !== operation.actualModel.modelId ||
-                        message.execution.actualModel.providerId !== operation.actualModel.providerId ||
-                        message.execution.actualModel.modelLabel !== operation.actualModel.modelLabel))
+                        message.execution.actualModel.providerId !== operation.actualModel.providerId))
                         throw new Error('Assistant model provenance is immutable');
                     const messages = [...c.messages];
                     messages[at] = parseChatMessage({ ...message, content: operation.content, execution: {

@@ -23,4 +23,6 @@ export interface ModelConnectionsService {
     setPreferred(selection: ModelSelection): Promise<ModelConnectionsSnapshot>;
     /** Secret is sent to this process only; null clears it. It is never echoed or persisted. */
     setSessionCredential(connectionId: ModelConnectionId, credential: string | null): Promise<void>;
+    /** Bind a configured connection to its conversational runtime for this application session. */
+    activate(connectionId: ModelConnectionId): Promise<ModelConnectionsSnapshot>;
 }

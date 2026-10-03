@@ -1,5 +1,5 @@
 import type { Chat, ChatCollection, ChatFolderPath, ChatId, ChatMessage,
-    ChatModelProvenance, ChatSettings } from './index';
+    ChatModelProvenance, ChatModelSelection, ChatSettings } from './index';
 
 export const chatServicePath = '/services/dope/chat';
 export const ChatService = Symbol('ChatService');
@@ -26,6 +26,8 @@ export interface ChatLeaseRequest { projectHandle: string; chatId: ChatId; owner
 export type ChatLeaseResult = { acquired: true; token: string } | { acquired: false; ownerId: string };
 export interface ChatDeltaRequest { projectHandle: string; chatId: ChatId; messageId: string;
     executionId: string; sequence: number; delta: string; leaseToken: string }
+export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseToken: string;
+    selectedModel: ChatModelSelection; content?: string; retryMessageId?: string }
 export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'changed' | 'lease-changed'; chatId?: ChatId }
     /** Transient visible output; persistence happens at turn lifecycle boundaries. */
@@ -45,4 +47,6 @@ export interface ChatService {
     renew(projectHandle: string, chatId: ChatId, token: string): Promise<void>;
     release(projectHandle: string, chatId: ChatId, token: string): Promise<void>;
     publishDelta(request: ChatDeltaRequest): Promise<void>;
+    runTurn(request: ChatTurnRequest): Promise<void>;
+    cancelTurn(projectHandle: string, chatId: ChatId, leaseToken: string): Promise<void>;
 }

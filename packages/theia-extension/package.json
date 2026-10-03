@@ -1,6 +1,6 @@
 {
   "name": "@dope/theia-extension",
-  "version": "0.7.8",
+  "version": "0.7.9",
   "private": true,
   "description": "Shared Dope Theia presentation extension",
   "main": "lib/browser/frontend-module.js",
@@ -18,13 +18,13 @@
     }
   ],
   "dependencies": {
-    "@dope/chat": "0.7.8",
-    "@dope/code-analysis": "0.7.8",
-    "@dope/code-analysis-typescript": "0.7.8",
-    "@dope/contracts": "0.7.8",
-    "@dope/project-intelligence": "0.7.8",
-    "@dope/software-map": "0.7.8",
-    "@dope/visual-planning": "0.7.8",
+    "@dope/chat": "0.7.9",
+    "@dope/code-analysis": "0.7.9",
+    "@dope/code-analysis-typescript": "0.7.9",
+    "@dope/contracts": "0.7.9",
+    "@dope/project-intelligence": "0.7.9",
+    "@dope/software-map": "0.7.9",
+    "@dope/visual-planning": "0.7.9",
     "@google/genai": "2.24.0",
     "@theia/core": "1.75.0",
     "@theia/filesystem": "1.75.0",

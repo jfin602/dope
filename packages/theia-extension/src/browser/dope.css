@@ -363,3 +363,10 @@
 .dope-chat-transcript li { padding: 10px 0; border-top: 1px solid var(--theia-widget-border, var(--theia-contrastBorder)); }
 .dope-chat-transcript time { margin-left: 8px; }
 .dope-chat-transcript p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+.dope-chat-provenance { color: var(--theia-descriptionForeground); margin-left: 8px; }
+.dope-chat-settings-form { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--theia-widget-border); }
+.dope-chat-settings-form label { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.dope-chat-composer { display: grid; gap: 6px; margin-top: 12px; }
+.dope-chat-composer textarea { box-sizing: border-box; width: 100%; resize: vertical; min-height: 4em; color: var(--theia-input-foreground); background: var(--theia-input-background); }
+.dope-chat-composer-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.dope-chat-composer-toolbar select { min-width: 6em; max-width: 45%; margin-left: auto; }

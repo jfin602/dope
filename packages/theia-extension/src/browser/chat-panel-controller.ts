@@ -1,6 +1,7 @@
 import { compareChatsByInteraction, joinChatFolderPath } from '@dope/chat';
 import type { Chat, ChatCollection, ChatFolderPath } from '@dope/chat';
 import type { ChatClient, ChatOperation, ChatService } from '@dope/chat/lib/service';
+import type { ChatModelSelection } from '@dope/chat';
 
 export type ChatConnection = ChatService & { setClient(client: ChatClient | undefined): void; dispose(): void };
 export type ChatMode = 'select-chat' | 'chat';
@@ -47,6 +48,10 @@ export class ChatPanelController {
     loading = false;
     pending = false;
     error = '';
+    draft = '';
+    turnModel: ChatModelSelection | undefined;
+    running = false;
+    stream: { messageId: string; executionId: string; content: string; sequence: number } | undefined;
     private connection?: ChatConnection;
     private handle?: string;
     private generation = 0;
@@ -79,8 +84,10 @@ export class ChatPanelController {
         this.loading = !!workspace;
         this.pending = false;
         this.error = '';
+        this.draft = ''; this.turnModel = undefined; this.stream = undefined;
         this.changed();
         await this.leave();
+        this.running = false;
         await Promise.allSettled([...this.selections]);
         if (this.disposed || generation !== this.generation) return;
         this.connection?.setClient(undefined);
@@ -94,10 +101,20 @@ export class ChatPanelController {
             const connection = this.connect();
             this.connection = connection;
             connection.setClient({ notifyChatEvent: event => {
-                if (this.disposed || generation !== this.generation || event.kind === 'assistant-delta' ||
-                    this.handle && event.projectHandle !== this.handle) return;
+                if (this.disposed || generation !== this.generation || this.handle && event.projectHandle !== this.handle) return;
+                if (event.kind === 'assistant-delta') {
+                    if (!this.running || event.chatId !== this.chatId) return;
+                    const current = this.stream;
+                    if (current && (current.messageId !== event.messageId || current.executionId !== event.executionId ||
+                        event.sequence !== current.sequence + 1)) return;
+                    if (!current && event.sequence !== 0) return;
+                    this.stream = { messageId: event.messageId, executionId: event.executionId,
+                        content: (current?.content ?? '') + event.delta, sequence: event.sequence };
+                    this.changed();
+                    return;
+                }
                 this.eventRevision = Math.max(this.eventRevision, event.revision);
-                if (!this.pending && this.handle && event.revision > (this.snapshot?.revision ?? -1)) void this.refresh();
+                if (!this.pending && !this.running && this.handle && event.revision > (this.snapshot?.revision ?? -1)) void this.refresh();
             } });
             const attached = await connection.attach(workspace);
             if (this.disposed || generation !== this.generation) return;
@@ -132,6 +149,7 @@ export class ChatPanelController {
     }
 
     private async leave(): Promise<void> {
+        if (this.running) await this.cancel();
         if (this.renewal) clearInterval(this.renewal);
         this.renewal = undefined;
         const lease = this.lease;
@@ -166,6 +184,7 @@ export class ChatPanelController {
         }
         if (chatId === this.chatId && this.mode === 'chat' && this.lease) return true;
         this.chatId = undefined; this.mode = 'select-chat'; this.error = '';
+        this.draft = ''; this.turnModel = undefined; this.stream = undefined;
         this.changed();
         await this.leave();
         await Promise.allSettled(previous);
@@ -192,7 +211,7 @@ export class ChatPanelController {
                 return false;
             }
             this.lease = { workspace, chatId, connection, handle, token: claim.token };
-            this.chatId = chatId; this.mode = 'chat'; this.changed();
+            this.chatId = chatId; this.mode = 'chat'; this.stream = undefined; this.changed();
             this.renewal = setInterval(() => {
                 if (this.lease?.token !== claim.token) return;
                 void connection.renew(handle, chatId, claim.token).catch(() => {
@@ -223,6 +242,10 @@ export class ChatPanelController {
             if (this.disposed || generation !== this.generation || request !== this.request ||
                 snapshot.revision < (this.snapshot?.revision ?? -1)) return;
             this.snapshot = snapshot;
+            if (this.stream && !snapshot.chats.find(chat => chat.id === this.chatId)?.messages.some(message =>
+                message.id === this.stream?.messageId && message.role === 'assistant' &&
+                message.execution.id === this.stream.executionId && message.execution.status === 'streaming'))
+                this.stream = undefined;
             if (this.chatId && !snapshot.chats.some(chat => chat.id === this.chatId)) void this.select(undefined);
             if (!retainError) this.error = '';
             this.changed();
@@ -235,7 +258,7 @@ export class ChatPanelController {
     }
 
     async mutate(operation: ChatOperation): Promise<boolean> {
-        if (!this.connection || !this.handle || !this.snapshot || this.pending || this.disposed) return false;
+        if (!this.connection || !this.handle || !this.snapshot || this.pending || this.running || this.disposed) return false;
         const generation = this.generation, connection = this.connection, handle = this.handle;
         const request = ++this.request;
         this.pending = true;
@@ -268,6 +291,39 @@ export class ChatPanelController {
 
     async newChat(folderPath: ChatFolderPath): Promise<boolean> {
         return this.mutate({ type: 'create-chat', id: crypto.randomUUID(), folderPath });
+    }
+    async runTurn(model: ChatModelSelection, retryMessageId?: string): Promise<boolean> {
+        const lease = this.lease;
+        if (!lease || this.running || this.pending || !this.chat || !retryMessageId && !this.draft.trim()) return false;
+        const content = this.draft;
+        const generation = this.generation, chatId = this.chatId;
+        this.running = true; this.error = ''; this.stream = undefined;
+        if (!retryMessageId) this.draft = '';
+        this.turnModel = undefined;
+        this.changed();
+        try {
+            await lease.connection.runTurn({ projectHandle: lease.handle, chatId: lease.chatId,
+                leaseToken: lease.token, selectedModel: model,
+                ...(retryMessageId ? { retryMessageId } : { content }) });
+            return true;
+        } catch (error) {
+            if (!this.disposed && generation === this.generation && chatId === this.chatId) {
+                this.error = String(error);
+                if (!retryMessageId && !this.chat?.messages.some(message => message.role === 'user' && message.content === content))
+                    this.draft = content;
+                this.changed();
+            }
+            return false;
+        } finally {
+            if (!this.disposed && generation === this.generation && chatId === this.chatId) {
+                this.running = false; this.stream = undefined; this.changed();
+                await this.refresh(true);
+            }
+        }
+    }
+    async cancel(): Promise<void> {
+        const lease = this.lease;
+        if (lease && this.running) await lease.connection.cancelTurn(lease.handle, lease.chatId, lease.token).catch(() => {});
     }
     async newFolder(parent: ChatFolderPath, name: string): Promise<boolean> {
         try { return this.mutate({ type: 'create-folder', path: joinChatFolderPath(parent, name) }); }

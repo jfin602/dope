@@ -102,6 +102,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         new ChatPanelWidget(() => context.container.get(ChatService) as ChatService & RpcServer<ChatClient>,
             context.container.get(WorkspaceService), context.container.get(ApplicationShell),
-            context.container.get(ChatOpenOwners), options) })).inSingletonScope();
+            context.container.get(ChatOpenOwners), options,
+            context.container.get(ModelConnectionsService)) })).inSingletonScope();
     rebind(WindowTitleService).to(DopeWindowTitleService).inSingletonScope();
 });

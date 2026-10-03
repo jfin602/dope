@@ -29,6 +29,7 @@ export interface ChatContextPolicy {
 export interface ChatSettings {
     schemaVersion: 1;
     defaultModel?: ChatModelSelection;
+    reasoningControls?: Record<string, string>;
     context: ChatContextPolicy;
 }
 
@@ -162,7 +163,7 @@ export function parseChatContextRef(value: unknown): ChatContextRef {
     return ref;
 }
 export function parseChatSettings(value: unknown): ChatSettings {
-    const v = record(value, ['schemaVersion', 'defaultModel', 'context'], ['schemaVersion', 'context']);
+    const v = record(value, ['schemaVersion', 'defaultModel', 'reasoningControls', 'context'], ['schemaVersion', 'context']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported Chat settings schema');
     const c = record(v.context, ['maxInputTokens', 'reservedOutputTokens', 'history', 'savedChatSearch', 'allowedSources'],
         ['maxInputTokens', 'reservedOutputTokens', 'history', 'savedChatSearch', 'allowedSources']);
@@ -176,6 +177,12 @@ export function parseChatSettings(value: unknown): ChatSettings {
         savedChatSearch: c.savedChatSearch, allowedSources,
     } };
     if (v.defaultModel !== undefined) settings.defaultModel = parseChatModelSelection(v.defaultModel);
+    if (v.reasoningControls !== undefined) {
+        if (!v.reasoningControls || typeof v.reasoningControls !== 'object' || Array.isArray(v.reasoningControls))
+            throw new Error('Invalid reasoning controls');
+        settings.reasoningControls = Object.fromEntries(Object.entries(v.reasoningControls).map(([key, value]) =>
+            [string(key, 'reasoning control'), string(value, 'reasoning value')]));
+    }
     return settings;
 }
 export function availableChatContextTokens(policy: ChatContextPolicy, modelWindowTokens: number): number {
@@ -194,8 +201,8 @@ function parseExecution(value: unknown): ChatExecution {
     if (v.actualModel !== undefined) execution.actualModel = parseModelProvenance(v.actualModel);
     if (v.finishedAt !== undefined) execution.finishedAt = time(v.finishedAt);
     if (v.failure !== undefined) execution.failure = string(v.failure, 'failure');
-    if (execution.actualModel && (execution.actualModel.connectionId !== execution.selectedModel.connectionId ||
-        execution.actualModel.modelId !== execution.selectedModel.modelId)) throw new Error('Execution model differs from selection');
+    if (execution.actualModel && execution.actualModel.connectionId !== execution.selectedModel.connectionId)
+        throw new Error('Execution connection differs from selection');
     if (['complete', 'failed', 'cancelled'].includes(execution.status) !== Boolean(execution.finishedAt) ||
         (execution.status === 'failed') !== Boolean(execution.failure) ||
         (['streaming', 'complete'].includes(execution.status) && !execution.actualModel) ||
