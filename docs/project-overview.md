@@ -68,12 +68,15 @@ Uninitialized project
 -> per-System Subsystem / Component refinement
 -> reconciliation / targeted verification
 -> proposed System / Subsystem / Component map
--> developer review and correction
+-> Edit Architecture review and correction
 -> explicit acceptance
 -> canonical architecture
 -> continuous implementation realization / drift analysis
 
 **Analysis is opt-in; synthesis proposes; the developer owns architecture.** Opening a new repository in Dope does not silently build an sMap. If the developer declines the initial analysis offer, the project remains uninitialized and the sMap tab provides an Analyze Project action for later use.
+
+**Architecture** is the canonical user-facing term for the System -> Subsystem -> Component structural organization and editing experience. Hierarchy remains a valid technical description of that structure and of hierarchy-first synthesis, but it is not a competing workspace/action name. The permanent **Edit Architecture** center tab is used both to accept initial proposals and to edit already accepted architecture.
+
 
 The developer may also define architecture before code exists. In an existing project, LLM-generated boundaries remain proposals until the developer accepts or corrects them. Deterministic evidence never becomes canonical architecture merely because it was observed, AI output never becomes canonical merely because it was generated, and canonical declarations never erase contrary implementation evidence.
 
@@ -184,6 +187,9 @@ Foundation Spike 0 — qualify Theia
 -> Phase 5 — Visual Software Planning
 -> correction c5-smap-readability — progressive disclosure and map readability
 -> Phase 6 — Flow
+-> correction c6-smap-outline — compact synchronized left Architecture outline
+-> correction c6-edit-architecture — permanent Edit Architecture workspace
+-> correction c6-branch-seam — synthesis strategy / Model Runtime seam
 -> Phase 7 — AI Presence
 -> Phase 8 — Living Software Knowledge Model
 -> Phase 9 — Scoped Delegation
@@ -226,15 +232,17 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 6 — Flow is ACTIVE FOR PLANNING at coherent package baseline `0.6.0` from transition `710edb362f9881ab41215705db4f08d8daca6293`.**
+**Product Phase 6 — Flow is ACTIVE at package `0.6.7`; P7 is Not Green and P8 remains blocked pending fresh qualification.**
 
 Product Phase 5 is owner-closed for sequencing. Its P11 evidence remains Not Green and P12 was not executed; those gaps are accepted for sequencing only and remain historical truth.
 
-Phase 6 is governed by ADR 0020. It extends the existing Physical Map with a provider-free Flow projection over the same stable System / Subsystem / Component / Code identities. It must preserve evidence/provenance, source navigation and selection/focus identity while showing directional inputs, transformations, stores, external boundaries and outputs.
+Phase 6 remains governed by ADR 0020 as amended by ADR 0021. It extends the existing Physical Map with a provider-free Flow projection over the same stable System / Subsystem / Component / Code identities. Retained Not Green evidence is not relabeled by bounded corrections.
+
+At unchanged `0.6.7`, `c6-smap-outline` owns the compact synchronized left Architecture outline. ADR 0024 and `c6-edit-architecture` now own the permanent **Edit Architecture** center workspace: initial synthesis review and accepted-map editing share one Architecture editor, accepted edits are draft-first with explicit Save Architecture, Search Deeper remains branch-local/preview-first, and the editor does not synchronize transient selection/navigation state with the map or left outline. `c6-edit-architecture` follows `c6-smap-outline` where both touch the left action row. `c6-branch-seam` remains independent.
 
 Phase 6 does not introduce a separate canonical Flow map/database, general AI Presence, Agent Mind, mutation/tool authority or delegation. Those remain Product Phase 7+.
 
-The immediate workflow is `/docs-review` for Phase 6 alignment, then `/docs-apply`, `/prompt-ass`, `/prompt-plan`, and `/prompt-write p6` only after owner approval.
+The next implementation-planning workflow for this approved correction is `/prompt-ass -> /prompt-plan -> /prompt-write c6-edit-architecture` after the overlapping `c6-smap-outline` work is complete.
 ## Phase 3 result — live human-first Planning
 
 Phase 3 added Plan, PlanStep and Task as canonical planning state for the qualified `0.3.6` implementation. Correction `c3-remove-planning-instruments` now removes those live contracts and their runtime/presentation/persistence before Phase 4. Their qualification remains historical evidence only. Plans carry objective/context/status, ordered live steps and human-visible revision/history. Tasks are bounded units of work attached to plan steps, with requirements/constraints, project-relative working-set files, Project Mind links, status, completion notes and developer-entered validation notes.
