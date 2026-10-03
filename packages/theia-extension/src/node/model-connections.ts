@@ -168,7 +168,8 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
                 throw new ModelRuntimeFailure('Connection changed during generation', 'connection-unavailable');
             if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
             yield event.type === 'complete' ? { ...event, provenance: { connectionId: connection.id,
-                modelId: model.id, providerId: connection.providerId, modelLabel: model.label } } : event;
+                modelId: event.actualModelId ?? model.id, providerId: connection.providerId,
+                modelLabel: event.actualModelId ?? model.label } } : event;
         }
     }
 }
