@@ -483,6 +483,27 @@ The correction is presentation-only. It must not change canonical architecture, 
 
 This correction is independent of `c6-branch-seam` and of the Flow projection truth repair. It does not relabel earlier P7/P3 evidence or unblock P8 by itself. Complete it before the next intended fresh P7 GUI candidate if its inspector behavior is to be part of that candidate.
 
+## October 2, 2026 — Phase 6 Edit Architecture correction
+
+ADR 0024 establishes **Architecture** as the canonical user-facing term for the System -> Subsystem -> Component structural organization and editor. Hierarchy remains valid for technical descriptions such as hierarchy-first synthesis, but it is not a competing product workspace, mode or action name.
+
+The approved bounded correction is `c6-edit-architecture` at unchanged `0.6.7`.
+
+Locked behavior:
+- promote the one-time center Architecture Review into permanent **Edit Architecture**;
+- reuse the same editor for initial synthesis acceptance and later accepted-map editing;
+- expose **Edit Architecture** in the initialized left Software Map action row beside Open Physical Map and Refresh Software Map;
+- keep Edit Architecture selection, expansion, scroll/focus, Search Deeper preview and unsaved draft state independent from Physical Map/Flow/left-outline presentation state;
+- preserve the existing `c6-smap-outline` left-outline <-> center-map shared selection behavior;
+- load accepted canonical architecture into an editable draft rather than mutating `.dope/architecture.json` as fields change;
+- make **Save Architecture** the explicit validated/stale-guarded canonical write, followed by ordinary deterministic Software Map analysis/reconciliation rather than automatic full synthesis;
+- extend branch-local preview-first **Search Deeper** to accepted Systems/Subsystems, operating from the current edited branch and changing only the draft until Save Architecture;
+- keep ordinary Architecture editing provider-independent and require provider readiness only for Search Deeper;
+- do not add architecture revision/history UX or durable accepted-map edit-session persistence.
+
+Sequencing: finish/land `c6-smap-outline` first where both corrections touch the left action row, then use `/prompt-ass -> /prompt-plan -> /prompt-write c6-edit-architecture`. `c6-branch-seam` remains independent. This correction does not relabel retained P7 evidence or unblock P8 by itself.
+
+
 ## October 2, 2026 — Phase 6 map color grammar correction
 
 The owner approved a bounded presentation correction for Software Map color readability at unchanged package version `0.6.7`.
