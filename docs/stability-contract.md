@@ -144,6 +144,52 @@ A Chat response is not evidence that a referenced source/Architecture/Flow/Plann
 
 Phase 7 qualification does not require mutation tools, ProposedAction execution, autonomous coding or Scoped Delegation.
 
+### Phase 7B — AI Center qualification
+
+Require executable evidence for:
+- AI Center opening/revealing as one logical singleton management surface from the bottom-left AI launcher while account/profile remains available under Settings;
+- immutable connection identity surviving alias/endpoint/non-secret configuration edits;
+- multiple same-provider/runtime connections without identity collision;
+- Disabled preserving identity/configuration and Remove preventing new use without corrupting historical execution provenance;
+- one logical machine-local/application-global registry visible across projects and, where supported by the runtime topology, multiple Dope windows/processes;
+- revision conflict rejection, cross-process writer exclusion and live update propagation rather than last-writer-wins preference races;
+- registry usability without an open project and repository copy/clone having zero effect on global connection inventory;
+- no connection/model/role configuration entering project-local `.dope/`;
+- Environment, Session-only and OS secure-storage credential paths with no plaintext persistent downgrade;
+- secret redaction/non-persistence across Chat/provenance/preferences/logs/telemetry/errors/debug output;
+- provider-specific onboarding behind one shared connection lifecycle, including distinct OpenAI vs OpenAI-compatible runtime types and manual Local configuration even when auto-detection exists;
+- stable connection-scoped model identity, discovery/configured-inventory behavior, bounded refresh and known-vs-usable inventory;
+- normalized connection health/model usability without conflating Local cold/unloaded state with unavailable;
+- Test Connection using synthetic zero-project-data inference and not being accepted as Software Map probe/warm-up/evidence-egress proof;
+- migration/convergence from Phase 7A global connection metadata into one authoritative registry without secret copying or indefinite duplicate stores;
+- Chat/Software Map consumers observing registry updates while Software Map retains its explicit run-level consent/strategy boundaries;
+- role-ready eligibility queries using normalized capability/locality/limit metadata without selecting/ranking a target.
+
+### Phase 7C — AI Roles & Routing qualification
+
+Require executable evidence for:
+- exactly five initial fixed role identities and no accidental custom-role/provider-name coupling;
+- deterministic preferred + ordered fallback resolution for exact and constraint targets;
+- stable target resolution for unchanged policy/inventory/constraints;
+- hard constraints vs soft preferences remaining distinct, with Unknown failing hard capability requirements;
+- normalized locality constraints that cannot encode contradictory local-only/hosted-only states;
+- feature/request constraints only narrowing global policy;
+- role policy being unable to grant project-data egress permission absent initiating feature/user authority;
+- explicit selected-model failure still surfacing with no silent role fallback;
+- bounded role fallback only for authorized pre-output availability/transient failures, with no fallback after cancellation, auth/config failure, new egress boundary, meaningful partial output or feature-semantic failure;
+- existing Phase 7A exact Chat defaults preserved through migration, new Chats defaulting to Follow Interactive, and explicit per-turn model selection remaining usable even if Interactive is unconfigured;
+- no generic project/window role override layer appearing accidentally;
+- unconfigured/broken roles failing explicitly with focused AI Center repair rather than arbitrary model selection;
+- role UI showing preferred/fallback/constraints/eligibility/health and keeping feature-imposed constraints read-only;
+- feature-to-role bindings preserving Software Map and Phase 8 stronger authority;
+- immutable routing provenance and a truthful Why this model? explanation;
+- removed/disabled/unavailable/ineligible target references preserving policy intent, with bounded non-secret descriptors for unresolved removed targets;
+- temporary fallback returning to the preferred target when it becomes eligible again;
+- recreated targets with new immutable IDs requiring explicit reassignment;
+- role-policy revision/concurrency/live-window propagation matching the application-global registry contract.
+
+
+
 ## Agent Mind
 
 Applicable when AI Presence introduces Agent Mind.
