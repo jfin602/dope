@@ -164,8 +164,7 @@ Do not run browser GUI, live provider, aggregate `npm run check`, packaging or n
 Run:
 - focused Software Map UI/controller tests;
 - c6-smap-outline regression;
-- extension build;
-- browser build;
+- browser build (which already includes the extension build);
 - `git diff --check`;
 - unchanged-version/no-root-lock checks.
 
@@ -177,7 +176,7 @@ Run:
 - targeted refinement unit tests with fake provider;
 - accepted-edit controller/widget tests;
 - focused initialization/UI/refinement integration tests;
-- extension + browser build;
+- browser build (which already includes the extension build);
 - `git diff --check`;
 - unchanged-version/no-root-lock checks.
 
@@ -186,8 +185,7 @@ Do not make a real Local/Gemini request here.
 ### P4 — T3
 
 On the exact candidate:
-- correction-focused tests;
-- `npm run check` once;
+- `npm run check` once; run an extra correction-focused test only if it is not already included by the aggregate command;
 - `git diff --check`;
 - unchanged-version/no-root-lock coherence;
 - correction phase validation if supported;
