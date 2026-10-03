@@ -421,7 +421,29 @@ New/role-following Chat uses Interactive. Explicit higher-effort foreground acti
 
 **Decision**
 
-TBD.
+Locked: Phase 7C uses a small explicit feature-to-role binding map:
+
+- ordinary/new Chat that follows role policy -> **Interactive**;
+- deliberate heavy foreground analysis -> **Deep Reasoning**;
+- Software Map Analyze Project -> **Software Map** default-target policy;
+- Software Map Search Deeper -> **Software Map** default-target policy;
+- Product Phase 8 continuous semantic maintenance -> **Background** plus hard `localOnly=true`, `hostedAllowed=false`, and no-hosted-fallback constraints;
+- Product Phase 9 delegated coding/tool execution -> **Coding Agent** when that consumer ships.
+
+Deep Reasoning is not selected by a hidden difficulty classifier in initial 7C. It is invoked through an explicit user action or a feature whose contract clearly requests heavier foreground reasoning.
+
+Software Map role policy supplies the default/eligible candidate set, but it does **not** replace Analyze Project/Search Deeper run-level authority. The execution flow still shows/owns the exact target where required, hosted evidence-egress disclosure/consent, feature-specific probe/warm-up and synthesis strategy.
+
+Roles are defaults/policy, not mandatory indirection for every internal model call. Tiny or specialized internal calls may intentionally reuse the parent execution target or use a feature-owned exact execution contract where that is clearer and safer. Automatic Chat title generation should not independently invoke a role merely to select another model; it may reuse the triggering execution target or another explicitly designed lightweight feature contract.
+
+A feature may bypass role resolution and choose an exact model when:
+- the developer explicitly selects one;
+- execution/evidence-egress consent requires an exact visible provider/model;
+- a specialized capability contract depends on an exact tested target;
+- retry/recovery semantics belong to the feature rather than generic role routing.
+
+Bypassing role resolution never bypasses AI Center/Model Runtime architecture: exact-model execution still uses the shared application connection/model registry, capability contracts, secret boundaries and provenance.
+
 
 ---
 
