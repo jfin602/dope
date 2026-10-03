@@ -180,7 +180,7 @@ export interface FlowQueryResult {
     facts: PhysicalFlowFact[];
     /** Direct, one-hop architecture summaries. Traversal always uses facts. */
     aggregates: FlowProjectionRelationship[];
-    projectionLevel?: 'system' | 'subsystem' | 'detail';
+    projectionLevel: 'system' | 'subsystem' | 'detail';
     /** Derived overview participants; members retain selectable physical identities. */
     groups?: { id: string; name: string; memberIds: string[]; members: { id: string; name: string }[]; focusId?: string;
         role: 'Input' | 'Output' | 'Processing' }[];

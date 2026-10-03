@@ -14,7 +14,7 @@ const fact = (id: string, sourceId: string, targetId: string, kind: PhysicalFlow
     extra: Partial<PhysicalFlowFact> = {}): PhysicalFlowFact => ({ id, sourceId, targetId, kind, discriminator: id, evidenceIds: [`proof:${id}`], ...extra });
 const query = (nodes: GraphNode[], facts: PhysicalFlowFact[], endpoints: PhysicalFlowEndpoint[] = [],
     extra: Partial<FlowQueryResult> = {}): FlowQueryResult => ({ kind: 'static', projectId: 'p', generation: 4,
-        inputFingerprint: 'input', focusId: 's', nodes, facts, aggregates: [], endpoints, coverage: [],
+        inputFingerprint: 'input', focusId: 's', nodes, facts, aggregates: [], projectionLevel: 'detail', endpoints, coverage: [],
         coverageStatus: 'complete', diagnostics: [], truncated: false,
         truncation: { nodes: false, facts: false, hops: false, continueDeeper: false, continueFromIds: [] }, ...extra });
 
@@ -53,7 +53,7 @@ test('System focus uses proven summaries and boundary facts, hiding internal cod
         item.sourceId === 'input' ? 'input' : item.sourceId === 'worker' ? 'b' : 'a',
         item.targetId === 'entry' ? 'a' : item.targetId === 'worker' ? 'b' : item.targetId,
         item.kind, { originFlowFactIds: [item.id], behavior: item.behavior }));
-    const input = query(nodes, facts, endpoints, { aggregates });
+    const input = query(nodes, facts, endpoints, { aggregates, projectionLevel: 'system' });
     const original = structuredClone(input);
     const view = projectFlowMap(input, { kind: 'system' });
     assert.deepEqual(input, original);
@@ -105,10 +105,11 @@ test('semantic overview renders aggregates without raw origins; trace renders ra
     const aggregate = fact('summary', 'input', 'a', 'receives', { originFlowFactIds: ['raw'], evidenceIds: ['proof'] });
     const endpoint = boundary('input', 'http-input', { method: 'GET', path: '/entry' });
     const overview = query([{ id: 'a', name: 'A', kind: 'subsystem', purpose: '', evidenceIds: [] }], [], [endpoint],
-        { aggregates: [aggregate] });
+        { aggregates: [aggregate], projectionLevel: 'system' });
     assert.deepEqual(projectFlowMap(overview, { kind: 'system' }).edges.map(edge => edge.originFlowFactIds), [['raw']]);
+    assert.deepEqual(projectFlowMap({ ...overview, projectionLevel: 'subsystem' }, { kind: 'subsystem' }).edges.map(edge => edge.id), ['summary']);
     const traced = query([code('handler')], [fact('raw', 'input', 'handler', 'receives')], [endpoint],
-        { direction: 'downstream', aggregates: [aggregate] });
+        { direction: 'downstream', aggregates: [aggregate], projectionLevel: 'detail' });
     assert.deepEqual(projectFlowMap(traced, { kind: 'system' }).edges.map(edge => edge.id), ['raw']);
 });
 

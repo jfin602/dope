@@ -56,15 +56,8 @@ export function projectFlowMap(result: FlowQueryResult, focus: FlowArchitectureF
         const node = nodes.get(id);
         return node?.kind === 'code' ? node.ownership.subsystemId ?? id : id;
     };
-    const summaries = new Map(result.aggregates.flatMap(fact =>
-        (fact.originFlowFactIds ?? []).map(id => [id, fact] as const)));
-    const chosen = result.facts.flatMap(fact => {
-        if (!systemOverview) return [fact];
-        const summary = summaries.get(fact.id);
-        if (summary) return [summary];
-        return owner(fact.sourceId) === owner(fact.targetId) ? [] : [fact];
-    }).sort((a, b) => compare(a.id, b.id));
-    const facts = [...new Map(chosen.map(fact => [fact.id, fact])).values()];
+    const facts = [...(result.projectionLevel === 'detail' ? result.facts : result.aggregates)]
+        .sort((a, b) => compare(a.id, b.id));
     const shown = new Set(facts.flatMap(fact => [fact.sourceId, fact.targetId]));
     for (const group of result.groups ?? []) if (group.role === 'Processing') shown.add(group.id);
     if (result.selectedId && (nodes.has(result.selectedId) || endpoints.has(result.selectedId))) shown.add(result.selectedId);
