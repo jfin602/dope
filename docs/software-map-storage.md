@@ -112,6 +112,31 @@ When proposed/detected structure and canonical architecture disagree, Dope prese
 
 The physical graph, detected architecture, fingerprints, TypeScript compiler programs and any future disposable discovery cache are derived state. They must be reproducible from current source/config/runtime evidence plus canonical architecture.
 
+## Phase 8 knowledge-alignment state
+
+The Living Software Knowledge Model links current Software Map identities to provenance-bearing documentation, ADRs, contracts, schemas and runtime/source evidence without making those representations canonical architecture.
+
+Durable alignment state may persist project-locally when it is required to avoid losing developer-visible knowledge across restart. Suitable durable fields include:
+- stable assertion identity and classification;
+- linked Software Map identities;
+- provenance/evidence references;
+- evidence dependency fingerprints;
+- last validated basis;
+- current alignment/finding state;
+- developer acknowledgement, dismissal or resolution state.
+
+The following are execution/cache state and must not become required project truth:
+- transient debounce/deduplication queues;
+- scheduler priority or idle-state bookkeeping;
+- prompt payloads and raw model transcripts;
+- provider-native response/session identifiers;
+- local-model warm/residency state;
+- rebuildable indexes that can be recreated from repository + durable `.dope/` state.
+
+A repository/source/document/contract change invalidates only dependent assertions. Unaffected assertion state remains reusable across restart when its dependency fingerprints still match.
+
+Deterministic checks precede semantic inference. Background semantic checks use compact, bounded local-model calls by default. A local result that is uncertain may create a needs-review finding, but it cannot authorize silent hosted-provider execution or mutation of source, docs, contracts, Physical Map evidence or canonical architecture.
+
 ## Developer confirmation and correction
 
 The product must provide an explicit path for the developer to establish or change canonical architecture from generated proposals or from a blank/greenfield project. The first implementation may use bounded sMap controls and/or an ordinary architecture editor, but acceptance/correction must be an explicit developer action.
@@ -127,7 +152,7 @@ The project-local `.dope/` directory is the required persistence boundary for du
 At minimum:
 - `.dope/architecture.json` owns canonical developer-authored System / Subsystem / Component architecture;
 - `.dope/smap.json` owns durable sMap initialization/version/state metadata required to reopen the project coherently;
-- if Dope later persists additional sMap artifacts such as evidence packets, graph snapshots, fingerprints, proposal drafts or indexes, those project-persistent artifacts belong under `.dope/smap/` (or another explicitly documented `.dope/` child) in a Dope-owned, explicitly versioned format.
+- if Dope later persists additional sMap artifacts such as evidence packets, graph snapshots, fingerprints, proposal drafts, knowledge assertions, alignment findings or indexes, those project-persistent artifacts belong under `.dope/smap/` (or another explicitly documented `.dope/` child) in a Dope-owned, explicitly versioned format.
 
 The repository plus its project-local `.dope/` state must be sufficient to recover durable sMap state. No global Dope database, Theia workspace/application storage, provider-native session, LM Studio state, model cache or other machine-local location may be required to determine the project's canonical architecture, initialized state or other durable sMap truth.
 
@@ -145,4 +170,4 @@ Malformed JSON, invalid schema, unsupported future versions and unsafe paths fai
 
 Acceptance checks the exact prior declaration fingerprint, stages replacement files in `.dope`, then installs the declaration followed by the marker. If the marker install fails, Dope restores the exact prior declaration bytes (or removes the newly created declaration). A malformed, unsafe or mismatched marker is never treated as initialized. Recover a mismatched pair by restoring the accepted declaration or removing the marker and explicitly accepting the intended declaration again. Marker and declaration entries must be regular files, and `.dope` must be a real directory; symlinks are rejected.
 
-No derived graph, ArchitectureEvidencePacket, ArchitectureProposal or architecture-discovery cache belongs in `.dope/project-mind.json`. If any of those artifacts are persisted as project state, they belong under the documented sMap portion of `.dope/`; if they are cached outside the project, that cache must be explicitly disposable, versioned and safely reject/rebuild stale, mismatched or incompatible entries.
+No derived graph, ArchitectureEvidencePacket, ArchitectureProposal, Phase 8 alignment state or architecture-discovery cache belongs in `.dope/project-mind.json`. If any of those artifacts are persisted as project state, they belong under the documented sMap portion of `.dope/`; if they are cached outside the project, that cache must be explicitly disposable, versioned and safely reject/rebuild stale, mismatched or incompatible entries.
