@@ -187,7 +187,32 @@ Support three explicit credential sources where applicable: **environment**, **s
 
 **Decision**
 
-TBD.
+Locked: AI Center supports exactly three credential-source classes where authentication is applicable:
+
+- **Environment** — a provider/runtime-specific environment variable or equivalent backend environment source supplies the credential;
+- **Session-only** — the developer enters a credential that remains only in runtime memory for the application/backend session;
+- **OS secure storage** — persistent credential material is stored through an appropriate operating-system-backed secure-store/keyring boundary.
+
+There is **no plaintext persistent fallback**. If OS secure storage is unavailable, inaccessible or unsupported, AI Center may still use environment or session-only credentials, but persistent secret entry is unavailable rather than silently degrading to ordinary files/preferences.
+
+AI Center shows credential **source and status**, not the secret value. Environment-backed credentials identify the supplying environment key/source when useful without revealing its contents. Securely stored credentials are treated as write-mostly state: normal management actions are **Replace Credential** and **Remove Credential**, not routine Reveal/Copy of the full secret.
+
+Credential lifecycle is independent from connection lifecycle. Removing a credential does not remove the `AIConnection`; the connection remains configured and transitions to an appropriate unauthenticated/Needs Authentication state. Removing the whole connection remains a separate explicit action.
+
+The same credential abstraction applies to hosted and authenticated Local/OpenAI-compatible runtimes rather than creating separate token-storage systems per provider.
+
+Secrets must never be written or exposed through:
+- project-local `.dope/`;
+- Chat/message/execution persistence or provenance;
+- ordinary plaintext application preferences;
+- logs or diagnostics;
+- telemetry/event payloads;
+- cache keys;
+- user-visible raw provider errors;
+- clipboard/debug exports.
+
+Phase 7B does not need to persist identifying fragments such as the last four characters of a key unless a concrete implementation/security need later justifies it. Credential source + configured/available status is sufficient for the default product experience.
+
 
 ---
 
