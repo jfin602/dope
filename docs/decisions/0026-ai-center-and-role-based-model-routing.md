@@ -15,175 +15,554 @@ If each feature owns provider configuration or hard-codes one model, Dope will a
 
 ### Phase 7 is split into three ordered slices
 
-Phase 7 remains one product phase and one `0.7.x` package family, but execution is conceptually split into:
+Phase 7 remains one product phase and one `0.7.x` package family:
 
 1. **Phase 7A — AI Presence**: durable Chats/ChatPanels, provider-independent conversational Model Runtime, application Model Connections registry, Local/Gemini/OpenAI adapters, per-message model selection, per-Chat settings, bounded context, and read-only Ask/Explain/Trace/Find Related.
-2. **Phase 7B — AI Center**: one global connection/model management surface over the Phase 7A registry, plus model discovery/readiness/test/status and secure configuration.
-3. **Phase 7C — AI Roles & Routing**: global role policies, capability/constraint-aware resolution, explicit fallback policy, and role-aware consumers.
+2. **Phase 7B — AI Center**: one global connection/model management surface over the Phase 7A registry, plus secure configuration, model inventory, health/readiness and testing.
+3. **Phase 7C — AI Roles & Routing**: global role policies, deterministic capability/constraint-aware resolution, bounded fallback and role-aware consumers.
 
-The existing P1-P12 Phase 7 stack is the Phase 7A implementation/qualification path. The currently written P13 evidence-only closeout is superseded by this decision and must not execute as final Phase 7 closeout. After P12, `/prompt-ass -> /prompt-plan -> /prompt-write p7` must regenerate the contiguous P13+ continuation and one new final Phase 7 closeout using the actual 7A implementation.
+The existing P1-P12 Phase 7 stack is the Phase 7A implementation/qualification path. The currently written P13 evidence-only closeout is superseded and must not execute as final Phase 7 closeout. After P12, `/prompt-ass -> /prompt-plan -> /prompt-write p7` regenerates the contiguous P13+ continuation and one new final Phase 7 closeout using the actual 7A implementation.
 
-This is forward product capability, not a bounded defect repair, so it must not be disguised as a correction stack.
+7B/7C are forward product capability, not bounded defect repair, and must not be disguised as a correction stack.
+
+## Phase 7B — AI Center
 
 ### AI Center is the canonical global control plane
 
 **AI Center** is the canonical user-facing name for global AI connection management.
 
-The current bottom-left account/profile action becomes an **AI** launcher with an AI-specific icon. Activating it opens or reveals a dedicated AI Center center-workspace tab/editor-like surface. Account/profile management belongs under ordinary Settings rather than remaining the persistent bottom-left AI entry point.
+The current bottom-left account/profile action becomes an **AI** launcher with an AI-specific icon. Activating it opens or reveals one singleton/revealable AI Center center-workspace tab. Account/profile management belongs under ordinary Settings.
 
-AI Center owns the user/application-level view of:
-- configured provider/runtime connections;
-- discovered/known models beneath each connection;
-- readiness/health and reconnect/refresh state;
-- connection testing;
-- safe non-secret configuration;
-- role policies once Phase 7C is implemented.
+AI Center uses a two-pane **connection list + selected connection detail** layout.
 
-The launcher may surface restrained status decoration for meaningful connection problems, but ordinary healthy state should remain quiet.
+The connection list is the primary navigation surface. Each row shows only compact scan-level information:
+- provider/runtime;
+- user-facing alias/name;
+- normalized status;
+- usable model count/readiness summary.
 
-### Connections and models are distinct
+The selected connection detail owns:
+- safe configuration;
+- credential source/status;
+- connection health;
+- discovered/known models and capability detail;
+- Refresh/Reconnect;
+- Test Connection;
+- Disable and Remove.
 
-A provider/runtime connection is not a model.
+Models do not remain broadly expanded beneath every connection by default.
 
-The Dope-owned conceptual contracts are:
+The bottom-left AI launcher stays visually quiet while healthy. It may show restrained non-color-only warning treatment only for actionable connection/routing problems that currently require developer action. Ordinary success does not receive a permanent green indicator, spinner or model count.
+
+The no-connection state is an intentional onboarding surface with a clear **Add Connection** action and concise Local-versus-hosted orientation.
+
+### Connections have immutable Dope-owned identity
+
+Every `AIConnection` receives an immutable Dope-owned ID at creation.
+
+Connection identity is independent from:
+- provider/runtime type;
+- endpoint;
+- display alias;
+- credentials;
+- model inventory;
+- readiness.
+
+Editing those properties does not create a new connection identity.
+
+Multiple simultaneous connections of the same provider/runtime type are allowed. Duplicate-looking provider+endpoint configurations may produce a warning but are not forbidden.
+
+Persistent lifecycle and transient readiness are separate.
+
+Persistent lifecycle includes:
+- **Enabled/configured**;
+- **Disabled** — reversible exclusion from new execution while preserving ID/configuration;
+- **Removed** — no longer active/configured.
+
+Runtime/application status such as Checking, Refreshing, Reconnecting, Unavailable, Needs Authentication or Invalid Configuration does not replace identity.
+
+Removing a connection never rewrites historical execution provenance.
+
+### Application-global means one logical machine-local authority
+
+The connection registry is **machine-local, application-global, and shared across all Dope projects/windows for the same OS user/Dope installation**.
+
+This is one **logical registry authority**, not a requirement that all windows literally share one physical Theia backend process. The implementation must preserve the same behavior across whichever Electron/Theia process topology exists.
+
+Requirements:
+- no registry state beneath project-local `.dope/`;
+- opening/copying/cloning/moving/deleting a repository never changes connection inventory;
+- registry remains usable with no project open;
+- multiple Dope windows/processes observe one logical state;
+- mutation is revisioned/concurrency-safe;
+- stale writes reject/reload instead of silently overwriting;
+- cross-process mutation exclusion is required where more than one backend process can write;
+- accepted updates propagate to other open windows without restart.
+
+Cross-machine/account synchronization is deferred. Non-secret configuration should remain structurally export/import-ready for a future feature, but 7B does not need to ship sync/import/export.
+
+### Credential sources and secure persistence
+
+AI Center supports three credential-source classes where authentication is applicable:
+
+- **Environment**;
+- **Session-only** runtime memory;
+- **OS secure storage**.
+
+There is no plaintext persistent fallback. If secure storage is unavailable/inaccessible/unsupported, persistent secret entry is unavailable rather than downgraded to an ordinary file or preference.
+
+AI Center displays credential source/status but not the secret value. Securely stored credentials are managed through Replace/Remove rather than routine Reveal/Copy.
+
+Credential lifecycle is independent from connection lifecycle. Removing a credential leaves the connection configured and moves it to the appropriate unauthenticated state.
+
+The same secret abstraction applies to hosted and authenticated Local/OpenAI-compatible runtimes.
+
+Secrets must never enter:
+- `.dope/`;
+- Chat/message/execution persistence;
+- routing provenance;
+- ordinary plaintext application preferences;
+- logs/diagnostics;
+- telemetry/event payloads;
+- cache keys;
+- raw user-visible provider errors;
+- clipboard/debug exports.
+
+### Shared Add Connection shell; bounded provider-specific setup
+
+AI Center provides one universal **Add Connection** flow and common management shell.
+
+AI Center/core owns:
+- identity;
+- alias/name;
+- lifecycle;
+- persistence/revision/concurrency;
+- credential references/secure-secret boundary;
+- normalized status/readiness;
+- Test Connection orchestration;
+- Save/Cancel/Remove;
+- navigation/detail presentation.
+
+Provider/runtime adapters may contribute bounded provider-specific behavior:
+- setup fields;
+- field validation;
+- credential requirements;
+- disclosures;
+- discovery hooks/capabilities;
+- connection/test transport hooks;
+- bounded custom setup UI when ordinary fields are insufficient.
+
+**Provider adapters may customize how a connection is configured, but not what a connection is.**
+
+**OpenAI** and **OpenAI-compatible** are distinct provider/runtime types even when they share a wire protocol.
+
+Local runtimes may offer best-effort known-endpoint detection and a one-action **Use detected runtime** path. Manual configuration always remains available.
+
+### Model identity, discovery and inventory
+
+Model inventory is connection-scoped and capability-driven. Adapters may support:
+- automatic discovery;
+- explicit configured inventory;
+- bounded hybrid behavior.
+
+Stable model identity is:
 
 ```text
-AIConnection
-  id
-  providerType
-  displayName
-  endpoint/configuration reference
-  authReference
-  enabled
-  status
-
-AIModel
-  connectionId
-  modelId
-  displayName
-  capabilities
-  context limits
-  availability/readiness
-
-AIRolePolicy
-  roleId
-  preferred target
-  fallback candidates
-  required capabilities
-  constraints
+AIModel identity = connectionId + providerModelKey
 ```
 
-Exact storage/schema fields may evolve, but the separation is architectural. Features consume Model Runtime/connection/model capabilities and do not own independent provider inventories.
+Display labels, availability and capability metadata may change without changing identity.
 
-### Connection configuration is user/application state
+Refresh/discovery occurs at bounded lifecycle events:
+- connection creation;
+- relevant configuration changes;
+- reconnect or runtime inventory-change signal where supported;
+- explicit **Refresh Models**;
+- optional stale-while-revalidate AI Center refresh.
 
-Global connection inventory, non-secret provider configuration, model discovery state, and role preferences are user/application state by default, not project truth.
+Do not continuously poll merely because AI Center is open.
 
-They do not belong in `.dope/`. A repository may refer to project-local feature policy only where separately designed, but copying a repository must not copy credentials or silently authorize another machine/account to use the same hosted provider.
+Previously known models may remain visible as known non-usable entries such as Unavailable / No longer discovered / Unknown with useful last-observed metadata. Ordinary execution consumers receive only models that are currently usable and enabled in Dope.
 
-Credentials/tokens remain secret runtime/application state. Persistent secret storage, when implemented, must use an appropriate secure-store boundary such as OS-backed credential storage. Environment/session-only secret inputs remain valid. Secrets must never be written to `.dope/`, Chat persistence, ordinary plaintext preferences, logs, provenance payloads, or provider-visible error text.
+A user/application preference may hide/disable an individual discovered model from ordinary Dope selection without pretending the provider stopped exposing it.
 
-### Roles are policies, not one-to-one model aliases
+Providers without reliable discovery may use configured model IDs.
 
-A role expresses the intent and constraints of work rather than hard-coding a provider.
+Capability/limit metadata retains source/quality such as provider-reported, adapter-known, configured or unknown. Unknown never becomes an invented authoritative fact.
 
-Initial role vocabulary is:
+### Health/readiness is normalized but separate from identity
 
-- **Interactive**
-- **Deep Reasoning**
-- **Background**
-- **Software Map**
-- **Coding Agent**
+Connection states are:
+- **Unknown**
+- **Checking**
+- **Ready**
+- **Degraded**
+- **Needs Authentication**
+- **Unavailable**
+- **Invalid Configuration**
+- **Disabled**
 
-A role policy may express a preferred model/connection, ordered fallback candidates, required capabilities, minimum context/reasoning requirements, local/hosted constraints, privacy/egress constraints, and other execution requirements.
+Model states are:
+- **Unknown**
+- **Ready**
+- **Unavailable**
+- **Disabled**
 
-A role may exist before every consumer ships. In particular, Coding Agent can be defined before Product Phase 9 gives it mutation/delegation consumers.
+Connection Ready means configuration/authentication/transport/basic runtime readiness is sufficient for ordinary use. It does not imply every model completed a fresh inference test.
 
-Features should request a role plus constraints when they do not require an explicit model. Product/domain code must not spread provider-name conditionals merely to implement routing.
+Model Ready means known/configured, connection usable, enabled in Dope and not currently reported unavailable.
 
-### Resolution precedence preserves developer authority
+Local warm/load residency is separate from usability. A Local model may be Ready while cold/unloaded.
 
-The general resolution order is:
+Health updates come from bounded lifecycle events, explicit Refresh/Test, stale revalidation and real execution outcomes rather than continuous polling.
+
+A single transient request failure does not automatically create persistent launcher warning state.
+
+### Test Connection proves only the minimum conversational path
+
+**Test Connection** answers: **can Dope successfully execute a minimal conversational request through this connection right now?**
+
+The default test:
+- validates current safe configuration;
+- validates credential availability without exposing it;
+- reaches the provider/runtime;
+- selects one currently usable/default model;
+- sends one tiny synthetic conversational request containing zero project data;
+- receives/parses a valid completion;
+- may record ephemeral safe latency/basic usage metadata.
+
+Hosted tests may consume minimal quota/tokens and must disclose that. Local tests may incidentally load a model, but that is not a durable warm-residency guarantee.
+
+A successful generic test does not prove:
+- structured output;
+- streaming semantics;
+- tool calling;
+- large-context behavior;
+- reasoning controls;
+- Software Map readiness/quality;
+- feature-specific capability contracts;
+- durable warm state.
+
+Software Map keeps its stronger ADR 0022 run-level provider/model selection, disclosure, feature probe/readiness, warm-up and evidence-egress authorization.
+
+Test results are ephemeral and invalidated/staled by relevant configuration, credential, model or runtime changes.
+
+### AI Center becomes the sole global connection owner
+
+AI Center owns global provider/runtime connection configuration. Features own execution consent and feature-specific strategy, not duplicate global connection stores.
+
+Chat/no-model setup routes into AI Center and returns to the originating surface after repair.
+
+Software Map consumes the centralized connection/model inventory but retains:
+- explicit run-level target authority;
+- hosted evidence-egress disclosure/consent;
+- feature-specific structured-output probe/readiness;
+- warm-up;
+- synthesis strategy.
+
+When a feature needs missing connection setup, it routes to **Add / Configure in AI Center** rather than embedding another global provider configuration store.
+
+If Phase 7A connection state already matches this ownership model, migration is a no-op. Otherwise 7B performs one deterministic migration preserving stable identity where possible and never copying secret material into plaintext/new stores.
+
+Old feature-specific global provider configuration is retired rather than bidirectionally synchronized forever.
+
+### 7B is role-ready without implementing routing
+
+Every connection/model exposes stable identity plus normalized role-eligibility metadata:
+- enabled/usable/readiness;
+- explicit **local vs hosted** classification;
+- known capabilities such as text generation, streaming, structured output, reasoning controls, tool support and cancellation;
+- known relevant limits;
+- capability/limit source quality.
+
+Local/hosted classification is explicit metadata; 7C does not infer it from provider names.
+
+7B exposes a provider-neutral eligibility query seam conceptually equivalent to:
 
 ```text
-explicit per-message / explicit feature model choice
-    -> persistent Chat-specific model policy where applicable
-    -> feature-requested role + constraints
-    -> global AI Center role policy
-    -> permitted fallback candidates
+findEligibleModels({
+  requiredCapabilities,
+  locality,
+  minimumContext,
+  enabledOnly,
+  usableOnly,
+  ...
+})
 ```
 
-An explicit developer-selected model is authoritative for that execution. If it fails, Dope surfaces the failure rather than silently switching providers/models. The developer must explicitly retry with another model unless the initiating feature used a role policy that already authorizes bounded fallback.
+This returns eligible targets; it does not rank/choose them or apply role policy.
 
-Role fallback must still satisfy the feature's constraints. A lower-precedence global preference can never weaken a higher-precedence privacy, egress, locality, capability, or authority requirement.
+User aliases are allowed, but future policy references immutable IDs.
 
-### AI Center preference does not grant feature authority
+7B does not implement role assignments, role fallbacks, automatic target selection, feature-to-role routing, role policy persistence or a placeholder Roles UI.
 
-Connection/routing policy and feature execution authority are separate.
+## Phase 7C — AI Roles & Routing
 
-For Software Map work, AI Center may establish a preferred/default candidate for the **Software Map** role, but ADR 0022 remains authoritative: Analyze Project, Search Deeper, or another explicit sMap workflow owns provider selection/readiness and evidence-egress disclosure for that execution. Having Gemini/OpenAI connected, or naming one as the Software Map preference, does not by itself authorize repository evidence transfer.
+### Five fixed built-in roles
 
-For Product Phase 8, ADR 0023 remains authoritative. Continuous/background alignment must request constraints equivalent to:
+Initial 7C has exactly five stable role IDs:
+
+- **Interactive** — normal foreground AI assistance where responsiveness is primary.
+- **Deep Reasoning** — deliberately heavier foreground reasoning for difficult analysis where extra latency/cost is acceptable.
+- **Background** — non-interactive work; individual consumers may add stronger constraints.
+- **Software Map** — model-assisted sMap/architecture work such as Analyze Project and Search Deeper.
+- **Coding Agent** — delegated/tool-using coding work, configurable before Product Phase 9 consumes it.
+
+Users configure policies but cannot create, delete or rename role types in initial 7C.
+
+Role identity describes workload intent. Model-specific reasoning effort remains a separate execution setting after target selection.
+
+### Routing is deterministic and ordered
+
+Each `AIRolePolicy` contains one preferred target followed by an ordered fallback sequence.
+
+A policy entry may be:
+- an exact immutable `connectionId + modelId`; or
+- a bounded constraint target representing eligible models satisfying declared requirements.
+
+Given unchanged inventory, role policy and request constraints, routing resolves the same target.
+
+Initial 7C does not dynamically score/rank based on latency, price, benchmarks, provider reputation, historical success rate or popularity.
+
+When multiple models satisfy one constraint entry, resolution uses explicit user ordering where available; otherwise it uses one documented stable ordering over immutable IDs.
+
+Temporary fallback never rewrites preference. When the preferred target becomes eligible again, routing returns to it.
+
+### Hard constraints and soft preferences are distinct
+
+Initial hard constraints include:
+- required capabilities;
+- locality;
+- evidence/data-egress allowance supplied by the initiating feature authority;
+- minimum known context when genuinely required;
+- enabled/usable state;
+- other feature-authority constraints.
+
+Locality is represented as a normalized typed constraint such as:
+- **any**;
+- **local-only**;
+- **hosted-only**.
+
+Do not encode mutually contradictory independent booleans such as `localOnly=true` plus `hostedRequired=true`.
+
+Unknown capability support does not satisfy a hard requirement.
+
+Feature/request constraints combine with global role policy only by **narrowing/intersection**. They may strengthen the effective request but may never weaken a higher-authority restriction.
+
+A critical authority rule: **global role policy can restrict egress but cannot grant feature egress consent**. Any execution that requires hosted project-data transfer must already be authorized by the initiating feature/user flow. An `AIRolePolicy` setting alone never creates permission to send project evidence off-device.
+
+Soft preferences may include prefer-local, prefer-hosted, prefer-reasoning-capable or prefer-larger-context. They only resolve ambiguity inside an already eligible constraint entry and never reorder the explicit policy sequence.
+
+Generalized cost/latency optimization is deferred.
+
+### Fallback is bounded and conservative
+
+Automatic fallback applies only to role-routed requests whose feature/policy already authorizes fallback, before meaningful output is accepted, and only to candidates satisfying all effective hard constraints.
+
+Fallback may advance for pre-execution failures such as:
+- disabled target;
+- unavailable connection/model;
+- target no longer eligible;
+- required capability no longer satisfied.
+
+It may advance for bounded transient failures where allowed, such as:
+- rate limiting;
+- temporary provider/runtime unavailability;
+- transport failure;
+- timeout before useful output.
+
+Generic role routing does not fallback for:
+- user cancellation;
+- explicit developer-selected model;
+- authentication failure;
+- invalid connection configuration;
+- newly required egress/consent not already authorized before execution;
+- meaningful partial output already delivered;
+- content/policy rejection;
+- feature-semantic failures such as invalid Software Map structured output where the owning feature must decide retry semantics.
+
+Each candidate is attempted at most once per role resolution. Provider-specific retries remain separately bounded and cannot restart the fallback sequence indefinitely.
+
+### Override scopes remain small
+
+Precedence is:
 
 ```text
-role: Background
-localOnly: true
-allowHostedFallback: false
+explicit per-turn / explicit feature exact model
+    -> persistent Chat model policy
+    -> feature-requested role + stronger constraints
+    -> global application-wide role policy
 ```
 
-Therefore a generic Background role may have broader developer-configured candidates for other future uses, but Phase 8 cannot silently fall through to a hosted provider, incur hosted cost, or send project evidence off-device.
+After 7C, Chat model policy supports:
+- **Exact model**; or
+- **Follow Interactive role**.
 
-### One registry; many consumers
+Existing 7A Chats preserve/migrate their exact default model policy. New Chats default to Follow Interactive.
 
-Phase 7A's application Model Connections registry is the backend substrate for AI Center. Phase 7B must extend/project that registry rather than create a second provider store.
+An unconfigured/broken Interactive role does not prevent a developer from explicitly selecting an exact usable model for a turn.
 
-The target relationship is:
+Per-message composer choice remains exact-model and one-turn only. There is no ordinary per-message role selector in initial 7C.
+
+No generic project/workspace/window role override layer is added in initial 7C.
+
+Lower-scope choices never mutate higher-scope policy.
+
+### Unconfigured/broken roles fail explicitly and repairably
+
+Dope may recommend eligible role assignments but never silently creates or rewrites enduring role policy.
+
+Derived role health may include:
+- **Ready**;
+- **Using fallback**;
+- **Needs configuration**;
+- **Broken**;
+- **Unavailable**.
+
+If no eligible target exists, Dope does not pick an arbitrary usable model. The requesting feature fails clearly and deep-links to the relevant role in AI Center.
+
+Unconfigured future roles such as Coding Agent before Phase 9 do not create global warnings merely because they exist.
+
+### Roles is a first-class AI Center surface
+
+Phase 7C adds **Roles** beside Connections and Models.
+
+The default role list shows each fixed role with:
+- canonical name;
+- short purpose;
+- preferred target;
+- fallback count;
+- important global constraints/preferences;
+- derived health.
+
+Selecting a role opens a focused editor for:
+- preferred exact/constraint target;
+- ordered fallback entries;
+- editable global constraints/preferences;
+- eligible targets and ineligibility explanations.
+
+Fallback ordering supports both pointer drag/reorder and keyboard-accessible move controls.
+
+Feature-imposed requirements/authority appear read-only and cannot be weakened from the global role editor.
+
+Coding Agent is visible/configurable but marked **No active consumer yet** until Product Phase 9.
+
+### Feature-to-role bindings
+
+Initial bindings are:
+
+- ordinary/new role-following Chat -> **Interactive**;
+- deliberate explicit heavy foreground analysis -> **Deep Reasoning**;
+- Analyze Project -> **Software Map** default-target policy;
+- Search Deeper -> **Software Map** default-target policy;
+- Product Phase 8 continuous semantic maintenance -> **Background** with hard local-only/no-hosted-fallback constraints;
+- Product Phase 9 delegated coding/tool execution -> **Coding Agent** when that consumer ships.
+
+Deep Reasoning is not chosen by a hidden difficulty classifier in initial 7C.
+
+Software Map role supplies default/eligible candidates but does not replace run-level exact target authority, disclosure, probe/warm-up or synthesis strategy.
+
+Roles are not mandatory indirection for every internal model call. Tiny/specialized calls may reuse a parent exact target or a feature-owned exact execution contract.
+
+Automatic Chat title generation continues to use the same actual selected model/provider as the triggering successful exchange unless separately redesigned; it does not invoke a new role selection merely for naming.
+
+### Routing provenance is durable and explainable
+
+Every routed execution records compact provider-neutral provenance:
+- requested role, when applicable;
+- resolution source;
+- relevant non-secret effective hard constraints;
+- role-policy identity/revision;
+- preferred candidate;
+- actual immutable connection/model IDs;
+- execution-time display/provider/model metadata;
+- bounded fallback attempt/results.
+
+Historical routing provenance is immutable under later policy/connection/capability changes.
+
+The UI exposes a concise **Why this model?** explanation showing role/resolution source, relevant hard constraints, preferred/selected target and bounded fallback reason/path.
+
+Routing provenance never exposes secrets, hidden chain-of-thought or undisclosed private scoring.
+
+### Changing inventory preserves policy intent
+
+Inventory/capability changes affect eligibility, not what the developer configured.
+
+Role targets may become Unavailable, Disabled, Removed or Ineligible while remaining visible policy references.
+
+When valid later fallbacks remain eligible, routing may use them without promoting them into the preferred slot.
+
+If the preferred target becomes eligible again, deterministic routing returns to it.
+
+Capability changes re-evaluate eligibility without rewriting policy.
+
+A temporarily missing model that reappears with the same stable identity resumes its policy relationship automatically.
+
+A genuinely recreated connection/model with a new immutable ID does not silently inherit the old role reference merely because provider/endpoint/name look similar. Dope may recommend a likely replacement; developer acceptance is explicit.
+
+For unresolved live policy references to removed targets, preserve a bounded **last-known non-secret descriptor/tombstone** sufficient to render what the target was:
+- immutable IDs;
+- provider/runtime type;
+- connection alias at removal;
+- provider model key/model display label at removal where useful.
+
+This descriptor is not an active connection/model and contains no credentials, secret references or executable configuration.
+
+Role policy uses the same logical machine-local/application-global revision/concurrency/update model as connection state.
+
+Full role-policy edit history/undo is deferred. Execution provenance still records the policy revision used.
+
+## Authority boundaries preserved
+
+Connection availability, role preference and feature authority remain separate:
 
 ```text
-AI Center
-    |
-    +-- Connection Registry
-    |      +-- Local / LM Studio
-    |      +-- OpenAI
-    |      +-- Gemini
-    |      +-- future providers
-    |
-    +-- Model Registry / capabilities
-    |
-    +-- Role Policies
-           |
-           +-- Chat / Interactive
-           +-- Deep Reasoning
-           +-- Software Map
-           +-- Background
-           +-- Coding Agent
+What connections/models exist?
+    -> AI Center / registry
+
+Which model is preferred for a kind of work?
+    -> AIRolePolicy
+
+May this feature send this project data through this target now?
+    -> feature/user authority
 ```
 
-Existing provider-specific setup surfaces may remain temporarily where a feature needs specialized consent/configuration, but global inventory/configuration must converge on this shared registry rather than creating new independent connection ownership.
+Explicit model choice never silently falls back.
+
+Global role policy never grants mutation authority.
+
+Global role policy never grants project-data egress permission that the initiating feature/user flow does not already possess.
+
+Software Map ADR 0022 and Phase 8 ADR 0023 remain authoritative over their stronger feature constraints.
 
 ## Consequences
 
-- Phase 7A can proceed without ballooning Chat implementation into a full routing/control-plane project.
-- Phase 7B becomes a focused UI/application projection over connection infrastructure that already exists.
-- Phase 7C can add role resolution without rewriting provider adapters or Chat identity.
-- Local models gain a first-class place for economical/private background work without making Local the only runtime.
-- Hosted frontier models can serve difficult foreground work without becoming silent defaults for privacy-sensitive/background features.
-- Feature-level authority remains explicit even when global connection/routing preferences exist.
-- Account/profile UI moves to Settings; the persistent bottom-left control becomes the AI entry point.
-- Phase 8 can depend on role-aware Model Runtime while preserving its deterministic-first, local-first, no-hosted-fallback contract.
-- Product Phase 9 can later consume Coding Agent routing without receiving special provider privileges.
+- Phase 7A remains independently implementable/qualifiable before AI Center.
+- Phase 7B centralizes provider/runtime configuration without duplicating feature consent or strategy.
+- Phase 7C adds predictable routing without an opaque model-ranking system.
+- Local models can be first-class Background targets without making Local the only runtime.
+- Hosted models can be preferred for difficult foreground work without becoming silent privacy-sensitive fallbacks.
+- Existing 7A exact Chat defaults remain valid through migration.
+- New role-following Chats can evolve with global Interactive policy.
+- Later Product Phase 8/9 consumers receive stable role contracts without provider coupling.
+- Routing remains inspectable through durable provenance and Why this model? explanations.
 
 ## Non-goals
 
 This decision does not:
 - add mutation/delegation authority to Phase 7;
-- make role routing canonical project truth;
+- make connection/role state canonical project truth;
 - allow silent provider fallback after explicit model selection;
-- allow global AI preferences to bypass evidence-egress consent;
-- require every provider to expose identical capabilities;
-- require Phase 7B to implement every future role consumer;
-- move Phase 8 background alignment into Phase 7.
+- allow role policy to grant evidence-egress consent;
+- require identical provider capabilities;
+- add custom roles in initial 7C;
+- add dynamic cost/latency/benchmark ranking in initial 7C;
+- add generic project/window role overrides;
+- add full role-policy edit history/undo;
+- move Phase 8 alignment behavior into Phase 7.
 
 ## Revisit when
 
-Revisit the role vocabulary or policy schema when real consumers require new constraints or when a provider exposes a materially new execution primitive. Preserve the separation between connection inventory, role preference, feature authority, and canonical project state.
+Revisit custom roles, project-specific role policy, dynamic cost/latency/quality routing, policy history or richer optimization only after real usage demonstrates a need that the fixed deterministic policy cannot express cleanly.
+
+Preserve the separation between connection inventory, routing preference, feature authority and canonical project state.
