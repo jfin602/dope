@@ -1,6 +1,6 @@
 # Product Phase 6 — Flow Plan
 
-Status: **OWNER APPROVED / P7 NOT GREEN / CORRECTION ACTIVE**
+Status: **OWNER-CLOSED FOR SEQUENCING / P8 NOT QUALIFIED**
 Baseline: `0.6.0`
 Activation baseline: `710edb362f9881ab41215705db4f08d8daca6293`
 Execution folder: `p6`

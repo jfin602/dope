@@ -232,7 +232,7 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 6 — Flow is ACTIVE at package `0.6.7`; P7 is Not Green and P8 remains blocked pending fresh qualification.**
+**Product Phase 6 — Flow is owner-closed for sequencing at package `0.6.8`; P8 remains Not Qualified.** The owner accepted its exact-candidate evidence gaps for sequencing only. Product Phase 7 AI Presence is next for a fresh `/docs-review`. See `docs/tasks/p6/closeout.md`.
 
 Product Phase 5 is owner-closed for sequencing. Its P11 evidence remains Not Green and P12 was not executed; those gaps are accepted for sequencing only and remain historical truth.
 

@@ -13,13 +13,13 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 **Product Phase 5 — Visual Software Planning is OWNER-CLOSED FOR SEQUENCING.** The retained Phase 5 source at `0.5.11` remained Not Green because P11 never completed one clean end-to-end A-I qualification replay and P12 was not executed. The owner explicitly accepted those gaps for sequencing on 2026-10-02; no failed or missing evidence is relabeled Green. The closeout transition commit `710edb362f9881ab41215705db4f08d8daca6293` established the coherent `0.6.0` successor baseline.
 
-**Product Phase 6 — Flow is ACTIVE at `0.6.7`, with P7 Not Green and P8 blocked.** P1-P6 are implemented. The retained P7/map-canvas history remains truthful: `c6-flow-overview-priority` owns the overview-priority/query repair history; `c6-map-canvas-priority` retains its original Not Green P3 record and has supplemental Green readability evidence; `c6-flow-projection-contract` owns the aggregate-versus-facts projection mismatch; the separate packaged AppImage controlled-shutdown blocker remains for fresh P7 qualification. The bounded presentation follow-ons now include Green `c6-smap-outline` and Green `c6-map-color-grammar`. `c6-smap-sidebar-density` is approved at unchanged `0.6.7` as the next presentation-only pass on the left inspector: remove the redundant large body title, add compact `SMAP CONTROLS`, condense synthesis/status into one line, reduce hierarchy indentation/gutter, and color only entity-kind tokens without reusing map node-color overrides. ADR 0024 separately approves `c6-edit-architecture` at unchanged `0.6.7`; if it lands after sidebar density it must reuse that action-row layout, and if it lands first the density correction styles the real action rather than shipping a fake enabled placeholder. P8 remains blocked until fresh P7 qualification is Green. The accepted Adaptive SEO reference remains unchanged. General AI Presence remains Product Phase 7.
+**Product Phase 6 — Flow is OWNER-CLOSED FOR SEQUENCING at `0.6.8`; P8 remains Not Qualified.** P7 reached a bounded Green result at `0.6.7`, while its earlier Not Green records remain historical. The owner accepted P8 G/H exact-candidate evidence gaps for sequencing only on October 3, 2026. See `docs/tasks/p6/closeout.md`. Phase 5 P11 Not Green/P12 unexecuted truth remains unchanged. The next work is a fresh Product Phase 7 — AI Presence `/docs-review`; this decision adds no Phase 7 implementation.
 
 `c5-smap-readability` and the other Phase 5 corrections remain retained implementation/history. Their commit subjects or partial browser observations do not create a standalone Green claim beyond recorded evidence.
 
 Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`, package `0.0.6`, on Eclipse Theia 1.75.0. The exact qualification and retained Evidence Gaps remain in `docs/tasks/p0/closeout.md`.
 
-**Product Phase 5 — Visual Software Planning is owner-closed for sequencing.** Product Phase 4 — Physical Map remains Qualified/Green for its approved core scope at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The architecture-discovery follow-ons remain truthful history: `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are owner-closed **Not Qualified** with useful implementation retained. `c4-smap-storage` and `c4-color-theme` are **GREEN / QUALIFIED** at unchanged `0.4.6`. Product Phase 6 — Flow now uses the coherent `0.6.0` baseline established by Phase 5 owner closeout.
+**Product Phase 5 — Visual Software Planning is owner-closed for sequencing.** Product Phase 4 — Physical Map remains Qualified/Green for its approved core scope at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The architecture-discovery follow-ons remain truthful history: `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are owner-closed **Not Qualified** with useful implementation retained. `c4-smap-storage` and `c4-color-theme` are **GREEN / QUALIFIED** at unchanged `0.4.6`. Product Phase 6 — Flow used the coherent `0.6.0` baseline established by Phase 5 owner closeout and is now owner-closed at `0.6.8`.
 
 **ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first bootstrap; ADR 0012 governs hierarchy-first synthesis/progress/performance; ADR 0013 governs compact shared provider contracts as amended by ADR 0022; ADR 0014 governs responsibility-oriented decomposition/review and its owner sequencing amendments; ADR 0015 governs optional root `MODULES.md` bootstrap intent; ADR 0016 governs Dope Dark visual identity and theme boundaries; ADR 0017 governs Phase 5 Planning Maps, transformations, WorkItems, target adoption, staleness/rebase and reconciliation; ADR 0018 governs resumable unaccepted sMap review work; ADR 0019 amends Planning Map basis semantics and Physical Map input isolation; ADR 0020 inserts the provider-free directional projection before AI Presence; ADR 0021 amends its scope and product term to **Flow**, with execution/control relationships first and data semantics as optional evidence-backed enrichment; ADR 0022 separates sMap synthesis strategy from the reusable Model Runtime/provider lifecycle and authorizes the bounded pre-Phase-7 `c6-branch-seam` correction; ADR 0023 establishes Product Phase 8 as the Living Software Knowledge Model with deterministic-first, local-first background alignment, explicit hosted escalation, and no silent canonical mutation; ADR 0024 establishes **Architecture** as the canonical user-facing structural term and a permanent **Edit Architecture** workspace without changing Software Map/Physical Map/Flow/Planning Map meanings.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**; **Architecture** names the structural System -> Subsystem -> Component view/editor, while **Flow** is a Physical Map behavioral/execution projection, not a fourth durable map. AI interprets deterministic evidence; it does not create evidence. The developer owns canonical System / Subsystem / Component identity. General Phase 7 AI Presence remains out of scope; the Phase 5 visual planning canvas and provider-free visual workflow are now active scope.
 
@@ -27,7 +27,7 @@ Phase 2's P6 `0.2.6` evidence-only audit remains **Not Qualified**. The owner su
 
 The September 28, 2026 Phase 1 P6 closeout also remains **Not Qualified** at `dac6e57275134fc610d8c0c6e2620a90d7d58c2f` (`0.1.6`). Its historical failures are preserved. Neither the Phase 2 sequencing waiver nor the Phase 3 owner-close changes that evidence.
 
-Phase 3 added human-first live Planning on top of Project Mind and qualified it at `0.3.6`. Correction `c3-remove-planning-instruments` then removed that complete live subsystem before Phase 4 while preserving its historical plans/evidence. Phase 4 started clean at `0.4.0` with no Phase 3 Planning compatibility obligation. ADR 0010/0011 authorize only the narrow pre-Phase-7 sMap synthesis provider needed by c4. **Phase 5 visual planning is retained as owner-closed implementation; Phase 6 Flow is now the active provider-free planning scope.** General AI Presence/provider integration, Agent Mind, tool calling, AI mutation, scoped delegation and durable Development Sessions remain deferred to their roadmap phases.
+Phase 3 added human-first live Planning on top of Project Mind and qualified it at `0.3.6`. Correction `c3-remove-planning-instruments` then removed that complete live subsystem before Phase 4 while preserving its historical plans/evidence. Phase 4 started clean at `0.4.0` with no Phase 3 Planning compatibility obligation. ADR 0010/0011 authorize only the narrow pre-Phase-7 sMap synthesis provider needed by c4. **Phase 5 visual planning and Phase 6 Flow are retained as owner-closed implementation; Phase 7 AI Presence is next for documentation review.** General AI Presence/provider integration, Agent Mind, tool calling, AI mutation, scoped delegation and durable Development Sessions remain deferred to their roadmap phases.
 
 The qualified substrate remains:
 
@@ -119,7 +119,7 @@ Foundation Spike 0 — qualify Theia
 -> correction c4-storage — project-local sMap persistence
 -> visual identity alignment — match app palette to Dope logo
 -> Phase 5 — Visual Software Planning (owner-closed for sequencing)
--> Phase 6 — Flow (current)
+-> Phase 6 — Flow (owner-closed for sequencing)
 -> correction c6-smap-outline — compact left Architecture outline + shared selection reveal
 -> correction c6-smap-sidebar-density — compact controls/status + dense kind-coded outline
 -> correction c6-edit-architecture — permanent Edit Architecture workspace
@@ -258,21 +258,4 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Implement the approved bounded presentation correction:
-
-`c6-smap-sidebar-density`
-
-Use one manual **GPT-6 Sol High** one-off prompt at unchanged package version `0.6.7`. This is not a `codex:phase` stack.
-
-The one-off owns only the initialized left Software Map inspector density pass:
-- remove the redundant large body `Software Map` heading;
-- use compact `SMAP CONTROLS`;
-- arrange `OPEN` / `REFRESH` inline with the Edit Architecture second-row seam;
-- condense generation/completeness/node/violation status into one synthesis line while preserving separate actionable diagnostics;
-- materially reduce nested indentation and disclosure gutter without flattening hierarchy;
-- color stable entity-kind tokens (System/Subsystem/Component/file or supported code kind) independently from center-map node-color preferences;
-- preserve the Green `c6-smap-outline` selection/reveal/wrapping contract.
-
-If `c6-edit-architecture` is already implemented when this one-off runs, style its real action. If not, prepare the second-row layout without shipping an enabled no-op. `c6-edit-architecture` and `c6-branch-seam` remain independent approved follow-ons.
-
-This correction does not relabel retained P7 evidence, unblock P8 by itself, change canonical architecture/Flow/Planning/synthesis truth, or authorize Phase 7 AI Presence.
+Begin a fresh Product Phase 7 — AI Presence `/docs-review` from the coherent `0.6.8` Phase 6 owner-close state. Preserve the P8 Not Qualified decision and its evidence gaps. Do not create Phase 7 implementation prompts before its authority is reviewed and approved.
