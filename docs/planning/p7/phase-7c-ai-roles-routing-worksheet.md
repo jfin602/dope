@@ -152,7 +152,30 @@ Define a small typed grammar. Hard constraints include required capabilities, lo
 
 **Decision**
 
-TBD.
+Locked: Phase 7C uses a **small typed constraint grammar** with hard requirements and soft preferences represented separately.
+
+Hard constraints define eligibility and must be satisfied. Initial hard constraints include at least:
+- required model/runtime capabilities;
+- locality/hosting rules such as `localOnly`, `hostedAllowed`, or `hostedRequired`;
+- evidence/data-egress allowance where applicable;
+- minimum known context window where the feature genuinely requires one;
+- enabled/usable eligibility;
+- other feature-authority constraints explicitly supplied by the initiating consumer.
+
+Capability metadata with **Unknown** support does not satisfy a hard requirement. Unknown is preserved as uncertainty rather than treated as true.
+
+Feature/request constraints compose with role policy by **narrowing/intersection**. They may make the effective request stricter but may never weaken a global role's or feature's higher-authority restriction. Examples:
+- a generic Background role may allow hosted execution, while Phase 8 strengthens the request to local-only/no-hosted-fallback;
+- a Software Map policy may accept 32k context while one analysis request raises the effective minimum to 64k.
+
+Soft preferences influence resolution only within an already eligible constraint-based policy entry. Initial soft preferences may include prefer-local, prefer-hosted, prefer-reasoning-capable or prefer-larger-context where useful.
+
+Soft preferences do **not** reorder the explicit role-policy sequence established by Q2. They resolve ambiguity inside one eligible pool rather than jumping a lower fallback ahead of a higher ordered target.
+
+Model-specific reasoning effort remains separate from routing constraints. A request may require that a model support reasoning controls, but the exact reasoning effort/value is an execution setting applied after target selection unless a later explicit design says otherwise.
+
+Initial Phase 7C defers generalized cost/latency optimization constraints such as cheapest, fastest, max-cost or max-latency. Those require stronger pricing/measurement semantics and are not needed to prove the first role-routing system.
+
 
 ---
 
