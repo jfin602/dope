@@ -27,6 +27,8 @@ import { SmapPresentationState } from './smap-presentation-state';
 import { VisualPlanningService, visualPlanningServicePath } from '@dope/visual-planning/lib/service';
 import { ChatService, chatServicePath } from '@dope/chat/lib/service';
 import type { ChatClient } from '@dope/chat/lib/service';
+import { ChatPanelWidget } from './chat-panel-widget';
+import { CHAT_PANEL_ID, chatAreas, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(FrontendApplicationContribution).toDynamicValue(context => ({
@@ -51,6 +53,12 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) =>
         commands.registerCommand({ id: 'dope.physicalMap.open', label: 'Dope: Open Physical Map' },
             { execute: () => openPhysicalMap(context.container.get(WidgetManager), context.container.get(ApplicationShell)) }) })).inSingletonScope();
+    bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) => {
+        for (const name of Object.keys(chatAreas) as ChatArea[]) commands.registerCommand(
+            { id: `dope.chat.open.${name}`, label: `Dope: Open Chat Panel in ${name[0].toUpperCase()}${name.slice(1)}` },
+            { execute: () => openChatPanel(name, options => context.container.get(WidgetManager)
+                .getOrCreateWidget<ChatPanelWidget>(CHAT_PANEL_ID, options), context.container.get(ApplicationShell)) });
+    } })).inSingletonScope();
     bind(NoteService).toDynamicValue(context => ServiceConnectionProvider.createProxy<NoteService>(context.container, noteServicePath)).inSingletonScope();
     bind(ProjectMindService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ProjectMindService & RpcServer<ProjectMindClient>>(context.container, projectMindServicePath));
     bind(ChatService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ChatService & RpcServer<ChatClient>>(context.container, chatServicePath));
@@ -83,5 +91,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         () => context.container.get(ProjectMindService) as ProjectMindService & RpcServer<ProjectMindClient>,
         context.container.get(WorkspaceService), context.container.get(FileService), context.container.get(OpenerService)
     ) })).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
+        new ChatPanelWidget(() => context.container.get(ChatService) as ChatService & RpcServer<ChatClient>,
+            context.container.get(WorkspaceService), options) })).inSingletonScope();
     rebind(WindowTitleService).to(DopeWindowTitleService).inSingletonScope();
 });

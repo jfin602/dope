@@ -344,3 +344,22 @@
 .dope-smap-view .dope-smap-unassigned { margin-top: 12px; }
 .dope-smap-view .dope-smap-unassigned > summary { font-weight: 600; overflow-wrap: anywhere; }
 .dope-dark .dope-smap-view .dope-smap-outline button:active { background: var(--theia-list-hoverBackground); color: var(--theia-foreground); }
+
+.dope-chat-panel { box-sizing: border-box; height: 100%; overflow: auto; padding: 16px; color: var(--theia-editor-foreground); background: var(--theia-editor-background); font-family: var(--theia-ui-font-family); }
+.dope-chat-panel header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.dope-chat-panel h2 { font-size: 16px; margin: 0; overflow-wrap: anywhere; }
+.dope-chat-panel button { cursor: pointer; color: var(--theia-foreground); background: var(--theia-button-secondaryBackground); border: 1px solid var(--theia-contrastBorder, transparent); padding: 4px 7px; border-radius: 3px; }
+.dope-chat-panel button:hover:not(:disabled) { background: var(--theia-button-secondaryHoverBackground); }
+.dope-chat-panel button:focus-visible, .dope-chat-panel summary:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-chat-panel button:disabled { opacity: .55; cursor: default; }
+.dope-chat-panel ul, .dope-chat-panel ol { list-style: none; padding-left: 14px; }
+.dope-chat-panel li { margin: 5px 0; }
+.dope-chat-panel summary { cursor: pointer; overflow-wrap: anywhere; }
+.dope-chat-actions, .dope-chat-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.dope-chat-select { flex: 1; min-width: 6rem; text-align: left; overflow-wrap: anywhere; }
+.dope-chat-panel time { color: var(--theia-descriptionForeground); font-size: 11px; }
+.dope-chat-settings { margin-left: auto; }
+.dope-chat-transcript { padding: 0 !important; }
+.dope-chat-transcript li { padding: 10px 0; border-top: 1px solid var(--theia-widget-border, var(--theia-contrastBorder)); }
+.dope-chat-transcript time { margin-left: 8px; }
+.dope-chat-transcript p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
