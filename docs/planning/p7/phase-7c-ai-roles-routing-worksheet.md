@@ -205,7 +205,39 @@ Allow deterministic fallback for preflight unavailability and selected bounded r
 
 **Decision**
 
-TBD.
+Locked: automatic fallback is conservative and applies only to **role-routed** requests whose initiating feature/policy already authorizes fallback, before meaningful output has been accepted, and only to candidates that satisfy every effective hard constraint.
+
+Fallback may advance for pre-execution eligibility/readiness failures such as:
+- preferred model disabled;
+- model/connection unavailable;
+- model no longer eligible;
+- required capability no longer satisfied.
+
+Fallback may also advance for bounded transient runtime/provider failures where the feature policy permits it, such as:
+- rate limiting;
+- temporary provider/runtime unavailability;
+- transport failure;
+- timeout before useful output;
+- other explicitly normalized transient execution failures.
+
+Generic role routing does **not** automatically fallback for:
+- user cancellation;
+- explicit developer-selected model execution;
+- authentication failure;
+- invalid connection configuration;
+- a new privacy/egress/cost boundary that was not already authorized before execution;
+- meaningful partial output already delivered/accepted;
+- content/policy rejection;
+- feature-semantic failures such as invalid Software Map structured output where the owning feature must decide whether retry/fallback is safe.
+
+Once meaningful output has been produced, routing does not silently splice another provider/model into the same execution.
+
+Crossing from Local to hosted is allowed only when the effective policy/feature constraints already permit hosted execution and any required disclosure/consent was satisfied before the request began. An unattended/background request never pauses mid-failure to silently broaden its egress authority.
+
+Fallback attempts are bounded by the explicit ordered policy. Each candidate is attempted at most once for one role resolution; no cycles or open-ended fallback trees are allowed. Provider-specific retry behavior for one target remains separately bounded and cannot reset the fallback sequence indefinitely.
+
+Every attempted target/result is captured in routing provenance so the developer can later inspect why the final model was used.
+
 
 ---
 
