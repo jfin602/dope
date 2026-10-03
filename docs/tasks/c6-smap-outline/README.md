@@ -9,13 +9,13 @@ Authority: ADR 0008, ADR 0016, current Phase 6 plan, ARCHITECTURE, PRODUCT-MODEL
 
 ## Purpose
 
-Turn the left Software Map inspector into the compact hierarchy/navigation surface its existing product role requires.
+Turn the left Software Map inspector into the compact **Architecture outline/navigation** surface its existing product role requires.
 
 The center Physical Map / Flow canvas remains the spatial map. The left inspector becomes the precise outline: easy to scan, collapsed by default, synchronized with the center selection, and still capable of deep evidence/source/diagnostic inspection.
 
 ## Problem observed
 
-The current inspector renders hierarchy nodes using ordinary primary-button styling, so nearly every System, Subsystem and code row appears as an orange block. The tree is also effectively open by default for architecture nodes, producing a long wall of implementation detail.
+The current inspector renders architecture rows using ordinary primary-button styling, so nearly every System, Subsystem and code row appears as an orange block. The tree is also effectively open by default for architecture nodes, producing a long wall of implementation detail.
 
 Selection already has a shared architectural identity across the inspector and center map, but the inspector does not yet use that identity to reveal the selected node's ancestor path and scroll it into view.
 
@@ -24,7 +24,7 @@ This correction changes presentation/navigation behavior only. It does not redef
 ## Locked product laws
 
 1. **Outline, not button grid**
-   - Architecture nodes render as compact hierarchy/navigation rows.
+   - Architecture nodes render as compact outline/navigation rows.
    - Ordinary rows do not use filled primary-action styling.
    - Brand orange is a restrained focus/selection/interaction accent rather than the persistent background of every hierarchy node.
 
@@ -65,6 +65,7 @@ This correction changes presentation/navigation behavior only. It does not redef
 
 8. **Compact secondary actions**
    - `Open Physical Map` and `Refresh Software Map` may be reduced to a compact action row instead of visually dominant primary buttons.
+   - This correction establishes that compact action seam only; follow-on `c6-edit-architecture` may add `Edit Architecture` beside them.
    - Do not introduce a new toolbar/domain architecture solely for these controls.
 
 9. **Deep inspector capability remains**
@@ -86,7 +87,7 @@ Controller/domain changes require explicit justification during `/prompt-plan`; 
 
 ## In scope
 
-- hierarchy row DOM/presentation;
+- Architecture outline row DOM/presentation;
 - collapsed/open tree behavior;
 - ancestor reveal and scroll-into-view for shared selection;
 - selected-row/focus styling;
@@ -100,7 +101,7 @@ Controller/domain changes require explicit justification during `/prompt-plan`; 
 ## Out of scope
 
 Do not change:
-- Software Map evidence, hierarchy truth or query semantics;
+- Software Map evidence, architecture truth or query semantics;
 - canonical System / Subsystem / Component identity;
 - Flow facts, endpoints, extraction, aggregation, budgets or tracing;
 - Physical Map or Planning Map domain semantics;
@@ -112,6 +113,9 @@ Do not change:
 ## Sequencing
 
 This correction is independent of `c6-branch-seam` and may be planned/implemented separately.
+
+Follow-on `c6-edit-architecture` is separately approved and should follow this correction where both touch the initialized left action row. It does not change this correction's shared-selection contract.
+
 
 It is also independent of the bounded Flow projection-contract repair. Do not use inspector cleanup as an excuse to modify Flow truth.
 
