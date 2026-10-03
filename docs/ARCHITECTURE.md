@@ -302,29 +302,93 @@ Canonical product state must remain valid when the active provider changes.
 
 ## AI Center and role-routing boundary
 
-ADR 0026 extends the Phase 7 Model Runtime with one user-global control plane without making provider configuration canonical project state.
+ADR 0026 extends the Phase 7 Model Runtime with one user-global AI control plane while preserving provider independence and feature authority.
 
-The application-level Model Connections registry owns configured provider/runtime connections and discovered/known models. **AI Center** is a presentation/application projection over that registry, not a second provider store. A connection and a model are distinct; features consume provider-neutral connection/model IDs and advertised capabilities through Model Runtime.
+### Logical application-global registry
 
-Connection inventory, safe non-secret configuration and role preferences are user/application state by default. Credentials/tokens remain secret runtime state; persistent credentials require an appropriate secure-store boundary and must never enter `.dope/`, Chat persistence, ordinary plaintext preferences, logs or project provenance.
+The Model Connections/AI policy registry is **machine-local and application-global for one OS user/Dope installation**. It is one logical authority, not a requirement that every Dope window literally share one backend process. The implementation must preserve one revisioned state across the actual Electron/Theia process topology, including cross-process mutation exclusion where more than one backend can write and live update propagation to other open windows.
 
-Phase 7C adds `AIRolePolicy` as routing policy rather than canonical project truth. Initial roles are Interactive, Deep Reasoning, Background, Software Map and Coding Agent. Policies may express preferred targets, ordered fallback candidates, required capabilities, context/reasoning requirements and locality/privacy/egress constraints.
+Project-local `.dope/` never owns connection/model/role configuration.
+
+AI Center is the singleton center-workspace presentation over this registry, not a second provider store. The bottom-left AI launcher reveals/focuses it; account/profile management belongs under Settings.
+
+### Connection/model ownership
+
+`AIConnection` has immutable Dope-owned identity independent from provider type, endpoint, alias, credentials, model inventory and readiness. Multiple connections of one provider/runtime type are valid.
+
+`AIModel` identity is connection-scoped: immutable connection ID + provider/runtime model key. Display names, availability and capability metadata may change without changing identity.
+
+Provider adapters customize setup/discovery/transport; they do not own global identity, persistence, lifecycle or AI Center navigation.
+
+OpenAI and OpenAI-compatible are distinct runtime types.
+
+Connection/model inventory uses bounded lifecycle refresh rather than continuous polling. Known-but-unavailable models may remain addressable for provenance/policy repair while ordinary consumers receive only usable/enabled targets.
+
+### Secret boundary
+
+Credential sources may be Environment, Session-only or OS secure storage. Persistent secret entry is unavailable when secure storage is unavailable; there is no plaintext fallback.
+
+Secrets never enter `.dope/`, Chat persistence, routing provenance, ordinary preferences, logs, telemetry, caches or raw user-visible errors.
+
+### Health and testing
+
+Connection health and model usability are separate projections. Connection status normalizes Unknown, Checking, Ready, Degraded, Needs Authentication, Unavailable, Invalid Configuration and Disabled. Model status normalizes Unknown, Ready, Unavailable and Disabled.
+
+Local load/warm residency is separate from usability.
+
+**Test Connection** sends one tiny synthetic zero-project-data conversational request to prove the minimum general execution path. It does not prove Software Map structured-output readiness, feature warm-up, large-context behavior, tools or durable warm residency.
+
+### Role-ready eligibility layer
+
+Phase 7B exposes normalized role-eligibility metadata:
+- enabled/usable/readiness;
+- explicit local/hosted classification;
+- capabilities;
+- known limits and metadata source/quality.
+
+It also exposes a provider-neutral eligibility query over hard constraints. This layer reports eligible models but does not choose/rank them.
+
+### Deterministic role-policy layer
+
+Phase 7C adds five fixed roles: Interactive, Deep Reasoning, Background, Software Map and Coding Agent.
+
+Role policies are application execution policy, not canonical project truth. They reference immutable connection/model IDs and contain one preferred target plus ordered fallbacks. An entry may be an exact target or a bounded constraint target.
+
+Routing is deterministic; no hidden cost/latency/benchmark scoring changes target selection.
+
+Hard constraints and soft preferences are distinct. Locality uses one normalized typed value such as any / local-only / hosted-only rather than contradictory booleans. Unknown capability metadata never satisfies a hard requirement.
+
+Feature/request constraints may only narrow/intersect global role policy. **Role policy may restrict egress but cannot grant project-data egress authority.** Hosted project-data transfer must already be authorized by the initiating feature/user flow.
 
 Resolution precedence is:
 
 ```text
-explicit per-message / explicit feature model choice
-    -> persistent Chat model policy where applicable
-    -> feature-requested role + constraints
-    -> global AI Center role policy
-    -> permitted fallback candidates
+explicit per-turn / explicit feature exact model
+    -> persistent Chat model policy
+    -> feature-requested role + stronger constraints
+    -> global role policy
 ```
 
-An explicit developer model choice never silently falls back. Role-based fallback is allowed only when the initiating feature/policy permits it and every higher-priority constraint remains satisfied.
+Existing Phase 7A Chats preserve exact defaults. New Phase 7C Chats default to **Follow Interactive role**. A broken/unconfigured Interactive role does not prevent explicit exact-model selection for a turn.
 
-AI Center preference does not grant feature execution authority. Software Map Analyze Project/Search Deeper continue to own explicit provider readiness and repository-evidence egress under ADR 0022. Product Phase 8 Background alignment continues to require local-only execution with hosted fallback forbidden under ADR 0023 even if another generic Background consumer could use a broader policy.
+Automatic role fallback is bounded to role-routed requests, before meaningful output, under already-authorized constraints. Explicit model selection, cancellation, auth/config errors, new egress authority, meaningful partial output and feature-semantic failures do not trigger generic fallback.
 
-Provider-specific setup UI may temporarily exist where disclosure or feature-specific consent differs, but global connection ownership must converge on the shared registry. New features must not create independent provider inventories merely for convenience.
+### Removed-target descriptors and provenance
+
+Historical executions persist enough non-secret provider/model descriptors to remain understandable after connection/model removal.
+
+Live role policies may retain unresolved removed target IDs. To render/repair them without recreating active configuration, keep a bounded last-known non-secret descriptor/tombstone: stable IDs, provider/runtime type, connection alias and provider model key/model label where useful. It contains no credentials or executable connection configuration.
+
+Every routed execution records compact routing provenance: role/resolution source, relevant hard constraints, policy revision, preferred target, actual target and bounded fallback attempts. The UI may expose **Why this model?** without exposing secrets or chain-of-thought.
+
+### Feature authority remains separate
+
+Software Map consumes centralized connections and the Software Map role as default-target policy, but Analyze Project/Search Deeper still own exact run-level target consent/disclosure, probe/readiness, warm-up and synthesis strategy under ADR 0022.
+
+Phase 8 requests Background with hard local-only/no-hosted-fallback constraints under ADR 0023.
+
+Coding Agent may be configured before Product Phase 9 but has no mutation-capable consumer in Phase 7.
+
 
 ## Living Software Knowledge Model and background alignment boundary
 
