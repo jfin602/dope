@@ -1,12 +1,12 @@
 # Product Phase 7 Prompt Assessment
 
-Status: **STREAMLINED / READY FOR EXECUTION**
+Status: **PHASE 7A P1-P12 READY / P13+ REASSESS AFTER P12**
 Activation source/package baseline: `59c7f72a29dcdecdf9b908176754bfd02179b004`, `0.7.0`
-Authority: ADR 0004, ADR 0006, ADR 0022, ADR 0025, Phase 7 plan/activation, PRODUCT-MODEL, ARCHITECTURE, stability contract
+Authority: ADR 0004, ADR 0006, ADR 0022, ADR 0025, ADR 0026, Phase 7 plan/activation, PRODUCT-MODEL, ARCHITECTURE, stability contract
 
 ## Conclusion
 
-Use thirteen ordered prompts. The prior 9-prompt draft was too coarse in three places: persistence+RPC, runtime+three adapters, and context+AI behavior. Splitting those boundaries costs a few runner startups but avoids the larger waste of 15-minute overruns, partial work and broad retesting.
+Use the existing P1-P12 as the Phase 7A execution/qualification stack. The prior 13-prompt assessment remains valid through P12, but ADR 0026 supersedes the written P13 closeout. After P12, reassess the actual runtime/registry/UI implementation and regenerate the contiguous P13+ continuation for AI Center, roles/routing, integrated qualification and one new final closeout.
 
 | Prompt | Boundary | Tier | Model |
 | --- | --- | --- | --- |
@@ -22,16 +22,16 @@ Use thirteen ordered prompts. The prior 9-prompt draft was too coarse in three p
 | P10 | bounded context composer + saved-chat retrieval | T2 | GPT-6 Sol High |
 | P11 | Ask/Explain/Trace/Find Related + auto-title + integrated browser build | T2 | GPT-6 Sol High |
 | P12 | direct GUI/live-provider/restart/package qualification | T3 | GPT-6 Sol High |
-| P13 | evidence-only closeout | T3 | GPT-6 Sol Medium |
+| P13+ | **TBD after P12: AI Center + roles/routing + integrated qualification + final closeout** | TBD | TBD |
 
-Versions are exactly `0.7.1` through `0.7.13`.
+P1-P12 versions remain exactly `0.7.1` through `0.7.12`. P13+ remains in the same `0.7.<prompt-number>` family and is assigned only when the continuation is regenerated after P12.
 
 ## Why these splits are efficient
 
 - P2 owns filesystem correctness only; P3 consumes it through typed service/RPC instead of debugging store + Theia wiring at once.
 - P6 establishes the generic runtime/registry once; P7 reuses existing Local/Gemini transports; P8 adds the new OpenAI path without making one prompt touch three provider implementations plus core contracts.
 - P10 owns context collection/budget/provenance; P11 consumes that stable seam for user-facing AI behaviors and title generation.
-- P12 is the only live-provider/direct-GUI/restart/package gate. P13 does not repeat P12.
+- P12 is the Phase 7A live-provider/direct-GUI/restart/package gate. The regenerated continuation should reuse that evidence where valid, then add only the new AI Center/routing evidence required by ADR 0026 before final integrated closeout.
 
 ## Current source constraints
 
@@ -62,5 +62,5 @@ Testing rule:
 - ordinary prompts run focused tests plus the narrowest affected package build/typecheck;
 - do not run browser builds merely for reassurance; P11 owns the first integrated browser build and P12 owns aggregate/browser/Electron/package qualification;
 - no live provider calls before P12;
-- phase validation is run before execution and again in P12/P13, not after every prompt;
+- phase validation is run before Phase 7A execution and again in P12; the regenerated P13+ continuation is separately validated before it runs;
 - after a repair, rerun only evidence invalidated by that repair.
