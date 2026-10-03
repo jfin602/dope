@@ -366,7 +366,33 @@ Add a first-class **Roles** section in AI Center with five compact role rows/car
 
 **Decision**
 
-TBD.
+Locked: AI Center adds a first-class **Roles** section beside Connections and Models.
+
+The default Roles surface is role-first rather than a role x model matrix. It shows the five fixed built-in roles as compact rows/cards. Each role summary shows:
+- canonical role name;
+- short purpose;
+- preferred target;
+- fallback count;
+- important global policy constraints/preferences;
+- derived policy health such as Ready, Using fallback, Needs configuration, Broken or Unavailable.
+
+Selecting a role opens a focused policy editor for:
+- preferred exact/constraint target;
+- ordered fallback entries;
+- editable global role constraints/preferences;
+- current eligible models;
+- explanations for ineligible models.
+
+Eligible/ineligible target explanations come from the Phase 7B eligibility/query seam rather than duplicating routing logic in the frontend. Where possible, the UI explains concrete reasons such as missing required capability, insufficient known context, disabled state or locality mismatch.
+
+Fallback ordering supports pointer drag/reorder **and** keyboard-accessible move up/down controls so ordering is not pointer-dependent.
+
+The UI clearly separates **editable global role policy** from **feature-imposed requirements/authority**. Feature constraints such as Phase 8 local-only/no-hosted-fallback or Software Map run-level evidence-egress/probe requirements are shown as read-only explanatory requirements and cannot be weakened from the global Roles editor.
+
+Coding Agent remains visible and configurable in Phase 7C but is clearly marked **No active consumer yet** until Product Phase 9 introduces mutation/delegation use.
+
+Initial 7C does not use a giant role-by-model checkbox matrix as the primary editor because ordered fallback, constraint semantics and multi-connection model identity are better represented through a role-focused policy editor.
+
 
 ---
 
