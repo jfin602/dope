@@ -417,6 +417,30 @@ Locked correction rules:
 The correction does not change the 100-node / 200-fact / 32-hop hard limits, Flow ontology, Adaptive SEO accepted architecture, extractor truth, provider boundary or layout-engine policy.
 
 Original `docs/tasks/p6/P7-flow-dogfooding-evidence.md` remains historical Not Green evidence and must not be rewritten as Green.
+## Phase 6 presentation correction — sMap outline
+
+A direct review of the left Software Map inspector at `0.6.7` found that its current presentation undermines the navigation role already assigned by ADR 0008: every hierarchy node is styled like a filled action button, branches are effectively expanded by default, and center-map selection does not yet reveal the corresponding tree path.
+
+Correction `c6-smap-outline` is approved at unchanged `0.6.7`.
+
+Locked correction rules:
+- the inspector architecture surface is a compact hierarchical text outline, not a second visual map and not a wall of primary buttons;
+- rows use type-first labels: `system -`, `subsystem -`, `component -`, and code-kind labels such as `file -`;
+- full identity text remains readable; important names and source paths wrap rather than truncate;
+- every expandable architecture branch starts collapsed on fresh inspector state;
+- disclosure and selection are separate interactions with keyboard/focus accessibility;
+- the existing Software Map controller selection remains the only shared architecture selection identity;
+- center-map selection opens the missing ancestor chain, scrolls the row into view and marks it selected;
+- automatic reveal preserves unrelated branches the user manually expanded;
+- sidebar selection continues to drive the shared identity observed by the center map;
+- expansion/collapse is presentation state only and never enters canonical architecture, `.dope/`, Flow state, Planning state or project persistence;
+- `Open Physical Map` / `Refresh Software Map` may become compact secondary actions;
+- hierarchy cleanup must preserve the inspector's existing diagnostics, relationships, evidence, source navigation, violations and unassigned implementation surface.
+
+This correction does not change Flow extraction, Flow facts/endpoints, Flow query/aggregation, query budgets, canonical architecture, Physical Map evidence, Planning semantics, synthesis/provider runtime behavior or package version.
+
+It is independent of `c6-branch-seam` and the Flow projection-contract repair. It does not rewrite retained Not Green evidence or unblock P8 by itself. Use the normal `/prompt-ass -> /prompt-plan -> /prompt-write c6-smap-outline` workflow before implementation.
+
 ## Exit condition
 
 Phase 6 is qualified when, on one exact provider-free candidate, a developer can use the real Dope GUI to follow a meaningful evidence-backed application Flow through a real mapped project, prove every representative hop to source/provenance, preserve architectural identity/focus across projection modes, observe non-linear execution shape, and reconstruct equivalent derived Flow after restart/reanalysis—while aggregate/package/native evidence is Green for the designated T3 gate.
