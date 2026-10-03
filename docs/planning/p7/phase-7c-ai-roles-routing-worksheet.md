@@ -100,7 +100,30 @@ Make initial 7C deterministic and inspectable: explicit preferred target plus or
 
 **Decision**
 
-TBD.
+Locked: initial Phase 7C routing is **deterministic and explicitly ordered**, not dynamically score-ranked.
+
+Each `AIRolePolicy` contains one preferred target followed by an ordered fallback sequence. A policy entry may be:
+- an **exact target** identified by immutable `connectionId + modelId`; or
+- a **bounded constraint target** representing any eligible model that satisfies the entry's declared requirements.
+
+Given unchanged connection/model inventory, role policy and request constraints, routing must resolve the same target.
+
+Phase 7C does **not** automatically rank or switch models based on changing measurements such as:
+- recent latency;
+- token/API price;
+- benchmark scores;
+- provider reputation;
+- historical success/failure rate;
+- model popularity.
+
+Those values may later be displayed as informational metadata, but they do not silently alter target selection in initial 7C.
+
+When multiple models satisfy one constraint-based fallback entry, resolution remains deterministic. Prefer explicit user-defined eligible ordering where available; otherwise use one documented stable ordering over immutable connection/model identity rather than a hidden score.
+
+Temporary unavailability/fallback never rewrites policy preference. If the preferred target later becomes eligible again, ordinary deterministic routing returns to it.
+
+Future cost/speed/quality optimization modes may be considered only as explicit policy features after real usage demonstrates a need; they are not implicit 7C behavior.
+
 
 ---
 
