@@ -574,3 +574,25 @@ When regenerating `p7`, preserve the runner grammar: prompt numbering remains co
 AI Center is the canonical global connection-management surface. It reuses the Phase 7A Model Connections registry, is opened from the bottom-left AI launcher, and moves account/profile management under Settings. Connection inventory/model discovery/role policy are user/application state; credentials remain secret runtime state and never enter `.dope/`, Chat persistence or ordinary plaintext preferences.
 
 Role routing never weakens explicit authority: explicit per-message model choice does not silently fall back; Software Map preference does not grant repository-evidence egress consent; Phase 8 continuous Background work remains local-only with hosted fallback forbidden.
+
+
+## October 3, 2026 — Phase 7B/7C worksheet promotion
+
+The ten-question Phase 7B AI Center worksheet and ten-question Phase 7C AI Roles & Routing worksheet are fully resolved and promoted into ADR 0026, the Phase 7 plan, Architecture, Product Model, Stability and roadmap authority.
+
+Promoted implementation laws include:
+- one logical machine-local/application-global revisioned connection/role registry across projects/windows/processes rather than project-local state;
+- immutable Dope connection identity and connection-scoped model identity;
+- Environment / Session-only / OS secure-storage credentials with no plaintext fallback;
+- one shared Add Connection shell with bounded provider-specific setup adapters;
+- bounded model discovery/readiness plus synthetic zero-project-data Test Connection semantics;
+- AI Center as the sole global connection owner while feature execution consent/strategy remains feature-owned;
+- five fixed roles with deterministic preferred + ordered fallback routing;
+- typed hard constraints vs soft preferences, with feature constraints only narrowing role policy;
+- role policy may restrict project-data egress but never grants it;
+- existing 7A Chat exact defaults remain exact while new 7C Chats default to Follow Interactive;
+- explicit selected-model execution never silently falls back;
+- bounded conservative role fallback and immutable routing provenance with Why this model? explanation;
+- unresolved removed role targets retain only bounded non-secret descriptors for repair/explanation.
+
+The currently written P1-P12 remain unchanged Phase 7A execution authority. Do not edit/regenerate the executable continuation until P12 completes and the actual 7A implementation can be inspected. The current P13 remains superseded. After P12, run `/prompt-ass -> /prompt-plan -> /prompt-write p7` to regenerate P13+ using the promoted 7B/7C authority and current source/tests.
