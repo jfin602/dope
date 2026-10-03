@@ -1,6 +1,6 @@
 # Correction 6 — Map Canvas Priority
 
-Status: **P3 NOT GREEN / P7 AND P8 BLOCKED**
+Status: **P3 NOT GREEN / BLOCKED BY c6-flow-projection-contract / P7 AND P8 BLOCKED**
 Correction folder: `c6-map-canvas-priority`
 Required unchanged version: `0.6.7`
 Activation source: `561ad62678f6e20a6da21b3537d136290d07f0e3`
@@ -111,4 +111,8 @@ P1-P2 are runner-friendly implementation/integration prompts at unchanged `0.6.7
 
 P1/P2 are implemented at `0.6.7`. P3's direct browser replay at `d4f17c7338196aaf78f5851dce42622527c166e4` is **Not Green**: the query reports 27 summarized Adaptive Recommendations relationships, but the Flow canvas renders zero participants/edges because its projector consumes raw `facts` rather than overview `aggregates`. The focused suite and `npm run check` also fail. See `closeout.md` for the exact automated and nine-area GUI evidence.
 
-Repair this projection contract and its stale backend test in a separately bounded correction, then replay the exact GUI gate. P7/P8 remain blocked; the packaged AppImage controlled-shutdown failure is a separate unresolved P7 blocker. Do not advance the package version or relabel earlier P7 evidence.
+Repair is now routed to `docs/tasks/c6-flow-projection-contract/` at unchanged `0.6.7`. That correction owns only the aggregate/detail projection contract, the stale backend assertion and a focused replay of the Flow portions blocked by the empty canvas.
+
+Preserve `closeout.md` unchanged as the historical Not Green P3 record. If the projection correction is Green, record the successful replay separately (for example `P3-supplemental-replay.md`) and this correction may close Green by supplemental evidence without rewriting the original failure.
+
+P7/P8 remain blocked; the packaged AppImage controlled-shutdown failure is a separate unresolved P7 blocker. Do not advance the package version or relabel earlier P7 evidence.
