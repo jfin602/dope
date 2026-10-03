@@ -85,7 +85,7 @@ The developer should not need an AI's private memory to understand their own pro
 
 ## Software Map as the core
 
-Dope centers the development environment on a living **Software Map (sMap)** rather than treating architecture as disconnected documentation.
+Dope centers the development environment on a living **Software Knowledge Model**, with the **Software Map (sMap)** as its primary spatial and architectural projection rather than treating source, architecture, documentation and contracts as disconnected representations.
 
 The primary architecture hierarchy is:
 
@@ -101,11 +101,13 @@ Systems and subsystems are first-class modular architecture objects. They have i
 
 The Physical Map represents what actually exists. Its source-derived facts must come from deterministic language/framework analysis, and runtime relationships must come from recorded observation. Every physical relationship retains provenance. Inference may assist interpretation, but AI output must not silently become physical truth.
 
+After AI Presence is established, the Living Software Knowledge Model links that physical/canonical state to provenance-bearing documentation, ADRs, schemas and formal contracts. Dope continuously checks whether those representations still describe the same software state. Deterministic checks narrow affected knowledge first; bounded semantic checks handle meaning that cannot be established mechanically. Findings remain evidence-backed disagreements for developer resolution rather than silently rewriting source, docs, contracts or canonical architecture.
+
 Planning operates against that reality. Planning diagrams reference physical systems, subsystems and components and express proposed additions, removals, modifications and relationship changes rather than copying the current architecture into disconnected drawings.
 
 The same Physical Map supports complementary evidence-backed projections. **Architecture** answers what exists and how it is organized. **Data Flow** answers how information moves through those same identities from inputs through transformations, stores and external boundaries to outputs. Data Flow is a projection of physical evidence, not a separate architecture database. A later runtime view may add what actually happened during a concrete execution without confusing static structure, inferred flow and recorded observation.
 
-The product progression is deliberate: understand structure -> design change -> understand information flow -> give AI read-only presence over that richer project model -> add scoped delegation.
+The product progression is deliberate: understand structure -> design change -> understand information flow -> give AI read-only presence over that richer project model -> continuously reconcile project knowledge with reality -> add scoped delegation.
 
 The core development loop is:
 
@@ -167,11 +169,11 @@ Dogfooding Dope on Dope is a strong necessary test of the product, but it is not
 
 ## Local and hosted AI
 
-Local models are strategically important because Dope may eventually need many small, continuous interactions: observe edits, inspect selections, update a project model, run micro-analysis, compare implementations, support passive review, and maintain context.
+Local models are strategically important because Dope needs many small, continuous interactions: observe edits, inspect selections, update a project model, run micro-analysis, compare implementations, support passive review, maintain context and, beginning with the Living Software Knowledge Model, perform high-volume background semantic alignment checks. Local inference is the preferred substrate for continuous knowledge maintenance because it keeps routine project evidence local and avoids per-call hosted-provider cost.
 
-Hosted frontier models are strategically important for demanding reasoning, implementation, research, vision, and other capabilities that may exceed local models.
+Hosted frontier models are strategically important for demanding reasoning, implementation, research, vision, developer-requested Search Deeper work and other capabilities that may exceed the selected local model. Continuous background monitoring must never silently escalate to a hosted provider; hosted analysis is an explicit developer-controlled escalation.
 
-Dope should be able to combine these roles over time.
+Dope should be able to combine these roles over time while foreground developer work always outranks background inference for machine resources.
 
 The product architecture should assume model capabilities, economics, APIs, and market leaders will change.
 
