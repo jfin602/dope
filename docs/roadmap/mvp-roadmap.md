@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 7 — AI Presence is **ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION** at coherent `0.7.0` activation commit `59c7f72a29dcdecdf9b908176754bfd02179b004`. ADR 0025, the Phase 7 plan/activation and `docs/tasks/p7/` define the durable Chat/ChatPanel, context-composition and provider-independent read-only AI Presence stack. Phase 6 P8 remains Not Qualified and Phase 5 remains owner-closed with P11 Not Green/P12 unexecuted. Next: validate and execute `p7`; P1 targets `0.7.1`.
+Current stage: Product Phase 7 is **ACTIVE / PHASE 7A P1-P12 WRITTEN / PHASE 7B-7C APPROVED** at coherent `0.7.0` activation commit `59c7f72a29dcdecdf9b908176754bfd02179b004`. ADR 0025 defines durable Chat/ChatPanel AI Presence; ADR 0026 adds the global AI Center and role-based routing. Phase 6 P8 remains Not Qualified and Phase 5 remains owner-closed with P11 Not Green/P12 unexecuted. Next: execute P1-P12 as Phase 7A only, then regenerate P13+ for AI Center, roles/routing and final Phase 7 closeout. The currently written P13 closeout is superseded.
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -28,6 +28,8 @@ Theia
 -> sMap readability correction
 -> Flow
 -> AI Presence
+-> AI Center
+-> AI Roles & Routing
 -> Living Software Knowledge Model
 -> Scoped Delegation
 -> Development Sessions
@@ -61,7 +63,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — Planning Basis Isolation | `0.5.11` correction after P11 reached durable Planning Maps but ordinary `.dope/planning-maps.json` persistence changed Physical Map identity and unchanged reanalysis falsely staled plans. Isolate `.dope/` from generic analysis inputs and make generation observation provenance rather than semantic staleness. |
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
 | Product Phase 6 — Flow | **OWNER-CLOSED FOR SEQUENCING / P8 NOT QUALIFIED.** Evidence-backed provider-free Static Flow over the Physical Map is retained. The P8 exact-candidate direct restart/isolation and chosen-path provenance gaps remain in `docs/tasks/p6/closeout.md`; historical P7/map-canvas Not Green results remain intact. |
-| Product Phase 7 — AI Presence | **ACTIVE at `0.7.0`.** Durable Dope-owned Chats and movable ChatPanels provide provider-independent per-message model routing and bounded read-only context over editor/project state, Project Mind, Architecture, Physical Map, Flow, Planning Maps and saved Chats without making conversation canonical truth. |
+| Product Phase 7 — AI Presence / AI Center / Roles | **ACTIVE at `0.7.0`.** Phase 7A provides durable Chats/ChatPanels and provider-independent read-only AI Presence; Phase 7B centralizes user-global connection/model management in AI Center; Phase 7C adds policy-based Interactive/Deep Reasoning/Background/Software Map/Coding Agent routing without weakening explicit model choice, Software Map evidence-egress authority or Phase 8 local-only background constraints. |
 | Product Phase 8 — Living Software Knowledge Model | Dope continuously checks whether source/runtime evidence, canonical Software Map state, documentation and formal contracts still describe the same software. Deterministic impact analysis narrows work first; bounded local-model semantic checks maintain alignment in the background and surface drift findings without silently mutating project truth. |
 | Product Phase 9 — Scoped Delegation | Dope changes Dope. A bounded Dope task can be delegated through the ordinary authority, review, ChangeSet, and validation path. |
 | Product Phase 10 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable project understanding, architectural planning, implementation, reconciliation, validation, review, and session closeout inside Dope. |
@@ -851,12 +853,12 @@ Existing Local and Gemini sMap paths still execute through provider-neutral runt
 
 ## Product Phase 7 — AI Presence
 
-Status: **ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION**
+Status: **ACTIVE / PHASE 7A P1-P12 WRITTEN / PHASE 7B-7C APPROVED**
 Activation baseline: coherent `0.7.0` at `59c7f72a29dcdecdf9b908176754bfd02179b004`
-Authority: ADR 0004, ADR 0006, ADR 0022, ADR 0025 and `docs/planning/p7/phase-7-plan.md`
+Authority: ADR 0004, ADR 0006, ADR 0022, ADR 0025, ADR 0026 and `docs/planning/p7/phase-7-plan.md`
 
 Purpose:
-Introduce AI as an observable, durable collaborator inside an already-useful development environment without turning Dope into a chatbot-first product.
+Introduce AI as an observable, durable collaborator inside an already-useful development environment without turning Dope into a chatbot-first product, then centralize AI connections/models and add constraint-aware default role routing without coupling features to providers.
 
 Phase 7 establishes a Dope-owned conversational domain rather than adopting provider-native chat/session state. Every Chat is durable project context under `.dope/chats/`, has stable identity independent from folder location, and remains separate from canonical Project Mind, Architecture, Planning and implementation truth. Chats may explicitly promote useful outcomes into those domains through later/approved workflows, but conversation text never becomes canonical merely because it was said.
 
@@ -876,7 +878,13 @@ Initial scope:
 - bounded context composition from current editor/selection, Project Mind, canonical Architecture, Physical Map, Flow, Planning Maps/WorkItems and explicitly/retrieval-selected saved Chats;
 - Ask / Explain / Trace / Find Related as behaviors through the shared Chat/context pipeline rather than separate canonical AI state;
 - read-only/contextual Phase 7 tools only; mutation authority, ProposedAction execution and general tool delegation remain Phase 9 scope;
-- streaming, cancellation, normalized provider failure/usage, retry and restart/reopen recovery without corrupting durable Chat or canonical project state.
+- streaming, cancellation, normalized provider failure/usage, retry and restart/reopen recovery without corrupting durable Chat or canonical project state;
+- Phase 7B **AI Center** opened from the bottom-left AI launcher, backed by the Phase 7A Model Connections registry, with account/profile management under Settings;
+- user-global connection/model discovery, readiness/health, refresh/reconnect and connection testing without persisting secrets in project/plaintext state;
+- Phase 7C role policies for Interactive, Deep Reasoning, Background, Software Map and Coding Agent work;
+- capability/constraint-aware preferred targets and permitted fallback policies rather than feature-owned provider configuration;
+- explicit user model choice above Chat policy, feature role constraints and global role policy;
+- preservation of explicit sMap evidence-egress authority and Phase 8 local-only/no-hosted-fallback Background constraints.
 
 Product laws:
 - ChatPanel is presentation; ChatService/ChatRepository own conversation behavior and persistence.
@@ -886,14 +894,17 @@ Product laws:
 - active-chat history may be direct conversational context, while other saved Chats are an available corpus reached through explicit selection/search/bounded retrieval rather than bulk prompt injection;
 - turn context may retain auditable source/project references used to compose a request, but hidden provider chain-of-thought is neither required nor persisted;
 - provider credentials/endpoints/global connections remain runtime/application configuration; per-Chat settings reference available capabilities without owning secrets;
-- explicit model choice is developer authority: failure is surfaced and another provider/model is used only after explicit selection.
+- explicit model choice is developer authority: failure is surfaced and another provider/model is used only after explicit selection;
+- AI Center is a projection/control plane over one application connection registry, not a second provider store;
+- role policy is user/application execution preference, not canonical project truth;
+- lower-precedence routing preferences never weaken higher-precedence locality/privacy/egress/authority constraints.
 
 Default posture:
 observation and assistance before mutation.
 
 Exit condition:
 
-Using the real Dope repository, a developer can create, organize and reopen durable Chats across application restart; use multiple ChatPanels in different shell areas against one shared Chat repository; preserve the one-Chat/one-live-panel invariant; route successive turns in one Chat to different connected models through the provider-independent Model Runtime; configure persistent per-Chat model/context policy while making per-turn overrides; use bounded Dope-owned editor/project/Project Mind/Architecture/Physical Map/Flow/Planning/saved-chat context for read-only assistance; inspect model/context provenance; and recover honestly from provider, stream, panel and process failures without conversation becoming canonical project truth or depending on provider-native session state.
+Using the real Dope repository, a developer can create, organize and reopen durable Chats across application restart; use multiple ChatPanels in different shell areas against one shared Chat repository; preserve the one-Chat/one-live-panel invariant; route successive turns in one Chat to different connected models through the provider-independent Model Runtime; configure persistent per-Chat model/context policy while making per-turn overrides; use bounded Dope-owned editor/project/Project Mind/Architecture/Physical Map/Flow/Planning/saved-chat context for read-only assistance; centrally manage connections/models through AI Center; assign role policies that resolve only compatible/permitted models; inspect actual model/context provenance; preserve explicit Software Map and Background privacy/egress constraints; and recover honestly from provider, stream, panel, routing and process failures without conversation, connection or role state becoming canonical project truth or depending on provider-native session state.
 
 Phase 7 planning does not authorize general filesystem/process/Git mutation, autonomous delegation, hidden authority escalation, Phase 8 background knowledge alignment or Phase 9 Scoped Delegation.
 
