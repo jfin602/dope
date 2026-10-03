@@ -258,9 +258,19 @@ The durable boundary is Dope's Model Runtime and capability contract.
 
 Provider adapters translate provider-specific requests, streaming, tool formats, response identifiers, reasoning controls, context handles, token-usage metadata and errors into Dope-owned contracts.
 
-For sMap synthesis specifically, Local and Gemini are explicit user-selected adapters over the same Dope-owned hierarchy-stage contracts. Provider selection must never alter canonical Software Map semantics, and failure must never silently route repository evidence to another provider.
+For sMap synthesis specifically, providers are explicit user-selected execution adapters beneath a Dope-owned synthesis-strategy boundary. Provider selection must never alter canonical Software Map semantics, and failure must never silently route repository evidence to another provider.
 
 Do not spread provider-name conditionals through product/domain code.
+
+### sMap synthesis strategy / Model Runtime seam
+
+ADR 0022 separates Software Map authority, sMap synthesis strategy and general model execution.
+
+The Software Map domain owns deterministic evidence/provenance, architecture semantics, final ArchitectureProposal validation, review and developer acceptance. The sMap synthesis layer owns architecture-analysis instructions, hierarchy choreography, evidence/view selection and model-class-specific context/decomposition strategy. Model Runtime owns discovery/selection, capabilities, structured generation, readiness/probe, optional warm-up, cancellation and normalized provider usage/failures. Concrete LM Studio/Gemini/OpenAI transports remain adapters beneath that runtime.
+
+Local and hosted synthesis must converge on the same evidence authority, architecture ontology, final proposal contract, validation and developer acceptance semantics, but they do not need identical prompts, stage counts, context packing or call topology. Model-specific synthesis strategy may differ only behind the synthesis boundary and must never weaken provenance or create provider-specific canonical state.
+
+The pre-Phase-7 correction `c6-branch-seam` may establish the minimal reusable Model Runtime/session seam required by existing sMap synthesis at unchanged `0.6.7`. It does not authorize Agent Mind, general chat/Ask/Explain behavior, tool calling, mutation authority or delegation before Phase 7. Supporting Local synthesis must remain lazy/provider-scoped so a hosted path never requires LM Studio setup and a Local path never requires cloud configuration.
 
 ## Capability-based model runtime
 

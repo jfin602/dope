@@ -815,6 +815,38 @@ Exit condition:
 With no model configured, a developer can focus a real System, switch Architecture -> Flow, follow one continuously evidenced real Adaptive SEO behavior from an HTTP input through internal execution to persistence and/or an external service and back to output, inspect representative provenance/source, observe a real branch/fan-out or join, focus a Subsystem and return to Architecture without losing identity/context. Partial/unsupported/truncated coverage remains explicit rather than looking complete.
 
 
+## Pre-Phase-7 correction — `c6-branch-seam`
+
+Status: **APPROVED / ONE-OFF IMPLEMENTATION at unchanged `0.6.7`**.
+
+Authority: ADR 0022, with ADR 0004/0006 and the existing Software Map synthesis contracts retained where not amended.
+
+Purpose:
+Create a clean branch point between sMap synthesis strategy and the provider/runtime lifecycle before general Phase 7 Model Runtime work and Local sMap optimization intentionally proceed in parallel.
+
+Required scope:
+- move shared architecture-synthesis instructions out of the LM Studio adapter into a provider-neutral synthesis-strategy owner;
+- establish the smallest reusable Model Runtime/provider-session capability needed by current sMap synthesis: model discovery/selection, capabilities, probe/readiness, optional warm-up, structured generation, normalized usage/errors and cancellation where already supported;
+- make ordinary Software Map synthesis orchestration depend on those provider-neutral capabilities instead of concrete Local/Gemini lifecycle branching;
+- preserve existing ArchitectureEvidencePacket authority, hierarchy-stage/result contracts, checkpoints, telemetry, explicit provider choice, secret handling, no silent fallback and final developer review/acceptance;
+- add focused permanent regression coverage for provider/strategy separation.
+
+Shared final semantics do **not** require Local and hosted synthesis to use identical prompts, context packing, stage counts or call topology. Local-specific synthesis strategy becomes legal after this seam as long as it keeps the same evidence/proposal/validation/acceptance authority.
+
+Explicitly out of scope:
+- Local synthesis quality/performance optimization itself;
+- Phase 7 Ask / Explain / Trace / Find Related, Agent Mind, general chat/session state, tools, ProposedAction or mutation authority;
+- Flow behavior changes;
+- provider benchmarking, browser dogfooding, packaging or Phase 6 requalification;
+- any package-version change.
+
+This correction does not relabel the retained Phase 6 P7 result, unblock P8, close Phase 6 or activate Phase 7. Those sequencing/qualification decisions remain separate.
+
+After the seam lands, Phase 7 work and a Local sMap synthesis worktree/branch may start from the same seam baseline and evolve independently. Local work later rebases onto the active Phase 7 line before merge/qualification; the side branch carries no independent product-version claim.
+
+Exit condition:
+Existing Local and Gemini sMap paths still execute through provider-neutral runtime/session and synthesis-strategy seams with focused tests proving shared instructions are no longer owned by the LM Studio adapter and Software Map orchestration no longer requires concrete-provider lifecycle knowledge covered by the new boundary.
+
 ## Product Phase 7 — AI Presence
 
 Purpose:

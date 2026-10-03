@@ -37,7 +37,7 @@ Phase 5's retained implementation includes center-workspace Physical/Planning Ma
 
 Phase 6 may add only provider-free Flow projection capabilities authorized by ADR 0020 as amended by ADR 0021: evidence-backed directional Flow over existing Physical Map identities, source/provenance inspection and Architecture/Flow view switching. It must not create a separate canonical Flow database or pull Phase 7 AI Presence, Agent Mind, ProposedAction, tool authority or delegation forward.
 
-Only the narrow provider-independent sMap synthesis boundary and reference adapters already authorized by ADR 0010/0011/0013 remain valid before Phase 7. Phase 5 visual planning remains retained owner-closed implementation with no model requirement. Product Phase 6 Flow is provider-free and current. General AI Presence begins only in Product Phase 7.
+Only the narrow provider-independent sMap synthesis boundary and reference adapters already authorized by ADR 0010/0011/0013 remain valid before Phase 7. ADR 0022 now authorizes the bounded `c6-branch-seam` correction at unchanged `0.6.7` to separate sMap synthesis strategy from provider/runtime lifecycle and establish only the minimal reusable Model Runtime seam already needed by synthesis. This correction does not relabel P7, unblock P8, close Phase 6 or activate general AI Presence. Phase 5 visual planning remains retained owner-closed implementation with no model requirement. Product Phase 6 Flow remains provider-free. General AI Presence begins only in Product Phase 7.
 
 
 ### Phase 6 Flow laws

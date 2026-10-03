@@ -180,3 +180,12 @@ ADR 0014 records the first real Gemini benchmark result and supersedes ADR 0013'
 The owner closed `c4-smap-gemini-provider` Not Qualified at `8ea34ae1300a387ac63aad9462ae649ac78a9605`. The correction's implemented provider/telemetry work remains valid, but its planned full Local/Gemini comparison and formal P5 audit are not run.
 
 Mandatory next work at that point was `c4-synth-improvements`. Subsequent ADR 0014 amendments and owner sequencing decisions supersede that route: `c4-synth-improvements` and `c4-synth-coverage-review` are owner-closed Not Qualified, the fresh provider comparison is deferred off the pre-Phase-5 critical path, and `c4-smap-storage` is the sole remaining gate before a fresh Phase 5 review. This does not relabel any provider-comparison evidence Green.
+
+
+## 2026-10-02 forward amendment — ADR 0022
+
+ADR 0022 supersedes this ADR's forward sequencing rule that aggressive Local-specific synthesis optimization must wait for an identical-pipeline Local/Gemini comparison.
+
+The historical comparison plan, benchmark evidence and Not Qualified dispositions remain truthful and unchanged. Going forward, Local and hosted synthesis must share deterministic evidence authority, architecture ontology, final ArchitectureProposal semantics, validation/provenance requirements and explicit developer acceptance, but they may use different model-appropriate instructions, context packing, stage decomposition and call topology behind the sMap synthesis-strategy boundary.
+
+Correction `c6-branch-seam` establishes that boundary before Phase 7. It does not itself optimize Local synthesis or manufacture the deferred provider-comparison evidence.

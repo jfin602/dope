@@ -250,6 +250,10 @@ Introduce or activate:
 
 AI Presence begins in Phase 7 and may consume Dope-owned architecture, Flow, planning and project context. Scoped Delegation follows in Phase 8.
 
+Before Phase 7 general AI Presence, correction `c6-branch-seam` establishes only the minimal Model Runtime/provider-session boundary already needed by existing sMap synthesis. Software Map authority, sMap synthesis strategy and provider execution are separate concerns: Local and hosted synthesis share final evidence/proposal/validation/acceptance semantics but may use different model-appropriate prompt packing and stage strategies. This correction is infrastructure reuse, not early Agent Mind/chat/delegation scope.
+
+Local sMap synthesis and Phase 7 Local AI Presence are also different capabilities. A Local sMap strategy may be developed in parallel after the seam without making LM Studio/Qwen the general Agent Runtime or forcing the hosted sMap strategy to inherit Local-model constraints.
+
 ### Phase 9 — Development Sessions
 
 Introduce durable DeveloperSession as the cross-time development unit.
