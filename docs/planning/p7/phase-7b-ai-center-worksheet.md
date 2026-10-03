@@ -483,7 +483,25 @@ Centralize **global connection ownership** in AI Center while retaining feature-
 
 **Decision**
 
-TBD.
+Locked: **AI Center becomes the sole owner of global provider/runtime connection configuration. Features own execution consent and feature-specific strategy, not duplicate connection stores.**
+
+Phase 7A Chat and other ordinary AI consumers route missing-model / connection-setup actions into the singleton AI Center rather than maintaining parallel provider-configuration forms. After a connection is added, changed, tested or re-enabled, the updated shared registry propagates back to open consumers immediately.
+
+Software Map consumes the centralized AI Center connection/model inventory but retains its own explicit run-level authority under ADR 0022:
+- the developer chooses which connection/model is used for Analyze Project or Search Deeper;
+- hosted evidence-egress disclosure/consent remains in the Software Map execution flow;
+- feature-specific structured-output probe/readiness checks remain Software Map-owned where required;
+- warm-up remains feature/runtime execution policy rather than generic AI Center authority;
+- sMap synthesis strategy remains separate from global connection configuration.
+
+When Software Map or another feature needs a missing/unconfigured connection, it should route to **Add / Configure in AI Center** rather than embed a second full provider setup form. AI Center remains singleton and may carry return-to-origin context so the developer can return directly to the initiating Chat/Analyze Project flow after setup.
+
+Assuming Phase 7A already has application-level connection state, Phase 7B performs a **one-time deterministic migration only if needed**. Migration preserves stable connection identity where possible, provider/runtime type, endpoint, enabled state, safe non-secret options, configured/known model references and only readiness metadata that remains valid. Credential material is never copied into a new persistence location merely for migration; existing environment/session/secure-store sources remain authoritative.
+
+If the Phase 7A Model Connections registry already matches the required Phase 7B ownership model, migration is a no-op and AI Center simply projects/extends it.
+
+After migration, AI Center is authoritative for global connection state. Old feature-specific global provider configuration is retired rather than synchronized indefinitely. Feature-local settings remain only when they are genuinely feature policy—for example Chat default model/reasoning preferences or Software Map run/synthesis choices—not connection ownership.
+
 
 ---
 
