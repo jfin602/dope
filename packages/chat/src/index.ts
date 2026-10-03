@@ -13,6 +13,13 @@ export interface ChatContextRef {
     label: string;
     excerpt?: string;
     estimatedTokens: number;
+    includedBytes?: number;
+    contentHash?: string;
+    projectId?: string;
+    generation?: number;
+    messageId?: string;
+    start?: number;
+    end?: number;
 }
 
 /** A connection is a runtime configuration reference, never a credential or canonical Chat identity. */
@@ -154,12 +161,24 @@ function parseModelProvenance(value: unknown): ChatModelProvenance {
         providerId: string(v.providerId, 'provider ID'), modelLabel: string(v.modelLabel, 'model label') };
 }
 export function parseChatContextRef(value: unknown): ChatContextRef {
-    const v = record(value, ['schemaVersion', 'kind', 'id', 'label', 'excerpt', 'estimatedTokens'],
+    const v = record(value, ['schemaVersion', 'kind', 'id', 'label', 'excerpt', 'estimatedTokens',
+        'includedBytes', 'contentHash', 'projectId', 'generation', 'messageId', 'start', 'end'],
         ['schemaVersion', 'kind', 'id', 'label', 'estimatedTokens']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported context reference schema');
     const ref: ChatContextRef = { schemaVersion: 1, kind: choice(v.kind, contextKinds, 'context kind'), id: string(v.id, 'context ID'),
         label: string(v.label, 'context label'), estimatedTokens: count(v.estimatedTokens, 'context tokens') };
     if (v.excerpt !== undefined) ref.excerpt = string(v.excerpt, 'context excerpt', false);
+    if (v.includedBytes !== undefined) ref.includedBytes = count(v.includedBytes, 'included bytes');
+    if (v.contentHash !== undefined) {
+        if (typeof v.contentHash !== 'string' || !/^[0-9a-f]{64}$/.test(v.contentHash)) throw new Error('Invalid context hash');
+        ref.contentHash = v.contentHash;
+    }
+    if (v.projectId !== undefined) ref.projectId = string(v.projectId, 'context project ID');
+    if (v.generation !== undefined) ref.generation = count(v.generation, 'context generation');
+    if (v.messageId !== undefined) ref.messageId = string(v.messageId, 'context message ID');
+    if (v.start !== undefined) ref.start = count(v.start, 'context start');
+    if (v.end !== undefined) ref.end = count(v.end, 'context end');
+    if (ref.end !== undefined && (ref.start === undefined || ref.end <= ref.start)) throw new Error('Invalid context bounds');
     return ref;
 }
 export function parseChatSettings(value: unknown): ChatSettings {

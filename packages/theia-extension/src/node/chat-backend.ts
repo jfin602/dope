@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
-    ChatTurnRequest, ChatOperation } from '@dope/chat/lib/service';
+    ChatTurnRequest, ChatOperation, ChatContextPreview } from '@dope/chat/lib/service';
 import type { ChatAssistantMessage, ChatModelProvenance, ChatUserMessage } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
-import type { ConversationMessage } from '@dope/contracts/lib/model-runtime';
 import { ModelConnectionsRegistry } from './model-connections';
+import { ChatContextComposer } from './chat-context-composer';
 
 /** One RPC connection owns one project handle; the repository shares durable state and events. */
 export class ChatBackend implements ChatService {
@@ -18,7 +18,7 @@ export class ChatBackend implements ChatService {
     private readonly pendingCancel = new Map<string, string>();
 
     constructor(private readonly repository: ChatRepository, client: ChatClient,
-        private readonly models?: ModelConnectionsRegistry) {
+        private readonly models?: ModelConnectionsRegistry, private readonly composer?: ChatContextComposer) {
         this.unlisten = repository.onChange((root, event) => {
             if (!this.disposed && root === this.root && this.handle)
                 client.notifyChatEvent({ ...event, projectHandle: this.handle });
@@ -57,6 +57,19 @@ export class ChatBackend implements ChatService {
         if (!request || typeof request !== 'object') throw new Error('Invalid Chat search request');
         return this.repository.search(this.active(request.projectHandle), request.query, request.limit, request.excludeChatId);
     }
+    async previewContext(request: { projectHandle: string; chatId: string; selectedModel: ChatTurnRequest['selectedModel'];
+        content: string; context: NonNullable<ChatTurnRequest['context']> }): Promise<ChatContextPreview> {
+        const root = this.active(request.projectHandle);
+        if (!this.composer || !this.models) throw new Error('Context composer unavailable');
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === request.chatId);
+        if (!chat) throw new Error('Chat not found');
+        const model = (await this.models.list()).connections.find(item => item.id === request.selectedModel.connectionId)
+            ?.models.find(item => item.id === request.selectedModel.modelId && item.usable);
+        if (!model) throw new Error('Selected model unavailable');
+        const composed = await this.composer.compose(root, chat, request.content, request.context, model.capabilities);
+        return { refs: composed.refs, diagnostics: composed.diagnostics,
+            usedTokens: composed.usedTokens, budgetTokens: composed.budgetTokens };
+    }
     claim(request: ChatLeaseRequest) {
         if (!request || typeof request !== 'object') throw new Error('Invalid Chat lease request');
         return this.repository.claim(this.active(request.projectHandle), request.chatId, request.ownerId);
@@ -72,7 +85,7 @@ export class ChatBackend implements ChatService {
         return this.repository.publishDelta(this.active(request.projectHandle), request.chatId,
             request.messageId, request.executionId, request.sequence, request.delta, request.leaseToken);
     }
-    async runTurn(request: ChatTurnRequest): Promise<void> {
+    async runTurn(request: ChatTurnRequest): Promise<ChatContextPreview> {
         const root = this.active(request.projectHandle);
         if (!this.models || this.turns.has(request.chatId)) throw new Error('Chat turn already active or runtime unavailable');
         const snapshot = await this.repository.read(root);
@@ -85,6 +98,19 @@ export class ChatBackend implements ChatService {
         for (const [id, value] of Object.entries(controls))
             if (!model.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
                 throw new ModelRuntimeFailure('Selected model does not support the saved reasoning control', 'unsupported-capability');
+        if (!this.composer) throw new Error('Context composer unavailable');
+        const retryIndex = request.retryMessageId ? chat.messages.findIndex(item => item.id === request.retryMessageId) : -1;
+        const content = request.retryMessageId ? (() => {
+            if (retryIndex < 1 || chat.messages[retryIndex].role !== 'assistant' ||
+                !['failed', 'cancelled'].includes((chat.messages[retryIndex] as ChatAssistantMessage).execution.status) ||
+                chat.messages[retryIndex - 1].role !== 'user') throw new Error('Only a failed or cancelled attempt can be retried');
+            return chat.messages[retryIndex - 1].content;
+        })() : request.content?.trim() ?? '';
+        const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
+        const composed = await this.composer.compose(root, contextChat, content, request.context ?? [], model.capabilities);
+        const preview: ChatContextPreview = { refs: composed.refs, diagnostics: composed.diagnostics,
+            usedTokens: composed.usedTokens, budgetTokens: composed.budgetTokens };
+        if (this.turns.has(request.chatId)) throw new Error('Chat turn already active');
         const key = request.chatId;
         const abort = new AbortController();
         this.turns.set(key, { token: request.leaseToken, abort });
@@ -105,38 +131,21 @@ export class ChatBackend implements ChatService {
             modelId: model.id, providerId: connection.providerId, modelLabel: model.label };
         try {
             if (this.pendingCancel.get(key) === request.leaseToken) abort.abort();
-            if (request.retryMessageId) {
-                const index = chat.messages.findIndex(item => item.id === request.retryMessageId);
-                if (index < 1 || chat.messages[index].role !== 'assistant' ||
-                    !['failed', 'cancelled'].includes((chat.messages[index] as ChatAssistantMessage).execution.status) ||
-                    chat.messages[index - 1].role !== 'user') throw new Error('Only a failed or cancelled attempt can be retried');
-            } else {
+            if (!request.retryMessageId) {
                 if (!request.content?.trim()) throw new Error('Enter a message before sending');
                 const user: ChatUserMessage = { schemaVersion: 1, id: randomUUID(), role: 'user',
-                    createdAt: new Date().toISOString(), content: request.content.trim(), contextRefs: [] };
+                    createdAt: new Date().toISOString(), content: request.content.trim(), contextRefs: preview.refs };
                 await mutate({ type: 'append-user', chatId: key, message: user });
             }
             const now = new Date().toISOString();
             assistant = { schemaVersion: 1, id: randomUUID(), role: 'assistant', createdAt: now, content: '',
                 execution: { schemaVersion: 1, id: randomUUID(), status: 'pending',
                     selectedModel: { ...request.selectedModel }, startedAt: now } };
-            const next = await mutate({ type: 'begin-assistant', chatId: key, message: assistant });
-            const messages = next.chats.find(item => item.id === key)!.messages;
-            const prior = messages.slice(0, -1).filter(item => item.role === 'user' ||
-                item.role === 'assistant' && item.execution.status === 'complete');
-            const budget = Math.max(1, Math.min(chat.settings.context.maxInputTokens,
-                (model.capabilities.contextWindowTokens ?? chat.settings.context.maxInputTokens) - chat.settings.context.reservedOutputTokens));
-            let remaining = budget * 4;
-            const selected: ConversationMessage[] = [];
-            for (const item of (chat.settings.context.history === 'none' ? prior.slice(-1) : prior).reverse()) {
-                if (item.content.length > remaining) break;
-                selected.unshift({ role: item.role === 'user' ? 'user' : 'assistant', content: item.content });
-                remaining -= item.content.length;
-            }
+            await mutate({ type: 'begin-assistant', chatId: key, message: assistant });
             await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id, actualModel: actual });
             let sequence = 0;
             for await (const event of this.models.generate(request.selectedModel,
-                { messages: selected, controls, signal: abort.signal })) {
+                { messages: composed.messages, controls, signal: abort.signal })) {
                 if (event.type === 'delta') {
                     output += event.text;
                     await this.repository.publishDelta(root, key, assistant.id, assistant.execution.id,
@@ -146,7 +155,7 @@ export class ChatBackend implements ChatService {
                     if (event.provenance) actual = { schemaVersion: 1, ...event.provenance };
                     await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                         outcome: 'complete', content: output, actualModel: actual });
-                    return;
+                    return preview;
                 }
             }
             throw new Error('Model stream ended without completion');

@@ -425,9 +425,18 @@ export class ChatRepository {
         let scanned = 0;
         for (const chat of (await this.read(root)).chats.sort(compareChatsByInteraction)) {
             if (chat.id === excludeChatId) continue;
+            if (++scanned > 5_000) return hits;
+            const titleHit = chat.title.toLocaleLowerCase('en-US').includes(needle) && chat.messages.length > 0;
+            if (titleHit) {
+                const message = chat.messages[0];
+                hits.push({ chatId: chat.id, messageId: message.id, title: chat.title,
+                    excerpt: message.content.replace(/\s+/g, ' ').slice(0, 240), createdAt: message.createdAt });
+                if (hits.length === limit) return hits;
+            }
             for (const message of chat.messages) {
                 // ponytail: a fixed scan budget keeps retrieval bounded; add an index only if archives outgrow it.
                 if (++scanned > 5_000) return hits;
+                if (titleHit && message === chat.messages[0]) continue;
                 const content = message.content.replace(/\s+/g, ' ');
                 const at = content.toLocaleLowerCase('en-US').indexOf(needle);
                 if (at < 0) continue;

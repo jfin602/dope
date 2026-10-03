@@ -8,6 +8,7 @@ import { ProjectMindClient, ProjectMindService, projectMindServicePath } from '@
 import type { RpcServer } from '@theia/core/lib/common/messaging/proxy-factory';
 import { ServiceConnectionProvider } from '@theia/core/lib/browser/messaging/service-connection-provider';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
+import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { OpenerService } from '@theia/core/lib/browser';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
@@ -103,6 +104,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         new ChatPanelWidget(() => context.container.get(ChatService) as ChatService & RpcServer<ChatClient>,
             context.container.get(WorkspaceService), context.container.get(ApplicationShell),
             context.container.get(ChatOpenOwners), options,
-            context.container.get(ModelConnectionsService)) })).inSingletonScope();
+            context.container.get(ModelConnectionsService), context.container.get(EditorManager),
+            context.container.get(SoftwareMapController)) })).inSingletonScope();
     rebind(WindowTitleService).to(DopeWindowTitleService).inSingletonScope();
 });

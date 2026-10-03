@@ -1,4 +1,4 @@
-import type { Chat, ChatCollection, ChatFolderPath, ChatId, ChatMessage,
+import type { Chat, ChatCollection, ChatContextKind, ChatContextRef, ChatFolderPath, ChatId, ChatMessage,
     ChatModelProvenance, ChatModelSelection, ChatSettings } from './index';
 
 export const chatServicePath = '/services/dope/chat';
@@ -27,7 +27,12 @@ export type ChatLeaseResult = { acquired: true; token: string } | { acquired: fa
 export interface ChatDeltaRequest { projectHandle: string; chatId: ChatId; messageId: string;
     executionId: string; sequence: number; delta: string; leaseToken: string }
 export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseToken: string;
-    selectedModel: ChatModelSelection; content?: string; retryMessageId?: string }
+    selectedModel: ChatModelSelection; content?: string; retryMessageId?: string; context?: ChatContextSelection[] }
+/** Captured editor text is transport-only. Other IDs are resolved against current project authorities. */
+export interface ChatContextSelection { kind: ChatContextKind; id: string; projectId?: string; generation?: number;
+    messageId?: string; text?: string; start?: number; end?: number; direction?: 'upstream' | 'downstream' }
+export interface ChatContextDiagnostic { kind: 'omitted' | 'truncated' | 'history'; source: string; message: string }
+export interface ChatContextPreview { refs: ChatContextRef[]; diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }
 export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'changed' | 'lease-changed'; chatId?: ChatId }
     /** Transient visible output; persistence happens at turn lifecycle boundaries. */
@@ -43,10 +48,12 @@ export interface ChatService {
     get(projectHandle: string, chatId: ChatId): Promise<Chat | undefined>;
     mutate(request: ChatMutation): Promise<ChatCollection>;
     search(request: ChatSearchRequest): Promise<ChatSearchHit[]>;
+    previewContext(request: { projectHandle: string; chatId: ChatId; selectedModel: ChatModelSelection;
+        content: string; context: ChatContextSelection[] }): Promise<ChatContextPreview>;
     claim(request: ChatLeaseRequest): Promise<ChatLeaseResult>;
     renew(projectHandle: string, chatId: ChatId, token: string): Promise<void>;
     release(projectHandle: string, chatId: ChatId, token: string): Promise<void>;
     publishDelta(request: ChatDeltaRequest): Promise<void>;
-    runTurn(request: ChatTurnRequest): Promise<void>;
+    runTurn(request: ChatTurnRequest): Promise<ChatContextPreview>;
     cancelTurn(projectHandle: string, chatId: ChatId, leaseToken: string): Promise<void>;
 }

@@ -1,6 +1,6 @@
 import { compareChatsByInteraction, joinChatFolderPath } from '@dope/chat';
 import type { Chat, ChatCollection, ChatFolderPath } from '@dope/chat';
-import type { ChatClient, ChatOperation, ChatService } from '@dope/chat/lib/service';
+import type { ChatClient, ChatOperation, ChatService, ChatContextSelection, ChatContextPreview, ChatSearchHit } from '@dope/chat/lib/service';
 import type { ChatModelSelection } from '@dope/chat';
 
 export type ChatConnection = ChatService & { setClient(client: ChatClient | undefined): void; dispose(): void };
@@ -49,6 +49,8 @@ export class ChatPanelController {
     pending = false;
     error = '';
     draft = '';
+    context: ChatContextSelection[] = [];
+    lastContext?: ChatContextPreview;
     turnModel: ChatModelSelection | undefined;
     running = false;
     stream: { messageId: string; executionId: string; content: string; sequence: number } | undefined;
@@ -84,7 +86,7 @@ export class ChatPanelController {
         this.loading = !!workspace;
         this.pending = false;
         this.error = '';
-        this.draft = ''; this.turnModel = undefined; this.stream = undefined;
+        this.draft = ''; this.context = []; this.lastContext = undefined; this.turnModel = undefined; this.stream = undefined;
         this.changed();
         await this.leave();
         this.running = false;
@@ -184,7 +186,7 @@ export class ChatPanelController {
         }
         if (chatId === this.chatId && this.mode === 'chat' && this.lease) return true;
         this.chatId = undefined; this.mode = 'select-chat'; this.error = '';
-        this.draft = ''; this.turnModel = undefined; this.stream = undefined;
+        this.draft = ''; this.context = []; this.lastContext = undefined; this.turnModel = undefined; this.stream = undefined;
         this.changed();
         await this.leave();
         await Promise.allSettled(previous);
@@ -302,9 +304,10 @@ export class ChatPanelController {
         this.turnModel = undefined;
         this.changed();
         try {
-            await lease.connection.runTurn({ projectHandle: lease.handle, chatId: lease.chatId,
+            this.lastContext = await lease.connection.runTurn({ projectHandle: lease.handle, chatId: lease.chatId,
                 leaseToken: lease.token, selectedModel: model,
-                ...(retryMessageId ? { retryMessageId } : { content }) });
+                ...(retryMessageId ? { retryMessageId } : { content, context: this.context }) });
+            if (!retryMessageId) this.context = [];
             return true;
         } catch (error) {
             if (!this.disposed && generation === this.generation && chatId === this.chatId) {
@@ -320,6 +323,21 @@ export class ChatPanelController {
                 await this.refresh(true);
             }
         }
+    }
+    addContext(selection: ChatContextSelection): void { this.context.push(selection); this.lastContext = undefined; this.changed(); }
+    clearContext(): void { this.context = []; this.lastContext = undefined; this.changed(); }
+    async previewContext(model: ChatModelSelection): Promise<void> {
+        const lease = this.lease;
+        if (!lease) throw new Error('Chat unavailable');
+        const generation = this.generation, chatId = this.chatId;
+        const preview = await lease.connection.previewContext({ projectHandle: lease.handle, chatId: lease.chatId,
+            selectedModel: model, content: this.draft, context: this.context });
+        if (generation === this.generation && chatId === this.chatId) { this.lastContext = preview; this.changed(); }
+    }
+    async searchSaved(query: string): Promise<ChatSearchHit[]> {
+        const lease = this.lease;
+        if (!lease || !this.chat?.settings.context.savedChatSearch) throw new Error('Saved Chat search disabled');
+        return lease.connection.search({ projectHandle: lease.handle, query, limit: 10, excludeChatId: lease.chatId });
     }
     async cancel(): Promise<void> {
         const lease = this.lease;

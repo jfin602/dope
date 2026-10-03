@@ -18,6 +18,7 @@ import { VisualPlanningBackend } from './visual-planning-backend';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { chatServicePath, type ChatClient } from '@dope/chat/lib/service';
 import { ChatBackend } from './chat-backend';
+import { ChatContextComposer } from './chat-context-composer';
 import { modelConnectionsServicePath, type ModelConnectionsClient } from '@dope/contracts/lib/model-connections-service';
 import { ModelConnectionsBackend, ModelConnectionsRegistry } from './model-connections';
 
@@ -27,6 +28,9 @@ export default new ContainerModule(bind => {
     bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
     bind(PlanningStore).toSelf().inSingletonScope();
     bind(ChatRepository).toSelf().inSingletonScope();
+    bind(ChatContextComposer).toDynamicValue(context => new ChatContextComposer(
+        context.container.get(ProjectMindStore), context.container.get(PlanningStore),
+        context.container.get(SoftwareMapIndex), context.container.get(ChatRepository))).inSingletonScope();
     bind(ModelConnectionsRegistry).toDynamicValue(() => new ModelConnectionsRegistry()).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<ModelConnectionsClient>(modelConnectionsServicePath, client => {
         const backend = new ModelConnectionsBackend(context.container.get(ModelConnectionsRegistry), client);
@@ -35,7 +39,7 @@ export default new ContainerModule(bind => {
     })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<ChatClient>(chatServicePath, client => {
         const backend = new ChatBackend(context.container.get(ChatRepository), client,
-            context.container.get(ModelConnectionsRegistry));
+            context.container.get(ModelConnectionsRegistry), context.container.get(ChatContextComposer));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

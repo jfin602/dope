@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
+import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { ChatPanelController } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
 import { ModelConnectionsRegistry } from '../../packages/theia-extension/lib/node/model-connections.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
@@ -19,7 +20,8 @@ async function until(predicate: () => boolean) {
 
 function fixture(repository: ChatRepository, registry: ModelConnectionsRegistry) {
     let client: ChatClient | undefined;
-    const service = new ChatBackend(repository, { notifyChatEvent(event) { client?.notifyChatEvent(event); } }, registry);
+    const composer = new ChatContextComposer({} as never, {} as never, {} as never, repository);
+    const service = new ChatBackend(repository, { notifyChatEvent(event) { client?.notifyChatEvent(event); } }, registry, composer);
     return Object.assign(service, { setClient(value: ChatClient | undefined) { client = value; },
         emit(event: Parameters<ChatClient['notifyChatEvent']>[0]) { client?.notifyChatEvent(event); } }) as ChatConnection & { emit: ChatClient['notifyChatEvent'] };
 }
@@ -155,7 +157,7 @@ test('cancel and stale deltas cannot create a completed answer in another Chat o
 test('panel source keeps input and toolbar rows with setup, settings and transcript status', async () => {
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     assert.match(source, /composer\.append\(input, toolbar\)/);
-    assert.match(source, /toolbar\.append\(this\.button\('Context'/);
+    assert.match(source, /toolbar\.append\(this\.button\(`Context/);
     assert.match(source, /this\.button\('Tools'/);
     assert.match(source, /Set up models/);
     assert.match(source, /Chat settings/);
