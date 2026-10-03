@@ -99,7 +99,7 @@ Dope's default workbench placement is part of the product architecture, while in
 
 Default placement:
 - **Left primary sidebar / Activity Bar:** project-navigation surfaces, including a dedicated **sMap** button and Software Map inspector. The inspector owns hierarchy, dependency, violation, evidence and source-navigation views for the Physical Map.
-- **Center workspace:** editors and ordinary working surfaces. Product Phase 5 adds the large visual **Physical Map** and **Planning Map** canvases here as editor-like tabs/workspaces. Product Phase 6 adds **Flow** as a directional Physical Map projection in the same center-workspace model. Map tabs are canvas-first: the diagram consumes the maximum practical center area, map-global controls are consolidated into one compact icon-first toolbar with tooltips/accessibility semantics, and immediate selection/details UI is a floating overlay rather than a persistent top pane. The overlay may expand, compact or minimize without becoming canonical state or forcing graph re-layout. The left sMap inspector remains the authoritative deep inspection/navigation surface.
+- **Center workspace:** editors and ordinary working surfaces. Product Phase 5 adds the large visual **Physical Map** and **Planning Map** canvases here as editor-like tabs/workspaces. Product Phase 6 adds **Flow** as a directional Physical Map projection in the same center-workspace model. **Edit Architecture** is the permanent center-workspace editor for System -> Subsystem -> Component architecture, reused for initial proposal acceptance and later accepted-map edits. Map tabs are canvas-first: the diagram consumes the maximum practical center area, map-global controls are consolidated into one compact icon-first toolbar with tooltips/accessibility semantics, and immediate selection/details UI is a floating overlay rather than a persistent top pane. The overlay may expand, compact or minimize without becoming canonical state or forcing graph re-layout. The left sMap inspector remains the authoritative deep inspection/navigation surface.
 - **Right secondary sidebar:** reserved by default for future **Agent Mind / chat / AI interaction**. The Software Map inspector must not claim this area as its default home.
 - **Bottom panel:** terminal, Problems, tests, runtime and similar execution/diagnostic surfaces.
 
@@ -115,7 +115,7 @@ For a project whose sMap has never been initialized, Dope offers an explicit Ana
 
 The Software Map application/domain layer distinguishes at least `uninitialized -> analyzing -> review_required -> initialized`. Initialization state is not equivalent to the existence of `.dope/architecture.json`.
 
-For an existing project, accepted initialization follows: bootstrap-document detection/choice -> deterministic evidence collection (including eligible repository-document claims) -> provider/runtime readiness -> deterministic evidence planning/global skeleton + responsibility signals + selected bootstrap/orientation context -> System Discovery -> System Challenge -> per-System Subsystem Discovery -> Subsystem Challenge -> per-Subsystem Component Discovery -> reconciliation/targeted verification -> validated ArchitectureProposal -> developer review/correction -> explicit acceptance -> canonical architecture. Before acceptance, generated structure is proposal state only.
+For an existing project, accepted initialization follows: bootstrap-document detection/choice -> deterministic evidence collection (including eligible repository-document claims) -> provider/runtime readiness -> deterministic evidence planning/global skeleton + responsibility signals + selected bootstrap/orientation context -> System Discovery -> System Challenge -> per-System Subsystem Discovery -> Subsystem Challenge -> per-Subsystem Component Discovery -> reconciliation/targeted verification -> validated ArchitectureProposal -> **Edit Architecture** review/correction -> explicit acceptance -> canonical architecture. Before acceptance, generated structure is proposal state only.
 
 Provider/runtime readiness includes a synthetic structured-output capability probe when configuring a model and an explicit warm-up immediately before the first real synthesis request that may submit project evidence. Probe and warm-up requests contain no project evidence. If warm-up fails, the ArchitectureEvidencePacket is not submitted.
 
@@ -452,7 +452,7 @@ The LLM output is a proposal/candidate class, never physical fact or canonical a
 
 Final review remains human-readable without making prose part of the provider data bus. Assembly/presentation may derive concise explanations from typed findings and deterministic evidence; a separate narrative model call is not required. Every final proposal node still uses a temporary `proposalKey`, numeric 0..1 `confidence` and machine-verifiable `evidenceRefs` into the complete parent packet. Human-readable explanation cannot substitute for evidenceRefs, and proposal keys cannot silently become canonical IDs. The developer may correct the proposal and explicitly accepts the canonical architecture.
 
-Initial architecture proposals are reviewed in an editor-like center workspace hierarchy rather than a single stacked form. The left sMap sidebar owns setup/progress/status/navigation; the center review presents an indented System -> Subsystem -> Component tree with focused node details/evidence and developer correction controls. This is a Phase 4 proposal-review surface, not the Phase 5 visual Physical Map/Planning Map canvas.
+Architecture proposals are edited in the center-workspace **Edit Architecture** surface rather than a stacked form. During initial synthesis it presents an indented System -> Subsystem -> Component structure with focused node details/evidence and developer correction controls before explicit acceptance. After initialization the same product surface edits a draft derived from accepted canonical architecture and requires explicit Save Architecture. The left sMap sidebar owns setup/progress/status/navigation and the initialized Open / Refresh / Edit Architecture entry actions. Edit Architecture is distinct from the visual Physical Map/Planning Map canvas.
 
 Manual/greenfield architecture remains available with no model configured. A developer may define canonical architecture before code exists, after which deterministic analysis realizes or reports drift against it.
 
@@ -737,6 +737,21 @@ Boundary rules:
 - accepted architecture remains only `.dope/architecture.json` plus matching `.dope/smap.json`.
 
 Acceptance diagnostics are deterministic and provider-free. They enumerate all known blockers rather than making the developer repair one throw-first error at a time. Diagnostics identify implicated review nodes/paths where possible, but never choose an architectural owner or silently repair the draft.
+
+## Edit Architecture workspace boundary — ADR 0024
+
+**Architecture** is the canonical user-facing term for Dope's System -> Subsystem -> Component structural organization and editor. Terms such as hierarchy, hierarchical and hierarchy-first remain valid for structural/algorithmic descriptions, but user-facing workspace/action names use Architecture.
+
+The left Software Map inspector exposes **Edit Architecture** in the initialized compact action group beside Open Physical Map and Refresh Software Map. Activation opens or focuses one project-scoped center-workspace editor rather than duplicating tabs.
+
+Edit Architecture deliberately owns independent presentation state. Its selection, expansion, scroll/focus and Search Deeper draft state do not synchronize with Physical Map, Flow or left-outline selection/navigation. The existing left-outline <-> center-map shared Software Map selection contract remains unchanged.
+
+On an initialized project, the backend/application boundary must provide a bounded way to read canonical architecture into an editor draft and explicitly save a validated replacement against an expected current architecture fingerprint/revision or equivalent optimistic-concurrency token. Typing and accepted branch refinements are not canonical writes. A successful Save Architecture updates the existing project-local canonical architecture boundary and then performs ordinary deterministic Software Map analysis/reconciliation; it does not imply a fresh full synthesis request.
+
+Search Deeper may operate on accepted architecture drafts for Systems and Subsystems using the current edited branch plus existing evidence authority. The result remains a preview, stale target branches fail closed, unrelated edits remain intact, and accepting the refinement changes only the draft until explicit Save Architecture. Manual architecture editing remains provider-independent.
+
+The first `c6-edit-architecture` correction does not add a new history/revision database, durable accepted-map edit sessions, Flow/Planning semantic changes or general AI Presence.
+
 
 ## Physical analysis input isolation and Planning Map basis semantics — ADR 0019
 
