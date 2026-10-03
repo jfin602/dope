@@ -342,6 +342,90 @@ test('existing declaration is uninitialized until explicit acceptance; restart r
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('initialized Architecture read and save use the canonical marker and rerun analysis without edit work files', async () => {
+  const root = await fixture();
+  try {
+    let analyses = 0;
+    const analyzer = new TypeScriptAnalyzer();
+    const index = new SoftwareMapIndex({ analyze: path => { analyses++; return analyzer.analyze(path); },
+      inputPaths: path => analyzer.inputPaths(path) });
+    const service = backend(index);
+    const handle = await attach(service, root);
+    await assert.rejects(service.readArchitecture(handle), /not initialized/);
+    await assert.rejects(service.saveArchitecture(handle, 'missing', declaration), /not initialized/);
+    await service.acceptManual(handle, declaration, (await service.initializationStatus(handle)).declarationFingerprint);
+    const before = await service.readArchitecture(handle);
+    assert.deepEqual(before.declaration, parseArchitecture(declaration));
+    assert.equal(before.declarationFingerprint, (await readInitialization(root)).declarationFingerprint);
+    before.declaration.systems[0].purpose = 'Changed in memory';
+    assert.deepEqual((await service.readArchitecture(handle)).declaration, parseArchitecture(declaration));
+    const replacement = structuredClone(before.declaration);
+    const priorAnalyses = analyses;
+    const saved = await service.saveArchitecture(handle, before.declarationFingerprint, replacement);
+    assert.equal(saved.committed, true);
+    assert.equal(saved.status.state, 'ready');
+    assert.ok(analyses > priorAnalyses);
+    assert.equal(saved.declarationFingerprint, (await readInitialization(root)).declarationFingerprint);
+    assert.equal((await service.readArchitecture(handle)).declaration.systems[0].purpose, 'Changed in memory');
+    assert.equal(JSON.parse(await readFile(join(root, '.dope/smap.json'), 'utf8')).architectureFingerprint, saved.declarationFingerprint);
+    assert.deepEqual((await readdir(join(root, '.dope'))).sort(), ['architecture.json', 'smap.json']);
+    service.dispose();
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('initialized Architecture save rejects stale, invalid, wrong-handle and cross-project requests without writes', async () => {
+  const a = await fixture(); const b = await fixture();
+  try {
+    const service = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()));
+    const handleA = await attach(service, a);
+    await service.acceptManual(handleA, declaration, (await service.initializationStatus(handleA)).declarationFingerprint);
+    const original = await projectBytes(a);
+    const current = await service.readArchitecture(handleA);
+    await assert.rejects(service.saveArchitecture('wrong', current.declarationFingerprint, current.declaration), /Invalid/);
+    await assert.rejects(service.saveArchitecture(handleA, 'stale', current.declaration), /Stale/);
+    const invalid = structuredClone(current.declaration);
+    invalid.systems[0].subsystems[0].forbiddenDependencies = ['missing'];
+    await assert.rejects(service.saveArchitecture(handleA, current.declarationFingerprint, invalid), /unknown dependency target/);
+    assert.deepEqual(await projectBytes(a), original);
+    const handleB = await attach(service, b);
+    await service.acceptManual(handleB, declaration, (await service.initializationStatus(handleB)).declarationFingerprint);
+    const otherOriginal = await projectBytes(b);
+    await assert.rejects(service.readArchitecture(handleA), /Invalid/);
+    await assert.rejects(service.saveArchitecture(handleA, current.declarationFingerprint, current.declaration), /Invalid/);
+    await assert.rejects(service.saveArchitecture(handleB, current.declarationFingerprint, invalid), /unknown dependency target/);
+    assert.deepEqual(await projectBytes(a), original);
+    assert.deepEqual(await projectBytes(b), otherOriginal);
+    service.dispose();
+  } finally { await rm(a, { recursive: true, force: true }); await rm(b, { recursive: true, force: true }); }
+});
+
+test('Architecture save reports committed canonical state when deterministic re-analysis fails', async () => {
+  const root = await fixture();
+  try {
+    let failAnalysis = false;
+    const analyzer = new TypeScriptAnalyzer();
+    const index = new SoftwareMapIndex({ analyze: path => {
+      if (failAnalysis) throw new Error('injected analysis failure');
+      return analyzer.analyze(path);
+    }, inputPaths: path => analyzer.inputPaths(path) });
+    const service = backend(index);
+    const handle = await attach(service, root);
+    await service.acceptManual(handle, declaration, (await service.initializationStatus(handle)).declarationFingerprint);
+    const current = await service.readArchitecture(handle);
+    const replacement = structuredClone(current.declaration);
+    replacement.systems[0].purpose = 'Committed despite analysis failure';
+    failAnalysis = true;
+    const saved = await service.saveArchitecture(handle, current.declarationFingerprint, replacement);
+    assert.equal(saved.committed, true);
+    assert.equal(saved.status.state, 'failed');
+    assert.match(saved.status.analysis.errors[0].message, /injected analysis failure/);
+    assert.equal((await service.readArchitecture(handle)).declaration.systems[0].purpose, replacement.systems[0].purpose);
+    assert.equal((await readInitialization(root)).declarationFingerprint, saved.declarationFingerprint);
+    assert.deepEqual((await readdir(join(root, '.dope'))).sort(), ['architecture.json', 'smap.json']);
+    service.dispose();
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('generated review has valid suggested IDs, remains noncanonical, and accepts unchanged', async () => {
   const root = await fixture();
   try {

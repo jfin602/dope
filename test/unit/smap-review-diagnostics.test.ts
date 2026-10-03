@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { reviewDiagnostics, reviewDeclaration, parseArchitecture } = require('../../packages/software-map/lib/index.js');
+const { architectureDraft, reviewDiagnostics, reviewDeclaration, parseArchitecture } = require('../../packages/software-map/lib/index.js');
 const node = (proposalKey: string, kind: string, id: string, parentProposalKey: string | null, roots: string[]) =>
   ({ proposalKey, kind, id, name: proposalKey, purpose: proposalKey, parentProposalKey, roots });
 
@@ -37,4 +37,24 @@ test('review diagnostics preserve strict acceptance for valid draft and schema r
   assert.deepEqual(parseArchitecture(reviewDeclaration(valid)).systems[0].subsystems[0].id, 'core');
   assert.ok(reviewDiagnostics([valid[0]]).some((issue: any) => issue.code === 'subsystems_required'));
   assert.ok(reviewDiagnostics([]).some((issue: any) => issue.code === 'systems_required'));
+});
+
+test('canonical Architecture round-trips through stable editor keys with dependency constraints', () => {
+  const declaration = parseArchitecture({ schemaVersion: 1, systems: [{ id: 'app', name: 'App', purpose: 'App', roots: ['src'], subsystems: [
+    { id: 'api', name: 'API', purpose: 'API', roots: ['src/api'], allowedDependencies: ['core'], forbiddenDependencies: [],
+      components: [{ id: 'handler', name: 'Handler', purpose: 'Handler', roots: ['src/api/handler.ts'] }] },
+    { id: 'core', name: 'Core', purpose: 'Core', roots: ['src/core'] },
+  ] }] });
+  const first = architectureDraft(declaration);
+  assert.deepEqual(first, architectureDraft(declaration));
+  assert.deepEqual(reviewDiagnostics(first), []);
+  assert.deepEqual(parseArchitecture(reviewDeclaration(first)), declaration);
+  const key = first.find((item: any) => item.id === 'api').proposalKey;
+  first.find((item: any) => item.id === 'api').id = 'api-renamed';
+  assert.equal(first.find((item: any) => item.id === 'api-renamed').proposalKey, key);
+  first.find((item: any) => item.id === 'api-renamed').allowedDependencies = ['missing'];
+  assert.ok(reviewDiagnostics(first).some((issue: any) => issue.code === 'invalid_dependency_target'));
+  first.find((item: any) => item.id === 'api-renamed').allowedDependencies = ['core'];
+  first.find((item: any) => item.id === 'api-renamed').forbiddenDependencies = ['core'];
+  assert.ok(reviewDiagnostics(first).some((issue: any) => issue.code === 'conflicting_dependency_target'));
 });

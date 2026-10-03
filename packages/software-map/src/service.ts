@@ -52,6 +52,20 @@ export interface ArchitectureReviewNode {
     purpose: string;
     parentProposalKey: string | null;
     roots: string[];
+    /** Absent for initial synthesis suggestions and non-Subsystem nodes. */
+    allowedDependencies?: string[];
+    forbiddenDependencies?: string[];
+    /** Preserves an omitted canonical components field; suggestions default to present. */
+    componentsPresent?: boolean;
+}
+export interface CurrentArchitecture {
+    declaration: ArchitectureDeclaration;
+    declarationFingerprint: string;
+}
+export interface SaveArchitectureResult {
+    committed: true;
+    declarationFingerprint: string;
+    status: SoftwareMapStatus;
 }
 export interface ArchitectureReview {
     reviewId: string;
@@ -93,6 +107,8 @@ export interface SoftwareMapService {
     synthesisAttempts(projectHandle: string): Promise<SynthesisCallAttempt[]>;
     dryRunSynthesis(projectHandle: string): Promise<SynthesisDryRunReport>;
     initializationStatus(projectHandle: string): Promise<SoftwareMapInitializationStatus>;
+    readArchitecture(projectHandle: string): Promise<CurrentArchitecture>;
+    saveArchitecture(projectHandle: string, expectedFingerprint: string, declaration: ArchitectureDeclaration): Promise<SaveArchitectureResult>;
     startInitialization(projectHandle: string): Promise<ArchitectureReview>;
     retryFailedStage(projectHandle: string): Promise<ArchitectureReview>;
     review(projectHandle: string): Promise<ArchitectureReview | undefined>;

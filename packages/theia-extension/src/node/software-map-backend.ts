@@ -1,10 +1,10 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { realpath } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { KeyStoreService } from '@theia/core/lib/common/key-store';
-import { canonicalLocalRoot } from '@dope/code-analysis/lib/node/architecture-file';
-import { readInitialization, acceptInitialization } from '@dope/code-analysis/lib/node/smap-initialization-file';
+import { canonicalLocalRoot, readArchitecture } from '@dope/code-analysis/lib/node/architecture-file';
+import { readInitialization, acceptInitialization, replaceArchitecture } from '@dope/code-analysis/lib/node/smap-initialization-file';
 import { bootstrapDocumentPresence } from '@dope/code-analysis/lib/node/architecture-evidence';
 import { readSynthesisRun, writeSynthesisRun, clearSynthesisRun, saveSynthesisReviewDraft } from '@dope/code-analysis/lib/node/smap-analysis-file';
 import type { SavedSynthesisRun } from '@dope/code-analysis/lib/node/smap-analysis-file';
@@ -533,6 +533,34 @@ export class SoftwareMapBackend implements SoftwareMapService {
         await acceptInitialization(root, expectedFingerprint, parseArchitecture(declaration));
         this.initialized = true;
         return this.index.analyze(root);
+    }
+    async readArchitecture(projectHandle: string) {
+        const root = this.active(projectHandle);
+        const basis = await readInitialization(root);
+        if (!basis.initialized) throw new Error('Software Map is not initialized');
+        const { architecture, text } = await readArchitecture(root);
+        this.active(projectHandle);
+        if (!text || createHash('sha256').update(text).digest('hex') !== basis.declarationFingerprint)
+            throw new Error('Stale Software Map architecture declaration');
+        return { declaration: structuredClone(architecture), declarationFingerprint: basis.declarationFingerprint };
+    }
+    async saveArchitecture(projectHandle: string, expectedFingerprint: string, declaration: ArchitectureDeclaration) {
+        const root = this.active(projectHandle);
+        if (!(await readInitialization(root)).initialized) throw new Error('Software Map is not initialized');
+        this.active(projectHandle);
+        const replacement = parseArchitecture(declaration);
+        const declarationFingerprint = await replaceArchitecture(root, expectedFingerprint, replacement, async () => {
+            if (this.active(projectHandle) !== root) throw new Error('Detached Software Map project');
+            return async () => {};
+        });
+        let status;
+        try { status = await this.index.analyze(root); }
+        catch (error) {
+            const current = this.index.status(root);
+            status = { ...current, state: 'failed' as const, analysis: { completeness: 'failed' as const,
+                errors: [{ producer: '@dope/code-analysis', code: 'index-failure', message: String(error) }] } };
+        }
+        return { committed: true as const, declarationFingerprint, status };
     }
     async analyze(projectHandle: string) {
         const root = this.active(projectHandle);
