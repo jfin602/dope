@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Task Stack
 
-Status: **STREAMLINED / READY FOR EXECUTION**
+Status: **PHASE 7A P1-P12 READY / P13 CLOSEOUT SUPERSEDED BY ADR 0026**
 Activation source/package baseline: `59c7f72a29dcdecdf9b908176754bfd02179b004`, `0.7.0`
 Theia: `1.75.0`; Electron: `42.8.1`; React: `19.2.8`; Node: 24
 
@@ -20,22 +20,19 @@ Theia: `1.75.0`; Electron: `42.8.1`; React: `19.2.8`; Node: 24
 | P10 | `0.7.10` | bounded context composer | T2 | GPT-6 Sol High | no |
 | P11 | `0.7.11` | AI behaviors + auto-title + integrated browser build | T2 | GPT-6 Sol High | no |
 | P12 | `0.7.12` | direct AI Presence qualification | T3 | GPT-6 Sol High | yes |
-| P13 | `0.7.13` | evidence-only closeout | T3 | GPT-6 Sol Medium | no |
+| P13 | `0.7.13` | **SUPERSEDED — do not execute; slot reserved for regenerated 7B/7C continuation** | — | — | — |
 
 ## Execution
 
 Validate once before running:
 `npm run codex:phase:validate -- p7`
 
-Then:
-`npm run codex:phase -- p7 --closeout`
+Then execute the current stack **without** `--closeout` so it stops at the Phase 7A qualification boundary. The runner owns P1-P11 commits and stops for P12 direct GUI/provider qualification. P12 creates the manual `0.7.12` checkpoint.
 
-The runner owns P1-P11 commits and stops for P12 direct GUI/provider qualification. P12 creates the manual `0.7.12` checkpoint; then resume P13.
-
-Broad browser/Electron/restart/live-provider/package work is intentionally concentrated in P12. P13 reuses it.
+Do not resume the currently written P13. ADR 0026 supersedes that closeout. After P12, rerun `/prompt-ass -> /prompt-plan -> /prompt-write p7` to regenerate contiguous P13+ prompts for AI Center, roles/routing, integrated qualification and one new final closeout. Revalidate the regenerated stack before continuing.
 
 ## Records
 - `prompt-assessment.md`
 - `implementation-plan.md`
 - `P12-ai-presence-dogfooding-evidence.md` (created by P12)
-- `closeout.md` (created by P13)
+- final `closeout.md` (created by the regenerated final Phase 7 closeout, not the current P13)
