@@ -239,7 +239,7 @@ The default product experience is System-level overview first and path explorati
 Flow is rebuildable derived Physical Map state, not a fourth durable map or architecture authority. Unknown payloads, unsupported execution surfaces, truncation and missing hops remain visibly unknown/partial rather than being invented for completeness.
 
 
-### Phase 7 — Durable Chat and AI Presence
+### Phase 7A — Durable Chat and AI Presence
 
 Phase 7 introduces Dope-owned durable conversational context without redefining Project Mind.
 
@@ -255,6 +255,22 @@ Per-Chat settings may define eligible automatic context sources, context/history
 
 Chat is an interface for understanding and proposing project work. Promotion into Project Mind or other canonical domains remains explicit developer-controlled behavior.
 
+### Phase 7B-7C — AI Center, connections and role policy
+
+`AIConnection` is a user/application-scoped provider/runtime connection identity. It represents configuration and lifecycle for a Local runtime, hosted provider or future execution backend without becoming project truth.
+
+`AIModel` is a model identity discovered/configured beneath an `AIConnection`, with provider-neutral capability/readiness metadata. A connection may expose multiple models; a model does not own connection credentials or feature authority.
+
+`AIRolePolicy` is user/application routing policy. Initial roles are Interactive, Deep Reasoning, Background, Software Map and Coding Agent. A policy may name preferred targets, ordered permitted fallbacks, capability requirements and locality/privacy/egress constraints. It is not a canonical project artifact and must not be copied into `.dope/` merely because a project uses it.
+
+**AI Center** is the user-facing management surface for `AIConnection`, `AIModel` and `AIRolePolicy`. It is opened from the persistent bottom-left AI launcher; account/profile management belongs under Settings. AI Center projects the shared Model Connections registry established by Phase 7A rather than creating a second provider store.
+
+General resolution precedence is explicit per-message/feature model choice -> persistent Chat model policy where applicable -> feature-requested role + constraints -> global role policy -> permitted fallback. Explicit model selection never silently falls back. Role fallback is legal only when the initiating feature allows it and the fallback satisfies all constraints.
+
+Routing policy does not grant feature authority. Software Map provider/evidence-egress approval remains explicit under ADR 0022. Phase 8 continuous Background alignment requests a local-only/no-hosted-fallback constraint under ADR 0023 regardless of broader generic Background preferences.
+
+Connection/model configuration and role policy are user/application state. Credentials/tokens are secret runtime/application state; persistent secret storage requires a secure-store boundary and never belongs in `.dope/`, Chat persistence or ordinary plaintext preference state.
+
 ### Phase 7-9 — AI collaboration, knowledge alignment and delegation
 
 Introduce or activate:
@@ -266,7 +282,7 @@ Introduce or activate:
 - ChangeSet
 - Validation integration
 
-AI Presence begins in Phase 7 through the Dope-owned durable Chat/ChatPanel and context-composition boundary defined by ADR 0025. It may consume Dope-owned architecture, Flow, planning, Project Mind, editor/project and bounded saved-Chat context without making conversation canonical truth. Phase 8 uses that provider-independent runtime to maintain a Living Software Knowledge Model through deterministic-first, local-first background alignment. Scoped Delegation follows in Phase 9; Phase 8 findings never silently mutate source, documentation, contracts or canonical architecture.
+AI Presence begins in Phase 7A through the Dope-owned durable Chat/ChatPanel and context-composition boundary defined by ADR 0025. Phase 7B centralizes global connection/model management in AI Center, and Phase 7C adds role policies/routing under ADR 0026. AI Presence may consume Dope-owned architecture, Flow, planning, Project Mind, editor/project and bounded saved-Chat context without making conversation canonical truth. Phase 8 uses that provider-independent, role-aware runtime to maintain a Living Software Knowledge Model through deterministic-first, local-first background alignment. Scoped Delegation follows in Phase 9; Phase 8 findings never silently mutate source, documentation, contracts or canonical architecture.
 
 Before Phase 7 general AI Presence, correction `c6-branch-seam` establishes only the minimal Model Runtime/provider-session boundary already needed by existing sMap synthesis. Software Map authority, sMap synthesis strategy and provider execution are separate concerns: Local and hosted synthesis share final evidence/proposal/validation/acceptance semantics but may use different model-appropriate prompt packing and stage strategies. This correction is infrastructure reuse, not early Agent Mind/chat/delegation scope.
 
