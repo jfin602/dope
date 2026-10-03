@@ -453,3 +453,33 @@ The one-off may:
 It must not change Flow extraction, overview aggregation policy, hard budgets, canonical architecture, Planning semantics, map-shell architecture, persistence or package version.
 
 Preserve the original map-canvas P3 Not Green closeout. A successful replay is supplemental evidence, not a rewrite of history. After Green, return to fresh Phase 6 P7 requalification. P8 remains blocked, and the packaged AppImage controlled-shutdown failure remains a separate P7 blocker.
+
+## October 2, 2026 — Phase 6 sMap outline correction
+
+Direct review of the left Software Map inspector found a presentation/navigation mismatch with its intended role: hierarchy nodes are currently rendered as filled primary-action buttons, architecture branches open too aggressively, and the inspector does not automatically reveal a shared selection made on the center map.
+
+The approved bounded correction is `c6-smap-outline` at unchanged `0.6.7`.
+
+Use the normal planning workflow:
+
+`/prompt-ass -> /prompt-plan -> /prompt-write c6-smap-outline`
+
+`/docs-apply` creates authority only; it does not create the executable prompt stack.
+
+Locked behavior:
+- render the architecture hierarchy as a compact text outline rather than orange button blocks;
+- use type-first row labels such as `system - Adaptive SEO Service`, `subsystem - Content Collection`, `component - Collection Fetcher`, and `file - src/server/...`;
+- keep important names/paths fully readable, wrapping rather than truncating;
+- start all expandable architecture branches collapsed;
+- keep disclosure separate from selection;
+- continue using the existing shared Software Map selection identity rather than creating inspector-local architecture selection;
+- when the center map selects a hierarchy node, expand the missing ancestor chain, scroll the selected row into view, and preserve unrelated branches the user manually expanded;
+- selecting a sidebar row must continue to update the shared selection observed by the center map;
+- use brand orange as a restrained selection/focus accent rather than the persistent background of every hierarchy row;
+- top-level `Open Physical Map` / `Refresh Software Map` controls may be made compact;
+- retain inspector diagnostics, relationships, evidence, source navigation, violations and unassigned implementation behavior.
+
+The correction is presentation-only. It must not change canonical architecture, Software Map evidence/query truth, Flow extraction/query/aggregation, Planning semantics, synthesis/provider/runtime behavior, project persistence, or package version.
+
+This correction is independent of `c6-branch-seam` and of the Flow projection truth repair. It does not relabel earlier P7/P3 evidence or unblock P8 by itself. Complete it before the next intended fresh P7 GUI candidate if its inspector behavior is to be part of that candidate.
+
