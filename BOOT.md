@@ -13,7 +13,7 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 **Product Phase 5 — Visual Software Planning is OWNER-CLOSED FOR SEQUENCING.** The retained Phase 5 source at `0.5.11` remained Not Green because P11 never completed one clean end-to-end A-I qualification replay and P12 was not executed. The owner explicitly accepted those gaps for sequencing on 2026-10-02; no failed or missing evidence is relabeled Green. The closeout transition commit `710edb362f9881ab41215705db4f08d8daca6293` established the coherent `0.6.0` successor baseline.
 
-**Product Phase 6 — Flow is ACTIVE at `0.6.7`, with P7 Not Green and P8 blocked.** P1-P6 are implemented. The retained P7 and map-canvas evidence has produced a sequence of bounded corrections without relabeling failed runs: `c6-flow-overview-priority` owns the overview-priority/query repair history, `c6-map-canvas-priority` retains its Not Green P3 result, and `c6-flow-projection-contract` owns the aggregate-versus-facts projection mismatch exposed by that replay. `c6-smap-outline` is now an approved independent presentation-only follow-on for the left Software Map inspector at unchanged `0.6.7`: compact text hierarchy, fully collapsed initial state, type-first labels, shared selection reveal, and bidirectional selection through the existing Software Map selection identity. P8 remains blocked until fresh P7 qualification is Green. The accepted Adaptive SEO reference remains unchanged. General AI Presence remains Product Phase 7.
+**Product Phase 6 — Flow is ACTIVE at `0.6.7`, with P7 Not Green and P8 blocked.** P1-P6 are implemented. The retained P7 and map-canvas evidence has produced a sequence of bounded corrections without relabeling failed runs: `c6-flow-overview-priority` owns the overview-priority/query repair history, `c6-map-canvas-priority` retains its Not Green P3 result, and `c6-flow-projection-contract` owns the aggregate-versus-facts projection mismatch exposed by that replay. `c6-smap-outline` is now an approved independent presentation-only follow-on for the left Software Map inspector at unchanged `0.6.7`: compact text Architecture outline, fully collapsed initial state, type-first labels, shared selection reveal, and bidirectional selection through the existing Software Map selection identity. ADR 0024 also approves follow-on `c6-edit-architecture` at unchanged `0.6.7`: a permanent center-workspace **Edit Architecture** surface reused for initial acceptance and accepted-map editing, launched beside Open/Refresh after initialization, with independent editor UI state and branch-local Search Deeper. It follows `c6-smap-outline` where their left action-row changes overlap. P8 remains blocked until fresh P7 qualification is Green. The accepted Adaptive SEO reference remains unchanged. General AI Presence remains Product Phase 7.
 
 `c5-smap-readability` and the other Phase 5 corrections remain retained implementation/history. Their commit subjects or partial browser observations do not create a standalone Green claim beyond recorded evidence.
 
@@ -21,7 +21,7 @@ Foundation Spike 0 is qualified and owner-closed at commit `425b89d222e1542815af
 
 **Product Phase 5 — Visual Software Planning is owner-closed for sequencing.** Product Phase 4 — Physical Map remains Qualified/Green for its approved core scope at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The architecture-discovery follow-ons remain truthful history: `c4-smap-synth`, `c4-smap-gemini-provider`, `c4-synth-improvements`, and `c4-synth-coverage-review` are owner-closed **Not Qualified** with useful implementation retained. `c4-smap-storage` and `c4-color-theme` are **GREEN / QUALIFIED** at unchanged `0.4.6`. Product Phase 6 — Flow now uses the coherent `0.6.0` baseline established by Phase 5 owner closeout.
 
-**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first bootstrap; ADR 0012 governs hierarchy-first synthesis/progress/performance; ADR 0013 governs compact shared provider contracts as amended by ADR 0022; ADR 0014 governs responsibility-oriented decomposition/review and its owner sequencing amendments; ADR 0015 governs optional root `MODULES.md` bootstrap intent; ADR 0016 governs Dope Dark visual identity and theme boundaries; ADR 0017 governs Phase 5 Planning Maps, transformations, WorkItems, target adoption, staleness/rebase and reconciliation; ADR 0018 governs resumable unaccepted sMap review work; ADR 0019 amends Planning Map basis semantics and Physical Map input isolation; ADR 0020 inserts the provider-free directional projection before AI Presence; ADR 0021 amends its scope and product term to **Flow**, with execution/control relationships first and data semantics as optional evidence-backed enrichment; ADR 0022 separates sMap synthesis strategy from the reusable Model Runtime/provider lifecycle and authorizes the bounded pre-Phase-7 `c6-branch-seam` correction; ADR 0023 establishes Product Phase 8 as the Living Software Knowledge Model with deterministic-first, local-first background alignment, explicit hosted escalation, and no silent canonical mutation.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**; **Flow** is a Physical Map behavioral/execution projection, not a fourth durable map. AI interprets deterministic evidence; it does not create evidence. The developer owns canonical System / Subsystem / Component identity. General Phase 7 AI Presence remains out of scope; the Phase 5 visual planning canvas and provider-free visual workflow are now active scope.
+**ADR 0008 remains the naming/workbench-placement authority; ADR 0009 establishes architecture-discovery/developer authority; ADR 0010 governs sMap initialization and AI-assisted synthesis; ADR 0011 governs the local-first bootstrap; ADR 0012 governs hierarchy-first synthesis/progress/performance; ADR 0013 governs compact shared provider contracts as amended by ADR 0022; ADR 0014 governs responsibility-oriented decomposition/review and its owner sequencing amendments; ADR 0015 governs optional root `MODULES.md` bootstrap intent; ADR 0016 governs Dope Dark visual identity and theme boundaries; ADR 0017 governs Phase 5 Planning Maps, transformations, WorkItems, target adoption, staleness/rebase and reconciliation; ADR 0018 governs resumable unaccepted sMap review work; ADR 0019 amends Planning Map basis semantics and Physical Map input isolation; ADR 0020 inserts the provider-free directional projection before AI Presence; ADR 0021 amends its scope and product term to **Flow**, with execution/control relationships first and data semantics as optional evidence-backed enrichment; ADR 0022 separates sMap synthesis strategy from the reusable Model Runtime/provider lifecycle and authorizes the bounded pre-Phase-7 `c6-branch-seam` correction; ADR 0023 establishes Product Phase 8 as the Living Software Knowledge Model with deterministic-first, local-first background alignment, explicit hosted escalation, and no silent canonical mutation; ADR 0024 establishes **Architecture** as the canonical user-facing structural term and a permanent **Edit Architecture** workspace without changing Software Map/Physical Map/Flow/Planning Map meanings.** Canonical product terms remain **Software Map (sMap)**, **Physical Map**, and **Planning Map**; **Architecture** names the structural System -> Subsystem -> Component view/editor, while **Flow** is a Physical Map behavioral/execution projection, not a fourth durable map. AI interprets deterministic evidence; it does not create evidence. The developer owns canonical System / Subsystem / Component identity. General Phase 7 AI Presence remains out of scope; the Phase 5 visual planning canvas and provider-free visual workflow are now active scope.
 
 Phase 2's P6 `0.2.6` evidence-only audit remains **Not Qualified**. The owner subsequently explicitly closed Phase 2 for sequencing and authorized Phase 3 from a coherent `0.3.0` baseline. This owner disposition does not relabel the P6 audit Green or erase its evidence gaps. The retained Phase 2 gaps are the initially hidden legacy-migration entry, unproved dirty same-renderer workspace switch, lack of exact `0.2.6` native artifact launch/direct native visual Project Mind use, and inherited Phase 1 gaps where applicable. See `docs/tasks/p2/closeout.md` and `docs/planning/p3/activation.md`.
 
@@ -88,6 +88,8 @@ Current authority:
 - docs/decisions/0020-data-flow-physical-map-projection.md
 - docs/decisions/0021-flow-physical-map-behavioral-projection.md
 - docs/decisions/0022-smap-synthesis-model-runtime-seam.md
+- docs/decisions/0023-living-software-knowledge-model-and-local-first-background-alignment.md
+- docs/decisions/0024-persistent-architecture-editing-and-canonical-architecture-terminology.md
 
 ## Product premise
 
@@ -118,7 +120,8 @@ Foundation Spike 0 — qualify Theia
 -> visual identity alignment — match app palette to Dope logo
 -> Phase 5 — Visual Software Planning (owner-closed for sequencing)
 -> Phase 6 — Flow (current)
--> correction c6-smap-outline — compact left sMap outline + shared selection reveal
+-> correction c6-smap-outline — compact left Architecture outline + shared selection reveal
+-> correction c6-edit-architecture — permanent Edit Architecture workspace
 -> correction c6-branch-seam — synthesis strategy / Model Runtime seam
 -> Phase 7 — AI Presence
 -> Phase 8 — Living Software Knowledge Model
@@ -254,14 +257,22 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Plan the newly approved bounded presentation correction:
+Finish the approved bounded presentation correction first:
 
 `c6-smap-outline`
 
-Use the normal implementation-planning workflow:
+using:
 
 `/prompt-ass -> /prompt-plan -> /prompt-write c6-smap-outline`
 
-Keep package version exactly `0.6.7`. This correction is limited to the left Software Map inspector's presentation and navigation behavior: compact text-tree rows, type-first labels, fully collapsed initial state, shared-selection ancestor reveal/scrolling, preserved manual expansion, and compact top actions. It must not change canonical architecture, Software Map evidence/query truth, Flow semantics, Planning Map semantics, synthesis/provider behavior, or project persistence.
+Then plan the approved follow-on:
 
-`c6-branch-seam` remains an independent pre-Phase-7 architecture correction and may proceed separately. Neither correction relabels retained P7 evidence, unblocks P8 by itself, or authorizes general Phase 7 AI Presence.
+`c6-edit-architecture`
+
+using:
+
+`/prompt-ass -> /prompt-plan -> /prompt-write c6-edit-architecture`
+
+Keep package version exactly `0.6.7` for both. `c6-smap-outline` is limited to the left Software Map Architecture outline and its existing shared map-selection behavior. `c6-edit-architecture` promotes the center review surface into permanent **Edit Architecture**, adds the initialized left action beside Open/Refresh, edits accepted architecture through an independent draft, keeps editor UI state unsynchronized from the map/outline, and extends branch-local Search Deeper without silently mutating canonical architecture.
+
+`c6-branch-seam` remains an independent pre-Phase-7 architecture correction and may proceed separately. These corrections do not relabel retained P7 evidence, unblock P8 by themselves, or authorize general Phase 7 AI Presence.
