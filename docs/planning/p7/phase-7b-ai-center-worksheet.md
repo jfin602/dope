@@ -1,6 +1,6 @@
 # Product Phase 7B — AI Center Planning Worksheet
 
-Status: OPEN PLANNING WORKSHEET  
+Status: RESOLVED / READY FOR DOCS REVIEW  
 Date: October 3, 2026  
 Target slice: Product Phase 7B — AI Center  
 Assumption: Product Phase 7A is fully implemented and qualified before this worksheet is resolved.
@@ -13,7 +13,7 @@ This worksheet assumes all Phase 7A capabilities already exist and are working: 
 
 This worksheet does **not** implement or fully design Phase 7C role routing. It may define the connection/model contracts and UI seams that 7C will consume so Phase 7B does not need to be rewritten later.
 
-Resolved answers should be promoted into ADR 0026, the Phase 7 plan, architecture/product contracts, roadmap text, or a follow-on ADR if a decision is broad enough to outlive the implementation stack.
+All ten primary decisions are now resolved. They should be promoted into ADR 0026, the Phase 7 plan, architecture/product contracts, roadmap text, or a follow-on ADR through `/docs-review -> /docs-apply` before Phase 7B prompt decomposition.
 
 ## Already locked
 
@@ -529,7 +529,49 @@ Ship stable connection/model identities, normalized capabilities, locality/hoste
 
 **Decision**
 
-TBD.
+Locked: Phase 7B ships a **role-ready registry/domain surface without implementing role assignment or routing behavior**.
+
+Every connection/model exposed to future Phase 7C policy carries stable provider-neutral identity and enough normalized metadata for role eligibility decisions, including:
+- immutable `connectionId` and stable connection-scoped `modelId`;
+- enabled/usable/readiness state;
+- normalized **local vs hosted** execution classification;
+- advertised capabilities such as conversational text generation, streaming, structured output, reasoning controls, tool support and cancellation where known;
+- context/other relevant limits where known;
+- capability/limit metadata source/quality such as provider-reported, adapter-known, configured or unknown.
+
+Local/hosted classification is explicit metadata. Phase 7C must not infer privacy/locality from provider names such as `lmstudio`.
+
+Phase 7B exposes a provider-neutral eligibility query seam conceptually equivalent to:
+
+```text
+findEligibleModels({
+  requiredCapabilities,
+  localOnly,
+  hostedAllowed,
+  minimumContext,
+  enabledOnly,
+  usableOnly,
+  ...
+})
+```
+
+This seam returns models satisfying constraints; it does **not** choose the target, rank candidates, apply role preference or perform fallback. Capability truth belongs to 7B; routing policy belongs to 7C.
+
+User-friendly connection/model aliases are allowed for AI Center readability, but future `AIRolePolicy` references immutable IDs rather than display names.
+
+If a required capability is unknown rather than affirmatively supported, the model does not silently satisfy that hard requirement. Routing must preserve metadata uncertainty instead of pretending inferred/configured facts are authoritative.
+
+Phase 7B does **not** implement:
+- role assignments;
+- a default Interactive/Background/etc. model;
+- fallback chains;
+- automatic target selection;
+- feature-to-role routing;
+- role policy persistence;
+- a disabled/placeholder Roles UI.
+
+AI Center remains focused on Connections/Models in 7B. Phase 7C may add a first-class **Roles** surface on top of the unchanged connection/model registry without redesigning those screens.
+
 
 ## Secondary implementation questions
 
@@ -565,6 +607,24 @@ The most architecture-sensitive decisions are:
 9. role-ready contracts without premature routing.
 
 The visual layout should follow these ownership/security/runtime decisions rather than define them.
+
+## Resolution
+
+All ten Phase 7B primary decisions are resolved.
+
+The locked design establishes:
+- one singleton center-workspace AI Center;
+- immutable Dope-owned connection identity and reversible Disable vs historical-safe Remove;
+- one machine-local/application-global revisioned registry shared across Dope windows/projects;
+- Environment / Session-only / OS secure-storage credential sources with no plaintext fallback;
+- one Add Connection shell with bounded provider-specific onboarding adapters;
+- connection-scoped stable model identity, bounded discovery/refresh and known-vs-usable inventory;
+- separate normalized connection health and model usability state machines;
+- synthetic no-project-data Test Connection semantics distinct from feature-specific probe/warm-up;
+- AI Center as the sole global connection owner while features retain execution consent/strategy;
+- role-ready capability/locality/eligibility contracts without premature role routing.
+
+This worksheet remains planning history. Promoted authority governs implementation if wording later differs.
 
 ## Relationship to existing authority
 
