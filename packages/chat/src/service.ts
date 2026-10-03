@@ -16,9 +16,10 @@ export type ChatOperation =
     | { type: 'set-settings'; chatId: ChatId; settings: ChatSettings }
     | { type: 'append-user'; chatId: ChatId; message: ChatMessage & { role: 'user' } }
     | { type: 'begin-assistant'; chatId: ChatId; message: ChatMessage & { role: 'assistant' } }
+    | { type: 'start-assistant'; chatId: ChatId; messageId: string; actualModel: ChatModelProvenance }
     | { type: 'finish-assistant'; chatId: ChatId; messageId: string; outcome: 'complete' | 'failed' | 'cancelled';
         content: string; actualModel?: ChatModelProvenance; failure?: string };
-export interface ChatMutation { projectHandle: string; expectedRevision: number; operation: ChatOperation }
+export interface ChatMutation { projectHandle: string; expectedRevision: number; operation: ChatOperation; leaseToken?: string }
 export interface ChatSearchRequest { projectHandle: string; query: string; limit: number; excludeChatId?: ChatId }
 export interface ChatSearchHit { chatId: ChatId; messageId: string; title: string; excerpt: string; createdAt: string }
 export interface ChatLeaseRequest { projectHandle: string; chatId: ChatId; ownerId: string }
@@ -39,5 +40,6 @@ export interface ChatService {
     mutate(request: ChatMutation): Promise<ChatCollection>;
     search(request: ChatSearchRequest): Promise<ChatSearchHit[]>;
     claim(request: ChatLeaseRequest): Promise<ChatLeaseResult>;
+    renew(projectHandle: string, chatId: ChatId, token: string): Promise<void>;
     release(projectHandle: string, chatId: ChatId, token: string): Promise<void>;
 }
