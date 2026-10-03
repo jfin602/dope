@@ -110,6 +110,9 @@ export class ChatBackend implements ChatService {
         const composed = await this.composer.compose(root, contextChat, content, request.context ?? [], model.capabilities);
         const preview: ChatContextPreview = { refs: composed.refs, diagnostics: composed.diagnostics,
             usedTokens: composed.usedTokens, budgetTokens: composed.budgetTokens };
+        if (retryIndex >= 0 && JSON.stringify(preview.refs) !==
+            JSON.stringify((chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs))
+            throw new Error('Retry context changed or missing; reattach the original context');
         if (this.turns.has(request.chatId)) throw new Error('Chat turn already active');
         const key = request.chatId;
         const abort = new AbortController();

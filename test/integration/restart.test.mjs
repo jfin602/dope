@@ -449,7 +449,7 @@ test('Software Map rebuilds from source and declaration across process restart a
                 legacyFactory: theia.container.getAll(entries.find(([key]) => key.description === 'WidgetFactory')[0]).some(factory => factory.id === 'dope-software-model'),
                 legacyView: !!document.getElementById('dope-software-model') };
         })()`);
-        assert.deepEqual(actual, { area, label: 'sMap', icon: 'codicon codicon-type-hierarchy', tabs: 1, legacyFactory: false, legacyView: false });
+        assert.deepEqual(actual, { area, label: 'SMAP CONTROLS', icon: 'codicon codicon-type-hierarchy', tabs: 1, legacyFactory: false, legacyView: false });
     };
     const attach = async (page, folder, analyze = false) => evaluate(page, `(async () => {
         const container = theia.container;
@@ -517,8 +517,9 @@ test('Software Map rebuilds from source and declaration across process restart a
         assert.ok(firstPass.evidence.some(item => item.path === 'src/api/a.ts' && item.span?.line === 1));
         await evaluate(instance.page, `(async () => { await theia.container.get([...theia.container._bindingDictionary._map.keys()].find(key => key.description === 'CommandService')).executeCommand('dope.softwareMap.open'); return true; })()`);
         assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-map')?.textContent.includes('Architecture violations (1)')`)), true);
-        await evaluate(instance.page, `[...document.querySelectorAll('#dope-software-map button')].find(button => button.textContent === 'Refresh Software Map').click()`);
-        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-map [role="status"]')?.textContent.includes('Generation 2')`)), true);
+        await evaluate(instance.page, `document.querySelector('#dope-software-map button[aria-label="Refresh Software Map"]').click()`);
+        assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-map [role="status"]')?.textContent.includes('G2')`)), true);
+        await evaluate(instance.page, `document.querySelector('#dope-software-map button[data-disclosure-id="app"]').click()`);
         await evaluate(instance.page, `document.querySelector('#dope-software-map button[data-node-id="api"]').click()`);
         assert.equal(await until(() => evaluate(instance.page, `document.querySelector('#dope-software-map')?.textContent.includes('Aggregated depends-on: API → Secret')`)), true);
         await evaluate(instance.page, `[...document.querySelectorAll('#dope-software-map button')].find(button => button.textContent === 'Show originating physical edges').click()`);

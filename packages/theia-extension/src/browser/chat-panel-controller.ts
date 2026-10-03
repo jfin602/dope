@@ -316,8 +316,8 @@ export class ChatPanelController {
         try {
             this.lastContext = await lease.connection.runTurn({ projectHandle: lease.handle, chatId: lease.chatId,
                 leaseToken: lease.token, selectedModel: model,
-                ...(retryMessageId ? { retryMessageId } : { content, context: this.context }) });
-            if (!retryMessageId) this.context = [];
+                context: this.context, ...(retryMessageId ? { retryMessageId } : { content }) });
+            this.context = [];
             return true;
         } catch (error) {
             if (!this.disposed && generation === this.generation && chatId === this.chatId) {

@@ -286,3 +286,10 @@ test('selector and transcript retain keyboard and dark theme surfaces', async ()
     assert.match(source, /message\.content/);
     assert.match(source, /dope-chat-settings/);
 });
+
+test('each ChatPanel opens its own RPC channel on the backend Chat route', async () => {
+    const frontend = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
+    const backend = await readFile(new URL('../../packages/theia-extension/src/node/backend-module.ts', import.meta.url), 'utf8');
+    assert.match(frontend, /chatServicePath\}\/\$\{options\.instanceId\}/);
+    assert.match(backend, /chatServicePath\}\/\:panelId/);
+});

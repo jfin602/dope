@@ -171,17 +171,20 @@ export class ChatRepository {
     }
     private async acquire(base: string): Promise<import('node:fs/promises').FileHandle> {
         const path = join(base, '.mutation.lock');
-        for (let attempt = 0; attempt < 2; attempt++) {
+        for (let attempt = 0; attempt < 100; attempt++) {
             try {
                 const handle = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
                 try { await handle.writeFile(`${process.pid}\n`); await handle.sync(); return handle; }
                 catch (error) { await handle.close(); await rm(path); throw error; }
             } catch (error) {
                 if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-                if (!await regular(path)) throw new Error('Chat lock disappeared; retry');
+                if (!await regular(path)) { await new Promise(resolve => setTimeout(resolve, 10)); continue; }
                 const info = await lstat(path);
                 const owner = (await safeText(path)).trim();
-                if (!/^[1-9]\d*$/.test(owner) || live(Number(owner))) throw new Error(`Chat locked; inspect ${path}`);
+                if (!/^[1-9]\d*$/.test(owner) || live(Number(owner))) {
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                    continue;
+                }
                 // ponytail: PID locks assume no PID reuse; use OS file locks if collisions become practical.
                 if ((await lstat(path)).ino !== info.ino) throw new Error('Chat lock changed; retry');
                 await rm(path);

@@ -111,6 +111,18 @@ test('locks, leases and abandoned execution recovery retain truthful status', as
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('a second panel waits for a short live Chat lock', async () => {
+  const root = await folder(), repo = new ChatRepository();
+  try {
+    await repo.mutate(root, 0, { type: 'create-chat', id: id(), folderPath: '' });
+    const lock = join(root, '.dope/chats/.mutation.lock');
+    await writeFile(lock, `${process.pid}\n`);
+    const release = new Promise<void>((resolve, reject) => setTimeout(() => rm(lock).then(resolve, reject), 30));
+    assert.equal((await repo.read(root)).chats.length, 1);
+    await release;
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('completed turns retain actual model and failure cannot masquerade as completion', async () => {
   const root = await folder(), repo = new ChatRepository(), chatId = id(), messageId = id();
   try {

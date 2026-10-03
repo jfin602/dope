@@ -403,7 +403,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const selected = this.selectedModel();
         if (selected) modelSelector.value = JSON.stringify(selected);
         else modelSelector.append(new Option(chat.settings.defaultModel ? 'Default model unavailable' : 'No usable model', '', true, true));
-        modelSelector.onchange = () => { state.turnModel = JSON.parse(modelSelector.value) as ChatModelSelection; };
+        modelSelector.onchange = () => {
+            state.turnModel = JSON.parse(modelSelector.value) as ChatModelSelection;
+            this.render();
+        };
         toolbar.append(modelSelector);
         if (selected && state.context.length) toolbar.append(this.button('Preview context', () => {
             void state.previewContext(selected).catch(error => { this.status.textContent = String(error); });

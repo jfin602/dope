@@ -78,6 +78,7 @@ test('composer lifecycle saves pending before runtime, streams, keeps provenance
         assert.equal(first.execution.actualModel?.modelId, 'chat-snapshot');
         assert.equal(first.execution.selectedModel.connectionId, 'one');
         assert.equal(first.content, 'Hello');
+        await until(() => panel.chat?.titleSource === 'automatic');
         const unsupported = structuredClone(panel.chat!.settings);
         unsupported.reasoningControls = { effort: 'high' };
         assert.equal(await panel.mutate({ type: 'set-settings', chatId: id, settings: unsupported }), true);
@@ -157,8 +158,9 @@ test('cancel and stale deltas cannot create a completed answer in another Chat o
 test('panel source keeps input and toolbar rows with setup, settings and transcript status', async () => {
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     assert.match(source, /composer\.append\(input, toolbar\)/);
-    assert.match(source, /toolbar\.append\(this\.button\(`Context/);
-    assert.match(source, /this\.button\('Tools'/);
+    assert.match(source, /this\.button\('Add context'/);
+    assert.match(source, /\['Ask', 'Explain', 'Trace', 'Find Related'\]/);
+    assert.match(source, /modelSelector\.onchange = \(\) => \{[\s\S]*?state\.turnModel = [^;]+;\s*this\.render\(\)/);
     assert.match(source, /Set up models/);
     assert.match(source, /Chat settings/);
     assert.match(source, /execution\.status/);

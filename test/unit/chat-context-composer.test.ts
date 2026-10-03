@@ -113,11 +113,15 @@ test('send persists only included references and supplies their bounded text to 
     const { ChatBackend } = await import('../../packages/theia-extension/lib/node/chat-backend.js');
     const repository = new ChatRepository();
     const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore, {} as SoftwareMapIndex, repository);
-    let sent = '';
+    let sent = '', failRetry = true;
     const registry = { list: async () => ({ connections: [{ id: 'connected', ready: true, providerId: 'local',
       models: [{ id: 'model', label: 'Model', usable: true, capabilities: model }] }] }),
       async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
         sent ||= request.messages.at(-1)?.content ?? '';
+        if (request.messages.at(-1)?.content.includes('Retry question') && failRetry) {
+          failRetry = false;
+          throw new Error('Temporary provider failure');
+        }
         yield { type: 'complete' as const, text: 'Answer', usage: { tokenMeasurement: 'estimated' as const } };
       } };
     const service = new ChatBackend(repository, { notifyChatEvent() {} }, registry as never, composer);
@@ -150,6 +154,20 @@ test('send persists only included references and supplies their bounded text to 
       selectedModel: { connectionId: 'connected', modelId: 'model' }, content: 'Unsafe',
       context: [{ kind: 'file', id: '../outside' }] }), /unsafe path/);
     assert.equal((await repository.read(root)).chats[0].messages.length, 2);
+    await assert.rejects(service.runTurn({ projectHandle, chatId, leaseToken: claim.token,
+      selectedModel: { connectionId: 'connected', modelId: 'model' }, content: 'Retry question',
+      context: [{ kind: 'file', id: 'fact.txt' }] }), /Temporary provider failure/);
+    const failed = (await repository.read(root)).chats[0].messages.at(-1)!;
+    assert.equal(failed.role, 'assistant');
+    if (failed.role !== 'assistant') return;
+    await assert.rejects(service.runTurn({ projectHandle, chatId, leaseToken: claim.token,
+      selectedModel: { connectionId: 'connected', modelId: 'model' }, retryMessageId: failed.id }),
+      /Retry context changed or missing/);
+    assert.equal((await repository.read(root)).chats[0].messages.length, 4);
+    const retried = await service.runTurn({ projectHandle, chatId, leaseToken: claim.token,
+      selectedModel: { connectionId: 'connected', modelId: 'model' }, retryMessageId: failed.id,
+      context: [{ kind: 'file', id: 'fact.txt' }] });
+    assert.deepEqual(retried.refs, persisted.contextRefs);
     service.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
