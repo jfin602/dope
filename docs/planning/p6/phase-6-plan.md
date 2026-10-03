@@ -447,6 +447,31 @@ This correction does not change Flow extraction, Flow facts/endpoints, Flow quer
 
 It is independent of `c6-branch-seam` and the Flow projection-contract repair. It does not rewrite retained Not Green evidence or unblock P8 by itself. Use the normal `/prompt-ass -> /prompt-plan -> /prompt-write c6-smap-outline` workflow before implementation.
 
+## Phase 6 presentation correction — sMap sidebar density
+
+The Green `c6-smap-outline` established the correct left-inspector hierarchy/navigation behavior, but direct follow-up review found remaining density/readability waste in the initialized sidebar: a redundant large body title, unstructured compact actions, a full status block, expensive nested indentation/gutter, and no stable visual distinction between entity kinds.
+
+Correction `c6-smap-sidebar-density` is approved at unchanged `0.6.7` as a presentation-only follow-on.
+
+Locked correction rules:
+- remove the large body `Software Map` heading from the initialized inspector while preserving the Software Map view identity and accessibility naming;
+- use compact `SMAP CONTROLS`;
+- render `OPEN` and `REFRESH` inline on the first row;
+- use the second row as the `EDIT ARCHITECTURE` action seam: style the real action if `c6-edit-architecture` is present, otherwise do not ship an enabled no-op or invent editing behavior;
+- condense normal published generation/completeness/node/violation state to one compact `SYNTHESIS` line while keeping actionable partial/error diagnostics separately visible;
+- materially reduce nested indentation and disclosure/spacer gutter without flattening the hierarchy or truncating important names/paths;
+- visually distinguish System, Subsystem, Component and supported code/file kinds by stable kind-token/prefix color or another zero/near-zero-width treatment rather than wide pills or full-row fills;
+- keep sidebar kind colors independent from `c6-map-color-grammar` node/branch color inheritance and explicit user overrides;
+- preserve selection/focus as a separate stronger state with non-color cues;
+- permit future warning/status icons without reserving empty width today;
+- preserve every Green `c6-smap-outline` behavior: collapsed fresh state, separate disclosure/selection, shared map selection identity, center-map ancestor reveal/scroll, unrelated manual expansion preservation, sidebar-to-map selection, full wrapping and deep inspector evidence/source/diagnostic behavior.
+
+This correction must not change canonical architecture, Software Map evidence/query truth, Physical Map/Flow truth, Planning semantics, map color persistence/override semantics, Edit Architecture domain/save/Search Deeper behavior, synthesis/model/provider behavior, `.dope/` persistence or package version.
+
+Use one bounded manual **GPT-6 Sol High** one-off prompt with T2 focused validation plus targeted Adaptive SEO GUI evidence. Do not create a multi-prompt phase stack and do not rerun AppImage/full Phase 6 qualification solely for this correction.
+
+`c6-smap-outline` remains Green historical evidence and is not reopened. `c6-edit-architecture` and `c6-branch-seam` remain independent approved follow-ons. This correction does not relabel retained P7 evidence or unblock P8 by itself.
+
 ## Exit condition
 
 Phase 6 is qualified when, on one exact provider-free candidate, a developer can use the real Dope GUI to follow a meaningful evidence-backed application Flow through a real mapped project, prove every representative hop to source/provenance, preserve architectural identity/focus across projection modes, observe non-linear execution shape, and reconstruct equivalent derived Flow after restart/reanalysis—while aggregate/package/native evidence is Green for the designated T3 gate.
