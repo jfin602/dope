@@ -92,7 +92,7 @@ A model must not be asked to replace a cheaper deterministic check.
 
 ### Continuous semantic maintenance is local-first
 
-Normal background semantic alignment uses a configured local model through the provider-independent Model Runtime.
+Normal background semantic alignment requests the Phase 7C **Background** role through the provider-independent Model Runtime with hard **local-only** and **no-hosted-fallback** constraints. The Background role is routing policy; these Phase 8 constraints are stronger feature authority and cannot be weakened by global role configuration.
 
 Background model work should use compact structured micro-inference over the smallest sufficient evidence package. Calls should prefer classification/verification contracts over free-form prose and should not carry unrelated repository context.
 
@@ -187,7 +187,7 @@ Placing this phase before Scoped Delegation means Dope learns to maintain and ch
 - Product Phase 8 becomes Living Software Knowledge Model.
 - Existing Scoped Delegation shifts to Product Phase 9.
 - Existing Development Sessions shifts to Product Phase 10.
-- Phase 7 Model Runtime must support the bounded structured/cancellable execution needed by Phase 8 without making provider state canonical.
+- Phase 7 Model Runtime/AI role routing must support the bounded structured/cancellable Background execution needed by Phase 8 without making provider/role state canonical; Phase 8 supplies hard local-only/no-hosted-fallback constraints.
 - Software Map/product storage must support durable assertion/finding state without persisting unnecessary provider/session detail.
 - Background alignment work requires a scheduler/application boundary distinct from Software Map truth and Model Runtime transport.
 - Local-model efficiency becomes a first-class design target for Phase 8 rather than a later optimization.
