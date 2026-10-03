@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 7 is **ACTIVE / PHASE 7A P1-P12 WRITTEN / PHASE 7B-7C APPROVED** at coherent `0.7.0` activation commit `59c7f72a29dcdecdf9b908176754bfd02179b004`. ADR 0025 defines durable Chat/ChatPanel AI Presence; ADR 0026 adds the global AI Center and role-based routing. Phase 6 P8 remains Not Qualified and Phase 5 remains owner-closed with P11 Not Green/P12 unexecuted. Next: execute P1-P12 as Phase 7A only, then regenerate P13+ for AI Center, roles/routing and final Phase 7 closeout. The currently written P13 closeout is superseded.
+Current stage: Product Phase 7 is **ACTIVE / PHASE 7A P1-P12 WRITTEN / PHASE 7B-7C RESOLVED + PROMOTED** at coherent `0.7.0` activation commit `59c7f72a29dcdecdf9b908176754bfd02179b004`. ADR 0025 defines durable Chat/ChatPanel AI Presence; ADR 0026 adds the global AI Center and role-based routing. Phase 6 P8 remains Not Qualified and Phase 5 remains owner-closed with P11 Not Green/P12 unexecuted. Next: execute P1-P12 as Phase 7A only, then regenerate P13+ for AI Center, roles/routing and final Phase 7 closeout. The currently written P13 closeout is superseded.
 
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
@@ -853,7 +853,7 @@ Existing Local and Gemini sMap paths still execute through provider-neutral runt
 
 ## Product Phase 7 — AI Presence
 
-Status: **ACTIVE / PHASE 7A P1-P12 WRITTEN / PHASE 7B-7C APPROVED**
+Status: **ACTIVE / PHASE 7A P1-P12 WRITTEN / PHASE 7B-7C RESOLVED + PROMOTED**
 Activation baseline: coherent `0.7.0` at `59c7f72a29dcdecdf9b908176754bfd02179b004`
 Authority: ADR 0004, ADR 0006, ADR 0022, ADR 0025, ADR 0026 and `docs/planning/p7/phase-7-plan.md`
 
@@ -897,7 +897,11 @@ Product laws:
 - explicit model choice is developer authority: failure is surfaced and another provider/model is used only after explicit selection;
 - AI Center is a projection/control plane over one application connection registry, not a second provider store;
 - role policy is user/application execution preference, not canonical project truth;
-- lower-precedence routing preferences never weaken higher-precedence locality/privacy/egress/authority constraints.
+- lower-precedence routing preferences never weaken higher-precedence locality/privacy/egress/authority constraints;
+- role policy may restrict egress but never grant project-data egress permission;
+- role routing is deterministic preferred + ordered fallback rather than hidden score ranking;
+- existing exact Chat defaults migrate unchanged while new role-following Chats default to Interactive;
+- routed executions preserve compact immutable routing provenance sufficient for Why this model? explanations.
 
 Default posture:
 observation and assistance before mutation.
