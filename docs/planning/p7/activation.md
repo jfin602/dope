@@ -1,10 +1,10 @@
 # Product Phase 7 — AI Presence Activation
 
-Status: **OWNER APPROVED — ACTIVE / STREAMLINED P1-P13 STACK READY**
+Status: **OWNER APPROVED — ACTIVE / PHASE 7A P1-P12 READY / PHASE 7B-7C APPROVED**
 Date: 2026-10-03
 Package baseline: `0.7.0`
 Activation baseline commit: `59c7f72a29dcdecdf9b908176754bfd02179b004`
-Authority: ADR 0004, ADR 0006, ADR 0022, ADR 0025, `docs/planning/p7/phase-7-plan.md`, current product/architecture/stability contracts
+Authority: ADR 0004, ADR 0006, ADR 0022, ADR 0025, ADR 0026, `docs/planning/p7/phase-7-plan.md`, current product/architecture/stability contracts
 
 ## Entry disposition
 
@@ -14,9 +14,15 @@ The activation transition changed only live package/app versions, internal `@dop
 
 ## Phase boundary
 
-Phase 7 adds durable provider-independent Chats, reusable ChatPanels, per-message connected-model routing, per-Chat settings and bounded read-only project context. It does not add mutation/delegation or Phase 8 background alignment.
+Phase 7 is one `0.7.x` product phase with three ordered slices:
 
-General Chat uses an application-level Model Connections boundary separate from Software Map synthesis provider selection. Secrets do not belong in `.dope/` or ordinary plaintext persisted workbench state.
+- **7A — AI Presence:** durable provider-independent Chats, reusable ChatPanels, per-message connected-model routing, per-Chat settings, bounded read-only project context, Model Connections registry and reference provider adapters.
+- **7B — AI Center:** a dedicated global connection/model management surface opened from the bottom-left AI launcher and backed by the 7A registry.
+- **7C — AI Roles & Routing:** global role policies and capability/constraint-aware resolution for Interactive, Deep Reasoning, Background, Software Map and Coding Agent work.
+
+Phase 7 does not add mutation/delegation or Phase 8 background alignment itself.
+
+General Chat uses the application-level Model Connections boundary separate from Software Map synthesis strategy/authority. AI Center centralizes connection inventory but does not grant sMap evidence-egress consent. Phase 8-compatible Background work remains local-only/no-hosted-fallback. Secrets do not belong in `.dope/`, Chat persistence or ordinary plaintext persisted workbench state.
 
 ## Framework/version boundary
 
@@ -26,10 +32,16 @@ General Chat uses an application-level Model Connections boundary separate from 
 
 ## Execution readiness
 
-The streamlined executable P1-P13 stack is under `docs/tasks/p7/`. It splits only boundaries that were likely to exceed the ordinary <=8-minute target: persistence/backend, runtime/adapters, and context/AI behavior.
+The currently written `docs/tasks/p7/` P1-P12 prompts are the executable **Phase 7A** stack. They establish/qualify the substrate that 7B/7C consume.
 
-Validate once before execution:
+The currently written P13 evidence-only closeout predates ADR 0026 and is **superseded**. Do not execute it and do not run the current folder with `--closeout`.
 
-`npm run codex:phase:validate -- p7`
+Execution sequence:
 
-Then execute through the runner. P12 is the browser/manual qualification handoff and P13 is evidence-only closeout.
+1. validate the current stack;
+2. execute P1-P12 only;
+3. after P12, inspect the actual Model Connections/runtime/UI implementation;
+4. run `/prompt-ass -> /prompt-plan -> /prompt-write p7` to regenerate a contiguous P13+ continuation for AI Center, roles/routing, integrated qualification and exactly one new final Phase 7 closeout;
+5. validate the regenerated full `p7` stack before continuing.
+
+This follow-on is normal Phase 7 capability, not a correction stack.
