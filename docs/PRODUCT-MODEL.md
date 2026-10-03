@@ -239,22 +239,24 @@ The default product experience is System-level overview first and path explorati
 Flow is rebuildable derived Physical Map state, not a fourth durable map or architecture authority. Unknown payloads, unsupported execution surfaces, truncation and missing hops remain visibly unknown/partial rather than being invented for completeness.
 
 
-### Phase 7-8 — AI collaboration and delegation
+### Phase 7-9 — AI collaboration, knowledge alignment and delegation
 
 Introduce or activate:
 - AgentWorkingState / Agent Mind
+- Living Software Knowledge Model alignment state
+- KnowledgeAssertion / AlignmentFinding
 - ownership and delegation
 - ProposedAction
 - ChangeSet
 - Validation integration
 
-AI Presence begins in Phase 7 and may consume Dope-owned architecture, Flow, planning and project context. Scoped Delegation follows in Phase 8.
+AI Presence begins in Phase 7 and may consume Dope-owned architecture, Flow, planning and project context. Phase 8 uses that provider-independent runtime to maintain a Living Software Knowledge Model through deterministic-first, local-first background alignment. Scoped Delegation follows in Phase 9; Phase 8 findings never silently mutate source, documentation, contracts or canonical architecture.
 
 Before Phase 7 general AI Presence, correction `c6-branch-seam` establishes only the minimal Model Runtime/provider-session boundary already needed by existing sMap synthesis. Software Map authority, sMap synthesis strategy and provider execution are separate concerns: Local and hosted synthesis share final evidence/proposal/validation/acceptance semantics but may use different model-appropriate prompt packing and stage strategies. This correction is infrastructure reuse, not early Agent Mind/chat/delegation scope.
 
 Local sMap synthesis and Phase 7 Local AI Presence are also different capabilities. A Local sMap strategy may be developed in parallel after the seam without making LM Studio/Qwen the general Agent Runtime or forcing the hosted sMap strategy to inherit Local-model constraints.
 
-### Phase 9 — Development Sessions
+### Phase 10 — Development Sessions
 
 Introduce durable DeveloperSession as the cross-time development unit.
 
@@ -409,6 +411,41 @@ The default Flow UX opens as a quiet architecture-level overview, then uses sele
 
 Static Flow is reconstructible from deterministic/reproducible Physical Map evidence. Future recorded-runtime observations may enrich the same domain as Observed Flow. AI may later explain Flow, but AI output does not silently establish physical Flow truth.
 
+
+### LivingSoftwareKnowledgeModel
+
+The evidence-linking and alignment layer over the Software Map.
+
+The Living Software Knowledge Model is not a second architecture database and does not replace canonical architecture or the Physical Map. It connects stable Software Map identities to the representations that describe or constrain them, including source/runtime evidence, documentation, ADRs, API/interface contracts and schemas, then tracks whether those representations still agree.
+
+A knowledge relationship preserves provenance and classification. At minimum Dope distinguishes:
+- **Observed** implementation/runtime evidence;
+- **Documented** descriptive claims about current behavior/structure;
+- **Normative** contracts, schemas and accepted architectural decisions;
+- **Planned/Future** statements that must not be treated as current-state drift;
+- **Historical** material retained for context but excluded from current-state alignment unless explicitly requested.
+
+Deterministic evidence remains authoritative for mechanically provable facts. Model interpretation is permitted only as derived semantic analysis and cannot silently become physical evidence or canonical truth.
+
+### KnowledgeAssertion
+
+A bounded claim linked to one or more Software Map identities and the evidence that currently supports or constrains it.
+
+A KnowledgeAssertion carries stable identity, assertion/classification kind, subject identities, provenance/evidence references, dependency fingerprints, the last validated basis and a current alignment status. Assertions may be extracted from documentation/contracts or created by deterministic analyzers, but extraction does not make their content true.
+
+Changing an evidence dependency invalidates only the assertions that depend on it. Unaffected assertions remain valid without redundant model calls.
+
+### AlignmentFinding
+
+A durable, evidence-backed disagreement or uncertainty produced by alignment analysis.
+
+Representative states include observation, potential drift, confirmed drift, regression, contract violation, needs review and resolved. A finding records affected Software Map identities, implicated representations, evidence references, severity/confidence where applicable, last checked basis and developer acknowledgement/resolution state.
+
+A model result may create or update an AlignmentFinding; it never directly rewrites canonical architecture, source, documentation or contracts.
+
+Background semantic maintenance is local-first. Deterministic analysis narrows affected assertions before model work, and model-facing requests are compact structured micro-checks over the smallest sufficient evidence package. Hosted inference is explicit developer-controlled escalation only; uncertainty in a local check does not authorize silent hosted execution.
+
+Background scheduling, debounce state, transient queues, provider sessions and model residency are execution state rather than canonical project knowledge. Foreground developer work has resource priority over background inference.
 
 ### PlanningMap
 
@@ -594,7 +631,9 @@ The persistence representation must preserve stable IDs, schema version, provena
 
 For Software Map state, project locality is part of the product contract. Durable sMap state lives beneath the repository's `.dope/` directory: canonical architecture in `.dope/architecture.json`, durable initialization/version/state metadata in `.dope/smap.json`, and any additional persisted sMap artifacts beneath an explicitly versioned `.dope/` sMap namespace. Repository + `.dope/` must be sufficient to recover the durable Software Map.
 
-Machine-local application state may hold presentation preferences, provider configuration or disposable caches, but it must not be required to recover canonical architecture, determine whether the sMap is initialized or reconstruct other durable sMap truth. Persisting derived evidence does not make it canonical.
+Phase 8 durable knowledge-alignment state is also project-local and recoverable with the repository. Persisted alignment state may include assertion identity, evidence dependencies/fingerprints, last validated basis, open findings and acknowledgement/resolution state. Rebuildable deterministic indexes, transient scheduler queues, prompt payloads, provider response/session IDs and local-model residency remain disposable execution/cache state.
+
+Machine-local application state may hold presentation preferences, provider configuration or disposable caches, but it must not be required to recover canonical architecture, determine whether the sMap is initialized or reconstruct other durable sMap truth. Persisting derived evidence or alignment findings does not make either canonical.
 
 Canonical project knowledge must also have a documented recovery path that does not depend on a healthy Dope GUI. The exact mechanism may evolve, but irreplaceable project truth must not exist only in an opaque form that requires Dope itself to decode or repair.
 
