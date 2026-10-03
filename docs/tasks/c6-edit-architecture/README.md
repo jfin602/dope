@@ -1,6 +1,6 @@
 # Correction 6 — Edit Architecture
 
-Status: **APPROVED / PROMPTS WRITTEN / READY FOR EXECUTION**
+Status: **P4 NOT GREEN — time-boxed direct GUI evidence; see [closeout.md](closeout.md)**
 Correction folder: `c6-edit-architecture`
 Required unchanged package version: `0.6.7`
 Date approved: 2026-10-02

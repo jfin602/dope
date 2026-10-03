@@ -764,15 +764,24 @@ test('accepted refinement is ready-only, preview-first, branch-local and drops l
   assert.equal(sent.reviewId, undefined);
   assert.equal(sent.providerKind, 'local'); assert.equal(sent.modelLabel, 'chosen-model');
   assert.deepEqual(sent.branch.map((node: any) => node.name), ['Manual system', 'Manual sub']);
-  const proposal = { nodes: [{ proposalKey: 'new-system', kind: 'system', parentProposalKey: null,
-    name: 'Refined', purpose: 'Refined', evidenceRefs: ['fact'] }] };
-  waiting.resolve({ ...sent, proposal, evidence: [{ id: 'fact', kind: 'semantic', path: 'src/api/a.ts', uri: 'file:///A/src/api/a.ts' }] });
+  const proposal = { nodes: [
+    { proposalKey: 'new-system', kind: 'system', parentProposalKey: null,
+      name: 'Refined', purpose: 'Refined', evidenceRefs: ['system-fact'] },
+    { proposalKey: 'new-sub', kind: 'subsystem', parentProposalKey: 'new-system',
+      name: 'Refined Subsystem', purpose: 'Refined Subsystem', evidenceRefs: ['fact'] },
+  ] };
+  const evidence = [
+    { id: 'system-fact', kind: 'semantic', path: 'src/app.ts', uri: 'file:///A/src/app.ts' },
+    { id: 'fact', kind: 'semantic', path: 'src/api/a.ts', uri: 'file:///A/src/api/a.ts' },
+  ];
+  waiting.resolve({ ...sent, proposal, evidence });
   await search;
   assert.equal(draft[0].name, 'Manual system');
   controller.rejectRefinement(); assert.equal(draft[0].name, 'Manual system');
-  c.searchDeeper = (_handle: string, input: any) => Promise.resolve({ ...input, proposal });
+  c.searchDeeper = (_handle: string, input: any) => Promise.resolve({ ...input, proposal, evidence });
   await controller.searchDeeper('system', { draft, fingerprint: 'canonical', current });
   const next = controller.acceptRefinement(draft)!;
+  assert.ok(next, controller.refinementError?.message);
   assert.equal(next.find(node => node.proposalKey === 'sibling')?.purpose, 'Unrelated edit');
   assert.equal(draft[0].name, 'Manual system');
   assert.equal(c.accepted, 0); assert.equal(c.analyzed, 0);
@@ -809,6 +818,35 @@ test('accepted refinement is ready-only, preview-first, branch-local and drops l
   await controller.attach('file:///B');
   switchedCall.resolve({ ...sent, proposal }); await switching;
   assert.equal(controller.refinementPreview, undefined);
+  controller.dispose();
+});
+
+test('accepted refinement keeps conflicting file ownership in preview', async () => {
+  const c = connection();
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attached = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attached;
+  controller.initialization = { state: 'initialized', declarationFingerprint: 'canonical', declarationPresent: true };
+  controller.providerKind = 'local'; controller.model = 'chosen-model'; controller.setupReady = true;
+  const draft = [
+    { proposalKey: 'system', kind: 'system', parentProposalKey: null, id: 'system', name: 'System', purpose: 'System', roots: [] },
+    { proposalKey: 'sub', kind: 'subsystem', parentProposalKey: 'system', id: 'sub', name: 'Subsystem', purpose: 'Subsystem', roots: ['src/a.ts'] },
+  ] as any[];
+  c.searchDeeper = (_handle: string, input: any) => Promise.resolve({ ...input, proposal: { nodes: [
+    { proposalKey: 'anchor', kind: 'system', parentProposalKey: null, name: 'System', purpose: 'System', evidenceRefs: ['fact'] },
+    { proposalKey: 'sub-new', kind: 'subsystem', parentProposalKey: 'anchor', name: 'Subsystem', purpose: 'Subsystem', evidenceRefs: ['fact'] },
+    { proposalKey: 'a', kind: 'component', parentProposalKey: 'sub-new', name: 'A', purpose: 'A', evidenceRefs: ['fact'] },
+    { proposalKey: 'b', kind: 'component', parentProposalKey: 'sub-new', name: 'B', purpose: 'B', evidenceRefs: ['fact'] },
+  ] }, evidence: [{ id: 'fact', kind: 'semantic', path: 'src/a.ts', uri: 'file:///A/src/a.ts' }] });
+  await controller.searchDeeper('sub', { draft, fingerprint: 'canonical', current: () => true });
+  assert.ok(controller.refinementPreview);
+  assert.equal(controller.acceptRefinement(draft), undefined);
+  assert.match(controller.refinementError?.message ?? '', /ambiguous_root/);
+  assert.ok(controller.refinementPreview);
+  assert.equal(draft.length, 2);
+  assert.equal(c.accepted, 0); assert.equal(c.analyzed, 0);
+  controller.rejectRefinement();
+  assert.equal(controller.refinementPreview, undefined);
+  assert.equal(controller.refinementError, undefined);
   controller.dispose();
 });
 

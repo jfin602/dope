@@ -535,7 +535,7 @@ export class SoftwareMapController {
             if (project === this.project && request === this.refinementRequest) { this.refinementBusyKey = undefined; this.notify(); }
         }
     }
-    rejectRefinement(): void { this.refinementPreview = undefined; this.notify(); }
+    rejectRefinement(): void { this.refinementPreview = undefined; this.refinementError = undefined; this.notify(); }
     acceptRefinement(acceptedDraft?: ArchitectureReviewNode[]): ArchitectureReviewNode[] | undefined {
         const preview = this.refinementPreview;
         const draft = acceptedDraft ?? this.draft;
@@ -562,12 +562,22 @@ export class SoftwareMapController {
             return { proposalKey: keys.get(node.proposalKey)!, kind: node.kind, id, name: node.name, purpose: node.purpose,
                 parentProposalKey: node.parentProposalKey === null || node.parentProposalKey === omittedAnchor ? preview.parentKey : keys.get(node.parentProposalKey)!, roots };
         });
+        const next = [...draft.filter(node => !removed.has(node.proposalKey)), ...replacementNodes];
+        if (acceptedDraft) {
+            const replacementKeys = new Set(replacementNodes.map(node => node.proposalKey));
+            const blocker = reviewDiagnostics(next).find(issue => issue.proposalKeys.some(key => replacementKeys.has(key)));
+            if (blocker) {
+                this.refinementError = { key: preview.targetKey,
+                    message: `Refinement cannot be accepted: ${blocker.code} — ${blocker.message}. Each boundary needs a distinct source path; keep this branch at its current depth or separate the implementation first.` };
+                this.notify();
+                return undefined;
+            }
+        }
         for (const key of removed) { this.refinedEvidence.delete(key); this.refinedSources.delete(key); }
         for (const node of replacements) {
             this.refinedEvidence.set(keys.get(node.proposalKey)!, node);
             if (preview.evidence) this.refinedSources.set(keys.get(node.proposalKey)!, preview.evidence);
         }
-        const next = [...draft.filter(node => !removed.has(node.proposalKey)), ...replacementNodes];
         if (!acceptedDraft) this.draft = next;
         this.refinementPreview = undefined;
         if (acceptedDraft) this.notify(); else this.draftChanged();
