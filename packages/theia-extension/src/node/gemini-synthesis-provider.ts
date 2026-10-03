@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import type { StructuredGenerationRequest, ModelCapabilities, ModelGenerationExecution } from '@dope/contracts/lib/model-runtime';
+import { count, discoverGeminiModels, sanitizedGeminiFailure as sanitized } from './provider-transport';
 
 const DEFAULT_TIMEOUT_MS = 900_000;
 const schemaKeywords = new Set(['type', 'enum', 'items', 'minItems', 'maxItems', 'minimum', 'maximum',
@@ -19,28 +20,6 @@ export function geminiStageSchema(value: unknown): unknown {
         else if (schemaKeywords.has(key)) projected[key] = geminiStageSchema(child);
     }
     return projected;
-}
-
-function count(value: unknown): number | undefined {
-    return Number.isSafeInteger(value) && (value as number) >= 0 ? value as number : undefined;
-}
-
-function sanitized(error: unknown, aborted: boolean): Error {
-    if (aborted || (error as { name?: unknown } | null)?.name === 'AbortError' ||
-        (error as { name?: unknown } | null)?.name === 'TimeoutError')
-        return new ModelRuntimeFailure('Gemini synthesis cancelled or timed out', 'cancelled');
-    const status = (error as { status?: unknown } | null)?.status;
-    if (error instanceof Error && ['Invalid model capacity', 'Invalid readiness response'].includes(error.message)) return error;
-    if (status === 401 || status === 403)
-        return new ModelRuntimeFailure(`Gemini authentication failed (HTTP ${status})`, 'authentication');
-    if (status === 429) return new ModelRuntimeFailure('Gemini quota or rate limit exceeded (HTTP 429)', 'nonretryable-provider');
-    if (typeof status === 'number' && status >= 500 && status <= 599)
-        return new ModelRuntimeFailure(`Gemini upstream service failed (HTTP ${status})`, 'transient-upstream');
-    if (typeof status === 'number' && status >= 400)
-        return new ModelRuntimeFailure(`Gemini request rejected (HTTP ${status})`, 'nonretryable-provider');
-    if (error instanceof TypeError) return new ModelRuntimeFailure('Gemini SDK or transport type error', 'transient-transport');
-    if (error instanceof SyntaxError) return new ModelRuntimeFailure('Gemini response JSON error', 'invalid-json');
-    return new ModelRuntimeFailure('Gemini synthesis request failed', 'nonretryable-provider');
 }
 
 export class GeminiSynthesisProvider {
@@ -70,14 +49,7 @@ export class GeminiSynthesisProvider {
         this.capability = undefined;
         this.probed = false;
         try {
-            const pager = await this.client.models.list({ config: { httpOptions: { timeout: this.timeoutMs } } });
-            const models: string[] = [];
-            for await (const item of pager) {
-                const id = item.name?.replace(/^models\//, '');
-                if (id && /^gemini-/i.test(id) && !/(?:embedding|image|audio|tts|live|robotics|computer-use)/i.test(id) &&
-                    item.supportedActions?.includes('generateContent')) models.push(id);
-            }
-            this.models = [...new Set(models)].sort();
+            this.models = await discoverGeminiModels(this.client, this.timeoutMs);
             return this.models;
         } catch (error) { throw sanitized(error, false); }
     }

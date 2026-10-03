@@ -1,21 +1,14 @@
 import type { StructuredGenerationRequest, ModelCapabilities, ModelGenerationExecution } from '@dope/contracts/lib/model-runtime';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
+import { localModelIds, normalizeSynthesisEndpoint } from './provider-transport';
+export { normalizeSynthesisEndpoint } from './provider-transport';
 
-const DEFAULT_ENDPOINT = 'http://127.0.0.1:1234/v1';
 export const DEFAULT_SYNTHESIS_TIMEOUT_MS = 900_000;
 const readySchema = {
     type: 'object', additionalProperties: false, required: ['ready'],
     properties: { ready: { type: 'boolean', enum: [true] } },
 } as const;
-export function normalizeSynthesisEndpoint(value = DEFAULT_ENDPOINT): string {
-    let url: URL;
-    try { url = new URL(value); } catch { throw new Error('Invalid synthesis endpoint'); }
-    if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.username || url.password ||
-        url.search || url.hash || !['/', '/v1', '/v1/'].includes(url.pathname)) throw new Error('Invalid synthesis endpoint');
-    return `${url.origin}/v1`;
-}
-
 /** The actual runtime ID is retained; only display ordering prefers the reference family. */
 export function preferredSynthesisModel(models: readonly string[]): string | undefined {
     return models.find(id => /qwen3[-_. ]coder[-_. ]30b[-_. ]a3b[-_. ]instruct/i.test(id)) ?? models[0];
@@ -58,13 +51,7 @@ export class LmStudioSynthesisProvider {
         this.probed = false;
         this.models = [];
         const data = await this.request('/models');
-        if (!data || typeof data !== 'object' || !Array.isArray((data as { data?: unknown }).data)) throw new Error('Invalid synthesis model list');
-        const ids = (data as { data: unknown[] }).data.map(entry => {
-            const id = (entry as { id?: unknown } | null)?.id;
-            if (typeof id !== 'string' || !id.trim()) throw new Error('Invalid synthesis model list');
-            return id;
-        });
-        this.models = [...new Set(ids)];
+        this.models = localModelIds(data);
         if (this.modelId && !this.models.includes(this.modelId)) this.modelId = undefined;
         return [...this.models];
     }

@@ -90,7 +90,9 @@ export interface ConversationUsage {
 }
 export type ConversationEvent =
     | { type: 'delta'; text: string }
-    | { type: 'complete'; text: string; usage: ConversationUsage; finishReason?: string };
+    | { type: 'complete'; text: string; usage: ConversationUsage; finishReason?: string;
+        /** Filled by the connection registry from the runtime actually used. */
+        provenance?: { connectionId: ModelConnectionId; modelId: ModelId; providerId: string; modelLabel: string } };
 
 /** A conversational adapter never chooses another model after explicit routing. */
 export interface ConversationalModelRuntime {

@@ -155,6 +155,8 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
         if (!live?.ready) throw new ModelRuntimeFailure('Connection unavailable', 'connection-unavailable');
         const model = live.models.find(item => item.id === selection.modelId);
         if (!model) throw new ModelRuntimeFailure('Selected model unavailable', 'model-unavailable');
+        const connection = this.connections.get(selection.connectionId);
+        if (!connection) throw new ModelRuntimeFailure('Connection unavailable', 'connection-unavailable');
         if (!model.capabilities.conversationalText) throw new ModelRuntimeFailure('Model lacks conversational text', 'unsupported-capability');
         for (const [id, value] of Object.entries(request.controls ?? {})) {
             if (!model.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
@@ -165,7 +167,8 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
             if (this.live.get(selection.connectionId) !== live || !live.ready)
                 throw new ModelRuntimeFailure('Connection changed during generation', 'connection-unavailable');
             if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
-            yield event;
+            yield event.type === 'complete' ? { ...event, provenance: { connectionId: connection.id,
+                modelId: model.id, providerId: connection.providerId, modelLabel: model.label } } : event;
         }
     }
 }
