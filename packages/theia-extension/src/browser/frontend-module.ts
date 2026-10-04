@@ -30,6 +30,8 @@ import { SmapPresentationState } from './smap-presentation-state';
 import { VisualPlanningService, visualPlanningServicePath } from '@dope/visual-planning/lib/service';
 import { chatServicePath, type ChatService } from '@dope/chat/lib/service';
 import { ModelConnectionsService, modelConnectionsServicePath } from '@dope/contracts/lib/model-connections-service';
+import { AICredentialService, aiCredentialServicePath } from '@dope/contracts/lib/ai-credential-service';
+import type { AICredentialClient } from '@dope/contracts/lib/ai-credential-service';
 import type { ModelConnectionsClient } from '@dope/contracts/lib/model-connections-service';
 import type { ChatClient } from '@dope/chat/lib/service';
 import { ChatPanelWidget } from './chat-panel-widget';
@@ -110,6 +112,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(ProjectMindService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ProjectMindService & RpcServer<ProjectMindClient>>(context.container, projectMindServicePath));
     bind(ChatOpenOwners).toSelf().inSingletonScope();
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();
+    bind(AICredentialService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AICredentialService & RpcServer<AICredentialClient>>(
+        context.container, aiCredentialServicePath)).inSingletonScope();
     bind(SoftwareMapController).toDynamicValue(context => new SoftwareMapController(
         () => context.container.get(SoftwareMapService) as SoftwareMapService & RpcServer<SoftwareMapClient>,
         () => {}, context.container.get(StorageService))).inSingletonScope();
