@@ -1,5 +1,8 @@
 import { parseArchitecture, parseAnalysisProgressEvent, branchFingerprint, targetBranch, suggestArchitectureId, reviewDeclaration, reviewDiagnostics } from '@dope/software-map';
-import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, CurrentArchitecture, SaveArchitectureResult, Evidence, FlowQuery, FlowQueryResult, GraphNode, SoftwareMapPage, SoftwareMapRelationshipRequest, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisSetup, SynthesisDryRunReport, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
+import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, CurrentArchitecture, SaveArchitectureResult, Evidence, FlowQuery, FlowQueryResult, GraphNode, SoftwareMapPage, SoftwareMapRelationshipRequest, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisDryRunReport, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
+import type { AIInventoryState, AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
+import type { AICredentialService } from '@dope/contracts/lib/ai-credential-service';
+import { AI_REGISTRY_VERSION } from '@dope/ai';
 
 export type SoftwareMapConnection = SoftwareMapService & { setClient(client: SoftwareMapClient | undefined): void };
 export interface SynthesisPreferenceStore {
@@ -59,28 +62,23 @@ export class SoftwareMapController {
     refinementBusyKey?: string;
     refinementError?: { key: string; message: string };
     private refinementRequest = 0;
-    endpoint = 'http://127.0.0.1:1234/v1';
-    model = '';
-    token = '';
-    geminiKey = '';
-    geminiModel = '';
-    geminiModels: string[] = [];
-    providerKind: SynthesisSetup['kind'] = 'local';
-    geminiEnvironmentKeyAvailable = false;
-    models: string[] = [];
+    inventory?: AIInventoryState;
+    connectionId = '';
+    modelId = '';
+    contextWindowTokens = 0;
+    private configuredTarget?: string;
+    private readonly consentedTargets = new Set<string>();
+    private reviewConsentTarget?: string;
     setupReady = false;
     setupBusy = false;
     dryRunBusy = false;
     dryRunReport?: SynthesisDryRunReport;
     dryRunError = '';
     private dryRunRequest = 0;
-    contextWindowTokens = 65536;
     progressEvents: AnalysisProgressEvent[] = [];
     private analysisStartedAt?: number;
     reviewElapsedMs?: number;
     private setupRequest = 0;
-    private configuredSetup?: string;
-    private geminiConfigured = false;
     private clearingSetup?: Promise<void>;
     private nextKey = 0;
     private draftRevision = 0;
@@ -96,7 +94,8 @@ export class SoftwareMapController {
     private disposed = false;
 
     constructor(private readonly connect: () => SoftwareMapConnection, private readonly changed: () => void,
-        private readonly preferences?: SynthesisPreferenceStore) { }
+        private readonly preferences?: SynthesisPreferenceStore, private readonly registry?: AIRegistryService,
+        private readonly credentials?: AICredentialService) { }
 
     private current(project: number, request: number): boolean {
         return !this.disposed && project === this.project && request === this.request;
@@ -154,22 +153,21 @@ export class SoftwareMapController {
         this.refinementPreview = undefined; this.refinementBusyKey = undefined; this.refinementError = undefined; ++this.refinementRequest;
         this.refinedEvidence.clear();
         this.refinedSources.clear();
-        this.models = [];
-        this.geminiModels = [];
-        this.geminiConfigured = false;
+        this.inventory = undefined;
+        this.connectionId = '';
+        this.modelId = '';
         this.setupReady = false;
         this.setupBusy = false;
         this.dryRunBusy = false;
         this.dryRunReport = undefined;
         this.dryRunError = '';
-        this.configuredSetup = undefined;
+        this.configuredTarget = undefined;
+        this.reviewConsentTarget = undefined;
+        this.consentedTargets.clear();
         this.clearingSetup = undefined;
         this.progressEvents = [];
         this.analysisStartedAt = undefined;
         this.reviewElapsedMs = undefined;
-        this.token = '';
-        this.geminiKey = '';
-        this.geminiEnvironmentKeyAvailable = false;
         this.loading = !!workspace;
         this.notify();
         if (!workspace) return;
@@ -243,19 +241,57 @@ export class SoftwareMapController {
         this.error = '';
         this.notify();
         try {
+            await this.refreshInventory();
             const choice = await this.preferences?.getData<SynthesisChoice>(preferenceKey);
+            if (choice && this.inventory && this.registry) await this.convergeLegacyChoice(choice);
             if (project !== this.project || request !== this.setupRequest) return;
-            this.endpoint = choice?.endpoint || this.endpoint;
-            this.model = choice?.model || '';
-            this.geminiModel = choice?.geminiModel || '';
-            this.providerKind = choice?.kind === 'gemini' ? 'gemini' : 'local';
-            const environment = await this.connection!.synthesisEnvironment(this.handle!);
-            if (project !== this.project || request !== this.setupRequest) return;
-            this.geminiEnvironmentKeyAvailable = environment.geminiKeyAvailable;
             this.notify();
         } catch (error) {
             if (project === this.project && request === this.setupRequest) { this.error = String(error); this.notify(); }
         }
+    }
+    private async convergeLegacyChoice(choice: SynthesisChoice): Promise<void> {
+        if (!this.registry || !this.inventory || !this.preferences) return;
+        const modelId = choice.kind === 'gemini' ? choice.geminiModel : choice.model;
+        if (!modelId) return;
+        const matches = this.inventory.registry.connections.filter(item => item.config.type === choice.kind &&
+            (choice.kind === 'gemini' ? item.id === 'dope-smap-legacy-gemini' :
+                item.config.type === 'local' && item.config.endpoint === choice.endpoint));
+        if (matches.length > 1) return;
+        let match = matches[0];
+        if (!match) {
+            const id = `dope-smap-legacy-${choice.kind}`;
+            if (this.inventory.registry.connections.some(item => item.id === id)) return;
+            const config = choice.kind === 'gemini' ? { type: 'gemini' as const } :
+                { type: 'local' as const, runtime: 'lm-studio' as const, endpoint: choice.endpoint };
+            const connection = { version: AI_REGISTRY_VERSION, id, alias: `Migrated Software Map ${choice.kind}`,
+                lifecycle: 'enabled' as const, config, preferredModelId: modelId };
+            await this.registry.mutate({ version: AI_REGISTRY_VERSION, expectedRevision: this.inventory.registry.revision,
+                mutation: { type: 'create-connection', connection } });
+            match = connection;
+            await this.refreshInventory();
+        }
+        if (choice.kind === 'gemini' && this.credentials) {
+            const copied = await this.credentials.reuseSoftwareMapGemini(match.id);
+            if (copied) {
+                const snapshot = await this.registry.list();
+                await this.registry.mutate({ version: AI_REGISTRY_VERSION, expectedRevision: snapshot.revision,
+                    mutation: { type: 'update-connection', id: match.id, changes: { alias: match.alias,
+                        lifecycle: match.lifecycle, config: match.config, credential: { source: 'secure', status: 'available' } } } });
+            }
+        }
+        if (!this.inventory?.registry.models.some(item => item.connectionId === match.id && item.providerModelKey === modelId)) {
+            await this.registry.refreshModels(match.id);
+            await this.refreshInventory();
+        }
+        if (!this.inventory?.registry.models.some(item => item.connectionId === match.id && item.providerModelKey === modelId)) return;
+        this.connectionId = match.id; this.modelId = modelId;
+        const capacity = this.selectedModel()?.limits.contextWindowTokens;
+        this.contextWindowTokens = capacity?.source === 'configured' ? capacity.value ?? 0 : 0;
+        if (choice.kind === 'gemini' && this.credentials && (await this.credentials.status(match.id)).sources.some(
+            source => source.source === 'secure' && source.status === 'available'))
+            await this.credentials.retireSoftwareMapGemini(match.id);
+        await this.preferences.setData(preferenceKey, undefined);
     }
     async dryRun(): Promise<void> {
         if (!this.connection || !this.handle || this.initialization?.state === 'analyzing') return;
@@ -277,91 +313,41 @@ export class SoftwareMapController {
         }
     }
     returnToSetup(): void { if (this.flow === 'dry-run') { this.flow = 'setup'; this.notify(); } }
-    async discover(): Promise<void> {
-        if (!this.connection || !this.handle) return;
-        this.providerKind = 'local';
-        this.geminiKey = '';
+    async refreshInventory(): Promise<void> {
         const project = this.project;
-        const request = ++this.setupRequest;
-        const connection = this.connection;
-        const handle = this.handle;
-        this.setupBusy = true;
-        this.setupReady = false;
-        this.models = [];
-        this.configuredSetup = undefined;
-        this.error = '';
-        this.notify();
-        try {
-            await this.clearingSetup;
-            if (project !== this.project || request !== this.setupRequest) return;
-            const configured = connection.configureSynthesis(handle, { kind: 'local', endpoint: this.endpoint,
-                contextWindowTokens: this.contextWindowTokens, ...(this.token ? { token: this.token } : {}) });
-            this.token = '';
-            const result = await configured;
-            if (project !== this.project || request !== this.setupRequest) return;
-            const models = result.models;
-            this.models = models;
-            this.configuredSetup = JSON.stringify([this.endpoint, this.contextWindowTokens]);
-            this.model = models.includes(this.model) ? this.model : models.find(id => /qwen3[-_. ]coder[-_. ]30b[-_. ]a3b[-_. ]instruct/i.test(id)) ?? models[0] ?? '';
-        } catch (error) {
-            if (project === this.project && request === this.setupRequest) this.error = String(error);
-        } finally {
-            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
+        let inventory: AIInventoryState | undefined;
+        try { inventory = await this.registry?.inventory(); }
+        catch {
+            if (!this.disposed && project === this.project) {
+                this.inventory = undefined;
+                this.invalidateSetup();
+                this.error = 'AI Center inventory is unavailable. Reopen AI Center and retry.';
+                this.notify();
+            }
+            return;
         }
-    }
-    private invalidateSetup(): void {
-        const hadSetup = this.setupReady || this.configuredSetup !== undefined || this.geminiConfigured;
-        this.setupReady = false; this.configuredSetup = undefined; this.geminiConfigured = false; ++this.setupRequest;
-        if (hadSetup && this.connection && this.handle) {
-            const connection = this.connection, handle = this.handle;
-            this.clearingSetup = (this.clearingSetup ?? Promise.resolve()).then(() => connection.clearSynthesis(handle)).catch(() => {});
-        }
+        if (this.disposed || project !== this.project) return;
+        this.inventory = inventory;
+        const connection = this.selectedConnection(), model = this.selectedModel();
+        if (this.connectionId && (!connection || !model || connection.lifecycle !== 'enabled' ||
+            this.configuredTarget && this.configuredTarget !== JSON.stringify([connection.id, model.providerModelKey,
+                connection.config, this.contextWindowTokens, this.inventory?.registry.revision]))) this.invalidateSetup();
         this.notify();
     }
-    chooseProvider(kind: SynthesisSetup['kind']): void {
-        if (this.providerKind === kind) return;
-        this.providerKind = kind;
-        this.token = '';
-        if (kind !== 'gemini') this.geminiKey = '';
-        this.invalidateSetup();
+    credentialChanged(connectionId: string): void {
+        if (connectionId === this.connectionId) this.invalidateSetup();
     }
-    changeEndpoint(value: string): void { this.endpoint = value; this.invalidateSetup(); }
-    changeModel(value: string): void { this.model = value; this.setupReady = false; ++this.setupRequest; this.notify(); }
-    changeToken(value: string): void { this.token = value; this.invalidateSetup(); }
-    changeGeminiKey(value: string): void { this.geminiKey = value; this.geminiModels = []; this.invalidateSetup(); }
-    async changeGeminiModel(value: string): Promise<void> {
-        if (!this.geminiModels.includes(value) || !this.connection || !this.handle) return;
-        this.geminiModel = value;
-        this.setupReady = false;
-        const project = this.project, request = ++this.setupRequest;
-        this.setupBusy = true; this.error = ''; this.notify();
-        try { await this.connection.selectSynthesisModel(this.handle, value); }
-        catch (error) { if (project === this.project && request === this.setupRequest) this.error = String(error); }
-        finally { if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); } }
-    }
-    async discoverGemini(): Promise<void> {
-        if (!this.connection || !this.handle) return;
-        this.chooseProvider('gemini');
-        const project = this.project, request = ++this.setupRequest;
-        const connection = this.connection, handle = this.handle;
-        this.setupBusy = true; this.setupReady = false; this.geminiModels = []; this.error = ''; this.notify();
-        try {
-            await this.clearingSetup;
-            if (project !== this.project || request !== this.setupRequest) return;
-            const result = this.geminiConfigured && !this.geminiKey
-                ? connection.refreshSynthesisModels(handle)
-                : connection.configureSynthesis(handle, { kind: 'gemini', ...(this.geminiKey ? { apiKey: this.geminiKey } : {}) });
-            this.geminiKey = '';
-            const { models } = await result;
-            if (project !== this.project || request !== this.setupRequest) return;
-            this.geminiConfigured = true;
-            this.geminiModels = models;
-            this.geminiModel = models.includes(this.geminiModel) ? this.geminiModel :
-                models.find(id => /flash/i.test(id)) ?? models[0] ?? '';
-        } catch (error) {
-            if (project === this.project && request === this.setupRequest) this.error = String(error);
-        } finally {
-            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
+    selectedConnection() { return this.inventory?.registry.connections.find(item => item.id === this.connectionId); }
+    selectedModel() { return this.inventory?.registry.models.find(item => item.connectionId === this.connectionId &&
+        item.providerModelKey === this.modelId && item.enabled && item.state !== 'unavailable' && item.state !== 'disabled'); }
+    selectTarget(connectionId: string, modelId: string): void {
+        if (connectionId !== this.connectionId || modelId !== this.modelId) {
+            this.invalidateSetup();
+            this.connectionId = connectionId;
+            this.modelId = modelId;
+            const capacity = this.selectedModel()?.limits.contextWindowTokens;
+            this.contextWindowTokens = capacity?.source === 'configured' ? capacity.value ?? 0 : 0;
+            this.notify();
         }
     }
     changeContextTokens(value: string): void {
@@ -369,34 +355,46 @@ export class SoftwareMapController {
         this.contextWindowTokens = Number.isSafeInteger(tokens) ? tokens : 0;
         this.invalidateSetup();
     }
+    private invalidateSetup(): void {
+        const hadSetup = this.setupReady || !!this.configuredTarget;
+        this.setupReady = false; this.configuredTarget = undefined; ++this.setupRequest;
+        this.consentedTargets.clear(); this.reviewConsentTarget = undefined;
+        if (hadSetup && this.connection && this.handle) {
+            const connection = this.connection, handle = this.handle;
+            this.clearingSetup = (this.clearingSetup ?? Promise.resolve()).then(() => connection.clearSynthesis(handle)).catch(() => {});
+        }
+        this.notify();
+    }
     analysisElapsedMs(): number {
         const reported = this.progressEvents.at(-1)?.elapsedMs ?? 0;
         return this.analysisStartedAt && this.initialization?.state === 'analyzing'
             ? Math.max(reported, Date.now() - this.analysisStartedAt) : this.reviewElapsedMs ?? reported;
     }
     async probe(): Promise<void> {
-        if (!this.connection || !this.handle || this.providerKind !== 'local' || !this.model || !this.models.includes(this.model)) return;
-        if (this.configuredSetup !== JSON.stringify([this.endpoint, this.contextWindowTokens])) {
-            this.error = 'Discover models again after changing connection or context settings.';
-            this.setupReady = false;
-            this.notify();
-            return;
+        if (!this.connection || !this.handle || !this.registry) return;
+        const connection = this.selectedConnection(), model = this.selectedModel();
+        if (!connection || !model || connection.lifecycle !== 'enabled' ||
+            this.inventory?.observations.some(item => item.connectionId === connection.id &&
+                ['unavailable', 'needs-authentication', 'invalid-configuration', 'disabled'].includes(item.health)) ||
+            !['local', 'gemini'].includes(connection.config.type)) {
+            this.invalidateSetup(); this.error = 'Selected target is missing or unsupported. Set it up in AI Center.'; this.notify(); return;
         }
-        const project = this.project;
-        const request = ++this.setupRequest;
-        this.setupBusy = true;
-        this.setupReady = false;
-        this.error = '';
-        this.notify();
+        if (connection.config.type === 'local' && this.contextWindowTokens < 8192) {
+            this.error = 'Configure or confirm the loaded context capacity (at least 8192 tokens).'; this.setupReady = false; this.notify(); return;
+        }
+        const project = this.project, request = ++this.setupRequest;
+        this.setupBusy = true; this.setupReady = false; this.error = ''; this.notify();
         try {
             await this.clearingSetup;
-            if (project !== this.project || request !== this.setupRequest) return;
-            await this.connection.selectSynthesisModel(this.handle, this.model);
+            const target = JSON.stringify([connection.id, model.providerModelKey, connection.config,
+                this.contextWindowTokens, this.inventory?.registry.revision]);
+            await this.connection.configureSynthesis(this.handle, { connectionId: connection.id,
+                modelId: model.providerModelKey, ...(connection.config.type === 'local' ?
+                    { contextWindowTokens: this.contextWindowTokens } : {}) });
             if (project !== this.project || request !== this.setupRequest) return;
             await this.connection.probeSynthesis(this.handle);
             if (project !== this.project || request !== this.setupRequest) return;
-            await this.preferences?.setData(preferenceKey, { kind: 'local', endpoint: this.endpoint, model: this.model });
-            if (project !== this.project || request !== this.setupRequest) return;
+            this.configuredTarget = target;
             this.setupReady = true;
         } catch (error) {
             if (project === this.project && request === this.setupRequest) this.error = String(error);
@@ -404,31 +402,23 @@ export class SoftwareMapController {
             if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
         }
     }
-    async probeGemini(): Promise<void> {
-        if (!this.connection || !this.handle || this.providerKind !== 'gemini' || !this.geminiConfigured ||
-            !this.geminiModels.includes(this.geminiModel)) return;
-        const project = this.project, request = ++this.setupRequest;
-        const connection = this.connection, handle = this.handle;
-        this.setupBusy = true; this.setupReady = false; this.error = ''; this.notify();
-        try {
-            await this.clearingSetup;
-            if (project !== this.project || request !== this.setupRequest) return;
-            await connection.selectSynthesisModel(handle, this.geminiModel);
-            if (project !== this.project || request !== this.setupRequest) return;
-            await connection.probeSynthesis(handle);
-            if (project !== this.project || request !== this.setupRequest) return;
-            this.setupReady = true;
-            await this.preferences?.setData(preferenceKey, { kind: 'gemini', endpoint: this.endpoint, model: this.model,
-                geminiModel: this.geminiModel });
-        } catch (error) {
-            if (project === this.project && request === this.setupRequest) this.error = `${this.geminiModel}: ${String(error)}`;
-        } finally {
-            if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
-        }
-    }
-    async synthesize(kind: SynthesisSetup['kind'] = this.providerKind, retry = false): Promise<void> {
-        if (kind !== this.providerKind || !this.setupReady || this.setupBusy || !this.connection || !this.handle ||
+    async synthesize(retry = false): Promise<void> {
+        if (!this.setupReady || this.setupBusy || !this.connection || !this.handle ||
             retry && !this.initialization?.resumable) return;
+        const connection = this.selectedConnection(), model = this.selectedModel();
+        if (!connection || !model || connection.lifecycle !== 'enabled' || !this.configuredTarget ||
+            this.configuredTarget !== JSON.stringify([connection.id, model.providerModelKey, connection.config,
+                this.contextWindowTokens, this.inventory?.registry.revision])) {
+            this.error = 'Selected AI Center target changed. Run the Software Map probe again.';
+            this.invalidateSetup(); return;
+        }
+        if (connection.config.type === 'gemini' && !this.consentedTargets.has(this.configuredTarget)) {
+            this.error = 'Confirm hosted repository-evidence disclosure before analysis.'; this.notify(); return;
+        }
+        if (connection.config.type === 'gemini') {
+            this.reviewConsentTarget = this.configuredTarget;
+            this.consentedTargets.delete(this.configuredTarget);
+        }
         const project = this.project;
         ++this.dryRunRequest;
         this.dryRunBusy = false;
@@ -470,6 +460,17 @@ export class SoftwareMapController {
             if (project === this.project && request === this.setupRequest) { this.setupBusy = false; this.notify(); }
         }
     }
+    consentToHostedEvidence(): void {
+        if (this.configuredTarget && this.selectedConnection()?.config.type === 'gemini') {
+            this.consentedTargets.add(this.configuredTarget); this.notify();
+        }
+    }
+    revokeHostedEvidenceConsent(): void {
+        if (this.configuredTarget) this.consentedTargets.delete(this.configuredTarget);
+        this.reviewConsentTarget = undefined;
+        this.notify();
+    }
+    hostedConsentGranted(): boolean { return !!this.configuredTarget && this.consentedTargets.has(this.configuredTarget); }
     manual(): void {
         if (this.initialization?.state !== 'uninitialized') return;
         this.flow = 'manual';
@@ -503,11 +504,18 @@ export class SoftwareMapController {
             if (accepted) { this.refinementError = { key, message: 'Set up and test a selected provider/model before Search Deeper.' }; this.notify(); }
             return;
         }
+        if (this.selectedConnection()?.config.type === 'gemini' && this.configuredTarget &&
+            !this.consentedTargets.has(this.configuredTarget) &&
+            !(this.flow === 'review' && !accepted && this.reviewConsentTarget === this.configuredTarget)) {
+            this.refinementError = { key, message: 'Confirm hosted repository-evidence disclosure before Search Deeper.' };
+            this.notify(); return;
+        }
+        if (accepted && this.configuredTarget) this.consentedTargets.delete(this.configuredTarget);
         const draft = accepted?.draft ?? this.draft;
         const target = draft.find(node => node.proposalKey === key);
         if (!target || target.kind === 'component') return;
         const project = this.project, reviewId = this.review?.reviewId, request = ++this.refinementRequest;
-        const providerKind = this.providerKind, modelLabel = providerKind === 'local' ? this.model : this.geminiModel;
+        const providerKind = this.selectedConnection()?.config.type === 'gemini' ? 'gemini' : 'local', modelLabel = this.modelId;
         const branch = structuredClone(targetBranch(draft, key));
         const parentContext = draft.find(node => node.proposalKey === target.parentProposalKey);
         const fingerprint = branchFingerprint(branch, parentContext);
@@ -521,8 +529,8 @@ export class SoftwareMapController {
                 (accepted ? !accepted.current() : this.review?.reviewId !== reviewId)) return;
             if (result.reviewId !== reviewId || result.expectedCanonicalFingerprint !== accepted?.fingerprint ||
                 result.targetKey !== key || result.branchFingerprint !== fingerprint ||
-                accepted && (!this.setupReady || this.providerKind !== providerKind ||
-                    (providerKind === 'local' ? this.model : this.geminiModel) !== modelLabel ||
+                accepted && (!this.setupReady || (this.selectedConnection()?.config.type === 'gemini' ? 'gemini' : 'local') !== providerKind ||
+                    this.modelId !== modelLabel ||
                     result.providerKind !== providerKind || result.modelLabel !== modelLabel) ||
                 accepted && this.initialization?.declarationFingerprint !== accepted.fingerprint ||
                 branchFingerprint(targetBranch(draft, key), draft.find(node => node.proposalKey === target.parentProposalKey)) !== fingerprint)
@@ -666,8 +674,8 @@ export class SoftwareMapController {
             if (connection && handle) await connection.cancelInitialization(handle);
             if (project !== this.project || request !== this.setupRequest) return;
             if (connection && handle) await connection.clearSynthesis(handle);
-            this.review = undefined; this.draft = []; this.setupReady = false; this.flow = wasAnalyzing ? 'setup' : 'none'; this.token = ''; this.geminiKey = '';
-            this.configuredSetup = undefined; this.geminiConfigured = false; this.models = []; this.geminiModels = [];
+            this.review = undefined; this.draft = []; this.setupReady = false; this.flow = wasAnalyzing ? 'setup' : 'none';
+            this.configuredTarget = undefined; this.reviewConsentTarget = undefined;
             this.refinementPreview = undefined; this.refinementBusyKey = undefined; this.refinementError = undefined; ++this.refinementRequest;
             this.refinedEvidence.clear();
             this.refinedSources.clear();

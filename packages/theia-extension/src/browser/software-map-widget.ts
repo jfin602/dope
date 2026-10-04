@@ -41,12 +41,11 @@ export class SoftwareMapWidget extends BaseWidget {
     private revealedSelection?: string;
     private unassignedOpen = false;
     private readonly progressClock = document.createElement('span');
-    private localSetupOpen = true;
-    private geminiSetupOpen = false;
     private readonly clockTimer: ReturnType<typeof setInterval>;
 
     constructor(controller: SoftwareMapController, private readonly workspaces: WorkspaceService, private readonly opener: OpenerService,
-        private readonly openReview: () => Promise<void>, private readonly openPhysicalMap: () => Promise<void>) {
+        private readonly openReview: () => Promise<void>, private readonly openPhysicalMap: () => Promise<void>,
+        private readonly openAICenter?: () => Promise<unknown>) {
         super();
         this.id = SOFTWARE_MAP_ID;
         this.title.label = 'SMAP CONTROLS';
@@ -153,85 +152,55 @@ export class SoftwareMapWidget extends BaseWidget {
             this.controls.append(this.button('Cancel analysis', () => void model.cancel()));
             return;
         }
-        this.controls.append(this.element('h3', 'Synthesis setup'));
-        this.controls.append(this.button('Dry run (no model calls)', () => void model.dryRun()));
-        const local = this.element('details');
-        local.open = this.localSetupOpen;
-        local.ontoggle = () => { this.localSetupOpen = local.open; };
-        local.append(this.element('summary', 'Local model'),
-            this.element('p', 'Runs through your local LM Studio compatible endpoint. Discovery and capability probing use no project evidence.'));
-        local.append(this.field('Endpoint', model.endpoint, value => model.changeEndpoint(value)));
-        local.append(this.field('Loaded context tokens', String(model.contextWindowTokens), value => model.changeContextTokens(value)));
-        local.append(this.field('Optional session token', model.token, value => model.changeToken(value), false, true));
-        local.append(this.button('Discover models', () => void model.discover()));
-        const label = this.element('label', 'Model');
+        this.controls.append(this.element('h3', 'Synthesis setup'),
+            this.button('Dry run (no model calls)', () => void model.dryRun()));
+        const label = this.element('label', 'AI Center connection / model');
         const select = this.element('select');
-        for (const id of model.models) {
-            const option = this.element('option', id);
-            option.value = id;
-            option.selected = id === model.model;
-            select.append(option);
+        const placeholder = this.element('option', 'Select an exact connection and model');
+        placeholder.value = ''; select.append(placeholder);
+        for (const connection of model.inventory?.registry.connections ?? []) {
+            if (connection.config.type !== 'local' && connection.config.type !== 'gemini') continue;
+            for (const item of model.inventory?.registry.models.filter(candidate => candidate.connectionId === connection.id) ?? []) {
+                const option = this.element('option', connection.alias + ' — ' + item.label + ' (' + item.providerModelKey + ')');
+                option.value = JSON.stringify([connection.id, item.providerModelKey]);
+                option.selected = connection.id === model.connectionId && item.providerModelKey === model.modelId;
+                select.append(option);
+            }
         }
-        select.onchange = () => model.changeModel(select.value);
+        select.onchange = () => {
+            if (select.value) { const [connectionId, modelId] = JSON.parse(select.value) as [string, string]; model.selectTarget(connectionId, modelId); }
+        };
         label.append(select);
-        local.append(label);
+        const manage = this.button('Manage connections in AI Center', () => void this.openAICenter?.());
+        const refresh = this.button('Return to synthesis setup / refresh inventory', () => void model.refreshInventory());
+        this.controls.append(label, manage, refresh);
+        if (model.connectionId && !model.selectedModel())
+            this.controls.append(this.element('p', 'Selected target is missing. Use AI Center to repair it, then return here.'));
+        const connection = model.selectedConnection();
+        if (connection?.config.type === 'local')
+            this.controls.append(this.field('Loaded context tokens (synthesis-specific)', String(model.contextWindowTokens),
+                value => model.changeContextTokens(value)));
+        if (connection?.config.type === 'gemini') {
+            this.controls.append(this.element('p', 'Hosted synthesis sends bounded repository evidence to Google’s Gemini API. Confirm before the selected target is used; AI Center Test Connection does not grant consent.'));
+            const consent = this.element('label', 'I consent to sending repository evidence for this synthesis run');
+            const checkbox = this.element('input'); checkbox.type = 'checkbox';
+            checkbox.checked = model.hostedConsentGranted();
+            checkbox.onchange = () => { if (checkbox.checked) model.consentToHostedEvidence(); else model.revokeHostedEvidenceConsent(); };
+            consent.prepend(checkbox); this.controls.append(consent);
+        }
+        const probe = this.button('Run Software Map structured-output probe', () => void model.probe());
+        probe.disabled = model.setupBusy || !model.selectedModel();
+        this.controls.append(probe, this.element('p', model.setupReady ? 'Software Map probe passed; model ready.' :
+            'AI Center Test Connection is not a Software Map probe.'));
+        const start = this.button('Analyze with selected target', () => void model.synthesize());
+        start.disabled = !model.setupReady || model.setupBusy;
+        this.controls.append(start);
         if (model.initialization?.resumable) {
-            const retry = this.button(`Retry failed stage with ${model.model || 'selected Local model'}`, () => void model.synthesize('local', true));
-            retry.disabled = model.providerKind !== 'local' || !model.setupReady || model.setupBusy;
-            local.append(retry);
+            const retry = this.button('Retry failed stage with selected target', () => void model.synthesize(true));
+            retry.disabled = !model.setupReady || model.setupBusy;
+            this.controls.append(retry, this.element('p', model.initialization.resumable.message));
         }
-        const probe = this.button('Run structured-output capability probe', () => void model.probe());
-        probe.disabled = model.setupBusy || !model.model;
-        local.append(probe, this.element('p', model.providerKind === 'local' && model.setupReady ? 'Structured-output probe passed. Model ready.' :
-            model.setupBusy ? 'Checking local model…' : 'Run the probe before analysis.'));
-        const start = this.button(model.initialization?.resumable ? 'Restart analysis with Local' : 'Analyze with Local', () => void model.synthesize('local'));
-        start.disabled = model.providerKind !== 'local' || !model.setupReady || model.setupBusy;
-        local.append(start);
-        const gemini = this.element('details');
-        gemini.open = this.geminiSetupOpen;
-        gemini.ontoggle = () => { this.geminiSetupOpen = gemini.open; };
-        gemini.append(this.element('summary', 'Gemini'),
-            this.element('p', 'Cloud synthesis. When Gemini is selected, bounded repository evidence used for synthesis is sent to Google’s Gemini API.'),
-            this.element('p', model.geminiEnvironmentKeyAvailable ? 'Gemini API key available on this machine.' : 'Enter an AI Studio API key. Dope saves it in this machine’s credential store after model discovery succeeds.'));
-        gemini.append(this.field(model.geminiEnvironmentKeyAvailable ? 'Optional replacement AI Studio API key' : 'AI Studio API key',
-            model.geminiKey, value => model.changeGeminiKey(value), false, true));
-        const refreshGemini = this.button('Refresh Gemini models', () => void model.discoverGemini());
-        refreshGemini.disabled = model.setupBusy;
-        gemini.append(refreshGemini);
-        const geminiLabel = this.element('label', 'Gemini model');
-        const geminiSelect = this.element('select');
-        for (const id of model.geminiModels) {
-            const option = this.element('option', id);
-            option.value = id;
-            option.selected = id === model.geminiModel;
-            geminiSelect.append(option);
-        }
-        geminiSelect.disabled = model.setupBusy || !model.geminiModels.length;
-        geminiSelect.onchange = () => void model.changeGeminiModel(geminiSelect.value);
-        geminiLabel.append(geminiSelect);
-        gemini.append(geminiLabel);
-        if (model.initialization?.resumable) {
-            const retry = this.button(`Retry failed stage with ${model.geminiModel || 'selected Gemini model'}`, () => void model.synthesize('gemini', true));
-            retry.disabled = model.providerKind !== 'gemini' || !model.setupReady || model.setupBusy;
-            gemini.append(retry);
-        }
-        const geminiProbe = this.button('Test selected model', () => void model.probeGemini());
-        geminiProbe.disabled = model.setupBusy || !model.geminiModel || !model.geminiModels.includes(model.geminiModel);
-        gemini.append(geminiProbe, this.element('p', model.providerKind === 'gemini' && model.setupReady ?
-            `${model.geminiModel} ready.` : model.geminiModel ? `${model.geminiModel} requires a successful test.` : 'Discover models before analysis.'));
-        const geminiStart = this.button(model.initialization?.resumable ? 'Restart analysis with Gemini' :
-            `Analyze Project with ${model.geminiModel || 'Gemini'}`, () => void model.synthesize('gemini'));
-        geminiStart.disabled = model.providerKind !== 'gemini' || !model.setupReady || model.setupBusy;
-        gemini.append(geminiStart);
-        if (model.initialization?.resumable) {
-            this.controls.append(this.element('p', `Failed: ${model.initialization.resumable.failedStage ?? 'interrupted stage'}` +
-                (model.initialization.resumable.failedSubject ? ` · ${model.initialization.resumable.failedSubject}` : '')),
-            this.element('p', model.initialization.resumable.message),
-            ...(model.initialization.resumable.failedProviderKind && model.initialization.resumable.failedModelLabel ?
-                [this.element('p', `${model.initialization.resumable.failedProviderKind} · ${model.initialization.resumable.failedModelLabel}`)] : []));
-        }
-        const cancel = this.button('Cancel', () => void model.cancel());
-        this.controls.append(local, gemini, cancel);
+        this.controls.append(this.button('Cancel', () => void model.cancel()));
         if (model.progressEvents.length || model.initialization?.resumable) this.renderProgress();
     }
     private renderDryRun(): void {

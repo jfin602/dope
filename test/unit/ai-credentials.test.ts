@@ -90,4 +90,17 @@ test('legacy Gemini handoff requires explicit secure migration and never reveals
     assert.equal(await manager.readForExecution('connection-1'), 'legacy-secret');
     assert.doesNotMatch(JSON.stringify(await manager.status('connection-1')), /legacy-secret/);
     assert.equal(values.get('Dope Gemini:AI Studio API key'), 'legacy-secret');
+    await manager.retireSoftwareMapGemini('connection-1');
+    assert.equal(values.has('Dope Gemini:AI Studio API key'), false);
+    assert.equal(await manager.readForExecution('connection-1'), 'legacy-secret');
+});
+
+test('legacy credential cannot be retired if a distinct central secret is present', async () => {
+    const { manager: create, secure, values } = fixture();
+    await secure.setPassword('Dope Gemini', 'AI Studio API key', 'legacy-secret');
+    await secure.setPassword('Dope AI Connections', 'connection-1', 'different-secret');
+    const manager = create();
+    assert.equal(await manager.reuseSoftwareMapGemini('connection-1'), false);
+    await assert.rejects(manager.retireSoftwareMapGemini('connection-1'), /retire legacy Gemini credential/);
+    assert.equal(values.get('Dope Gemini:AI Studio API key'), 'legacy-secret');
 });

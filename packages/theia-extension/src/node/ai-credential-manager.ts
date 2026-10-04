@@ -123,4 +123,17 @@ export class AICredentialManager {
         this.changed(id);
         return true;
     }
+    async retireSoftwareMapGemini(id: AIConnectionId): Promise<void> {
+        const connection = await this.connection(id);
+        if (connection.config.type !== 'gemini') throw new Error('Invalid credential migration target');
+        const store = await this.store();
+        if (!store) throw new Error('OS secure storage unavailable');
+        try {
+            const destination = await store.getPassword(service, id);
+            if (!destination) throw new Error('Destination credential missing');
+            const legacy = await store.getPassword(legacyService, legacyAccount);
+            if (legacy && legacy !== destination) throw new Error('Legacy credential differs from destination');
+            if (legacy) await store.deletePassword(legacyService, legacyAccount);
+        } catch { throw new Error('Could not retire legacy Gemini credential'); }
+    }
 }

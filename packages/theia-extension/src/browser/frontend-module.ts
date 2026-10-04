@@ -84,8 +84,10 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(FrontendApplicationContribution).toService(AICenterContribution);
     bind(AIRegistryService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AIRegistryService & RpcServer<AIRegistryClient>>(
         context.container, aiRegistryServicePath, {
-            notifyAIRegistryChanged: () => { void context.container.get(AICenterContribution).refresh(); },
-            notifyAIInventoryChanged: () => { void context.container.get(AICenterContribution).refresh(); }
+            notifyAIRegistryChanged: () => { void context.container.get(AICenterContribution).refresh();
+                void context.container.get(SoftwareMapController).refreshInventory(); },
+            notifyAIInventoryChanged: () => { void context.container.get(AICenterContribution).refresh();
+                void context.container.get(SoftwareMapController).refreshInventory(); }
         })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: AI_CENTER_ID, createWidget: () => new AICenterWidget(
         context.container.get(AIRegistryService), context.container.get(AICredentialService)) })).inSingletonScope();
@@ -133,11 +135,13 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();
     bind(AICredentialService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AICredentialService & RpcServer<AICredentialClient>>(
         context.container, aiCredentialServicePath, {
-            notifyAICredentialChanged: () => { void context.container.get(AICenterContribution).refresh(); }
+            notifyAICredentialChanged: (id: string) => { void context.container.get(AICenterContribution).refresh();
+                context.container.get(SoftwareMapController).credentialChanged(id); }
         })).inSingletonScope();
     bind(SoftwareMapController).toDynamicValue(context => new SoftwareMapController(
         () => context.container.get(SoftwareMapService) as SoftwareMapService & RpcServer<SoftwareMapClient>,
-        () => {}, context.container.get(StorageService))).inSingletonScope();
+        () => {}, context.container.get(StorageService), context.container.get(AIRegistryService),
+        context.container.get(AICredentialService))).inSingletonScope();
     bind(PlanningMapController).toDynamicValue(context => new PlanningMapController(context.container.get(SoftwareMapController),
         () => ServiceConnectionProvider.createProxy<VisualPlanningService>(context.container, visualPlanningServicePath))).inSingletonScope();
     bind(SmapPresentationState).toDynamicValue(context => new SmapPresentationState(context.container.get(StorageService))).inSingletonScope();
@@ -149,7 +153,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             const widget = await manager.getOrCreateWidget<SoftwareMapReviewWidget>(SOFTWARE_MAP_REVIEW_ID);
             if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
             await shell.activateWidget(widget.id);
-        }, () => openPhysicalMap(context.container.get(WidgetManager), context.container.get(ApplicationShell))
+        }, () => openPhysicalMap(context.container.get(WidgetManager), context.container.get(ApplicationShell)),
+        () => context.container.get(AICenterContribution).openFromSoftwareMap()
     ) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: PHYSICAL_MAP_ID, createWidget: (options?: PhysicalMapTabOptions) =>
         new PhysicalMapWidget(context.container.get(SoftwareMapController),
@@ -158,7 +163,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             context.container.get(PlanningMapController), context.container.get(SmapPresentationState), options) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_REVIEW_ID, createWidget: () =>
         new SoftwareMapReviewWidget(context.container.get(SoftwareMapController), context.container.get(WorkspaceService),
-            context.container.get(OpenerService)) })).inSingletonScope();
+            context.container.get(OpenerService), () => context.container.get(AICenterContribution).openFromSoftwareMapReview()) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: PROJECT_MIND_ID, createWidget: () => new ProjectMindWidget(
         () => context.container.get(ProjectMindService) as ProjectMindService & RpcServer<ProjectMindClient>,
         context.container.get(WorkspaceService), context.container.get(FileService), context.container.get(OpenerService)

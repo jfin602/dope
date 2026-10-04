@@ -2,7 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { realpath } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { KeyStoreService } from '@theia/core/lib/common/key-store';
+import { AIRegistryStore } from './ai-registry-store';
+import { AICredentialManager } from './ai-credential-manager';
 import { canonicalLocalRoot, readArchitecture } from '@dope/code-analysis/lib/node/architecture-file';
 import { readInitialization, acceptInitialization, replaceArchitecture } from '@dope/code-analysis/lib/node/smap-initialization-file';
 import { bootstrapDocumentPresence } from '@dope/code-analysis/lib/node/architecture-evidence';
@@ -17,9 +18,6 @@ import type { ArchitectureViolation, Evidence, GraphNode, SoftwareMapPage, Softw
     TargetedRefinementInput, TargetedRefinementResult, SynthesisDryRunReport, FlowQuery, FlowQueryResult } from '@dope/software-map';
 import { LmStudioSynthesisProvider } from './lmstudio-synthesis-provider';
 import { GeminiSynthesisProvider } from './gemini-synthesis-provider';
-
-const geminiCredentialService = 'Dope Gemini';
-const geminiCredentialAccount = 'AI Studio API key';
 
 function synthesisAnalysisError(error: unknown): Error | undefined {
     const message = error instanceof Error ? error.message : '';
@@ -40,6 +38,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
     private analysisRun?: SavedSynthesisRun;
     private pending?: ArchitectureReview & { fingerprint: string };
     private provider?: SynthesisProvider;
+    private selectedTarget?: { connectionId: string; modelId: string; fingerprint: string; credentialHash: string };
     private readonly synthesisCache = new SynthesisStageCache(Number.MAX_SAFE_INTEGER);
     private analysisStarted?: number;
     private readonly unlisten: () => void;
@@ -52,7 +51,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
     constructor(private readonly index: SoftwareMapIndex, private readonly client: SoftwareMapClient,
         provider?: SynthesisProvider,
         private readonly makeGemini = (apiKey: string) => new GeminiSynthesisProvider({ apiKey }),
-        private readonly credentials?: Pick<KeyStoreService, 'getPassword' | 'setPassword'>) {
+        private readonly registry?: AIRegistryStore, private readonly credentials?: AICredentialManager) {
         this.provider = provider;
         this.unlisten = index.onChange((root, status) => {
             if (!this.disposed && this.initialized && root === this.root) client.notifySoftwareMapChanged(status);
@@ -117,73 +116,56 @@ export class SoftwareMapBackend implements SoftwareMapService {
         this.pending = undefined;
         this.analysisStarted = undefined;
         this.provider = undefined;
+        this.selectedTarget = undefined;
         this.synthesisCache.clear();
     }
     async clearSynthesis(projectHandle: string): Promise<void> {
         this.active(projectHandle);
         this.clearProvider();
     }
-    async synthesisEnvironment(projectHandle: string): Promise<{ geminiKeyAvailable: boolean }> {
-        this.active(projectHandle);
-        let storedKey: string | undefined;
-        try { storedKey = await this.credentials?.getPassword(geminiCredentialService, geminiCredentialAccount); }
-        catch { throw new Error('Could not access Gemini credential store'); }
-        this.active(projectHandle);
-        return { geminiKeyAvailable: !!(storedKey || process.env.GEMINI_API_KEY?.trim()) };
-    }
     async configureSynthesis(projectHandle: string, options: SynthesisSetup): Promise<SynthesisSetupResult> {
         this.active(projectHandle);
         if (this.phase === 'analyzing') throw new Error('Synthesis analysis is active');
         this.clearProvider();
         const run = this.run;
-        if (options.kind === 'local') {
-            const provider = new LmStudioSynthesisProvider(options);
-            const models = await provider.discoverModels();
-            this.active(projectHandle);
-            if (run !== this.run) throw new Error('Superseded synthesis setup');
-            this.provider = new SoftwareMapSynthesisStrategy(provider);
-            return { models };
-        }
-        if (options.kind !== 'gemini') throw new Error('Invalid synthesis provider');
-        const suppliedKey = options.apiKey?.trim();
-        let storedKey: string | undefined;
-        if (!suppliedKey) {
-            try { storedKey = await this.credentials?.getPassword(geminiCredentialService, geminiCredentialAccount); }
-            catch { throw new Error('Could not access Gemini credential store'); }
-        }
-        const key = suppliedKey || storedKey || process.env.GEMINI_API_KEY?.trim();
-        if (!key) throw new Error('Gemini API key required');
-        let provider: GeminiSynthesisProvider;
-        try { provider = this.makeGemini(key); }
-        catch { throw new Error('Gemini configuration failed'); }
+        const snapshot = await this.registry?.read();
+        const connection = snapshot?.connections.find(item => item.id === options.connectionId && item.lifecycle === 'enabled');
+        const model = snapshot?.models.find(item => item.connectionId === options.connectionId &&
+            item.providerModelKey === options.modelId && item.enabled && item.state !== 'unavailable' && item.state !== 'disabled');
+        if (!connection || !model) throw new Error('Selected AI Center target is unavailable');
+        const credential = await this.credentials?.readForExecution(connection.id);
+        let provider: LmStudioSynthesisProvider | GeminiSynthesisProvider;
+        if (connection.config.type === 'local') {
+            const capacity = options.contextWindowTokens ?? (model.limits.contextWindowTokens.source === 'configured' ?
+                model.limits.contextWindowTokens.value : undefined);
+            if (!capacity || capacity < 8192) throw new Error('Synthesis context capacity must be configured or known');
+            provider = new LmStudioSynthesisProvider({ endpoint: connection.config.endpoint,
+                contextWindowTokens: capacity, token: credential });
+        } else if (connection.config.type === 'gemini') {
+            if (!credential) throw new Error('AI Center Gemini credential required');
+            try { provider = this.makeGemini(credential); }
+            catch { throw new Error('Gemini configuration failed'); }
+        } else throw new Error('Selected AI Center provider does not support Software Map synthesis');
         const models = await provider.discoverModels();
         this.active(projectHandle);
         if (run !== this.run) throw new Error('Superseded synthesis setup');
-        if (suppliedKey && this.credentials) {
-            try { await this.credentials.setPassword(geminiCredentialService, geminiCredentialAccount, suppliedKey); }
-            catch { throw new Error('Could not save Gemini API key in credential store'); }
-            this.active(projectHandle);
-            if (run !== this.run) throw new Error('Superseded synthesis setup');
-        }
+        if (!models.includes(options.modelId)) throw new Error('Selected AI Center model is not available from the provider');
+        provider.selectModel(options.modelId);
+        this.selectedTarget = { connectionId: connection.id, modelId: options.modelId,
+            fingerprint: JSON.stringify([connection.config, connection.lifecycle, model.enabled, model.state]),
+            credentialHash: createHash('sha256').update(credential ?? '').digest('hex') };
         this.provider = new SoftwareMapSynthesisStrategy(provider);
         return { models };
     }
-    async refreshSynthesisModels(projectHandle: string): Promise<SynthesisSetupResult> {
-        this.active(projectHandle);
-        if (this.phase === 'analyzing') throw new Error('Synthesis analysis is active');
-        if (!this.provider) throw new Error('Synthesis provider is not configured');
-        const run = ++this.run;
-        const models = await this.provider.discoverModels();
-        this.active(projectHandle);
-        if (run !== this.run) throw new Error('Superseded synthesis setup');
-        return { models };
-    }
-    async selectSynthesisModel(projectHandle: string, modelId: string): Promise<void> {
-        this.active(projectHandle);
-        if (this.phase === 'analyzing') throw new Error('Synthesis analysis is active');
-        if (!this.provider) throw new Error('Synthesis provider is not configured');
-        ++this.run;
-        this.provider.selectModel(modelId);
+    private async assertSelectedTarget(): Promise<void> {
+        const target = this.selectedTarget;
+        if (!target) return;
+        const snapshot = await this.registry?.read();
+        const connection = snapshot?.connections.find(item => item.id === target.connectionId);
+        const model = snapshot?.models.find(item => item.connectionId === target.connectionId && item.providerModelKey === target.modelId);
+        if (!connection || !model || JSON.stringify([connection.config, connection.lifecycle, model.enabled, model.state]) !== target.fingerprint ||
+            createHash('sha256').update(await this.credentials?.readForExecution(target.connectionId) ?? '').digest('hex') !== target.credentialHash)
+            throw new Error('Selected AI Center target changed; run the Software Map probe again');
     }
     async probeSynthesis(projectHandle: string): Promise<void> {
         this.active(projectHandle);
@@ -267,6 +249,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
     }
     async startInitialization(projectHandle: string): Promise<ArchitectureReview> {
         const root = this.active(projectHandle);
+        await this.assertSelectedTarget();
         if ((await readInitialization(root)).initialized || this.phase === 'analyzing' || this.phase === 'review_required') throw new Error('Software Map initialization is already active');
         if (!this.provider || !(await this.synthesisReady(projectHandle))) throw new Error('Synthesis provider is not ready');
         this.analysisRun = undefined;
@@ -276,6 +259,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
     }
     async retryFailedStage(projectHandle: string): Promise<ArchitectureReview> {
         const root = this.active(projectHandle);
+        await this.assertSelectedTarget();
         if ((await readInitialization(root)).initialized || this.phase === 'analyzing' || this.phase === 'review_required')
             throw new Error('Software Map initialization is already active');
         const saved = this.analysisRun ?? await readSynthesisRun(root);
@@ -414,6 +398,7 @@ export class SoftwareMapBackend implements SoftwareMapService {
     }
     async searchDeeper(projectHandle: string, input: TargetedRefinementInput): Promise<TargetedRefinementResult> {
         const root = this.active(projectHandle), pending = this.pending, run = this.run;
+        await this.assertSelectedTarget();
         const accepted = !!input.expectedCanonicalFingerprint;
         const current = accepted ? await readInitialization(root) : undefined;
         if (accepted ? !current?.initialized || current.declarationFingerprint !== input.expectedCanonicalFingerprint :

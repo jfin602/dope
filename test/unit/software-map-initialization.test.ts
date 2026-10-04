@@ -70,6 +70,18 @@ const fakeProvider = (observe?: (request: SynthesisStageRequest) => Promise<void
 const backend = (index: SoftwareMapIndex, provider?: SynthesisProvider, client: SoftwareMapClient = { notifySoftwareMapChanged() {} }) =>
   new SoftwareMapBackend(index, client, provider);
 const attach = async (service: SoftwareMapBackend, root: string) => (await service.attach(pathToFileURL(root).href)).projectHandle;
+test('synthesis warms the selected runtime before its first repository-evidence request', async () => {
+  const root = await fixture(), calls: string[] = [];
+  const provider = { ...fakeProvider(request => { calls.push(request.stage); }),
+    warmUp: async () => { calls.push('warm-up'); } };
+  const service = backend(new SoftwareMapIndex(new TypeScriptAnalyzer()), provider);
+  try {
+    const handle = await attach(service, root);
+    await service.startInitialization(handle);
+    assert.equal(calls[0], 'warm-up');
+    assert.equal(calls[1], 'system-discovery');
+  } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
+});
 async function projectBytes(root: string): Promise<Record<string, string>> {
   const result: Record<string, string> = {};
   const walk = async (dir: string, prefix = ''): Promise<void> => {
@@ -853,105 +865,89 @@ test('backend reports ordered hierarchy, known counts and measured time before t
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('Gemini environment and session setup remain in memory, fail closed, and never fall back', async () => {
+test('exact AI Center Gemini target requires feature probe and rejects changed credentials', async () => {
   const root = await fixture();
-  const previous = process.env.GEMINI_API_KEY;
-  const keys: string[] = [];
-  const calls: string[] = [];
-  const events: AnalysisProgressEvent[] = [];
-  let service: SoftwareMapBackend;
-  let handle: string;
+  const keys: string[] = [], calls: string[] = [];
+  let credential = 'secure-fixture-key';
+  const registry = { read: async () => ({ connections: [{ id: 'gemini', lifecycle: 'enabled', config: { type: 'gemini' } }],
+    models: ['gemini-3.6-flash', 'gemini-3.8-flash'].map(providerModelKey =>
+      ({ connectionId: 'gemini', providerModelKey, enabled: true, state: 'ready' })) }) };
+  const credentials = { readForExecution: async () => credential };
   const makeGemini = (key: string) => {
-    keys.push(key);
-    let selected = '';
-    let ready = false;
+    keys.push(key); let selected = '', ready = false;
     return { kind: 'gemini', runtimeIdentity: 'gemini', get isReady() { return ready; },
-      discoverModels: async () => { selected = ''; ready = false; return ['gemini-3.6-flash', 'gemini-3.8-flash']; },
+      discoverModels: async () => ['gemini-3.6-flash', 'gemini-3.8-flash'],
       selectModel: (id: string) => { selected = id; ready = false; },
-      probe: async () => { calls.push(`probe:${selected}`); ready = true; },
+      probe: async () => { calls.push('probe:' + selected); ready = true; },
       capabilities: async () => ({ modelLabel: selected, contextWindowTokens: 100000,
         maxInputTokens: 90000, reservedInstructionTokens: 1000, reservedOutputTokens: 2000,
         reservedOverheadTokens: 1000, tokenEstimate: 'conservative' }),
       estimateTokens: async (text: string) => text.length,
       generateStructured: async () => {
-        calls.push(`gemini:${selected}`);
-        await assert.rejects(service.selectSynthesisModel(handle, 'gemini-3.8-flash'), /analysis is active/);
+        calls.push('gemini:' + selected);
         throw new SynthesisProviderFailure('Gemini request rejected (HTTP 400)', 'nonretryable-provider');
       } } as any;
   };
+  const service = new SoftwareMapBackend(new SoftwareMapIndex(new TypeScriptAnalyzer()),
+    { notifySoftwareMapChanged() {} }, undefined, makeGemini, registry as any, credentials as any);
   try {
-    process.env.GEMINI_API_KEY = 'environment-secret';
-    service = new SoftwareMapBackend(new SoftwareMapIndex(new TypeScriptAnalyzer()),
-      { notifySoftwareMapChanged() {}, notifySoftwareMapAnalysisProgress(_handle, event) { events.push(event); } },
-      undefined, makeGemini);
-    handle = await attach(service, root);
-    assert.deepEqual(await service.synthesisEnvironment(handle), { geminiKeyAvailable: true });
-    assert.deepEqual(await service.configureSynthesis(handle, { kind: 'gemini' }),
+    const handle = await attach(service, root);
+    await assert.rejects(service.configureSynthesis(handle, { connectionId: 'gemini', modelId: 'missing' }), /target is unavailable/);
+    assert.deepEqual(await service.configureSynthesis(handle, { connectionId: 'gemini', modelId: 'gemini-3.6-flash' }),
       { models: ['gemini-3.6-flash', 'gemini-3.8-flash'] });
-    assert.deepEqual(keys, ['environment-secret']);
     assert.equal(await service.synthesisReady(handle), false);
-    await service.selectSynthesisModel(handle, 'gemini-3.6-flash');
+    await assert.rejects(service.startInitialization(handle), /not ready/);
     await service.probeSynthesis(handle);
-    assert.equal(await service.synthesisReady(handle), true);
-    await service.selectSynthesisModel(handle, 'gemini-3.8-flash');
-    assert.equal(await service.synthesisReady(handle), false);
-    await service.selectSynthesisModel(handle, 'gemini-3.6-flash');
-    await service.probeSynthesis(handle);
+    credential = 'changed-secret';
+    await assert.rejects(service.startInitialization(handle), /target changed/);
+    credential = 'secure-fixture-key';
     await assert.rejects(service.startInitialization(handle), /Synthesis analysis failed/);
-    assert.deepEqual(calls, ['probe:gemini-3.6-flash', 'probe:gemini-3.6-flash', 'gemini:gemini-3.6-flash']);
-    assert.ok(JSON.stringify(events).includes('gemini-3.6-flash'));
-    assert.equal(JSON.stringify(events).includes('environment-secret'), false);
+    assert.deepEqual(keys, ['secure-fixture-key']);
+    assert.deepEqual(calls, ['probe:gemini-3.6-flash', 'gemini:gemini-3.6-flash']);
+    assert.equal(JSON.stringify(await service.synthesisAttempts(handle)).includes(credential), false);
     assert.equal((await readdir(root)).includes('.dope'), true);
-    await service.configureSynthesis(handle, { kind: 'gemini', apiKey: 'session-secret' });
-    assert.deepEqual(keys, ['environment-secret', 'session-secret']);
+    await service.configureSynthesis(handle, { connectionId: 'gemini', modelId: 'gemini-3.8-flash' });
     assert.equal(await service.synthesisReady(handle), false);
-    await service.selectSynthesisModel(handle, 'gemini-3.8-flash');
-    await service.probeSynthesis(handle);
-    assert.equal(await service.synthesisReady(handle), true);
-    assert.deepEqual(await service.refreshSynthesisModels(handle), { models: ['gemini-3.6-flash', 'gemini-3.8-flash'] });
-    assert.equal(await service.synthesisReady(handle), false);
-    assert.equal(JSON.stringify(await service.synthesisEnvironment(handle)).includes('secret'), false);
-    assert.equal(JSON.stringify([...((service as any).synthesisCache.results as Map<string, unknown>).keys()]).includes('session-secret'), false);
-    ((service as any).synthesisCache.results as Map<string, unknown>).set('retained-provider', { provider: keys });
-    await service.clearSynthesis(handle);
-    assert.equal(await service.synthesisReady(handle), false);
-    assert.equal(((service as any).synthesisCache.results as Map<string, unknown>).size, 0);
-    await service.configureSynthesis(handle, { kind: 'gemini' });
-    await service.attach(pathToFileURL(root).href);
-    assert.equal(await service.synthesisReady(handle), false);
-    service.dispose();
-  } finally {
-    if (previous === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = previous;
-    await rm(root, { recursive: true, force: true });
-  }
+  } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('Gemini key survives backend restart in the machine credential store, outside project state', async () => {
+test('local synthesis refuses unknown capacity and never chooses another inventory model', async () => {
   const root = await fixture();
-  const stored = new Map<string, string>();
-  const keys: string[] = [];
-  const credentials = {
-    getPassword: async (service: string, account: string) => stored.get(`${service}:${account}`),
-    setPassword: async (service: string, account: string, value: string) => { stored.set(`${service}:${account}`, value); }
-  };
-  const makeGemini = (key: string) => {
-    keys.push(key);
-    return { discoverModels: async () => ['gemini-3.8-flash'] } as any;
-  };
+  const registry = { read: async () => ({ connections: [{ id: 'local', lifecycle: 'enabled',
+    config: { type: 'local', runtime: 'lm-studio', endpoint: 'http://127.0.0.1:1234/v1' } }],
+    models: [{ connectionId: 'local', providerModelKey: 'exact', enabled: true, state: 'ready',
+      limits: { contextWindowTokens: { source: 'unknown' } } }] }) };
+  const backend = new SoftwareMapBackend(new SoftwareMapIndex(new TypeScriptAnalyzer()),
+    { notifySoftwareMapChanged() {} }, undefined, undefined, registry as any);
   try {
-    const index = new SoftwareMapIndex(new TypeScriptAnalyzer());
-    const client = { notifySoftwareMapChanged() {} };
-    const first = new SoftwareMapBackend(index, client, undefined, makeGemini, credentials);
-    const firstHandle = await attach(first, root);
-    assert.deepEqual(await first.synthesisEnvironment(firstHandle), { geminiKeyAvailable: false });
-    await first.configureSynthesis(firstHandle, { kind: 'gemini', apiKey: 'saved-fixture-key' });
-    assert.deepEqual(await first.synthesisEnvironment(firstHandle), { geminiKeyAvailable: true });
+    const handle = await attach(backend, root);
+    await assert.rejects(backend.configureSynthesis(handle, { connectionId: 'local', modelId: 'another', contextWindowTokens: 65536 }),
+      /target is unavailable/);
+    await assert.rejects(backend.configureSynthesis(handle, { connectionId: 'local', modelId: 'exact' }),
+      /context capacity must be configured or known/);
+    assert.equal(await backend.synthesisReady(handle), false);
+  } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('central Gemini credential persists across backend connections without project state', async () => {
+  const root = await fixture();
+  const keys: string[] = [];
+  const registry = { read: async () => ({ connections: [{ id: 'gemini', lifecycle: 'enabled', config: { type: 'gemini' } }],
+    models: [{ connectionId: 'gemini', providerModelKey: 'gemini-3.8-flash', enabled: true, state: 'ready' }] }) };
+  const credentials = { readForExecution: async () => 'secure-fixture-key' };
+  const makeGemini = (key: string) => { keys.push(key); return {
+    discoverModels: async () => ['gemini-3.8-flash'], selectModel: () => {} } as any; };
+  try {
+    const index = new SoftwareMapIndex(new TypeScriptAnalyzer()), client = { notifySoftwareMapChanged() {} };
+    const first = new SoftwareMapBackend(index, client, undefined, makeGemini, registry as any, credentials as any);
+    const handle = await attach(first, root);
+    await first.configureSynthesis(handle, { connectionId: 'gemini', modelId: 'gemini-3.8-flash' });
     first.dispose();
-    const restarted = new SoftwareMapBackend(index, client, undefined, makeGemini, credentials);
+    const restarted = new SoftwareMapBackend(index, client, undefined, makeGemini, registry as any, credentials as any);
     const restartedHandle = await attach(restarted, root);
-    assert.deepEqual(await restarted.configureSynthesis(restartedHandle, { kind: 'gemini' }),
+    assert.deepEqual(await restarted.configureSynthesis(restartedHandle, { connectionId: 'gemini', modelId: 'gemini-3.8-flash' }),
       { models: ['gemini-3.8-flash'] });
-    assert.deepEqual(keys, ['saved-fixture-key', 'saved-fixture-key']);
+    assert.deepEqual(keys, ['secure-fixture-key', 'secure-fixture-key']);
     assert.equal((await readdir(root)).includes('.dope'), false);
     restarted.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }

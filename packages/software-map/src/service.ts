@@ -77,8 +77,7 @@ export interface ArchitectureReview {
     coverageLedger?: import('./hierarchical-synthesis').CoverageLedgerEntry[];
     componentDescents?: import('./hierarchical-synthesis').ComponentDescentDisposition[];
 }
-export type SynthesisSetup = { kind: 'local'; endpoint?: string; token?: string; contextWindowTokens?: number } |
-    { kind: 'gemini'; apiKey?: string };
+export type SynthesisSetup = { connectionId: string; modelId: string; contextWindowTokens?: number };
 export interface SynthesisSetupResult { models: string[] }
 export interface SynthesisDryRunReport {
     inputFingerprint?: string;
@@ -97,11 +96,8 @@ export interface SynthesisDryRunReport {
 }
 export interface SoftwareMapService {
     attach(folderUri: string): Promise<{ projectHandle: string; status: SoftwareMapStatus }>;
-    synthesisEnvironment(projectHandle: string): Promise<{ geminiKeyAvailable: boolean }>;
     configureSynthesis(projectHandle: string, options: SynthesisSetup): Promise<SynthesisSetupResult>;
-    refreshSynthesisModels(projectHandle: string): Promise<SynthesisSetupResult>;
     clearSynthesis(projectHandle: string): Promise<void>;
-    selectSynthesisModel(projectHandle: string, modelId: string): Promise<void>;
     probeSynthesis(projectHandle: string): Promise<void>;
     synthesisReady(projectHandle: string): Promise<boolean>;
     synthesisAttempts(projectHandle: string): Promise<SynthesisCallAttempt[]>;

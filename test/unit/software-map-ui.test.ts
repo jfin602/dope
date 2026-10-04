@@ -13,6 +13,27 @@ const deferred = () => {
 const status = (generation: number) => ({ generation, publishedGeneration: generation, state: 'ready', analysis: { completeness: 'complete', errors: [] }, reusedSourceFiles: 0, declarationPresent: true });
 const idle = { ...status(0), state: 'idle' };
 const page = (generation: number, items: any[]) => ({ generation, total: items.length, items });
+function inventory() {
+  const connections = [
+    { version: 1, id: 'local-one', alias: 'Local', lifecycle: 'enabled', config: { type: 'local', runtime: 'lm-studio', endpoint: 'http://127.0.0.1:1234/v1' } },
+    { version: 1, id: 'gemini-one', alias: 'Gemini', lifecycle: 'enabled', config: { type: 'gemini' } },
+  ];
+  const models = [
+    { version: 1, connectionId: 'local-one', providerModelKey: 'Qwen3-Coder-30B-A3B-Instruct', label: 'Qwen', enabled: true, state: 'ready', limits: { contextWindowTokens: { source: 'configured', value: 65536 } } },
+    { version: 1, connectionId: 'gemini-one', providerModelKey: 'gemini-3.6-flash', label: 'Flash', enabled: true, state: 'ready', limits: { contextWindowTokens: { source: 'adapter-known', value: 100000 } } },
+    { version: 1, connectionId: 'gemini-one', providerModelKey: 'gemini-3.8-flash', label: 'Flash 2', enabled: true, state: 'ready', limits: { contextWindowTokens: { source: 'adapter-known', value: 100000 } } },
+  ];
+  const state = { registry: { version: 1, revision: 1, connections, models }, observations: [], tests: [] };
+  return { state, inventory: async () => state, list: async () => state.registry,
+    refreshModels: async () => state, mutate: async () => state.registry };
+}
+async function ready(controller: any, kind: 'local' | 'gemini' = 'local', model?: string): Promise<void> {
+  await controller.refreshInventory();
+  controller.selectTarget(kind === 'local' ? 'local-one' : 'gemini-one', model ??
+    (kind === 'local' ? 'Qwen3-Coder-30B-A3B-Instruct' : 'gemini-3.6-flash'));
+  await controller.probe();
+  if (kind === 'gemini') controller.consentToHostedEvidence();
+}
 function connection() {
   const attach = deferred();
   const analyze = deferred();
@@ -30,19 +51,16 @@ function connection() {
   let revision = 0;
   const savedDrafts: any[] = [];
   const configurations: any[] = [];
-  const selectedModels: string[] = [];
   return {
-    get analyzed() { return analyzed; }, get configured() { return configured; }, get accepted() { return accepted; }, configurations, selectedModels, savedDrafts,
+    get analyzed() { return analyzed; }, get configured() { return configured; }, get accepted() { return accepted; }, configurations, savedDrafts,
     attachPending: attach, analyzePending: analyze, statusPending: statusRequest, hierarchyPending: hierarchy, violationsPending: violations, relationshipsPending: relationships, relationshipEdgesPending: relationshipEdges, evidencePending: evidence,
     setClient(value: any) { client = value; }, event(value: any) { client?.notifySoftwareMapChanged(value); },
     progress(handle: string, value: any) { client?.notifySoftwareMapAnalysisProgress(handle, value); },
     attach() { return attach.promise; }, analyze() { analyzed++; return analyze.promise; },
     initializationStatus() { return Promise.resolve({ state: 'uninitialized', declarationPresent: false, declarationFingerprint: 'absent' }); },
-    synthesisEnvironment() { return Promise.resolve({ geminiKeyAvailable: false }); },
     clearSynthesis() { return Promise.resolve(); },
-    configureSynthesis(_handle: string, options: any) { configured++; configurations.push(options); return Promise.resolve({ models: options.kind === 'local' ? ['other-model', 'Qwen3-Coder-30B-A3B-Instruct'] : ['gemini-3.6-flash', 'gemini-3.8-flash'] }); },
-    refreshSynthesisModels() { return Promise.resolve({ models: ['gemini-3.6-flash', 'gemini-3.8-flash'] }); },
-    selectSynthesisModel(_handle: string, id: string) { selectedModels.push(id); return Promise.resolve(); }, probeSynthesis() { return Promise.resolve(); },
+    configureSynthesis(_handle: string, options: any) { configured++; configurations.push(options); return Promise.resolve({ models: [options.modelId] }); },
+    probeSynthesis() { return Promise.resolve(); },
     synthesisReady() { return Promise.resolve(false); },
     startInitialization() { return Promise.resolve({ reviewId: 'review', packet: { items: [] }, proposal: { nodes: [], openQuestions: [], unassignedEvidenceRefs: [] }, draft: [] }); },
     cancelInitialization() { return Promise.resolve(); },
@@ -148,126 +166,114 @@ test('reopened failed analysis keeps its run and invokes the retry operation', a
     proposal: { nodes: [], openQuestions: [], unassignedEvidenceRefs: [] }, draft: [] }); };
   c.startInitialization = () => { calls.push('restart'); return Promise.resolve({ reviewId: 'fresh', packet: { items: [] },
     proposal: { nodes: [], openQuestions: [], unassignedEvidenceRefs: [] }, draft: [] }); };
-  const controller = new SoftwareMapController(() => c, () => {});
+  const controller = new SoftwareMapController(() => c, () => {}, undefined, inventory());
   const attaching = controller.attach('file:///A');
   c.attachPending.resolve({ projectHandle: 'a', status: idle });
   await attaching;
   assert.equal(controller.flow, 'setup');
   assert.equal(controller.initialization.resumable.runId, 'run-one');
-  controller.setupReady = true;
-  await controller.synthesize('local', true);
+  await ready(controller);
+  await controller.synthesize(true);
   assert.deepEqual(calls, ['retry']);
   assert.equal(controller.review.reviewId, 'review');
   controller.dispose();
 });
 
-test('local setup prefers Qwen and stores endpoint/model only as application state after probe', async () => {
-  const c = connection();
+test('central target requires a Software Map probe; switching invalidates readiness', async () => {
+  const c = connection(), registry = inventory();
   const writes: any[] = [];
-  const controller = new SoftwareMapController(() => c, () => {}, { getData: async () => undefined, setData: async (...args: any[]) => { writes.push(args); } });
+  const controller = new SoftwareMapController(() => c, () => {},
+    { getData: async () => undefined, setData: async (...args: any[]) => { writes.push(args); } }, registry);
   const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
   await controller.setup();
-  await controller.discover();
-  assert.equal(controller.model, 'Qwen3-Coder-30B-A3B-Instruct');
-  assert.equal(c.configured, 1);
+  controller.selectTarget('local-one', 'Qwen3-Coder-30B-A3B-Instruct');
+  assert.equal(controller.setupReady, false);
+  await controller.probe();
+  assert.equal(controller.setupReady, true);
+  assert.deepEqual(c.configurations[0], { connectionId: 'local-one', modelId: 'Qwen3-Coder-30B-A3B-Instruct', contextWindowTokens: 65536 });
   assert.deepEqual(writes, []);
+  controller.selectTarget('gemini-one', 'gemini-3.6-flash');
+  assert.equal(controller.setupReady, false);
   await controller.probe();
   assert.equal(controller.setupReady, true);
-  assert.equal(writes[0][0], 'dope.smap.synthesis');
-  assert.deepEqual(writes[0][1], { kind: 'local', endpoint: 'http://127.0.0.1:1234/v1', model: 'Qwen3-Coder-30B-A3B-Instruct' });
+  await controller.synthesize();
+  assert.match(controller.error, /Confirm hosted repository-evidence/);
+  controller.consentToHostedEvidence();
+  await controller.synthesize();
+  assert.equal(controller.flow, 'review');
+  controller.dispose();
+});
+
+test('generic connection test and missing target never authorize synthesis', async () => {
+  const c = connection(), registry = inventory();
+  registry.state.tests.push({ connectionId: 'local-one', modelId: 'Qwen3-Coder-30B-A3B-Instruct' } as any);
+  const controller = new SoftwareMapController(() => c, () => {}, undefined, registry);
+  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  await controller.setup();
+  controller.selectTarget('local-one', 'Qwen3-Coder-30B-A3B-Instruct');
+  await controller.synthesize();
+  assert.equal(c.configured, 0);
+  await controller.probe();
+  assert.equal(controller.setupReady, true);
+  controller.credentialChanged('local-one');
+  assert.equal(controller.setupReady, false);
+  await controller.probe();
+  registry.state.registry.models.splice(0, 1);
+  await controller.refreshInventory();
+  assert.equal(controller.setupReady, false);
+  assert.equal(controller.selectedModel(), undefined);
+  await controller.synthesize();
   assert.equal(c.analyzed, 0);
-  controller.changeContextTokens('32768');
+  controller.dispose();
+});
+
+test('missing-target repair opens AI Center and retains a return to synthesis setup', () => {
+  const widget = readFileSync(new URL('../../packages/theia-extension/src/browser/software-map-widget.ts', import.meta.url), 'utf8');
+  const center = readFileSync(new URL('../../packages/theia-extension/src/browser/ai-center-contribution.ts', import.meta.url), 'utf8');
+  const wiring = readFileSync(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
+  assert.match(widget, /Selected target is missing\. Use AI Center to repair it/);
+  assert.match(widget, /Manage connections in AI Center/);
+  assert.match(wiring, /openFromSoftwareMap\(\)/);
+  assert.match(center, /Return to synthesis setup/);
+});
+
+test('hosted evidence consent never carries into another project or target setup', async () => {
+  const a = connection(), b = connection(), registry = inventory();
+  let count = 0;
+  const controller = new SoftwareMapController(() => ++count === 1 ? a : b, () => {}, undefined, registry);
+  const attachA = controller.attach('file:///A'); a.attachPending.resolve({ projectHandle: 'a', status: idle }); await attachA;
+  await ready(controller, 'gemini');
+  assert.equal(controller.hostedConsentGranted(), true);
+  const attachB = controller.attach('file:///B'); b.attachPending.resolve({ projectHandle: 'b', status: idle }); await attachB;
+  await controller.refreshInventory();
+  controller.selectTarget('gemini-one', 'gemini-3.6-flash');
   await controller.probe();
-  assert.match(controller.error, /Discover models again/);
-  assert.equal(controller.setupReady, false);
-  await controller.discover();
+  assert.equal(controller.hostedConsentGranted(), false);
+  controller.consentToHostedEvidence();
+  assert.equal(controller.hostedConsentGranted(), true);
+  controller.selectTarget('local-one', 'Qwen3-Coder-30B-A3B-Instruct');
+  controller.selectTarget('gemini-one', 'gemini-3.6-flash');
   await controller.probe();
-  assert.equal(controller.setupReady, true);
-  assert.equal(c.configured, 2);
+  assert.equal(controller.hostedConsentGranted(), false);
   controller.dispose();
 });
 
-test('Gemini setup uses only Gemini, drops session key, and switching clears readiness', async () => {
-  const c = connection();
-  const writes: any[] = [];
-  let changes = 0;
-  c.synthesisEnvironment = () => Promise.resolve({ geminiKeyAvailable: true });
-  const controller = new SoftwareMapController(() => c, () => { changes++; }, {
-    getData: async () => undefined, setData: async (...args: any[]) => { writes.push(args); }
-  });
-  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
-  changes = 0;
-  await controller.setup();
-  assert.equal(controller.geminiEnvironmentKeyAvailable, true);
-  assert.equal(changes, 2);
-  controller.changeGeminiKey('session-secret');
-  controller.chooseProvider('gemini');
-  await controller.discoverGemini();
-  assert.deepEqual(controller.geminiModels, ['gemini-3.6-flash', 'gemini-3.8-flash']);
-  assert.equal(controller.geminiModel, 'gemini-3.6-flash');
-  await controller.probeGemini();
-  assert.equal(controller.setupReady, true);
-  assert.equal(controller.geminiKey, '');
-  assert.deepEqual(c.configurations, [{ kind: 'gemini', apiKey: 'session-secret' }]);
-  assert.equal(JSON.stringify(writes).includes('session-secret'), false);
-  assert.deepEqual(writes[0][1], { kind: 'gemini', endpoint: controller.endpoint, model: '', geminiModel: 'gemini-3.6-flash' });
-  assert.deepEqual(c.selectedModels, ['gemini-3.6-flash']);
-  controller.chooseProvider('local');
-  assert.equal(controller.setupReady, false);
-  await controller.synthesize('gemini');
-  assert.equal(controller.review, undefined);
-  await controller.discover();
-  assert.equal(c.configurations.at(-1).kind, 'local');
-  controller.dispose();
-});
-
-test('Gemini failure preserves retry without Local fallback or secret in UI error', async () => {
-  const c = connection();
-  c.probeSynthesis = () => Promise.reject(new Error('Gemini connection test failed'));
-  const controller = new SoftwareMapController(() => c, () => {});
-  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
-  await controller.setup();
-  controller.chooseProvider('gemini');
-  controller.changeGeminiKey('session-secret');
-  await controller.discoverGemini();
-  await controller.probeGemini();
-  assert.equal(controller.setupReady, false);
-  assert.equal(controller.geminiKey, '');
-  assert.equal(c.configurations.length, 1);
-  assert.equal(c.configurations[0].kind, 'gemini');
-  assert.equal(controller.error.includes('session-secret'), false);
-  await controller.changeGeminiModel('gemini-3.8-flash');
-  assert.equal(controller.setupReady, false);
-  c.probeSynthesis = () => Promise.resolve();
-  await controller.probeGemini();
-  assert.equal(controller.setupReady, true);
-  assert.deepEqual(c.selectedModels, ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.8-flash']);
-  controller.dispose();
-});
-
-test('failed-stage retry waits for a successful test of the changed Gemini model', async () => {
-  const c = connection();
+test('failed-stage retry requires a fresh probe of the exact selected model', async () => {
+  const c = connection(), registry = inventory();
   const saved = { state: 'failed', declarationPresent: false, declarationFingerprint: 'absent', resumable: {
-    runId: 'saved', failedStage: 'subsystem-discovery', failedProviderKind: 'gemini', failedModelLabel: 'gemini-3.6-flash',
-    message: 'Gemini synthesis request failed', completed: [{ stage: 'system-discovery', providerKind: 'gemini', modelLabel: 'gemini-3.6-flash' }] } };
+    runId: 'saved', failedStage: 'subsystem-discovery', message: 'Provider failed', completed: [] } };
   c.initializationStatus = () => Promise.resolve(saved);
   let retries = 0;
   c.retryFailedStage = () => { retries++; return Promise.resolve({ reviewId: 'recovered', packet: { items: [] },
     proposal: { nodes: [], openQuestions: [], unassignedEvidenceRefs: [] }, draft: [] }); };
-  const controller = new SoftwareMapController(() => c, () => {});
+  const controller = new SoftwareMapController(() => c, () => {}, undefined, registry);
   const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
-  controller.chooseProvider('gemini');
-  controller.changeGeminiKey('session-secret');
-  await controller.discoverGemini();
-  await controller.probeGemini();
-  await controller.changeGeminiModel('gemini-3.8-flash');
-  await controller.synthesize('gemini', true);
-  assert.equal(retries, 0);
-  await controller.probeGemini();
-  await controller.synthesize('gemini', true);
-  assert.equal(retries, 1);
+  await ready(controller, 'gemini');
+  controller.selectTarget('gemini-one', 'gemini-3.8-flash');
+  await controller.synthesize(true); assert.equal(retries, 0);
+  await controller.probe(); controller.consentToHostedEvidence();
+  await controller.synthesize(true); assert.equal(retries, 1);
   assert.equal(controller.review.reviewId, 'recovered');
-  assert.deepEqual(saved.resumable.completed, [{ stage: 'system-discovery', providerKind: 'gemini', modelLabel: 'gemini-3.6-flash' }]);
   controller.dispose();
 });
 
@@ -275,8 +281,7 @@ test('progress keeps text labels and theme tokens, with terminal heading from ru
   const widget = readFileSync(new URL('../../packages/theia-extension/src/browser/software-map-widget.ts', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
   assert.match(widget, /runState === 'failed' \? 'Analysis failed'/);
-  assert.match(widget, /Retry failed stage with \$\{model\.geminiModel/);
-  assert.match(widget, /Retry failed stage with \$\{model\.model/);
+  assert.match(widget, /Retry failed stage with selected target/);
   assert.match(widget, /`\$\{state\}: \$\{item\.title\}`/);
   for (const state of ['complete', 'current', 'queued', 'failed'])
     assert.match(css, new RegExp(`dope-smap-stage-${state}`));
@@ -285,60 +290,67 @@ test('progress keeps text labels and theme tokens, with terminal heading from ru
   assert.doesNotMatch(widget.slice(widget.indexOf('private renderProgress()'), widget.indexOf('private renderReview()')), /\.error/);
 });
 
-test('Gemini refresh and restart retain only selected model preference, never readiness or key', async () => {
-  const stored: any = { kind: 'gemini', endpoint: 'http://127.0.0.1:1234/v1', model: '', geminiModel: 'gemini-3.8-flash' };
-  const preference = { getData: async () => stored, setData: async (_key: string, value: any) => Object.assign(stored, value) };
-  const c = connection();
-  const controller = new SoftwareMapController(() => c, () => {}, preference);
+test('legacy safe preference converges onto an exact AI Center model without copying secrets', async () => {
+  const c = connection(), registry = inventory();
+  registry.state.registry.connections[1].id = 'dope-smap-legacy-gemini';
+  registry.state.registry.models.filter(item => item.connectionId === 'gemini-one').forEach(item => { item.connectionId = 'dope-smap-legacy-gemini'; });
+  const writes: any[] = [];
+  const credentials = { reuseSoftwareMapGemini: async (id: string) => { assert.equal(id, 'dope-smap-legacy-gemini'); return true; },
+    status: async () => ({ sources: [{ source: 'secure', status: 'available' }] }),
+    retireSoftwareMapGemini: async (id: string) => { assert.equal(id, 'dope-smap-legacy-gemini'); } };
+  const controller = new SoftwareMapController(() => c, () => {}, {
+    getData: async () => ({ kind: 'gemini', endpoint: '', model: '', geminiModel: 'gemini-3.8-flash' }),
+    setData: async (...args: any[]) => { writes.push(args); }
+  }, registry, credentials);
   const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
   await controller.setup();
-  assert.equal(controller.geminiModel, 'gemini-3.8-flash');
+  assert.equal(controller.connectionId, 'dope-smap-legacy-gemini'); assert.equal(controller.modelId, 'gemini-3.8-flash');
   assert.equal(controller.setupReady, false);
-  await controller.discoverGemini();
-  assert.equal(controller.geminiModel, 'gemini-3.8-flash');
-  await controller.probeGemini();
-  assert.equal(controller.setupReady, true);
-  await controller.discoverGemini();
-  assert.equal(controller.setupReady, false);
-  assert.equal(c.configurations.length, 1);
-  assert.deepEqual(c.selectedModels, ['gemini-3.8-flash']);
-  assert.equal(JSON.stringify(stored).includes('ready'), false);
-  assert.equal(JSON.stringify(stored).includes('secret'), false);
+  assert.deepEqual(writes, [['dope.smap.synthesis', undefined]]);
+  assert.equal(JSON.stringify(registry.state).includes('secret'), false);
   controller.dispose();
-  const next = connection();
-  const reopened = new SoftwareMapController(() => next, () => {}, preference);
-  const reattach = reopened.attach('file:///A'); next.attachPending.resolve({ projectHandle: 'new', status: idle }); await reattach;
-  await reopened.setup();
-  assert.equal(reopened.geminiModel, 'gemini-3.8-flash');
-  assert.equal(reopened.setupReady, false);
-  reopened.dispose();
 });
 
-test('cancelled Gemini analysis configures a fresh provider before model discovery', async () => {
-  const c = connection();
-  const pending = deferred();
-  let configured = false;
-  const configure = c.configureSynthesis;
-  c.configureSynthesis = (handle: string, options: any) => { configured = true; return configure(handle, options); };
-  c.clearSynthesis = () => { configured = false; return Promise.resolve(); };
-  c.refreshSynthesisModels = () => configured
-    ? Promise.resolve({ models: ['gemini-3.6-flash'] }) : Promise.reject(new Error('Gemini is not configured'));
-  c.startInitialization = () => pending.promise;
-  const controller = new SoftwareMapController(() => c, () => {});
+test('unmatched safe Local preference creates one central connection, then retires feature preference', async () => {
+  const c = connection(), registry = inventory();
+  const writes: any[] = [], mutations: any[] = [];
+  registry.mutate = async (request: any) => {
+    mutations.push(request);
+    registry.state.registry.connections.push(request.mutation.connection);
+    registry.state.registry.revision++;
+    return registry.state.registry;
+  };
+  registry.refreshModels = async (id: string) => {
+    registry.state.registry.models.push({ ...registry.state.registry.models[0],
+      connectionId: id, providerModelKey: 'migrated-model', label: 'Migrated' });
+    return registry.state;
+  };
+  const controller = new SoftwareMapController(() => c, () => {}, {
+    getData: async () => ({ kind: 'local', endpoint: 'http://127.0.0.1:4321/v1', model: 'migrated-model' }),
+    setData: async (...args: any[]) => { writes.push(args); }
+  }, registry);
   const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
   await controller.setup();
-  await controller.discoverGemini();
-  await controller.probeGemini();
-  const analysis = controller.synthesize('gemini');
-  await controller.cancel();
-  assert.equal(controller.flow, 'setup');
+  assert.equal(mutations.length, 1);
+  assert.equal(mutations[0].mutation.connection.id, 'dope-smap-legacy-local');
+  assert.equal(controller.connectionId, 'dope-smap-legacy-local');
+  assert.equal(controller.modelId, 'migrated-model');
+  assert.deepEqual(writes, [['dope.smap.synthesis', undefined]]);
   assert.equal(controller.setupReady, false);
-  await controller.discoverGemini();
-  assert.equal(controller.error, '');
-  assert.equal(c.configured, 2);
-  await controller.probeGemini();
-  assert.equal(controller.setupReady, true);
-  pending.resolve({ reviewId: 'stale', draft: [] }); await analysis;
+  controller.dispose();
+});
+
+test('missing inventory fails closed and preserves the selected target for repair', async () => {
+  const c = connection(), registry = inventory();
+  const controller = new SoftwareMapController(() => c, () => {}, undefined, registry);
+  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  await ready(controller);
+  registry.inventory = async () => { throw new Error('secret transport failure'); };
+  await controller.refreshInventory();
+  assert.equal(controller.setupReady, false);
+  assert.equal(controller.connectionId, 'local-one');
+  assert.match(controller.error, /AI Center inventory is unavailable/);
+  assert.doesNotMatch(controller.error, /secret/);
   controller.dispose();
 });
 
@@ -371,18 +383,18 @@ test('draft validation, manual cancellation and existing acceptance are explicit
 test('stale model discovery and proposal cannot render into a new project', async () => {
   const a = connection(), b = connection();
   const discovery = deferred(), proposal = deferred();
-  a.configureSynthesis = () => discovery.promise;
+  const registry = inventory(); registry.inventory = () => discovery.promise;
   a.startInitialization = () => proposal.promise;
   let count = 0;
-  const controller = new SoftwareMapController(() => ++count === 1 ? a : b, () => {});
+  const controller = new SoftwareMapController(() => ++count === 1 ? a : b, () => {}, undefined, registry);
   const attachingA = controller.attach('file:///A'); a.attachPending.resolve({ projectHandle: 'a', status: idle }); await attachingA;
   const setup = controller.setup();
   const attachingB = controller.attach('file:///B'); b.attachPending.resolve({ projectHandle: 'b', status: idle }); await attachingB;
-  discovery.resolve(['stale']); await setup;
-  assert.deepEqual(controller.models, []);
+  discovery.resolve(registry.state); await setup;
+  assert.equal(controller.workspace, 'file:///B');
   assert.equal(controller.setupBusy, false);
   const attachingA2 = controller.attach('file:///A'); a.attachPending.resolve({ projectHandle: 'a', status: idle }); await attachingA2;
-  controller.setupReady = true;
+  await ready(controller);
   const synthesis = controller.synthesize();
   const attachingB2 = controller.attach('file:///B'); b.attachPending.resolve({ projectHandle: 'b', status: idle }); await attachingB2;
   proposal.resolve({ reviewId: 'stale', draft: [] }); await synthesis;
@@ -396,9 +408,9 @@ test('controller accepts only current project progress and measures review deliv
   const pending = deferred();
   a.startInitialization = () => pending.promise;
   let count = 0;
-  const controller = new SoftwareMapController(() => ++count === 1 ? a : b, () => {});
+  const controller = new SoftwareMapController(() => ++count === 1 ? a : b, () => {}, undefined, inventory());
   const attachA = controller.attach('file:///A'); a.attachPending.resolve({ projectHandle: 'a', status: idle }); await attachA;
-  controller.setupReady = true;
+  await ready(controller);
   const analysis = controller.synthesize();
   const event = { stage: 'subsystem-discovery', status: 'started', elapsedMs: 10, stageElapsedMs: 2,
     message: 'Discovering Subsystems', subject: 'App', completedUnits: 0, totalUnits: 2 };
@@ -418,15 +430,14 @@ test('controller accepts only current project progress and measures review deliv
 test('setup/probe failures keep recovery controls usable and do not mark readiness', async () => {
   const c = connection();
   c.configureSynthesis = () => Promise.reject(new Error('runtime offline'));
-  const controller = new SoftwareMapController(() => c, () => {});
+  const controller = new SoftwareMapController(() => c, () => {}, undefined, inventory());
   const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
   await controller.setup();
-  await controller.discover();
+  controller.selectTarget('local-one', 'Qwen3-Coder-30B-A3B-Instruct');
+  await controller.probe();
   assert.match(controller.error, /runtime offline/);
   assert.equal(controller.setupBusy, false);
-  c.configureSynthesis = () => Promise.resolve({ models: ['model'] });
-  await controller.discover();
-  assert.equal(controller.error, '');
+  c.configureSynthesis = () => Promise.resolve({ models: ['Qwen3-Coder-30B-A3B-Instruct'] });
   c.probeSynthesis = () => Promise.reject(new Error('structured output unsupported'));
   await controller.probe();
   assert.match(controller.error, /structured output unsupported/);
@@ -446,9 +457,9 @@ test('retry retains a successful probe when analysis fails without provider read
   const c = connection();
   c.synthesisReady = () => Promise.resolve(true);
   c.startInitialization = () => Promise.reject(new Error('proposal validation failed'));
-  const controller = new SoftwareMapController(() => c, () => {});
+  const controller = new SoftwareMapController(() => c, () => {}, undefined, inventory());
   const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
-  controller.setupReady = true;
+  await ready(controller);
   await controller.synthesize();
   assert.equal(controller.setupReady, true);
   assert.match(controller.error, /proposal validation failed/);
@@ -747,7 +758,7 @@ test('accepted refinement is ready-only, preview-first, branch-local and drops l
   const controller = new SoftwareMapController(() => c, () => {});
   const attached = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attached;
   controller.initialization = { state: 'initialized', declarationFingerprint: 'canonical', declarationPresent: true };
-  controller.providerKind = 'local'; controller.model = 'chosen-model';
+  controller.connectionId = 'local-one'; controller.modelId = 'chosen-model';
   const draft = [
     { proposalKey: 'system', kind: 'system', parentProposalKey: null, id: 'system', name: 'Manual system', purpose: 'System', roots: ['src'] },
     { proposalKey: 'sub', kind: 'subsystem', parentProposalKey: 'system', id: 'sub', name: 'Manual sub', purpose: 'Sub', roots: ['src/api'], forbiddenDependencies: ['secret'] },
@@ -826,7 +837,7 @@ test('accepted refinement keeps conflicting file ownership in preview', async ()
   const controller = new SoftwareMapController(() => c, () => {});
   const attached = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attached;
   controller.initialization = { state: 'initialized', declarationFingerprint: 'canonical', declarationPresent: true };
-  controller.providerKind = 'local'; controller.model = 'chosen-model'; controller.setupReady = true;
+  controller.connectionId = 'local-one'; controller.modelId = 'chosen-model'; controller.setupReady = true;
   const draft = [
     { proposalKey: 'system', kind: 'system', parentProposalKey: null, id: 'system', name: 'System', purpose: 'System', roots: [] },
     { proposalKey: 'sub', kind: 'subsystem', parentProposalKey: 'system', id: 'sub', name: 'Subsystem', purpose: 'Subsystem', roots: ['src/a.ts'] },

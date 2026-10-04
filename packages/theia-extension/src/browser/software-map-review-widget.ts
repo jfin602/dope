@@ -25,7 +25,7 @@ export class SoftwareMapReviewWidget extends BaseWidget {
     private acceptedRequest = 0;
 
     constructor(private readonly controller: SoftwareMapController, private readonly workspaces: WorkspaceService,
-        private readonly opener: OpenerService) {
+        private readonly opener: OpenerService, private readonly openAICenter?: () => Promise<unknown>) {
         super();
         this.id = SOFTWARE_MAP_REVIEW_ID;
         this.title.label = this.title.caption = 'Edit Architecture';
@@ -139,36 +139,37 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         const model = this.controller;
         const setup = this.element('details');
         setup.setAttribute('aria-label', 'Search Deeper provider setup');
-        setup.append(this.element('summary', `Search Deeper provider · ${model.setupReady ? `${model.providerKind} ready` : 'setup required'}`));
-        const choice = this.element('select');
-        for (const kind of ['local', 'gemini'] as const) {
-            const option = this.element('option', kind === 'local' ? 'Local' : 'Gemini');
-            option.value = kind; option.selected = model.providerKind === kind; choice.append(option);
+        setup.append(this.element('summary', model.setupReady ? 'Search Deeper · selected model ready' : 'Search Deeper · setup required'));
+        const label = this.element('label', 'AI Center connection / model');
+        const select = this.element('select');
+        const empty = this.element('option', 'Select a connection and model'); empty.value = ''; select.append(empty);
+        for (const connection of model.inventory?.registry.connections ?? []) {
+            if (connection.config.type !== 'local' && connection.config.type !== 'gemini') continue;
+            for (const item of model.inventory?.registry.models.filter(candidate => candidate.connectionId === connection.id) ?? []) {
+                const option = this.element('option', connection.alias + ' — ' + item.label);
+                option.value = JSON.stringify([connection.id, item.providerModelKey]);
+                option.selected = connection.id === model.connectionId && item.providerModelKey === model.modelId;
+                select.append(option);
+            }
         }
-        choice.onchange = () => model.chooseProvider(choice.value as 'local' | 'gemini');
-        const providerLabel = this.element('label', 'Provider'); providerLabel.append(choice); setup.append(providerLabel);
-        if (model.providerKind === 'local') {
-            setup.append(this.field('Endpoint', model.endpoint, value => model.changeEndpoint(value)),
-                this.field('Loaded context tokens', String(model.contextWindowTokens), value => model.changeContextTokens(value)),
-                this.field('Optional session token', model.token, value => model.changeToken(value), false, true));
-            setup.append(this.button('Discover Local models', () => void model.discover()));
-            const select = this.element('select');
-            for (const id of model.models) { const option = this.element('option', id); option.value = id; option.selected = id === model.model; select.append(option); }
-            select.onchange = () => model.changeModel(select.value);
-            const modelLabel = this.element('label', 'Local model'); modelLabel.append(select);
-            setup.append(modelLabel, this.button('Test selected Local model', () => void model.probe()));
-        } else {
-            setup.append(this.element('p', model.geminiEnvironmentKeyAvailable ? 'Gemini key available on this machine.' : 'Enter an AI Studio API key.'),
-                this.field('AI Studio API key', model.geminiKey, value => model.changeGeminiKey(value), false, true));
-            setup.append(this.button('Discover Gemini models', () => void model.discoverGemini()));
-            const select = this.element('select');
-            for (const id of model.geminiModels) { const option = this.element('option', id); option.value = id; option.selected = id === model.geminiModel; select.append(option); }
-            select.onchange = () => void model.changeGeminiModel(select.value);
-            const modelLabel = this.element('label', 'Gemini model'); modelLabel.append(select);
-            setup.append(modelLabel, this.button('Test selected Gemini model', () => void model.probeGemini()));
+        select.onchange = () => {
+            if (select.value) { const [connectionId, modelId] = JSON.parse(select.value) as [string, string]; model.selectTarget(connectionId, modelId); }
+        };
+        label.append(select); setup.append(label);
+        setup.append(this.button('Manage connections in AI Center', () => void this.openAICenter?.()));
+        if (model.selectedConnection()?.config.type === 'local')
+            setup.append(this.field('Loaded context tokens', String(model.contextWindowTokens), value => model.changeContextTokens(value)));
+        if (model.selectedConnection()?.config.type === 'gemini') {
+            setup.append(this.element('p', 'Search Deeper may send bounded repository evidence to Google’s Gemini API. Confirm before invoking it.'));
+            const consent = this.element('label', 'I consent to sending repository evidence for Search Deeper');
+            const checkbox = this.element('input'); checkbox.type = 'checkbox'; checkbox.checked = model.hostedConsentGranted();
+            checkbox.onchange = () => { if (checkbox.checked) model.consentToHostedEvidence(); else model.revokeHostedEvidenceConsent(); };
+            consent.prepend(checkbox); setup.append(consent);
         }
-        setup.append(this.element('p', model.error || (model.setupBusy ? 'Checking provider…' : model.setupReady ?
-            'Selected model is ready for Search Deeper.' : 'Discover and test a selected model before Search Deeper.')));
+        setup.append(this.button('Refresh AI Center inventory', () => void model.refreshInventory()),
+            this.button('Run Software Map structured-output probe', () => void model.probe()));
+        setup.append(this.element('p', model.error || (model.setupBusy ? 'Checking model…' : model.setupReady ?
+            'Selected model is ready for Search Deeper.' : 'Select an AI Center target and run the Software Map probe.')));
         for (const button of setup.querySelectorAll('button')) button.disabled = model.setupBusy;
         return setup;
     }

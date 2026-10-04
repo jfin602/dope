@@ -9,5 +9,7 @@ export class AICredentialBackend implements AICredentialService {
     status(id: string) { return this.manager.status(id); }
     replace(id: string, source: 'session' | 'secure', secret: string) { return this.manager.replace(id, source, secret); }
     remove(id: string, source: 'session' | 'secure') { return this.manager.remove(id, source); }
+    reuseSoftwareMapGemini(id: string) { return this.manager.reuseSoftwareMapGemini(id); }
+    retireSoftwareMapGemini(id: string) { return this.manager.retireSoftwareMapGemini(id); }
     dispose(): void { this.unlisten(); }
 }

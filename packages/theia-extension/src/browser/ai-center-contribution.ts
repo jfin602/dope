@@ -74,11 +74,19 @@ export class AICenterContribution implements CommandContribution, MenuContributi
         return this.openForChat(chatPanelId);
     }
 
-    private async openForChat(chatPanelId?: string): Promise<AICenterWidget> {
+    async openFromSoftwareMap(): Promise<AICenterWidget> {
+        return this.openForChat('dope-software-map', 'Return to synthesis setup');
+    }
+
+    async openFromSoftwareMapReview(): Promise<AICenterWidget> {
+        return this.openForChat('dope-software-map-review', 'Return to Edit Architecture');
+    }
+
+    private async openForChat(chatPanelId?: string, label?: string): Promise<AICenterWidget> {
         const widget = await this.widgets.getOrCreateWidget<AICenterWidget>(AI_CENTER_ID);
         widget.setReturnToChat(chatPanelId ? () => {
             if (this.widgets.tryGetWidget(chatPanelId)) void this.shell.activateWidget(chatPanelId);
-        } : undefined);
+        } : undefined, label);
         if (!widget.isAttached) await this.shell.addWidget(widget, { area: 'main' });
         await this.shell.activateWidget(widget.id);
         return widget;

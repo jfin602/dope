@@ -15,5 +15,7 @@ export interface AICredentialService {
     status(connectionId: AIConnectionId): Promise<AICredentialStatus>;
     replace(connectionId: AIConnectionId, source: 'session' | 'secure', secret: string): Promise<AICredentialStatus>;
     remove(connectionId: AIConnectionId, source: 'session' | 'secure'): Promise<AICredentialStatus>;
+    reuseSoftwareMapGemini(connectionId: AIConnectionId): Promise<boolean>;
+    retireSoftwareMapGemini(connectionId: AIConnectionId): Promise<void>;
 }
 export interface AICredentialClient { notifyAICredentialChanged(connectionId: AIConnectionId): void }
