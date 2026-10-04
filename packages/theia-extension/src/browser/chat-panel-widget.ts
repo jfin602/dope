@@ -233,7 +233,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private selectedModel(): ChatModelSelection | undefined {
         const state = this.controller, usable = this.usableModels();
-        return resolveChatModel(usable, state.turnModel, state.chat?.settings.defaultModel);
+        return resolveChatModel(usable, state.turnModel,
+            state.chat?.settings.modelPolicy.type === 'exact' ? state.chat.settings.modelPolicy.model : undefined);
     }
     private renderSettings(chatId: string): HTMLElement {
         const form = document.createElement('section');
@@ -258,18 +259,22 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const row = document.createElement('label'); row.textContent = label; row.append(input); form.append(row);
         };
         const model = document.createElement('select');
-        model.append(new Option('No default model', ''));
+        model.append(new Option('Follow Interactive role', ''));
         for (const entry of this.usableModels()) model.append(new Option(entry.label,
             JSON.stringify(entry.selection)));
-        if (draft.defaultModel && !this.usableModels().some(entry => this.sameModel(entry.selection, draft.defaultModel)))
-            model.append(new Option('Default model unavailable', JSON.stringify(draft.defaultModel)));
-        model.value = draft.defaultModel ? JSON.stringify(draft.defaultModel) : '';
-        model.onchange = () => { draft.defaultModel = model.value ? JSON.parse(model.value) as ChatModelSelection : undefined;
+        const exact = draft.modelPolicy.type === 'exact' ? draft.modelPolicy.model : undefined;
+        if (exact && !this.usableModels().some(entry => this.sameModel(entry.selection, exact)))
+            model.append(new Option('Pinned model unavailable', JSON.stringify(exact)));
+        model.value = exact ? JSON.stringify(exact) : '';
+        model.onchange = () => { draft.modelPolicy = model.value ?
+            { type: 'exact', model: JSON.parse(model.value) as ChatModelSelection } : { type: 'follow-interactive' };
             draft.reasoningControls = undefined; this.render(); };
-        field('Default model', model);
-        if (!this.usableModels().length || draft.defaultModel && !this.usableModels().some(entry => this.sameModel(entry.selection, draft.defaultModel)))
+        field('Chat model policy', model);
+        if (!this.usableModels().length || exact && !this.usableModels().some(entry => this.sameModel(entry.selection, exact)))
             form.append(this.button('Manage AI connections', () => { void this.aiCenter?.openFromChat(this.id); }));
-        const active = this.usableModels().find(entry => this.sameModel(entry.selection, draft.defaultModel));
+        if (draft.modelPolicy.type === 'follow-interactive')
+            form.append(this.button('Configure Interactive role', () => { void this.aiCenter?.openRole('interactive'); }));
+        const active = this.usableModels().find(entry => this.sameModel(entry.selection, exact));
         for (const control of active?.controls ?? []) {
             const select = document.createElement('select');
             select.append(new Option('Default', ''), ...control.values.map(value => new Option(value, value)));
@@ -375,6 +380,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const focused = this.content.contains(active) ? active?.getAttribute('aria-label') : undefined;
         const selection = active instanceof HTMLTextAreaElement ? [active.selectionStart, active.selectionEnd] : undefined;
         this.status.textContent = state.error || (state.loading ? 'Loading Chats…' : !state.workspace ? 'Open one project to use Chats.' : '');
+        if (state.error.includes('Interactive role')) this.status.append(' ',
+            this.button('Configure Interactive in Roles', () => { void this.aiCenter?.openRole('interactive'); }));
         this.content.replaceChildren();
         if (!state.snapshot) {
             if (state.error && state.workspace) this.content.append(this.button('Retry', () => void this.attach()));
@@ -495,6 +502,28 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 provenance.textContent = ` · ${execution.selectedModel.connectionId}/${execution.selectedModel.modelId}` +
                     (execution.actualModel ? ` → ${execution.actualModel.providerId}/${execution.actualModel.modelLabel}` : '');
                 meta.append(provenance);
+                if (execution.routingProvenance) {
+                    const route = execution.routingProvenance;
+                    const why = document.createElement('details');
+                    const summary = document.createElement('summary'); summary.textContent = 'Why this model?';
+                    const detail = document.createElement('span');
+                    detail.textContent = `${route.requestedRole ?? 'Exact'} · ${route.source}; constraints: ` +
+                        `${route.effectiveHard.locality}, ${route.effectiveHard.requiredCapabilities.join(', ') || 'none'}, ` +
+                        `context ≥${route.effectiveHard.minimumKnownContextTokens ?? 0}, ` +
+                        `hosted egress ${route.effectiveHard.hostedProjectData}; ` +
+                        `preferred: ${route.preferredTarget ? `${route.preferredTarget.connectionId}/${route.preferredTarget.modelId}` : 'none'}; ` +
+                        `actual: ${route.executionLabels.connection}/${route.executionLabels.model}; ` +
+                        `attempts: ${route.attempts.map(item => `${item.target.connectionId}/${item.target.modelId} ${item.outcome}`).join(' → ')}`;
+                    why.append(summary, detail); meta.append(why);
+                } else if (execution.resolutionSource && ['failed', 'cancelled'].includes(execution.status)) {
+                    const why = document.createElement('details');
+                    const summary = document.createElement('summary'); summary.textContent = 'Why this model?';
+                    const detail = document.createElement('span');
+                    detail.textContent = `${execution.resolutionSource}; selected: ` +
+                        `${execution.selectedModel.connectionId}/${execution.selectedModel.modelId}; ` +
+                        `${execution.failure ?? execution.status}`;
+                    why.append(summary, detail); meta.append(why);
+                }
             }
             item.append(meta);
             transcript.append(item);
@@ -575,19 +604,23 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (state.context.length) menuButton('Clear context', () => state.clearContext());
         const modelSelector = document.createElement('select'); modelSelector.setAttribute('aria-label', 'Model for next turn');
         const usable = this.usableModels();
+        if (chat.settings.modelPolicy.type === 'follow-interactive') modelSelector.append(new Option('Follow Interactive', ''));
         for (const entry of usable) modelSelector.append(new Option(entry.label, JSON.stringify(entry.selection)));
         const selected = this.selectedModel();
         if (selected) modelSelector.value = JSON.stringify(selected);
-        else modelSelector.append(new Option(state.turnModel ? 'Selected model unavailable' :
-            chat.settings.defaultModel ? 'Default model unavailable' : 'No usable model', '', true, true));
+        else if (chat.settings.modelPolicy.type === 'follow-interactive' && !state.turnModel) modelSelector.value = '';
+        else modelSelector.append(new Option('Selected model unavailable', '', true, true));
         modelSelector.onchange = () => {
-            state.turnModel = JSON.parse(modelSelector.value) as ChatModelSelection;
+            state.turnModel = modelSelector.value ? JSON.parse(modelSelector.value) as ChatModelSelection : undefined;
             this.render();
         };
         if (selected && state.context.length) menuButton('Preview context', () => {
             void state.previewContext(selected).catch(error => { this.status.textContent = String(error); });
         });
-        if (!selected) menuButton('Manage AI connections', () => { void this.aiCenter?.openFromChat(this.id); });
+        if (!selected && chat.settings.modelPolicy.type === 'exact')
+            menuButton('Manage AI connections', () => { void this.aiCenter?.openFromChat(this.id); });
+        if (chat.settings.modelPolicy.type === 'follow-interactive')
+            menuButton('Configure Interactive role', () => { void this.aiCenter?.openRole('interactive'); });
         menuButton('Refresh models', () => void this.loadModels());
         let submitButton: HTMLButtonElement;
         if (state.running) {
@@ -598,16 +631,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         } else {
             const retry = [...chat.messages].reverse().find(message => message.role === 'assistant' &&
                 ['failed', 'cancelled'].includes(message.execution.status));
-            if (retry) menuButton('Retry', () => { if (selected) void state.runTurn(selected, retry.id); }, !selected);
+            const canSend = Boolean(selected || chat.settings.modelPolicy.type === 'follow-interactive' && !state.turnModel);
+            const confirmHosted = () => window.confirm('Send this Chat message, history and selected project context to the hosted model chosen by Interactive?');
+            if (retry) menuButton('Retry', () => { if (canSend) void state.runTurn(state.turnModel, retry.id, confirmHosted); }, !canSend);
             const submit = () => {
-                if (!selected || state.pending || !state.draft.trim()) return;
+                if (!canSend || state.pending || !state.draft.trim()) return;
                 const previousTop = scroll.scrollTop;
-                void state.runTurn(selected);
+                void state.runTurn(state.turnModel, undefined, confirmHosted);
                 const current = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
                 if (current) current.scrollTop = previousTop;
                 this.scrollToLatest();
             };
-            submitButton = this.button('', submit, !selected || state.pending || !state.draft.trim());
+            submitButton = this.button('', submit, !canSend || state.pending || !state.draft.trim());
             submitButton.title = 'Send'; submitButton.setAttribute('aria-label', 'Send');
             const icon = document.createElement('span'); icon.className = codicon('arrow-up');
             icon.setAttribute('aria-hidden', 'true'); submitButton.append(icon);
@@ -620,7 +655,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         submitButton.classList.add('dope-chat-composer-submit');
         input.oninput = () => {
             state.draft = input.value;
-            if (!state.running) submitButton.disabled = !selected || state.pending || !state.draft.trim();
+            if (!state.running) submitButton.disabled =
+                !(selected || chat.settings.modelPolicy.type === 'follow-interactive' && !state.turnModel) ||
+                state.pending || !state.draft.trim();
             resizeChatInput(input);
         };
         toolbar.append(more, modelSelector, submitButton);

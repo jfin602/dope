@@ -1,3 +1,5 @@
+import { parseRoutingProvenance, type RoutingProvenance } from '@dope/ai';
+
 /** Project Chat identity belongs to Dope; neither storage paths nor runtime IDs define it. */
 export type ChatId = string;
 export type ChatFolderPath = string; // Root is ''. Other paths use slash-separated safe names.
@@ -27,6 +29,7 @@ export interface ChatContextRef {
 /** A connection is a runtime configuration reference, never a credential or canonical Chat identity. */
 export interface ChatModelSelection { connectionId: string; modelId: string }
 export interface ChatModelProvenance extends ChatModelSelection { schemaVersion: 1; providerId: string; modelLabel: string }
+export type ChatModelPolicy = { type: 'exact'; model: ChatModelSelection } | { type: 'follow-interactive' };
 
 export interface ChatContextPolicy {
     maxInputTokens: number;
@@ -37,7 +40,7 @@ export interface ChatContextPolicy {
 }
 export interface ChatSettings {
     schemaVersion: 1;
-    defaultModel?: ChatModelSelection;
+    modelPolicy: ChatModelPolicy;
     reasoningControls?: Record<string, string>;
     context: ChatContextPolicy;
 }
@@ -47,7 +50,9 @@ export interface ChatExecution {
     id: string;
     status: AssistantStatus;
     selectedModel: ChatModelSelection; // Snapshotted at Send; never rewritten by settings.
+    resolutionSource?: 'explicit-turn' | 'chat-exact-default' | 'role-policy';
     actualModel?: ChatModelProvenance; // Set when a runtime starts, then immutable.
+    routingProvenance?: RoutingProvenance;
     startedAt: string;
     finishedAt?: string;
     failure?: string; // User-safe summary; no raw provider payload.
@@ -165,6 +170,12 @@ export function parseChatModelSelection(value: unknown): ChatModelSelection {
     const v = record(value, ['connectionId', 'modelId'], ['connectionId', 'modelId']);
     return { connectionId: string(v.connectionId, 'connection ID'), modelId: string(v.modelId, 'model ID') };
 }
+export function parseChatModelPolicy(value: unknown): ChatModelPolicy {
+    const v = record(value, ['type', 'model'], ['type']);
+    if (v.type === 'follow-interactive' && v.model === undefined) return { type: 'follow-interactive' };
+    if (v.type === 'exact') return { type: 'exact', model: parseChatModelSelection(v.model) };
+    throw new Error('Invalid Chat model policy');
+}
 function parseModelProvenance(value: unknown): ChatModelProvenance {
     const v = record(value, ['schemaVersion', 'connectionId', 'modelId', 'providerId', 'modelLabel'],
         ['schemaVersion', 'connectionId', 'modelId', 'providerId', 'modelLabel']);
@@ -194,20 +205,22 @@ export function parseChatContextRef(value: unknown): ChatContextRef {
     return ref;
 }
 export function parseChatSettings(value: unknown): ChatSettings {
-    const v = record(value, ['schemaVersion', 'defaultModel', 'reasoningControls', 'context'], ['schemaVersion', 'context']);
+    const v = record(value, ['schemaVersion', 'modelPolicy', 'defaultModel', 'reasoningControls', 'context'], ['schemaVersion', 'context']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported Chat settings schema');
+    if (v.modelPolicy !== undefined && v.defaultModel !== undefined) throw new Error('Ambiguous Chat model policy');
     const c = record(v.context, ['maxInputTokens', 'reservedOutputTokens', 'history', 'savedChatSearch', 'allowedSources'],
         ['maxInputTokens', 'reservedOutputTokens', 'history', 'savedChatSearch', 'allowedSources']);
     if (typeof c.savedChatSearch !== 'boolean' || !Array.isArray(c.allowedSources)) throw new Error('Invalid context policy');
     const allowedSources = c.allowedSources.map(source => choice(source, contextKinds, 'context source'));
     if (new Set(allowedSources).size !== allowedSources.length) throw new Error('Duplicate context source');
-    const settings: ChatSettings = { schemaVersion: 1, context: {
+    const settings: ChatSettings = { schemaVersion: 1,
+        modelPolicy: v.modelPolicy === undefined ? v.defaultModel === undefined ? { type: 'follow-interactive' } :
+            { type: 'exact', model: parseChatModelSelection(v.defaultModel) } : parseChatModelPolicy(v.modelPolicy), context: {
         maxInputTokens: count(c.maxInputTokens, 'input budget', true),
         reservedOutputTokens: count(c.reservedOutputTokens, 'output reserve'),
         history: choice(c.history, ['recent', 'none'], 'history policy'),
         savedChatSearch: c.savedChatSearch, allowedSources,
     } };
-    if (v.defaultModel !== undefined) settings.defaultModel = parseChatModelSelection(v.defaultModel);
     if (v.reasoningControls !== undefined) {
         if (!v.reasoningControls || typeof v.reasoningControls !== 'object' || Array.isArray(v.reasoningControls))
             throw new Error('Invalid reasoning controls');
@@ -224,16 +237,24 @@ export function availableChatContextTokens(policy: ChatContextPolicy, modelWindo
 }
 
 function parseExecution(value: unknown): ChatExecution {
-    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'actualModel', 'startedAt', 'finishedAt', 'failure'],
+    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure'],
         ['schemaVersion', 'id', 'status', 'selectedModel', 'startedAt']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported execution schema');
     const execution: ChatExecution = { schemaVersion: 1, id: identifier(v.id), status: choice(v.status, statuses, 'assistant status'),
         selectedModel: parseChatModelSelection(v.selectedModel), startedAt: time(v.startedAt) };
     if (v.actualModel !== undefined) execution.actualModel = parseModelProvenance(v.actualModel);
+    if (v.resolutionSource !== undefined) execution.resolutionSource = choice(v.resolutionSource,
+        ['explicit-turn', 'chat-exact-default', 'role-policy'] as const, 'resolution source');
+    if (v.routingProvenance !== undefined) execution.routingProvenance = parseRoutingProvenance(v.routingProvenance);
     if (v.finishedAt !== undefined) execution.finishedAt = time(v.finishedAt);
     if (v.failure !== undefined) execution.failure = string(v.failure, 'failure');
-    if (execution.actualModel && execution.actualModel.connectionId !== execution.selectedModel.connectionId)
+    if (execution.actualModel && execution.actualModel.connectionId !== execution.selectedModel.connectionId &&
+        execution.resolutionSource !== 'role-policy')
         throw new Error('Execution connection differs from selection');
+    if (execution.routingProvenance && execution.actualModel &&
+        (execution.routingProvenance.actualTarget.connectionId !== execution.actualModel.connectionId ||
+            execution.routingProvenance.actualTarget.modelId !== execution.actualModel.modelId))
+        throw new Error('Routing provenance differs from actual model');
     if (['complete', 'failed', 'cancelled'].includes(execution.status) !== Boolean(execution.finishedAt) ||
         (execution.status === 'failed') !== Boolean(execution.failure) ||
         (['streaming', 'complete'].includes(execution.status) && !execution.actualModel) ||

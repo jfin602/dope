@@ -6,7 +6,7 @@ export function resolveChatModel<T extends { selection: { connectionId: string; 
     usable: readonly T[], override?: T['selection'], defaultModel?: T['selection']): T['selection'] | undefined {
     const requested = override ?? defaultModel;
     return requested ? usable.find(entry => entry.selection.connectionId === requested.connectionId &&
-        entry.selection.modelId === requested.modelId)?.selection : usable[0]?.selection;
+        entry.selection.modelId === requested.modelId)?.selection : undefined;
 }
 export const chatLauncherOptions = {
     left: { instanceId: '00000000-0000-4000-8000-000000000001' },

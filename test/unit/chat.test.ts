@@ -18,7 +18,7 @@ function sampleChat(): Chat {
   return {
     schemaVersion: 1, id: chatId, revision: 2, folderPath: 'Research/Nested',
     title: 'Draft', titleSource: 'placeholder', color: 'blue', createdAt: now, updatedAt: later, lastInteractedAt: later,
-    settings: { schemaVersion: 1, defaultModel: selectedModel, context: {
+    settings: { schemaVersion: 1, modelPolicy: { type: 'exact', model: selectedModel }, context: {
       maxInputTokens: 4096, reservedOutputTokens: 512, history: 'recent', savedChatSearch: false,
       allowedSources: ['editor', 'saved-chat'],
     } },

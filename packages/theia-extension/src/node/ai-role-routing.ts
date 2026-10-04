@@ -9,14 +9,15 @@ import type { AIInventoryController } from './ai-registry-backend';
 import type { ModelConnectionsRegistry } from './model-connections';
 
 type Complete = Extract<ConversationEvent, { type: 'complete' }>;
-export type RoutedConversationEvent = Extract<ConversationEvent, { type: 'delta' }> |
+export type RoutedConversationEvent = (Extract<ConversationEvent, { type: 'delta' }> & { target: AIRoleTarget }) |
     (Complete & { routingProvenance: RoutingProvenance });
 export interface RoleConversationRequest {
     roleId: AIRoleId;
     requestHard: AIRoleHardConstraints;
     hostedProjectDataAuthorized: boolean;
     allowFallback: boolean;
-    conversation: Omit<ConversationRequest, 'modelId'>;
+    signal?: AbortSignal;
+    conversation: Omit<ConversationRequest, 'modelId'> | ((target: AIRoleTarget) => Promise<Omit<ConversationRequest, 'modelId'>>);
 }
 
 export class RoleRoutingFailure extends Error {
@@ -51,6 +52,15 @@ export class AIRoleRoutingService {
         private readonly inventory: Pick<AIInventoryController, 'inventory' | 'loadedLocalModelsSnapshot'>,
         private readonly runtime: Pick<ModelConnectionsRegistry, 'generate'>) {}
 
+    async resolve(roleId: AIRoleId, requestHard: AIRoleHardConstraints, hostedProjectDataAuthorized: boolean) {
+        const policy = parseAIRolePolicySnapshot(await this.policies.read());
+        const state = await this.inventory.inventory();
+        const inventory = parseAIRegistrySnapshot(state.registry);
+        return { inventory, resolution: resolveAIRole({ policy, inventory, observations: state.observations,
+            loadedLocalModels: this.inventory.loadedLocalModelsSnapshot(), roleId, requestHard,
+            hostedProjectDataAuthorized }) };
+    }
+
     async *generate(request: RoleConversationRequest): AsyncIterable<RoutedConversationEvent> {
         if (typeof request.allowFallback !== 'boolean' || typeof request.hostedProjectDataAuthorized !== 'boolean')
             throw new Error('Explicit fallback and hosted egress decisions required');
@@ -61,6 +71,7 @@ export class AIRoleRoutingService {
             loadedLocalModels: this.inventory.loadedLocalModelsSnapshot(), roleId: request.roleId,
             requestHard: request.requestHard, hostedProjectDataAuthorized: request.hostedProjectDataAuthorized });
         const attempts: AIRoutingAttempt[] = [];
+        const signal = request.signal ?? (typeof request.conversation === 'function' ? undefined : request.conversation.signal);
         const mayFallback = request.allowFallback && resolution.policyAllowsFallback;
         const rolePolicy = policy.policies.find(item => item.roleId === resolution.roleId)!;
         const entries = [rolePolicy.preferred, ...rolePolicy.fallbacks];
@@ -75,7 +86,8 @@ export class AIRoleRoutingService {
             ...resolution.candidates.map(candidate => ({ entryIndex: candidate.entryIndex, candidate }))
         ].sort((left, right) => left.entryIndex - right.entryIndex);
         for (const step of sequence) {
-            if (request.conversation.signal?.aborted) throw new RoleRoutingFailure(attempts, 'Role execution cancelled');
+            if (signal?.aborted)
+                throw new RoleRoutingFailure(attempts, 'Role execution cancelled');
             if (attempts.length >= 9) break;
             if ('excluded' in step) {
                 const excluded = step.excluded;
@@ -103,9 +115,10 @@ export class AIRoleRoutingService {
                 throw new RoleRoutingFailure([...attempts, { target, outcome: 'consent-required' }]);
             let meaningfulOutput = false;
             try {
-                for await (const event of this.runtime.generate(target, request.conversation)) {
+                const conversation = typeof request.conversation === 'function' ? await request.conversation(target) : request.conversation;
+                for await (const event of this.runtime.generate(target, conversation)) {
                     if (event.type === 'delta') {
-                        if (event.text.length) { meaningfulOutput = true; yield event; }
+                        if (event.text.length) { meaningfulOutput = true; yield { ...event, target }; }
                     } else {
                         meaningfulOutput = true;
                         const actualTarget = { connectionId: target.connectionId,
@@ -126,9 +139,9 @@ export class AIRoleRoutingService {
                 throw new ModelRuntimeFailure('Incomplete model output', 'nonretryable-provider');
             } catch (error) {
                 const category = meaningfulOutput ? 'partial-output' :
-                    request.conversation.signal?.aborted ? 'cancelled' : outcome(error);
+                    signal?.aborted ? 'cancelled' : outcome(error);
                 attempts.push({ target, outcome: category });
-                if (request.conversation.signal?.aborted || !mayFallback || meaningfulOutput ||
+                if (category === 'cancelled' || !mayFallback || meaningfulOutput ||
                     !['unavailable', 'transient-transport', 'transient-upstream'].includes(category))
                     throw new RoleRoutingFailure(attempts);
             }

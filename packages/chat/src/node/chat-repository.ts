@@ -9,7 +9,7 @@ import type { Chat, ChatCollection, ChatFolder } from '../index';
 import type { ChatEvent, ChatLeaseResult, ChatOperation, ChatSearchHit } from '../service';
 
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
-const DEFAULT_SETTINGS = { schemaVersion: 1 as const, context: { maxInputTokens: 8192, reservedOutputTokens: 1024,
+const DEFAULT_SETTINGS = { schemaVersion: 1 as const, modelPolicy: { type: 'follow-interactive' as const }, context: { maxInputTokens: 8192, reservedOutputTokens: 1024,
     history: 'recent' as const, savedChatSearch: false, allowedSources: [] } };
 const interrupted = 'Interrupted before completion';
 const leaseDuration = 60_000;
@@ -163,8 +163,9 @@ export class ChatRepository {
             let chat: Chat;
             try {
                 const stored = JSON.parse(await safeText(file));
-                if (stored && typeof stored === 'object' && !Array.isArray(stored) && !Object.hasOwn(stored, 'color')) {
-                    chat = parseChat({ ...stored, color: assignedChatColor(stored.id) });
+                if (stored && typeof stored === 'object' && !Array.isArray(stored) &&
+                    (!Object.hasOwn(stored, 'color') || !Object.hasOwn(stored.settings ?? {}, 'modelPolicy'))) {
+                    chat = parseChat({ ...stored, color: stored.color ?? assignedChatColor(stored.id) });
                     legacyIds.add(chat.id);
                 } else chat = parseChat(stored);
             }
@@ -371,7 +372,8 @@ export class ChatRepository {
                         throw new Error('Assistant execution is not pending');
                     const messages = [...c.messages];
                     messages[at] = parseChatMessage({ ...message, execution: {
-                        ...message.execution, status: 'streaming', actualModel: operation.actualModel } });
+                        ...message.execution, status: 'streaming', actualModel: operation.actualModel,
+                        ...(operation.routingProvenance ? { routingProvenance: operation.routingProvenance } : {}) } });
                     return { ...c, lastInteractedAt: now, messages };
                 }); break;
                 case 'finish-assistant': update(c => {
@@ -379,6 +381,9 @@ export class ChatRepository {
                     const message = c.messages[at];
                     if (!message || message.role !== 'assistant' || !['pending', 'streaming'].includes(message.execution.status))
                         throw new Error('Assistant execution is not active');
+                    if (message.execution.routingProvenance && operation.routingProvenance &&
+                        JSON.stringify(message.execution.routingProvenance) !== JSON.stringify(operation.routingProvenance))
+                        throw new Error('Assistant routing provenance is immutable');
                     if (message.execution.actualModel && operation.actualModel &&
                         (message.execution.actualModel.connectionId !== operation.actualModel.connectionId ||
                         message.execution.actualModel.providerId !== operation.actualModel.providerId))
@@ -386,6 +391,7 @@ export class ChatRepository {
                     const messages = [...c.messages];
                     messages[at] = parseChatMessage({ ...message, content: operation.content, execution: {
                         ...message.execution, status: operation.outcome, actualModel: operation.actualModel ?? message.execution.actualModel,
+                        routingProvenance: operation.routingProvenance ?? message.execution.routingProvenance,
                         finishedAt: now, ...(operation.outcome === 'failed' ? { failure: operation.failure } : {}) } });
                     return { ...c, lastInteractedAt: now, messages };
                 }); break;

@@ -60,7 +60,7 @@ test('composer lifecycle saves pending before runtime, streams, keeps provenance
         assert.equal(await panel.newChat(''), true);
         const id = panel.chatId!;
         const settings = structuredClone(panel.chat!.settings);
-        settings.defaultModel = { connectionId: 'one', modelId: 'chat' };
+        settings.modelPolicy = { type: 'exact', model: { connectionId: 'one', modelId: 'chat' } };
         settings.reasoningControls = { effort: 'low' };
         settings.context.history = 'none';
         settings.context.maxInputTokens = 1024;
@@ -68,7 +68,7 @@ test('composer lifecycle saves pending before runtime, streams, keeps provenance
         settings.context.savedChatSearch = true;
         assert.equal(await panel.mutate({ type: 'set-settings', chatId: id, settings }), true);
         panel.draft = 'First question';
-        assert.equal(await panel.runTurn(settings.defaultModel), true, panel.error);
+        assert.equal(await panel.runTurn(settings.modelPolicy.model), true, panel.error);
         assert.equal(pendingObserved, true);
         assert.equal(panel.turnModel, undefined);
         assert.equal(panel.draft, '');
@@ -84,7 +84,7 @@ test('composer lifecycle saves pending before runtime, streams, keeps provenance
         unsupported.reasoningControls = { effort: 'high' };
         assert.equal(await panel.mutate({ type: 'set-settings', chatId: id, settings: unsupported }), true);
         panel.draft = 'Unsupported control';
-        assert.equal(await panel.runTurn(settings.defaultModel), false);
+        assert.equal(await panel.runTurn(settings.modelPolicy.model), false);
         assert.match(panel.error, /does not support/);
         assert.equal(panel.chat!.messages.length, 2);
         assert.equal(await panel.mutate({ type: 'set-settings', chatId: id, settings }), true);
@@ -98,7 +98,7 @@ test('composer lifecycle saves pending before runtime, streams, keeps provenance
         assert.equal(failed.execution.selectedModel.connectionId, 'two');
         assert.equal(failed.execution.failure, 'Conversation failed');
         assert.equal(panel.turnModel, undefined);
-        assert.equal(panel.chat!.settings.defaultModel?.connectionId, 'one');
+        assert.equal(panel.chat!.settings.modelPolicy.type === 'exact' ? panel.chat!.settings.modelPolicy.model.connectionId : undefined, 'one');
         assert.deepEqual(calls, ['one', 'two']);
         assert.equal(await panel.runTurn(settings.defaultModel, failed.id), true);
         assert.deepEqual(calls, ['one', 'two', 'one']);
@@ -203,6 +203,8 @@ test('panel source keeps input and toolbar rows with AI Center repair, settings 
     assert.match(source, /\['Ask', 'Explain', 'Trace', 'Find Related'\]/);
     assert.match(source, /modelSelector\.onchange = \(\) => \{[\s\S]*?state\.turnModel = [^;]+;\s*this\.render\(\)/);
     assert.match(source, /Manage AI connections/);
+    assert.match(source, /Why this model\?/);
+    assert.match(source, /Configure Interactive in Roles/);
     assert.match(source, /Chat settings/);
     assert.match(source, /execution\.status/);
     assert.match(source, /actualModel\.providerId/);

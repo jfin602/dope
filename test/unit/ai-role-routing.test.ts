@@ -211,3 +211,21 @@ test('exact provenance is one target only; policy and inventory changes affect o
     assert.deepEqual(base.calls, ['a', 'b']);
     assert.equal(next[0].routingProvenance.policyRevision, 5);
 });
+
+test('each routed attempt receives context composed for its own exact target', async () => {
+    const base = harness({ scripts: { a: [new ModelRuntimeFailure('temporary', 'transient-transport')] } });
+    const composed: string[] = [];
+    const events = await base.run({ conversation: async target => {
+        composed.push(target.connectionId);
+        return { messages: [{ role: 'user' as const, content: target.connectionId }] };
+    } });
+    assert.deepEqual(composed, ['a', 'b']);
+    assert.equal(events.at(-1)?.type, 'complete');
+    const controller = new AbortController();
+    controller.abort();
+    await rejected(() => base.run({ signal: controller.signal, conversation: async target => {
+        composed.push(target.connectionId);
+        return { messages: [{ role: 'user' as const, content: 'late' }] };
+    } }), []);
+    assert.deepEqual(composed, ['a', 'b']);
+});

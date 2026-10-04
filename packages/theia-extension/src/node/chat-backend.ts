@@ -4,8 +4,13 @@ import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, Chat
 import { suggestedChatTitle, type ChatAssistantMessage, type ChatModelProvenance, type ChatUserMessage } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
+import type { AIRoleHardConstraints, RoutingProvenance } from '@dope/ai';
 import { ModelConnectionsRegistry } from './model-connections';
 import { ChatContextComposer } from './chat-context-composer';
+import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
+
+const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
+    locality: 'any', enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
 
 /** One RPC connection owns one project handle; the repository shares durable state and events. */
 export class ChatBackend implements ChatService {
@@ -18,7 +23,8 @@ export class ChatBackend implements ChatService {
     private readonly pendingCancel = new Map<string, string>();
 
     constructor(private readonly repository: ChatRepository, client: ChatClient,
-        private readonly models?: ModelConnectionsRegistry, private readonly composer?: ChatContextComposer) {
+        private readonly models?: ModelConnectionsRegistry, private readonly composer?: ChatContextComposer,
+        private readonly routing?: AIRoleRoutingService) {
         this.unlisten = repository.onChange((root, event) => {
             if (!this.disposed && root === this.root && this.handle)
                 client.notifyChatEvent({ ...event, projectHandle: this.handle });
@@ -57,7 +63,7 @@ export class ChatBackend implements ChatService {
         if (!request || typeof request !== 'object') throw new Error('Invalid Chat search request');
         return this.repository.search(this.active(request.projectHandle), request.query, request.limit, request.excludeChatId);
     }
-    async previewContext(request: { projectHandle: string; chatId: string; selectedModel: ChatTurnRequest['selectedModel'];
+    async previewContext(request: { projectHandle: string; chatId: string; selectedModel: NonNullable<ChatTurnRequest['selectedModel']>;
         content: string; context: NonNullable<ChatTurnRequest['context']> }): Promise<ChatContextPreview> {
         const root = this.active(request.projectHandle);
         if (!this.composer || !this.models) throw new Error('Context composer unavailable');
@@ -91,14 +97,6 @@ export class ChatBackend implements ChatService {
         const snapshot = await this.repository.read(root);
         const chat = snapshot.chats.find(item => item.id === request.chatId);
         if (!chat) throw new Error('Chat not found');
-        const connection = (await this.models.list()).connections.find(item => item.id === request.selectedModel.connectionId);
-        const model = connection?.ready && connection.models.find(item => item.id === request.selectedModel.modelId && item.usable);
-        if (!connection || !model) throw new ModelRuntimeFailure('Selected model is unavailable; manage AI connections in AI Center', 'model-unavailable');
-        const controls = chat.settings.reasoningControls ?? {};
-        for (const [id, value] of Object.entries(controls))
-            if (!model.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
-                throw new ModelRuntimeFailure('Selected model does not support the saved reasoning control', 'unsupported-capability');
-        if (!this.composer) throw new Error('Context composer unavailable');
         const retryIndex = request.retryMessageId ? chat.messages.findIndex(item => item.id === request.retryMessageId) : -1;
         const content = request.retryMessageId ? (() => {
             if (retryIndex < 1 || chat.messages[retryIndex].role !== 'assistant' ||
@@ -107,6 +105,32 @@ export class ChatBackend implements ChatService {
             return chat.messages[retryIndex - 1].content;
         })() : request.content?.trim() ?? '';
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
+        const requestHard: AIRoleHardConstraints = { ...chatHard,
+            minimumKnownContextTokens: Math.ceil(Buffer.byteLength(content, 'utf8') / 3) + 4 +
+                chat.settings.context.reservedOutputTokens };
+        const following = !request.selectedModel && chat.settings.modelPolicy.type === 'follow-interactive';
+        let selectedModel = request.selectedModel ?? (chat.settings.modelPolicy.type === 'exact' ? chat.settings.modelPolicy.model : undefined);
+        if (following) {
+            if (!this.routing) throw new Error('Interactive role routing unavailable');
+            const proposed = await this.routing.resolve('interactive', requestHard, true);
+            const first = proposed.resolution.selectedTarget;
+            if (!first) throw new Error('Interactive role has no eligible model; configure or repair it in AI Center → Roles');
+            const locality = proposed.inventory.models.find(item => item.connectionId === first.connectionId &&
+                item.providerModelKey === first.modelId)?.locality;
+            if (locality === 'hosted' && !request.hostedProjectDataAuthorized)
+                throw new Error('Chat hosted egress confirmation required');
+            const eligible = await this.routing.resolve('interactive', requestHard, request.hostedProjectDataAuthorized === true);
+            selectedModel = eligible.resolution.selectedTarget;
+        }
+        if (!selectedModel) throw new Error('Select an exact model or configure Interactive in AI Center → Roles');
+        const connection = (await this.models.list()).connections.find(item => item.id === selectedModel.connectionId);
+        const model = connection?.ready && connection.models.find(item => item.id === selectedModel.modelId && item.usable);
+        if (!connection || !model) throw new ModelRuntimeFailure('Selected model is unavailable; manage AI connections in AI Center', 'model-unavailable');
+        const controls = chat.settings.reasoningControls ?? {};
+        for (const [id, value] of Object.entries(controls))
+            if (!model.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
+                throw new ModelRuntimeFailure('Selected model does not support the saved reasoning control', 'unsupported-capability');
+        if (!this.composer) throw new Error('Context composer unavailable');
         const composed = await this.composer.compose(root, contextChat, content, request.context ?? [], model.capabilities);
         const preview: ChatContextPreview = { refs: composed.refs, diagnostics: composed.diagnostics,
             usedTokens: composed.usedTokens, budgetTokens: composed.budgetTokens };
@@ -132,6 +156,7 @@ export class ChatBackend implements ChatService {
         let output = '';
         let actual: ChatModelProvenance = { schemaVersion: 1, connectionId: connection.id,
             modelId: model.id, providerId: connection.providerId, modelLabel: model.label };
+        let routingProvenance: RoutingProvenance | undefined;
         try {
             if (this.pendingCancel.get(key) === request.leaseToken) abort.abort();
             if (!request.retryMessageId) {
@@ -143,23 +168,67 @@ export class ChatBackend implements ChatService {
             const now = new Date().toISOString();
             assistant = { schemaVersion: 1, id: randomUUID(), role: 'assistant', createdAt: now, content: '',
                 execution: { schemaVersion: 1, id: randomUUID(), status: 'pending',
-                    selectedModel: { ...request.selectedModel }, startedAt: now } };
+                    selectedModel: { ...selectedModel }, resolutionSource: following ? 'role-policy' :
+                        request.selectedModel ? 'explicit-turn' : 'chat-exact-default',
+                    startedAt: now } };
             await mutate({ type: 'begin-assistant', chatId: key, message: assistant });
-            await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id, actualModel: actual });
+            if (!following) {
+                await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id, actualModel: actual });
+            }
             let sequence = 0;
-            for await (const event of this.models.generate(request.selectedModel,
+            const events = following ? this.routing!.generate({ roleId: 'interactive', requestHard,
+                hostedProjectDataAuthorized: request.hostedProjectDataAuthorized === true, allowFallback: true,
+                signal: abort.signal,
+                conversation: async target => {
+                    const resolvedConnection = (await this.models!.list()).connections.find(item => item.id === target.connectionId);
+                    const resolvedModel = resolvedConnection?.models.find(item => item.id === target.modelId && item.usable);
+                    if (!resolvedModel) throw new ModelRuntimeFailure('Role target unavailable', 'model-unavailable');
+                    for (const [id, value] of Object.entries(controls))
+                        if (!resolvedModel.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
+                            throw new ModelRuntimeFailure('Role target does not support the saved reasoning control', 'unsupported-capability');
+                    const next = await this.composer!.compose(root, contextChat, content, request.context ?? [], resolvedModel.capabilities);
+                    if (JSON.stringify(next.refs) !== JSON.stringify(preview.refs))
+                        throw new Error('Fallback context differs; choose a model explicitly');
+                    return { messages: next.messages, controls, signal: abort.signal,
+                        ...(chat.settings.context.reservedOutputTokens > 0 ?
+                            { maxOutputTokens: chat.settings.context.reservedOutputTokens } : {}) };
+                } }) : this.models.generate(selectedModel,
                 { messages: composed.messages, controls, signal: abort.signal,
                     ...(chat.settings.context.reservedOutputTokens > 0 ?
-                        { maxOutputTokens: chat.settings.context.reservedOutputTokens } : {}) })) {
+                        { maxOutputTokens: chat.settings.context.reservedOutputTokens } : {}) });
+            for await (const event of events) {
                 if (event.type === 'delta') {
+                    if (following && sequence === 0) {
+                        const routed = (event as Extract<RoutedConversationEvent, { type: 'delta' }>).target;
+                        const usedConnection = (await this.models.list()).connections.find(item => item.id === routed.connectionId);
+                        const usedModel = usedConnection?.models.find(item => item.id === routed.modelId);
+                        actual = { schemaVersion: 1, ...routed, providerId: usedConnection?.providerId ?? connection.providerId,
+                            modelLabel: usedModel?.label ?? model.label };
+                        await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id, actualModel: actual });
+                    }
                     output += event.text;
                     await this.repository.publishDelta(root, key, assistant.id, assistant.execution.id,
                         sequence++, event.text, request.leaseToken);
                 } else {
                     output = event.text;
                     if (event.provenance) actual = { schemaVersion: 1, ...event.provenance };
+                    else if (event.actualModelId) actual = { ...actual, modelId: event.actualModelId };
+                    if (following) {
+                        const route = (event as Extract<RoutedConversationEvent, { type: 'complete' }>).routingProvenance;
+                        routingProvenance = route;
+                        actual = { schemaVersion: 1, connectionId: route.actualTarget.connectionId,
+                            modelId: route.actualTarget.modelId, providerId: route.executionLabels.provider,
+                            modelLabel: route.executionLabels.model };
+                        if (sequence === 0) await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id,
+                            actualModel: actual, routingProvenance });
+                    } else {
+                        routingProvenance = exactRoutingProvenance(request.selectedModel ? 'explicit-turn' : 'chat-exact-default',
+                            { connectionId: actual.connectionId, modelId: actual.modelId }, requestHard,
+                            { connection: connection.label ?? connection.id, provider: actual.providerId,
+                                model: actual.modelLabel });
+                    }
                     const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
-                        outcome: 'complete', content: output, actualModel: actual });
+                        outcome: 'complete', content: output, actualModel: actual, routingProvenance });
                     const titledChat = completed.chats.find(item => item.id === key);
                     const index = titledChat?.messages.findIndex(message => message.id === assistant!.id) ?? -1;
                     const preceding = index > 0 ? titledChat!.messages[index - 1] : undefined;

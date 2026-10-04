@@ -1,5 +1,6 @@
 import type { Chat, ChatCollection, ChatColor, ChatContextKind, ChatContextRef, ChatFolderPath, ChatId, ChatMessage,
     ChatModelProvenance, ChatModelSelection, ChatSettings } from './index';
+import type { RoutingProvenance } from '@dope/ai';
 
 export const chatServicePath = '/services/dope/chat';
 export const ChatService = Symbol('ChatService');
@@ -17,9 +18,10 @@ export type ChatOperation =
     | { type: 'set-color'; chatId: ChatId; color: ChatColor }
     | { type: 'append-user'; chatId: ChatId; message: ChatMessage & { role: 'user' } }
     | { type: 'begin-assistant'; chatId: ChatId; message: ChatMessage & { role: 'assistant' } }
-    | { type: 'start-assistant'; chatId: ChatId; messageId: string; actualModel: ChatModelProvenance }
+    | { type: 'start-assistant'; chatId: ChatId; messageId: string; actualModel: ChatModelProvenance;
+        routingProvenance?: RoutingProvenance }
     | { type: 'finish-assistant'; chatId: ChatId; messageId: string; outcome: 'complete' | 'failed' | 'cancelled';
-        content: string; actualModel?: ChatModelProvenance; failure?: string };
+        content: string; actualModel?: ChatModelProvenance; routingProvenance?: RoutingProvenance; failure?: string };
 export interface ChatMutation { projectHandle: string; expectedRevision: number; operation: ChatOperation; leaseToken?: string }
 export interface ChatSearchRequest { projectHandle: string; query: string; limit: number; excludeChatId?: ChatId }
 export interface ChatSearchHit { chatId: ChatId; messageId: string; title: string; excerpt: string; createdAt: string }
@@ -28,7 +30,8 @@ export type ChatLeaseResult = { acquired: true; token: string } | { acquired: fa
 export interface ChatDeltaRequest { projectHandle: string; chatId: ChatId; messageId: string;
     executionId: string; sequence: number; delta: string; leaseToken: string }
 export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseToken: string;
-    selectedModel: ChatModelSelection; content?: string; retryMessageId?: string; context?: ChatContextSelection[] }
+    selectedModel?: ChatModelSelection; hostedProjectDataAuthorized?: boolean;
+    content?: string; retryMessageId?: string; context?: ChatContextSelection[] }
 /** Captured editor text is transport-only. Other IDs are resolved against current project authorities. */
 export interface ChatContextSelection { kind: ChatContextKind; id: string; projectId?: string; generation?: number;
     messageId?: string; text?: string; start?: number; end?: number; direction?: 'upstream' | 'downstream' }

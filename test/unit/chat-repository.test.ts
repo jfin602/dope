@@ -100,6 +100,10 @@ test('valid no-color Chats migrate once with transcript, settings, timestamps an
       const file = join(root, '.dope/chats/folders', entry.folderPath, entry.file);
       const stored = JSON.parse(await readFile(file, 'utf8'));
       delete stored.color;
+      if (entry.id === first) {
+        stored.settings.defaultModel = stored.settings.modelPolicy.model;
+        delete stored.settings.modelPolicy;
+      } else delete stored.settings.modelPolicy;
       await writeFile(file, JSON.stringify(stored));
       if (entry.id === first) firstFile = file;
     }
@@ -109,6 +113,10 @@ test('valid no-color Chats migrate once with transcript, settings, timestamps an
     assert.equal(JSON.parse(await readFile(manifestPath, 'utf8')).revision, state.revision);
     await writeFile(firstFile, validLegacy);
     const migrated = await new ChatRepository().read(root);
+    assert.deepEqual(migrated.chats.find(chat => chat.id === first)?.settings.modelPolicy,
+      { type: 'exact', model });
+    assert.deepEqual(migrated.chats.find(chat => chat.id === second)?.settings.modelPolicy,
+      { type: 'follow-interactive' });
     await repo.renew(root, first, lease.token);
     await repo.release(root, first, lease.token);
     assert.equal(migrated.revision, state.revision + 1);

@@ -308,7 +308,8 @@ export class ChatPanelController {
     async newChat(folderPath: ChatFolderPath): Promise<boolean> {
         return this.mutate({ type: 'create-chat', id: crypto.randomUUID(), folderPath });
     }
-    async runTurn(model: ChatModelSelection, retryMessageId?: string): Promise<boolean> {
+    async runTurn(model?: ChatModelSelection, retryMessageId?: string,
+        confirmHosted?: () => boolean): Promise<boolean> {
         const lease = this.lease;
         if (!lease || this.running || this.pending || !this.chat || !retryMessageId && !this.draft.trim()) return false;
         const content = this.draft;
@@ -321,9 +322,15 @@ export class ChatPanelController {
         this.turnModel = undefined;
         this.changed();
         try {
-            this.lastContext = await lease.connection.runTurn({ projectHandle: lease.handle, chatId: lease.chatId,
-                leaseToken: lease.token, selectedModel: model,
-                context: this.context, ...(retryMessageId ? { retryMessageId } : { content }) });
+            const request = { projectHandle: lease.handle, chatId: lease.chatId, leaseToken: lease.token,
+                ...(model ? { selectedModel: model } : {}), context: this.context,
+                ...(retryMessageId ? { retryMessageId } : { content }) };
+            try { this.lastContext = await lease.connection.runTurn(request); }
+            catch (error) {
+                if (!model && String(error).includes('Chat hosted egress confirmation required') && confirmHosted?.())
+                    this.lastContext = await lease.connection.runTurn({ ...request, hostedProjectDataAuthorized: true });
+                else throw error;
+            }
             completed = true;
             this.context = [];
             return true;
