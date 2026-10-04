@@ -104,6 +104,12 @@ export class AIInventoryController {
             health: health(connection) })),
             tests: [...this.tested.values()] };
     }
+    loadedLocalModelsSnapshot(): { connectionId: string; providerModelKey: string; contextWindowTokens: number }[] {
+        return [...this.loadedLocalModels].map(([key, contextWindowTokens]) => {
+            const [connectionId, providerModelKey] = JSON.parse(key) as [string, string];
+            return { connectionId, providerModelKey, contextWindowTokens };
+        });
+    }
     private failure(error: unknown): AIConnectionHealth {
         if (error instanceof ModelRuntimeFailure) {
             if (error.failureClass === 'authentication') return 'needs-authentication';
@@ -206,10 +212,7 @@ export class AIInventoryController {
     }
     async findEligibleModels(query: AIEligibilityQuery) {
         const inventory = await this.inventory();
-        const loadedLocalModels = [...this.loadedLocalModels].map(([key, contextWindowTokens]) => {
-            const [connectionId, providerModelKey] = JSON.parse(key) as [string, string];
-            return { connectionId, providerModelKey, contextWindowTokens };
-        });
+        const loadedLocalModels = this.loadedLocalModelsSnapshot();
         return findEligibleModels(inventory.registry, { ...query, loadedLocalModels }, inventory.observations);
     }
 }

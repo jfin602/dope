@@ -23,6 +23,7 @@ import { ModelConnectionsBackend, ModelConnectionsRegistry } from './model-conne
 import { aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
 import { AIRegistryStore } from './ai-registry-store';
 import { AIRolePolicyStore } from './ai-role-policy-store';
+import { AIRoleRoutingService } from './ai-role-routing';
 import { AIRolePolicyBackend } from './ai-role-policy-backend';
 import { aiRolePolicyServicePath, type AIRolePolicyClient } from '@dope/contracts/lib/ai-role-policy-service';
 import { AIInventoryController, AIRegistryBackend } from './ai-registry-backend';
@@ -41,6 +42,9 @@ export default new ContainerModule(bind => {
         context.container.get(SoftwareMapIndex), context.container.get(ChatRepository))).inSingletonScope();
     bind(AIRegistryStore).toSelf().inSingletonScope();
     bind(AIRolePolicyStore).toSelf().inSingletonScope();
+    bind(AIRoleRoutingService).toDynamicValue(context => new AIRoleRoutingService(
+        context.container.get(AIRolePolicyStore), context.container.get(AIInventoryController),
+        context.container.get(ModelConnectionsRegistry))).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<AIRolePolicyClient>(aiRolePolicyServicePath, client => {
         const backend = new AIRolePolicyBackend(context.container.get(AIRolePolicyStore),
             context.container.get(AIRegistryStore), client);

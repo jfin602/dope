@@ -120,7 +120,11 @@ export interface AIRoleExplainRequest { readonly provenance: RoutingProvenance }
 export interface AIRoleExplanation {
     readonly source: AIRoutingSource;
     readonly roleId?: AIRoleId;
-    readonly health?: AIRoleHealth;
+    readonly policyRevision?: number;
+    readonly effectiveHard: AIRoleHardConstraints;
+    readonly preferredTarget?: AIRoleTarget;
+    readonly actualTarget: AIRoleTarget;
+    readonly executionLabels: AIRoutingExecutionLabels;
     readonly attempts: readonly AIRoutingAttempt[];
 }
 
@@ -376,4 +380,13 @@ export function parseRoutingProvenance(value: unknown): RoutingProvenance {
         executionLabels: { connection: displayLabel(labels.connection), provider: displayLabel(labels.provider),
             model: displayLabel(labels.model) },
         attempts });
+}
+
+export function explainAIRouting(provenance: RoutingProvenance): AIRoleExplanation {
+    const recorded = parseRoutingProvenance(provenance);
+    return { source: recorded.source, ...(recorded.requestedRole ? { roleId: recorded.requestedRole } : {}),
+        ...(recorded.policyRevision === undefined ? {} : { policyRevision: recorded.policyRevision }),
+        effectiveHard: recorded.effectiveHard,
+        ...(recorded.preferredTarget ? { preferredTarget: recorded.preferredTarget } : {}),
+        actualTarget: recorded.actualTarget, executionLabels: recorded.executionLabels, attempts: recorded.attempts };
 }
