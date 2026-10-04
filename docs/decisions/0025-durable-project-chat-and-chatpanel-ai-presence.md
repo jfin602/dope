@@ -161,6 +161,19 @@ Chat color is durable Chat metadata alongside identity/title/folder/timestamps, 
 
 Color is presentation/organization metadata only. It does not affect model routing, context selection, canonical Project Mind/Architecture/Planning truth, last-interacted ordering or provider/runtime behavior.
 
+### Side toolbar Chat launchers
+
+Chat is directly discoverable from both side workbench toolbars without requiring the Command Palette.
+
+- The left primary toolbar/activity bar exposes a Chat action that opens/reveals a left-side ChatPanel in **Select Chat** state.
+- The right secondary toolbar/activity bar exposes the same Chat action for the right-side ChatPanel.
+- Repeated activation is idempotent per side: reveal/focus the existing side launcher panel rather than accumulating duplicate panels.
+- If that side launcher panel currently owns an active Chat, activating the toolbar action returns it to **Select Chat** through the normal ChatPanel navigation path, releasing live Chat ownership normally.
+- Existing command-palette Chat commands remain available. Center/bottom ChatPanel opening remains supported.
+- Toolbar launchers do not weaken the one-live-owner-per-Chat rule and do not create a second Chat repository or panel state.
+- Use supported Theia workbench/view/shell contribution APIs. Do not use DOM injection or private-shell patching merely to place the actions.
+- The toolbar icon uses ordinary Theia active/focus styling. Per-Chat organizational color never tints the global Chat launcher.
+
 ### Qualification amendment
 
 A bounded `c7-chat-conversation-ux` correction at unchanged `0.7.13` must add focused regression coverage plus direct GUI evidence for the persistent shell, unified composer, safe Markdown transcript, compact metadata, scroll-follow behavior, color assignment/migration/editing and selector/bubble color continuity. Historical P9 implementation text, P12 qualification records and the P13 evidence-only Not Qualified closeout remain unchanged; successful correction evidence supplements them rather than rewriting them.
