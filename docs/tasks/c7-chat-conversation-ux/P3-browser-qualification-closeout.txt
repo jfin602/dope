@@ -30,6 +30,15 @@ DIRECT BROWSER EVIDENCE
 
 Use a disposable real project workspace. Preserve the source reference.
 
+0. Side toolbar Chat launchers
+- Verify a Chat button is visible in the left primary toolbar/activity bar and right secondary toolbar/activity bar.
+- Click the left action and verify the left panel opens/reveals in Select Chat.
+- Click the right action and verify the right panel opens/reveals in Select Chat.
+- Repeated activation on each side reuses/reveals the same launcher panel rather than accumulating duplicates.
+- Open a Chat in a side launcher, activate that side's toolbar action again, and verify it returns to Select Chat and releases ownership normally so the Chat can be opened elsewhere.
+- Verify existing command-palette Chat commands remain available and center/bottom opening still works.
+- Verify the global launcher icon uses normal Theia active/focus styling and is not tinted by Chat organizational color.
+
 1. Persistent shell
 - Open a Chat with enough turns to scroll.
 - Verify Back/title/settings remain visible.
@@ -82,6 +91,7 @@ Record:
 - exact candidate SHA;
 - P1/P2 result identities;
 - automated T3 gate;
+- side launcher visibility/reuse/ownership-release evidence;
 - shell/placement evidence;
 - transcript/Markdown/security evidence;
 - composer evidence;
@@ -97,4 +107,4 @@ Do not commit; this is the manual/browser closeout handoff unless the repository
 
 FINAL RESPONSE
 
-Report exact candidate, automated gate, all direct GUI results, migration/restart result, any tiny fix, final decision, and Phase 7B/7C routing.
+Report exact candidate, automated gate, side launcher results, all other direct GUI results, migration/restart result, any tiny fix, final decision, and Phase 7B/7C routing.
