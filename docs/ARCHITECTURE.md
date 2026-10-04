@@ -385,14 +385,14 @@ Every routed execution records compact routing provenance: role/resolution sourc
 
 Software Map consumes centralized connections and the Software Map role as default-target policy, but Analyze Project/Search Deeper still own exact run-level target consent/disclosure, probe/readiness, warm-up and synthesis strategy under ADR 0022.
 
-Phase 8 requests Background with hard local-only/no-hosted-fallback constraints under ADR 0023.
+Phase 10 requests Background with hard local-only/no-hosted-fallback constraints under ADR 0023.
 
-Coding Agent may be configured before Product Phase 9 but has no mutation-capable consumer in Phase 7.
+Coding Agent may be configured before Product Phase 8 but has no mutation-capable consumer in Phase 7.
 
 
 ## Living Software Knowledge Model and background alignment boundary
 
-Product Phase 8 adds a knowledge-alignment layer over existing Software Map identities after general AI Presence exists and before mutation-capable Scoped Delegation.
+Product Phase 10 adds a knowledge-alignment layer over existing Software Map identities after Scoped Delegation and Development Sessions, using their change/session provenance while remaining observation-first.
 
 The durable conceptual layering is:
 
@@ -434,7 +434,7 @@ The background scheduler owns debounce, deduplication, impact batching, queue pr
 
 Alignment results are derived findings. They may identify source/map drift, source/documentation drift, source/contract disagreement, contract/map disagreement, orphaned evidence or unrepresented implementation. Model output may classify or explain a finding but cannot silently mutate source, documentation, contracts, canonical architecture or Physical Map truth.
 
-General-purpose ambient intelligence remains deferred. Phase 8 authorizes bounded ambient/background behavior only for maintaining the Living Software Knowledge Model.
+General-purpose ambient intelligence remains deferred. Phase 10 authorizes bounded ambient/background behavior only for maintaining the Living Software Knowledge Model.
 
 ## Theia AI boundary
 

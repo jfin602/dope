@@ -12,24 +12,24 @@ The next product requirement is broader: source/runtime evidence, the accepted S
 
 Because these findings are intended to appear as alerts, alignment cannot depend on a developer manually starting a full analysis. It requires bounded continuous/background evaluation.
 
-Running every change through hosted frontier inference would be expensive, privacy-sensitive and operationally wasteful. Running a large local synthesis on every edit would also waste compute. Phase 7 therefore provides the provider-independent Model Runtime substrate, while Phase 8 introduces a purpose-built deterministic-first, local-first maintenance loop.
+Running every change through hosted frontier inference would be expensive, privacy-sensitive and operationally wasteful. Running a large local synthesis on every edit would also waste compute. Phase 7 therefore provides the provider-independent Model Runtime substrate, while Phase 10 introduces a purpose-built deterministic-first, local-first maintenance loop.
 
 ## Decision
 
-### Phase 8 is the Living Software Knowledge Model
+### Phase 10 is the Living Software Knowledge Model
 
-Product Phase 8 is inserted after Product Phase 7 — AI Presence and before mutation-capable delegation.
+Product Phase 10 follows Product Phase 8 — Scoped Delegation and Product Phase 9 — Development Sessions.
 
 The forward sequence is:
 
 ```text
 Phase 7 — AI Presence
-Phase 8 — Living Software Knowledge Model
-Phase 9 — Scoped Delegation
-Phase 10 — Development Sessions
+Phase 8 — Scoped Delegation
+Phase 9 — Development Sessions
+Phase 10 — Living Software Knowledge Model
 ```
 
-Phase 8 is observation/alignment scope. It does not authorize AI mutation of source, documentation, contracts or canonical architecture.
+Phase 10 is observation/alignment scope. It does not authorize AI mutation of source, documentation, contracts or canonical architecture.
 
 ### The knowledge model links representations; it does not collapse them
 
@@ -92,7 +92,7 @@ A model must not be asked to replace a cheaper deterministic check.
 
 ### Continuous semantic maintenance is local-first
 
-Normal background semantic alignment requests the Phase 7C **Background** role through the provider-independent Model Runtime with hard **local-only** and **no-hosted-fallback** constraints. The Background role is routing policy; these Phase 8 constraints are stronger feature authority and cannot be weakened by global role configuration.
+Normal background semantic alignment requests the Phase 7C **Background** role through the provider-independent Model Runtime with hard **local-only** and **no-hosted-fallback** constraints. The Background role is routing policy; these Phase 10 constraints are stronger feature authority and cannot be weakened by global role configuration.
 
 Background model work should use compact structured micro-inference over the smallest sufficient evidence package. Calls should prefer classification/verification contracts over free-form prose and should not carry unrelated repository context.
 
@@ -102,7 +102,7 @@ Typical semantic checks answer bounded questions such as:
 - does this architectural description remain supported by the affected subsystem?;
 - is this disagreement sufficiently supported to surface as drift or does it need more evidence?
 
-A local model is not treated as a weaker imitation of a hosted coding agent. For Phase 8 its primary role is high-volume continuous semantic maintenance.
+A local model is not treated as a weaker imitation of a hosted coding agent. For Phase 10 its primary role is high-volume continuous semantic maintenance.
 
 ### Hosted inference is explicit escalation only
 
@@ -166,7 +166,7 @@ An alert should identify what representations disagree, the affected Software Ma
 
 ### General ambient intelligence remains deferred
 
-Phase 8 intentionally introduces bounded ambient/background behavior only for maintenance of the Living Software Knowledge Model.
+Phase 10 intentionally introduces bounded ambient/background behavior only for maintenance of the Living Software Knowledge Model.
 
 This ADR does not authorize general autonomous monitoring, automatic Ideas capture, mutation-capable background agents, multi-agent orchestration or unrelated ambient intelligence.
 
@@ -184,14 +184,14 @@ Placing this phase before Scoped Delegation means Dope learns to maintain and ch
 
 ## Consequences
 
-- Product Phase 8 becomes Living Software Knowledge Model.
-- Existing Scoped Delegation shifts to Product Phase 9.
-- Existing Development Sessions shifts to Product Phase 10.
-- Phase 7 Model Runtime/AI role routing must support the bounded structured/cancellable Background execution needed by Phase 8 without making provider/role state canonical; Phase 8 supplies hard local-only/no-hosted-fallback constraints.
+- Product Phase 8 is Scoped Delegation / Coding Agent.
+- Product Phase 9 is Development Sessions.
+- Product Phase 10 is Living Software Knowledge Model.
+- Phase 7 Model Runtime/AI role routing must support the bounded structured/cancellable Background execution needed by Phase 10 without making provider/role state canonical; Phase 10 supplies hard local-only/no-hosted-fallback constraints.
 - Software Map/product storage must support durable assertion/finding state without persisting unnecessary provider/session detail.
 - Background alignment work requires a scheduler/application boundary distinct from Software Map truth and Model Runtime transport.
-- Local-model efficiency becomes a first-class design target for Phase 8 rather than a later optimization.
-- General-purpose ambient intelligence remains outside the initial Phase 8 scope.
+- Local-model efficiency becomes a first-class design target for Phase 10 rather than a later optimization.
+- General-purpose ambient intelligence remains outside the initial Phase 10 scope.
 
 ## Alternatives considered
 
@@ -213,6 +213,6 @@ Rejected because disagreement is evidence that requires developer judgment; choo
 
 ## Revisit when
 
-Revisit scheduler policy and local-model strategy when real Phase 8 qualification data exists for latency, false positives, battery/resource contention, model residency and semantic-check quality.
+Revisit scheduler policy and local-model strategy when real Phase 10 qualification data exists for latency, false positives, battery/resource contention, model residency and semantic-check quality.
 
 Revisit whether any specific hosted background policy is useful only if it can remain explicit, cost/egress-aware and developer-controlled. The no-silent-hosted-escalation rule does not expire merely because hosted inference becomes cheaper.

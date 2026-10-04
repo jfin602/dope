@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Plan
 
-Status: **ACTIVE / P13 EVIDENCE AUDIT NOT QUALIFIED / c7-chat-conversation-ux APPROVED / PHASE 7B-7C OUTSTANDING**
+Status: **ACTIVE / P13 EVIDENCE AUDIT NOT QUALIFIED / c7-chat-conversation-ux GREEN + QUALIFIED / PHASE 7B NEXT / 7C OUTSTANDING**
 Activation baseline: coherent `0.7.0` at commit `59c7f72a29dcdecdf9b908176754bfd02179b004`
 Package family: `0.7.x`
 Primary decisions: ADR 0025 and ADR 0026
@@ -44,7 +44,7 @@ Side launchers reuse the existing left/right Chat open commands as the preferred
 
 ### Phase 7B — AI Center
 
-After 7A qualification:
+After Phase 7A implementation/evidence:
 - repurpose the bottom-left account/profile action into an **AI** launcher;
 - open/reveal a dedicated center-workspace **AI Center**;
 - move account/profile management under Settings;
@@ -57,6 +57,7 @@ After 7A qualification:
 - use one logical machine-local/application-global revisioned registry across projects/windows/processes;
 - use Environment / Session-only / OS secure-storage credentials with no plaintext fallback;
 - preserve immutable connection/model identity, bounded model discovery, normalized health and synthetic zero-project-data Test Connection semantics.
+- keep model health/readiness separate from per-request execution eligibility: a known cold/unloaded Local model may remain visible, but unknown loaded context capacity cannot satisfy `usableOnly`/minimum-context execution until load/preflight establishes a safe runtime limit.
 
 ### Phase 7C — AI Roles & Routing
 
@@ -67,7 +68,7 @@ After AI Center:
 - features may request a role + constraints instead of hard-coding provider names;
 - explicit user model choices remain authoritative and do not silently fall back;
 - feature privacy/egress/locality/authority constraints cannot be weakened by global preferences;
-- Phase 8 Background execution must be local-only with hosted fallback forbidden;
+- Phase 10 Background execution must be local-only with hosted fallback forbidden;
 - Software Map preference does not replace ADR 0022's explicit provider/readiness/evidence-egress authority;
 - use five fixed role IDs with deterministic preferred + ordered fallback routing, typed hard constraints vs soft preferences and no dynamic score ranking;
 - migrate Chat model policy so existing 7A Chats preserve exact defaults while new 7C Chats default to Follow Interactive;
@@ -135,7 +136,7 @@ The P13 evidence-only audit is recorded at `0.7.13` as **Not Qualified**, not as
 - Phase 7 tools are read/context operations.
 - AI may Ask / Explain / Trace / Find Related and suggest future knowledge/planning changes.
 - Conversation output does not silently mutate canonical project state.
-- General filesystem/process/Git/network mutation and autonomous execution remain deferred to Phase 9 Scoped Delegation.
+- General filesystem/process/Git/network mutation and autonomous execution remain deferred to Phase 8 Scoped Delegation.
 
 ## Architecture direction
 
@@ -154,7 +155,7 @@ ChatPanel(s)
         -> Model Runtime / role resolution
 ```
 
-ADR 0022 Model Runtime remains the provider execution seam. sMap synthesis strategy remains separate from general conversational orchestration. ADR 0026 adds the global AI Center/role-policy layer without allowing it to bypass Software Map or Phase 8 authority constraints. Provider adapters do not own Chat identity, settings, context policy, role policy or product semantics.
+ADR 0022 Model Runtime remains the provider execution seam. sMap synthesis strategy remains separate from general conversational orchestration. ADR 0026 adds the global AI Center/role-policy layer without allowing it to bypass Software Map or Phase 10 authority constraints. Provider adapters do not own Chat identity, settings, context policy, role policy or product semantics.
 
 ## Validation strategy
 
@@ -176,7 +177,7 @@ Qualification must directly prove:
 - explicit per-message choice wins and failure does not silently route elsewhere;
 - permitted role fallback works only within policy constraints;
 - Software Map preference does not silently authorize repository evidence transfer;
-- Phase 8-compatible Background constraints reject hosted fallback;
+- Phase 10-compatible Background constraints reject hosted fallback;
 - Chat/model provenance records actual execution target after role resolution.
 
 ### Final Phase 7 qualification
@@ -187,7 +188,7 @@ The final closeout may occur only after 7A, 7B and 7C are implemented/qualified 
 - no mutation-capable AI/tool execution;
 - no ProposedAction/Authority/Tool Runtime implementation merely to support Chat/routing;
 - no autonomous coding loop;
-- no Phase 8 background drift/alignment monitoring itself;
+- no Phase 10 background drift/alignment monitoring itself;
 - no requirement that provider-native sessions survive or be canonical;
 - no automatic conversion of chat output into Project Mind/Architecture/Planning;
 - no automatic injection of the entire saved-chat archive into prompts;

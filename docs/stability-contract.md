@@ -181,7 +181,7 @@ Require executable evidence for:
 - no generic project/window role override layer appearing accidentally;
 - unconfigured/broken roles failing explicitly with focused AI Center repair rather than arbitrary model selection;
 - role UI showing preferred/fallback/constraints/eligibility/health and keeping feature-imposed constraints read-only;
-- feature-to-role bindings preserving Software Map and Phase 8 stronger authority;
+- feature-to-role bindings preserving Software Map and Phase 10 stronger authority;
 - immutable routing provenance and a truthful Why this model? explanation;
 - removed/disabled/unavailable/ineligible target references preserving policy intent, with bounded non-secret descriptors for unresolved removed targets;
 - temporary fallback returning to the preferred target when it becomes eligible again;

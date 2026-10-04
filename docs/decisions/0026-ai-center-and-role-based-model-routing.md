@@ -7,7 +7,7 @@ Date: 2026-10-03
 
 Product Phase 7 already introduces the provider-independent Model Runtime, an application-level Model Connections registry, durable Dope-owned Chats, per-message connected-model selection, and per-Chat model/context policy. That is the correct substrate for general AI use, but it does not yet give the developer one coherent place to manage every AI connection or express which connected models should normally serve different kinds of work.
 
-Dope also has later features with materially different execution needs. Foreground Chat should remain directly steerable. Software Map synthesis has explicit provider/evidence-egress authority. Product Phase 8 needs high-volume local-first background semantic maintenance with no silent hosted fallback. Future Scoped Delegation will need a coding-agent role without making one provider the product architecture.
+Dope also has later features with materially different execution needs. Foreground Chat should remain directly steerable. Software Map synthesis has explicit provider/evidence-egress authority. Product Phase 10 needs high-volume local-first background semantic maintenance with no silent hosted fallback. Product Phase 8 Scoped Delegation needs a coding-agent role without making one provider the product architecture.
 
 If each feature owns provider configuration or hard-codes one model, Dope will accumulate duplicated setup, inconsistent connection state, and routing logic that is difficult to evolve. If global defaults are allowed to imply feature authority, a harmless connection preference could accidentally authorize repository evidence to leave the machine or cause background work to incur hosted cost.
 
@@ -21,7 +21,7 @@ Phase 7 remains one product phase and one `0.7.x` package family:
 2. **Phase 7B — AI Center**: one global connection/model management surface over the Phase 7A registry, plus secure configuration, model inventory, health/readiness and testing.
 3. **Phase 7C — AI Roles & Routing**: global role policies, deterministic capability/constraint-aware resolution, bounded fallback and role-aware consumers.
 
-The existing P1-P12 Phase 7 stack is the Phase 7A implementation/qualification path. The currently written P13 evidence-only closeout is superseded and must not execute as final Phase 7 closeout. After P12, `/prompt-ass -> /prompt-plan -> /prompt-write p7` regenerates the contiguous P13+ continuation and one new final Phase 7 closeout using the actual 7A implementation.
+P1-P12 plus the bounded P12 blocker correction are the recorded Phase 7A implementation/qualification path. P13 has executed at `0.7.13` as an evidence-only **Not Qualified** audit because 7B/7C were still missing; it is not the final Phase 7 closeout. The bounded `c7-chat-conversation-ux` correction is Green/Qualified at unchanged `0.7.13`. Continue with `/prompt-ass -> /prompt-plan -> /prompt-write p7` for the contiguous 7B continuation, then 7C and exactly one later final Phase 7 closeout.
 
 7B/7C are forward product capability, not bounded defect repair, and must not be disguised as a correction stack.
 
@@ -212,7 +212,7 @@ Connection Ready means configuration/authentication/transport/basic runtime read
 
 Model Ready means known/configured, connection usable, enabled in Dope and not currently reported unavailable.
 
-Local warm/load residency is separate from usability. A Local model may be Ready while cold/unloaded.
+Local warm/load residency is separate from connection/model health. A known Local model may remain visible and healthy while cold/unloaded, but per-request execution eligibility is capability/limit-specific. Any request whose safety depends on a loaded limit, including bounded project context or a hard minimum-context requirement, must first establish the actual loaded runtime capacity. Unknown or unloaded capacity does not satisfy a hard minimum-context or `usableOnly` eligibility requirement; load/preflight may make the same immutable model identity eligible without rewriting policy.
 
 Health updates come from bounded lifecycle events, explicit Refresh/Test, stale revalidation and real execution outcomes rather than continuous polling.
 
@@ -306,7 +306,7 @@ Initial 7C has exactly five stable role IDs:
 - **Deep Reasoning** — deliberately heavier foreground reasoning for difficult analysis where extra latency/cost is acceptable.
 - **Background** — non-interactive work; individual consumers may add stronger constraints.
 - **Software Map** — model-assisted sMap/architecture work such as Analyze Project and Search Deeper.
-- **Coding Agent** — delegated/tool-using coding work, configurable before Product Phase 9 consumes it.
+- **Coding Agent** — delegated/tool-using coding work, configurable before Product Phase 8 consumes it.
 
 Users configure policies but cannot create, delete or rename role types in initial 7C.
 
@@ -421,7 +421,7 @@ Derived role health may include:
 
 If no eligible target exists, Dope does not pick an arbitrary usable model. The requesting feature fails clearly and deep-links to the relevant role in AI Center.
 
-Unconfigured future roles such as Coding Agent before Phase 9 do not create global warnings merely because they exist.
+Unconfigured future roles such as Coding Agent before Phase 8 do not create global warnings merely because they exist.
 
 ### Roles is a first-class AI Center surface
 
@@ -445,7 +445,7 @@ Fallback ordering supports both pointer drag/reorder and keyboard-accessible mov
 
 Feature-imposed requirements/authority appear read-only and cannot be weakened from the global role editor.
 
-Coding Agent is visible/configurable but marked **No active consumer yet** until Product Phase 9.
+Coding Agent is visible/configurable but marked **No active consumer yet** until Product Phase 8.
 
 ### Feature-to-role bindings
 
@@ -455,8 +455,8 @@ Initial bindings are:
 - deliberate explicit heavy foreground analysis -> **Deep Reasoning**;
 - Analyze Project -> **Software Map** default-target policy;
 - Search Deeper -> **Software Map** default-target policy;
-- Product Phase 8 continuous semantic maintenance -> **Background** with hard local-only/no-hosted-fallback constraints;
-- Product Phase 9 delegated coding/tool execution -> **Coding Agent** when that consumer ships.
+- Product Phase 10 continuous semantic maintenance -> **Background** with hard local-only/no-hosted-fallback constraints;
+- Product Phase 8 delegated coding/tool execution -> **Coding Agent** when that consumer ships.
 
 Deep Reasoning is not chosen by a hidden difficulty classifier in initial 7C.
 
@@ -533,7 +533,7 @@ Global role policy never grants mutation authority.
 
 Global role policy never grants project-data egress permission that the initiating feature/user flow does not already possess.
 
-Software Map ADR 0022 and Phase 8 ADR 0023 remain authoritative over their stronger feature constraints.
+Software Map ADR 0022 and Phase 10 ADR 0023 remain authoritative over their stronger feature constraints.
 
 ## Consequences
 
@@ -544,7 +544,7 @@ Software Map ADR 0022 and Phase 8 ADR 0023 remain authoritative over their stron
 - Hosted models can be preferred for difficult foreground work without becoming silent privacy-sensitive fallbacks.
 - Existing 7A exact Chat defaults remain valid through migration.
 - New role-following Chats can evolve with global Interactive policy.
-- Later Product Phase 8/9 consumers receive stable role contracts without provider coupling.
+- Later Product Phase 8/10 consumers receive stable role contracts without provider coupling.
 - Routing remains inspectable through durable provenance and Why this model? explanations.
 
 ## Non-goals
@@ -559,7 +559,7 @@ This decision does not:
 - add dynamic cost/latency/benchmark ranking in initial 7C;
 - add generic project/window role overrides;
 - add full role-policy edit history/undo;
-- move Phase 8 alignment behavior into Phase 7.
+- move Phase 10 alignment behavior into Phase 7.
 
 ## Revisit when
 

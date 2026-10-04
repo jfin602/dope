@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Activation
 
-Status: **OWNER APPROVED — ACTIVE / PHASE 7A P1-P12 READY / PHASE 7B-7C RESOLVED + PROMOTED**
+Status: **OWNER APPROVED — ACTIVE / PHASE 7A RECORDED / P13 NOT QUALIFIED / c7 QUALIFIED / PHASE 7B NEXT**
 Date: 2026-10-03
 Package baseline: `0.7.0`
 Activation baseline commit: `59c7f72a29dcdecdf9b908176754bfd02179b004`
@@ -20,9 +20,9 @@ Phase 7 is one `0.7.x` product phase with three ordered slices:
 - **7B — AI Center:** a dedicated global connection/model management surface opened from the bottom-left AI launcher and backed by the 7A registry.
 - **7C — AI Roles & Routing:** global role policies and capability/constraint-aware resolution for Interactive, Deep Reasoning, Background, Software Map and Coding Agent work.
 
-Phase 7 does not add mutation/delegation or Phase 8 background alignment itself.
+Phase 7 does not add mutation/delegation or Phase 10 background alignment itself.
 
-General Chat uses the application-level Model Connections boundary separate from Software Map synthesis strategy/authority. Phase 7B promotes that boundary into one logical machine-local/application-global revisioned AI registry with secure credential sources and no plaintext fallback. Phase 7C adds deterministic role policy over stable connection/model identities. AI Center/role policy never grants sMap evidence-egress consent; global role constraints may restrict but never broaden feature authority. Phase 8-compatible Background work remains local-only/no-hosted-fallback. Existing 7A Chat exact defaults are preserved; new 7C Chats default to Follow Interactive. Secrets do not belong in `.dope/`, Chat persistence or ordinary plaintext persisted workbench state.
+General Chat uses the application-level Model Connections boundary separate from Software Map synthesis strategy/authority. Phase 7B promotes that boundary into one logical machine-local/application-global revisioned AI registry with secure credential sources and no plaintext fallback. Phase 7C adds deterministic role policy over stable connection/model identities. AI Center/role policy never grants sMap evidence-egress consent; global role constraints may restrict but never broaden feature authority. Phase 10-compatible Background work remains local-only/no-hosted-fallback. Existing 7A Chat exact defaults are preserved; new 7C Chats default to Follow Interactive. Secrets do not belong in `.dope/`, Chat persistence or ordinary plaintext persisted workbench state.
 
 ## Framework/version boundary
 
@@ -32,16 +32,16 @@ General Chat uses the application-level Model Connections boundary separate from
 
 ## Execution readiness
 
-The currently written `docs/tasks/p7/` P1-P12 prompts are the executable **Phase 7A** stack. They establish/qualify the substrate that 7B/7C consume.
+Phase 7A P1-P12, the bounded P12 blocker correction, and the P13 evidence-only audit are recorded. P13 remains **Not Qualified** because Phase 7B/7C were not yet implemented. The bounded `c7-chat-conversation-ux` correction is **Green / Qualified** at unchanged `0.7.13` and preserves the retained P12/P13 history.
 
-The currently written P13 evidence-only closeout predates ADR 0026 and is **superseded**. Do not execute it and do not run the current folder with `--closeout`.
+Current continuation baseline: coherent `0.7.13`.
 
-Execution sequence:
+Next execution sequence:
 
-1. validate the current stack;
-2. execute P1-P12 only;
-3. after P12, inspect the actual Model Connections/runtime/UI implementation;
-4. run `/prompt-ass -> /prompt-plan -> /prompt-write p7` to regenerate a contiguous P13+ continuation for AI Center, roles/routing, integrated qualification and exactly one new final Phase 7 closeout;
-5. validate the regenerated full `p7` stack before continuing.
+1. use the promoted Phase 7B authority in ADR 0026 / the Phase 7 plan;
+2. run `/prompt-ass -> /prompt-plan -> /prompt-write p7` for a contiguous Phase 7B continuation from the current source;
+3. implement and qualify AI Center without role routing;
+4. continue with Phase 7C role policy/routing;
+5. perform exactly one later final Phase 7 closeout over 7A+7B+7C.
 
-This follow-on is normal Phase 7 capability, not a correction stack.
+7B/7C are normal Phase 7 capability, not defect repair. Do not replay Phase 7A merely because the continuation advances within the same `0.7.x` family.

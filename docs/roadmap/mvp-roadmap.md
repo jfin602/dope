@@ -1,8 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 7 is **ACTIVE / PHASE 7A P1-P12 WRITTEN / PHASE 7B-7C RESOLVED + PROMOTED** at coherent `0.7.0` activation commit `59c7f72a29dcdecdf9b908176754bfd02179b004`. ADR 0025 defines durable Chat/ChatPanel AI Presence; ADR 0026 adds the global AI Center and role-based routing. Phase 6 P8 remains Not Qualified and Phase 5 remains owner-closed with P11 Not Green/P12 unexecuted. Next: execute P1-P12 as Phase 7A only, then regenerate P13+ for AI Center, roles/routing and final Phase 7 closeout. The currently written P13 closeout is superseded.
-
+Current stage: Product Phase 7 is **ACTIVE / 7A IMPLEMENTED + EVIDENCED / P13 NOT QUALIFIED / c7 CHAT UX QUALIFIED / 7B NEXT** at coherent `0.7.13`. P1-P12 plus the bounded P12 blocker correction implement/exercise Phase 7A; P13 records the evidence-only Not Qualified audit; `c7-chat-conversation-ux` is Green/Qualified at unchanged `0.7.13`. ADR 0026 defines the remaining Phase 7B AI Center and Phase 7C deterministic role-routing work. Phase 6 P8 remains Not Qualified and Phase 5 remains owner-closed with P11 Not Green/P12 unexecuted. Next: decompose and execute the bounded 7B continuation, then 7C and one later final Phase 7 closeout.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
@@ -30,9 +29,9 @@ Theia
 -> AI Presence
 -> AI Center
 -> AI Roles & Routing
--> Living Software Knowledge Model
 -> Scoped Delegation
 -> Development Sessions
+-> Living Software Knowledge Model
 
 Each stage should make Dope more useful to the developer before the next layer of AI is added.
 
@@ -63,7 +62,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — Planning Basis Isolation | `0.5.11` correction after P11 reached durable Planning Maps but ordinary `.dope/planning-maps.json` persistence changed Physical Map identity and unchanged reanalysis falsely staled plans. Isolate `.dope/` from generic analysis inputs and make generation observation provenance rather than semantic staleness. |
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
 | Product Phase 6 — Flow | **OWNER-CLOSED FOR SEQUENCING / P8 NOT QUALIFIED.** Evidence-backed provider-free Static Flow over the Physical Map is retained. The P8 exact-candidate direct restart/isolation and chosen-path provenance gaps remain in `docs/tasks/p6/closeout.md`; historical P7/map-canvas Not Green results remain intact. |
-| Product Phase 7 — AI Presence / AI Center / Roles | **ACTIVE at `0.7.0`.** Phase 7A provides durable Chats/ChatPanels and provider-independent read-only AI Presence; Phase 7B centralizes user-global connection/model management in AI Center; Phase 7C adds policy-based Interactive/Deep Reasoning/Background/Software Map/Coding Agent routing without weakening explicit model choice, Software Map evidence-egress authority or Phase 10 local-only background constraints. |
+| Product Phase 7 — AI Presence / AI Center / Roles | **ACTIVE at `0.7.13`; P13 Not Qualified.** Phase 7A durable Chat/read-only AI Presence is implemented and evidenced, and `c7-chat-conversation-ux` is Green/Qualified at unchanged `0.7.13`. Phase 7B now centralizes user-global connection/model management in AI Center; Phase 7C then adds policy-based Interactive/Deep Reasoning/Background/Software Map/Coding Agent routing without weakening explicit model choice, Software Map evidence-egress authority or Phase 10 local-only background constraints. |
 | Product Phase 8 — Coding Agent / Scoped Delegation | Dope changes Dope. A bounded WorkItem can be delegated through explicit authority, agent execution, diff/review and validation while the developer remains in control. Accepted mutations identify affected Software Map areas and may mark them potentially stale, but continuous knowledge alignment remains Phase 10. |
 | Product Phase 9 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable intent, plans, WorkItems, agent runs, validation, decisions, review and session closeout inside Dope. |
 | Product Phase 10 — Living Software Knowledge Model | Dope continuously checks whether source/runtime evidence, canonical Software Map state, documentation and formal contracts still describe the same software. It can also use Phase 8 WorkItem and Phase 9 session provenance to explain why state changed. Deterministic impact analysis narrows work first; bounded local-model semantic checks maintain alignment in the background without silently mutating project truth. |
@@ -853,7 +852,7 @@ Existing Local and Gemini sMap paths still execute through provider-neutral runt
 
 ## Product Phase 7 — AI Presence
 
-Status: **ACTIVE / PHASE 7A P1-P12 WRITTEN / PHASE 7B-7C RESOLVED + PROMOTED**
+Status: **ACTIVE / PHASE 7A IMPLEMENTED + EVIDENCED / P13 NOT QUALIFIED / c7 CHAT UX QUALIFIED / PHASE 7B NEXT**
 Activation baseline: coherent `0.7.0` at `59c7f72a29dcdecdf9b908176754bfd02179b004`
 Authority: ADR 0004, ADR 0006, ADR 0022, ADR 0025, ADR 0026 and `docs/planning/p7/phase-7-plan.md`
 

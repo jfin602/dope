@@ -302,13 +302,13 @@ Initial feature bindings are:
 - role-following Chat -> Interactive;
 - explicit heavy foreground analysis -> Deep Reasoning;
 - Analyze Project/Search Deeper -> Software Map default-target policy while keeping explicit run authority;
-- Phase 8 maintenance -> Background + hard local-only/no-hosted-fallback;
-- Phase 9 delegation -> Coding Agent when that consumer ships.
+- Phase 10 maintenance -> Background + hard local-only/no-hosted-fallback;
+- Phase 8 delegation -> Coding Agent when that consumer ships.
 
 Connection/model configuration and role policy are application state. They never become canonical project truth merely because a project uses them.
 
 
-### Phase 7-9 — AI collaboration, knowledge alignment and delegation
+### Phase 7-10 — AI collaboration, delegation, sessions and knowledge alignment
 
 Introduce or activate:
 - AgentWorkingState / Agent Mind
@@ -319,13 +319,13 @@ Introduce or activate:
 - ChangeSet
 - Validation integration
 
-AI Presence begins in Phase 7A through the Dope-owned durable Chat/ChatPanel and context-composition boundary defined by ADR 0025. Phase 7B centralizes global connection/model management in AI Center, and Phase 7C adds role policies/routing under ADR 0026. AI Presence may consume Dope-owned architecture, Flow, planning, Project Mind, editor/project and bounded saved-Chat context without making conversation canonical truth. Phase 8 uses that provider-independent, role-aware runtime to maintain a Living Software Knowledge Model through deterministic-first, local-first background alignment. Scoped Delegation follows in Phase 9; Phase 8 findings never silently mutate source, documentation, contracts or canonical architecture.
+AI Presence begins in Phase 7A through the Dope-owned durable Chat/ChatPanel and context-composition boundary defined by ADR 0025. Phase 7B centralizes global connection/model management in AI Center, and Phase 7C adds role policies/routing under ADR 0026. AI Presence may consume Dope-owned architecture, Flow, planning, Project Mind, editor/project and bounded saved-Chat context without making conversation canonical truth. Phase 8 consumes that provider-independent, role-aware runtime for Scoped Delegation / Coding Agent work. Phase 9 adds durable Development Sessions over intent, WorkItems, agent runs and validation. Phase 10 then maintains the Living Software Knowledge Model through deterministic-first, local-first background alignment using Phase 8 change provenance and Phase 9 session context; alignment findings never silently mutate source, documentation, contracts or canonical architecture.
 
 Before Phase 7 general AI Presence, correction `c6-branch-seam` establishes only the minimal Model Runtime/provider-session boundary already needed by existing sMap synthesis. Software Map authority, sMap synthesis strategy and provider execution are separate concerns: Local and hosted synthesis share final evidence/proposal/validation/acceptance semantics but may use different model-appropriate prompt packing and stage strategies. This correction is infrastructure reuse, not early Agent Mind/chat/delegation scope.
 
 Local sMap synthesis and Phase 7 Local AI Presence are also different capabilities. A Local sMap strategy may be developed in parallel after the seam without making LM Studio/Qwen the general Agent Runtime or forcing the hosted sMap strategy to inherit Local-model constraints.
 
-### Phase 10 — Development Sessions
+### Phase 9 — Development Sessions
 
 Introduce durable DeveloperSession as the cross-time development unit.
 
@@ -702,7 +702,7 @@ The persistence representation must preserve stable IDs, schema version, provena
 
 For Software Map state, project locality is part of the product contract. Durable sMap state lives beneath the repository's `.dope/` directory: canonical architecture in `.dope/architecture.json`, durable initialization/version/state metadata in `.dope/smap.json`, and any additional persisted sMap artifacts beneath an explicitly versioned `.dope/` sMap namespace. Repository + `.dope/` must be sufficient to recover the durable Software Map.
 
-Phase 8 durable knowledge-alignment state is also project-local and recoverable with the repository. Persisted alignment state may include assertion identity, evidence dependencies/fingerprints, last validated basis, open findings and acknowledgement/resolution state. Rebuildable deterministic indexes, transient scheduler queues, prompt payloads, provider response/session IDs and local-model residency remain disposable execution/cache state.
+Phase 10 durable knowledge-alignment state is also project-local and recoverable with the repository. Persisted alignment state may include assertion identity, evidence dependencies/fingerprints, last validated basis, open findings and acknowledgement/resolution state. Rebuildable deterministic indexes, transient scheduler queues, prompt payloads, provider response/session IDs and local-model residency remain disposable execution/cache state.
 
 Machine-local application state may hold presentation preferences, provider configuration or disposable caches, but it must not be required to recover canonical architecture, determine whether the sMap is initialized or reconstruct other durable sMap truth. Persisting derived evidence or alignment findings does not make either canonical.
 
