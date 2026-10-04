@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Plan
 
-Status: **ACTIVE / PHASE 7A P1-P12 IMPLEMENTED / P13 EVIDENCE AUDIT NOT QUALIFIED / PHASE 7B-7C OUTSTANDING**
+Status: **ACTIVE / P13 EVIDENCE AUDIT NOT QUALIFIED / c7-chat-conversation-ux APPROVED / PHASE 7B-7C OUTSTANDING**
 Activation baseline: coherent `0.7.0` at commit `59c7f72a29dcdecdf9b908176754bfd02179b004`
 Package family: `0.7.x`
 Primary decisions: ADR 0025 and ADR 0026
@@ -31,6 +31,14 @@ The existing P1-P12 stack owns:
 - bounded project/saved-chat context composition;
 - read-only Ask / Explain / Trace / Find Related behavior;
 - direct GUI/live-provider/restart/package qualification.
+
+### c7-chat-conversation-ux — Phase 7A correction gate
+
+P1-P12 and the bounded P12 blocker correction are retained Phase 7A history. P13 is the evidence-only `0.7.13` **Not Qualified** audit and remains truthful history. Before the bounded 7B/7C continuation, apply and qualify `c7-chat-conversation-ux` at unchanged `0.7.13`.
+
+This correction owns presentation and Chat organization only: fixed header + scrolling transcript + fixed unified composer; right-aligned developer bubbles; neutral unboxed safe-Markdown assistant output; compact response metadata; bottom-follow streaming that respects manual scroll-away; and one durable editable ten-color Chat identity shown in Select Chat and reused by developer bubbles, including deterministic migration/defaulting for older Chats.
+
+It preserves explicit per-turn model selection, no silent provider/model fallback, read-only Phase 7 tools, durable provenance, context composition, ownership/restoration and provider independence. Historical P9/P12/P13 evidence is not rewritten.
 
 ### Phase 7B — AI Center
 
@@ -85,20 +93,24 @@ The P13 evidence-only audit is recorded at `0.7.13` as **Not Qualified**, not as
 - The same Chat cannot be open as an active composer in multiple ChatPanels. Selecting an already-open Chat focuses/reveals the owner.
 - Panel layout/restoration is presentation state; `.dope/chats/` owns conversation durability.
 
-### Composer and model selection
-- Composer has a persistent second bottom toolbar row.
-- Toolbar includes context/tool controls, compact connected-model selector and send/cancel/retry state.
-- Model selection is per submitted message. The selected connected model at Send time receives that message/context.
-- One Chat may mix turns from Local, Gemini, OpenAI or future providers.
-- Actual provider/model provenance is durable per assistant execution.
+### Conversation shell, composer and model selection
+- Chat mode uses a fixed top bar, independently scrolling transcript and fixed bottom composer.
+- Back, Chat title and the right-justified settings action remain visible while the transcript scrolls.
+- The multiline input and bottom controls are one unified composer surface; context/tool actions, behavior shortcuts, compact model selector and Send/Stop/Retry remain inside it.
+- Developer turns render as right-aligned Chat-color bubbles; assistant turns render as neutral unboxed formatted Markdown/document text without repetitive visible role-name headers.
+- Normal execution/provenance/context metadata is compact and secondary to answer text; failed/cancelled/interrupted state remains obvious and inspectable.
+- Streaming auto-follows only while the developer remains at/near the bottom. Manual upward scrolling is respected until the developer returns/jumps to latest.
+- Model selection remains per submitted message; one Chat may mix providers/models and actual execution provenance stays durable.
 - No silent fallback to another model/provider after explicit selection.
 
-### Per-Chat settings
-- Right-justified cog in Chat top bar.
-- Settings belong to Chat identity, not ChatPanel instance/location.
-- Persistent context policy may govern eligible sources, history/retrieval/context budget/strategy.
-- Persistent Chat model policy is exact-model in Phase 7A; Phase 7C extends it to either **Exact model** or **Follow Interactive role**, preserving existing exact defaults. Supported model-specific controls remain capability-driven.
-- Per-turn composer overrides do not silently rewrite Chat defaults.
+### Per-Chat settings and organizational color
+- Right-justified cog remains in the fixed Chat top bar.
+- Behavioral settings belong to Chat identity, not ChatPanel instance/location.
+- Persistent context and model policy behavior remains unchanged; per-turn overrides do not rewrite Chat defaults.
+- Each Chat also owns durable organizational color metadata from blue, cyan, teal, green, yellow, orange, red, pink, purple, indigo.
+- New Chats receive a deterministic/distributed color from stable Chat identity; existing Chats without color are deterministically assigned/persisted during migration/defaulting.
+- Select Chat shows the color beside the title; developer bubbles use it with readable foreground contrast; assistant content remains neutral.
+- Color is editable through a visual ten-color picker in Chat settings, but is Chat metadata rather than model/context `ChatSettings` policy and has no built-in semantic meaning.
 - Provider credentials/endpoints/global connection inventory remain application/runtime configuration.
 
 ### AI connection and routing contracts
@@ -145,7 +157,7 @@ ADR 0022 Model Runtime remains the provider execution seam. sMap synthesis strat
 ## Validation strategy
 
 ### Phase 7A
-Use the already-written P1-P12 focused/integration/qualification plan. P12 is the direct GUI/live-provider/restart/package qualification handoff for the AI Presence slice.
+P1-P12 and the P12 blocker correction are retained Phase 7A implementation/evidence; P13 records the full Phase 7 audit as **Not Qualified** because 7B/7C remain outstanding. Before 7B/7C continuation, `c7-chat-conversation-ux` must receive focused regression evidence and direct GUI qualification for the fixed shell, unified composer, safe Markdown transcript, compact metadata, scroll-follow behavior, deterministic Chat-color migration/assignment, selector indicator, settings edit and bubble continuity. Passing this correction does not relabel earlier P12/P13 evidence or qualify 7B/7C.
 
 ### Phase 7B
 Qualification must directly prove:
@@ -186,4 +198,4 @@ The final closeout may occur only after 7A, 7B and 7C are implemented/qualified 
 
 Phase 7 is qualified when durable project Chats/ChatPanels, one global AI Center, and policy-based AI role routing work together as a provider-independent read-only AI collaboration substrate. The developer can manage connections/models centrally, explicitly steer individual turns, define default roles without hard-coding providers, preserve Software Map and background privacy authority, and recover across restart/project/provider failures without provider or routing state becoming canonical project truth.
 
-P1-P12 executed the Phase 7A stack; P13 recorded an evidence-only Not Qualified audit. Reassess the implemented connection/runtime surfaces and plan the Phase 7B/7C continuation, integrated qualification and final Phase 7 closeout.
+P1-P12 and the P12 blocker correction are retained Phase 7A history; P13 recorded an evidence-only Not Qualified audit. Next use `/prompt-ass -> /prompt-plan -> /prompt-write c7-chat-conversation-ux` at unchanged `0.7.13`. After that correction is qualified, continue bounded Phase 7B/7C implementation, integrated qualification and a later final Phase 7 closeout. Do not rewrite the P13 evidence record to manufacture Green.
