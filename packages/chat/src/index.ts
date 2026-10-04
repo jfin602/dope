@@ -2,6 +2,8 @@
 export type ChatId = string;
 export type ChatFolderPath = string; // Root is ''. Other paths use slash-separated safe names.
 export type ChatTitleSource = 'placeholder' | 'automatic' | 'developer';
+export const CHAT_COLORS = ['blue', 'cyan', 'teal', 'green', 'yellow', 'orange', 'red', 'pink', 'purple', 'indigo'] as const;
+export type ChatColor = typeof CHAT_COLORS[number];
 export type AssistantStatus = 'pending' | 'streaming' | 'complete' | 'failed' | 'cancelled';
 export type ChatContextKind = 'editor' | 'selection' | 'file' | 'project-mind' | 'architecture' |
     'physical-map' | 'flow' | 'planning-map' | 'work-item' | 'saved-chat';
@@ -75,6 +77,7 @@ export interface Chat {
     folderPath: ChatFolderPath;
     title: string;
     titleSource: ChatTitleSource;
+    color: ChatColor;
     createdAt: string;
     updatedAt: string;
     lastInteractedAt: string; // Changes on conversation activity, never on view/restore.
@@ -97,6 +100,15 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const contextKinds: readonly ChatContextKind[] = ['editor', 'selection', 'file', 'project-mind', 'architecture',
     'physical-map', 'flow', 'planning-map', 'work-item', 'saved-chat'];
 const statuses: readonly AssistantStatus[] = ['pending', 'streaming', 'complete', 'failed', 'cancelled'];
+
+export function parseChatColor(value: unknown): ChatColor { return choice(value, CHAT_COLORS, 'Chat color'); }
+
+/** FNV-1a over the stable Chat ID; no mutable Chat metadata affects the default. */
+export function assignedChatColor(id: ChatId): ChatColor {
+    let hash = 2166136261;
+    for (const character of identifier(id).toLowerCase()) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+    return CHAT_COLORS[(hash >>> 0) % CHAT_COLORS.length];
+}
 
 function record(value: unknown, keys: readonly string[], required: readonly string[]): Record<string, unknown> {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid Chat record');
@@ -246,13 +258,13 @@ export function parseChatMessage(value: unknown): ChatMessage {
 }
 export function parseChat(value: unknown): Chat {
     const v = record(value, ['schemaVersion', 'id', 'revision', 'folderPath', 'title', 'titleSource',
-        'createdAt', 'updatedAt', 'lastInteractedAt', 'settings', 'messages'],
-        ['schemaVersion', 'id', 'revision', 'folderPath', 'title', 'titleSource', 'createdAt',
-            'updatedAt', 'lastInteractedAt', 'settings', 'messages']);
+        'color', 'createdAt', 'updatedAt', 'lastInteractedAt', 'settings', 'messages'],
+        ['schemaVersion', 'id', 'revision', 'folderPath', 'title', 'titleSource', 'color',
+            'createdAt', 'updatedAt', 'lastInteractedAt', 'settings', 'messages']);
     if (v.schemaVersion !== 1 || !Array.isArray(v.messages)) throw new Error('Unsupported Chat schema');
     const chat: Chat = { schemaVersion: 1, id: identifier(v.id), revision: count(v.revision, 'Chat revision'),
         folderPath: parseChatFolderPath(v.folderPath), title: string(v.title, 'Chat title'),
-        titleSource: choice(v.titleSource, ['placeholder', 'automatic', 'developer'], 'title source'),
+        titleSource: choice(v.titleSource, ['placeholder', 'automatic', 'developer'], 'title source'), color: parseChatColor(v.color),
         createdAt: time(v.createdAt), updatedAt: time(v.updatedAt), lastInteractedAt: time(v.lastInteractedAt),
         settings: parseChatSettings(v.settings), messages: v.messages.map(parseChatMessage) };
     const ids = chat.messages.flatMap(message => message.role === 'assistant' ? [message.id, message.execution.id] : [message.id]);

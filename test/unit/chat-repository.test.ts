@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
+import { assignedChatColor, compareChatsByInteraction } from '../../packages/chat/lib/index.js';
 import { ChatRepository } from '../../packages/chat/lib/node/chat-repository.js';
 import { TypeScriptAnalyzer } from '../../packages/code-analysis-typescript/lib/index.js';
 import { SoftwareMapIndex } from '../../packages/code-analysis/lib/node/software-map-index.js';
@@ -24,6 +25,7 @@ test('nested folders and chats survive copy/reopen with stable ID, revisions and
     let state = await repo.mutate(root, 0, { type: 'create-folder', path: 'Research' });
     state = await repo.mutate(root, state.revision, { type: 'create-folder', path: 'Research/Notes' });
     state = await repo.mutate(root, state.revision, { type: 'create-chat', id: chatId, folderPath: 'Research/Notes' });
+    assert.equal(state.chats[0].color, assignedChatColor(chatId));
     const lease = await repo.claim(root, chatId, 'panel');
     if (!lease.acquired) throw new Error('claim failed');
     state = await repo.mutate(root, state.revision, { type: 'append-user', chatId,
@@ -52,6 +54,73 @@ test('nested folders and chats survive copy/reopen with stable ID, revisions and
     await assert.rejects(repo.mutate(root, state.revision - 1, { type: 'rename-chat', chatId, title: 'stale' }), /Stale/);
     await repo.release(root, chatId, lease.token);
   } finally { await rm(root, { recursive: true, force: true }); await rm(copyRoot, { recursive: true, force: true }); }
+});
+
+test('set-color is lease-free durable metadata across rename, move and isolated projects', async () => {
+  const root = await folder(), other = await folder(), repo = new ChatRepository(), chatId = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const interaction = state.chats[0].lastInteractedAt;
+    await assert.rejects(repo.mutate(root, state.revision,
+      { type: 'set-color', chatId, color: 'chartreuse' as never }), /color/);
+    assert.equal((await repo.read(root)).revision, state.revision);
+    state = await repo.mutate(root, state.revision, { type: 'set-color', chatId, color: 'pink' });
+    assert.equal(state.chats[0].lastInteractedAt, interaction);
+    assert.equal(state.chats[0].color, 'pink');
+    state = await repo.mutate(root, state.revision, { type: 'create-folder', path: 'Moved' });
+    state = await repo.mutate(root, state.revision, { type: 'rename-chat', chatId, title: 'Renamed' });
+    state = await repo.mutate(root, state.revision, { type: 'move-chat', chatId, folderPath: 'Moved' });
+    assert.equal((await new ChatRepository().read(root)).chats[0].color, 'pink');
+    assert.equal((await repo.read(root)).chats[0].lastInteractedAt, interaction);
+    assert.deepEqual(await repo.read(other), { schemaVersion: 1, revision: 0, folders: [], chats: [] });
+  } finally { await rm(root, { recursive: true, force: true }); await rm(other, { recursive: true, force: true }); }
+});
+
+test('valid no-color Chats migrate once with transcript, settings, timestamps and ordering intact', async () => {
+  const root = await folder(), repo = new ChatRepository(), first = id(), second = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-folder', path: 'Notes' });
+    state = await repo.mutate(root, state.revision, { type: 'create-chat', id: first, folderPath: 'Notes', title: 'First' });
+    state = await repo.mutate(root, state.revision, { type: 'create-chat', id: second, folderPath: '', title: 'Second' });
+    const settings = { schemaVersion: 1 as const, defaultModel: model, context: {
+      maxInputTokens: 1000, reservedOutputTokens: 100, history: 'none' as const,
+      savedChatSearch: true, allowedSources: ['editor' as const],
+    } };
+    state = await repo.mutate(root, state.revision, { type: 'set-settings', chatId: first, settings });
+    const lease = await repo.claim(root, first, 'panel');
+    if (!lease.acquired) throw new Error('claim failed');
+    state = await repo.mutate(root, state.revision, { type: 'append-user', chatId: first,
+      message: { schemaVersion: 1, id: id(), role: 'user', createdAt: state.chats[0].updatedAt,
+        content: 'Persist me', contextRefs: [] } }, lease.token);
+    const before = state.chats;
+    const manifestPath = join(root, '.dope/chats/index.json');
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    let firstFile = '';
+    for (const entry of manifest.entries) {
+      const file = join(root, '.dope/chats/folders', entry.folderPath, entry.file);
+      const stored = JSON.parse(await readFile(file, 'utf8'));
+      delete stored.color;
+      await writeFile(file, JSON.stringify(stored));
+      if (entry.id === first) firstFile = file;
+    }
+    const validLegacy = await readFile(firstFile, 'utf8');
+    await writeFile(firstFile, JSON.stringify({ ...JSON.parse(validLegacy), titleSource: 'unknown' }));
+    await assert.rejects(new ChatRepository().read(root), /Corrupt or unsupported Chat file/);
+    assert.equal(JSON.parse(await readFile(manifestPath, 'utf8')).revision, state.revision);
+    await writeFile(firstFile, validLegacy);
+    const migrated = await new ChatRepository().read(root);
+    await repo.renew(root, first, lease.token);
+    await repo.release(root, first, lease.token);
+    assert.equal(migrated.revision, state.revision + 1);
+    assert.deepEqual(migrated.chats.map(chat => chat.id), before.map(chat => chat.id));
+    assert.deepEqual([...migrated.chats].sort(compareChatsByInteraction).map(chat => chat.id),
+      [...before].sort(compareChatsByInteraction).map(chat => chat.id));
+    for (let i = 0; i < before.length; i++) {
+      assert.deepEqual(migrated.chats[i], { ...before[i], color: assignedChatColor(before[i].id), revision: before[i].revision + 1 });
+    }
+    assert.deepEqual(await new ChatRepository().read(root), migrated);
+    assert.equal(JSON.parse(await readFile(manifestPath, 'utf8')).revision, migrated.revision);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('locks, leases and abandoned execution recovery retain truthful status', async () => {

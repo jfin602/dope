@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  availableChatContextTokens, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath,
-  parseChat, parseChatCollection, parseChatFolderPath, suggestedChatTitle, withAutomaticChatTitle,
+  CHAT_COLORS, assignedChatColor, availableChatContextTokens, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath,
+  parseChat, parseChatCollection, parseChatColor, parseChatFolderPath, suggestedChatTitle, withAutomaticChatTitle,
 } from '../../packages/chat/lib/index.js';
 import type { Chat, ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
@@ -17,7 +17,7 @@ const selectedModel = { connectionId: 'local-main', modelId: 'chat-model' };
 function sampleChat(): Chat {
   return {
     schemaVersion: 1, id: chatId, revision: 2, folderPath: 'Research/Nested',
-    title: 'Draft', titleSource: 'placeholder', createdAt: now, updatedAt: later, lastInteractedAt: later,
+    title: 'Draft', titleSource: 'placeholder', color: 'blue', createdAt: now, updatedAt: later, lastInteractedAt: later,
     settings: { schemaVersion: 1, defaultModel: selectedModel, context: {
       maxInputTokens: 4096, reservedOutputTokens: 512, history: 'recent', savedChatSearch: false,
       allowedSources: ['editor', 'saved-chat'],
@@ -44,6 +44,17 @@ test('versioned Chat round trips with explicit execution and context provenance'
   const moved = parseChat({ ...chat, folderPath: 'Research', title: 'New name' });
   assert.equal(moved.id, chat.id);
   assert.deepEqual(moved.messages[1], chat.messages[1]);
+});
+
+test('Chat color is bounded and default assignment is stable across all ten colors', () => {
+  assert.equal(CHAT_COLORS.length, 10);
+  assert.deepEqual([...CHAT_COLORS], ['blue', 'cyan', 'teal', 'green', 'yellow', 'orange', 'red', 'pink', 'purple', 'indigo']);
+  const ids = Array.from({ length: 100 }, (_, i) => `00000000-0000-4000-8000-${i.toString(16).padStart(12, '0')}`);
+  assert.equal(new Set(ids.map(assignedChatColor)).size, 10);
+  for (const id of ids) assert.equal(assignedChatColor(id.toUpperCase()), assignedChatColor(id));
+  assert.throws(() => parseChatColor('chartreuse'), /color/);
+  assert.throws(() => parseChat({ ...sampleChat(), color: undefined }), /color/);
+  assert.throws(() => parseChat({ ...sampleChat(), color: 'chartreuse' }), /color/);
 });
 
 test('strict parsing rejects unknown fields, malformed hierarchy and invalid execution lifecycle', () => {

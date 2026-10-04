@@ -14,7 +14,7 @@ import type { ChatRepository } from '../../packages/chat/lib/node/index.js';
 
 const id = () => randomUUID();
 const model = { conversationalText: true, streaming: true, contextWindowTokens: 500, maxInputTokens: 500 };
-const chat = (): Chat => ({ schemaVersion: 1, id: id(), revision: 0, folderPath: '', title: 'Active', titleSource: 'developer',
+const chat = (): Chat => ({ schemaVersion: 1, id: id(), revision: 0, folderPath: '', title: 'Active', titleSource: 'developer', color: 'blue',
   createdAt: '2026-10-03T12:00:00.000Z', updatedAt: '2026-10-03T12:00:00.000Z', lastInteractedAt: '2026-10-03T12:00:00.000Z',
   settings: { schemaVersion: 1, context: { maxInputTokens: 500, reservedOutputTokens: 0, history: 'recent', savedChatSearch: true,
     allowedSources: ['editor', 'selection', 'file', 'project-mind', 'architecture', 'physical-map', 'flow', 'planning-map', 'work-item', 'saved-chat'] } },

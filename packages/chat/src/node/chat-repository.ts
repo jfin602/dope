@@ -3,8 +3,8 @@ import { constants } from 'node:fs';
 import { lstat, mkdir, open, readdir, realpath, rename, rm, rmdir, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath, parseChat,
-    parseChatCollection, parseChatFolderPath, parseChatMessage, parseChatSettings, withAutomaticChatTitle } from '../index';
+import { assignedChatColor, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath, parseChat,
+    parseChatCollection, parseChatColor, parseChatFolderPath, parseChatMessage, parseChatSettings, withAutomaticChatTitle } from '../index';
 import type { Chat, ChatCollection, ChatFolder } from '../index';
 import type { ChatEvent, ChatLeaseResult, ChatOperation, ChatSearchHit } from '../service';
 
@@ -150,7 +150,7 @@ export class ChatRepository {
         try { return parseManifest(JSON.parse(await safeText(path))); }
         catch { throw new Error(`Corrupt or unsupported Chat manifest: ${path}`); }
     }
-    private async raw(root: string): Promise<ChatCollection> {
+    private async raw(root: string, legacyIds = new Set<string>()): Promise<ChatCollection> {
         const { base, exists } = await this.paths(root);
         if (!exists) return { schemaVersion: 1, revision: 0, folders: [], chats: [] };
         const manifest = await this.manifest(base);
@@ -161,7 +161,13 @@ export class ChatRepository {
             const file = join(parent, entry.file);
             if (!await regular(file)) throw new Error(`Missing Chat file: ${file}`);
             let chat: Chat;
-            try { chat = parseChat(JSON.parse(await safeText(file))); }
+            try {
+                const stored = JSON.parse(await safeText(file));
+                if (stored && typeof stored === 'object' && !Array.isArray(stored) && !Object.hasOwn(stored, 'color')) {
+                    chat = parseChat({ ...stored, color: assignedChatColor(stored.id) });
+                    legacyIds.add(chat.id);
+                } else chat = parseChat(stored);
+            }
             catch { throw new Error(`Corrupt or unsupported Chat file: ${file}`); }
             if (chat.id !== entry.id || chat.folderPath !== entry.folderPath || chat.revision !== entry.revision)
                 throw new Error(`Chat manifest/file mismatch: ${file}`);
@@ -247,20 +253,24 @@ export class ChatRepository {
         } catch (error) { throw new Error(`Chat write outcome uncertain; re-read before retrying: ${String(error)}`); }
     }
     private async recover(root: string, base: string): Promise<ChatCollection> {
-        const current = await this.raw(root);
+        const legacyIds = new Set<string>();
+        const current = await this.raw(root, legacyIds);
         const now = new Date().toISOString();
         const chats: Chat[] = [];
         let changed = false;
         for (const chat of current.chats) {
-            if (this.active(await this.lease(base, chat.id))) { chats.push(chat); continue; }
+            const active = this.active(await this.lease(base, chat.id));
             const messages = chat.messages.map(message => {
+                if (active) return message;
                 if (message.role !== 'assistant' || !['pending', 'streaming'].includes(message.execution.status)) return message;
                 changed = true;
                 return { ...message, execution: { ...message.execution, status: 'failed' as const,
                     finishedAt: now, failure: interrupted } };
             });
-            chats.push(!messages.some((message, i) => message !== chat.messages[i]) ? chat :
-                parseChat({ ...chat, revision: chat.revision + 1, updatedAt: now, messages }));
+            const wasInterrupted = messages.some((message, i) => message !== chat.messages[i]);
+            if (legacyIds.has(chat.id)) changed = true;
+            chats.push(!wasInterrupted && !legacyIds.has(chat.id) ? chat : parseChat({ ...chat,
+                revision: chat.revision + 1, updatedAt: wasInterrupted ? now : chat.updatedAt, messages }));
         }
         if (!changed) return current;
         const next = parseChatCollection({ ...current, revision: current.revision + 1, chats });
@@ -269,7 +279,9 @@ export class ChatRepository {
         return next;
     }
     async read(root: string): Promise<ChatCollection> {
-        const current = await this.raw(root);
+        const legacyIds = new Set<string>();
+        const current = await this.raw(root, legacyIds);
+        if (legacyIds.size) return this.locked(root, base => this.recover(root, base));
         const active = current.chats.filter(chat => chat.messages.some(m => m.role === 'assistant' &&
             ['pending', 'streaming'].includes(m.execution.status)));
         if (!active.length) return current;
@@ -324,7 +336,8 @@ export class ChatRepository {
                     if (chats.some(c => c.id === operation.id)) throw new Error('Chat already exists');
                     chats.push(parseChat({ schemaVersion: 1, id: operation.id, revision: 0, folderPath: operation.folderPath,
                         title: operation.title?.trim() || 'New Chat', titleSource: operation.title ? 'developer' : 'placeholder',
-                        createdAt: now, updatedAt: now, lastInteractedAt: now, settings: DEFAULT_SETTINGS, messages: [] })); break;
+                        color: assignedChatColor(operation.id), createdAt: now, updatedAt: now, lastInteractedAt: now,
+                        settings: DEFAULT_SETTINGS, messages: [] })); break;
                 }
                 case 'move-chat': update(c => ({ ...c, folderPath: parseChatFolderPath(operation.folderPath) })); break;
                 case 'rename-chat': update(c => ({ ...c, title: operation.title.trim(), titleSource: 'developer' })); break;
@@ -340,6 +353,7 @@ export class ChatRepository {
                     update(c => withAutomaticChatTitle(c, operation.title)); break;
                 }
                 case 'set-settings': update(c => ({ ...c, settings: parseChatSettings(operation.settings) })); break;
+                case 'set-color': update(c => ({ ...c, color: parseChatColor(operation.color) })); break;
                 case 'append-user': {
                     const message = parseChatMessage(operation.message);
                     if (message.role !== 'user') throw new Error('Expected user message');

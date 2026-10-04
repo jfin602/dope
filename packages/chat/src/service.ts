@@ -1,4 +1,4 @@
-import type { Chat, ChatCollection, ChatContextKind, ChatContextRef, ChatFolderPath, ChatId, ChatMessage,
+import type { Chat, ChatCollection, ChatColor, ChatContextKind, ChatContextRef, ChatFolderPath, ChatId, ChatMessage,
     ChatModelProvenance, ChatModelSelection, ChatSettings } from './index';
 
 export const chatServicePath = '/services/dope/chat';
@@ -14,6 +14,7 @@ export type ChatOperation =
     | { type: 'rename-chat'; chatId: ChatId; title: string }
     | { type: 'automatic-title'; chatId: ChatId; title: string; firstUserMessageId: string; firstAssistantMessageId: string }
     | { type: 'set-settings'; chatId: ChatId; settings: ChatSettings }
+    | { type: 'set-color'; chatId: ChatId; color: ChatColor }
     | { type: 'append-user'; chatId: ChatId; message: ChatMessage & { role: 'user' } }
     | { type: 'begin-assistant'; chatId: ChatId; message: ChatMessage & { role: 'assistant' } }
     | { type: 'start-assistant'; chatId: ChatId; messageId: string; actualModel: ChatModelProvenance }
