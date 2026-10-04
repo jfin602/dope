@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Task Stack
 
-Status: **P13 EVIDENCE CLOSEOUT NOT QUALIFIED / PHASE 7B-7C OUTSTANDING**
+Status: **P13 EVIDENCE CLOSEOUT NOT QUALIFIED / c7-chat-conversation-ux APPROVED / PHASE 7B-7C OUTSTANDING**
 Activation source/package baseline: `59c7f72a29dcdecdf9b908176754bfd02179b004`, `0.7.0`
 Theia: `1.75.0`; Electron: `42.8.1`; React: `19.2.8`; Node: 24
 
@@ -22,9 +22,17 @@ Theia: `1.75.0`; Electron: `42.8.1`; React: `19.2.8`; Node: 24
 | P12 | `0.7.12` | direct AI Presence qualification | T3 | GPT-6 Sol High | yes |
 | P13 | `0.7.13` | evidence-only 7A closeout; full Phase 7 Not Qualified | T1 | GPT-6 Sol Medium | no |
 
-## Execution
+## Current correction gate
 
-P1-P12 and the P12 blocker correction are recorded at the coherent `0.7.12` checkpoint. P13 records their evidence at `0.7.13` without product changes. See [closeout.md](closeout.md) for the Not Qualified decision. A bounded Phase 7 continuation must address ADR 0026 AI Center and role routing before the final Phase 7 qualification decision.
+P1-P12 and the P12 blocker correction are retained at the coherent `0.7.12` implementation checkpoint. P13 records their evidence at `0.7.13` without product changes and remains **Not Qualified**. See [closeout.md](closeout.md).
+
+Before the 7B/7C continuation, use the ordinary correction workflow for **`c7-chat-conversation-ux`** at unchanged `0.7.13`:
+
+`/prompt-ass -> /prompt-plan -> /prompt-write c7-chat-conversation-ux`
+
+The correction owns the fixed header/transcript/composer shell, unified composer, safe formatted assistant output, compact metadata, respectful scroll-follow behavior, durable ten-color Chat identity, migration/defaulting, selector swatches and developer-bubble continuity. It must not change provider/model authority, no-silent-fallback semantics, context provenance or Phase 7 read-only boundaries.
+
+After the correction is qualified, proceed with a bounded Phase 7 continuation for ADR 0026 AI Center, role routing, integrated qualification and a later final closeout. Do not rewrite P13 to call the current phase Green.
 
 ## Records
 - `prompt-assessment.md`
