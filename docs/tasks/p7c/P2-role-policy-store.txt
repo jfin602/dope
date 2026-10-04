@@ -1,0 +1,39 @@
+TASK: Phase 7 / P2 — Application-global role policy persistence and service
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.25`.
+
+GOAL
+
+Persist role policy as user-global application state with the same concurrency truth as 7B without coupling its revision to connection edits.
+
+PREFLIGHT
+
+Read P1 plus `AIRegistryStore` locking/watch pattern and ADR 0026 changing-inventory behavior. Require coherent `0.7.24`.
+
+IMPLEMENT
+- add `AIRolePolicyStore` (or equally isolated role-policy authority) under the same OS-user Dope config directory, outside `.dope/`;
+- versioned snapshot with its own revision, exactly five role records initialized unconfigured and no silent auto-assignment;
+- atomic writes, expected-revision mutation, cross-process exclusion, stale/abandoned lock recovery, stale-write rejection and event-driven external change propagation;
+- malformed/future state fail closed; no destructive silent rewrite;
+- policy exact references survive connection/model disabled/unavailable/removal; preserve embedded bounded last-known non-secret descriptor rather than rewriting policy;
+- reappearing same immutable IDs regain relationship; recreated new IDs require explicit reassignment;
+- mutation operations set/replace ordered entries and constraints/preferences; no generic project/window override state;
+- expose typed role-policy RPC/service/client notifications usable with no project open;
+- do not add full edit history/undo.
+
+Advance to `0.7.25`.
+
+TESTS
+
+Focused persistence/service tests for initialization, edits/order, revisions, two processes, stale locks, live propagation, removed target preservation, same-ID return/new-ID noninheritance, corrupt/future state and project independence. Build AI/contracts/extension as touched; baseline/version/no-lock/diff check.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report role-store concurrency/tombstone behavior and P3 eligibility.

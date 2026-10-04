@@ -1,0 +1,40 @@
+TASK: Phase 7 / P4 — Role-routed execution fallback and provenance
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.27`.
+
+GOAL
+
+Add one application routing/execution service above the existing exact Model Runtime while preserving exact-selection authority.
+
+PREFLIGHT
+
+Read P1-P3, `ModelConnectionsRegistry.generate`, `ModelRuntimeFailure` classes, AI inventory controller and ADR fallback rules. Require coherent `0.7.26`.
+
+IMPLEMENT
+- add routing service that resolves a role once against policy/inventory/request and receives an explicit `allowFallback` feature decision;
+- attempt each resolved candidate at most once; provider-internal retries cannot reset the candidate sequence;
+- explicit exact executions stay exact/no-fallback; offer a shared provenance helper but do not route them through fallback;
+- role fallback allowed before useful output for preflight unavailable/ineligible target and normalized `connection-unavailable`, `model-unavailable`, `transient-transport`, `transient-upstream` failures when caller allows fallback;
+- never fallback for cancellation, authentication, invalid config, unsupported hard capability discovered late, `invalid-json`, nonretryable/content-policy provider rejection, feature-semantic failure, or any error after first meaningful delta/output;
+- no Local->hosted transition unless hosted eligibility and caller egress authorization were present before execution began;
+- stream only the selected attempt's output; never splice partial outputs from two models;
+- produce immutable RoutingProvenance with bounded attempt result categories and actual target metadata;
+- expose explain/Why-this-model projection data without chain-of-thought/private scoring/secrets;
+- stale policy/inventory changes during execution do not rewrite the chosen attempt; next execution re-resolves.
+
+Advance to `0.7.27`.
+
+TESTS
+
+Focused routing tests with deterministic fake runtimes: preflight fallback, transient fallback, no fallback on cancel/auth/invalid-json/nonretryable, no fallback after delta, each candidate once, egress/locality, exact no-fallback, provenance and policy/inventory mutation after start. Build affected packages; no live providers/browser.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report fallback boundary/provenance and P5 eligibility.

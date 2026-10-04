@@ -13,7 +13,7 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 **Product Phase 5 — Visual Software Planning is OWNER-CLOSED FOR SEQUENCING.** The retained Phase 5 source at `0.5.11` remained Not Green because P11 never completed one clean end-to-end A-I qualification replay and P12 was not executed. The owner explicitly accepted those gaps for sequencing on 2026-10-02; no failed or missing evidence is relabeled Green. The closeout transition commit `710edb362f9881ab41215705db4f08d8daca6293` established the coherent `0.6.0` successor baseline.
 
-**Product Phase 6 — Flow is OWNER-CLOSED FOR SEQUENCING at `0.6.8`; P8 remains Not Qualified.** P7 reached a bounded Green result at `0.6.7`, while its earlier Not Green records remain historical. The owner accepted P8 G/H exact-candidate evidence gaps for sequencing only on October 3, 2026. See `docs/tasks/p6/closeout.md`. Phase 5 P11 Not Green/P12 unexecuted truth remains unchanged. **Product Phase 7 is ACTIVE at the `0.7.13` evidence-only closeout transition; it remains Not Qualified.** Its activation commit is `59c7f72` at `0.7.0`. P1-P12 plus the bounded P12 blocker correction implement/exercise the 7A path; P13 records the evidence without qualifying missing 7B/7C scope. ADR 0025 also approves bounded correction `c7-chat-conversation-ux` at unchanged `0.7.13`: fixed Chat header + scrolling transcript + fixed unified composer, safe formatted assistant output, compact metadata, respectful stream-follow behavior and durable per-Chat ten-color organizational identity. That correction is now **GREEN / QUALIFIED**; Phase 7B is next. ADR 0026 still owns AI Center and deterministic role routing. See `docs/tasks/p7/closeout.md`. Mutation/delegation remains deferred.
+**Product Phase 6 — Flow is OWNER-CLOSED FOR SEQUENCING at `0.6.8`; P8 remains Not Qualified.** P7 reached a bounded Green result at `0.6.7`, while its earlier Not Green records remain historical. The owner accepted P8 G/H exact-candidate evidence gaps for sequencing only on October 3, 2026. See `docs/tasks/p6/closeout.md`. Phase 5 P11 Not Green/P12 unexecuted truth remains unchanged. **Product Phase 7 is ACTIVE at coherent `0.7.23`; Phase 7B AI Center is QUALIFIED / CLOSED and Phase 7C Roles & Routing is next.** Its activation commit is `59c7f72` at `0.7.0`. P1-P12 plus the bounded P12 blocker correction implement/exercise the 7A path; P13 records the evidence without qualifying missing 7B/7C scope. ADR 0025 also approves bounded correction `c7-chat-conversation-ux` at unchanged `0.7.13`: fixed Chat header + scrolling transcript + fixed unified composer, safe formatted assistant output, compact metadata, respectful stream-follow behavior and durable per-Chat ten-color organizational identity. That correction is now **GREEN / QUALIFIED**; Phase 7B is next. ADR 0026 still owns AI Center and deterministic role routing. See `docs/tasks/p7/closeout.md`. Mutation/delegation remains deferred.
 
 `c5-smap-readability` and the other Phase 5 corrections remain retained implementation/history. Their commit subjects or partial browser observations do not create a standalone Green claim beyond recorded evidence.
 
@@ -261,12 +261,12 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Validate and execute the written Phase 7B continuation stack:
+Phase 7B AI Center is **QUALIFIED / CLOSED at `0.7.23`**. Validate and execute the written Phase 7C continuation stack:
 
-`npm run codex:phase:validate -- p7b`
+`npm run codex:phase:validate -- p7c`
 
 then:
 
-`npm run codex:phase -- p7b`
+`npm run codex:phase -- p7c`
 
-The `p7b` runner continuation starts from coherent `0.7.13` and assigns `0.7.14` through `0.7.23`. Preserve all Phase 7A/P12/P13/c7 evidence. Phase 7B must remain role-ready without implementing Phase 7C routing or Phase 8 mutation-capable Scoped Delegation.
+`p7c` assigns `0.7.24` through `0.7.32`. Preserve Phase 7A/P12/P13/c7 and Phase 7B evidence. Phase 7C adds deterministic role policy/routing only; do not pull Phase 8 Scoped Delegation or Phase 10 background alignment consumers forward.

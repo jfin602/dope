@@ -1,0 +1,50 @@
+TASK: Phase 7 / P8 — Integrated AI roles and routing qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.31`.
+
+GOAL
+
+Qualify Phase 7C and the integrated 7A+7B+7C collaboration substrate on one exact candidate.
+
+PREFLIGHT
+
+Read p7c assessment/plan, exact P1-P7 commits/results, 7B closeout/P9 evidence, P13/c7 evidence and ADR 0026 qualification. Require coherent `0.7.30` predecessor.
+
+Advance all live versions/internal refs to `0.7.31` before final candidate evidence.
+
+DIRECT MATRIX
+A. Roles UI/persistence: with no project open, configure all five roles; preferred/fallback order, constraints/preferences and health survive restart and propagate across two windows/processes with stale-edit rejection.
+B. Determinism: unchanged policy/inventory/request resolves same target repeatedly; constraint pool preferences/tie-breaking are stable and Unknown hard capabilities fail.
+C. Inventory change: disable/remove preferred target and prove policy intent/tombstone remains; eligible fallback is used without promotion; restore same ID and preferred returns; recreated new ID does not inherit.
+D. Chat Interactive: create a new Follow Interactive Chat and complete a real Local turn; change Interactive policy and prove next following turn changes accordingly while pinned/exact Chat stays pinned.
+E. Exact authority: choose exact per-turn model, force failure and prove no role fallback; one-turn selection does not rewrite Chat or global policy.
+F. Fallback: stage one role-routed preferred target unavailable/transient before output and prove one permitted fallback succeeds; stage cancellation/auth/nonretryable or partial-output failure and prove no fallback/splicing. Real Local connections may be used for the successful path; deterministic test adapters may stage failure classes not safely reproducible live.
+G. Hosted egress: configure a hosted candidate without sending project data. A role-following Chat/project-data request must require explicit feature/user authorization before hosted execution; denial sends nothing. Global role policy alone is insufficient.
+H. Why this model: inspect durable routing provenance after preferred and fallback turns; explanation shows role/source/effective constraints/preferred/actual/attempts without secrets or hidden scoring.
+I. Software Map: Software Map role proposes a target; run-level UI still exposes exact target and keeps hosted consent/probe/warm-up. Prove changing role cannot replace an active exact synthesis target.
+J. Future seams: Background request with hard local-only/no-hosted-fallback rejects hosted candidate; Coding Agent is configurable but has No active consumer yet; no mutation/tool execution appears.
+
+T3 VALIDATION
+- focused role/store/resolver/router/AI Center/Chat/SMap suites;
+- `npm run check` once on final source;
+- multi-process role-policy propagation/revision integration;
+- `npm run codex:phase:validate -- p7c`;
+- Linux package/AppImage build/inspection and native startup/normal close if current changes affect packaged UI/runtime;
+- exact `0.7.31`, framework/no-root-lock and diff checks.
+
+Reuse valid 7B secure-store/provider evidence where behavior is unchanged; do not spend hosted quota merely to repeat 7B. Do not rerun unrelated Phase 5/6 dogfooding.
+
+EVIDENCE
+
+Create `docs/tasks/p7c/P8-roles-routing-qualification-evidence.md` with exact candidate, A-J observations, policies/targets using non-secret IDs, commands/results and residual gaps. If a small 7C defect is found, repair only that defect and rerun affected gates; preserve failed attempts.
+
+If coherent enough to continue, create the manual `0.7.31` checkpoint expected by the runner.
+
+FINAL RESPONSE
+
+Report A-J, direct role/fallback/authority/provenance evidence and P9 final-closeout eligibility.

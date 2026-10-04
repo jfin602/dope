@@ -32,16 +32,16 @@ General Chat uses the application-level Model Connections boundary separate from
 
 ## Execution readiness
 
-Phase 7A P1-P12, the bounded P12 blocker correction, and the P13 evidence-only audit are recorded. P13 remains **Not Qualified** because Phase 7B/7C were not yet implemented. The bounded `c7-chat-conversation-ux` correction is **Green / Qualified** at unchanged `0.7.13` and preserves the retained P12/P13 history.
+Phase 7A implementation/evidence and the qualified `c7-chat-conversation-ux` correction are retained. Phase 7B AI Center is **QUALIFIED / CLOSED at coherent `0.7.23`**. Phase 7C Roles & Routing is the remaining Phase 7 slice.
 
-Current continuation baseline: coherent `0.7.13`.
+Current continuation baseline: coherent `0.7.23`.
 
-Next execution sequence:
+Execution sequence:
 
-1. use the promoted Phase 7B authority in ADR 0026 / the Phase 7 plan;
-2. run `/prompt-ass -> /prompt-plan -> /prompt-write p7` for a contiguous Phase 7B continuation from the current source;
-3. implement and qualify AI Center without role routing;
-4. continue with Phase 7C role policy/routing;
-5. perform exactly one later final Phase 7 closeout over 7A+7B+7C.
+1. validate the written `p7c` continuation;
+2. execute P1-P7 (`0.7.24`–`0.7.30`);
+3. perform P8 direct integrated qualification at `0.7.31`;
+4. run P9 as the one final Product Phase 7 closeout at `0.7.32`;
+5. if Phase 7 closes Green, start a fresh Phase 8 Scoped Delegation `/docs-review`; do not create Phase 8 implementation prompts from the closeout.
 
-7B/7C are normal Phase 7 capability, not defect repair. Do not replay Phase 7A merely because the continuation advances within the same `0.7.x` family.
+7C is normal Phase 7 capability, not defect repair. It must not add mutation/delegation or Phase 10 background-alignment consumers.

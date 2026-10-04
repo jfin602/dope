@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Plan
 
-Status: **ACTIVE / P13 EVIDENCE AUDIT NOT QUALIFIED / c7-chat-conversation-ux GREEN + QUALIFIED / PHASE 7B NEXT / 7C OUTSTANDING**
+Status: **ACTIVE / 7A RETAINED / 7B QUALIFIED + CLOSED AT 0.7.23 / p7c WRITTEN + NEXT / FINAL PHASE 7 CLOSEOUT IN p7c P9**
 Activation baseline: coherent `0.7.0` at commit `59c7f72a29dcdecdf9b908176754bfd02179b004`
 Package family: `0.7.x`
 Primary decisions: ADR 0025 and ADR 0026
@@ -75,7 +75,7 @@ After AI Center:
 - keep role fallback bounded/conservative, preserve unresolved target intent, and record durable routing provenance with a Why this model? explanation;
 - global role policy may restrict egress but never grant feature/user egress consent.
 
-The P13 evidence-only audit is recorded at `0.7.13` as **Not Qualified**, not as the final Phase 7 closeout. Continue with a bounded 7B/7C implementation and qualification stack, then perform a later final closeout using `/prompt-ass -> /prompt-plan -> /prompt-write p7`. Do not disguise 7B/7C as a correction stack.
+Phase 7B is **Qualified / Closed at `0.7.23`**. The written `p7c` continuation now owns Phase 7C implementation/qualification and its final P9 owns the one later Product Phase 7 closeout. Do not disguise 7C as a correction stack.
 
 ## Locked product contracts
 

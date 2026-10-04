@@ -1,0 +1,38 @@
+TASK: Phase 7 / P7 — Software Map role binding and future role seams
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.30`.
+
+GOAL
+
+Bind current feature consumers without letting global routing weaken Software Map or activate future phases.
+
+PREFLIGHT
+
+Read P1-P6, ADR 0022, current centralized Software Map setup/backend and Phase 10/Phase 8 role constraints in ADR 0026. Require coherent `0.7.29`.
+
+IMPLEMENT
+- Analyze Project and Search Deeper may request Software Map role to propose/default an eligible target when no explicit run target has been chosen;
+- resolve role to a visible exact connection/model candidate in setup; developer can choose another exact eligible target;
+- before project evidence is sent, retain current exact-target disclosure/hosted evidence-egress consent, structured-output feature probe, Local warm-up and synthesis strategy;
+- once probe/run begins, target is exact for that run; generic role fallback does not replace target after structured/semantic/probe/warm-up failure;
+- changing Software Map role changes future defaults only, never an active/current exact run or accepted architecture truth;
+- expose reusable feature role-request API for `background` with caller hard `local-only` + no-hosted-fallback and for `coding-agent`, but DO NOT add scheduler/delegation consumers;
+- Coding Agent remains no active consumer; Background no active Phase 10 consumer; Deep Reasoning remains explicit-request only and no hidden difficulty classifier;
+- synthetic tests prove Phase 10-style Background constraints can only resolve Local and Phase 8 Coding Agent has stable policy identity without mutation authority.
+
+Advance to `0.7.30`.
+
+TESTS
+
+Focused SMap setup/role tests: role-derived default, exact override, hosted consent, generic Test not feature probe, probe/warm-up order, no semantic fallback, active-run stability, Search Deeper target, Background local-only rejection of hosted, Coding Agent no consumer and Deep Reasoning no classifier. Run directly affected synthesis regressions; build affected packages only.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report authority-preserving feature bindings and P8 qualification readiness.
