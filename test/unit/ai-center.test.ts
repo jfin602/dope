@@ -117,6 +117,8 @@ test('workbench integration uses a singleton main tab, supported account replace
     assert.match(contribution, /getOrCreateWidget<AICenterWidget>\(AI_CENTER_ID\)/);
     assert.match(contribution, /if \(!widget\.isAttached\) await this\.shell\.addWidget\(widget, \{ area: 'main' \}\)/);
     assert.match(contribution, /await this\.shell\.activateWidget\(widget\.id\)/);
+    assert.match(contribution, /void this\.shell\.revealWidget\(chatPanelId\)/);
+    assert.doesNotMatch(contribution, /tryGetWidget\(chatPanelId\)/);
     assert.match(contribution, /removeBottomMenu\('accounts-menu'\)/);
     assert.match(contribution, /linkCompoundMenuNode\(\{ newParentPath: MANAGE_MENU, submenuPath: ACCOUNTS_MENU/);
     assert.match(module, /rebind\(SidebarBottomMenuWidget\)\.to\(AICenterBottomMenuWidget\)/);
@@ -129,6 +131,11 @@ test('workbench integration uses a singleton main tab, supported account replace
     assert.match(widget, /setAttribute\('aria-expanded'/);
     assert.match(widget, /setAttribute\('aria-live', 'polite'\)/);
     assert.match(widget, /input\.type = secret \? 'password'/);
+    assert.match(widget, /setup\.credential === 'optional'/);
+    assert.match(widget, /option = element\('option', 'none'\); option\.value = ''/);
+    assert.match(widget, /setup\.credential === 'optional' \? '' : setup\.environmentVariable \? 'environment' : 'session'/);
+    assert.match(widget, /option\.selected = source === defaultSource/);
+    assert.match(widget, /hidden = !credentialSelect\.value \|\| credentialSelect\.value === 'environment'/);
     assert.doesNotMatch(widget, /innerHTML/);
     assert.match(widget, /safeEndpoint\(connection\.config\.endpoint\)/);
     assert.match(css, /\.dope-ai-center :is\(button, input, select\):focus-visible/);

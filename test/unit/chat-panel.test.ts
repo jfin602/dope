@@ -49,7 +49,7 @@ test('Chat delegates connection repair to AI Center and listens for live registr
     assert.match(module, /notifyModelConnectionsChanged\(\) \{ modelInventoryChanged\.fire\(\)/);
     assert.match(module, /modelInventoryChanged\.event/);
     assert.match(center, /setReturnToChat\(chatPanelId \? \(\) =>/);
-    assert.match(center, /this\.shell\.activateWidget\(chatPanelId\)/);
+    assert.match(center, /this\.shell\.revealWidget\(chatPanelId\)/);
     assert.match(centerWidget, /Return to Chat/);
     assert.doesNotMatch(widget, /setSessionCredential|\.upsert\(|\.activate\(|SecretInputDialog|setupModels|private async reconnect/);
 });

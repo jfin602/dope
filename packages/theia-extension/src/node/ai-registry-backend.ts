@@ -183,7 +183,7 @@ export class AIInventoryController {
         try {
             const signal = AbortSignal.timeout(15_000);
             for await (const event of this.runtimes.generate({ connectionId: id, modelId: model.id },
-                { messages: [{ role: 'user', content: 'Reply with OK.' }], maxOutputTokens: 8, signal })) {
+                { messages: [{ role: 'user', content: 'Reply with OK.' }], maxOutputTokens: 64, signal })) {
                 if (event.type === 'complete' && event.text.trim()) usage = event.usage;
             }
             if (!usage) throw new ModelRuntimeFailure('Incomplete connection test', 'invalid-json');

@@ -188,9 +188,16 @@ export class AICenterWidget extends BaseWidget {
             if (setup.fields.includes('preferredModelId')) field(extra, 'Preferred model ID', 'preferredModelId', existing?.preferredModelId);
             const credentialLabel = element('label', 'Credential source');
             const credentialSelect = element('select'); credentialSelect.name = 'source';
+            const defaultSource = existing?.credential?.source ??
+                (setup.credential === 'optional' ? '' : setup.environmentVariable ? 'environment' : 'session');
+            if (setup.credential === 'optional') {
+                const option = element('option', 'none'); option.value = '';
+                option.selected = !defaultSource;
+                credentialSelect.append(option);
+            }
             for (const source of setup.credentialSources) {
                 const option = element('option', source); option.value = source;
-                option.selected = source === (existing?.credential?.source ?? (setup.environmentVariable ? 'environment' : 'session'));
+                option.selected = source === defaultSource;
                 credentialSelect.append(option);
             }
             credentialLabel.append(credentialSelect); extra.append(credentialLabel);
@@ -198,7 +205,7 @@ export class AICenterWidget extends BaseWidget {
             const environmentName = setup.environmentVariable ? undefined : field(extra, 'Environment variable name',
                 'environmentName', existing?.credential?.source === 'environment' ? existing.credential.name : '');
             const updateSecret = () => {
-                secret.parentElement!.hidden = credentialSelect.value === 'environment';
+                secret.parentElement!.hidden = !credentialSelect.value || credentialSelect.value === 'environment';
                 if (environmentName) environmentName.parentElement!.hidden = credentialSelect.value !== 'environment';
             };
             credentialSelect.addEventListener('change', updateSecret); updateSecret();

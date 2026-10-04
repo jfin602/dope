@@ -1,6 +1,6 @@
 {
   "name": "@dope/ai",
-  "version": "0.7.21",
+  "version": "0.7.22",
   "private": true,
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

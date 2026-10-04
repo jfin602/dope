@@ -6,7 +6,7 @@ import test from 'node:test';
 import type { AIConnection, AIConnectionConfig } from '../../packages/ai/lib/index.js';
 import { ModelRuntimeFailure } from '../../packages/contracts/lib/model-runtime.js';
 import { AIRegistryStore } from '../../packages/theia-extension/lib/node/ai-registry-store.js';
-import { AIRegistryBackend } from '../../packages/theia-extension/lib/node/ai-registry-backend.js';
+import { AIInventoryController, AIRegistryBackend } from '../../packages/theia-extension/lib/node/ai-registry-backend.js';
 import { AICredentialManager } from '../../packages/theia-extension/lib/node/ai-credential-manager.js';
 import { ModelConnectionsRegistry } from '../../packages/theia-extension/lib/node/model-connections.js';
 import { LocalConversationalProvider } from '../../packages/theia-extension/lib/node/conversational-providers.js';
@@ -101,7 +101,8 @@ test('activation uses configured connection and resolved credential; exact model
             changes: { alias: 'Shared alias', lifecycle: 'enabled', config: { type: 'openai-compatible', endpoint: 'https://host.example/v1' },
                 credential: { source: 'environment', name: 'COMPAT_KEY', status: 'unknown' } } } });
         const registry = new ModelConnectionsRegistry(undefined, store, credentials);
-        await registry.activate('hosted');
+        const inventory = new AIInventoryController(store, registry, credentials);
+        await inventory.refreshModels('hosted');
         assert.deepEqual((await registry.list()).connections[0].models.map(item => item.id), ['configured']);
         await assert.rejects(async () => { for await (const _event of registry.generate(
             { connectionId: 'hosted', modelId: 'other' }, { messages: [{ role: 'user', content: 'Hi' }] })) {} },
@@ -113,11 +114,11 @@ test('activation uses configured connection and resolved credential; exact model
             { connectionId: 'hosted', modelId: 'configured', providerId: 'openai-compatible', modelLabel: 'configured' });
         assert.equal(calls.at(-1)?.auth, 'Bearer environment-secret');
         assert.equal(calls.at(-1)?.model, 'configured');
-        await registry.activate('local');
+        await inventory.refreshModels('local');
         const models = (await registry.list()).connections[1].models;
         assert.equal(models.find(item => item.id === 'loaded')?.capabilities.contextWindowTokens, 2048);
         assert.equal(models.find(item => item.id === 'unknown')?.usable, false);
-        await registry.activate('openai');
+        await inventory.refreshModels('openai');
         assert.deepEqual((await registry.list()).connections[2].models.map(item => item.id), ['gpt-test']);
         assert.equal((await registry.list()).connections[2].providerId, 'openai');
         assert.doesNotMatch(await readFile(store.path, 'utf8'), /environment-secret/);
@@ -125,21 +126,22 @@ test('activation uses configured connection and resolved credential; exact model
         await registry.setSessionCredential('hosted', 'session-secret');
         assert.equal((await registry.list()).connections[0].ready, false);
         assert.doesNotMatch(await readFile(store.path, 'utf8'), /session-secret/);
-        await store.mutate(mutation(connection('anonymous', { type: 'openai-compatible', endpoint: 'https://other.example/v1' }, 'manual'), 4));
+        await store.mutate(mutation(connection('anonymous', { type: 'openai-compatible', endpoint: 'https://other.example/v1' }, 'manual'),
+            (await store.read()).revision));
         await credentials.replace('anonymous', 'session', 'unselected-secret');
-        await registry.activate('anonymous');
+        await inventory.refreshModels('anonymous');
         const before = calls.length;
         for await (const _event of registry.generate({ connectionId: 'anonymous', modelId: 'manual' },
             { messages: [{ role: 'user', content: 'Hi' }] })) {}
         assert.equal(calls[before]?.auth, null);
         await registry.setSessionCredential('anonymous', 'selected-secret');
-        await registry.activate('anonymous');
+        await inventory.refreshModels('anonymous');
         for await (const _event of registry.generate({ connectionId: 'anonymous', modelId: 'manual' },
             { messages: [{ role: 'user', content: 'Hi' }] })) {}
         assert.equal(calls.at(-1)?.auth, 'Bearer selected-secret');
-        await store.mutate({ version: 1, expectedRevision: 5, mutation: { type: 'update-connection', id: 'hosted',
+        await store.mutate({ version: 1, expectedRevision: (await store.read()).revision, mutation: { type: 'update-connection', id: 'hosted',
             changes: { alias: 'Shared alias', lifecycle: 'enabled', config: { type: 'openai-compatible', endpoint: 'https://host.example/v1' },
                 credential: { source: 'secure', status: 'unknown' } } } });
-        await assert.rejects(registry.activate('hosted'), /OS secure storage unavailable/);
+        await assert.rejects(inventory.refreshModels('hosted'), /credential|OS secure storage unavailable/);
     } finally { globalThis.fetch = originalFetch; store.dispose(); await rm(directory, { recursive: true, force: true }); }
 });

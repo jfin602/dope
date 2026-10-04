@@ -89,7 +89,7 @@ test('Test Connection uses one tiny synthetic turn, never falls back, and invali
         assert.equal(result.modelId, 'alpha');
         assert.equal(result.hostedCostPossible, false);
         assert.equal(result.usage?.outputTokens, 1);
-        assert.deepEqual(calls, [{ messages: [{ role: 'user', content: 'Reply with OK.' }], maxOutputTokens: 8 }]);
+        assert.deepEqual(calls, [{ messages: [{ role: 'user', content: 'Reply with OK.' }], maxOutputTokens: 64 }]);
         assert.equal((await controller.inventory()).tests.length, 1);
         generationFail(new ModelRuntimeFailure('temporary', 'transient-upstream'));
         await assert.rejects(controller.testConnection('desk'), /temporary/);
