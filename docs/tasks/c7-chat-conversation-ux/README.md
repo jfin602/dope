@@ -57,6 +57,15 @@ The correction also gives every Chat a durable ten-color organizational identity
    - Rename, folder move, panel relocation, auto-title, and restart preserve color.
    - Color carries no product-defined semantic meaning.
 
+7. **Left/right Chat launchers**
+   - Left primary toolbar/activity bar shows a Chat button that opens/reveals Select Chat in the left panel.
+   - Right secondary toolbar/activity bar shows the same Chat button for the right panel.
+   - Repeated activation reuses/reveals the existing launcher panel on that side rather than opening duplicates.
+   - If the side launcher is inside a Chat, toolbar activation returns it to Select Chat and releases that Chat ownership normally.
+   - Reuse the existing left/right Chat commands where practical; keep center/bottom command-palette Chat opening available.
+   - Use supported Theia workbench/view/shell contribution APIs only; no DOM/private-shell hacks.
+   - Chat organizational color does not tint the global launcher icon.
+
 ## Preserved boundaries
 
 Do not change:
@@ -76,8 +85,8 @@ Do not change:
 | Prompt | Boundary | Tier | Model | Browser |
 | --- | --- | --- | --- | --- |
 | P1 | Chat color domain, mutation, persistence, deterministic migration | T1 | GPT-6 Sol High | no |
-| P2 | Conversation shell, transcript, Markdown, composer, metadata, scroll, color UI | T1 | GPT-6 Sol High | no |
-| P3 | exact-candidate browser/integration qualification + correction closeout | T3 | GPT-6 Sol High | yes |
+| P2 | Conversation shell + left/right launcher actions + transcript/Markdown/composer/color UI | T1 | GPT-6 Sol High | no |
+| P3 | exact-candidate browser/integration/launcher qualification + correction closeout | T3 | GPT-6 Sol High | yes |
 
 Major testing is intentionally concentrated in P3. P1/P2 run only focused regressions and the smallest required package build.
 
