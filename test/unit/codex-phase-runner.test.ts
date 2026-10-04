@@ -157,6 +157,24 @@ const post2Prompt = (
   };
 };
 
+const continuationPrompt = (
+  number: number,
+  {
+    phase = 7,
+    basePatch = 13,
+    ...options
+  }: PromptOptions & { phase?: number; basePatch?: number } = {},
+) => {
+  const entry = prompt(number, {
+    ...options,
+    version: options.version ?? `0.${phase}.${basePatch + number}`,
+  });
+  return {
+    ...entry,
+    text: entry.text.replace('TASK: Phase 8', `TASK: Phase ${phase}`),
+  };
+};
+
 const correctionPrompt = (
   number: number,
   {
@@ -1738,6 +1756,39 @@ test('resume planning selects the newest exact phase marker while preserving pre
         '0.8.1',
       ),
     /expected 0\.8\.2/,
+  );
+});
+
+test('pre-1.0 continuation resume starts from the preceding patch and advances safely', () => {
+  const plan = buildPlan(
+    [continuationPrompt(1), continuationPrompt(2),
+      continuationPrompt(3, { closeout: true, title: 'Phase 7B closeout' })],
+    'p7b',
+  );
+  assert.equal(plan.mode, 'phase');
+  if (plan.mode !== 'phase') throw new Error('Expected a phase plan.');
+  assert.equal(plan.continuationSlice, 'B');
+  assert.equal(plan.versionOffset, 13);
+  assert.equal(roadmapVersionFor(plan, 0), '0.7.13');
+  assert.equal(roadmapVersionFor(plan, 1), '0.7.14');
+
+  const initial = detectCompletedPromptPrefix(plan, [], '0.7.13');
+  assert.equal(initial.completedCount, 0);
+  assert.equal(initial.previousVersion, '0.7.13');
+  assert.equal(initial.nextPrompt?.targetVersion, '0.7.14');
+
+  const resumed = detectCompletedPromptPrefix(
+    plan,
+    [{ sha: 'one', subject: '0.7.14' }],
+    '0.7.14',
+  );
+  assert.equal(resumed.completedCount, 1);
+  assert.equal(resumed.previousVersion, '0.7.14');
+  assert.equal(resumed.nextPrompt?.targetVersion, '0.7.15');
+
+  assert.throws(
+    () => detectCompletedPromptPrefix(plan, [], '0.7.12'),
+    /expected 0\.7\.13/,
   );
 });
 

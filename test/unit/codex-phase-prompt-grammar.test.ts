@@ -233,6 +233,32 @@ test('phase plan grammar fails closed on malformed parsed metadata', () => {
   );
 });
 
+test('pre-1.0 continuation folders keep Phase identity and continue patch versions', () => {
+  const p1 = prompt(1, { phase: 7, version: '0.7.14' });
+  const p2 = prompt(2, { closeout: true, phase: 7, version: '0.7.15',
+    title: 'Phase 7B closeout' });
+  const plan = buildPlan([p2, p1], 'p7b');
+
+  assert.equal(plan.mode, 'phase');
+  if (plan.mode !== 'phase') throw new Error('Expected a phase plan.');
+  assert.equal(plan.phase, 7);
+  assert.equal(plan.roadmapFamily, 'pre-1.0');
+  assert.equal(plan.roadmapMajor, 0);
+  assert.equal(plan.versionOffset, 13);
+  assert.equal(plan.continuationSlice, 'B');
+  assert.deepEqual(plan.prompts.map(prompt => prompt.targetVersion), ['0.7.14', '0.7.15']);
+
+  assert.throws(
+    () => buildPlan([prompt(1, { phase: 7, version: '0.8.14' }), p2], 'p7b'),
+    /Continuation p7b P1 must target 0\.7\.<patch>/,
+  );
+  assert.throws(
+    () => buildPlan([prompt(1, { phase: 7, version: '0.7.14' }),
+      prompt(2, { closeout: true, phase: 7, version: '0.7.16', title: 'Phase 7B closeout' })], 'p7b'),
+    /does not match 0\.7\.15/,
+  );
+});
+
 test('post-1.0 phase folders normalize Phase 0+ and validate their assigned versions', () => {
   const phase0P1 = prompt(1, { phase: 0, version: '1.0.1' });
   const phase0P2 = prompt(2, {

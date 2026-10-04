@@ -1,0 +1,39 @@
+TASK: Phase 7 / P2 — Application-global AI registry persistence and concurrency
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.15`.
+
+GOAL
+
+Turn the current process-local version-1 Model Connections file into one logical machine-local/application-global revisioned registry.
+
+PREFLIGHT
+
+Read P1 contracts, current `FileModelConnectionStore`/registry tests, and existing Chat/Project Mind lock/revision patterns. Require coherent `0.7.14`.
+
+IMPLEMENT
+- implement a readable versioned AI registry store under the OS-user Dope config area, never project `.dope/`;
+- atomic durable snapshot writes with document revision and expected-revision mutation;
+- cross-process mutation exclusion with safe stale/abandoned recovery; no last-writer-wins races;
+- event-driven observation of accepted external file changes so distinct backend processes/windows converge without restart; no UI-open polling loop;
+- project/repository open/copy/delete has zero effect on registry identity;
+- deterministic one-time migration from current `model-connections.json` version 1 preserving connection IDs, labels and preferred model IDs; infer only safe defaults already implied by the old provider type;
+- after successful migration, the new registry is authoritative; do not bidirectionally synchronize the legacy store forever;
+- malformed/future/corrupt state fails closed with explicit recovery semantics; never destructive silent rewrite;
+- service/backend mutation contracts use expected revision and return authoritative snapshots/events.
+
+Advance all live versions/internal references to `0.7.15`.
+
+TESTS
+
+T2 focused AI-store/service tests: migration, IDs, atomic reopen/copy, revisions, two writers, stale lock, external change event, malformed/future bytes, no-project operation and project isolation. Build `@dope/ai` and extension/contracts only as touched; baseline/version/no-lock and diff check. No browser/restart/package.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report global-store/concurrency/migration evidence and P3 eligibility.

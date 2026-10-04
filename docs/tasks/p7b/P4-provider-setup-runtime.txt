@@ -1,0 +1,39 @@
+TASK: Phase 7 / P4 — Provider setup adapters and centralized runtime activation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.17`.
+
+GOAL
+
+Centralize connection setup/runtime creation behind bounded provider adapters while keeping AIConnection semantics provider-neutral.
+
+PREFLIGHT
+
+Read P1-P3, `conversational-providers.ts`, `openai-conversational-provider.ts`, `provider-transport.ts`, current ModelConnectionsRegistry activation and provider tests. Require coherent `0.7.16`.
+
+IMPLEMENT
+- define a provider setup adapter boundary consumed by the AI registry/runtime layer; adapters describe safe setup fields, validation, credential requirement/source options, locality and model discovery/runtime creation hooks;
+- support distinct types: Local/LM Studio, OpenAI, OpenAI-compatible and Gemini; OpenAI-compatible is not silently treated as OpenAI product identity;
+- Local/LM Studio: safe manual endpoint plus best-effort known localhost detection and one-action Use detected runtime; manual configuration always available;
+- OpenAI-compatible: safe endpoint + configured/discovered model behavior as adapter supports, session/secure/environment auth when configured;
+- OpenAI/Gemini: retain current adapters while moving runtime activation under AIConnection safe config/credential resolution;
+- connection ID survives endpoint/alias/provider-safe config edits; provider type changes are validated as explicit configuration edits and must not rewrite history;
+- multiple same-provider connections allowed; duplicate-looking configs may warn but cannot collide identity;
+- preserve Local loaded-context capacity safety and exact selected-model/no-fallback execution;
+- do not add health policy/Test Connection/model-history logic beyond what runtime activation requires; P5 owns it.
+
+Retire the old hard-coded activation branching as the global owner, preserving compatibility through the new adapter registry. Advance to `0.7.17`.
+
+TESTS
+
+T2 focused provider-setup/runtime tests: validation, duplicate same-provider identity, Local detection/manual override, OpenAI vs OpenAI-compatible distinction, credential resolution without secret persistence, exact runtime/model provenance, Local capacity safety and no fallback. Reuse existing conversational-provider tests where touched. Build affected packages; baseline/version/no-lock and diff check.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report setup-adapter/runtime ownership and P5 eligibility.

@@ -261,4 +261,12 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Run `/prompt-ass -> /prompt-plan -> /prompt-write p7` for the bounded Phase 7B AI Center continuation from coherent `0.7.13`. Preserve the completed 7A/P12/P13/c7 evidence, keep 7B role-ready without implementing 7C routing, and do not pull Phase 8 mutation-capable Scoped Delegation forward.
+Validate and execute the written Phase 7B continuation stack:
+
+`npm run codex:phase:validate -- p7b`
+
+then:
+
+`npm run codex:phase -- p7b`
+
+The `p7b` runner continuation starts from coherent `0.7.13` and assigns `0.7.14` through `0.7.23`. Preserve all Phase 7A/P12/P13/c7 evidence. Phase 7B must remain role-ready without implementing Phase 7C routing or Phase 8 mutation-capable Scoped Delegation.

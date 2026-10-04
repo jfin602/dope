@@ -41,7 +41,7 @@ const ROADMAP_FAMILIES = Object.freeze({
 });
 
 export function roadmapVersionFor(plan, promptNumber) {
-  return `${plan.roadmapMajor}.${plan.phase}.${promptNumber}`;
+  return `${plan.roadmapMajor}.${plan.phase}.${(plan.versionOffset ?? 0) + promptNumber}`;
 }
 
 export function roadmapFamilyLabel(roadmapFamily) {
@@ -188,39 +188,47 @@ export function parsePrompt(filename, text) {
 
 export function buildPlan(entries, folderName) {
   const historicalPhaseFolderMatch = /^p(0|[1-9]\d*)$/.exec(folderName);
+  const historicalContinuationFolderMatch = /^p(0|[1-9]\d*)([a-z])$/.exec(folderName);
   const post1PhaseFolderMatch = /^p1-(0|[1-9]\d*)$/.exec(folderName);
   const post2PhaseFolderMatch = /^p2-(0|[1-9]\d*)$/.exec(folderName);
   const correctionFolderMatch =
     /^c(0|[1-9]\d*)-([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(folderName);
   if (
     !historicalPhaseFolderMatch &&
+    !historicalContinuationFolderMatch &&
     !post1PhaseFolderMatch &&
     !post2PhaseFolderMatch &&
     !correctionFolderMatch
   ) {
     throw new Error(
-      'Task folder must have the form p<number> (including p0), p1-<phase>, p2-<phase>, or c<phase>-<lower-kebab-slug>.',
+      'Task folder must have the form p<number> (including p0), p<number><slice> for a pre-1.0 continuation, p1-<phase>, p2-<phase>, or c<phase>-<lower-kebab-slug>.',
     );
   }
   if (entries.length === 0) throw new Error('No prompt files were found.');
   const mode =
-    historicalPhaseFolderMatch || post1PhaseFolderMatch || post2PhaseFolderMatch
+    historicalPhaseFolderMatch ||
+    historicalContinuationFolderMatch ||
+    post1PhaseFolderMatch ||
+    post2PhaseFolderMatch
       ? 'phase'
       : 'correction';
   const folderMatch =
     historicalPhaseFolderMatch ??
+    historicalContinuationFolderMatch ??
     post1PhaseFolderMatch ??
     post2PhaseFolderMatch ??
     correctionFolderMatch;
   const phase = Number(folderMatch[1]);
+  const continuationSlice = historicalContinuationFolderMatch?.[2]?.toUpperCase();
   const correctionSlug = correctionFolderMatch?.[2];
-  const roadmapFamily = historicalPhaseFolderMatch
-    ? ROADMAP_FAMILIES.historical
-    : post1PhaseFolderMatch
-      ? ROADMAP_FAMILIES.post1
-      : post2PhaseFolderMatch
-        ? ROADMAP_FAMILIES.post2
-        : undefined;
+  const roadmapFamily =
+    historicalPhaseFolderMatch || historicalContinuationFolderMatch
+      ? ROADMAP_FAMILIES.historical
+      : post1PhaseFolderMatch
+        ? ROADMAP_FAMILIES.post1
+        : post2PhaseFolderMatch
+          ? ROADMAP_FAMILIES.post2
+          : undefined;
   const prompts = entries.map(({ filename, text }) =>
     parsePrompt(filename, text),
   );
@@ -253,11 +261,28 @@ export function buildPlan(entries, folderName) {
     );
   }
   let unchangedVersion;
+  let versionOffset = 0;
   if (mode === 'phase') {
+    if (historicalContinuationFolderMatch) {
+      const parts = prompts[0].targetVersion.split('.').map(Number);
+      if (
+        parts.length !== 3 ||
+        parts[0] !== ROADMAP_FAMILIES.historical.major ||
+        parts[1] !== phase ||
+        !Number.isSafeInteger(parts[2]) ||
+        parts[2] < 2
+      ) {
+        throw new Error(
+          `Continuation ${folderName} P1 must target 0.${phase}.<patch> with patch >= 2.`,
+        );
+      }
+      versionOffset = parts[2] - 1;
+    }
     const versionPlan = Object.freeze({
       phase,
       roadmapFamily: roadmapFamily.id,
       roadmapMajor: roadmapFamily.major,
+      versionOffset,
     });
     for (const prompt of prompts) {
       const expected = roadmapVersionFor(versionPlan, prompt.number);
@@ -286,6 +311,8 @@ export function buildPlan(entries, folderName) {
       ? {
           roadmapFamily: roadmapFamily.id,
           roadmapMajor: roadmapFamily.major,
+          versionOffset,
+          ...(continuationSlice ? { continuationSlice } : {}),
         }
       : {}),
     ...(mode === 'correction' ? { correctionSlug, unchangedVersion } : {}),

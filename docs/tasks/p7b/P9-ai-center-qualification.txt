@@ -1,0 +1,51 @@
+TASK: Phase 7 / P9 — AI Center direct qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.22`.
+
+GOAL
+
+Qualify Phase 7B on one exact candidate without implementing 7C.
+
+PREFLIGHT
+
+Read p7b assessment/plan, exact P1-P8 commits/results, ADR 0026 7B qualification and retained P13/c7 evidence. Require coherent `0.7.21` predecessor. Use isolated user config/credential test state and disposable projects; never modify accepted originals.
+
+Advance all live versions/internal references coherently to `0.7.22` before final direct evidence.
+
+DIRECT MATRIX
+A. Launcher/singleton/no project: launch Dope with no project; bottom-left AI action opens/reveals exactly one center AI Center; account/profile remains under Settings.
+B. Registry/global scope: create at least two connections including same-provider duplicates; edit alias/safe config without ID change; Disable/Enable; Remove; prove project open/copy/switch has no effect.
+C. Multi-window/process: open two Dope backend/window processes sharing one isolated user config; mutation in one appears in the other without restart; stage a stale concurrent edit and prove revision rejection/reload, not lost update.
+D. Credentials: exercise Session-only and Environment status; exercise OS secure persistence on Electron if current secure-store capability is available. Verify Replace/Remove and restart behavior. If secure storage is unavailable, UI must explicitly disable persistent secret save rather than fall back. Search registry/project/log/evidence outputs for the test secret and require absence.
+E. Providers/inventory: exercise real Local/LM Studio discovery and Test Connection with a loaded conversational model; verify loaded context metadata/eligibility. Exercise OpenAI/Gemini/OpenAI-compatible setup validation and distinct provider identity. Use a real hosted tiny Test Connection only if an explicit test credential is available; lack of one is recorded, not replaced with project data.
+F. Health/models: Refresh/Reconnect, known unavailable model retention, model Disable, normalized health and actionable launcher warning; no open-tab polling.
+G. Chat repair: from a Chat with missing/unavailable default, open AI Center, repair/connect a model, return to the originating Chat and complete one exact selected-model turn with no fallback.
+H. Software Map boundary: select a centralized target; prove generic Test Connection does not start synthesis; hosted target still requires evidence-egress disclosure/consent; feature probe/warm-up remains before project evidence. A small synthetic/focused backend exercise is sufficient if real hosted synthesis would spend unnecessary quota.
+I. Restart/isolation: restart and recover non-secret registry/model preferences; session secret disappears; secure/environment source behaves correctly; no connection/role files appear in either disposable project's `.dope/`.
+J. 7C absence: inspect UI/state and prove there is no role policy, Roles surface, fallback routing or Follow Interactive migration yet.
+
+T3 VALIDATION
+- focused `@dope/ai`/registry/credential/provider/AI Center/Chat/synthesis convergence suites;
+- `npm run check` once on the final candidate;
+- targeted multi-process/global-registry integration if not already included;
+- `npm run codex:phase:validate -- p7b`;
+- Linux AppImage package/inspection/native AI Center launch if needed to qualify OS secure store + bottom-left launcher;
+- exact `0.7.22` / framework / no-root-lock checks;
+- `git diff --check`.
+
+Do not rerun unrelated historical Phase 5/6/7A dogfooding. `npm run check` already supplies browser/Electron builds; do not duplicate them unless later repair invalidates the evidence.
+
+EVIDENCE
+
+Create `docs/tasks/p7b/P9-ai-center-qualification-evidence.md` with exact candidate, A-J observations, connection/model IDs without secrets, credential-source results, commands/results and every Not Green/Evidence Gap. If product repair is needed, make only a tiny bounded 7B repair and rerun the affected gate; otherwise stop truthful.
+
+If coherent, create the manual `0.7.22` checkpoint expected by the runner.
+
+FINAL RESPONSE
+
+Report exact candidate, A-J status, focused/aggregate/package evidence, residual gaps and P10 eligibility.

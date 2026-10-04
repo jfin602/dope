@@ -1,0 +1,42 @@
+TASK: Phase 7 / P1 — AI connection and model domain contracts
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.14`.
+
+GOAL
+
+Create the framework/provider-independent AI Center domain before expanding persistence/UI.
+
+PREFLIGHT
+
+Read shared p7b assessment/plan, ADR 0026, current `model-runtime.ts`, `model-connections-service.ts`, `model-connections.ts`, package conventions and current Model Connections tests. Require coherent `0.7.13` and clean intended tree.
+
+IMPLEMENT
+- create `packages/ai` / `@dope/ai`; no Theia/provider/filesystem imports in its pure domain;
+- define strict versioned AIConnection identity/config/lifecycle types with immutable Dope ID, Enabled/Disabled lifecycle and distinct runtime/provider type from alias/endpoint/credentials/readiness;
+- define AIModel identity as connectionId + providerModelKey, explicit local/hosted classification, enabled/disabled preference, known/ready/unavailable state, capabilities/limits and metadata source quality;
+- define normalized connection health states from ADR 0026 without treating one transient request failure as persistent identity/lifecycle;
+- define credential source/status references (environment/session/secure) that cannot contain secret bytes;
+- define versioned registry snapshot/revision/mutation contracts and pure mutation/parser helpers;
+- define filter-only eligibility query/result contracts for capabilities, locality, minimum known context, enabled/usable; unknown hard capability/limit must fail eligibility;
+- preserve the P12 rule: model health is not per-request eligibility; unknown loaded Local capacity cannot satisfy a hard context/usable execution requirement;
+- expose typed AI registry service DTO foundations, reusing Model Runtime IDs where appropriate but not provider wire types;
+- do NOT define roles, ranking, fallback, routing provenance or Follow Interactive.
+
+INTEGRATION
+
+Wire `@dope/ai` into workspace/build/test composition and adapt existing Model Connections service types to reference the new pure identities without changing runtime behavior yet. Advance all live manifests/internal references coherently to `0.7.14`.
+
+TESTS
+
+T1 only: add focused `ai.test.ts` for parsing, immutable identity, lifecycle, model identity, metadata quality, locality, registry revision mutations and eligibility fail-closed behavior. Build `@dope/ai` + directly dependent contracts; run baseline/version/no-root-lock and `git diff --check`. No extension/browser/provider tests.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report domain contracts, exact focused tests and P2 eligibility.

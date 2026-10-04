@@ -1,0 +1,39 @@
+TASK: Phase 7 / P8 — Software Map convergence onto AI Center
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.21`.
+
+GOAL
+
+Centralize Software Map's global provider configuration without weakening its stronger synthesis authority.
+
+PREFLIGHT
+
+Read P1-P7, ADR 0022, SoftwareMapController/widget/backend synthesis setup, synthesis provider tests/preferences and existing Gemini KeyStore usage. Require coherent `0.7.20`.
+
+IMPLEMENT
+- Software Map selects an exact AI Center connection/model target from the centralized inventory rather than owning a second global Local/Gemini connection store;
+- missing/broken target routes to AI Center for setup and returns to synthesis setup;
+- retain explicit run-level target authority and current hosted evidence-egress disclosure/consent before repository evidence leaves the machine;
+- retain feature-specific structured-output probe/readiness, Local/Gemini synthesis strategy, warm-up before first project-evidence request, resumable-stage behavior and no silent provider/model fallback;
+- AI Center generic Test Connection is never accepted as the Software Map probe/warm-up;
+- adapt Local synthesis context requirements to centralized model/connection metadata while still requiring the synthesis-specific configured/known capacity and readiness needed by ADR 0022;
+- deterministically converge legacy Software Map safe preferences and Gemini secure credential ownership into AI Center where possible; no secret bytes through browser/plaintext state;
+- after successful migration/convergence, retire old feature-specific global provider configuration/credential ownership; do not indefinitely sync both stores;
+- preserve accepted architecture/sMap state and all provider-independent analysis behavior.
+
+Advance to `0.7.21`.
+
+TESTS
+
+T2 focused synthesis-convergence tests: central target selection, missing-target AI Center route, hosted disclosure, generic Test not sufficient, structured probe/warm-up order, migration/no secret copy, resumable synthesis and existing Local/Gemini synthesis regressions. Build extension/software-map/contracts as needed; baseline/version/no-lock/diff check. No real project synthesis or broad browser qualification.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report Software Map authority-preserving convergence and P9 readiness.
