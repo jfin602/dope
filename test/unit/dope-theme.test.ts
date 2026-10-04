@@ -17,6 +17,14 @@ test('Dope Dark registers through the normal frontend contribution with the dark
   assert.match(moduleSource, /import '\.\/dope\.css'/);
 });
 
+test('custom side panels use the Explorer background without recoloring center or bottom widgets', () => {
+  assert.match(css, /\.theia-side-panel :is\(\.dope-mind-view, \.dope-smap-view, \.dope-chat-panel\) \{ background: var\(--theia-sideBar-background\); \}/);
+  for (const selector of ['dope-mind-view', 'dope-smap-view', 'dope-chat-panel']) {
+    assert.match(css, new RegExp(`\\.${selector} \\{[^}]*background: var\\(--theia-editor-background\\);`));
+  }
+  assert.doesNotMatch(css, /\.dope-chat-panel \{[^}]*background: var\(--theia-sideBar-background\)/);
+});
+
 test('activation scope is removed on theme change', () => {
   const classes = new Set<string>();
   const previousDocument = globalThis.document;

@@ -8,7 +8,7 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatOpenOwners, ChatPanelController, chatTree } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
-import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { ChatCollection } from '../../packages/chat/lib/index.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
@@ -328,6 +328,7 @@ test('transcript drag threshold and fast latest animation respect reduced motion
     assert.equal(drag.move(197), undefined);
     assert.equal(drag.dragging, false);
     assert.equal(drag.move(180), 170);
+    assert.equal(drag.move(160), 190);
     assert.equal(drag.end(), true);
     assert.equal(drag.dragging, false);
     const scroll = { scrollTop: 100, scrollHeight: 700, clientHeight: 200 } as HTMLElement;
@@ -346,20 +347,45 @@ test('transcript drag threshold and fast latest animation respect reduced motion
     assert.equal(scroll.scrollTop, 700);
 });
 
+test('transcript drag starts on messages, links, code and disclosures but leaves controls clickable', () => {
+    const target = (tag: string) => ({ closest: (selector: string) =>
+        selector.split(',').map(part => part.trim()).includes(tag) ? {} : null }) as unknown as Element;
+    for (const tag of ['p', 'a', 'pre', 'code', 'summary', 'div'])
+        assert.equal(canDragChatTranscript(target(tag)), true, tag);
+    for (const tag of ['button', '[role="button"]', 'input', 'textarea', 'select', '[contenteditable]'])
+        assert.equal(canDragChatTranscript(target(tag)), false, tag);
+});
+
+test('touch drag follows vertical movement and leaves horizontal gestures to the browser', () => {
+    const drag = new ChatTranscriptDrag();
+    drag.start(200, 150, 100);
+    assert.equal(drag.move(197, 103, true), undefined);
+    assert.equal(drag.move(194, 120, true), undefined);
+    assert.equal(drag.dragging, false);
+    assert.equal(drag.move(170, 104, true), 180);
+    assert.equal(drag.move(150, 106, true), 200);
+    assert.equal(drag.end(), true);
+});
+
 test('transcript wiring preserves manual reading and uses one centered latest action', async () => {
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     assert.match(widget, /scroll\.onpointerdown/);
+    assert.match(widget, /document\.addEventListener\('pointermove', this\.moveTranscriptDrag\)/);
+    assert.match(widget, /document\.addEventListener\('pointerup', this\.endTranscriptPointer\)/);
+    assert.match(widget, /document\.addEventListener\('pointercancel', this\.endTranscriptPointer\)/);
     assert.match(widget, /scroll\.setPointerCapture/);
-    assert.match(widget, /scroll\.onpointerup = endDrag; scroll\.onpointercancel = endDrag/);
+    assert.match(widget, /this\.transcriptDrag\.dragging/);
+    assert.match(widget, /window\.getSelection\(\)\?\.removeAllRanges\(\)/);
     assert.match(widget, /this\.scrollFollow\.scrolled\(scroll\.scrollTop/);
     assert.match(widget, /this\.scrollFollow\.jump\(\)/);
     assert.match(widget, /this\.scrollToLatest\(\)/);
     assert.match(widget, /aria-label', 'Scroll to latest'/);
     assert.match(widget, /codicon\('chevron-down'\)/);
     assert.match(css, /\.dope-chat-panel \.dope-chat-latest \{[^}]*left: 50%;[^}]*border-radius: 50%/);
-    assert.match(css, /\.dope-chat-scroll \{[^}]*touch-action: pan-y/);
-    assert.match(css, /\.dope-chat-scroll-dragging \{[^}]*user-select: none/);
+    assert.doesNotMatch(widget, /event\.pointerType === 'touch' \|\| event\.button !== 0/);
+    assert.match(css, /\.dope-chat-scroll \{[^}]*touch-action: pan-x pinch-zoom/);
+    assert.match(css, /\.dope-chat-scroll-dragging, \.dope-chat-scroll-dragging \* \{[^}]*user-select: none/);
 });
 
 test('each ChatPanel opens its own RPC channel on the backend Chat route', async () => {

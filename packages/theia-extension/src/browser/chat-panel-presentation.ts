@@ -42,15 +42,20 @@ export class ChatScrollFollow {
 /** Pointer drag state is independent of the DOM rerenders caused by streamed tokens. */
 export class ChatTranscriptDrag {
     private startY = 0;
+    private startX = 0;
     private startTop = 0;
     dragging = false;
-    start(y: number, top: number): void { this.startY = y; this.startTop = top; this.dragging = false; }
-    move(y: number): number | undefined {
+    start(y: number, top: number, x = 0): void { this.startY = y; this.startX = x; this.startTop = top; this.dragging = false; }
+    move(y: number, x = 0, touch = false): number | undefined {
+        if (touch && !this.dragging && Math.abs(x - this.startX) > Math.abs(y - this.startY)) return undefined;
         if (!this.dragging && Math.abs(y - this.startY) < 5) return undefined;
         this.dragging = true;
         return this.startTop + this.startY - y;
     }
     end(): boolean { const dragged = this.dragging; this.dragging = false; return dragged; }
+}
+export function canDragChatTranscript(target: Element): boolean {
+    return !target.closest('button, [role="button"], input, textarea, select, [contenteditable]');
 }
 export function animateChatToLatest(element: HTMLElement, reducedMotion: boolean,
     schedule: typeof requestAnimationFrame = requestAnimationFrame, duration = 200): () => void {

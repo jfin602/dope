@@ -12,7 +12,7 @@ import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, chatLauncherIds, chatPanelWidgetId, resizeChatInput, safeChatLink, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, chatPanelWidgetId, resizeChatInput, safeChatLink, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 
 class SecretInputDialog extends SingleTextInputDialog {
     constructor(title: string) {
@@ -34,6 +34,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private settingsDraft?: ChatSettings;
     private settingsChatId?: string;
     private readonly scrollFollow = new ChatScrollFollow();
+    private readonly transcriptDrag = new ChatTranscriptDrag();
+    private dragPointerId?: number;
+    private dragChatId?: string;
     private cancelScrollAnimation?: () => void;
     private scrollAnimationUntil = 0;
 
@@ -69,6 +72,43 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const remaining = Math.max(0, this.scrollAnimationUntil - performance.now());
         this.cancelScrollAnimation = animateChatToLatest(scroll,
             window.matchMedia('(prefers-reduced-motion: reduce)').matches, requestAnimationFrame, remaining);
+    }
+    private readonly moveTranscriptDrag = (event: PointerEvent): void => {
+        if (event.pointerId !== this.dragPointerId) return;
+        const scroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
+        if (!scroll || this.controller.chatId !== this.dragChatId) { this.endTranscriptDrag(); return; }
+        const top = this.transcriptDrag.move(event.clientY, event.clientX, event.pointerType === 'touch');
+        if (top === undefined) return;
+        if (!scroll.hasPointerCapture(event.pointerId)) scroll.setPointerCapture(event.pointerId);
+        this.cancelScrollAnimation?.(); this.scrollAnimationUntil = 0;
+        scroll.classList.add('dope-chat-scroll-dragging');
+        window.getSelection()?.removeAllRanges();
+        scroll.scrollTop = top;
+        this.scrollFollow.scrolled(scroll.scrollTop, scroll.scrollHeight, scroll.clientHeight);
+        event.preventDefault();
+    };
+    private readonly endTranscriptPointer = (event: PointerEvent): void => {
+        if (event.pointerId !== this.dragPointerId) return;
+        const dragged = this.endTranscriptDrag();
+        if (event.type !== 'pointerup' || !dragged) return;
+        const suppressClick = (click: MouseEvent) => {
+            click.preventDefault(); click.stopPropagation();
+            document.removeEventListener('click', suppressClick, true);
+        };
+        document.addEventListener('click', suppressClick, true);
+        setTimeout(() => document.removeEventListener('click', suppressClick, true), 0);
+    };
+    private endTranscriptDrag(): boolean {
+        const dragged = this.transcriptDrag.end();
+        const scroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
+        if (this.dragPointerId !== undefined && scroll?.hasPointerCapture(this.dragPointerId))
+            scroll.releasePointerCapture(this.dragPointerId);
+        scroll?.classList.remove('dope-chat-scroll-dragging');
+        this.dragPointerId = undefined; this.dragChatId = undefined;
+        document.removeEventListener('pointermove', this.moveTranscriptDrag);
+        document.removeEventListener('pointerup', this.endTranscriptPointer);
+        document.removeEventListener('pointercancel', this.endTranscriptPointer);
+        return dragged;
     }
 
     storeState(): object {
@@ -357,6 +397,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private render(): void {
         const state = this.controller;
+        if (this.dragPointerId !== undefined && (state.mode !== 'chat' || state.chatId !== this.dragChatId))
+            this.endTranscriptDrag();
         this.content.className = state.mode === 'chat' ? 'dope-chat-content dope-chat-content-conversation' : 'dope-chat-content dope-chat-content-select';
         this.scrollFollow.select(state.mode === 'chat' ? state.chatId : undefined);
         const oldScroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
@@ -412,42 +454,21 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             latest.hidden = !this.scrollFollow.latestBelow;
         };
         scroll.onwheel = event => { if (event.deltaY < 0) { this.cancelScrollAnimation?.(); this.scrollAnimationUntil = 0; } };
-        const drag = new ChatTranscriptDrag();
-        let pointerId: number | undefined;
-        let suppressClick = false;
         scroll.onpointerdown = event => {
-            if (event.pointerType === 'touch' || event.button !== 0 ||
-                (event.target as Element).closest('a, button, input, textarea, select, summary, pre, code, [contenteditable]')) return;
-            pointerId = event.pointerId;
-            drag.start(event.clientY, scroll.scrollTop);
+            if (event.button !== 0 || !event.isPrimary ||
+                !canDragChatTranscript(event.target as Element)) return;
+            this.endTranscriptDrag();
+            this.dragPointerId = event.pointerId; this.dragChatId = state.chatId;
+            this.transcriptDrag.start(event.clientY, scroll.scrollTop, event.clientX);
+            document.addEventListener('pointermove', this.moveTranscriptDrag);
+            document.addEventListener('pointerup', this.endTranscriptPointer);
+            document.addEventListener('pointercancel', this.endTranscriptPointer);
         };
         scroll.onpointermove = event => {
             if (event.pointerType === 'touch' && event.buttons) {
                 this.cancelScrollAnimation?.(); this.scrollAnimationUntil = 0;
             }
-            if (pointerId !== event.pointerId) return;
-            const top = drag.move(event.clientY);
-            if (top === undefined) return;
-            if (!scroll.hasPointerCapture(event.pointerId)) scroll.setPointerCapture(event.pointerId);
-            this.cancelScrollAnimation?.(); this.scrollAnimationUntil = 0;
-            scroll.classList.add('dope-chat-scroll-dragging');
-            scroll.scrollTop = top;
-            this.scrollFollow.scrolled(scroll.scrollTop, scroll.scrollHeight, scroll.clientHeight);
-            event.preventDefault();
         };
-        const endDrag = (event: PointerEvent) => {
-            if (pointerId !== event.pointerId) return;
-            const dragged = drag.end();
-            suppressClick = event.type === 'pointerup' && dragged; pointerId = undefined;
-            if (suppressClick) setTimeout(() => { suppressClick = false; }, 0);
-            scroll.classList.remove('dope-chat-scroll-dragging');
-            if (scroll.hasPointerCapture(event.pointerId)) scroll.releasePointerCapture(event.pointerId);
-        };
-        scroll.onpointerup = endDrag; scroll.onpointercancel = endDrag;
-        scroll.addEventListener('click', event => {
-            if (!suppressClick) return;
-            suppressClick = false; event.preventDefault(); event.stopPropagation();
-        }, true);
         const transcript = document.createElement('ol');
         transcript.className = 'dope-chat-transcript';
         for (const message of chat.messages) {
@@ -674,6 +695,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.content.append(shell);
         resizeChatInput(input);
         scroll.scrollTop = this.scrollFollow.restore(scrollTop, scroll.scrollHeight, scroll.clientHeight);
+        if (this.dragPointerId !== undefined && this.dragChatId === state.chatId) {
+            scroll.scrollTop = scrollTop;
+            if (this.transcriptDrag.dragging) scroll.classList.add('dope-chat-scroll-dragging');
+        }
         if (performance.now() < this.scrollAnimationUntil) {
             scroll.scrollTop = scrollTop;
             this.cancelScrollAnimation?.();
@@ -694,6 +719,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
     }
     override dispose(): void {
+        this.endTranscriptDrag();
         this.cancelScrollAnimation?.();
         ++this.workspaceRequest;
         this.rootsListener.dispose();
