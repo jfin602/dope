@@ -12,7 +12,7 @@ Use exactly three ordered prompts.
 | Prompt | Boundary | Validation tier | Routing |
 | --- | --- | --- | --- |
 | P1 | durable Chat color domain + safe migration/persistence | T1 | GPT-6 Sol High |
-| P2 | complete conversation-surface presentation correction | T1 | GPT-6 Sol High |
+| P2 | conversation-surface correction + left/right Chat launchers | T1 | GPT-6 Sol High |
 | P3 | exact-candidate integration/browser qualification + closeout | T3 | GPT-6 Sol High |
 
 This is the smallest efficient split. P1 isolates the only persistence/schema risk. P2 can then treat color as a stable product contract and change only presentation behavior. P3 owns expensive validation once, avoiding repeated broad suites during implementation.
@@ -72,6 +72,20 @@ Assistant deltas update `ChatPanelController.stream` and call the widget render 
 
 Do not force scroll-to-bottom after the developer scrolls upward. A small jump-to-latest control is sufficient.
 
+### Left/right commands already exist; visible launchers do not
+
+`frontend-module.ts` already registers `dope.chat.open.left` and `dope.chat.open.right`, and `openChatPanel()` already maps those areas to the left/right shell. The missing product behavior is discoverability and reuse.
+
+P2 should use supported Theia workbench/view/shell contribution APIs to surface one Chat action in each side toolbar/activity bar. Prefer reusing the existing left/right commands instead of creating parallel command semantics.
+
+The left/right side commands should become idempotent launcher behavior:
+- create a side ChatPanel in Select Chat only when that side has no launcher panel;
+- otherwise reveal/focus the existing side launcher;
+- if it currently displays an active Chat, navigate it back to Select Chat through `ChatPanelController.select(undefined)` so lease/ownership release stays canonical;
+- do not remove center/bottom ChatPanel commands or general multi-panel support.
+
+Do not identify side launcher panels by querying arbitrary DOM. Keep the identity/reuse seam in the presentation/contribution layer using public Theia widget/shell facilities.
+
 ## Risk assessment
 
 Highest risks:
@@ -80,6 +94,7 @@ Highest risks:
 3. unsafe Markdown rendering;
 4. full rerenders defeating manual scroll-away or composer focus;
 5. CSS that works only in the right sidebar but breaks center/bottom panels.
+6. toolbar contributions accidentally creating duplicate side launcher panels or bypassing Chat ownership release;
 
 These risks are handled by focused P1/P2 regressions and one P3 direct replay.
 
@@ -91,7 +106,7 @@ Run only focused Chat domain/repository tests and `@dope/chat` build. No browser
 
 ### P2 — T1
 
-Run focused ChatPanel/composer presentation tests and `@dope/theia-extension` build. Add the smallest test needed for Markdown safety/rendering. No broad product suite or browser qualification.
+Run focused ChatPanel/composer presentation tests plus one narrow contribution/command regression for left/right launcher reuse, then build `@dope/theia-extension`. Add the smallest test needed for Markdown safety/rendering. No broad product suite or browser qualification.
 
 ### P3 — T3
 
