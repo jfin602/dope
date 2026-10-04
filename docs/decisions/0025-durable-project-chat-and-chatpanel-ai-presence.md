@@ -124,3 +124,44 @@ The exact prompt stack and version transition are planned separately. Accepting 
 ## Amendment — ADR 0026
 
 ADR 0026 extends Phase 7 after the initial AI Presence slice with the global AI Center and role-based model routing. ADR 0025 remains authoritative for Chat identity, persistence, ChatPanel behavior, per-message explicit model choice, per-Chat settings and no-silent-fallback semantics. Global connection inventory and role policy remain application/runtime concerns outside Chat state. Phase 7C extends ChatSettings from an exact default-model-only concept to an exact-or-Follow-Interactive model policy while preserving existing exact defaults. An explicit per-message exact model remains the highest Chat routing authority and continues to forbid silent fallback.
+
+## Amendment — c7-chat-conversation-ux (2026-10-03)
+
+The Phase 7A direct Chat qualification and later evidence audit exposed a presentation/organization problem without changing the underlying Chat/runtime authority: the current transcript/composer is functionally valid but reads like an IDE utility/log surface rather than a familiar AI conversation. This amendment supersedes the earlier presentation-only requirement that the composer toolbar be a visually separate second row. It does **not** change per-turn model authority, persistence, context provenance, read-only tool scope, cancellation/retry semantics, or the no-silent-fallback rule.
+
+### Persistent conversation shell
+
+Chat mode has three persistent regions inside each ChatPanel: a fixed top bar containing Back, the Chat title and right-justified Chat settings; one independently scrolling transcript; and one fixed bottom composer. The header and composer never leave view when the transcript scrolls, regardless of ChatPanel workbench placement.
+
+The multiline message field and its bottom control row form one visual composer surface. Context/tool controls, Ask / Explain / Trace / Find Related, the compact model selector and Send/Stop/Retry remain separate controls semantically, but are visually integrated inside the composer rather than rendered as a detached form row. Selected context may appear as compact removable chips/rows associated with that composer.
+
+### Conversation-first transcript
+
+Developer messages render as right-aligned bubbles. Assistant responses render as unboxed document text. Repetitive visible role labels such as **You** and **Assistant** are removed from ordinary turns while accessible semantics still identify roles.
+
+Assistant content is rendered as formatted Markdown/document content, including headings, emphasis, lists, links, inline/fenced code, blockquotes and tables where supported. Rendering must prevent raw/unsafe model-authored HTML or script from becoming an injection path.
+
+Execution status, timestamps, provider/model provenance, context usage and similar response data remain available but visually secondary. Normal completed answers use compact metadata/disclosure rather than full-width metadata blocks. Failed/cancelled/interrupted state remains clearly visible and inspectable.
+
+While an assistant response streams, ChatPanel follows the newest content only while the developer remains at/near the transcript bottom. Manual upward scrolling disables forced auto-follow until the developer explicitly returns to latest; a compact jump-to-latest affordance may restore following.
+
+### Durable Chat color identity
+
+Every Chat owns one organizational color from the existing bounded ten-color palette: **blue, cyan, teal, green, yellow, orange, red, pink, purple, indigo**.
+
+Chat color is durable Chat metadata alongside identity/title/folder/timestamps, not model/context policy inside `ChatSettings`, and has no product-defined semantic meaning.
+
+- New Chats receive one palette color at creation and persist it immediately.
+- Default assignment is deterministic/distributed from stable Chat identity so restart, panel location or ordering cannot reshuffle it.
+- Existing persisted Chats without color receive a deterministic color from stable Chat identity during ChatRepository migration/defaulting and persist it.
+- Select Chat shows a small color swatch/dot beside each Chat title.
+- Developer message bubbles use that Chat color with automatically readable foreground contrast; assistant responses stay neutral.
+- Chat settings exposes the same visual ten-color picker so the developer can deliberately change color.
+- Rename, folder move, automatic-title generation, panel relocation and restart preserve the selected color.
+
+Color is presentation/organization metadata only. It does not affect model routing, context selection, canonical Project Mind/Architecture/Planning truth, last-interacted ordering or provider/runtime behavior.
+
+### Qualification amendment
+
+A bounded `c7-chat-conversation-ux` correction at unchanged `0.7.13` must add focused regression coverage plus direct GUI evidence for the persistent shell, unified composer, safe Markdown transcript, compact metadata, scroll-follow behavior, color assignment/migration/editing and selector/bubble color continuity. Historical P9 implementation text, P12 qualification records and the P13 evidence-only Not Qualified closeout remain unchanged; successful correction evidence supplements them rather than rewriting them.
+
