@@ -23,8 +23,20 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
     private readonly timeoutMs: number;
     private models: string[] = [];
     private generation = 0;
-    constructor(options: { endpoint?: string; token?: string; timeoutMs?: number; fetch?: typeof globalThis.fetch } = {}) {
-        this.endpoint = normalizeSynthesisEndpoint(options.endpoint);
+    private readonly compatible: boolean;
+    private readonly configuredModel?: string;
+    constructor(options: { endpoint?: string; token?: string; timeoutMs?: number; fetch?: typeof globalThis.fetch;
+        compatible?: boolean; configuredModel?: string } = {}) {
+        this.compatible = options.compatible ?? false;
+        this.configuredModel = options.configuredModel;
+        if (this.compatible && !options.endpoint) throw new Error('Missing compatible endpoint');
+        if (this.compatible) {
+            let address: URL;
+            try { address = new URL(options.endpoint!); } catch { throw new Error('Invalid compatible endpoint'); }
+            if (!['http:', 'https:'].includes(address.protocol) || address.username || address.password ||
+                address.search || address.hash) throw new Error('Unsafe compatible endpoint');
+        }
+        this.endpoint = this.compatible ? options.endpoint!.replace(/\/$/, '') : normalizeSynthesisEndpoint(options.endpoint);
         if (options.token !== undefined && !/^[^\s]+$/.test(options.token)) throw new Error('Invalid local token');
         if (options.timeoutMs !== undefined && (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs < 1))
             throw new Error('Invalid local timeout');
@@ -38,10 +50,18 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
         const generation = ++this.generation;
         this.models = [];
         try {
+            if (this.compatible && this.configuredModel) {
+                this.models = [this.configuredModel];
+                return [model(this.configuredModel)];
+            }
             const response = await this.fetch(`${this.endpoint}/models`, {
                 headers: this.headers(), signal: AbortSignal.timeout(this.timeoutMs) });
-            if (!response.ok) throw failure('Local', response.status);
+            if (!response.ok) throw failure(this.compatible ? 'OpenAI-compatible' : 'Local', response.status);
             const ids = localModelIds(await response.json());
+            if (this.compatible) {
+                if (generation !== this.generation) return [];
+                return ids.map(id => ({ id, label: id, capabilities: { conversationalText: false, streaming: false } }));
+            }
             const native = await this.fetch(`${new URL(this.endpoint).origin}/api/v1/models`, {
                 headers: this.headers(), signal: AbortSignal.timeout(this.timeoutMs) });
             if (!native.ok) throw failure('Local', native.status);
@@ -88,7 +108,7 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
             });
         } catch { throw signal.aborted ? cancelled() :
             new ModelRuntimeFailure('Local connection failed', 'transient-transport'); }
-        if (!response.ok) throw failure('Local', response.status);
+        if (!response.ok) throw failure(this.compatible ? 'OpenAI-compatible' : 'Local', response.status);
         if (!response.body) throw new ModelRuntimeFailure('Local stream unavailable', 'invalid-json');
         let buffer = '';
         let output = '';

@@ -7,11 +7,11 @@ import type { ConnectedModel, ConversationEvent, ConversationRequest, Conversati
     ModelSelection } from '@dope/contracts/lib/model-runtime';
 import type { ModelConnectionMetadata, ModelConnectionsClient, ModelConnectionsService,
     ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
-import { LocalConversationalProvider, GeminiConversationalProvider } from './conversational-providers';
-import { OpenAIConversationalProvider } from './openai-conversational-provider';
 import { AI_REGISTRY_VERSION } from '@dope/ai';
 import type { AIRegistryMutation, AIRegistrySnapshot } from '@dope/ai';
 import { AIRegistryStore } from './ai-registry-store';
+import type { AICredentialManager } from './ai-credential-manager';
+import { providerSetup, providerSetupAdapters } from './provider-setup';
 
 export interface ModelConnectionStore {
     read(): Promise<ModelConnectionMetadata[]>;
@@ -71,8 +71,10 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
     private revision = 0;
 
     constructor(store?: ModelConnectionStore,
-        private readonly globalStore: AIRegistryStore | undefined = store ? undefined : new AIRegistryStore()) {
+        private readonly globalStore: AIRegistryStore | undefined = store ? undefined : new AIRegistryStore(),
+        private readonly credentialManager?: AICredentialManager) {
         this.store = store ?? new FileModelConnectionStore();
+        credentialManager?.onChange(id => this.disconnect(id));
         if (globalStore) {
             globalStore.onChange(snapshot => { this.absorb(snapshot); this.changed(); });
             this.loaded = globalStore.read().then(snapshot => this.absorb(snapshot));
@@ -132,13 +134,13 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
         const entry = metadata(value);
         if (this.globalStore) {
             const existing = (await this.globalStore.read()).connections.find(connection => connection.id === entry.id);
-            const config = entry.providerId === 'local' ? { type: 'local' as const, runtime: 'lm-studio' as const,
-                endpoint: 'http://127.0.0.1:1234/v1' } : entry.providerId === 'gemini' ? { type: 'gemini' as const } :
-                entry.providerId === 'openai' ? { type: 'openai' as const } : undefined;
-            if (!config) throw new Error('Unsupported model provider');
+            if (existing && existing.config.type !== entry.providerId)
+                throw new Error('Change provider type through the AI registry configuration');
+            const config = existing?.config ?? providerSetupAdapters[entry.providerId as keyof typeof providerSetupAdapters]?.defaultConfig;
+            if (!config) throw new Error('Configure the provider through the AI registry');
             return this.globalMutation(existing ? { type: 'update-connection', id: entry.id,
                 changes: { alias: entry.label, lifecycle: existing.lifecycle,
-                    config: existing.config.type === config.type ? existing.config : config,
+                    config,
                     ...(entry.preferredModelId ? { preferredModelId: entry.preferredModelId } : {}) } } :
                 { type: 'create-connection', connection: { version: AI_REGISTRY_VERSION, id: entry.id,
                     alias: entry.label, lifecycle: 'enabled', config,
@@ -179,6 +181,14 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
         await this.loaded;
         if (!this.connections.has(connectionId)) throw new ModelRuntimeFailure('Connection unavailable', 'connection-unavailable');
         if (credential !== null && (typeof credential !== 'string' || !credential.trim())) throw new Error('Invalid credential');
+        if (this.credentialManager) {
+            if (credential === null) await this.credentialManager.remove(connectionId, 'session');
+            else await this.credentialManager.replace(connectionId, 'session', credential);
+            if (credential === null) this.credentials.delete(connectionId);
+            else this.credentials.set(connectionId, credential);
+            this.disconnect(connectionId);
+            return;
+        }
         if (credential === null) this.credentials.delete(connectionId);
         else this.credentials.set(connectionId, credential);
         this.disconnect(connectionId);
@@ -189,13 +199,20 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
         await this.loaded;
         const entry = this.connections.get(connectionId);
         if (!entry) throw new ModelRuntimeFailure('Connection unavailable', 'connection-unavailable');
-        const credential = this.credentials.get(connectionId);
-        let runtime: ConversationalModelRuntime;
-        if (entry.providerId === 'local') runtime = new LocalConversationalProvider();
-        else if (entry.providerId === 'gemini' && credential) runtime = new GeminiConversationalProvider({ apiKey: credential });
-        else if (entry.providerId === 'openai' && credential && entry.preferredModelId)
-            runtime = new OpenAIConversationalProvider({ apiKey: credential, models: [{ id: entry.preferredModelId }] });
-        else throw new ModelRuntimeFailure('Connection needs a model and session credential', 'connection-unavailable');
+        if (!this.globalStore) throw new ModelRuntimeFailure('AI registry unavailable', 'connection-unavailable');
+        const connection = (await this.globalStore.read()).connections.find(item => item.id === connectionId);
+        if (!connection || connection.lifecycle !== 'enabled')
+            throw new ModelRuntimeFailure('Connection unavailable', 'connection-unavailable');
+        const adapter = providerSetup(connection);
+        const credential = adapter.credential === 'optional' && !connection.credential ? this.credentials.get(connectionId) :
+            this.credentialManager ? await this.credentialManager.readForExecution(connectionId) :
+                this.credentials.get(connectionId);
+        const current = (await this.globalStore.read()).connections.find(item => item.id === connectionId);
+        if (!current || current.lifecycle !== 'enabled' || JSON.stringify(current.config) !== JSON.stringify(connection.config))
+            throw new ModelRuntimeFailure('Connection changed during activation', 'connection-unavailable');
+        if ((adapter.credential === 'required' || connection.credential) && !credential)
+            throw new ModelRuntimeFailure('Connection needs a credential', 'connection-unavailable');
+        const runtime = adapter.createRuntime(connection, credential);
         await this.connect(connectionId, runtime);
         return this.list();
     }

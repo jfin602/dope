@@ -5,6 +5,7 @@ import { homedir } from 'node:os';
 import { dirname, isAbsolute, join } from 'node:path';
 import { AI_REGISTRY_VERSION, applyAIRegistryMutation, parseAIRegistrySnapshot } from '@dope/ai';
 import type { AIConnection, AIRegistryMutationRequest, AIRegistrySnapshot } from '@dope/ai';
+import { providerSetup } from './provider-setup';
 
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const empty = (): AIRegistrySnapshot => ({ version: AI_REGISTRY_VERSION, revision: 0, connections: [], models: [] });
@@ -202,6 +203,15 @@ export class AIRegistryStore {
                 throw new Error(`Missing initialized AI registry: ${this.path}; restore the snapshot manually`);
             const current = existing ?? await this.initial();
             const next = applyAIRegistryMutation(current, request);
+            if (request.mutation.type === 'create-connection' || request.mutation.type === 'update-connection') {
+                const id = request.mutation.type === 'create-connection' ? request.mutation.connection.id : request.mutation.id;
+                const connection = next.connections.find(item => item.id === id)!;
+                const previous = current.connections.find(item => item.id === id);
+                if (previous && previous.config.type !== connection.config.type && previous.credential &&
+                    request.mutation.type === 'update-connection' && request.mutation.changes.credential !== null)
+                    throw new Error('Clear the previous provider credential before changing type');
+                providerSetup(connection);
+            }
             await this.replace(next);
             this.publish(next);
             return next;

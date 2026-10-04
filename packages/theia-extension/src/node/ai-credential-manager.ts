@@ -1,6 +1,7 @@
 import type { AIConnection, AIConnectionId } from '@dope/ai';
 import type { AICredentialStatus } from '@dope/contracts/lib/ai-credential-service';
 import { AIRegistryStore } from './ai-registry-store';
+import { providerEnvironmentName, providerSetupAdapters } from './provider-setup';
 
 export interface SecureCredentialStore {
     getPassword(service: string, account: string): Promise<string | null | undefined>;
@@ -12,9 +13,6 @@ export interface SecureCredentialStore {
 const service = 'Dope AI Connections';
 const legacyService = 'Dope Gemini';
 const legacyAccount = 'AI Studio API key';
-const environmentRequirements: Partial<Record<AIConnection['config']['type'], string>> = {
-    openai: 'OPENAI_API_KEY', gemini: 'GEMINI_API_KEY'
-};
 
 export async function osSecureStore(): Promise<SecureCredentialStore | undefined> {
     try {
@@ -53,7 +51,7 @@ export class AICredentialManager {
     }
     async status(id: AIConnectionId): Promise<AICredentialStatus> {
         const connection = await this.connection(id);
-        const name = environmentRequirements[connection.config.type];
+        const name = providerEnvironmentName(connection);
         const store = await this.store();
         let secure: string | undefined;
         let secureAvailable = !!store;
@@ -66,7 +64,9 @@ export class AICredentialManager {
         sources.push({ source: 'session', status: this.session.has(id) ? 'available' : 'missing' });
         sources.push({ source: 'secure', status: !secureAvailable ? 'unavailable' : secure ? 'available' : 'missing' });
         const preferred = connection.credential?.source;
-        const effectiveSource = (preferred ? [preferred] : ['session', 'secure', 'environment'] as const).find(source =>
+        const candidates = preferred ? [preferred] : providerSetupAdapters[connection.config.type].credential === 'optional' ?
+            [] : ['session', 'secure', 'environment'] as const;
+        const effectiveSource = candidates.find(source =>
             sources.some(item => item.source === source && item.status === 'available'));
         return { connectionId: id, effectiveSource, sources };
     }
@@ -105,7 +105,7 @@ export class AICredentialManager {
         if (preferred === 'secure' && !store) throw new Error('OS secure storage unavailable');
         const secure = store && await this.secureValue(store, id);
         if (preferred === 'secure') return secure || undefined;
-        const name = environmentRequirements[connection.config.type];
+        const name = providerEnvironmentName(connection);
         return preferred === 'environment' ? (name ? this.environment[name]?.trim() : undefined) :
             secure || (name ? this.environment[name]?.trim() : undefined);
     }

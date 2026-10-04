@@ -45,7 +45,7 @@ export default new ContainerModule(bind => {
         return backend;
     })).inSingletonScope();
     bind(ModelConnectionsRegistry).toDynamicValue(context => new ModelConnectionsRegistry(undefined,
-        context.container.get(AIRegistryStore))).inSingletonScope();
+        context.container.get(AIRegistryStore), context.container.get(AICredentialManager))).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<AIRegistryClient>(aiRegistryServicePath, client => {
         const backend = new AIRegistryBackend(context.container.get(AIRegistryStore), client);
         client.onDidCloseConnection(() => backend.dispose());
