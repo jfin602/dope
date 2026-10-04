@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Plan
 
-Status: **ACTIVE / 7A RETAINED / 7B QUALIFIED + CLOSED AT 0.7.23 / p7c WRITTEN + NEXT / FINAL PHASE 7 CLOSEOUT IN p7c P9**
+Status: **ACTIVE / 7A RETAINED / 7B QUALIFIED + CLOSED AT 0.7.23 / p7c P1 AT 0.7.24 / FINAL PHASE 7 CLOSEOUT IN p7c P9**
 Activation baseline: coherent `0.7.0` at commit `59c7f72a29dcdecdf9b908176754bfd02179b004`
 Package family: `0.7.x`
 Primary decisions: ADR 0025 and ADR 0026

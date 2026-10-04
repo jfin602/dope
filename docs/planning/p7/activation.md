@@ -34,7 +34,7 @@ General Chat uses the application-level Model Connections boundary separate from
 
 Phase 7A implementation/evidence and the qualified `c7-chat-conversation-ux` correction are retained. Phase 7B AI Center is **QUALIFIED / CLOSED at coherent `0.7.23`**. Phase 7C Roles & Routing is the remaining Phase 7 slice.
 
-Current continuation baseline: coherent `0.7.23`.
+Current continuation baseline: coherent `0.7.24`; the 7C P1 contracts are defined, with P2 persistence next.
 
 Execution sequence:
 
