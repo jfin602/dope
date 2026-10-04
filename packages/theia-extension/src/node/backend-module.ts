@@ -21,6 +21,9 @@ import { ChatBackend } from './chat-backend';
 import { ChatContextComposer } from './chat-context-composer';
 import { modelConnectionsServicePath, type ModelConnectionsClient } from '@dope/contracts/lib/model-connections-service';
 import { ModelConnectionsBackend, ModelConnectionsRegistry } from './model-connections';
+import { aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
+import { AIRegistryStore } from './ai-registry-store';
+import { AIRegistryBackend } from './ai-registry-backend';
 
 export default new ContainerModule(bind => {
     bind(NoteStore).toSelf().inSingletonScope();
@@ -31,7 +34,14 @@ export default new ContainerModule(bind => {
     bind(ChatContextComposer).toDynamicValue(context => new ChatContextComposer(
         context.container.get(ProjectMindStore), context.container.get(PlanningStore),
         context.container.get(SoftwareMapIndex), context.container.get(ChatRepository))).inSingletonScope();
-    bind(ModelConnectionsRegistry).toDynamicValue(() => new ModelConnectionsRegistry()).inSingletonScope();
+    bind(AIRegistryStore).toSelf().inSingletonScope();
+    bind(ModelConnectionsRegistry).toDynamicValue(context => new ModelConnectionsRegistry(undefined,
+        context.container.get(AIRegistryStore))).inSingletonScope();
+    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<AIRegistryClient>(aiRegistryServicePath, client => {
+        const backend = new AIRegistryBackend(context.container.get(AIRegistryStore), client);
+        client.onDidCloseConnection(() => backend.dispose());
+        return backend;
+    })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<ModelConnectionsClient>(modelConnectionsServicePath, client => {
         const backend = new ModelConnectionsBackend(context.container.get(ModelConnectionsRegistry), client);
         client.onDidCloseConnection(() => backend.dispose());

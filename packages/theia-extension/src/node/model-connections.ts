@@ -9,6 +9,9 @@ import type { ModelConnectionMetadata, ModelConnectionsClient, ModelConnectionsS
     ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
 import { LocalConversationalProvider, GeminiConversationalProvider } from './conversational-providers';
 import { OpenAIConversationalProvider } from './openai-conversational-provider';
+import { AI_REGISTRY_VERSION } from '@dope/ai';
+import type { AIRegistryMutation, AIRegistrySnapshot } from '@dope/ai';
+import { AIRegistryStore } from './ai-registry-store';
 
 export interface ModelConnectionStore {
     read(): Promise<ModelConnectionMetadata[]>;
@@ -60,12 +63,49 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
     private readonly connections = new Map<string, ModelConnectionMetadata>();
     private readonly credentials = new Map<string, string>();
     private readonly live = new Map<string, Live>();
+    private readonly globalConfiguration = new Map<string, string>();
     private readonly listeners = new Set<() => void>();
     private readonly loaded: Promise<void>;
+    private readonly store: ModelConnectionStore;
     private saving: Promise<void> = Promise.resolve();
+    private revision = 0;
 
-    constructor(private readonly store: ModelConnectionStore = new FileModelConnectionStore()) {
-        this.loaded = store.read().then(entries => { for (const entry of entries) this.connections.set(entry.id, metadata(entry)); });
+    constructor(store?: ModelConnectionStore,
+        private readonly globalStore: AIRegistryStore | undefined = store ? undefined : new AIRegistryStore()) {
+        this.store = store ?? new FileModelConnectionStore();
+        if (globalStore) {
+            globalStore.onChange(snapshot => { this.absorb(snapshot); this.changed(); });
+            this.loaded = globalStore.read().then(snapshot => this.absorb(snapshot));
+        } else this.loaded = this.store.read().then(entries => { for (const entry of entries) this.connections.set(entry.id, metadata(entry)); });
+    }
+    private absorb(snapshot: AIRegistrySnapshot): void {
+        this.revision = snapshot.revision;
+        const incoming = new Set(snapshot.connections.map(connection => connection.id));
+        for (const id of this.connections.keys()) if (!incoming.has(id)) {
+            this.connections.delete(id); this.live.delete(id); this.credentials.delete(id);
+            this.globalConfiguration.delete(id);
+        }
+        for (const connection of snapshot.connections) {
+            const entry = { id: connection.id, providerId: connection.config.type, label: connection.alias,
+                ...(connection.preferredModelId ? { preferredModelId: connection.preferredModelId } : {}) };
+            const previous = this.connections.get(entry.id);
+            const configuration = JSON.stringify(connection.config);
+            const configChanged = this.globalConfiguration.get(entry.id) !== configuration;
+            if (previous && (configChanged || previous.preferredModelId !== entry.preferredModelId ||
+                connection.lifecycle === 'disabled')) {
+                this.live.delete(entry.id);
+                if (configChanged || connection.lifecycle === 'disabled') this.credentials.delete(entry.id);
+            }
+            this.globalConfiguration.set(entry.id, configuration);
+            this.connections.set(entry.id, entry);
+        }
+    }
+    private async globalMutation(mutation: AIRegistryMutation, expectedRevision?: number): Promise<ModelConnectionsSnapshot> {
+        if (expectedRevision === undefined) throw new Error('Expected AI registry revision required');
+        const snapshot = await this.globalStore!.mutate({ version: AI_REGISTRY_VERSION, expectedRevision, mutation });
+        this.absorb(snapshot);
+        this.changed();
+        return this.list();
     }
     onChange(listener: () => void): () => void {
         this.listeners.add(listener);
@@ -80,15 +120,30 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
     }
     async list(): Promise<ModelConnectionsSnapshot> {
         await this.loaded;
-        return { connections: [...this.connections.values()].map(entry => {
+        if (this.globalStore) this.absorb(await this.globalStore.read());
+        return { revision: this.globalStore ? this.revision : undefined, connections: [...this.connections.values()].map(entry => {
             const live = this.live.get(entry.id);
             return { ...entry, ready: !!live?.ready, models: live?.ready ? live.models.map(model =>
                 ({ ...model, capabilities: { ...model.capabilities }, usable: model.capabilities.conversationalText })) : [] };
         }) };
     }
-    async upsert(value: ModelConnectionMetadata): Promise<ModelConnectionsSnapshot> {
+    async upsert(value: ModelConnectionMetadata, expectedRevision?: number): Promise<ModelConnectionsSnapshot> {
         await this.loaded;
         const entry = metadata(value);
+        if (this.globalStore) {
+            const existing = (await this.globalStore.read()).connections.find(connection => connection.id === entry.id);
+            const config = entry.providerId === 'local' ? { type: 'local' as const, runtime: 'lm-studio' as const,
+                endpoint: 'http://127.0.0.1:1234/v1' } : entry.providerId === 'gemini' ? { type: 'gemini' as const } :
+                entry.providerId === 'openai' ? { type: 'openai' as const } : undefined;
+            if (!config) throw new Error('Unsupported model provider');
+            return this.globalMutation(existing ? { type: 'update-connection', id: entry.id,
+                changes: { alias: entry.label, lifecycle: existing.lifecycle,
+                    config: existing.config.type === config.type ? existing.config : config,
+                    ...(entry.preferredModelId ? { preferredModelId: entry.preferredModelId } : {}) } } :
+                { type: 'create-connection', connection: { version: AI_REGISTRY_VERSION, id: entry.id,
+                    alias: entry.label, lifecycle: 'enabled', config,
+                    ...(entry.preferredModelId ? { preferredModelId: entry.preferredModelId } : {}) } }, expectedRevision);
+        }
         const previous = this.connections.get(entry.id);
         if (previous && previous.providerId !== entry.providerId) {
             this.disconnect(entry.id);
@@ -98,18 +153,24 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
         await this.save();
         return this.list();
     }
-    async remove(connectionId: string): Promise<ModelConnectionsSnapshot> {
+    async remove(connectionId: string, expectedRevision?: number): Promise<ModelConnectionsSnapshot> {
         await this.loaded;
+        if (this.globalStore) return this.globalMutation({ type: 'remove-connection', id: connectionId }, expectedRevision);
         this.disconnect(connectionId);
         this.credentials.delete(connectionId);
         if (this.connections.delete(connectionId)) await this.save();
         return this.list();
     }
-    async setPreferred(selection: ModelSelection): Promise<ModelConnectionsSnapshot> {
+    async setPreferred(selection: ModelSelection, expectedRevision?: number): Promise<ModelConnectionsSnapshot> {
         await this.loaded;
         const entry = this.connections.get(selection.connectionId);
         if (!entry) throw new ModelRuntimeFailure('Connection unavailable', 'connection-unavailable');
         if (!selection.modelId?.trim()) throw new Error('Invalid model ID');
+        if (this.globalStore) {
+            const connection = (await this.globalStore.read()).connections.find(item => item.id === entry.id)!;
+            return this.globalMutation({ type: 'update-connection', id: entry.id, changes: { alias: connection.alias,
+                lifecycle: connection.lifecycle, config: connection.config, preferredModelId: selection.modelId } }, expectedRevision);
+        }
         this.connections.set(entry.id, { ...entry, preferredModelId: selection.modelId });
         await this.save();
         return this.list();
@@ -196,9 +257,9 @@ export class ModelConnectionsBackend implements ModelConnectionsService {
         this.unlisten = registry.onChange(() => client.notifyModelConnectionsChanged());
     }
     list() { return this.registry.list(); }
-    upsert(value: ModelConnectionMetadata) { return this.registry.upsert(value); }
-    remove(id: string) { return this.registry.remove(id); }
-    setPreferred(selection: ModelSelection) { return this.registry.setPreferred(selection); }
+    upsert(value: ModelConnectionMetadata, expectedRevision: number) { return this.registry.upsert(value, expectedRevision); }
+    remove(id: string, expectedRevision: number) { return this.registry.remove(id, expectedRevision); }
+    setPreferred(selection: ModelSelection, expectedRevision: number) { return this.registry.setPreferred(selection, expectedRevision); }
     setSessionCredential(connectionId: string, credential: string | null) {
         return this.registry.setSessionCredential(connectionId, credential);
     }

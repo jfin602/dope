@@ -248,7 +248,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (providerId === 'openai' && !modelId) return;
         const id = crypto.randomUUID();
         try {
-            await this.modelConnections.upsert({ id, providerId, label, ...(modelId ? { preferredModelId: modelId } : {}) });
+            this.models = await this.modelConnections.upsert({ id, providerId, label,
+                ...(modelId ? { preferredModelId: modelId } : {}) }, this.models.revision ?? 0);
             if (providerId !== 'local') {
                 const credential = await this.secret(`${providerId} session API key`);
                 if (!credential) return;

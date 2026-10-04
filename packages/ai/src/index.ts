@@ -25,6 +25,7 @@ export interface AIConnection {
     alias: string;
     lifecycle: AIConnectionLifecycle;
     config: AIConnectionConfig;
+    preferredModelId?: string;
     credential?: AICredentialReference;
 }
 
@@ -64,6 +65,7 @@ export interface AIRegistrySnapshot {
 export type AIRegistryMutation =
     | { type: 'create-connection'; connection: AIConnection }
     | { type: 'update-connection'; id: AIConnectionId; changes: Pick<AIConnection, 'alias' | 'lifecycle' | 'config'> &
+        { preferredModelId?: string | null } &
         { credential?: AICredentialReference | null } }
     | { type: 'remove-connection'; id: AIConnectionId }
     | { type: 'upsert-model'; model: AIModel }
@@ -142,10 +144,11 @@ function credential(value: unknown): AICredentialReference {
     return { source, status };
 }
 export function parseAIConnection(value: unknown): AIConnection {
-    const item = record(value, ['version', 'id', 'alias', 'lifecycle', 'config', 'credential']);
+    const item = record(value, ['version', 'id', 'alias', 'lifecycle', 'config', 'credential', 'preferredModelId']);
     if (item.version !== AI_REGISTRY_VERSION) throw new Error('Unsupported AI connection version');
     return { version: AI_REGISTRY_VERSION, id: text(item.id), alias: text(item.alias),
         lifecycle: choice(item.lifecycle, ['enabled', 'disabled'] as const), config: config(item.config),
+        ...(item.preferredModelId === undefined ? {} : { preferredModelId: text(item.preferredModelId) }),
         ...(item.credential === undefined ? {} : { credential: credential(item.credential) }) };
 }
 function known<Value>(value: unknown, validate: (value: unknown) => Value): KnownValue<Value> {
@@ -192,11 +195,12 @@ export function parseAIRegistryMutation(value: unknown): AIRegistryMutation {
             return { type: item.type, connection: parseAIConnection(item.connection) };
         case 'update-connection': {
             record(value, ['type', 'id', 'changes']);
-            const changes = record(item.changes, ['alias', 'lifecycle', 'config', 'credential']);
+            const changes = record(item.changes, ['alias', 'lifecycle', 'config', 'credential', 'preferredModelId']);
             if (changes.alias === undefined || changes.lifecycle === undefined || changes.config === undefined)
                 throw new Error('Incomplete AI connection update');
             return { type: item.type, id: text(item.id), changes: { alias: text(changes.alias),
                 lifecycle: choice(changes.lifecycle, ['enabled', 'disabled'] as const), config: config(changes.config),
+                ...(changes.preferredModelId === undefined ? {} : { preferredModelId: changes.preferredModelId === null ? null : text(changes.preferredModelId) }),
                 ...(changes.credential === undefined ? {} : { credential: changes.credential === null ? null : credential(changes.credential) }) } };
         }
         case 'remove-connection':
@@ -228,6 +232,8 @@ export function applyAIRegistryMutation(snapshot: AIRegistrySnapshot, request: A
             if (!connections.some(connection => connection.id === mutation.id)) throw new Error('AI connection missing');
             connections = connections.map(connection => connection.id === mutation.id ?
                 { ...connection, ...mutation.changes,
+                    preferredModelId: mutation.changes.preferredModelId === null ? undefined :
+                        mutation.changes.preferredModelId ?? connection.preferredModelId,
                     credential: mutation.changes.credential === null ? undefined :
                         mutation.changes.credential ?? connection.credential } : connection);
             break;
