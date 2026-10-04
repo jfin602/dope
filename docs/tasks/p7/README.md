@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Task Stack
 
-Status: **PHASE 7A P1-P12 READY / P13 CLOSEOUT SUPERSEDED BY ADR 0026**
+Status: **P13 EVIDENCE CLOSEOUT NOT QUALIFIED / PHASE 7B-7C OUTSTANDING**
 Activation source/package baseline: `59c7f72a29dcdecdf9b908176754bfd02179b004`, `0.7.0`
 Theia: `1.75.0`; Electron: `42.8.1`; React: `19.2.8`; Node: 24
 
@@ -20,19 +20,14 @@ Theia: `1.75.0`; Electron: `42.8.1`; React: `19.2.8`; Node: 24
 | P10 | `0.7.10` | bounded context composer | T2 | GPT-6 Sol High | no |
 | P11 | `0.7.11` | AI behaviors + auto-title + integrated browser build | T2 | GPT-6 Sol High | no |
 | P12 | `0.7.12` | direct AI Presence qualification | T3 | GPT-6 Sol High | yes |
-| P13 | `0.7.13` | **SUPERSEDED — do not execute; slot reserved for regenerated 7B/7C continuation** | — | — | — |
+| P13 | `0.7.13` | evidence-only 7A closeout; full Phase 7 Not Qualified | T1 | GPT-6 Sol Medium | no |
 
 ## Execution
 
-Validate once before running:
-`npm run codex:phase:validate -- p7`
-
-Then execute the current stack **without** `--closeout` so it stops at the Phase 7A qualification boundary. The runner owns P1-P11 commits and stops for P12 direct GUI/provider qualification. P12 creates the manual `0.7.12` checkpoint.
-
-Do not resume the currently written P13. ADR 0026 supersedes that closeout. After P12, rerun `/prompt-ass -> /prompt-plan -> /prompt-write p7` to regenerate contiguous P13+ prompts for AI Center, roles/routing, integrated qualification and one new final closeout. Revalidate the regenerated stack before continuing.
+P1-P12 and the P12 blocker correction are recorded at the coherent `0.7.12` checkpoint. P13 records their evidence at `0.7.13` without product changes. See [closeout.md](closeout.md) for the Not Qualified decision. A bounded Phase 7 continuation must address ADR 0026 AI Center and role routing before the final Phase 7 qualification decision.
 
 ## Records
 - `prompt-assessment.md`
 - `implementation-plan.md`
 - `P12-ai-presence-dogfooding-evidence.md` (created by P12)
-- final `closeout.md` (created by the regenerated final Phase 7 closeout, not the current P13)
+- `closeout.md` (P13 evidence-only record; Not Qualified)

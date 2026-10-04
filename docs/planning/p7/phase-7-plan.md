@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Plan
 
-Status: **ACTIVE / PHASE 7A P1-P12 WRITTEN / PHASE 7B-7C RESOLVED + PROMOTED**
+Status: **ACTIVE / PHASE 7A P1-P12 IMPLEMENTED / P13 EVIDENCE AUDIT NOT QUALIFIED / PHASE 7B-7C OUTSTANDING**
 Activation baseline: coherent `0.7.0` at commit `59c7f72a29dcdecdf9b908176754bfd02179b004`
 Package family: `0.7.x`
 Primary decisions: ADR 0025 and ADR 0026
@@ -64,7 +64,7 @@ After AI Center:
 - keep role fallback bounded/conservative, preserve unresolved target intent, and record durable routing provenance with a Why this model? explanation;
 - global role policy may restrict egress but never grant feature/user egress consent.
 
-The currently written P13 evidence-only closeout predates ADR 0026 and is **superseded / must not execute as the final Phase 7 closeout**. After P12, regenerate the contiguous P13+ continuation and exactly one new final closeout using `/prompt-ass -> /prompt-plan -> /prompt-write p7`. Do not disguise 7B/7C as a correction stack.
+The P13 evidence-only audit is recorded at `0.7.13` as **Not Qualified**, not as the final Phase 7 closeout. Continue with a bounded 7B/7C implementation and qualification stack, then perform a later final closeout using `/prompt-ass -> /prompt-plan -> /prompt-write p7`. Do not disguise 7B/7C as a correction stack.
 
 ## Locked product contracts
 
@@ -186,4 +186,4 @@ The final closeout may occur only after 7A, 7B and 7C are implemented/qualified 
 
 Phase 7 is qualified when durable project Chats/ChatPanels, one global AI Center, and policy-based AI role routing work together as a provider-independent read-only AI collaboration substrate. The developer can manage connections/models centrally, explicitly steer individual turns, define default roles without hard-coding providers, preserve Software Map and background privacy authority, and recover across restart/project/provider failures without provider or routing state becoming canonical project truth.
 
-Execute the current P1-P12 Phase 7A stack only. Do **not** run the currently written P13 closeout. After P12, reassess the implemented connection/runtime surfaces and regenerate P13+ for AI Center, roles/routing, final integrated qualification and final Phase 7 closeout.
+P1-P12 executed the Phase 7A stack; P13 recorded an evidence-only Not Qualified audit. Reassess the implemented connection/runtime surfaces and plan the Phase 7B/7C continuation, integrated qualification and final Phase 7 closeout.
