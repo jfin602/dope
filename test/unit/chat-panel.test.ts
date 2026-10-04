@@ -8,7 +8,7 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatOpenOwners, ChatPanelController, chatTree } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
-import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel, resolveChatModel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { ChatCollection } from '../../packages/chat/lib/index.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
@@ -26,6 +26,33 @@ function connect(repository: ChatRepository): ChatConnection {
     const backend = new ChatBackend(repository, { notifyChatEvent: event => client?.notifyChatEvent(event) });
     return Object.assign(backend, { setClient(value: ChatClient | undefined) { client = value; } });
 }
+
+test('Chat keeps exact default and turn authority as shared inventory changes', () => {
+    const first = { connectionId: 'first', modelId: 'chat' };
+    const second = { connectionId: 'second', modelId: 'chat' };
+    const available = [{ selection: first }, { selection: second }];
+    assert.deepEqual(resolveChatModel(available), first);
+    assert.deepEqual(resolveChatModel(available, undefined, second), second);
+    assert.deepEqual(resolveChatModel(available, first, second), first);
+    assert.equal(resolveChatModel([available[0]], undefined, second), undefined);
+    assert.equal(resolveChatModel([available[0]], second, first), undefined);
+    assert.deepEqual(resolveChatModel([available[0]], undefined, first), first);
+});
+
+test('Chat delegates connection repair to AI Center and listens for live registry changes', async () => {
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const module = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
+    const center = await readFile(new URL('../../packages/theia-extension/src/browser/ai-center-contribution.ts', import.meta.url), 'utf8');
+    const centerWidget = await readFile(new URL('../../packages/theia-extension/src/browser/ai-center-widget.ts', import.meta.url), 'utf8');
+    assert.match(widget, /Manage AI connections.*openFromChat\(this\.id\)/);
+    assert.match(widget, /onModelsChanged\?\.\(\(\) => \{ void this\.loadModels\(\)/);
+    assert.match(module, /notifyModelConnectionsChanged\(\) \{ modelInventoryChanged\.fire\(\)/);
+    assert.match(module, /modelInventoryChanged\.event/);
+    assert.match(center, /setReturnToChat\(chatPanelId \? \(\) =>/);
+    assert.match(center, /this\.shell\.activateWidget\(chatPanelId\)/);
+    assert.match(centerWidget, /Return to Chat/);
+    assert.doesNotMatch(widget, /setSessionCredential|\.upsert\(|\.activate\(|SecretInputDialog|setupModels|private async reconnect/);
+});
 
 test('four area opens create distinct factory descriptions and widget identities', async () => {
     const calls: string[] = [], ids = new Set<string>();

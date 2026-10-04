@@ -1,6 +1,7 @@
 import { BaseWidget, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { ApplicationShell, type StatefulWidget } from '@theia/core/lib/browser';
 import { SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
+import type { Event } from '@theia/core/lib/common';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
@@ -10,24 +11,19 @@ import { CHAT_COLORS, type ChatSettings, type ChatContextKind, type ChatModelSel
 import type { ChatContextSelection } from '@dope/chat/lib/service';
 import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
+import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, chatPanelWidgetId, resizeChatInput, safeChatLink, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
-
-class SecretInputDialog extends SingleTextInputDialog {
-    constructor(title: string) {
-        super({ title, confirmButtonLabel: 'Connect' });
-        this.inputField.type = 'password';
-        this.inputField.autocomplete = 'off';
-    }
-}
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, chatPanelWidgetId, resizeChatInput, resolveChatModel, safeChatLink, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     readonly controller: ChatPanelController;
     private readonly rootsListener;
+    private readonly modelsListener;
     private readonly status = document.createElement('p');
     private readonly content = document.createElement('div');
     private workspaceRequest = 0;
+    private modelsRequest = 0;
     private models: ModelConnectionsSnapshot = { connections: [] };
     private settingsOpen = false;
     private revealSettings = false;
@@ -44,7 +40,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly shell: ApplicationShell, owners: ChatOpenOwners, options: ChatPanelOptions,
         private readonly markdown: MarkdownRenderer,
         private readonly modelConnections?: ModelConnectionsService,
-        private readonly editors?: EditorManager, private readonly map?: SoftwareMapController) {
+        private readonly editors?: EditorManager, private readonly map?: SoftwareMapController,
+        private readonly aiCenter?: AICenterContribution, onModelsChanged?: Event<void>) {
         super();
         this.id = chatPanelWidgetId(options);
         this.title.label = this.title.caption = 'Chat';
@@ -57,6 +54,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.status.setAttribute('aria-live', 'polite');
         this.node.append(this.status, this.content);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.attach(); });
+        this.modelsListener = onModelsChanged?.(() => { void this.loadModels(); });
         void this.attach();
         void this.loadModels();
     }
@@ -144,9 +142,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const result = await new SingleTextInputDialog({ title, initialValue: value, confirmButtonLabel: 'Save' }).open();
         return result?.trim() || undefined;
     }
-    private async secret(title: string): Promise<string | undefined> {
-        return (await new SecretInputDialog(title).open())?.trim() || undefined;
-    }
     private async folderChoice(title: string, current: string, excluded = ''): Promise<string | undefined> {
         const paths = ['', ...(this.controller.snapshot?.folders.map(folder => folder.path) ?? [])]
             .filter(path => !excluded || path !== excluded && !path.startsWith(`${excluded}/`));
@@ -159,8 +154,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private mutate(operation: ChatOperation): void { void this.controller.mutate(operation); }
     private async loadModels(): Promise<void> {
         if (!this.modelConnections) return;
-        try { this.models = await this.modelConnections.list(); this.render(); }
-        catch (error) { this.status.textContent = String(error); }
+        const request = ++this.modelsRequest;
+        try {
+            const models = await this.modelConnections.list();
+            if (this.isDisposed || request !== this.modelsRequest) return;
+            this.models = models; this.render();
+        } catch (error) { if (request === this.modelsRequest) this.status.textContent = String(error); }
     }
     private async addContext(kind: ChatContextKind): Promise<void> {
         const chat = this.controller.chat;
@@ -234,43 +233,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private selectedModel(): ChatModelSelection | undefined {
         const state = this.controller, usable = this.usableModels();
-        const preferred = state.turnModel ?? state.chat?.settings.defaultModel;
-        return preferred ? usable.find(model => this.sameModel(model.selection, preferred))?.selection : usable[0]?.selection;
-    }
-    private async setupModels(): Promise<void> {
-        if (!this.modelConnections) return;
-        const providerId = (await this.name('Model provider: local, gemini or openai', 'local'))?.toLowerCase();
-        if (!providerId) return;
-        if (!['local', 'gemini', 'openai'].includes(providerId)) { this.status.textContent = 'Choose local, gemini or openai.'; return; }
-        const label = await this.name('Connection name', providerId);
-        if (!label) return;
-        const modelId = providerId === 'openai' ? await this.name('OpenAI model ID') : undefined;
-        if (providerId === 'openai' && !modelId) return;
-        const id = crypto.randomUUID();
-        try {
-            this.models = await this.modelConnections.upsert({ id, providerId, label,
-                ...(modelId ? { preferredModelId: modelId } : {}) }, this.models.revision ?? 0);
-            if (providerId !== 'local') {
-                const credential = await this.secret(`${providerId} session API key`);
-                if (!credential) return;
-                await this.modelConnections.setSessionCredential(id, credential);
-            }
-            this.models = await this.modelConnections.activate(id);
-            this.render();
-        } catch (error) { this.status.textContent = String(error); void this.loadModels(); }
-    }
-    private async reconnect(connectionId: string): Promise<void> {
-        const connection = this.models.connections.find(item => item.id === connectionId);
-        if (!connection || !this.modelConnections) return;
-        try {
-            if (connection.providerId !== 'local') {
-                const credential = await this.secret(`${connection.label} session API key`);
-                if (!credential) return;
-                await this.modelConnections.setSessionCredential(connectionId, credential);
-            }
-            this.models = await this.modelConnections.activate(connectionId);
-            this.render();
-        } catch (error) { this.status.textContent = String(error); }
+        return resolveChatModel(usable, state.turnModel, state.chat?.settings.defaultModel);
     }
     private renderSettings(chatId: string): HTMLElement {
         const form = document.createElement('section');
@@ -298,10 +261,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         model.append(new Option('No default model', ''));
         for (const entry of this.usableModels()) model.append(new Option(entry.label,
             JSON.stringify(entry.selection)));
+        if (draft.defaultModel && !this.usableModels().some(entry => this.sameModel(entry.selection, draft.defaultModel)))
+            model.append(new Option('Default model unavailable', JSON.stringify(draft.defaultModel)));
         model.value = draft.defaultModel ? JSON.stringify(draft.defaultModel) : '';
         model.onchange = () => { draft.defaultModel = model.value ? JSON.parse(model.value) as ChatModelSelection : undefined;
             draft.reasoningControls = undefined; this.render(); };
         field('Default model', model);
+        if (!this.usableModels().length || draft.defaultModel && !this.usableModels().some(entry => this.sameModel(entry.selection, draft.defaultModel)))
+            form.append(this.button('Manage AI connections', () => { void this.aiCenter?.openFromChat(this.id); }));
         const active = this.usableModels().find(entry => this.sameModel(entry.selection, draft.defaultModel));
         for (const control of active?.controls ?? []) {
             const select = document.createElement('select');
@@ -423,6 +390,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 this.button('New Folder', () => void this.name('New folder').then(name => {
                     if (name) void state.newFolder('', name);
                 }), state.pending));
+            if (!this.usableModels().length)
+                header.append(this.button('Manage AI connections', () => { void this.aiCenter?.openFromChat(this.id); }));
             this.content.append(header, this.renderTree(chatTree(state.snapshot)));
             return;
         }
@@ -609,7 +578,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         for (const entry of usable) modelSelector.append(new Option(entry.label, JSON.stringify(entry.selection)));
         const selected = this.selectedModel();
         if (selected) modelSelector.value = JSON.stringify(selected);
-        else modelSelector.append(new Option(chat.settings.defaultModel ? 'Default model unavailable' : 'No usable model', '', true, true));
+        else modelSelector.append(new Option(state.turnModel ? 'Selected model unavailable' :
+            chat.settings.defaultModel ? 'Default model unavailable' : 'No usable model', '', true, true));
         modelSelector.onchange = () => {
             state.turnModel = JSON.parse(modelSelector.value) as ChatModelSelection;
             this.render();
@@ -617,11 +587,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (selected && state.context.length) menuButton('Preview context', () => {
             void state.previewContext(selected).catch(error => { this.status.textContent = String(error); });
         });
-        if (!selected) {
-            menuButton('Set up models', () => void this.setupModels());
-            for (const connection of this.models.connections.filter(item => !item.ready))
-                menuButton(`Connect ${connection.label}`, () => void this.reconnect(connection.id));
-        }
+        if (!selected) menuButton('Manage AI connections', () => { void this.aiCenter?.openFromChat(this.id); });
         menuButton('Refresh models', () => void this.loadModels());
         let submitButton: HTMLButtonElement;
         if (state.running) {
@@ -723,7 +689,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.endTranscriptDrag();
         this.cancelScrollAnimation?.();
         ++this.workspaceRequest;
+        ++this.modelsRequest;
         this.rootsListener.dispose();
+        this.modelsListener?.dispose();
         this.controller.dispose();
         super.dispose();
     }

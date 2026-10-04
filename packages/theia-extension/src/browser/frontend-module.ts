@@ -1,7 +1,7 @@
 import { ContainerModule } from '@theia/core/shared/inversify';
 import { injectable } from '@theia/core/shared/inversify';
 import { AbstractViewContribution, ApplicationShell, FrontendApplicationContribution, WidgetFactory, WidgetManager } from '@theia/core/lib/browser';
-import { CommandContribution, CommandRegistry, MenuContribution } from '@theia/core/lib/common';
+import { CommandContribution, CommandRegistry, Emitter, MenuContribution } from '@theia/core/lib/common';
 import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-service';
 import { bindViewContribution } from '@theia/core/lib/browser/shell/view-contribution';
 import { NoteService, noteServicePath } from '@dope/contracts/lib/note-service';
@@ -42,6 +42,8 @@ import { AICenterContribution } from './ai-center-contribution';
 import { AICenterBottomMenuWidget } from './ai-center-launcher';
 import { SidebarBottomMenuWidget } from '@theia/core/lib/browser/shell/sidebar-bottom-menu-widget';
 import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
+
+const modelInventoryChanged = new Emitter<void>();
 
 abstract class ChatLauncherView extends AbstractViewContribution<ChatPanelWidget> implements FrontendApplicationContribution {
     private observed?: ChatPanelWidget;
@@ -90,7 +92,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(ModelConnectionsService).toDynamicValue(context =>
         ServiceConnectionProvider.createProxy<ModelConnectionsService & RpcServer<ModelConnectionsClient>>(
             context.container, modelConnectionsServicePath,
-            { notifyModelConnectionsChanged() {} } satisfies ModelConnectionsClient)).inSingletonScope();
+            { notifyModelConnectionsChanged() { modelInventoryChanged.fire(); } } satisfies ModelConnectionsClient)).inSingletonScope();
     bind(FrontendApplicationContribution).toDynamicValue(context => ({
         initialize: () => context.container.get(ThemeService).register(dopeDarkTheme),
     })).inSingletonScope();
@@ -168,7 +170,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             context.container.get(ChatOpenOwners), options,
             context.container.get<MarkdownRenderer>(CoreMarkdownRenderer),
             context.container.get(ModelConnectionsService), context.container.get(EditorManager),
-            context.container.get(SoftwareMapController));
+            context.container.get(SoftwareMapController), context.container.get(AICenterContribution), modelInventoryChanged.event);
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({

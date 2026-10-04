@@ -55,6 +55,36 @@ test('connection inventory, readiness invalidation, exact routing and cancellati
     assert.equal((await registry.list()).connections.length, 1);
 });
 
+test('AI Center model state controls Chat inventory and exact turn execution live', async () => {
+    const listeners = new Set<(snapshot: any) => void>();
+    const snapshot = { version: 1, revision: 1, connections: [{ id: 'desk', alias: 'Desk',
+        lifecycle: 'enabled', config: { type: 'local', runtime: 'lmstudio', endpoint: 'http://localhost:1234/v1' } }],
+        models: [{ connectionId: 'desk', providerModelKey: 'chat', enabled: true, state: 'ready' }] };
+    const store = { async read() { return snapshot; }, onChange(listener: (value: any) => void) {
+        listeners.add(listener); return () => listeners.delete(listener);
+    } };
+    const registry = new ModelConnectionsRegistry(undefined, store as any);
+    let changes = 0, executions = 0;
+    registry.onChange(() => { changes++; });
+    await registry.connect('desk', { async discoverModels() { return [model('chat')]; },
+        async *generateConversation() { executions++; yield { type: 'complete' as const, text: 'OK' }; } });
+    assert.equal((await registry.list()).connections[0].models[0].usable, true);
+    snapshot.models[0].enabled = false;
+    snapshot.revision++;
+    for (const listener of listeners) listener(snapshot);
+    assert.ok(changes > 0);
+    assert.equal((await registry.list()).connections[0].models[0].usable, false);
+    await assert.rejects(async () => { for await (const _ of registry.generate({ connectionId: 'desk', modelId: 'chat' }, request)) {} },
+        (error: unknown) => error instanceof ModelRuntimeFailure && error.failureClass === 'model-unavailable');
+    assert.equal(executions, 0);
+    snapshot.models[0].enabled = true;
+    snapshot.revision++;
+    for (const listener of listeners) listener(snapshot);
+    assert.equal((await registry.list()).connections[0].models[0].usable, true);
+    for await (const _ of registry.generate({ connectionId: 'desk', modelId: 'chat' }, request)) {}
+    assert.equal(executions, 1);
+});
+
 test('late discovery cannot restore a replaced connection', async () => {
     const registry = new ModelConnectionsRegistry({ async read() { return []; }, async write() {} });
     await registry.upsert({ id: 'one', providerId: 'example', label: 'One' });

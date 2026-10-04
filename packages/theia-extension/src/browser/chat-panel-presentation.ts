@@ -2,6 +2,12 @@ export const CHAT_PANEL_ID = 'dope-chat-panel';
 export const chatAreas = { left: 'left', right: 'right', center: 'main', bottom: 'bottom' } as const;
 export type ChatArea = keyof typeof chatAreas;
 export interface ChatPanelOptions { instanceId: string }
+export function resolveChatModel<T extends { selection: { connectionId: string; modelId: string } }>(
+    usable: readonly T[], override?: T['selection'], defaultModel?: T['selection']): T['selection'] | undefined {
+    const requested = override ?? defaultModel;
+    return requested ? usable.find(entry => entry.selection.connectionId === requested.connectionId &&
+        entry.selection.modelId === requested.modelId)?.selection : usable[0]?.selection;
+}
 export const chatLauncherOptions = {
     left: { instanceId: '00000000-0000-4000-8000-000000000001' },
     right: { instanceId: '00000000-0000-4000-8000-000000000002' },

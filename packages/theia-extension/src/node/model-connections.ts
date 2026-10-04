@@ -127,11 +127,15 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
     }
     async list(): Promise<ModelConnectionsSnapshot> {
         await this.loaded;
-        if (this.globalStore) this.absorb(await this.globalStore.read());
+        const registry = this.globalStore ? await this.globalStore.read() : undefined;
+        if (registry) this.absorb(registry);
         return { revision: this.globalStore ? this.revision : undefined, connections: [...this.connections.values()].map(entry => {
             const live = this.live.get(entry.id);
-            return { ...entry, ready: !!live?.ready, models: live?.ready ? live.models.map(model =>
-                ({ ...model, capabilities: { ...model.capabilities }, usable: model.capabilities.conversationalText })) : [] };
+            const enabled = !registry || registry.connections.find(connection => connection.id === entry.id)?.lifecycle === 'enabled';
+            return { ...entry, ready: !!live?.ready && enabled, models: live?.ready && enabled ? live.models.map(model =>
+                ({ ...model, capabilities: { ...model.capabilities }, usable: model.capabilities.conversationalText &&
+                    (!registry || !!registry.models.find(item => item.connectionId === entry.id &&
+                        item.providerModelKey === model.id && item.enabled && item.state === 'ready')) })) : [] };
         }) };
     }
     async upsert(value: ModelConnectionMetadata, expectedRevision?: number): Promise<ModelConnectionsSnapshot> {
@@ -250,6 +254,9 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
     }
     async *generate(selection: ModelSelection, request: Omit<ConversationRequest, 'modelId'>): AsyncIterable<ConversationEvent> {
         await this.loaded;
+        if (this.globalStore && !(await this.list()).connections.find(item => item.id === selection.connectionId)
+            ?.models.some(item => item.id === selection.modelId && item.usable))
+            throw new ModelRuntimeFailure('Selected model unavailable', 'model-unavailable');
         const live = this.live.get(selection.connectionId);
         if (!live?.ready) throw new ModelRuntimeFailure('Connection unavailable', 'connection-unavailable');
         const model = live.models.find(item => item.id === selection.modelId);

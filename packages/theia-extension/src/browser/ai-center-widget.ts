@@ -45,6 +45,7 @@ export class AICenterWidget extends BaseWidget {
     private readonly content = element('div');
     private editing = false;
     private modelsOpen = false;
+    private returnToChat?: () => void;
 
     constructor(registry: AIRegistryService, credentials: AICredentialService) {
         super();
@@ -61,6 +62,8 @@ export class AICenterWidget extends BaseWidget {
 
     refresh(): void { void this.controller.load(); }
 
+    setReturnToChat(action?: () => void): void { this.returnToChat = action; this.render(); }
+
     private select(id?: string): void {
         this.editing = false; this.modelsOpen = false;
         void this.controller.select(id);
@@ -73,6 +76,12 @@ export class AICenterWidget extends BaseWidget {
         const status = element('p', controller.message, 'dope-ai-message');
         status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
         this.content.append(title, status);
+        if (this.returnToChat) this.content.append(button('Return to Chat', () => {
+            const action = this.returnToChat;
+            this.returnToChat = undefined;
+            this.render();
+            action?.();
+        }));
         const layout = element('div', undefined, 'dope-ai-layout');
         const list = element('nav'); list.setAttribute('aria-label', 'AI connections');
         const listTitle = element('h3', 'Connections');

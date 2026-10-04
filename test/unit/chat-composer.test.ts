@@ -196,13 +196,13 @@ test('cancel and stale deltas cannot create a completed answer in another Chat o
     } finally { panel.dispose(); await rm(dir, { recursive: true, force: true }); }
 });
 
-test('panel source keeps input and toolbar rows with setup, settings and transcript status', async () => {
+test('panel source keeps input and toolbar rows with AI Center repair, settings and transcript status', async () => {
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     assert.match(source, /composer\.append\(input, toolbar\)/);
     assert.match(source, /menuButton\('Add context'/);
     assert.match(source, /\['Ask', 'Explain', 'Trace', 'Find Related'\]/);
     assert.match(source, /modelSelector\.onchange = \(\) => \{[\s\S]*?state\.turnModel = [^;]+;\s*this\.render\(\)/);
-    assert.match(source, /Set up models/);
+    assert.match(source, /Manage AI connections/);
     assert.match(source, /Chat settings/);
     assert.match(source, /execution\.status/);
     assert.match(source, /actualModel\.providerId/);
@@ -240,7 +240,7 @@ test('composer textarea grows, shrinks and resets to its content height', () => 
 test('composer keeps actions in the popover and only model plus submission on the footer', async () => {
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
-    for (const action of ['Add context', 'Clear context', 'Preview context', 'Refresh models', 'Set up models', 'Retry'])
+    for (const action of ['Add context', 'Clear context', 'Preview context', 'Refresh models', 'Manage AI connections', 'Retry'])
         assert.match(source, new RegExp(`menuButton\\('${action}'`));
     assert.match(source, /\['Ask', 'Explain', 'Trace', 'Find Related'\]/);
     assert.match(source, /menuButton\(kind, \(\) => this\.behavior\(kind\)\)/);

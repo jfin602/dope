@@ -67,7 +67,18 @@ export class AICenterContribution implements CommandContribution, MenuContributi
     }
 
     async open(): Promise<AICenterWidget> {
+        return this.openForChat();
+    }
+
+    async openFromChat(chatPanelId: string): Promise<AICenterWidget> {
+        return this.openForChat(chatPanelId);
+    }
+
+    private async openForChat(chatPanelId?: string): Promise<AICenterWidget> {
         const widget = await this.widgets.getOrCreateWidget<AICenterWidget>(AI_CENTER_ID);
+        widget.setReturnToChat(chatPanelId ? () => {
+            if (this.widgets.tryGetWidget(chatPanelId)) void this.shell.activateWidget(chatPanelId);
+        } : undefined);
         if (!widget.isAttached) await this.shell.addWidget(widget, { area: 'main' });
         await this.shell.activateWidget(widget.id);
         return widget;

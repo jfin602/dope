@@ -93,7 +93,7 @@ export class ChatBackend implements ChatService {
         if (!chat) throw new Error('Chat not found');
         const connection = (await this.models.list()).connections.find(item => item.id === request.selectedModel.connectionId);
         const model = connection?.ready && connection.models.find(item => item.id === request.selectedModel.modelId && item.usable);
-        if (!connection || !model) throw new ModelRuntimeFailure('Selected model is unavailable; open Model Connections to set up a model', 'model-unavailable');
+        if (!connection || !model) throw new ModelRuntimeFailure('Selected model is unavailable; manage AI connections in AI Center', 'model-unavailable');
         const controls = chat.settings.reasoningControls ?? {};
         for (const [id, value] of Object.entries(controls))
             if (!model.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
