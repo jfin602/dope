@@ -22,6 +22,9 @@ import { modelConnectionsServicePath, type ModelConnectionsClient } from '@dope/
 import { ModelConnectionsBackend, ModelConnectionsRegistry } from './model-connections';
 import { aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
 import { AIRegistryStore } from './ai-registry-store';
+import { AIRolePolicyStore } from './ai-role-policy-store';
+import { AIRolePolicyBackend } from './ai-role-policy-backend';
+import { aiRolePolicyServicePath, type AIRolePolicyClient } from '@dope/contracts/lib/ai-role-policy-service';
 import { AIInventoryController, AIRegistryBackend } from './ai-registry-backend';
 import { aiCredentialServicePath, type AICredentialClient } from '@dope/contracts/lib/ai-credential-service';
 import { AICredentialManager } from './ai-credential-manager';
@@ -37,6 +40,13 @@ export default new ContainerModule(bind => {
         context.container.get(ProjectMindStore), context.container.get(PlanningStore),
         context.container.get(SoftwareMapIndex), context.container.get(ChatRepository))).inSingletonScope();
     bind(AIRegistryStore).toSelf().inSingletonScope();
+    bind(AIRolePolicyStore).toSelf().inSingletonScope();
+    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<AIRolePolicyClient>(aiRolePolicyServicePath, client => {
+        const backend = new AIRolePolicyBackend(context.container.get(AIRolePolicyStore),
+            context.container.get(AIRegistryStore), client);
+        client.onDidCloseConnection(() => backend.dispose());
+        return backend;
+    })).inSingletonScope();
     bind(AICredentialManager).toDynamicValue(context => new AICredentialManager(context.container.get(AIRegistryStore))).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<AICredentialClient>(aiCredentialServicePath, client => {
         const backend = new AICredentialBackend(context.container.get(AICredentialManager), client);

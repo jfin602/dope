@@ -37,6 +37,8 @@ import type { ChatClient } from '@dope/chat/lib/service';
 import { ChatPanelWidget } from './chat-panel-widget';
 import { ChatOpenOwners } from './chat-panel-controller';
 import { AIRegistryService, aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
+import { AIRolePolicyService, aiRolePolicyServicePath, type AIRolePolicyClient } from '@dope/contracts/lib/ai-role-policy-service';
+import type { AIRolePolicyMutationRequest } from '@dope/ai';
 import { AICenterWidget, AI_CENTER_ID } from './ai-center-widget';
 import { AICenterContribution } from './ai-center-contribution';
 import { AICenterBottomMenuWidget } from './ai-center-launcher';
@@ -89,6 +91,13 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             notifyAIInventoryChanged: () => { void context.container.get(AICenterContribution).refresh();
                 void context.container.get(SoftwareMapController).refreshInventory(); }
         })).inSingletonScope();
+    bind(AIRolePolicyService).toDynamicValue(context => {
+        const changed = new Emitter<number>();
+        const proxy = ServiceConnectionProvider.createProxy<AIRolePolicyService & RpcServer<AIRolePolicyClient>>(
+            context.container, aiRolePolicyServicePath, { notifyAIRolePolicyChanged: (revision: number) => changed.fire(revision) });
+        return { list: () => proxy.list(), mutate: (request: AIRolePolicyMutationRequest) => proxy.mutate(request),
+            onDidChange: changed.event };
+    }).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: AI_CENTER_ID, createWidget: () => new AICenterWidget(
         context.container.get(AIRegistryService), context.container.get(AICredentialService)) })).inSingletonScope();
     bind(ModelConnectionsService).toDynamicValue(context =>

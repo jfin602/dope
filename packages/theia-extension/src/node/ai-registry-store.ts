@@ -1,16 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { constants, watch, type FSWatcher } from 'node:fs';
 import { lstat, mkdir, open, rename, rm } from 'node:fs/promises';
-import { homedir } from 'node:os';
-import { dirname, isAbsolute, join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { AI_REGISTRY_VERSION, applyAIRegistryMutation, parseAIRegistrySnapshot } from '@dope/ai';
 import type { AIConnection, AIRegistryMutationRequest, AIRegistrySnapshot } from '@dope/ai';
 import { providerSetup } from './provider-setup';
+import { aiConfigDirectory } from './ai-config-directory';
 
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const empty = (): AIRegistrySnapshot => ({ version: AI_REGISTRY_VERSION, revision: 0, connections: [], models: [] });
-export const aiConfigDirectory = (): string => join(process.env.XDG_CONFIG_HOME && isAbsolute(process.env.XDG_CONFIG_HOME) ?
-    process.env.XDG_CONFIG_HOME : join(homedir(), '.config'), 'dope');
+export { aiConfigDirectory } from './ai-config-directory';
 
 function legacyConnection(value: unknown): AIConnection {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid legacy connection');

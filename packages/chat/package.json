@@ -1,6 +1,6 @@
 {
   "name": "@dope/chat",
-  "version": "0.7.24",
+  "version": "0.7.25",
   "private": true,
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
