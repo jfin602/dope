@@ -7,7 +7,7 @@ MODEL / REASONING / USAGE
 
 GOAL
 
-Make ChatPanel look and behave like a familiar modern AI conversation surface using the P1 durable Chat color contract. Keep runtime/model/context behavior unchanged.
+Make ChatPanel look and behave like a familiar modern AI conversation surface using the P1 durable Chat color contract, and make Chat directly discoverable from both side workbench toolbars. Keep runtime/model/context behavior unchanged.
 
 PREFLIGHT
 
@@ -55,6 +55,16 @@ IMPLEMENT
 - Using it resumes follow.
 - Preserve draft/model/context state and avoid unnecessary focus disruption across rerenders.
 
+7. Left/right Chat toolbar launchers
+- Add a visible Chat action to the left primary toolbar/activity bar and the right secondary toolbar/activity bar using supported Theia workbench/view/shell contribution APIs.
+- Reuse the existing `dope.chat.open.left` and `dope.chat.open.right` commands where practical; do not create a parallel launcher command family unless the public contribution API requires a thin adapter.
+- Left action opens/reveals one left launcher ChatPanel in Select Chat; right action does the same on the right.
+- Repeated activation on a side must focus/reveal its existing launcher panel instead of creating duplicate launcher panels.
+- If that launcher panel currently owns an active Chat, activation returns it to Select Chat through the normal controller navigation path so the Chat lease/ownership is released normally.
+- Preserve command-palette Chat commands and center/bottom multi-panel opening.
+- Keep launcher identity/reuse in presentation code; do not query/inject toolbar DOM or patch private Theia shell internals.
+- Use a normal Chat glyph and standard Theia active/focus styling. Do not tint the global launcher with per-Chat color.
+
 PERMANENT REGRESSIONS
 
 Add/update only focused presentation tests for:
@@ -66,11 +76,13 @@ Add/update only focused presentation tests for:
 - unified composer;
 - scroll-follow and jump-to-latest state;
 - existing explicit model/no-fallback behavior retained.
+- left/right launcher visibility, per-side reuse, Select Chat reset, and normal ownership release;
+- center/bottom command-palette Chat opening remains intact;
 
 VALIDATION
 
 T1 only. Run:
-- focused chat-panel and chat-composer tests plus any one new narrow Markdown/presentation test;
+- focused chat-panel and chat-composer tests plus one narrow launcher contribution/command regression and any one new narrow Markdown/presentation test;
 - corepack yarn workspace @dope/theia-extension build;
 - git diff --check;
 - exact 0.7.13 and no-root-package-lock checks.
@@ -81,4 +93,4 @@ Do not commit; runner owns commit boundaries.
 
 FINAL RESPONSE
 
-Report shell/transcript/composer behavior, Markdown safety path, color UI, scroll-follow behavior, focused validation, and P3 readiness.
+Report side launcher behavior, shell/transcript/composer behavior, Markdown safety path, color UI, scroll-follow behavior, focused validation, and P3 readiness.
