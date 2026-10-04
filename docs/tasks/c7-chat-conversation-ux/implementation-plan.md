@@ -18,6 +18,9 @@ Assessment: `prompt-assessment.md`
 - Assistant Markdown is visible output only; never persist hidden reasoning.
 - Do not introduce a new global Chat theme/preferences subsystem.
 - Do not run expensive broad validation in P1/P2.
+- Left/right Chat launcher actions are visible workbench entry points, not a new Chat domain or repository.
+- Use supported Theia workbench/view/shell contribution APIs; do not patch private shell DOM.
+- Side launcher activation must reuse one launcher panel per side and return it to Select Chat through the normal controller path when needed.
 
 ## P1 — Chat color domain and persistence — T1
 
@@ -104,6 +107,21 @@ Chat mode:
 Top bar contains Back, title, settings and stays visible.
 
 Select Chat mode remains a normal scrollable selection hierarchy.
+
+### Left/right Chat launchers
+
+Expose a Chat action in both side workbench toolbars/activity bars.
+
+Implementation direction:
+- reuse the existing `dope.chat.open.left` and `dope.chat.open.right` commands rather than creating competing command semantics;
+- make those side commands reveal/focus one launcher ChatPanel per side in **Select Chat** state;
+- create the launcher panel only when that side does not already have one;
+- if the existing side launcher currently owns a Chat, navigate it through `select(undefined)` before reveal so ownership/lease release follows the canonical path;
+- keep center/bottom command-palette Chat opening and general multi-panel support unchanged;
+- keep launcher identity/reuse in the presentation/contribution layer using public Theia widget/shell APIs;
+- use an ordinary Chat glyph and Theia active/focus styling; do not apply per-Chat color to the global launcher.
+
+Do not use DOM lookup/injection to discover or place these toolbar actions.
 
 ### Chat selector color
 
@@ -196,11 +214,13 @@ Update/add focused tests for:
 - scroll-follow state/jump-to-latest;
 - color mutation wiring;
 - existing explicit model/no-fallback behavior retained.
+- left/right launcher contribution, per-side reuse, and Select Chat reset behavior;
+- center/bottom command-palette Chat opening remains available;
 
 ### Validation
 
 T1 only:
-- focused `chat-panel.test.ts` and `chat-composer.test.ts` plus any new narrow Markdown/presentation test;
+- focused `chat-panel.test.ts` and `chat-composer.test.ts` plus one narrow launcher contribution/command regression and any new narrow Markdown/presentation test;
 - `corepack yarn workspace @dope/theia-extension build`;
 - `git diff --check`;
 - exact `0.7.13` / no-root-lock check.
@@ -227,6 +247,10 @@ Run:
 Use a disposable real project copy with existing Chats or create representative Chats.
 
 Directly prove:
+- left and right toolbar Chat actions are visible and open the corresponding Select Chat surface;
+- repeated activation on each side reuses/reveals the same launcher panel rather than accumulating duplicates;
+- when a side launcher is inside a Chat, activating its toolbar action returns it to Select Chat and releases ownership normally;
+- command-palette center/bottom Chat opening remains available;
 - fixed header while transcript scrolls;
 - fixed composer while transcript scrolls;
 - composer controls visually integrated with input;
