@@ -77,6 +77,16 @@ export interface AIRoleResolveRequest {
     readonly requestHard: AIRoleHardConstraints;
     readonly hostedProjectDataAuthorized: boolean;
 }
+
+/** Future feature requests carry constraints, never execution or mutation authority. */
+export function futureFeatureRoleRequest(roleId: 'background' | 'coding-agent',
+    codingAgentHostedAuthorized = false): AIRoleResolveRequest &
+    { readonly allowFallback: false } {
+    return { roleId, requestHard: { requiredCapabilities: [],
+        locality: roleId === 'background' ? 'local-only' : 'any', enabledOnly: true, usableOnly: true,
+        hostedProjectData: roleId === 'background' ? 'forbidden' : 'requires-feature-authorization' },
+        hostedProjectDataAuthorized: roleId === 'coding-agent' && codingAgentHostedAuthorized, allowFallback: false };
+}
 export interface AIRoleResolution {
     readonly roleId: AIRoleId;
     readonly policyRevision: number;

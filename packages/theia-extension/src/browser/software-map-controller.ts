@@ -2,7 +2,8 @@ import { parseArchitecture, parseAnalysisProgressEvent, branchFingerprint, targe
 import type { ArchitectureDeclaration, ArchitectureReview, ArchitectureReviewNode, ArchitectureViolation, CurrentArchitecture, SaveArchitectureResult, Evidence, FlowQuery, FlowQueryResult, GraphNode, SoftwareMapPage, SoftwareMapRelationshipRequest, GraphRelationship, SoftwareMapStatus, SoftwareMapClient, SoftwareMapService, SoftwareMapInitializationStatus, AnalysisProgressEvent, SynthesisDryRunReport, TargetedRefinementResult, ProposedArchitectureNode } from '@dope/software-map';
 import type { AIInventoryState, AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
 import type { AICredentialService } from '@dope/contracts/lib/ai-credential-service';
-import { AI_REGISTRY_VERSION } from '@dope/ai';
+import { AI_REGISTRY_VERSION, resolveAIRole } from '@dope/ai';
+import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
 
 export type SoftwareMapConnection = SoftwareMapService & { setClient(client: SoftwareMapClient | undefined): void };
 export interface SynthesisPreferenceStore {
@@ -65,6 +66,7 @@ export class SoftwareMapController {
     inventory?: AIInventoryState;
     connectionId = '';
     modelId = '';
+    roleSuggested = false;
     contextWindowTokens = 0;
     private configuredTarget?: string;
     private readonly consentedTargets = new Set<string>();
@@ -95,7 +97,7 @@ export class SoftwareMapController {
 
     constructor(private readonly connect: () => SoftwareMapConnection, private readonly changed: () => void,
         private readonly preferences?: SynthesisPreferenceStore, private readonly registry?: AIRegistryService,
-        private readonly credentials?: AICredentialService) { }
+        private readonly credentials?: AICredentialService, private readonly roles?: Pick<AIRolePolicyService, 'list'>) { }
 
     private current(project: number, request: number): boolean {
         return !this.disposed && project === this.project && request === this.request;
@@ -156,6 +158,7 @@ export class SoftwareMapController {
         this.inventory = undefined;
         this.connectionId = '';
         this.modelId = '';
+        this.roleSuggested = false;
         this.setupReady = false;
         this.setupBusy = false;
         this.dryRunBusy = false;
@@ -245,6 +248,31 @@ export class SoftwareMapController {
             const choice = await this.preferences?.getData<SynthesisChoice>(preferenceKey);
             if (choice && this.inventory && this.registry) await this.convergeLegacyChoice(choice);
             if (project !== this.project || request !== this.setupRequest) return;
+            if (!this.connectionId && this.inventory && this.roles) {
+                try {
+                    const policy = await this.roles.list();
+                    if (project !== this.project || request !== this.setupRequest) return;
+                    // Setup previews hosted candidates only; synthesis still needs exact-target consent.
+                    const resolution = resolveAIRole({ policy, inventory: this.inventory.registry,
+                        observations: this.inventory.observations, loadedLocalModels: this.inventory.loadedLocalModels ?? [],
+                        roleId: 'software-map', requestHard: { requiredCapabilities: [], locality: 'any',
+                            enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' },
+                        hostedProjectDataAuthorized: true });
+                    const candidate = resolution.candidates.find(item => {
+                        const connection = this.inventory!.registry.connections.find(connection => connection.id === item.target.connectionId);
+                        const model = this.inventory!.registry.models.find(model => model.connectionId === item.target.connectionId &&
+                            model.providerModelKey === item.target.modelId);
+                        return (connection?.config.type === 'local' || connection?.config.type === 'gemini') &&
+                            (connection.config.type !== 'local' || (this.inventory!.loadedLocalModels ?? []).some(loaded =>
+                                loaded.connectionId === item.target.connectionId && loaded.providerModelKey === item.target.modelId &&
+                                loaded.contextWindowTokens >= 8192)) && !!model;
+                    });
+                    if (candidate) {
+                        this.selectTarget(candidate.target.connectionId, candidate.target.modelId);
+                        this.roleSuggested = true;
+                    }
+                } catch { /* An unavailable role store leaves exact selection available. */ }
+            }
             this.notify();
         } catch (error) {
             if (project === this.project && request === this.setupRequest) { this.error = String(error); this.notify(); }
@@ -341,12 +369,16 @@ export class SoftwareMapController {
     selectedModel() { return this.inventory?.registry.models.find(item => item.connectionId === this.connectionId &&
         item.providerModelKey === this.modelId && item.enabled && item.state !== 'unavailable' && item.state !== 'disabled'); }
     selectTarget(connectionId: string, modelId: string): void {
+        if (this.setupBusy || this.initialization?.state === 'analyzing') return;
         if (connectionId !== this.connectionId || modelId !== this.modelId) {
             this.invalidateSetup();
             this.connectionId = connectionId;
             this.modelId = modelId;
             const capacity = this.selectedModel()?.limits.contextWindowTokens;
-            this.contextWindowTokens = capacity?.source === 'configured' ? capacity.value ?? 0 : 0;
+            this.contextWindowTokens = (this.inventory?.loadedLocalModels ?? []).find(item =>
+                item.connectionId === connectionId && item.providerModelKey === modelId)?.contextWindowTokens ??
+                (capacity?.source === 'configured' ? capacity.value ?? 0 : 0);
+            this.roleSuggested = false;
             this.notify();
         }
     }

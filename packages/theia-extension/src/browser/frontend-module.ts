@@ -153,7 +153,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(SoftwareMapController).toDynamicValue(context => new SoftwareMapController(
         () => context.container.get(SoftwareMapService) as SoftwareMapService & RpcServer<SoftwareMapClient>,
         () => {}, context.container.get(StorageService), context.container.get(AIRegistryService),
-        context.container.get(AICredentialService))).inSingletonScope();
+        context.container.get(AICredentialService), context.container.get(AIRolePolicyService))).inSingletonScope();
     bind(PlanningMapController).toDynamicValue(context => new PlanningMapController(context.container.get(SoftwareMapController),
         () => ServiceConnectionProvider.createProxy<VisualPlanningService>(context.container, visualPlanningServicePath))).inSingletonScope();
     bind(SmapPresentationState).toDynamicValue(context => new SmapPresentationState(context.container.get(StorageService))).inSingletonScope();

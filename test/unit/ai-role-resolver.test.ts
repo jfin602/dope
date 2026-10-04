@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { AI_ROLE_IDS, resolveAIRole } from '../../packages/ai/lib/index.js';
+import { AI_ROLE_IDS, futureFeatureRoleRequest, resolveAIRole } from '../../packages/ai/lib/index.js';
 import type { AIConnection, AIModel, AIRegistrySnapshot, AIRoleHardConstraints, AIRolePolicy,
     AIRolePolicyEntry, AIRoleResolverInput } from '../../packages/ai/lib/index.js';
 
@@ -41,6 +41,27 @@ test('unconfigured roles never select an arbitrary model, for every fixed role',
         assert.deepEqual(result.candidates, []);
         assert.equal(result.selectedTarget, undefined);
     }
+});
+
+test('future Background stays Local and Coding Agent is policy identity without authority', () => {
+    const base = input(exact('hosted'), [exact('local')],
+        [model('hosted'), model('local', 'model', 'local')]);
+    const background = futureFeatureRoleRequest('background');
+    const coding = futureFeatureRoleRequest('coding-agent');
+    const policies = base.policy.policies.map(item => ({ ...item, allowFallback: true }));
+    const loadedLocalModels = [{ connectionId: 'local', providerModelKey: 'model', contextWindowTokens: 32768 }];
+    const result = resolveAIRole({ ...base, policy: { ...base.policy, policies }, loadedLocalModels, ...background });
+    assert.deepEqual(result.candidates.map(candidate => candidate.target.connectionId), ['local']);
+    assert.equal(result.excluded.find(item => item.target?.connectionId === 'hosted')?.reason, 'locality');
+    assert.equal(background.allowFallback, false);
+    assert.equal(background.hostedProjectDataAuthorized, false);
+    assert.equal(futureFeatureRoleRequest('background', true).hostedProjectDataAuthorized, false);
+    assert.equal(coding.roleId, 'coding-agent');
+    assert.equal(coding.hostedProjectDataAuthorized, false);
+    assert.equal(coding.requestHard.hostedProjectData, 'requires-feature-authorization');
+    assert.equal(futureFeatureRoleRequest('coding-agent', true).hostedProjectDataAuthorized, true);
+    assert.equal(coding.allowFallback, false);
+    assert.deepEqual(Object.keys(coding).sort(), ['allowFallback', 'hostedProjectDataAuthorized', 'requestHard', 'roleId']);
 });
 
 test('every built-in role uses the same configured resolution path', () => {

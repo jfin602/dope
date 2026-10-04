@@ -171,9 +171,12 @@ export class SoftwareMapWidget extends BaseWidget {
             if (select.value) { const [connectionId, modelId] = JSON.parse(select.value) as [string, string]; model.selectTarget(connectionId, modelId); }
         };
         label.append(select);
+        this.controls.append(label);
+        if (model.roleSuggested) this.controls.append(this.element('p',
+            'Software Map role suggested this exact target. You can choose another target before the probe.'));
         const manage = this.button('Manage connections in AI Center', () => void this.openAICenter?.());
         const refresh = this.button('Return to synthesis setup / refresh inventory', () => void model.refreshInventory());
-        this.controls.append(label, manage, refresh);
+        this.controls.append(manage, refresh);
         if (model.connectionId && !model.selectedModel())
             this.controls.append(this.element('p', 'Selected target is missing. Use AI Center to repair it, then return here.'));
         const connection = model.selectedConnection();

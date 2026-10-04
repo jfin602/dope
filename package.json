@@ -1,6 +1,6 @@
 { 
   "name": "dope",
-  "version": "0.7.29",
+  "version": "0.7.30",
   "private": true,
   "type": "module",
   "packageManager": "yarn@1.22.22",

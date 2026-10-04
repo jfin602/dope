@@ -27,6 +27,30 @@ function inventory() {
   return { state, inventory: async () => state, list: async () => state.registry,
     refreshModels: async () => state, mutate: async () => state.registry };
 }
+function roleInventory() {
+  const registry = inventory();
+  const known = (value: boolean) => ({ source: 'adapter-known', value });
+  for (const model of registry.state.registry.models) {
+    (model as any).locality = model.connectionId === 'local-one' ? 'local' : 'hosted';
+    (model as any).capabilities = { conversationalText: known(true), streaming: known(true),
+      structuredOutput: known(true), toolCalling: known(false) };
+    (model as any).limits = { ...model.limits, maxInputTokens: { source: 'unknown' }, maxOutputTokens: { source: 'unknown' } };
+  }
+  registry.state.observations.push({ connectionId: 'local-one', health: 'ready' } as any,
+    { connectionId: 'gemini-one', health: 'ready' } as any);
+  (registry.state as any).loadedLocalModels = [{ connectionId: 'local-one',
+    providerModelKey: 'Qwen3-Coder-30B-A3B-Instruct', contextWindowTokens: 65536 }];
+  return registry;
+}
+function smapRoles(target: string) {
+  const hard = { requiredCapabilities: [], locality: 'any', enabledOnly: true,
+    usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
+  return { list: async () => ({ version: 1, revision: 1, policies:
+    ['interactive', 'deep-reasoning', 'background', 'software-map', 'coding-agent'].map(roleId => ({
+      roleId, preferred: roleId === 'software-map' ? { type: 'exact', target: {
+        connectionId: target, modelId: target === 'local-one' ? 'Qwen3-Coder-30B-A3B-Instruct' : 'gemini-3.6-flash' } } : undefined,
+      fallbacks: [], hard, preferences: [], allowFallback: false })) }) };
+}
 async function ready(controller: any, kind: 'local' | 'gemini' = 'local', model?: string): Promise<void> {
   await controller.refreshInventory();
   controller.selectTarget(kind === 'local' ? 'local-one' : 'gemini-one', model ??
@@ -201,6 +225,72 @@ test('central target requires a Software Map probe; switching invalidates readin
   controller.consentToHostedEvidence();
   await controller.synthesize();
   assert.equal(controller.flow, 'review');
+  controller.dispose();
+});
+
+test('Software Map role suggests an exact run target; override and active run stay exact', async () => {
+  const c = connection(), registry = roleInventory();
+  let roleTarget = 'gemini-one';
+  const roles = { list: () => smapRoles(roleTarget).list() };
+  const controller = new SoftwareMapController(() => c, () => {}, undefined, registry, undefined, roles);
+  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  await controller.setup();
+  assert.equal(controller.connectionId, 'gemini-one');
+  assert.equal(controller.modelId, 'gemini-3.6-flash');
+  assert.equal(controller.roleSuggested, true);
+  assert.equal(controller.setupReady, false);
+  await controller.probe();
+  await controller.synthesize();
+  assert.match(controller.error, /Confirm hosted repository-evidence/);
+  roleTarget = 'local-one';
+  await controller.setup();
+  assert.equal(controller.connectionId, 'gemini-one');
+  controller.selectTarget('local-one', 'Qwen3-Coder-30B-A3B-Instruct');
+  assert.equal(controller.roleSuggested, false);
+  await controller.probe();
+  roleTarget = 'gemini-one';
+  const run = controller.synthesize();
+  assert.equal(controller.initialization.state, 'analyzing');
+  controller.selectTarget('gemini-one', 'gemini-3.6-flash');
+  assert.equal(controller.connectionId, 'local-one');
+  await run;
+  assert.deepEqual(c.configurations.map((item: any) => item.connectionId), ['gemini-one', 'local-one']);
+  await controller.setup(true);
+  assert.equal(controller.connectionId, 'local-one');
+  controller.dispose();
+});
+
+test('Search Deeper setup takes the Software Map role suggestion when no exact target exists', async () => {
+  const c = connection(), registry = roleInventory();
+  const controller = new SoftwareMapController(() => c, () => {}, undefined, registry, undefined,
+    smapRoles('local-one'));
+  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  await controller.setup(true);
+  assert.equal(controller.connectionId, 'local-one');
+  assert.equal(controller.contextWindowTokens, 65536);
+  assert.equal(controller.roleSuggested, true);
+  await controller.probe();
+  assert.deepEqual(c.configurations.at(-1), { connectionId: 'local-one',
+    modelId: 'Qwen3-Coder-30B-A3B-Instruct', contextWindowTokens: 65536 });
+  controller.dispose();
+});
+
+test('Software Map probe failure stays on the suggested exact target despite role fallback', async () => {
+  const c = connection(), registry = roleInventory();
+  const roles = smapRoles('local-one');
+  const snapshot = await roles.list();
+  const softwareMap: any = snapshot.policies.find((item: any) => item.roleId === 'software-map');
+  softwareMap.allowFallback = true;
+  softwareMap.fallbacks = [{ type: 'exact', target: { connectionId: 'gemini-one', modelId: 'gemini-3.6-flash' } }];
+  (c as any).probeSynthesis = () => Promise.reject(new Error('structured output failed'));
+  const controller = new SoftwareMapController(() => c, () => {}, undefined, registry, undefined,
+    { list: async () => snapshot });
+  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  await controller.setup();
+  await controller.probe();
+  assert.equal(controller.connectionId, 'local-one');
+  assert.equal(controller.setupReady, false);
+  assert.deepEqual(c.configurations.map((item: any) => item.connectionId), ['local-one']);
   controller.dispose();
 });
 

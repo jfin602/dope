@@ -156,6 +156,8 @@ export class SoftwareMapReviewWidget extends BaseWidget {
             if (select.value) { const [connectionId, modelId] = JSON.parse(select.value) as [string, string]; model.selectTarget(connectionId, modelId); }
         };
         label.append(select); setup.append(label);
+        if (model.roleSuggested) setup.append(this.element('p',
+            'Software Map role suggested this exact target. You can choose another target before the probe.'));
         setup.append(this.button('Manage connections in AI Center', () => void this.openAICenter?.()));
         if (model.selectedConnection()?.config.type === 'local')
             setup.append(this.field('Loaded context tokens', String(model.contextWindowTokens), value => model.changeContextTokens(value)));
