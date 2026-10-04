@@ -102,7 +102,7 @@ export class AIInventoryController {
             return { ...model, state };
         }) }, observations: registry.connections.map(connection => ({ connectionId: connection.id,
             health: health(connection) })),
-            tests: [...this.tested.values()] };
+            loadedLocalModels: this.loadedLocalModelsSnapshot(), tests: [...this.tested.values()] };
     }
     loadedLocalModelsSnapshot(): { connectionId: string; providerModelKey: string; contextWindowTokens: number }[] {
         return [...this.loadedLocalModels].map(([key, contextWindowTokens]) => {

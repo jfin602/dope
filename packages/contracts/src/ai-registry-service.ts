@@ -12,6 +12,7 @@ export interface AITestConnectionResult {
 export interface AIInventoryState {
     registry: AIRegistrySnapshot;
     observations: AIConnectionObservation[];
+    loadedLocalModels?: NonNullable<AIEligibilityQuery['loadedLocalModels']>;
     tests: AITestConnectionResult[];
 }
 

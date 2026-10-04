@@ -5,8 +5,11 @@ import { ACCOUNTS_MENU, MANAGE_MENU } from '@theia/core/lib/common/menu';
 import { AuthenticationService } from '@theia/core/lib/browser/authentication-service';
 import { codicon } from '@theia/core/lib/browser/widgets/widget';
 import { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
+import { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
+import type { AIRoleId } from '@dope/ai';
 import { AI_CENTER_ID, AICenterWidget } from './ai-center-widget';
 import { connectionWarning } from './ai-center-controller';
+import { roleWarning } from './ai-center-roles';
 
 export const AI_CENTER_COMMAND = 'dope.aiCenter.open';
 export const AI_CENTER_MENU = ['dope_ai_center_menu'];
@@ -21,6 +24,7 @@ export class AICenterContribution implements CommandContribution, MenuContributi
     constructor(@inject(ApplicationShell) private readonly shell: ApplicationShell,
         @inject(WidgetManager) private readonly widgets: WidgetManager,
         @inject(AIRegistryService) private readonly registry: AIRegistryService,
+        @inject(AIRolePolicyService) private readonly roles: AIRolePolicyService,
         @inject(AuthenticationService) private readonly authentication: AuthenticationService) {}
 
     registerCommands(commands: CommandRegistry): void {
@@ -40,7 +44,7 @@ export class AICenterContribution implements CommandContribution, MenuContributi
         const replace = () => {
             handler.removeBottomMenu('accounts-menu');
             handler.addBottomMenu({ id: 'dope-ai-center-menu', iconClass: codicon('sparkle'), title:
-                this.badge ? 'AI Center — connection needs attention' : 'AI Center', menuPath: AI_CENTER_MENU,
+                this.badge ? 'AI Center — configuration needs attention' : 'AI Center', menuPath: AI_CENTER_MENU,
                 order: 1, onDidBadgeChange: this.badgeChanged.event });
         };
         this.replaceBottomMenu = replace;
@@ -54,8 +58,10 @@ export class AICenterContribution implements CommandContribution, MenuContributi
         const request = ++this.request;
         try {
             const state = await this.registry.inventory();
+            let roleAttention = false;
+            try { roleAttention = roleWarning(await this.roles.list(), state); } catch { /* Connection status remains independent. */ }
             if (request !== this.request) return;
-            const badge = connectionWarning(state) ? 1 : 0;
+            const badge = connectionWarning(state) || roleAttention ? 1 : 0;
             if (this.badge !== badge) { this.badge = badge; this.replaceBottomMenu?.(); }
             this.badgeChanged.fire(this.badge);
         } catch {
@@ -80,6 +86,12 @@ export class AICenterContribution implements CommandContribution, MenuContributi
 
     async openFromSoftwareMapReview(): Promise<AICenterWidget> {
         return this.openForChat('dope-software-map-review', 'Return to Edit Architecture');
+    }
+
+    async openRole(roleId: AIRoleId): Promise<AICenterWidget> {
+        const widget = await this.openForChat();
+        await widget.focusRole(roleId);
+        return widget;
     }
 
     private async openForChat(chatPanelId?: string, label?: string): Promise<AICenterWidget> {

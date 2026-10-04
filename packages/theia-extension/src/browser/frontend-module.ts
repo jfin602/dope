@@ -94,12 +94,15 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(AIRolePolicyService).toDynamicValue(context => {
         const changed = new Emitter<number>();
         const proxy = ServiceConnectionProvider.createProxy<AIRolePolicyService & RpcServer<AIRolePolicyClient>>(
-            context.container, aiRolePolicyServicePath, { notifyAIRolePolicyChanged: (revision: number) => changed.fire(revision) });
+            context.container, aiRolePolicyServicePath, { notifyAIRolePolicyChanged: (revision: number) => {
+                changed.fire(revision); void context.container.get(AICenterContribution).refresh();
+            } });
         return { list: () => proxy.list(), mutate: (request: AIRolePolicyMutationRequest) => proxy.mutate(request),
             onDidChange: changed.event };
     }).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: AI_CENTER_ID, createWidget: () => new AICenterWidget(
-        context.container.get(AIRegistryService), context.container.get(AICredentialService)) })).inSingletonScope();
+        context.container.get(AIRegistryService), context.container.get(AICredentialService),
+        context.container.get(AIRolePolicyService)) })).inSingletonScope();
     bind(ModelConnectionsService).toDynamicValue(context =>
         ServiceConnectionProvider.createProxy<ModelConnectionsService & RpcServer<ModelConnectionsClient>>(
             context.container, modelConnectionsServicePath,
