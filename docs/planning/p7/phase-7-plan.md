@@ -36,9 +36,11 @@ The existing P1-P12 stack owns:
 
 P1-P12 and the bounded P12 blocker correction are retained Phase 7A history. P13 is the evidence-only `0.7.13` **Not Qualified** audit and remains truthful history. Before the bounded 7B/7C continuation, apply and qualify `c7-chat-conversation-ux` at unchanged `0.7.13`.
 
-This correction owns presentation and Chat organization only: fixed header + scrolling transcript + fixed unified composer; right-aligned developer bubbles; neutral unboxed safe-Markdown assistant output; compact response metadata; bottom-follow streaming that respects manual scroll-away; and one durable editable ten-color Chat identity shown in Select Chat and reused by developer bubbles, including deterministic migration/defaulting for older Chats.
+This correction owns presentation and Chat organization only: fixed header + scrolling transcript + fixed unified composer; right-aligned developer bubbles; neutral unboxed safe-Markdown assistant output; compact response metadata; bottom-follow streaming that respects manual scroll-away; one durable editable ten-color Chat identity shown in Select Chat and reused by developer bubbles, including deterministic migration/defaulting for older Chats; and visible Chat launcher actions in both left and right side workbench toolbars that reveal the respective side's Select Chat surface without duplicate launcher panels.
 
 It preserves explicit per-turn model selection, no silent provider/model fallback, read-only Phase 7 tools, durable provenance, context composition, ownership/restoration and provider independence. Historical P9/P12/P13 evidence is not rewritten.
+
+Side launchers reuse the existing left/right Chat open commands as the preferred visible entry path. Those side commands should reveal/focus one launcher ChatPanel per side in Select Chat state; center/bottom command-palette opening remains available. Returning an active side launcher to Select Chat releases ownership through the normal ChatPanel path.
 
 ### Phase 7B — AI Center
 
