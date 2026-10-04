@@ -79,6 +79,7 @@ export interface ConversationMessage { role: 'system' | 'user' | 'assistant'; co
 export interface ConversationRequest {
     modelId: ModelId;
     messages: readonly ConversationMessage[];
+    maxOutputTokens?: number;
     controls?: Readonly<Record<string, string>>;
     signal?: AbortSignal;
 }

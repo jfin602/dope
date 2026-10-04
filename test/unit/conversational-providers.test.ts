@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ModelRuntimeFailure } from '../../packages/contracts/lib/model-runtime.js';
+import type { ConversationRequest } from '../../packages/contracts/lib/model-runtime.js';
 import { GeminiConversationalProvider, LocalConversationalProvider } from
     '../../packages/theia-extension/lib/node/conversational-providers.js';
 import { LmStudioSynthesisProvider } from '../../packages/theia-extension/lib/node/lmstudio-synthesis-provider.js';
@@ -13,8 +14,12 @@ const json = (value: unknown, status = 200) => new Response(JSON.stringify(value
 const sse = (frames: string[]) => new Response(frames.map(frame => `data: ${frame}\r\n\r\n`).join(''),
     { headers: { 'Content-Type': 'text/event-stream' } });
 const collect = async (provider: { generateConversation: LocalConversationalProvider['generateConversation'] },
-    input = request) => { const events = []; for await (const event of provider.generateConversation(input)) events.push(event); return events; };
+    input: ConversationRequest = request) => { const events = []; for await (const event of provider.generateConversation(input)) events.push(event); return events; };
 const isFailure = (kind: string) => (error: unknown) => error instanceof ModelRuntimeFailure && error.failureClass === kind;
+const native = (id = 'chat-model', context = 4096) => json({ models: [
+    { type: 'llm', key: id, loaded_instances: [{ id, config: { context_length: context } }] },
+    { type: 'embedding', key: 'embed', loaded_instances: [{ id: 'embed', config: { context_length: 2048 } }] },
+] });
 
 test('Local discovery and streaming preserve exact model, order, usage and synthesis state', async () => {
     const synthesis = new LmStudioSynthesisProvider();
@@ -22,7 +27,8 @@ test('Local discovery and streaming preserve exact model, order, usage and synth
     const local = new LocalConversationalProvider({ token: 'secret', fetch: async (url, init) => {
         const body = init?.body ? JSON.parse(String(init.body)) : undefined;
         calls.push({ url: String(url), body, authorization: new Headers(init?.headers).get('Authorization') });
-        if (String(url).endsWith('/models')) return json({ data: [{ id: 'chat-model' }, { id: 'chat-model' }] });
+        if (String(url).endsWith('/api/v1/models')) return native();
+        if (String(url).endsWith('/v1/models')) return json({ data: [{ id: 'chat-model' }, { id: 'chat-model' }] });
         return sse([
             JSON.stringify({ choices: [{ delta: { content: 'Hel' } }] }),
             JSON.stringify({ choices: [{ delta: { content: 'lo' }, finish_reason: 'stop' }] }),
@@ -30,26 +36,48 @@ test('Local discovery and streaming preserve exact model, order, usage and synth
             '[DONE]',
         ]);
     } });
-    assert.deepEqual((await local.discoverModels()).map(item => item.id), ['chat-model']);
-    assert.deepEqual(await collect(local), [
+    assert.deepEqual(await local.discoverModels(), [{ id: 'chat-model', label: 'chat-model',
+        capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 4096 } }]);
+    assert.deepEqual(await collect(local, { ...request, maxOutputTokens: 1024 }), [
         { type: 'delta', text: 'Hel' }, { type: 'delta', text: 'lo' },
         { type: 'complete', text: 'Hello', finishReason: 'stop', usage: {
             inputTokens: 3, outputTokens: 2, totalTokens: 5, tokenMeasurement: 'provider-reported' } },
     ]);
-    assert.equal(calls[1].body.model, 'chat-model');
-    assert.deepEqual(calls[1].body.messages, request.messages);
-    assert.equal(calls[1].body.response_format, undefined);
-    assert.equal(calls[1].body.stream, true);
-    assert.equal(calls[1].authorization, 'Bearer secret');
+    assert.equal(calls[2].body.model, 'chat-model');
+    assert.deepEqual(calls[2].body.messages, request.messages);
+    assert.equal(calls[2].body.max_tokens, 1024);
+    assert.equal(calls[2].body.response_format, undefined);
+    assert.equal(calls[2].body.stream, true);
+    assert.ok(calls.every(call => call.authorization === 'Bearer secret'));
     assert.equal(synthesis.selectedModel, undefined);
     assert.equal(synthesis.isReady, false);
+});
+
+test('Local native inventory excludes embeddings, unloaded and unknown-capacity instances from Chat', async () => {
+    const local = new LocalConversationalProvider({ fetch: async url => String(url).endsWith('/api/v1/models') ?
+        json({ models: [
+            { type: 'llm', key: 'chat-model', max_context_length: 131072, loaded_instances: [
+                { id: 'instance-a', config: { context_length: 4096 } },
+                { id: 'instance-b', config: { context_length: 2048 } }] },
+            { type: 'llm', key: 'unloaded', max_context_length: 8192, loaded_instances: [] },
+            { type: 'llm', key: 'unknown', loaded_instances: [{ id: 'unknown', config: {} }] },
+            { type: 'embedding', key: 'embed', loaded_instances: [{ id: 'embed', config: { context_length: 1024 } }] },
+        ] }) : json({ data: ['chat-model', 'instance-a', 'unloaded', 'unknown', 'embed'].map(id => ({ id })) }) });
+    const models = await local.discoverModels();
+    assert.equal(models.find(item => item.id === 'chat-model')?.capabilities.contextWindowTokens, 2048);
+    assert.equal(models.find(item => item.id === 'instance-a')?.capabilities.contextWindowTokens, 4096);
+    for (const id of ['unloaded', 'unknown', 'embed']) {
+        assert.equal(models.find(item => item.id === id)?.capabilities.conversationalText, false);
+        await assert.rejects(collect(local, { ...request, modelId: id }), isFailure('model-unavailable'));
+    }
 });
 
 test('Local fails closed on unavailable model, reconnect, cancellation and redacted transport errors', async () => {
     let modelId = 'chat-model';
     let streamCalls = 0;
     const local = new LocalConversationalProvider({ token: 'secret', fetch: async (url) => {
-        if (String(url).endsWith('/models')) return json({ data: [{ id: modelId }] });
+        if (String(url).endsWith('/api/v1/models')) return native(modelId);
+        if (String(url).endsWith('/v1/models')) return json({ data: [{ id: modelId }] });
         streamCalls++;
         return sse([JSON.stringify({ choices: [{ delta: { content: 'one' } }] }), '[DONE]']);
     } });
@@ -87,13 +115,14 @@ test('Gemini SDK discovery, stream, usage and selected model stay separate from 
         ]);
     } });
     assert.deepEqual((await gemini.discoverModels()).map(item => item.id), ['gemini-3-flash']);
-    assert.deepEqual(await collect(gemini, { ...request, modelId: 'gemini-3-flash' }), [
+    assert.deepEqual(await collect(gemini, { ...request, modelId: 'gemini-3-flash', maxOutputTokens: 1024 }), [
         { type: 'delta', text: 'Hel' }, { type: 'delta', text: 'lo' },
         { type: 'complete', text: 'Hello', finishReason: 'STOP', usage: {
             inputTokens: 4, outputTokens: 2, totalTokens: 6, tokenMeasurement: 'provider-reported' } },
     ]);
     assert.equal(calls[1].body.contents[0].role, 'user');
     assert.equal(calls[1].body.systemInstruction.parts[0].text, 'Be clear');
+    assert.equal(calls[1].body.generationConfig.maxOutputTokens, 1024);
     assert.ok(calls[1].url.includes('gemini-3-flash'));
     assert.equal(calls[1].key, 'secret');
     assert.equal(JSON.stringify(calls[1].body).includes('secret'), false);
@@ -129,7 +158,8 @@ test('Gemini rejects undiscovered selection, cancellation, reconnect and redacts
 test('connection registry routes exact Local or Gemini model without fallback', async () => {
     const called: string[] = [];
     const local = new LocalConversationalProvider({ fetch: async (url) => {
-        if (String(url).endsWith('/models')) return json({ data: [{ id: 'chat-model' }] });
+        if (String(url).endsWith('/api/v1/models')) return native();
+        if (String(url).endsWith('/v1/models')) return json({ data: [{ id: 'chat-model' }] });
         called.push('local');
         return sse([JSON.stringify({ choices: [{ delta: { content: 'L' } }] }), '[DONE]']);
     } });
@@ -162,8 +192,8 @@ test('connection registry routes exact Local or Gemini model without fallback', 
 });
 
 test('both streams stop after cancellation following a delivered delta', async () => {
-    const local = new LocalConversationalProvider({ fetch: async (url) => String(url).endsWith('/models') ?
-        json({ data: [{ id: 'chat-model' }] }) : sse([
+    const local = new LocalConversationalProvider({ fetch: async (url) => String(url).endsWith('/api/v1/models') ? native() :
+        String(url).endsWith('/v1/models') ? json({ data: [{ id: 'chat-model' }] }) : sse([
             JSON.stringify({ choices: [{ delta: { content: 'first' } }] }), '[DONE]']) });
     const gemini = new GeminiConversationalProvider({ apiKey: 'secret', fetch: async (url) =>
         /\/models(?:\?|$)/.test(String(url)) ? json({ models: [

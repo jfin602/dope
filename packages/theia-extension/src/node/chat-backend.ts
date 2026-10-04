@@ -148,7 +148,9 @@ export class ChatBackend implements ChatService {
             await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id, actualModel: actual });
             let sequence = 0;
             for await (const event of this.models.generate(request.selectedModel,
-                { messages: composed.messages, controls, signal: abort.signal })) {
+                { messages: composed.messages, controls, signal: abort.signal,
+                    ...(chat.settings.context.reservedOutputTokens > 0 ?
+                        { maxOutputTokens: chat.settings.context.reservedOutputTokens } : {}) })) {
                 if (event.type === 'delta') {
                     output += event.text;
                     await this.repository.publishDelta(root, key, assistant.id, assistant.execution.id,

@@ -82,6 +82,7 @@ export class OpenAIConversationalProvider implements ConversationalModelRuntime 
                 headers: { Authorization: `Bearer ${this.options.apiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ model: request.modelId, input: request.messages, stream: true,
                     store: false, truncation: 'disabled',
+                    ...(request.maxOutputTokens ? { max_output_tokens: request.maxOutputTokens } : {}),
                     ...(request.controls?.['reasoning.effort'] ?
                         { reasoning: { effort: request.controls['reasoning.effort'] } } : {}) }),
             });

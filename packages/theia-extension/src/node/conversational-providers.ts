@@ -42,12 +42,31 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
                 headers: this.headers(), signal: AbortSignal.timeout(this.timeoutMs) });
             if (!response.ok) throw failure('Local', response.status);
             const ids = localModelIds(await response.json());
+            const native = await this.fetch(`${new URL(this.endpoint).origin}/api/v1/models`, {
+                headers: this.headers(), signal: AbortSignal.timeout(this.timeoutMs) });
+            if (!native.ok) throw failure('Local', native.status);
+            const inventory: unknown = await native.json();
+            if (!inventory || typeof inventory !== 'object' || !Array.isArray((inventory as { models?: unknown }).models))
+                throw new Error('Invalid local model inventory');
+            const entries = (inventory as { models: any[] }).models;
+            const discovered = ids.map(id => {
+                const capacities = entries.filter(entry => entry?.type === 'llm' &&
+                    (entry.key === id || Array.isArray(entry.loaded_instances) &&
+                        entry.loaded_instances.some((instance: any) => instance?.id === id)))
+                    .flatMap(entry => (Array.isArray(entry.loaded_instances) ? entry.loaded_instances : [])
+                        .filter((instance: any) => entry.key === id || instance?.id === id)
+                        .map((instance: any) => instance?.config?.context_length));
+                const safe = capacities.length > 0 && capacities.every(value => Number.isSafeInteger(value) && value > 0);
+                return { id, label: id, capabilities: { conversationalText: safe, streaming: safe,
+                    ...(safe ? { contextWindowTokens: Math.min(...capacities) } : {}) } };
+            });
             if (generation !== this.generation) return [];
-            this.models = ids;
-            return ids.map(model);
+            this.models = discovered.filter(item => item.capabilities.conversationalText).map(item => item.id);
+            return discovered;
         } catch (error) {
             if (error instanceof ModelRuntimeFailure) throw error;
-            if (error instanceof SyntaxError || error instanceof Error && error.message === 'Invalid synthesis model list')
+            if (error instanceof SyntaxError || error instanceof Error &&
+                ['Invalid synthesis model list', 'Invalid local model inventory'].includes(error.message))
                 throw new ModelRuntimeFailure('Invalid local model inventory', 'invalid-json');
             throw new ModelRuntimeFailure('Local connection failed or timed out', 'transient-transport');
         }
@@ -64,7 +83,8 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
             response = await this.fetch(`${this.endpoint}/chat/completions`, {
                 method: 'POST', headers: { ...this.headers(), 'Content-Type': 'application/json' }, signal,
                 body: JSON.stringify({ model: request.modelId, messages: request.messages, stream: true,
-                    stream_options: { include_usage: true } }),
+                    stream_options: { include_usage: true },
+                    ...(request.maxOutputTokens ? { max_tokens: request.maxOutputTokens } : {}) }),
             });
         } catch { throw signal.aborted ? cancelled() :
             new ModelRuntimeFailure('Local connection failed', 'transient-transport'); }
@@ -161,7 +181,8 @@ export class GeminiConversationalProvider implements ConversationalModelRuntime 
         let finishReason: string | undefined;
         try {
             const stream = await this.client.models.generateContentStream({ model: request.modelId, contents,
-                config: { ...(systemInstruction ? { systemInstruction } : {}), abortSignal: signal } });
+                config: { ...(systemInstruction ? { systemInstruction } : {}), abortSignal: signal,
+                    ...(request.maxOutputTokens ? { maxOutputTokens: request.maxOutputTokens } : {}) } });
             for await (const chunk of stream) {
                 if (signal.aborted) throw cancelled();
                 if (generation !== this.generation) throw new ModelRuntimeFailure('Gemini connection changed', 'connection-unavailable');

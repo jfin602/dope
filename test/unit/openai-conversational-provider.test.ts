@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ModelRuntimeFailure } from '../../packages/contracts/lib/model-runtime.js';
+import type { ConversationRequest } from '../../packages/contracts/lib/model-runtime.js';
 import { ModelConnectionsRegistry } from '../../packages/theia-extension/lib/node/model-connections.js';
 import { OpenAIConversationalProvider } from '../../packages/theia-extension/lib/node/openai-conversational-provider.js';
 
@@ -17,7 +18,7 @@ const stream = (...chunks: string[]) => new Response(new ReadableStream<Uint8Arr
     start(controller) { for (const chunk of chunks) controller.enqueue(new TextEncoder().encode(chunk)); controller.close(); },
 }), { headers: { 'Content-Type': 'text/event-stream' } });
 const json = (status: number) => new Response(JSON.stringify({ error: { message: 'secret provider payload' } }), { status });
-const collect = async (provider: OpenAIConversationalProvider, input = request) => {
+const collect = async (provider: OpenAIConversationalProvider, input: ConversationRequest = request) => {
     const events = [];
     for await (const event of provider.generateConversation(input)) events.push(event);
     return events;
@@ -34,7 +35,7 @@ test('OpenAI Responses request uses exact configured model, full Dope transcript
     assert.deepEqual(await provider.discoverModels(), [{ id: 'gpt-test', label: 'gpt-test', capabilities: {
         conversationalText: true, streaming: true,
         reasoningControls: [{ id: 'reasoning.effort', values: ['low', 'medium'] }] } }]);
-    const events = await collect(provider, { ...request, controls: { 'reasoning.effort': 'low' } });
+    const events = await collect(provider, { ...request, controls: { 'reasoning.effort': 'low' }, maxOutputTokens: 1024 });
     assert.deepEqual(events, [
         { type: 'delta', text: 'Hel' }, { type: 'delta', text: 'lo' },
         { type: 'complete', text: 'Hello', actualModelId: 'gpt-test-2026-10-01', finishReason: 'completed',
@@ -44,7 +45,7 @@ test('OpenAI Responses request uses exact configured model, full Dope transcript
     assert.equal(calls[0].url, 'https://api.openai.com/v1/responses');
     assert.equal(calls[0].headers.get('Authorization'), 'Bearer secret');
     assert.deepEqual(calls[0].body, { model: 'gpt-test', input: messages, stream: true, store: false,
-        truncation: 'disabled', reasoning: { effort: 'low' } });
+        truncation: 'disabled', max_output_tokens: 1024, reasoning: { effort: 'low' } });
     assert.equal(JSON.stringify(calls[0].body).includes('secret'), false);
 });
 

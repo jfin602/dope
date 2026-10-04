@@ -105,6 +105,24 @@ test('context and active history share selected-model budget with explicit omiss
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('loaded context caps preview below Chat policy and omits oversized context', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-loaded-context-'));
+  try {
+    await writeFile(join(root, 'large.txt'), 'x'.repeat(30000));
+    const active = chat();
+    active.settings.context.maxInputTokens = 8192;
+    active.settings.context.reservedOutputTokens = 1024;
+    const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore, {} as SoftwareMapIndex, {} as ChatRepository);
+    const result = await composer.compose(root, active, 'Question', [{ kind: 'file', id: 'large.txt' }],
+      { conversationalText: true, streaming: true, contextWindowTokens: 4096 });
+    assert.equal(result.budgetTokens, 3072);
+    assert.ok(result.usedTokens <= 3072);
+    assert.ok(result.diagnostics.some(item => item.kind === 'truncated'));
+    await assert.rejects(composer.compose(root, active, 'x'.repeat(10000), [],
+      { conversationalText: true, streaming: true, contextWindowTokens: 4096 }), /exceeds selected model input budget/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('send persists only included references and supplies their bounded text to the selected model', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-context-send-'));
   try {
@@ -113,10 +131,14 @@ test('send persists only included references and supplies their bounded text to 
     const { ChatBackend } = await import('../../packages/theia-extension/lib/node/chat-backend.js');
     const repository = new ChatRepository();
     const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore, {} as SoftwareMapIndex, repository);
-    let sent = '', failRetry = true;
+    let sent = '', failRetry = true, sentOutput: number | undefined, sentModel = '';
     const registry = { list: async () => ({ connections: [{ id: 'connected', ready: true, providerId: 'local',
       models: [{ id: 'model', label: 'Model', usable: true, capabilities: model }] }] }),
-      async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
+      async *generate(selection: { modelId: string }, request: { messages: { content: string }[]; maxOutputTokens?: number }) {
+        if (request.maxOutputTokens !== undefined) {
+          sentModel = selection.modelId;
+          sentOutput = request.maxOutputTokens;
+        }
         sent ||= request.messages.at(-1)?.content ?? '';
         if (request.messages.at(-1)?.content.includes('Retry question') && failRetry) {
           failRetry = false;
@@ -132,7 +154,7 @@ test('send persists only included references and supplies their bounded text to 
     const settings = structuredClone(collection.chats[0].settings);
     settings.context.allowedSources = ['file'];
     settings.context.maxInputTokens = 500;
-    settings.context.reservedOutputTokens = 0;
+    settings.context.reservedOutputTokens = 17;
     collection = await service.mutate({ projectHandle, expectedRevision: collection.revision,
       operation: { type: 'set-settings', chatId, settings } });
     const claim = await service.claim({ projectHandle, chatId, ownerId: 'test' });
@@ -143,6 +165,8 @@ test('send persists only included references and supplies their bounded text to 
       context: [{ kind: 'file', id: 'fact.txt' }] });
     assert.equal(preview.refs.length, 1);
     assert.match(sent, /The accepted fact/);
+    assert.equal(sentOutput, 17);
+    assert.equal(sentModel, 'model');
     const persisted = (await repository.read(root)).chats[0].messages[0];
     assert.equal(persisted.role, 'user');
     if (persisted.role !== 'user') return;
