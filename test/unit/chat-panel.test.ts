@@ -8,7 +8,7 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatOpenOwners, ChatPanelController, chatTree } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
-import { CHAT_PANEL_ID, ChatScrollFollow, chatAreas, chatPanelOptions, chatPanelWidgetId, openChatPanel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { ChatCollection } from '../../packages/chat/lib/index.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
@@ -302,6 +302,64 @@ test('scroll follow respects manual upward scrolling and jump to latest', () => 
     assert.equal(follow.following, true);
     follow.select('second');
     assert.equal(follow.following, true);
+});
+
+test('side Chat launchers use stable separate identities and normal Select Chat release', async () => {
+    assert.equal(chatPanelWidgetId(chatLauncherOptions.left), chatLauncherIds.left);
+    assert.equal(chatPanelWidgetId(chatLauncherOptions.right), chatLauncherIds.right);
+    assert.notEqual(chatLauncherIds.left, chatLauncherIds.right);
+    const source = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    assert.match(source, /bindViewContribution\(bind, LeftChatLauncher\)/);
+    assert.match(source, /bindViewContribution\(bind, RightChatLauncher\)/);
+    assert.match(source, /id: chatLauncherIds\[side\], createWidget: \(\) => createChatWidget\(context, chatLauncherOptions\[side\]\)/);
+    assert.match(source, /name === 'left'.*LeftChatLauncher/s);
+    assert.match(source, /name === 'right'.*RightChatLauncher/s);
+    assert.match(source, /openChatPanel\(name/);
+    assert.match(source, /tabBar\.tabActivateRequested\.connect\(activated\)/);
+    assert.match(source, /if \(title\.owner === widget\) void widget\.controller\.select\(undefined\)/);
+    assert.match(source, /await widget\.controller\.select\(undefined\)/);
+    assert.match(widget, /codicon\('comment-discussion'\)/);
+});
+
+test('transcript drag threshold and fast latest animation respect reduced motion', () => {
+    const drag = new ChatTranscriptDrag();
+    drag.start(200, 150);
+    assert.equal(drag.move(197), undefined);
+    assert.equal(drag.dragging, false);
+    assert.equal(drag.move(180), 170);
+    assert.equal(drag.end(), true);
+    assert.equal(drag.dragging, false);
+    const scroll = { scrollTop: 100, scrollHeight: 700, clientHeight: 200 } as HTMLElement;
+    const frames: FrameRequestCallback[] = [];
+    const schedule = (frame: FrameRequestCallback) => { frames.push(frame); return frames.length; };
+    animateChatToLatest(scroll, false, schedule);
+    frames.shift()!(0);
+    assert.equal(scroll.scrollTop, 100);
+    scroll.scrollHeight = 900;
+    frames.shift()!(100);
+    assert.ok(scroll.scrollTop > 100 && scroll.scrollTop < 700);
+    frames.shift()!(200);
+    assert.equal(scroll.scrollTop, 700);
+    scroll.scrollTop = 0;
+    animateChatToLatest(scroll, true, schedule);
+    assert.equal(scroll.scrollTop, 700);
+});
+
+test('transcript wiring preserves manual reading and uses one centered latest action', async () => {
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+    assert.match(widget, /scroll\.onpointerdown/);
+    assert.match(widget, /scroll\.setPointerCapture/);
+    assert.match(widget, /scroll\.onpointerup = endDrag; scroll\.onpointercancel = endDrag/);
+    assert.match(widget, /this\.scrollFollow\.scrolled\(scroll\.scrollTop/);
+    assert.match(widget, /this\.scrollFollow\.jump\(\)/);
+    assert.match(widget, /this\.scrollToLatest\(\)/);
+    assert.match(widget, /aria-label', 'Scroll to latest'/);
+    assert.match(widget, /codicon\('chevron-down'\)/);
+    assert.match(css, /\.dope-chat-panel \.dope-chat-latest \{[^}]*left: 50%;[^}]*border-radius: 50%/);
+    assert.match(css, /\.dope-chat-scroll \{[^}]*touch-action: pan-y/);
+    assert.match(css, /\.dope-chat-scroll-dragging \{[^}]*user-select: none/);
 });
 
 test('each ChatPanel opens its own RPC channel on the backend Chat route', async () => {

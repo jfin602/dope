@@ -1,4 +1,4 @@
-import { BaseWidget } from '@theia/core/lib/browser/widgets/widget';
+import { BaseWidget, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { ApplicationShell, type StatefulWidget } from '@theia/core/lib/browser';
 import { SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
@@ -12,7 +12,7 @@ import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, chatPanelWidgetId, safeChatLink, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, chatLauncherIds, chatPanelWidgetId, resizeChatInput, safeChatLink, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 
 class SecretInputDialog extends SingleTextInputDialog {
     constructor(title: string) {
@@ -34,6 +34,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private settingsDraft?: ChatSettings;
     private settingsChatId?: string;
     private readonly scrollFollow = new ChatScrollFollow();
+    private cancelScrollAnimation?: () => void;
+    private scrollAnimationUntil = 0;
 
     constructor(connect: () => ChatConnection, private readonly workspaces: WorkspaceService,
         private readonly shell: ApplicationShell, owners: ChatOpenOwners, options: ChatPanelOptions,
@@ -43,7 +45,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         super();
         this.id = chatPanelWidgetId(options);
         this.title.label = this.title.caption = 'Chat';
-        this.title.closable = true;
+        this.title.iconClass = codicon('comment-discussion');
+        this.title.closable = this.id !== chatLauncherIds.left && this.id !== chatLauncherIds.right;
         this.addClass('dope-chat-panel');
         this.controller = new ChatPanelController(connect, () => this.render(), owners, this.id,
             () => { void this.shell.activateWidget(this.id); });
@@ -53,6 +56,19 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.attach(); });
         void this.attach();
         void this.loadModels();
+    }
+    private scrollToLatest(): void {
+        const scroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
+        if (!scroll) return;
+        this.scrollFollow.jump();
+        this.cancelScrollAnimation?.();
+        this.scrollAnimationUntil = performance.now() + 200;
+        this.animateLatest(scroll);
+    }
+    private animateLatest(scroll: HTMLElement): void {
+        const remaining = Math.max(0, this.scrollAnimationUntil - performance.now());
+        this.cancelScrollAnimation = animateChatToLatest(scroll,
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches, requestAnimationFrame, remaining);
     }
 
     storeState(): object {
@@ -165,6 +181,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             void this.addContext(contextKind);
         }
         this.render();
+        this.content.querySelector<HTMLTextAreaElement>('textarea')?.focus();
     }
     private usableModels(): Array<{ selection: ChatModelSelection; label: string;
         controls: readonly { id: string; values: readonly string[] }[] }> {
@@ -390,9 +407,47 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll';
         scroll.setAttribute('role', 'log'); scroll.setAttribute('aria-label', 'Chat conversation');
         scroll.onscroll = () => {
+            if (performance.now() < this.scrollAnimationUntil) return;
             this.scrollFollow.scrolled(scroll.scrollTop, scroll.scrollHeight, scroll.clientHeight);
             latest.hidden = !this.scrollFollow.latestBelow;
         };
+        scroll.onwheel = event => { if (event.deltaY < 0) { this.cancelScrollAnimation?.(); this.scrollAnimationUntil = 0; } };
+        const drag = new ChatTranscriptDrag();
+        let pointerId: number | undefined;
+        let suppressClick = false;
+        scroll.onpointerdown = event => {
+            if (event.pointerType === 'touch' || event.button !== 0 ||
+                (event.target as Element).closest('a, button, input, textarea, select, summary, pre, code, [contenteditable]')) return;
+            pointerId = event.pointerId;
+            drag.start(event.clientY, scroll.scrollTop);
+        };
+        scroll.onpointermove = event => {
+            if (event.pointerType === 'touch' && event.buttons) {
+                this.cancelScrollAnimation?.(); this.scrollAnimationUntil = 0;
+            }
+            if (pointerId !== event.pointerId) return;
+            const top = drag.move(event.clientY);
+            if (top === undefined) return;
+            if (!scroll.hasPointerCapture(event.pointerId)) scroll.setPointerCapture(event.pointerId);
+            this.cancelScrollAnimation?.(); this.scrollAnimationUntil = 0;
+            scroll.classList.add('dope-chat-scroll-dragging');
+            scroll.scrollTop = top;
+            this.scrollFollow.scrolled(scroll.scrollTop, scroll.scrollHeight, scroll.clientHeight);
+            event.preventDefault();
+        };
+        const endDrag = (event: PointerEvent) => {
+            if (pointerId !== event.pointerId) return;
+            const dragged = drag.end();
+            suppressClick = event.type === 'pointerup' && dragged; pointerId = undefined;
+            if (suppressClick) setTimeout(() => { suppressClick = false; }, 0);
+            scroll.classList.remove('dope-chat-scroll-dragging');
+            if (scroll.hasPointerCapture(event.pointerId)) scroll.releasePointerCapture(event.pointerId);
+        };
+        scroll.onpointerup = endDrag; scroll.onpointercancel = endDrag;
+        scroll.addEventListener('click', event => {
+            if (!suppressClick) return;
+            suppressClick = false; event.preventDefault(); event.stopPropagation();
+        }, true);
         const transcript = document.createElement('ol');
         transcript.className = 'dope-chat-transcript';
         for (const message of chat.messages) {
@@ -404,7 +459,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             content.className = 'dope-chat-message-content';
             const body = message.role === 'assistant' && state.stream?.messageId === message.id ?
                 state.stream.content : message.content;
-            if (message.role === 'assistant') {
+            if (message.role === 'assistant' && message.execution.status === 'pending' && !body) {
+                content.classList.add('dope-chat-working');
+                content.textContent = 'Working';
+                const dots = document.createElement('span'); dots.textContent = '…'; dots.setAttribute('aria-hidden', 'true');
+                content.append(dots);
+            } else if (message.role === 'assistant') {
                 // Untrusted model output: MarkdownString defaults to HTML and command links disabled.
                 const rendered = this.markdown.render(new MarkdownStringImpl(body, { supportHtml: false, isTrusted: false })).element;
                 for (const link of rendered.querySelectorAll('a[href]')) {
@@ -448,30 +508,80 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             item.append(meta);
             transcript.append(item);
         }
+        if (state.transientUser?.chatId === chat.id) {
+            const item = document.createElement('li');
+            item.className = 'dope-chat-message dope-chat-message-user';
+            item.dataset.color = chat.color;
+            item.setAttribute('aria-label', 'You');
+            const content = document.createElement('div');
+            content.className = 'dope-chat-message-content'; content.textContent = state.transientUser.content;
+            item.append(content); transcript.append(item);
+        }
+        if (state.running && !chat.messages.some(message =>
+            message.role === 'assistant' && ['pending', 'streaming'].includes(message.execution.status))) {
+            const item = document.createElement('li'); item.className = 'dope-chat-message dope-chat-message-assistant';
+            item.setAttribute('aria-label', state.stream?.content ? 'Assistant' : 'Assistant working');
+            const content = document.createElement('div'); content.className = 'dope-chat-message-content';
+            if (state.stream?.content) {
+                const rendered = this.markdown.render(new MarkdownStringImpl(state.stream.content,
+                    { supportHtml: false, isTrusted: false })).element;
+                for (const link of rendered.querySelectorAll('a[href]')) {
+                    if (!safeChatLink(link.getAttribute('href')!, document.baseURI)) link.removeAttribute('href');
+                    else link.setAttribute('rel', 'noopener noreferrer');
+                }
+                content.append(rendered);
+            } else {
+                content.classList.add('dope-chat-working'); content.textContent = 'Working';
+                const dots = document.createElement('span'); dots.textContent = '…'; dots.setAttribute('aria-hidden', 'true');
+                content.append(dots);
+            }
+            item.append(content); transcript.append(item);
+        }
         scroll.append(transcript);
         if (this.settingsOpen) scroll.prepend(this.renderSettings(chat.id));
-        const latest = this.button('Jump to latest', () => {
-            this.scrollFollow.jump();
-            scroll.scrollTop = scroll.scrollHeight;
-            latest.hidden = true;
-        });
+        const latest = this.button('', () => this.scrollToLatest());
+        latest.setAttribute('aria-label', 'Scroll to latest'); latest.title = 'Scroll to latest';
+        const down = document.createElement('span'); down.className = codicon('chevron-down');
+        down.setAttribute('aria-hidden', 'true'); latest.append(down);
         latest.className = 'dope-chat-latest'; latest.hidden = !this.scrollFollow.latestBelow;
         region.append(scroll, latest);
         shell.append(header, region);
         const composer = document.createElement('div'); composer.className = 'dope-chat-composer';
-        const input = document.createElement('textarea'); input.rows = 3; input.placeholder = 'Message';
+        const input = document.createElement('textarea'); input.rows = 1; input.placeholder = 'Message';
         input.setAttribute('aria-label', 'Message'); input.value = state.draft;
-        input.oninput = () => { state.draft = input.value; };
         const toolbar = document.createElement('div'); toolbar.className = 'dope-chat-composer-toolbar';
+        const menu = document.createElement('div'); menu.className = 'dope-chat-composer-menu'; menu.popover = 'auto';
+        menu.id = `${this.id}-composer-actions`;
+        menu.setAttribute('role', 'dialog'); menu.setAttribute('aria-label', 'Composer actions');
+        const more = this.button('+', () => {
+            const bounds = more.getBoundingClientRect();
+            menu.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - 232))}px`;
+            menu.style.bottom = `${window.innerHeight - bounds.top + 6}px`;
+            menu.showPopover();
+            sources.focus();
+        });
+        more.className = 'dope-chat-composer-more';
+        more.title = 'More actions'; more.setAttribute('aria-label', 'More actions');
+        more.setAttribute('aria-haspopup', 'dialog'); more.setAttribute('aria-controls', menu.id);
+        more.setAttribute('aria-expanded', 'false');
+        menu.addEventListener('toggle', () => more.setAttribute('aria-expanded', String(menu.matches(':popover-open'))));
+        menu.addEventListener('focusout', event => {
+            if (event.relatedTarget && !menu.contains(event.relatedTarget as Node) && menu.matches(':popover-open'))
+                menu.hidePopover();
+        });
+        const menuButton = (label: string, action: () => void, disabled = false) => {
+            const button = this.button(label, () => { menu.hidePopover(); action(); }, disabled);
+            menu.append(button);
+        };
         const sources = document.createElement('select');
         sources.setAttribute('aria-label', 'Context source');
         for (const kind of chat.settings.context.allowedSources)
             sources.append(new Option(kind.replace(/-/g, ' '), kind));
-        toolbar.append(sources, this.button('Add context', () => void this.addContext(sources.value as ChatContextKind),
-            !sources.options.length));
+        menu.append(sources);
+        menuButton('Add context', () => void this.addContext(sources.value as ChatContextKind), !sources.options.length);
         for (const kind of ['Ask', 'Explain', 'Trace', 'Find Related'] as const)
-            toolbar.append(this.button(kind, () => this.behavior(kind)));
-        if (state.context.length) toolbar.append(this.button('Clear context', () => state.clearContext()));
+            menuButton(kind, () => this.behavior(kind));
+        if (state.context.length) menuButton('Clear context', () => state.clearContext());
         const modelSelector = document.createElement('select'); modelSelector.setAttribute('aria-label', 'Model for next turn');
         const usable = this.usableModels();
         for (const entry of usable) modelSelector.append(new Option(entry.label, JSON.stringify(entry.selection)));
@@ -482,24 +592,52 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             state.turnModel = JSON.parse(modelSelector.value) as ChatModelSelection;
             this.render();
         };
-        toolbar.append(modelSelector);
-        if (selected && state.context.length) toolbar.append(this.button('Preview context', () => {
+        if (selected && state.context.length) menuButton('Preview context', () => {
             void state.previewContext(selected).catch(error => { this.status.textContent = String(error); });
-        }));
+        });
         if (!selected) {
-            toolbar.append(this.button('Set up models', () => void this.setupModels()));
+            menuButton('Set up models', () => void this.setupModels());
             for (const connection of this.models.connections.filter(item => !item.ready))
-                toolbar.append(this.button(`Connect ${connection.label}`, () => void this.reconnect(connection.id)));
+                menuButton(`Connect ${connection.label}`, () => void this.reconnect(connection.id));
         }
-        toolbar.append(this.button('Refresh models', () => void this.loadModels()));
-        if (state.running) toolbar.append(this.button('Cancel', () => void state.cancel()));
-        else {
+        menuButton('Refresh models', () => void this.loadModels());
+        let submitButton: HTMLButtonElement;
+        if (state.running) {
+            submitButton = this.button('', () => void state.cancel());
+            submitButton.title = 'Cancel'; submitButton.setAttribute('aria-label', 'Cancel');
+            const icon = document.createElement('span'); icon.className = codicon('debug-stop');
+            icon.setAttribute('aria-hidden', 'true'); submitButton.append(icon);
+        } else {
             const retry = [...chat.messages].reverse().find(message => message.role === 'assistant' &&
                 ['failed', 'cancelled'].includes(message.execution.status));
-            if (retry) toolbar.append(this.button('Retry', () => { if (selected) void state.runTurn(selected, retry.id); }, !selected));
-            toolbar.append(this.button('Send', () => { if (selected) void state.runTurn(selected); }, !selected || state.pending));
+            if (retry) menuButton('Retry', () => { if (selected) void state.runTurn(selected, retry.id); }, !selected);
+            const submit = () => {
+                if (!selected || state.pending || !state.draft.trim()) return;
+                const previousTop = scroll.scrollTop;
+                void state.runTurn(selected);
+                const current = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
+                if (current) current.scrollTop = previousTop;
+                this.scrollToLatest();
+            };
+            submitButton = this.button('', submit, !selected || state.pending || !state.draft.trim());
+            submitButton.title = 'Send'; submitButton.setAttribute('aria-label', 'Send');
+            const icon = document.createElement('span'); icon.className = codicon('arrow-up');
+            icon.setAttribute('aria-hidden', 'true'); submitButton.append(icon);
+            input.onkeydown = event => {
+                if (!shouldSendChatInput(event)) return;
+                event.preventDefault();
+                submit();
+            };
         }
+        submitButton.classList.add('dope-chat-composer-submit');
+        input.oninput = () => {
+            state.draft = input.value;
+            if (!state.running) submitButton.disabled = !selected || state.pending || !state.draft.trim();
+            resizeChatInput(input);
+        };
+        toolbar.append(more, modelSelector, submitButton);
         composer.append(input, toolbar);
+        composer.append(menu);
         if (state.context.length) {
             const selectedContext = document.createElement('ul');
             selectedContext.className = 'dope-chat-selected-context';
@@ -534,7 +672,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         shell.append(composer);
         this.content.append(shell);
+        resizeChatInput(input);
         scroll.scrollTop = this.scrollFollow.restore(scrollTop, scroll.scrollHeight, scroll.clientHeight);
+        if (performance.now() < this.scrollAnimationUntil) {
+            scroll.scrollTop = scrollTop;
+            this.cancelScrollAnimation?.();
+            this.animateLatest(scroll);
+        }
         if (this.revealSettings) {
             scroll.scrollTop = 0;
             this.scrollFollow.scrolled(0, scroll.scrollHeight, scroll.clientHeight);
@@ -550,6 +694,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
     }
     override dispose(): void {
+        this.cancelScrollAnimation?.();
         ++this.workspaceRequest;
         this.rootsListener.dispose();
         this.controller.dispose();

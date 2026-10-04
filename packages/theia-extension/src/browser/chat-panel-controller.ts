@@ -64,6 +64,7 @@ export class ChatPanelController {
     turnModel: ChatModelSelection | undefined;
     running = false;
     stream: { messageId: string; executionId: string; content: string; sequence: number } | undefined;
+    transientUser: { chatId: string; content: string; previousIds: Set<string> } | undefined;
     private connection?: ChatConnection;
     private handle?: string;
     private generation = 0;
@@ -96,7 +97,7 @@ export class ChatPanelController {
         this.loading = !!workspace;
         this.pending = false;
         this.error = '';
-        this.draft = ''; this.context = []; this.lastContext = undefined; this.turnModel = undefined; this.stream = undefined;
+        this.draft = ''; this.context = []; this.lastContext = undefined; this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
         this.changed();
         await this.leave();
         this.running = false;
@@ -196,7 +197,7 @@ export class ChatPanelController {
         }
         if (chatId === this.chatId && this.mode === 'chat' && this.lease) return true;
         this.chatId = undefined; this.mode = 'select-chat'; this.error = '';
-        this.draft = ''; this.context = []; this.lastContext = undefined; this.turnModel = undefined; this.stream = undefined;
+        this.draft = ''; this.context = []; this.lastContext = undefined; this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
         this.changed();
         await this.leave();
         await Promise.allSettled(previous);
@@ -254,6 +255,9 @@ export class ChatPanelController {
             if (this.disposed || generation !== this.generation || request !== this.request ||
                 snapshot.revision < (this.snapshot?.revision ?? -1)) return;
             this.snapshot = snapshot;
+            if (this.transientUser && snapshot.chats.find(chat => chat.id === this.transientUser?.chatId)?.messages.some(message =>
+                message.role === 'user' && message.content === this.transientUser?.content.trim() &&
+                !this.transientUser?.previousIds.has(message.id))) this.transientUser = undefined;
             if (this.stream && !snapshot.chats.find(chat => chat.id === this.chatId)?.messages.some(message =>
                 message.id === this.stream?.messageId && message.role === 'assistant' &&
                 message.execution.id === this.stream.executionId && message.execution.status === 'streaming'))
@@ -309,7 +313,10 @@ export class ChatPanelController {
         if (!lease || this.running || this.pending || !this.chat || !retryMessageId && !this.draft.trim()) return false;
         const content = this.draft;
         const generation = this.generation, chatId = this.chatId;
+        let completed = false;
         this.running = true; this.error = ''; this.stream = undefined;
+        if (!retryMessageId && chatId) this.transientUser = { chatId, content,
+            previousIds: new Set(this.chat?.messages.filter(message => message.role === 'user').map(message => message.id)) };
         if (!retryMessageId) this.draft = '';
         this.turnModel = undefined;
         this.changed();
@@ -317,13 +324,12 @@ export class ChatPanelController {
             this.lastContext = await lease.connection.runTurn({ projectHandle: lease.handle, chatId: lease.chatId,
                 leaseToken: lease.token, selectedModel: model,
                 context: this.context, ...(retryMessageId ? { retryMessageId } : { content }) });
+            completed = true;
             this.context = [];
             return true;
         } catch (error) {
             if (!this.disposed && generation === this.generation && chatId === this.chatId) {
                 this.error = String(error);
-                if (!retryMessageId && !this.chat?.messages.some(message => message.role === 'user' && message.content === content))
-                    this.draft = content;
                 this.changed();
             }
             return false;
@@ -331,6 +337,11 @@ export class ChatPanelController {
             if (!this.disposed && generation === this.generation && chatId === this.chatId) {
                 this.running = false; this.stream = undefined; this.changed();
                 await this.refresh(true);
+                if (!completed && this.transientUser?.chatId === chatId) {
+                    if (this.error && !retryMessageId) this.draft = content;
+                    this.transientUser = undefined;
+                    this.changed();
+                }
             }
         }
     }

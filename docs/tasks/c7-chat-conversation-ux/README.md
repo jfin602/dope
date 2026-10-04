@@ -1,6 +1,6 @@
 # Correction 7 — Chat Conversation UX
 
-Status: **APPROVED / PROMPTS WRITTEN / READY FOR EXECUTION**
+Status: **GREEN / QUALIFIED — P3 browser closeout complete**
 Correction folder: `c7-chat-conversation-ux`
 Required unchanged package version: `0.7.13`
 Activation/source baseline: `5b3653bc13d7632720550d42fe898830b8330d5f`
@@ -114,4 +114,4 @@ Automation must stop for P3 manual/browser qualification.
 
 ## Next routing
 
-If P3 is Green, return to bounded Phase 7B/7C continuation planning. Do not rewrite the existing P13 evidence audit as Green.
+P3 qualified exact candidate `24e5de80fbb68560ed8e94fbd46f5caafd4f1ed6` with the automated T3 gate and direct browser evidence. See [closeout.md](closeout.md) for results and residual observations. Return to bounded Phase 7B/7C continuation planning. The existing P13 evidence audit remains Not Qualified.

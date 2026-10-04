@@ -43,5 +43,5 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
     assert.match(module, /CoreMarkdownRenderer/);
     assert.match(widget, /dope-chat-message-meta/);
     assert.match(widget, /dope-chat-message-alert/);
-    assert.match(widget, /Jump to latest/);
+    assert.match(widget, /Scroll to latest/);
 });

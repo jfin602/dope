@@ -1,5 +1,6 @@
 import { ContainerModule } from '@theia/core/shared/inversify';
-import { ApplicationShell, FrontendApplicationContribution, WidgetFactory, WidgetManager } from '@theia/core/lib/browser';
+import { injectable } from '@theia/core/shared/inversify';
+import { AbstractViewContribution, ApplicationShell, FrontendApplicationContribution, WidgetFactory, WidgetManager } from '@theia/core/lib/browser';
 import { CommandContribution, CommandRegistry } from '@theia/core/lib/common';
 import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-service';
 import { bindViewContribution } from '@theia/core/lib/browser/shell/view-contribution';
@@ -33,7 +34,38 @@ import type { ModelConnectionsClient } from '@dope/contracts/lib/model-connectio
 import type { ChatClient } from '@dope/chat/lib/service';
 import { ChatPanelWidget } from './chat-panel-widget';
 import { ChatOpenOwners } from './chat-panel-controller';
-import { CHAT_PANEL_ID, chatAreas, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
+import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
+
+abstract class ChatLauncherView extends AbstractViewContribution<ChatPanelWidget> implements FrontendApplicationContribution {
+    private observed?: ChatPanelWidget;
+    protected constructor(side: 'left' | 'right') {
+        super({ widgetId: chatLauncherIds[side], widgetName: 'Chat', defaultWidgetOptions: { area: side, rank: 250 } });
+    }
+    async onDidInitializeLayout(): Promise<void> { this.observe(await this.openView()); }
+    async openLauncher(): Promise<ChatPanelWidget> {
+        const widget = await this.widget;
+        await widget.controller.select(undefined);
+        this.observe(await this.openView({ activate: true }));
+        return widget;
+    }
+    private observe(widget: ChatPanelWidget): void {
+        if (this.observed === widget) return;
+        const tabBar = this.shell.getTabBarFor(widget);
+        if (!tabBar) return;
+        const activated = (_sender: typeof tabBar, { title }: { title: typeof widget.title }) => {
+            if (title.owner === widget) void widget.controller.select(undefined);
+        };
+        tabBar.tabActivateRequested.connect(activated);
+        widget.disposed.connect(() => tabBar.tabActivateRequested.disconnect(activated));
+        this.observed = widget;
+    }
+}
+
+@injectable()
+class LeftChatLauncher extends ChatLauncherView { constructor() { super('left'); } }
+
+@injectable()
+class RightChatLauncher extends ChatLauncherView { constructor() { super('right'); } }
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(ModelConnectionsService).toDynamicValue(context =>
@@ -45,7 +77,11 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     })).inSingletonScope();
     bindViewContribution(bind, ProjectMindView);
     bindViewContribution(bind, SoftwareMapView);
+    bindViewContribution(bind, LeftChatLauncher);
+    bindViewContribution(bind, RightChatLauncher);
     bind(FrontendApplicationContribution).toService(SoftwareMapView);
+    bind(FrontendApplicationContribution).toService(LeftChatLauncher);
+    bind(FrontendApplicationContribution).toService(RightChatLauncher);
     const openPhysicalMap = async (manager: WidgetManager, shell: ApplicationShell,
         map?: SoftwareMapController, options?: PhysicalMapTabOptions) => {
         const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID, options);
@@ -65,8 +101,10 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) => {
         for (const name of Object.keys(chatAreas) as ChatArea[]) commands.registerCommand(
             { id: `dope.chat.open.${name}`, label: `Dope: Open Chat Panel in ${name[0].toUpperCase()}${name.slice(1)}` },
-            { execute: () => openChatPanel(name, options => context.container.get(WidgetManager)
-                .getOrCreateWidget<ChatPanelWidget>(CHAT_PANEL_ID, options), context.container.get(ApplicationShell)) });
+            { execute: () => name === 'left' ? context.container.get(LeftChatLauncher).openLauncher() :
+                name === 'right' ? context.container.get(RightChatLauncher).openLauncher() :
+                openChatPanel(name, options => context.container.get(WidgetManager)
+                    .getOrCreateWidget<ChatPanelWidget>(CHAT_PANEL_ID, options), context.container.get(ApplicationShell)) });
     } })).inSingletonScope();
     bind(NoteService).toDynamicValue(context => ServiceConnectionProvider.createProxy<NoteService>(context.container, noteServicePath)).inSingletonScope();
     bind(ProjectMindService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ProjectMindService & RpcServer<ProjectMindClient>>(context.container, projectMindServicePath));
@@ -100,13 +138,18 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         () => context.container.get(ProjectMindService) as ProjectMindService & RpcServer<ProjectMindClient>,
         context.container.get(WorkspaceService), context.container.get(FileService), context.container.get(OpenerService)
     ) })).inSingletonScope();
-    bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
+    const createChatWidget = (context: { container: import('@theia/core/shared/inversify').interfaces.Context['container'] }, options: ChatPanelOptions) =>
         new ChatPanelWidget(() => ServiceConnectionProvider.createProxy<ChatService & RpcServer<ChatClient>>(
             context.container, `${chatServicePath}/${options.instanceId}`),
             context.container.get(WorkspaceService), context.container.get(ApplicationShell),
             context.container.get(ChatOpenOwners), options,
             context.container.get<MarkdownRenderer>(CoreMarkdownRenderer),
             context.container.get(ModelConnectionsService), context.container.get(EditorManager),
-            context.container.get(SoftwareMapController)) })).inSingletonScope();
+            context.container.get(SoftwareMapController));
+    bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
+        createChatWidget(context, options) })).inSingletonScope();
+    for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({
+        id: chatLauncherIds[side], createWidget: () => createChatWidget(context, chatLauncherOptions[side])
+    })).inSingletonScope();
     rebind(WindowTitleService).to(DopeWindowTitleService).inSingletonScope();
 });

@@ -9,6 +9,7 @@ import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { ChatPanelController } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
+import { resizeChatInput, shouldSendChatInput } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { ModelConnectionsRegistry } from '../../packages/theia-extension/lib/node/model-connections.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
@@ -115,6 +116,46 @@ test('composer lifecycle saves pending before runtime, streams, keeps provenance
     } finally { panel.dispose(); await rm(dir, { recursive: true, force: true }); }
 });
 
+test('Send presents one transient user turn immediately and reconciles the durable turn', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'dope-chat-optimistic-'));
+    const repository = new ChatRepository();
+    const registry = new ModelConnectionsRegistry({ async read() { return []; }, async write() {} });
+    await registry.upsert({ id: 'one', providerId: 'local', label: 'one' });
+    let release!: () => void;
+    let started = false;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    await registry.connect('one', { async discoverModels() { return [{ id: 'chat', label: 'chat',
+        capabilities: { conversationalText: true, streaming: true } }]; },
+        async *generateConversation() {
+            started = true;
+            await gate;
+            yield { type: 'complete' as const, text: 'Done' };
+        } });
+    const panel = new ChatPanelController(() => fixture(repository, registry), () => {});
+    try {
+        await panel.attach(pathToFileURL(dir).href);
+        await panel.newChat('');
+        panel.draft = '  Hello  ';
+        const failed = panel.runTurn({ connectionId: 'missing', modelId: 'chat' });
+        assert.equal(panel.transientUser?.content, '  Hello  ');
+        assert.equal(panel.running, true);
+        assert.equal(await failed, false);
+        assert.equal(panel.transientUser, undefined);
+        assert.equal(panel.draft, '  Hello  ');
+        assert.equal(panel.chat?.messages.length, 0);
+        const run = panel.runTurn({ connectionId: 'one', modelId: 'chat' });
+        assert.equal(panel.transientUser?.content, '  Hello  ');
+        assert.equal(panel.draft, '');
+        await until(() => started);
+        await panel.refresh();
+        assert.equal(panel.transientUser, undefined);
+        assert.equal(panel.chat?.messages.filter(message => message.role === 'user' && message.content === 'Hello').length, 1);
+        release();
+        assert.equal(await run, true);
+        assert.equal(panel.chat?.messages.filter(message => message.role === 'user' && message.content === 'Hello').length, 1);
+    } finally { release(); panel.dispose(); await rm(dir, { recursive: true, force: true }); }
+});
+
 test('cancel and stale deltas cannot create a completed answer in another Chat or project', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'dope-composer-cancel-'));
     const repository = new ChatRepository();
@@ -158,7 +199,7 @@ test('cancel and stale deltas cannot create a completed answer in another Chat o
 test('panel source keeps input and toolbar rows with setup, settings and transcript status', async () => {
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     assert.match(source, /composer\.append\(input, toolbar\)/);
-    assert.match(source, /this\.button\('Add context'/);
+    assert.match(source, /menuButton\('Add context'/);
     assert.match(source, /\['Ask', 'Explain', 'Trace', 'Find Related'\]/);
     assert.match(source, /modelSelector\.onchange = \(\) => \{[\s\S]*?state\.turnModel = [^;]+;\s*this\.render\(\)/);
     assert.match(source, /Set up models/);
@@ -171,6 +212,44 @@ test('panel source keeps input and toolbar rows with setup, settings and transcr
     assert.match(source, /dope-chat-context-diagnostics/);
     assert.match(source, /type: 'set-color'/);
     assert.match(source, /type: 'set-settings'/);
+});
+
+test('composer Enter sends, Shift+Enter and IME Enter stay in the textarea', () => {
+    const event = (key: string, shiftKey = false, isComposing = false, keyCode = 13) =>
+        ({ key, shiftKey, isComposing, keyCode });
+    assert.equal(shouldSendChatInput(event('Enter')), true);
+    assert.equal(shouldSendChatInput(event('Enter', true)), false);
+    assert.equal(shouldSendChatInput(event('Enter', false, true)), false);
+    assert.equal(shouldSendChatInput(event('Enter', false, false, 229)), false);
+    assert.equal(shouldSendChatInput(event('a')), false);
+});
+
+test('composer textarea grows, shrinks and resets to its content height', () => {
+    let contentHeight = 28;
+    const input = { style: { height: '' }, get scrollHeight() { return contentHeight; } } as HTMLTextAreaElement;
+    resizeChatInput(input);
+    assert.equal(input.style.height, '28px');
+    contentHeight = 120;
+    resizeChatInput(input);
+    assert.equal(input.style.height, '120px');
+    contentHeight = 28;
+    resizeChatInput(input);
+    assert.equal(input.style.height, '28px');
+});
+
+test('composer keeps actions in the popover and only model plus submission on the footer', async () => {
+    const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+    for (const action of ['Add context', 'Clear context', 'Preview context', 'Refresh models', 'Set up models', 'Retry'])
+        assert.match(source, new RegExp(`menuButton\\('${action}'`));
+    assert.match(source, /\['Ask', 'Explain', 'Trace', 'Find Related'\]/);
+    assert.match(source, /menuButton\(kind, \(\) => this\.behavior\(kind\)\)/);
+    assert.match(source, /toolbar\.append\(more, modelSelector, submitButton\)/);
+    assert.match(source, /this\.button\('', submit,/);
+    assert.match(source, /if \(!shouldSendChatInput\(event\)\) return;[\s\S]*?submit\(\)/);
+    assert.match(source, /modelSelector\.onchange = \(\) => \{[\s\S]*?state\.turnModel = [^;]+;/);
+    assert.match(css, /\.dope-chat-composer \{[^}]*max-width: 940px/);
+    assert.match(css, /\.dope-chat-composer textarea \{[^}]*resize: none;[^}]*max-height:/);
 });
 
 test('unavailable selection never routes to another connected model', async () => {
