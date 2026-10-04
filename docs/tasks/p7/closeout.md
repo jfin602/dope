@@ -47,3 +47,15 @@ P12's initial `npm run check`, 55/55 focused Chat/provider tests and 3/3 Electro
 **Not Qualified.** Keep Phase 7 active. The owner should route a bounded Phase 7 continuation for AI Center, role routing and their direct integrated qualification, then perform a final evidence audit; alternatively the owner may explicitly dispose of the missing scope for sequencing without calling this qualification Green. Do not create Phase 8 prompts from this record.
 
 P13 transition checks: `node --test test/unit/theia-baseline.test.ts` **3/3 pass**; `npm run codex:phase:validate -- p7` **pass**; exact root/10-workspace `0.7.13` versions and internal `@dope/*` references, Theia `1.75.0`, Electron `42.8.1`, React `19.2.8`, and no root `package-lock.json` **pass**; `git diff --check` **pass**. P12 owns the broader T3 run; no product suite, build, live provider, GUI, restart or package replay was run for this version/documentation transition.
+
+## Post-closeout documentation amendment — c7-chat-conversation-ux
+
+The P13 **Not Qualified** decision above remains historical evidence and is not reopened or relabeled. After this evidence-only transition, direct product review approved one bounded Phase 7A presentation/organization correction before 7B/7C continuation: `c7-chat-conversation-ux` at unchanged `0.7.13`.
+
+The correction covers fixed Chat header/transcript/composer layout, a unified composer surface, right-aligned developer bubbles, neutral safe-Markdown assistant output, compact execution metadata, scroll-follow behavior that respects manual scroll-away, and durable editable ten-color Chat identity with deterministic migration/defaulting. It preserves read-only authority, explicit model selection/no-silent-fallback, context provenance and all evidence recorded above.
+
+Current next route:
+`/prompt-ass -> /prompt-plan -> /prompt-write c7-chat-conversation-ux`
+
+After that correction is qualified, continue with bounded 7B AI Center, 7C role routing, integrated qualification and a later final Phase 7 evidence audit.
+
