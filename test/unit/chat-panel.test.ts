@@ -8,7 +8,7 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatOpenOwners, ChatPanelController, chatTree } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
-import { CHAT_PANEL_ID, chatAreas, chatPanelOptions, chatPanelWidgetId, openChatPanel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { CHAT_PANEL_ID, ChatScrollFollow, chatAreas, chatPanelOptions, chatPanelWidgetId, openChatPanel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { ChatCollection } from '../../packages/chat/lib/index.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
@@ -285,6 +285,23 @@ test('selector and transcript retain keyboard and dark theme surfaces', async ()
     assert.match(source, /Back \/ Chats/);
     assert.match(source, /message\.content/);
     assert.match(source, /dope-chat-settings/);
+});
+
+test('scroll follow respects manual upward scrolling and jump to latest', () => {
+    const follow = new ChatScrollFollow();
+    follow.select('first');
+    assert.equal(follow.restore(0, 600, 200), 600);
+    follow.scrolled(100, 600, 200);
+    assert.equal(follow.following, false);
+    assert.equal(follow.restore(100, 900, 200), 100);
+    assert.equal(follow.latestBelow, true);
+    follow.jump();
+    assert.equal(follow.restore(100, 900, 200), 900);
+    assert.equal(follow.latestBelow, false);
+    follow.scrolled(690, 900, 200);
+    assert.equal(follow.following, true);
+    follow.select('second');
+    assert.equal(follow.following, true);
 });
 
 test('each ChatPanel opens its own RPC channel on the backend Chat route', async () => {

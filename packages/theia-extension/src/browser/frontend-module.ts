@@ -13,6 +13,7 @@ import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { OpenerService } from '@theia/core/lib/browser';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import { ThemeService } from '@theia/core/lib/browser/theming';
+import { CoreMarkdownRenderer, type MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import { dopeDarkTheme } from './dope-theme';
 import './dope.css';
 import { DopeWindowTitleService, ProjectMindView, ProjectMindWidget, PROJECT_MIND_ID } from './dope-workbench';
@@ -104,6 +105,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             context.container, `${chatServicePath}/${options.instanceId}`),
             context.container.get(WorkspaceService), context.container.get(ApplicationShell),
             context.container.get(ChatOpenOwners), options,
+            context.container.get<MarkdownRenderer>(CoreMarkdownRenderer),
             context.container.get(ModelConnectionsService), context.container.get(EditorManager),
             context.container.get(SoftwareMapController)) })).inSingletonScope();
     rebind(WindowTitleService).to(DopeWindowTitleService).inSingletonScope();

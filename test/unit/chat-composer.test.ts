@@ -165,6 +165,12 @@ test('panel source keeps input and toolbar rows with setup, settings and transcr
     assert.match(source, /Chat settings/);
     assert.match(source, /execution\.status/);
     assert.match(source, /actualModel\.providerId/);
+    assert.match(source, /dope-chat-composer/);
+    assert.match(source, /composer\.append\(input, toolbar\)/);
+    assert.match(source, /dope-chat-selected-context/);
+    assert.match(source, /dope-chat-context-diagnostics/);
+    assert.match(source, /type: 'set-color'/);
+    assert.match(source, /type: 'set-settings'/);
 });
 
 test('unavailable selection never routes to another connected model', async () => {

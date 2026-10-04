@@ -3,14 +3,16 @@ import { ApplicationShell, type StatefulWidget } from '@theia/core/lib/browser';
 import { SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
+import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
+import { MarkdownStringImpl } from '@theia/core/lib/common/markdown-rendering/markdown-string';
 import type { ChatOperation } from '@dope/chat/lib/service';
-import type { ChatSettings, ChatContextKind, ChatModelSelection } from '@dope/chat';
+import { CHAT_COLORS, type ChatSettings, type ChatContextKind, type ChatModelSelection } from '@dope/chat';
 import type { ChatContextSelection } from '@dope/chat/lib/service';
 import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { chatPanelWidgetId, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, chatPanelWidgetId, safeChatLink, type ChatPanelOptions } from './chat-panel-presentation';
 
 class SecretInputDialog extends SingleTextInputDialog {
     constructor(title: string) {
@@ -28,11 +30,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private workspaceRequest = 0;
     private models: ModelConnectionsSnapshot = { connections: [] };
     private settingsOpen = false;
+    private revealSettings = false;
     private settingsDraft?: ChatSettings;
     private settingsChatId?: string;
+    private readonly scrollFollow = new ChatScrollFollow();
 
     constructor(connect: () => ChatConnection, private readonly workspaces: WorkspaceService,
         private readonly shell: ApplicationShell, owners: ChatOpenOwners, options: ChatPanelOptions,
+        private readonly markdown: MarkdownRenderer,
         private readonly modelConnections?: ModelConnectionsService,
         private readonly editors?: EditorManager, private readonly map?: SoftwareMapController) {
         super();
@@ -214,6 +219,20 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         form.className = 'dope-chat-settings-form';
         form.setAttribute('aria-label', 'Chat settings');
         const draft = this.settingsDraft!;
+        const color = document.createElement('fieldset');
+        color.className = 'dope-chat-color-picker';
+        const legend = document.createElement('legend'); legend.textContent = 'Chat color';
+        color.append(legend);
+        for (const value of CHAT_COLORS) {
+            const choice = this.button(value, () => this.mutate({ type: 'set-color', chatId, color: value }),
+                this.controller.pending || this.controller.running);
+            choice.className = 'dope-chat-color-choice';
+            choice.dataset.color = value;
+            choice.setAttribute('aria-label', `${value} Chat color`);
+            choice.setAttribute('aria-pressed', String(this.controller.chat?.color === value));
+            color.append(choice);
+        }
+        form.append(color);
         const field = (label: string, input: HTMLElement) => {
             const row = document.createElement('label'); row.textContent = label; row.append(input); form.append(row);
         };
@@ -299,6 +318,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const select = this.button(chat.title, () => this.controller.select(chat.id));
             select.className = 'dope-chat-select';
             select.title = `Last interaction ${chat.lastInteractedAt}`;
+            const dot = document.createElement('span');
+            dot.className = 'dope-chat-color-dot'; dot.dataset.color = chat.color;
+            dot.setAttribute('aria-hidden', 'true');
+            select.prepend(dot);
             const time = document.createElement('time');
             time.dateTime = chat.lastInteractedAt;
             time.title = `Created ${chat.createdAt}; last interaction ${chat.lastInteractedAt}`;
@@ -317,6 +340,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private render(): void {
         const state = this.controller;
+        this.content.className = state.mode === 'chat' ? 'dope-chat-content dope-chat-content-conversation' : 'dope-chat-content dope-chat-content-select';
+        this.scrollFollow.select(state.mode === 'chat' ? state.chatId : undefined);
+        const oldScroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
+        const scrollTop = oldScroll?.scrollTop ?? 0;
+        const active = document.activeElement as HTMLElement | null;
+        const focused = this.content.contains(active) ? active?.getAttribute('aria-label') : undefined;
+        const selection = active instanceof HTMLTextAreaElement ? [active.selectionStart, active.selectionEnd] : undefined;
         this.status.textContent = state.error || (state.loading ? 'Loading Chats…' : !state.workspace ? 'Open one project to use Chats.' : '');
         this.content.replaceChildren();
         if (!state.snapshot) {
@@ -347,6 +377,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         heading.textContent = chat.title;
         const settings = this.button('⚙', () => {
             this.settingsOpen = !this.settingsOpen;
+            this.revealSettings = this.settingsOpen;
             this.settingsDraft = this.settingsOpen ? structuredClone(chat.settings) : undefined;
             this.settingsChatId = chat.id;
             this.render();
@@ -354,35 +385,79 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         settings.className = 'dope-chat-settings';
         settings.setAttribute('aria-label', 'Chat settings');
         header.append(back, heading, settings);
+        const shell = document.createElement('section'); shell.className = 'dope-chat-shell';
+        const region = document.createElement('div'); region.className = 'dope-chat-transcript-region';
+        const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll';
+        scroll.setAttribute('role', 'log'); scroll.setAttribute('aria-label', 'Chat conversation');
+        scroll.onscroll = () => {
+            this.scrollFollow.scrolled(scroll.scrollTop, scroll.scrollHeight, scroll.clientHeight);
+            latest.hidden = !this.scrollFollow.latestBelow;
+        };
         const transcript = document.createElement('ol');
         transcript.className = 'dope-chat-transcript';
         for (const message of chat.messages) {
             const item = document.createElement('li');
-            const who = document.createElement('strong');
-            who.textContent = message.role === 'user' ? 'You' : 'Assistant';
-            const content = document.createElement('p');
-            content.textContent = message.content || (message.role === 'assistant' && state.stream?.messageId === message.id ?
-                state.stream.content : '');
+            item.className = `dope-chat-message dope-chat-message-${message.role}`;
+            item.setAttribute('aria-label', message.role === 'user' ? 'You' : 'Assistant');
+            if (message.role === 'user') item.dataset.color = chat.color;
+            const content = document.createElement('div');
+            content.className = 'dope-chat-message-content';
+            const body = message.role === 'assistant' && state.stream?.messageId === message.id ?
+                state.stream.content : message.content;
+            if (message.role === 'assistant') {
+                // Untrusted model output: MarkdownString defaults to HTML and command links disabled.
+                const rendered = this.markdown.render(new MarkdownStringImpl(body, { supportHtml: false, isTrusted: false })).element;
+                for (const link of rendered.querySelectorAll('a[href]')) {
+                    if (!safeChatLink(link.getAttribute('href')!, document.baseURI)) link.removeAttribute('href');
+                    else link.setAttribute('rel', 'noopener noreferrer');
+                }
+                content.append(rendered);
+            } else content.textContent = body;
             const time = document.createElement('time');
             time.dateTime = message.createdAt;
             time.textContent = new Date(message.createdAt).toLocaleString();
-            item.append(who, time, content);
-            if (message.role === 'assistant') {
-                const status = document.createElement('small');
-                status.textContent = ` ${message.execution.status}${message.execution.failure ? ` · ${message.execution.failure}` : ''}`;
-                item.append(status);
-                if (message.execution.actualModel) {
-                    const provenance = document.createElement('small');
-                    provenance.className = 'dope-chat-provenance';
-                    provenance.textContent = ` ${message.execution.actualModel.providerId} · ${message.execution.actualModel.modelLabel}`;
-                    item.append(provenance);
+            item.append(content);
+            const meta = document.createElement('small'); meta.className = 'dope-chat-message-meta';
+            meta.append(time);
+            if (message.role === 'user' && message.contextRefs.length) {
+                const refs = document.createElement('details');
+                const summary = document.createElement('summary');
+                summary.textContent = ` · ${message.contextRefs.length} context sources`;
+                refs.append(summary);
+                const list = document.createElement('ul');
+                for (const ref of message.contextRefs) {
+                    const entry = document.createElement('li');
+                    entry.textContent = `${ref.kind}: ${ref.label} (${ref.id})`;
+                    list.append(entry);
                 }
+                refs.append(list); meta.append(refs);
             }
+            if (message.role === 'assistant') {
+                const execution = message.execution;
+                const status = document.createElement('span');
+                status.textContent = ` · ${execution.status}${execution.failure ? ` · ${execution.failure}` : ''}`;
+                if (['failed', 'cancelled', 'interrupted'].includes(execution.status))
+                    item.classList.add('dope-chat-message-alert');
+                meta.append(status);
+                const provenance = document.createElement('span');
+                provenance.className = 'dope-chat-provenance';
+                provenance.textContent = ` · ${execution.selectedModel.connectionId}/${execution.selectedModel.modelId}` +
+                    (execution.actualModel ? ` → ${execution.actualModel.providerId}/${execution.actualModel.modelLabel}` : '');
+                meta.append(provenance);
+            }
+            item.append(meta);
             transcript.append(item);
         }
-        this.content.append(header);
-        if (this.settingsOpen) this.content.append(this.renderSettings(chat.id));
-        this.content.append(transcript);
+        scroll.append(transcript);
+        if (this.settingsOpen) scroll.prepend(this.renderSettings(chat.id));
+        const latest = this.button('Jump to latest', () => {
+            this.scrollFollow.jump();
+            scroll.scrollTop = scroll.scrollHeight;
+            latest.hidden = true;
+        });
+        latest.className = 'dope-chat-latest'; latest.hidden = !this.scrollFollow.latestBelow;
+        region.append(scroll, latest);
+        shell.append(header, region);
         const composer = document.createElement('div'); composer.className = 'dope-chat-composer';
         const input = document.createElement('textarea'); input.rows = 3; input.placeholder = 'Message';
         input.setAttribute('aria-label', 'Message'); input.value = state.draft;
@@ -438,11 +513,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             composer.append(selectedContext);
         }
         if (state.lastContext) {
-            const details = document.createElement('small');
-            details.textContent = `Context ${state.lastContext.usedTokens}/${state.lastContext.budgetTokens} estimated tokens; ` +
-                `${state.lastContext.refs.length} sources included. ` + state.lastContext.diagnostics.map(item =>
+            const details = document.createElement('details');
+            details.className = 'dope-chat-context-diagnostics';
+            const summary = document.createElement('summary');
+            summary.textContent = `Context · ${state.lastContext.refs.length} sources · ${state.lastContext.usedTokens}/${state.lastContext.budgetTokens} tokens`;
+            details.append(summary);
+            const description = document.createElement('small');
+            description.textContent = state.lastContext.diagnostics.map(item =>
                     `${item.source}: ${item.message}`).join(' ');
-            composer.append(details);
+            details.append(description);
             const included = document.createElement('ul');
             included.setAttribute('aria-label', 'Included context preview');
             for (const ref of state.lastContext.refs) {
@@ -450,9 +529,25 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 item.textContent = `${ref.kind}: ${ref.label} (${ref.estimatedTokens} estimated tokens)`;
                 included.append(item);
             }
-            composer.append(included);
+            details.append(included);
+            composer.append(details);
         }
-        this.content.append(composer);
+        shell.append(composer);
+        this.content.append(shell);
+        scroll.scrollTop = this.scrollFollow.restore(scrollTop, scroll.scrollHeight, scroll.clientHeight);
+        if (this.revealSettings) {
+            scroll.scrollTop = 0;
+            this.scrollFollow.scrolled(0, scroll.scrollHeight, scroll.clientHeight);
+            this.revealSettings = false;
+        }
+        latest.hidden = !this.scrollFollow.latestBelow;
+        if (focused) {
+            const replacement = [...this.content.querySelectorAll<HTMLElement>('[aria-label]')]
+                .find(element => element.getAttribute('aria-label') === focused);
+            replacement?.focus({ preventScroll: true });
+            if (selection && replacement instanceof HTMLTextAreaElement)
+                replacement.setSelectionRange(selection[0], selection[1]);
+        }
     }
     override dispose(): void {
         ++this.workspaceRequest;

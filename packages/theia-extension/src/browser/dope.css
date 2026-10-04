@@ -345,8 +345,14 @@
 .dope-smap-view .dope-smap-unassigned > summary { font-weight: 600; overflow-wrap: anywhere; }
 .dope-dark .dope-smap-view .dope-smap-outline button:active { background: var(--theia-list-hoverBackground); color: var(--theia-foreground); }
 
-.dope-chat-panel { box-sizing: border-box; height: 100%; overflow: auto; padding: 16px; color: var(--theia-editor-foreground); background: var(--theia-editor-background); font-family: var(--theia-ui-font-family); }
-.dope-chat-panel header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.dope-chat-panel { box-sizing: border-box; height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; color: var(--theia-editor-foreground); background: var(--theia-editor-background); font-family: var(--theia-ui-font-family); }
+.dope-chat-panel > [role="status"]:empty { display: none; }
+.dope-chat-panel > [role="status"]:not(:empty) { margin: 0; padding: 5px 12px; flex: none; }
+.dope-chat-content { flex: 1; min-height: 0; min-width: 0; }
+.dope-chat-content-select { overflow: auto; padding: 16px; }
+.dope-chat-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; }
+.dope-chat-shell > header { flex: none; padding: 10px 12px; border-bottom: 1px solid var(--theia-widget-border); }
+.dope-chat-panel header { display: flex; align-items: center; gap: 8px; }
 .dope-chat-panel h2 { font-size: 16px; margin: 0; overflow-wrap: anywhere; }
 .dope-chat-panel button { cursor: pointer; color: var(--theia-foreground); background: var(--theia-button-secondaryBackground); border: 1px solid var(--theia-contrastBorder, transparent); padding: 4px 7px; border-radius: 3px; }
 .dope-chat-panel button:hover:not(:disabled) { background: var(--theia-button-secondaryHoverBackground); }
@@ -356,17 +362,52 @@
 .dope-chat-panel li { margin: 5px 0; }
 .dope-chat-panel summary { cursor: pointer; overflow-wrap: anywhere; }
 .dope-chat-actions, .dope-chat-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
-.dope-chat-select { flex: 1; min-width: 6rem; text-align: left; overflow-wrap: anywhere; }
+.dope-chat-select { flex: 1; min-width: 6rem; text-align: left; overflow-wrap: anywhere; display: inline-flex; align-items: center; gap: 7px; }
+.dope-chat-color-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--chat-color); }
 .dope-chat-panel time { color: var(--theia-descriptionForeground); font-size: 11px; }
 .dope-chat-settings { margin-left: auto; }
-.dope-chat-transcript { padding: 0 !important; }
-.dope-chat-transcript li { padding: 10px 0; border-top: 1px solid var(--theia-widget-border, var(--theia-contrastBorder)); }
-.dope-chat-transcript time { margin-left: 8px; }
-.dope-chat-transcript p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
-.dope-chat-provenance { color: var(--theia-descriptionForeground); margin-left: 8px; }
+.dope-chat-transcript-region { position: relative; flex: 1; min-height: 0; }
+.dope-chat-scroll { position: absolute; inset: 0; overflow: auto; padding: 10px 12px 18px; }
+.dope-chat-transcript { padding: 0 !important; margin: 0 auto; max-width: 900px; }
+.dope-chat-transcript .dope-chat-message { margin: 0; padding: 10px 0; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.dope-chat-message-user { align-items: flex-end !important; }
+.dope-chat-message-content { max-width: min(100%, 72ch); min-width: 0; line-height: 1.55; overflow-wrap: anywhere; }
+.dope-chat-message-user .dope-chat-message-content { white-space: pre-wrap; background: var(--chat-color); color: var(--chat-ink); border-radius: 16px 16px 4px 16px; padding: 9px 13px; }
+.dope-chat-message-assistant .dope-chat-message-content { width: 100%; }
+.dope-chat-message-content :first-child { margin-top: 0; }
+.dope-chat-message-content :last-child { margin-bottom: 0; }
+.dope-chat-message-content pre { overflow: auto; padding: 10px; border-radius: 6px; background: var(--theia-textCodeBlock-background, var(--theia-input-background)); }
+.dope-chat-message-content :not(pre) > code { background: var(--theia-textCodeBlock-background, var(--theia-input-background)); padding: 1px 3px; border-radius: 3px; }
+.dope-chat-message-content blockquote { margin-left: 0; padding-left: 12px; border-left: 3px solid var(--theia-widget-border); }
+.dope-chat-message-content table { display: block; max-width: 100%; overflow: auto; border-collapse: collapse; }
+.dope-chat-message-content th, .dope-chat-message-content td { border: 1px solid var(--theia-widget-border); padding: 4px 7px; }
+.dope-chat-message-content ul { list-style: disc; }.dope-chat-message-content ol { list-style: decimal; }
+.dope-chat-message-meta { max-width: 72ch; color: var(--theia-descriptionForeground); font-size: 11px; margin-top: 4px; overflow-wrap: anywhere; }
+.dope-chat-message-alert .dope-chat-message-meta { color: var(--theia-errorForeground); font-weight: 600; }
+.dope-chat-provenance { margin-left: 5px; }
+.dope-chat-latest { position: absolute; right: 12px; bottom: 8px; box-shadow: 0 2px 8px #0006; }
+.dope-chat-latest[hidden] { display: none; }
 .dope-chat-settings-form { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--theia-widget-border); }
 .dope-chat-settings-form label { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.dope-chat-composer { display: grid; gap: 6px; margin-top: 12px; }
-.dope-chat-composer textarea { box-sizing: border-box; width: 100%; resize: vertical; min-height: 4em; color: var(--theia-input-foreground); background: var(--theia-input-background); }
+.dope-chat-color-picker { display: flex; flex-wrap: wrap; gap: 6px; border: 0; padding: 0; }
+.dope-chat-color-picker legend { margin-bottom: 5px; }
+.dope-chat-color-picker .dope-chat-color-choice { width: 25px; height: 25px; overflow: hidden; text-indent: -999px; border-radius: 50%; background: var(--chat-color); padding: 0; }
+.dope-chat-color-choice[aria-pressed="true"] { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-chat-composer { display: grid; gap: 6px; flex: none; max-height: 60%; overflow: auto; margin: 8px 12px 12px; padding: 8px; border: 1px solid var(--theia-widget-border); border-radius: 12px; background: var(--theia-input-background); }
+.dope-chat-composer:focus-within { border-color: var(--theia-focusBorder); }
+.dope-chat-composer textarea { box-sizing: border-box; width: 100%; resize: vertical; min-height: 3em; border: 0; outline: 0; color: var(--theia-input-foreground); background: transparent; }
 .dope-chat-composer-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
 .dope-chat-composer-toolbar select { min-width: 6em; max-width: 45%; margin-left: auto; }
+.dope-chat-selected-context { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 !important; margin: 0; }
+.dope-chat-selected-context li { display: inline-flex; gap: 4px; align-items: center; margin: 0; padding: 2px 5px; border: 1px solid var(--theia-widget-border); border-radius: 5px; }
+.dope-chat-context-diagnostics { color: var(--theia-descriptionForeground); font-size: 11px; }
+.dope-chat-panel [data-color="blue"] { --chat-color: #2860ae; --chat-ink: white; }
+.dope-chat-panel [data-color="cyan"] { --chat-color: #087f91; --chat-ink: white; }
+.dope-chat-panel [data-color="teal"] { --chat-color: #087969; --chat-ink: white; }
+.dope-chat-panel [data-color="green"] { --chat-color: #317642; --chat-ink: white; }
+.dope-chat-panel [data-color="yellow"] { --chat-color: #efc84a; --chat-ink: #171717; }
+.dope-chat-panel [data-color="orange"] { --chat-color: #b85b16; --chat-ink: white; }
+.dope-chat-panel [data-color="red"] { --chat-color: #b63b41; --chat-ink: white; }
+.dope-chat-panel [data-color="pink"] { --chat-color: #a63773; --chat-ink: white; }
+.dope-chat-panel [data-color="purple"] { --chat-color: #7548a9; --chat-ink: white; }
+.dope-chat-panel [data-color="indigo"] { --chat-color: #494eac; --chat-ink: white; }
