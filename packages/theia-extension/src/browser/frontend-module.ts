@@ -1,7 +1,7 @@
 import { ContainerModule } from '@theia/core/shared/inversify';
 import { injectable } from '@theia/core/shared/inversify';
 import { AbstractViewContribution, ApplicationShell, FrontendApplicationContribution, WidgetFactory, WidgetManager } from '@theia/core/lib/browser';
-import { CommandContribution, CommandRegistry } from '@theia/core/lib/common';
+import { CommandContribution, CommandRegistry, MenuContribution } from '@theia/core/lib/common';
 import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-service';
 import { bindViewContribution } from '@theia/core/lib/browser/shell/view-contribution';
 import { NoteService, noteServicePath } from '@dope/contracts/lib/note-service';
@@ -36,6 +36,11 @@ import type { ModelConnectionsClient } from '@dope/contracts/lib/model-connectio
 import type { ChatClient } from '@dope/chat/lib/service';
 import { ChatPanelWidget } from './chat-panel-widget';
 import { ChatOpenOwners } from './chat-panel-controller';
+import { AIRegistryService, aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
+import { AICenterWidget, AI_CENTER_ID } from './ai-center-widget';
+import { AICenterContribution } from './ai-center-contribution';
+import { AICenterBottomMenuWidget } from './ai-center-launcher';
+import { SidebarBottomMenuWidget } from '@theia/core/lib/browser/shell/sidebar-bottom-menu-widget';
 import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
 
 abstract class ChatLauncherView extends AbstractViewContribution<ChatPanelWidget> implements FrontendApplicationContribution {
@@ -70,6 +75,18 @@ class LeftChatLauncher extends ChatLauncherView { constructor() { super('left');
 class RightChatLauncher extends ChatLauncherView { constructor() { super('right'); } }
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
+    rebind(SidebarBottomMenuWidget).to(AICenterBottomMenuWidget);
+    bind(AICenterContribution).toSelf().inSingletonScope();
+    bind(CommandContribution).toService(AICenterContribution);
+    bind(MenuContribution).toService(AICenterContribution);
+    bind(FrontendApplicationContribution).toService(AICenterContribution);
+    bind(AIRegistryService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AIRegistryService & RpcServer<AIRegistryClient>>(
+        context.container, aiRegistryServicePath, {
+            notifyAIRegistryChanged: () => { void context.container.get(AICenterContribution).refresh(); },
+            notifyAIInventoryChanged: () => { void context.container.get(AICenterContribution).refresh(); }
+        })).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({ id: AI_CENTER_ID, createWidget: () => new AICenterWidget(
+        context.container.get(AIRegistryService), context.container.get(AICredentialService)) })).inSingletonScope();
     bind(ModelConnectionsService).toDynamicValue(context =>
         ServiceConnectionProvider.createProxy<ModelConnectionsService & RpcServer<ModelConnectionsClient>>(
             context.container, modelConnectionsServicePath,
@@ -113,7 +130,9 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(ChatOpenOwners).toSelf().inSingletonScope();
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();
     bind(AICredentialService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AICredentialService & RpcServer<AICredentialClient>>(
-        context.container, aiCredentialServicePath)).inSingletonScope();
+        context.container, aiCredentialServicePath, {
+            notifyAICredentialChanged: () => { void context.container.get(AICenterContribution).refresh(); }
+        })).inSingletonScope();
     bind(SoftwareMapController).toDynamicValue(context => new SoftwareMapController(
         () => context.container.get(SoftwareMapService) as SoftwareMapService & RpcServer<SoftwareMapClient>,
         () => {}, context.container.get(StorageService))).inSingletonScope();

@@ -1,3 +1,25 @@
+.dope-ai-launcher { width: 100%; border: 0; padding: 0; color: inherit; background: transparent; cursor: pointer; position: relative; }
+.dope-ai-launcher:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: -2px; }
+.dope-ai-launcher-warning { position: absolute; top: 0; right: 0; min-width: 12px; font-weight: 700; color: var(--theia-editor-foreground); background: var(--theia-editor-background); border: 1px solid var(--theia-focusBorder); border-radius: 50%; }
+.dope-ai-center { box-sizing: border-box; height: 100%; overflow: auto; padding: 20px; color: var(--theia-editor-foreground); background: var(--theia-editor-background); }
+.dope-ai-center h2 { margin: 0 0 8px; }
+.dope-ai-center h3 { margin: 0 0 12px; }
+.dope-ai-message { min-height: 1.2em; color: var(--theia-descriptionForeground); }
+.dope-ai-layout { display: grid; grid-template-columns: minmax(180px, 28%) minmax(0, 1fr); gap: 20px; }
+.dope-ai-layout nav { border-right: 1px solid var(--theia-widget-border, var(--theia-input-border)); padding-right: 12px; }
+.dope-ai-layout section { min-width: 0; overflow-wrap: anywhere; }
+.dope-ai-center button { cursor: pointer; color: var(--theia-button-foreground); background: var(--theia-button-background); border: 1px solid var(--theia-button-background); padding: 5px 9px; margin: 3px; }
+.dope-ai-center button:disabled { opacity: .55; cursor: default; }
+.dope-ai-center :is(button, input, select):focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-ai-connection { display: flex; flex-direction: column; width: 100%; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.dope-ai-connection[aria-current="true"] { outline: 2px solid var(--theia-focusBorder); }
+.dope-ai-connection span { font-weight: normal; }
+.dope-ai-center label { display: block; margin: 10px 0; }
+.dope-ai-center :is(input, select) { display: block; box-sizing: border-box; max-width: 100%; width: min(100%, 32rem); margin: 4px 0; padding: 5px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border, var(--theia-focusBorder)); }
+.dope-ai-actions { display: flex; flex-wrap: wrap; margin: 12px 0; }
+.dope-ai-model { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
+@media (max-width: 700px) { .dope-ai-layout { grid-template-columns: 1fr; } .dope-ai-layout nav { border-right: 0; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); padding-bottom: 12px; } }
+
 .dope-spike-view {
     box-sizing: border-box;
     padding: 28px;
