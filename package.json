@@ -1,6 +1,6 @@
 { 
   "name": "dope",
-  "version": "0.7.13",
+  "version": "0.7.14",
   "private": true,
   "type": "module",
   "packageManager": "yarn@1.22.22",
@@ -11,6 +11,7 @@
     "apps/browser",
     "apps/electron",
     "packages/contracts",
+    "packages/ai",
     "packages/chat",
     "packages/project-intelligence",
     "packages/code-analysis",
@@ -20,7 +21,7 @@
     "packages/theia-extension"
   ],
   "scripts": {
-    "build:extension": "corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/chat build && corepack yarn workspace @dope/project-intelligence build && corepack yarn workspace @dope/software-map build && corepack yarn workspace @dope/visual-planning build && corepack yarn workspace @dope/code-analysis build && corepack yarn workspace @dope/code-analysis-typescript build && corepack yarn workspace @dope/theia-extension build",
+    "build:extension": "corepack yarn workspace @dope/ai build && corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/chat build && corepack yarn workspace @dope/project-intelligence build && corepack yarn workspace @dope/software-map build && corepack yarn workspace @dope/visual-planning build && corepack yarn workspace @dope/code-analysis build && corepack yarn workspace @dope/code-analysis-typescript build && corepack yarn workspace @dope/theia-extension build",
     "build:browser": "corepack yarn build:extension && corepack yarn workspace @dope/browser build",
     "build:electron": "corepack yarn build:extension && corepack yarn workspace @dope/electron build",
     "package:linux": "(test -f plugins/vscode.javascript/extension/package.json && test -f plugins/firsttris.vscode-jest-runner/extension/package.json || npm run download:plugins) && npm run build:electron && corepack yarn workspace @dope/electron package:linux",
@@ -34,13 +35,13 @@
     "test:runner": "node --test test/unit/codex-phase-prompt-grammar.test.ts test/unit/codex-phase-runner.test.ts",
     "test:baseline": "node --test test/unit/theia-baseline.test.ts test/unit/dope-theme.test.ts test/unit/pre-phase4-clean-baseline.test.ts test/unit/smap-terminology.test.ts test/unit/smap-placement.test.ts",
     "test:local-install": "node --test test/unit/local-install.test.mjs",
-    "test:product": "npm run build:extension && node --test test/unit/model-connections.test.ts test/unit/chat.test.ts test/unit/chat-repository.test.ts test/unit/chat-backend.test.ts test/unit/chat-panel.test.ts test/unit/chat-presentation.test.ts test/unit/physical-map-canvas.test.ts test/unit/smap-presentation-state.test.ts test/unit/note-persistence.test.ts test/unit/project-intelligence.test.ts test/unit/project-mind-storage.test.ts test/unit/project-mind-ui.test.ts test/unit/software-map.test.ts test/unit/software-map-flow.test.ts test/unit/software-map-flow-query.test.ts test/unit/visual-planning.test.ts test/unit/visual-planning-storage.test.ts test/unit/planning-rebase.test.ts test/unit/planning-reconciliation.test.ts test/unit/planning-map-ui.test.ts test/unit/smap-readability.test.ts test/unit/software-map-synthesis.test.ts test/unit/evidence-planner.test.ts test/unit/system-discovery.test.ts test/unit/system-challenge.test.ts test/unit/subsystem-stages.test.ts test/unit/reconciliation.test.ts test/unit/lmstudio-synthesis-provider.test.ts test/unit/gemini-synthesis-provider.test.ts test/unit/code-analysis-typescript.test.ts test/unit/architecture-evidence.test.ts test/unit/software-map-index-backend.test.ts test/unit/software-map-ui.test.ts && node --test test/unit/software-map-initialization.test.ts",
+    "test:product": "npm run build:extension && node --test test/unit/ai.test.ts test/unit/model-connections.test.ts test/unit/chat.test.ts test/unit/chat-repository.test.ts test/unit/chat-backend.test.ts test/unit/chat-panel.test.ts test/unit/chat-presentation.test.ts test/unit/physical-map-canvas.test.ts test/unit/smap-presentation-state.test.ts test/unit/note-persistence.test.ts test/unit/project-intelligence.test.ts test/unit/project-mind-storage.test.ts test/unit/project-mind-ui.test.ts test/unit/software-map.test.ts test/unit/software-map-flow.test.ts test/unit/software-map-flow-query.test.ts test/unit/visual-planning.test.ts test/unit/visual-planning-storage.test.ts test/unit/planning-rebase.test.ts test/unit/planning-reconciliation.test.ts test/unit/planning-map-ui.test.ts test/unit/smap-readability.test.ts test/unit/software-map-synthesis.test.ts test/unit/evidence-planner.test.ts test/unit/system-discovery.test.ts test/unit/system-challenge.test.ts test/unit/subsystem-stages.test.ts test/unit/reconciliation.test.ts test/unit/lmstudio-synthesis-provider.test.ts test/unit/gemini-synthesis-provider.test.ts test/unit/code-analysis-typescript.test.ts test/unit/architecture-evidence.test.ts test/unit/software-map-index-backend.test.ts test/unit/software-map-ui.test.ts && node --test test/unit/software-map-initialization.test.ts",
     "test:ide": "node --test test/fixtures/ide-testing/sample.test.js",
     "test:restart": "node --test test/integration/restart.test.mjs",
     "smap:review:check": "node scripts/smap-review-check.mjs",
     "codex:phase": "node scripts/codex-phase.mjs",
     "codex:phase:validate": "node scripts/validate-codex-phase.mjs",
-    "typecheck": "corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/chat build && corepack yarn workspace @dope/project-intelligence build && corepack yarn workspace @dope/software-map build && corepack yarn workspace @dope/visual-planning build && corepack yarn workspace @dope/code-analysis build && corepack yarn workspace @dope/code-analysis-typescript build && tsc -p packages/theia-extension --noEmit",
+    "typecheck": "corepack yarn workspace @dope/ai build && corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/chat build && corepack yarn workspace @dope/project-intelligence build && corepack yarn workspace @dope/software-map build && corepack yarn workspace @dope/visual-planning build && corepack yarn workspace @dope/code-analysis build && corepack yarn workspace @dope/code-analysis-typescript build && tsc -p packages/theia-extension --noEmit",
     "check": "npm run typecheck && npm test && npm run build:browser && npm run build:electron"
   },
   "theiaPluginsDir": "plugins",

@@ -1,11 +1,12 @@
 import type { ConnectedModel, ModelConnectionId, ModelId, ModelSelection } from './model-runtime';
+import type { AIConnectionId } from '@dope/ai/lib/index';
 
 export const modelConnectionsServicePath = '/services/dope/model-connections';
 export const ModelConnectionsService = Symbol('ModelConnectionsService');
 
 /** Persistable application preference. Deliberately contains no endpoint or credential. */
 export interface ModelConnectionMetadata {
-    id: ModelConnectionId;
+    id: AIConnectionId;
     providerId: string;
     label: string;
     preferredModelId?: ModelId;

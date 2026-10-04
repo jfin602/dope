@@ -1,3 +1,5 @@
+import type { AIConnectionId, ProviderModelKey } from '@dope/ai/lib/index';
+
 /** Structured-generation limits remain the Software Map synthesis contract. */
 export interface ModelCapabilities {
     modelLabel: string;
@@ -57,8 +59,8 @@ export interface ModelRuntime extends ModelRuntimeSession {
 }
 
 /** IDs are opaque and stable within a connection; neither encodes provider behavior. */
-export type ModelConnectionId = string;
-export type ModelId = string;
+export type ModelConnectionId = AIConnectionId;
+export type ModelId = ProviderModelKey;
 export interface ModelSelection { connectionId: ModelConnectionId; modelId: ModelId }
 
 export interface ConversationModelCapabilities {
