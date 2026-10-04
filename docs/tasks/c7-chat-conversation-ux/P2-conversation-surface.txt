@@ -1,0 +1,84 @@
+TASK: Correction 7 / P2 — Chat conversation surface
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Required unchanged project version: `0.7.13`.
+
+GOAL
+
+Make ChatPanel look and behave like a familiar modern AI conversation surface using the P1 durable Chat color contract. Keep runtime/model/context behavior unchanged.
+
+PREFLIGHT
+
+Require P1 Green. Read BOOT.md, AGENTS.md, ADR 0025 c7 amendment, correction README/assessment/plan, then inspect ChatPanel widget/controller/CSS and focused Chat UI tests.
+
+IMPLEMENT
+
+1. Persistent Chat shell
+- In Chat mode, make the top bar fixed/sticky within the panel, transcript the only flexing scroll region, and composer fixed at the bottom.
+- Back, Chat title, and settings remain visible while transcript scrolls.
+- Keep Select Chat mode independently scrollable.
+- Must work in left/right/center/bottom ChatPanel placements.
+
+2. Conversation transcript
+- Developer messages: right-aligned bubbles using `Chat.color`, bounded readable width, automatic readable foreground.
+- Assistant messages: neutral, unboxed document output.
+- Remove repetitive visible You / Assistant labels but retain accessible role semantics.
+- Normal metadata becomes one compact secondary line/disclosure; failed/cancelled/interrupted state stays clearly visible.
+- Preserve durable provider/model provenance.
+
+3. Safe formatted assistant output
+- Prefer a supported public Theia Markdown renderer available through existing dependencies.
+- If unsuitable, add one small direct frontend renderer dependency.
+- Do not implement regex Markdown parsing.
+- Raw model-authored HTML/script must not execute.
+- Support headings, emphasis, ordered/unordered lists, links, inline/fenced code, blockquotes, and tables when present.
+- Streaming partial content must remain safe and must not break transcript DOM.
+
+4. Unified composer
+- Render text area and bottom controls inside one visual composer container.
+- Keep context controls, Ask / Explain / Trace / Find Related, model selector, Send/Stop/Retry and selected-context removal.
+- Keep existing model selection, cancellation, retry, context and no-fallback semantics unchanged.
+- Keep response/context diagnostics compact so transcript text stays primary.
+
+5. Chat color organization
+- Select Chat rows show a small color dot/swatch next to title.
+- Chat settings shows a visual ten-color picker and persists changes through P1 `set-color`.
+- Do not route color through `set-settings`.
+- Assistant output remains neutral.
+
+6. Scroll-follow
+- Follow newest streamed content only while transcript is at/near bottom.
+- Manual upward scroll disables forced follow.
+- Show a compact jump-to-latest control when newer content is below.
+- Using it resumes follow.
+- Preserve draft/model/context state and avoid unnecessary focus disruption across rerenders.
+
+PERMANENT REGRESSIONS
+
+Add/update only focused presentation tests for:
+- fixed header/transcript/composer structure;
+- user/assistant role presentation without visible repetitive labels;
+- selector color marker + settings picker + set-color wiring;
+- safe Markdown renderer path / raw HTML safety;
+- compact metadata;
+- unified composer;
+- scroll-follow and jump-to-latest state;
+- existing explicit model/no-fallback behavior retained.
+
+VALIDATION
+
+T1 only. Run:
+- focused chat-panel and chat-composer tests plus any one new narrow Markdown/presentation test;
+- corepack yarn workspace @dope/theia-extension build;
+- git diff --check;
+- exact 0.7.13 and no-root-package-lock checks.
+
+Do not run npm run check, restart suite, packaging, live provider qualification, or manual browser evidence. Save that for P3.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report shell/transcript/composer behavior, Markdown safety path, color UI, scroll-follow behavior, focused validation, and P3 readiness.
