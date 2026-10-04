@@ -596,3 +596,19 @@ Promoted implementation laws include:
 - unresolved removed role targets retain only bounded non-secret descriptors for repair/explanation.
 
 The currently written P1-P12 remain unchanged Phase 7A execution authority. Do not edit/regenerate the executable continuation until P12 completes and the actual 7A implementation can be inspected. The current P13 remains superseded. After P12, run `/prompt-ass -> /prompt-plan -> /prompt-write p7` to regenerate P13+ using the promoted 7B/7C authority and current source/tests.
+
+## October 3, 2026 — Phase 7 Chat conversation UX correction
+
+The Phase 7 P13 `0.7.13` evidence-only closeout remains **Not Qualified** and is preserved as historical evidence. After that transition, direct review of ChatPanel identified a bounded presentation/organization defect class: the transcript reads like a utility/log surface, composer controls are visually detached, persistent header/composer regions are missing, model output lacks first-class formatted document rendering, and Chat identity lacks a lightweight visual organization cue.
+
+Approved correction: **`c7-chat-conversation-ux`** at unchanged `0.7.13`.
+
+Locked behavior: fixed top bar, independently scrolling transcript, fixed unified bottom composer; right-aligned developer bubbles; neutral safe-Markdown assistant output; compact secondary status/provenance/context metadata; stream auto-follow only while at/near bottom; durable per-Chat color from blue/cyan/teal/green/yellow/orange/red/pink/purple/indigo; deterministic assignment/migration; selector color indicator; developer bubbles reuse the Chat color with readable contrast; visual ten-color picker in Chat settings; color survives rename/move/restart and carries no built-in semantics.
+
+Preserve explicit per-turn model authority, no silent provider/model fallback, Chat ownership/restoration, durable execution/context provenance, read-only Phase 7A tool boundaries and provider independence. Do not rewrite historical P9 prompt text, P12 evidence or P13 closeout evidence.
+
+Routing:
+`/docs-apply -> /prompt-ass -> /prompt-plan -> /prompt-write c7-chat-conversation-ux`
+
+After this correction is qualified, continue bounded Phase 7B AI Center and Phase 7C role-routing work, integrated qualification and a later final closeout.
+
