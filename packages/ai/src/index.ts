@@ -69,6 +69,7 @@ export type AIRegistryMutation =
         { credential?: AICredentialReference | null } }
     | { type: 'remove-connection'; id: AIConnectionId }
     | { type: 'upsert-model'; model: AIModel }
+    | { type: 'reconcile-models'; connectionId: AIConnectionId; models: AIModel[] }
     | { type: 'set-model-enabled'; connectionId: AIConnectionId; providerModelKey: ProviderModelKey; enabled: boolean };
 
 export interface AIRegistryMutationRequest { version: typeof AI_REGISTRY_VERSION; expectedRevision: number; mutation: AIRegistryMutation }
@@ -188,7 +189,7 @@ export function parseAIRegistrySnapshot(value: unknown): AIRegistrySnapshot {
     return { version: AI_REGISTRY_VERSION, revision: integer(item.revision), connections, models };
 }
 export function parseAIRegistryMutation(value: unknown): AIRegistryMutation {
-    const item = record(value, ['type', 'connection', 'id', 'changes', 'model', 'connectionId', 'providerModelKey', 'enabled']);
+    const item = record(value, ['type', 'connection', 'id', 'changes', 'model', 'models', 'connectionId', 'providerModelKey', 'enabled']);
     switch (item.type) {
         case 'create-connection':
             record(value, ['type', 'connection']);
@@ -209,6 +210,16 @@ export function parseAIRegistryMutation(value: unknown): AIRegistryMutation {
         case 'upsert-model':
             record(value, ['type', 'model']);
             return { type: item.type, model: parseAIModel(item.model) };
+        case 'reconcile-models': {
+            record(value, ['type', 'connectionId', 'models']);
+            const connectionId = text(item.connectionId);
+            if (!Array.isArray(item.models)) throw new Error('Invalid model inventory');
+            const models = item.models.map(parseAIModel);
+            if (models.some(model => model.connectionId !== connectionId) ||
+                new Set(models.map(model => model.providerModelKey)).size !== models.length)
+                throw new Error('Invalid model inventory identities');
+            return { type: item.type, connectionId, models };
+        }
         case 'set-model-enabled':
             record(value, ['type', 'connectionId', 'providerModelKey', 'enabled']);
             return { type: item.type, connectionId: text(item.connectionId),
@@ -250,6 +261,17 @@ export function applyAIRegistryMutation(snapshot: AIRegistrySnapshot, request: A
                 model.providerModelKey !== mutation.model.providerModelKey),
             { ...mutation.model, enabled: previous?.enabled ?? mutation.model.enabled }];
             break;
+        case 'reconcile-models':
+            if (!connections.some(connection => connection.id === mutation.connectionId)) throw new Error('AI connection missing');
+            models = [
+                ...models.filter(model => model.connectionId !== mutation.connectionId),
+                ...mutation.models.map(model => ({ ...model, enabled: models.find(previous =>
+                    previous.connectionId === mutation.connectionId && previous.providerModelKey === model.providerModelKey)?.enabled ?? model.enabled })),
+                ...models.filter(model => model.connectionId === mutation.connectionId &&
+                    !mutation.models.some(discovered => discovered.providerModelKey === model.providerModelKey))
+                    .map(model => ({ ...model, state: 'unavailable' as const }))
+            ];
+            break;
         case 'set-model-enabled':
             if (!models.some(model => model.connectionId === mutation.connectionId && model.providerModelKey === mutation.providerModelKey))
                 throw new Error('AI model missing');
@@ -280,5 +302,6 @@ export function findEligibleModels(snapshot: AIRegistrySnapshot, query: AIEligib
             (query.minimumKnownContextTokens === undefined || (context !== undefined &&
                 Number.isSafeInteger(context) && context >= query.minimumKnownContextTokens)) &&
             capabilities.every(capability => model.capabilities[capability].value === true);
-    }) };
+    }).sort((left, right) => left.connectionId.localeCompare(right.connectionId) ||
+        left.providerModelKey.localeCompare(right.providerModelKey)) };
 }

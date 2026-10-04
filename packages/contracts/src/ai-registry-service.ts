@@ -1,5 +1,19 @@
 import type { AIEligibilityQuery, AIEligibilityResult, AIRegistryMutationRequest,
-    AIRegistrySnapshot, AIConnectionConfig } from '@dope/ai/lib/index';
+    AIRegistrySnapshot, AIConnectionConfig, AIConnectionObservation } from '@dope/ai/lib/index';
+import type { ConversationUsage } from './model-runtime';
+
+export interface AITestConnectionResult {
+    connectionId: string;
+    modelId: string;
+    latencyMs: number;
+    usage?: ConversationUsage;
+    hostedCostPossible: boolean;
+}
+export interface AIInventoryState {
+    registry: AIRegistrySnapshot;
+    observations: AIConnectionObservation[];
+    tests: AITestConnectionResult[];
+}
 
 export interface ProviderSetupDescription {
     type: AIConnectionConfig['type'];
@@ -21,5 +35,13 @@ export interface AIRegistryService {
     providerSetups(): Promise<ProviderSetupDescription[]>;
     detectLocalRuntime(): Promise<AIConnectionConfig | undefined>;
     useDetectedRuntime(connectionId: string, expectedRevision: number): Promise<AIRegistrySnapshot>;
+    inventory(): Promise<AIInventoryState>;
+    refreshModels(connectionId: string): Promise<AIInventoryState>;
+    reconnect(connectionId: string): Promise<AIInventoryState>;
+    testConnection(connectionId: string): Promise<AITestConnectionResult>;
+    testConnectionDisclosure(connectionId: string): Promise<{ hostedCostPossible: boolean }>;
 }
-export interface AIRegistryClient { notifyAIRegistryChanged(revision: number): void }
+export interface AIRegistryClient {
+    notifyAIRegistryChanged(revision: number): void;
+    notifyAIInventoryChanged?(): void;
+}

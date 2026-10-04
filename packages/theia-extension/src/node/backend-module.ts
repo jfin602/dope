@@ -23,7 +23,7 @@ import { modelConnectionsServicePath, type ModelConnectionsClient } from '@dope/
 import { ModelConnectionsBackend, ModelConnectionsRegistry } from './model-connections';
 import { aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
 import { AIRegistryStore } from './ai-registry-store';
-import { AIRegistryBackend } from './ai-registry-backend';
+import { AIInventoryController, AIRegistryBackend } from './ai-registry-backend';
 import { aiCredentialServicePath, type AICredentialClient } from '@dope/contracts/lib/ai-credential-service';
 import { AICredentialManager } from './ai-credential-manager';
 import { AICredentialBackend } from './ai-credential-backend';
@@ -46,8 +46,11 @@ export default new ContainerModule(bind => {
     })).inSingletonScope();
     bind(ModelConnectionsRegistry).toDynamicValue(context => new ModelConnectionsRegistry(undefined,
         context.container.get(AIRegistryStore), context.container.get(AICredentialManager))).inSingletonScope();
+    bind(AIInventoryController).toDynamicValue(context => new AIInventoryController(context.container.get(AIRegistryStore),
+        context.container.get(ModelConnectionsRegistry), context.container.get(AICredentialManager))).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<AIRegistryClient>(aiRegistryServicePath, client => {
-        const backend = new AIRegistryBackend(context.container.get(AIRegistryStore), client);
+        const backend = new AIRegistryBackend(context.container.get(AIRegistryStore), client, undefined,
+            context.container.get(AIInventoryController));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

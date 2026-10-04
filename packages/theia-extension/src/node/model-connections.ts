@@ -65,6 +65,7 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
     private readonly live = new Map<string, Live>();
     private readonly globalConfiguration = new Map<string, string>();
     private readonly listeners = new Set<() => void>();
+    private readonly executionListeners = new Set<(connectionId: string, error: unknown) => void>();
     private readonly loaded: Promise<void>;
     private readonly store: ModelConnectionStore;
     private saving: Promise<void> = Promise.resolve();
@@ -112,6 +113,10 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
     onChange(listener: () => void): () => void {
         this.listeners.add(listener);
         return () => this.listeners.delete(listener);
+    }
+    onExecutionFailure(listener: (connectionId: string, error: unknown) => void): () => void {
+        this.executionListeners.add(listener);
+        return () => this.executionListeners.delete(listener);
     }
     private changed(): void { for (const listener of this.listeners) listener(); }
     private async save(): Promise<void> {
@@ -257,13 +262,18 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
                 throw new ModelRuntimeFailure('Model does not support the selected control', 'unsupported-capability');
         }
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
-        for await (const event of live.runtime.generateConversation({ ...request, modelId: selection.modelId })) {
-            if (this.live.get(selection.connectionId) !== live || !live.ready)
-                throw new ModelRuntimeFailure('Connection changed during generation', 'connection-unavailable');
-            if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
-            yield event.type === 'complete' ? { ...event, provenance: { connectionId: connection.id,
-                modelId: event.actualModelId ?? model.id, providerId: connection.providerId,
-                modelLabel: event.actualModelId ?? model.label } } : event;
+        try {
+            for await (const event of live.runtime.generateConversation({ ...request, modelId: selection.modelId })) {
+                if (this.live.get(selection.connectionId) !== live || !live.ready)
+                    throw new ModelRuntimeFailure('Connection changed during generation', 'connection-unavailable');
+                if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
+                yield event.type === 'complete' ? { ...event, provenance: { connectionId: connection.id,
+                    modelId: event.actualModelId ?? model.id, providerId: connection.providerId,
+                    modelLabel: event.actualModelId ?? model.label } } : event;
+            }
+        } catch (error) {
+            for (const listener of this.executionListeners) listener(selection.connectionId, error);
+            throw error;
         }
     }
 }

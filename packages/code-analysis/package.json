@@ -1,6 +1,6 @@
 {
   "name": "@dope/code-analysis",
-  "version": "0.7.17",
+  "version": "0.7.18",
   "private": true,
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -8,6 +8,6 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@dope/software-map": "0.7.17"
+    "@dope/software-map": "0.7.18"
   }
 }
