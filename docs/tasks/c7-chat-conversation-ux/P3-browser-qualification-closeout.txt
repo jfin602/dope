@@ -1,0 +1,100 @@
+TASK: Correction 7 / P3 — Chat conversation UX browser qualification and closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- Required unchanged project version: `0.7.13`.
+
+GOAL
+
+Qualify the exact P1+P2 candidate once with the major automated and direct GUI evidence, then close c7-chat-conversation-ux Green or Not Green.
+
+PREFLIGHT
+
+Read BOOT.md, AGENTS.md, ADR 0025 c7 amendment, correction README/assessment/plan, P1/P2 results, and retained P12/P13 evidence.
+
+Require P1/P2 Green, exact 0.7.13, and a clean intended candidate.
+
+AUTOMATED T3 GATE
+
+Run once:
+- npm run check;
+- node --test test/unit/chat-composer.test.ts if that file is still outside npm run check;
+- npm run codex:phase:validate -- c7-chat-conversation-ux;
+- git diff --check;
+- exact package/internal-reference/no-root-package-lock checks.
+
+Do not add package/AppImage qualification unless this correction unexpectedly changed packaging/runtime substrate.
+
+DIRECT BROWSER EVIDENCE
+
+Use a disposable real project workspace. Preserve the source reference.
+
+1. Persistent shell
+- Open a Chat with enough turns to scroll.
+- Verify Back/title/settings remain visible.
+- Verify composer remains visible.
+- Verify transcript alone scrolls.
+- Repeat enough in right, center, and bottom placements to prove layout is placement-safe.
+
+2. Transcript readability + Markdown
+- Verify developer turns are right-aligned colored bubbles without visible repetitive You labels.
+- Verify assistant turns are neutral/unboxed without repetitive Assistant labels.
+- Exercise representative Markdown: heading, list, emphasis, inline code, fenced code, link, blockquote, table.
+- Verify raw HTML/script-like content does not execute.
+- Verify answer text dominates and normal metadata is compact.
+- Verify failed/cancelled/interrupted state is still clear.
+
+3. Composer
+- Verify text area and bottom control row read as one composer surface.
+- Exercise context controls, one behavior action, model selector, Send and Cancel/Retry enough to prove prior semantics remain reachable.
+- Confirm no silent model fallback behavior remains unchanged.
+
+4. Scroll-follow
+- Start a streaming response while at bottom and confirm follow.
+- During another streaming response, scroll upward and confirm the UI does not yank back down.
+- Verify jump-to-latest appears/works and following resumes.
+
+5. Chat color organization
+- Create several Chats and verify valid stable palette indicators in Select Chat.
+- Change one Chat color in settings and confirm selector marker + existing/new developer bubbles use it.
+- Rename and move that Chat; color stays.
+- Reload/restart; color stays.
+- Exercise a controlled pre-color persisted Chat fixture and verify deterministic migration preserves transcript/settings/order and becomes durable/idempotent.
+
+6. Regression boundaries
+- Confirm provider/model provenance still appears on assistant execution detail.
+- Confirm per-turn explicit model choice remains authoritative.
+- Confirm Chat context actions still work.
+- Confirm no canonical Project Mind/Architecture/Planning state is changed merely by presentation/color activity.
+
+TINY FIX ALLOWANCE
+
+One bounded P3 presentation-only repair is allowed for spacing, sticky/flex sizing, contrast, Markdown CSS, metadata density, focus preservation, or jump-to-latest behavior. Add/update the narrow regression and rerun only invalidated evidence.
+
+Do not use P3 for Chat schema/persistence redesign, model/runtime/context changes, provider fallback, or Phase 7B/7C work.
+
+CLOSEOUT
+
+Write `docs/tasks/c7-chat-conversation-ux/closeout.md` and update this correction README.
+
+Record:
+- exact candidate SHA;
+- P1/P2 result identities;
+- automated T3 gate;
+- shell/placement evidence;
+- transcript/Markdown/security evidence;
+- composer evidence;
+- scroll-follow evidence;
+- color creation/edit/move/restart/migration evidence;
+- any tiny fix;
+- residual gaps;
+- final Green / Not Green decision.
+
+If Green, route to bounded Phase 7B/7C continuation planning. Preserve P12/P13 historical evidence unchanged.
+
+Do not commit; this is the manual/browser closeout handoff unless the repository workflow explicitly assigns closeout documentation commit ownership to the operator.
+
+FINAL RESPONSE
+
+Report exact candidate, automated gate, all direct GUI results, migration/restart result, any tiny fix, final decision, and Phase 7B/7C routing.
