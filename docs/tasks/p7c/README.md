@@ -26,4 +26,6 @@ Execute:
 
 The runner owns P1-P7 commits and stops for P8 direct qualification. After the coherent manual `0.7.31` checkpoint, resume with `--closeout` for P9.
 
+P3 resolves over the qualified 7B inventory without executing models. Its inventory has no known reasoning-capable signal, so `prefer-reasoning-capable` is neutral; it never infers reasoning support from a provider name. Other preferences use known locality and observed/known context within an entry only.
+
 P9 is the one later final Phase 7 closeout required by the Phase 7 plan. A Green P9 may close Product Phase 7; it does not create Phase 8 implementation prompts.

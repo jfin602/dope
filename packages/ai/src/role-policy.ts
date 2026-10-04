@@ -1,4 +1,5 @@
-import type { AIConnectionId, AIModel } from './index';
+import { findEligibleModels, parseAIRegistrySnapshot } from './index';
+import type { AIConnectionId, AIConnectionObservation, AIEligibilityQuery, AIModel, AIRegistrySnapshot } from './index';
 
 export const AI_ROLE_POLICY_VERSION = 1 as const;
 export const AI_ROLE_IDS = Object.freeze(['interactive', 'deep-reasoning', 'background', 'software-map', 'coding-agent'] as const);
@@ -74,6 +75,7 @@ export interface RoutingProvenance {
 export interface AIRoleResolveRequest {
     readonly roleId: AIRoleId;
     readonly requestHard: AIRoleHardConstraints;
+    readonly hostedProjectDataAuthorized: boolean;
 }
 export interface AIRoleResolution {
     readonly roleId: AIRoleId;
@@ -83,6 +85,31 @@ export interface AIRoleResolution {
     readonly effectiveHard: AIRoleHardConstraints;
     readonly preferredTarget?: AIRoleTarget;
     readonly selectedTarget?: AIRoleTarget;
+    readonly candidates: readonly AIRoleCandidate[];
+    readonly excluded: readonly AIRoleExclusion[];
+}
+export interface AIRoleCandidate {
+    readonly target: AIRoleTarget;
+    readonly entryIndex: number;
+    readonly effectiveHard: AIRoleHardConstraints;
+}
+export type AIRoleIneligibilityReason = 'missing-connection' | 'missing-model' | 'disabled' |
+    'unavailable' | 'locality' | 'hosted-egress-not-authorized' | 'capability-unknown' |
+    'hosted-egress-forbidden' | 'capability-unsupported' | 'context-unknown' | 'context-too-small' |
+    'already-candidate' | 'fallback-disabled' | 'contradictory-constraints' | 'no-matching-model';
+export interface AIRoleExclusion {
+    readonly entryIndex: number;
+    readonly target?: AIRoleTarget;
+    readonly reason: AIRoleIneligibilityReason;
+}
+export interface AIRoleResolverInput {
+    readonly policy: AIRolePolicySnapshot;
+    readonly inventory: AIRegistrySnapshot;
+    readonly roleId: AIRoleId;
+    readonly requestHard: AIRoleHardConstraints;
+    readonly observations: readonly AIConnectionObservation[];
+    readonly loadedLocalModels: NonNullable<AIEligibilityQuery['loadedLocalModels']>;
+    readonly hostedProjectDataAuthorized: boolean;
 }
 export interface AIRoleExecuteRequest {
     readonly resolution: AIRoleResolution;
@@ -212,6 +239,102 @@ export function parseAIRolePolicyMutationRequest(value: unknown): AIRolePolicyMu
     const item = object(value, ['version', 'expectedRevision', 'policy']);
     if (item.version !== AI_ROLE_POLICY_VERSION) throw new Error('Invalid AI role policy version');
     return { version: AI_ROLE_POLICY_VERSION, expectedRevision: integer(item.expectedRevision), policy: parseAIRolePolicy(item.policy) };
+}
+
+export function resolveAIRole(input: AIRoleResolverInput): AIRoleResolution {
+    const snapshot = parseAIRolePolicySnapshot(input.policy);
+    const inventory = parseAIRegistrySnapshot(input.inventory);
+    const policy = snapshot.policies.find(item => item.roleId === parseAIRoleId(input.roleId))!;
+    if (typeof input.hostedProjectDataAuthorized !== 'boolean') throw new Error('Explicit hosted egress authorization required');
+    const effectiveHard = intersectAIRoleHardConstraints(intersectAIRoleHardConstraints(policy.hard, input.requestHard),
+        { ...policy.hard, enabledOnly: true, usableOnly: true });
+    const candidates: AIRoleCandidate[] = [];
+    const excluded: AIRoleExclusion[] = [];
+    let preferredTarget: AIRoleTarget | undefined = policy.preferred?.type === 'exact' ? policy.preferred.target : undefined;
+    const entries = policy.preferred === undefined ? [] : [policy.preferred, ...policy.fallbacks];
+    const seen = new Set<string>();
+    const identity = (target: AIRoleTarget): string => JSON.stringify([target.connectionId, target.modelId]);
+    const context = (model: AIModel): number | undefined => model.locality === 'local' ?
+        input.loadedLocalModels.find(item => item.connectionId === model.connectionId &&
+            item.providerModelKey === model.providerModelKey)?.contextWindowTokens : model.limits.contextWindowTokens.value;
+    const reason = (target: AIRoleTarget, hard: AIRoleHardConstraints): AIRoleIneligibilityReason | undefined => {
+        const connection = inventory.connections.find(item => item.id === target.connectionId);
+        if (!connection) return 'missing-connection';
+        const model = inventory.models.find(item => item.connectionId === target.connectionId &&
+            item.providerModelKey === target.modelId);
+        if (!model) return 'missing-model';
+        if (connection.lifecycle !== 'enabled' || !model.enabled || model.state === 'disabled') return 'disabled';
+        if ((hard.locality === 'local-only' && model.locality !== 'local') ||
+            (hard.locality === 'hosted-only' && model.locality !== 'hosted')) return 'locality';
+        if (model.locality === 'hosted' && hard.hostedProjectData === 'forbidden') return 'hosted-egress-forbidden';
+        if (model.locality === 'hosted' && !input.hostedProjectDataAuthorized) return 'hosted-egress-not-authorized';
+        for (const capability of hard.requiredCapabilities) {
+            const known = model.capabilities[capability];
+            if (known.value !== true) return known.source === 'unknown' ? 'capability-unknown' : 'capability-unsupported';
+        }
+        const capacity = context(model);
+        if (hard.minimumKnownContextTokens !== undefined && (!Number.isSafeInteger(capacity) || !capacity))
+            return 'context-unknown';
+        if (hard.minimumKnownContextTokens !== undefined && capacity! < hard.minimumKnownContextTokens)
+            return 'context-too-small';
+        if (model.state !== 'ready' || input.observations.find(item => item.connectionId === connection.id)?.health !== 'ready' ||
+            (model.locality === 'local' && (!Number.isSafeInteger(capacity) || !capacity || capacity < 1)))
+            return 'unavailable';
+        return undefined;
+    };
+    for (const [entryIndex, entry] of entries.entries()) {
+        if (entryIndex > 0 && !policy.allowFallback) {
+            excluded.push({ entryIndex, ...(entry.type === 'exact' ? { target: entry.target } : {}), reason: 'fallback-disabled' });
+            continue;
+        }
+        let hard = effectiveHard;
+        if (entry.type === 'constraints') {
+            try { hard = intersectAIRoleHardConstraints(effectiveHard, entry.hard); }
+            catch { excluded.push({ entryIndex, reason: 'contradictory-constraints' }); continue; }
+        }
+        const query: AIEligibilityQuery = { capabilities: hard.requiredCapabilities,
+            locality: hard.locality === 'any' ? undefined : hard.locality === 'local-only' ? 'local' : 'hosted',
+            minimumKnownContextTokens: hard.minimumKnownContextTokens === undefined ? undefined :
+                Math.max(1, hard.minimumKnownContextTokens), enabledOnly: true, usableOnly: true,
+            loadedLocalModels: input.loadedLocalModels };
+        const eligible = new Set(findEligibleModels(inventory, query, input.observations).models.map(model =>
+            identity({ connectionId: model.connectionId, modelId: model.providerModelKey })));
+        const models = entry.type === 'exact' ? [entry.target] : inventory.models.map(model =>
+            ({ connectionId: model.connectionId, modelId: model.providerModelKey }));
+        if (!models.length) excluded.push({ entryIndex, reason: 'no-matching-model' });
+        const preferences = entry.type === 'constraints' ? [...new Set([...policy.preferences, ...entry.preferences])] : [];
+        const ordered = models.filter(target => eligible.has(identity(target)) && !reason(target, hard));
+        ordered.sort((left, right) => {
+            const first = inventory.models.find(model => model.connectionId === left.connectionId && model.providerModelKey === left.modelId)!;
+            const second = inventory.models.find(model => model.connectionId === right.connectionId && model.providerModelKey === right.modelId)!;
+            for (const preference of preferences) {
+                const value = (model: AIModel): number => preference === 'prefer-local' ? Number(model.locality === 'local') :
+                    preference === 'prefer-hosted' ? Number(model.locality === 'hosted') :
+                        preference === 'prefer-larger-context' ? context(model) ?? -1 : 0;
+                const difference = value(second) - value(first);
+                if (difference) return difference;
+            }
+            return left.connectionId < right.connectionId ? -1 : left.connectionId > right.connectionId ? 1 :
+                left.modelId < right.modelId ? -1 : left.modelId > right.modelId ? 1 : 0;
+        });
+        if (entryIndex === 0 && entry.type === 'constraints') preferredTarget = ordered[0];
+        for (const target of models) {
+            const failure = reason(target, hard);
+            if (failure) excluded.push({ entryIndex, target, reason: failure });
+        }
+        for (const target of ordered) {
+            const key = identity(target);
+            if (seen.has(key)) excluded.push({ entryIndex, target, reason: 'already-candidate' });
+            else { seen.add(key); candidates.push({ target, entryIndex, effectiveHard: hard }); }
+        }
+    }
+    const selected = candidates[0];
+    const health: AIRoleHealth = !policy.preferred ? 'needs-configuration' : selected ?
+        selected.entryIndex === 0 ? 'ready' : 'using-fallback' :
+            excluded.some(item => item.reason !== 'unavailable' && item.reason !== 'fallback-disabled') ? 'broken' : 'unavailable';
+    return { roleId: policy.roleId, policyRevision: snapshot.revision, health,
+        policyAllowsFallback: policy.allowFallback, effectiveHard, ...(preferredTarget ? { preferredTarget } : {}),
+        ...(selected ? { selectedTarget: selected.target } : {}), candidates, excluded };
 }
 
 function freeze<Value>(value: Value): Value {
