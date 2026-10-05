@@ -7,10 +7,24 @@ import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import type { AIRoleHardConstraints, RoutingProvenance } from '@dope/ai';
 import { ModelConnectionsRegistry } from './model-connections';
 import { ChatContextComposer } from './chat-context-composer';
+import { ChatProjectGrounder, type GroundingResult } from './chat-project-grounder';
 import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
     locality: 'any', enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
+
+function evidenceIdentity(ref: { kind: string; id: string; contentHash?: string; projectId?: string; generation?: number }) {
+    return [ref.kind, ref.id, ref.contentHash, ref.projectId, ref.generation];
+}
+function sameAutomaticEvidence(grounding: GroundingResult | undefined, saved: ChatUserMessage['contextRefs']): boolean {
+    return JSON.stringify((grounding?.blocks ?? []).map(block => evidenceIdentity(block.ref))) ===
+        JSON.stringify(saved.filter(ref => ref.origin === 'automatic').map(evidenceIdentity));
+}
+function sameRefIdentities(next: ChatUserMessage['contextRefs'], initial: ChatUserMessage['contextRefs']): boolean {
+    return next.length === initial.length && next.every((ref, index) =>
+        JSON.stringify(evidenceIdentity(ref)) === JSON.stringify(evidenceIdentity(initial[index])) &&
+        (ref.origin !== 'automatic' || !initial[index].includedBytes || !!ref.includedBytes));
+}
 
 /** One RPC connection owns one project handle; the repository shares durable state and events. */
 export class ChatBackend implements ChatService {
@@ -24,7 +38,7 @@ export class ChatBackend implements ChatService {
 
     constructor(private readonly repository: ChatRepository, client: ChatClient,
         private readonly models?: ModelConnectionsRegistry, private readonly composer?: ChatContextComposer,
-        private readonly routing?: AIRoleRoutingService) {
+        private readonly routing?: AIRoleRoutingService, private readonly grounder?: ChatProjectGrounder) {
         this.unlisten = repository.onChange((root, event) => {
             if (!this.disposed && root === this.root && this.handle)
                 client.notifyChatEvent({ ...event, projectHandle: this.handle });
@@ -72,7 +86,8 @@ export class ChatBackend implements ChatService {
         const model = (await this.models.list()).connections.find(item => item.id === request.selectedModel.connectionId)
             ?.models.find(item => item.id === request.selectedModel.modelId && item.usable);
         if (!model) throw new Error('Selected model unavailable');
-        const composed = await this.composer.compose(root, chat, request.content, request.context, model.capabilities);
+        const grounding = await this.grounder?.ground(root, request.content);
+        const composed = await this.composer.compose(root, chat, request.content, request.context, model.capabilities, grounding);
         return { refs: composed.refs, diagnostics: composed.diagnostics,
             usedTokens: composed.usedTokens, budgetTokens: composed.budgetTokens };
     }
@@ -131,11 +146,15 @@ export class ChatBackend implements ChatService {
             if (!model.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
                 throw new ModelRuntimeFailure('Selected model does not support the saved reasoning control', 'unsupported-capability');
         if (!this.composer) throw new Error('Context composer unavailable');
-        const composed = await this.composer.compose(root, contextChat, content, request.context ?? [], model.capabilities);
-        const preview: ChatContextPreview = { refs: composed.refs, diagnostics: composed.diagnostics,
+        const grounding = await this.grounder?.ground(root, content);
+        const priorRefs = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs : undefined;
+        if (priorRefs && !sameAutomaticEvidence(grounding, priorRefs))
+            throw new Error('Retry project evidence changed or is stale; start a fresh turn');
+        const composed = await this.composer.compose(root, contextChat, content, request.context ?? [], model.capabilities, grounding);
+        let preview: ChatContextPreview = { refs: composed.refs, diagnostics: composed.diagnostics,
             usedTokens: composed.usedTokens, budgetTokens: composed.budgetTokens };
-        if (retryIndex >= 0 && JSON.stringify(preview.refs) !==
-            JSON.stringify((chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs))
+        if (priorRefs && JSON.stringify(preview.refs.filter(ref => ref.origin !== 'automatic')) !==
+            JSON.stringify(priorRefs.filter(ref => ref.origin !== 'automatic')))
             throw new Error('Retry context changed or missing; reattach the original context');
         if (this.turns.has(request.chatId)) throw new Error('Chat turn already active');
         const key = request.chatId;
@@ -153,6 +172,7 @@ export class ChatBackend implements ChatService {
             throw new Error('Chat mutation conflict');
         };
         let assistant: ChatAssistantMessage | undefined;
+        const userMessageId = retryIndex >= 0 ? chat.messages[retryIndex - 1].id : randomUUID();
         let output = '';
         let actual: ChatModelProvenance = { schemaVersion: 1, connectionId: connection.id,
             modelId: model.id, providerId: connection.providerId, modelLabel: model.label };
@@ -161,7 +181,7 @@ export class ChatBackend implements ChatService {
             if (this.pendingCancel.get(key) === request.leaseToken) abort.abort();
             if (!request.retryMessageId) {
                 if (!request.content?.trim()) throw new Error('Enter a message before sending');
-                const user: ChatUserMessage = { schemaVersion: 1, id: randomUUID(), role: 'user',
+                const user: ChatUserMessage = { schemaVersion: 1, id: userMessageId, role: 'user',
                     createdAt: new Date().toISOString(), content: request.content.trim(), contextRefs: preview.refs };
                 await mutate({ type: 'append-user', chatId: key, message: user });
             }
@@ -186,9 +206,15 @@ export class ChatBackend implements ChatService {
                     for (const [id, value] of Object.entries(controls))
                         if (!resolvedModel.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
                             throw new ModelRuntimeFailure('Role target does not support the saved reasoning control', 'unsupported-capability');
-                    const next = await this.composer!.compose(root, contextChat, content, request.context ?? [], resolvedModel.capabilities);
-                    if (JSON.stringify(next.refs) !== JSON.stringify(preview.refs))
-                        throw new Error('Fallback context differs; choose a model explicitly');
+                    const next = await this.composer!.compose(root, contextChat, content, request.context ?? [], resolvedModel.capabilities, grounding);
+                    if (!sameRefIdentities(next.refs, preview.refs))
+                        throw new Error('Fallback evidence differs; choose a model explicitly');
+                    if (JSON.stringify(next.refs) !== JSON.stringify(preview.refs)) {
+                        await mutate({ type: 'revise-user-context', chatId: key, userMessageId,
+                            assistantMessageId: assistant!.id, contextRefs: next.refs });
+                    }
+                    preview = { refs: next.refs, diagnostics: next.diagnostics,
+                        usedTokens: next.usedTokens, budgetTokens: next.budgetTokens };
                     return { messages: next.messages, controls, signal: abort.signal,
                         ...(chat.settings.context.reservedOutputTokens > 0 ?
                             { maxOutputTokens: chat.settings.context.reservedOutputTokens } : {}) };

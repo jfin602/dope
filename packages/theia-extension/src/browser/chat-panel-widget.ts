@@ -478,17 +478,22 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const meta = document.createElement('small'); meta.className = 'dope-chat-message-meta';
             meta.append(time);
             if (message.role === 'user' && message.contextRefs.length) {
-                const refs = document.createElement('details');
-                const summary = document.createElement('summary');
-                summary.textContent = ` · ${message.contextRefs.length} context sources`;
-                refs.append(summary);
-                const list = document.createElement('ul');
-                for (const ref of message.contextRefs) {
-                    const entry = document.createElement('li');
-                    entry.textContent = `${ref.kind}: ${ref.label} (${ref.id})`;
-                    list.append(entry);
+                for (const [origin, label] of [['manual', 'Context'], ['automatic', 'Auto context']] as const) {
+                    const sources = message.contextRefs.filter(ref => (ref.origin ?? 'manual') === origin);
+                    if (!sources.length) continue;
+                    const refs = document.createElement('details');
+                    const summary = document.createElement('summary');
+                    summary.textContent = ` · ${label} (${sources.length})`;
+                    refs.append(summary);
+                    const list = document.createElement('ul');
+                    for (const ref of sources) {
+                        const entry = document.createElement('li');
+                        entry.textContent = `${ref.kind}: ${ref.label}${origin === 'manual' ? ` (${ref.id})` : ''}` +
+                            `${ref.includedBytes === 0 ? ' (omitted by budget)' : ''}`;
+                        list.append(entry);
+                    }
+                    refs.append(list); meta.append(refs);
                 }
-                refs.append(list); meta.append(refs);
             }
             if (message.role === 'assistant') {
                 const execution = message.execution;

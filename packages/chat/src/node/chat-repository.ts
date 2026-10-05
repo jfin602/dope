@@ -360,6 +360,18 @@ export class ChatRepository {
                     if (message.role !== 'user') throw new Error('Expected user message');
                     update(c => ({ ...c, lastInteractedAt: now, messages: [...c.messages, message] })); break;
                 }
+                case 'revise-user-context': update(c => {
+                    const at = c.messages.findIndex(message => message.id === operation.assistantMessageId);
+                    const userAt = c.messages.findIndex(message => message.id === operation.userMessageId);
+                    const assistant = c.messages[at], user = c.messages[userAt];
+                    if (at <= userAt || assistant?.role !== 'assistant' || assistant.execution.status !== 'pending' ||
+                        user?.role !== 'user' || c.messages.slice(userAt + 1, at).some(message =>
+                            message.role !== 'assistant' || !['failed', 'cancelled'].includes(message.execution.status)))
+                        throw new Error('User context can only change before assistant execution');
+                    const messages = [...c.messages];
+                    messages[userAt] = parseChatMessage({ ...user, contextRefs: operation.contextRefs });
+                    return { ...c, messages };
+                }); break;
                 case 'begin-assistant': {
                     const message = parseChatMessage(operation.message);
                     if (message.role !== 'assistant' || message.execution.status !== 'pending') throw new Error('Expected pending assistant');

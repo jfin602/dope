@@ -42,6 +42,9 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
     assert.match(widget, /safeChatLink\(link\.getAttribute\('href'\)!/);
     assert.match(module, /CoreMarkdownRenderer/);
     assert.match(widget, /dope-chat-message-meta/);
+    assert.match(widget, /\['automatic', 'Auto context'\]/);
+    assert.match(widget, /ref\.includedBytes === 0 \? ' \(omitted by budget\)'/);
+    assert.doesNotMatch(widget, /ref\.label}\s*\(\$\{ref\.id\}\)/);
     assert.match(widget, /dope-chat-message-alert/);
     assert.match(widget, /Scroll to latest/);
 });

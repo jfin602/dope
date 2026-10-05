@@ -18,6 +18,7 @@ import { ChatRepository } from '@dope/chat/lib/node';
 import { chatServicePath, type ChatClient } from '@dope/chat/lib/service';
 import { ChatBackend } from './chat-backend';
 import { ChatContextComposer } from './chat-context-composer';
+import { ChatProjectGrounder } from './chat-project-grounder';
 import { modelConnectionsServicePath, type ModelConnectionsClient } from '@dope/contracts/lib/model-connections-service';
 import { ModelConnectionsBackend, ModelConnectionsRegistry } from './model-connections';
 import { aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
@@ -40,6 +41,8 @@ export default new ContainerModule(bind => {
     bind(ChatContextComposer).toDynamicValue(context => new ChatContextComposer(
         context.container.get(ProjectMindStore), context.container.get(PlanningStore),
         context.container.get(SoftwareMapIndex), context.container.get(ChatRepository))).inSingletonScope();
+    bind(ChatProjectGrounder).toDynamicValue(context => new ChatProjectGrounder(
+        context.container.get(SoftwareMapIndex))).inSingletonScope();
     bind(AIRegistryStore).toSelf().inSingletonScope();
     bind(AIRolePolicyStore).toSelf().inSingletonScope();
     bind(AIRoleRoutingService).toDynamicValue(context => new AIRoleRoutingService(
@@ -75,7 +78,7 @@ export default new ContainerModule(bind => {
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<ChatClient>(`${chatServicePath}/:panelId`, client => {
         const backend = new ChatBackend(context.container.get(ChatRepository), client,
             context.container.get(ModelConnectionsRegistry), context.container.get(ChatContextComposer),
-            context.container.get(AIRoleRoutingService));
+            context.container.get(AIRoleRoutingService), context.container.get(ChatProjectGrounder));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

@@ -11,6 +11,9 @@ import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-inde
 import { ProjectMindStore } from '@dope/project-intelligence/lib/node/project-mind-store';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { ChatRepository } from '@dope/chat/lib/node';
+import type { GroundingResult } from './chat-project-grounder';
+
+export const GROUNDED_CHAT_INSTRUCTION = 'Project facts are verified only when supported by the supplied project evidence. Do not claim to have read, listed, searched, or inspected project state beyond that evidence. State what is missing or unknown.';
 
 export interface ComposedChatContext { messages: ConversationMessage[]; refs: ChatContextRef[];
     diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }
@@ -122,7 +125,7 @@ export class ChatContextComposer {
     }
 
     async compose(root: string, chat: Chat, content: string, selections: ChatContextSelection[],
-        capabilities: ConversationModelCapabilities): Promise<ComposedChatContext> {
+        capabilities: ConversationModelCapabilities, grounding?: GroundingResult): Promise<ComposedChatContext> {
         if (!content.trim()) throw new Error('Enter a message before sending');
         if (!Array.isArray(selections) || selections.length > 20) throw new Error('Too many context selections');
         const policy = chat.settings.context;
@@ -130,10 +133,13 @@ export class ChatContextComposer {
         const budgetTokens = Math.min(availableChatContextTokens(policy, window), capabilities.maxInputTokens ?? Infinity);
         // ponytail: no conversational adapter exposes a tokenizer; UTF-8 bytes / 3 is a conservative deterministic estimate.
         const tokens = (value: string) => Math.ceil(Buffer.byteLength(value, 'utf8') / 3) + 4;
-        let remaining = budgetTokens - tokens(content);
+        let remaining = budgetTokens - tokens(content) - (grounding ? tokens(GROUNDED_CHAT_INSTRUCTION) : 0);
         if (remaining < 0) throw new Error('Message exceeds selected model input budget');
         const refs: ChatContextRef[] = [], diagnostics: ChatContextDiagnostic[] = [], attached: string[] = [];
-        const wrapperTokens = selections.length ? tokens('\n\nProject context:\n') : 0;
+        if (grounding) for (const diagnostic of grounding.diagnostics)
+            diagnostics.push({ kind: diagnostic.kind === 'truncated' ? 'truncated' : 'omitted',
+                source: diagnostic.source, message: diagnostic.message });
+        const wrapperTokens = selections.length || grounding?.blocks.length ? tokens('\n\nProject context:\n') : 0;
         remaining -= wrapperTokens;
         for (const source of selections) {
             const resolved = await this.resolve(root, chat, source);
@@ -161,8 +167,24 @@ export class ChatContextComposer {
                 ...(source.kind === 'selection' ? { start: source.start, end: source.end } : {}),
                 ...(source.kind === 'saved-chat' ? { messageId: source.messageId } : {}) });
         }
+        for (const block of grounding?.blocks ?? []) {
+            const source = `${block.ref.kind}:${block.ref.id}`;
+            const prefix = `[Auto ${block.ref.kind}: ${block.ref.label}]\n`;
+            let evidence = block.text;
+            if (tokens(prefix) >= remaining) evidence = '';
+            else if (tokens(prefix + evidence) > remaining) {
+                const bytes = Math.max(0, (remaining - tokens(prefix) - 4) * 3);
+                evidence = Buffer.from(evidence, 'utf8').subarray(0, bytes).toString('utf8').replace(/\uFFFD+$/, '');
+                diagnostics.push({ kind: 'truncated', source, message: 'Auto context truncated to input budget' });
+            }
+            if (!evidence) diagnostics.push({ kind: 'omitted', source, message: 'Auto context omitted by input budget' });
+            const cost = evidence ? tokens(prefix + evidence) : 0;
+            if (evidence) { remaining -= cost; attached.push(prefix + evidence); }
+            // The original evidence hash and identity survive budget changes and retry.
+            refs.push({ ...block.ref, estimatedTokens: cost, includedBytes: Buffer.byteLength(evidence, 'utf8') });
+        }
         if (!attached.length) remaining += wrapperTokens;
-        const messages: ConversationMessage[] = [];
+        const messages: ConversationMessage[] = grounding ? [{ role: 'system', content: GROUNDED_CHAT_INSTRUCTION }] : [];
         if (policy.history === 'recent') {
             const history = chat.messages.filter(item => item.role === 'user' || item.execution.status === 'complete');
             for (const item of history.reverse()) {

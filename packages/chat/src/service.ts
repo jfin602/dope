@@ -17,6 +17,8 @@ export type ChatOperation =
     | { type: 'set-settings'; chatId: ChatId; settings: ChatSettings }
     | { type: 'set-color'; chatId: ChatId; color: ChatColor }
     | { type: 'append-user'; chatId: ChatId; message: ChatMessage & { role: 'user' } }
+    | { type: 'revise-user-context'; chatId: ChatId; userMessageId: string; assistantMessageId: string;
+        contextRefs: ChatContextRef[] }
     | { type: 'begin-assistant'; chatId: ChatId; message: ChatMessage & { role: 'assistant' } }
     | { type: 'start-assistant'; chatId: ChatId; messageId: string; actualModel: ChatModelProvenance;
         routingProvenance?: RoutingProvenance }
