@@ -42,7 +42,7 @@ test('run, event, provenance and evidence records reject unbounded and private f
     assert.deepEqual(parseAgentRun(run()), run());
     const running = { ...run(), status: 'running', startedAt: now,
         provenance: { version: 1, connectionId: 'conn', modelId: 'model',
-            runtimeKind: 'hosted', adapterId: 'codex', policyRevision: 3 },
+            providerId: 'codex', runtimeKind: 'hosted', adapterId: 'codex', policyRevision: 3 },
         basis: { head: 'abcdef', clean: true }, changedFiles: ['src/a.ts'],
         validationResults: [{ version: 1, kind: 'test', label: 'unit', status: 'passed' }],
         changeSummary: { version: 1, filesChanged: 1, insertions: 2, deletions: 1,
@@ -73,7 +73,7 @@ test('state transition table is exact and terminal statuses cannot resume', () =
     const legal = new Set(['pending>running', 'running>blocked', 'running>cancelling',
         'running>failed', 'running>completed', 'running>interrupted',
         'blocked>running', 'blocked>cancelling', 'blocked>failed', 'blocked>interrupted',
-        'cancelling>cancelled', 'cancelling>interrupted', 'cancelling>failed']);
+        'cancelling>cancelled', 'cancelling>interrupted', 'cancelling>failed', 'cancelling>completed']);
     for (const from of RUN_STATUSES) for (const to of RUN_STATUSES) {
         const expected = legal.has(`${from}>${to}`);
         assert.equal(canTransitionAgentRun(from, to), expected, `${from} -> ${to}`);

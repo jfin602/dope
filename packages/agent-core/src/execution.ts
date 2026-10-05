@@ -19,6 +19,8 @@ export interface AgentExecutionHandle {
     readonly recovery?: { adapterId: string; handle: string };
     readonly result: Promise<void>;
     cancel(): Promise<void>;
+    /** Emergency termination of this run's dedicated process when interruption fails. */
+    terminate?(): void;
 }
 
 export interface AgentExecutionAdapter {

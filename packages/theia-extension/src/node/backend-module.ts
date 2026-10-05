@@ -39,11 +39,22 @@ import { CodexAuthBackend } from './codex-auth-backend';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { agentRuntimeServicePath, type AgentRuntimeClient } from '@dope/contracts/lib/agent-runtime-service';
 import { AgentRuntimeBackend } from './agent-runtime-backend';
+import { AgentExecutionRuntime } from './agent-execution-runtime';
+import { CodexAgentExecutionAdapter } from './codex-agent-execution';
 
 export default new ContainerModule(bind => {
     bind(NoteStore).toSelf().inSingletonScope();
     bind(ProjectMindStore).toSelf().inSingletonScope();
     bind(AgentStore).toSelf().inSingletonScope();
+    bind(CodexAgentExecutionAdapter).toDynamicValue(context => new CodexAgentExecutionAdapter(
+        context.container.get(CodexAuthManager))).inSingletonScope();
+    bind(AgentExecutionRuntime).toDynamicValue(context => new AgentExecutionRuntime(
+        context.container.get(AgentStore), context.container.get(AIRoleRoutingService),
+        context.container.get(AIInventoryController),
+        new Map([['codex', context.container.get(CodexAgentExecutionAdapter)]]))).inSingletonScope();
+    bind(BackendApplicationContribution).toDynamicValue(context => ({
+        onStop: () => context.container.get(AgentExecutionRuntime).dispose()
+    })).inSingletonScope();
     bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
     bind(PlanningStore).toSelf().inSingletonScope();
     bind(ChatRepository).toSelf().inSingletonScope();
@@ -116,7 +127,8 @@ export default new ContainerModule(bind => {
         return backend;
     })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<AgentRuntimeClient>(agentRuntimeServicePath, client => {
-        const backend = new AgentRuntimeBackend(context.container.get(AgentStore), client);
+        const backend = new AgentRuntimeBackend(context.container.get(AgentStore), client,
+            context.container.get(AgentExecutionRuntime));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

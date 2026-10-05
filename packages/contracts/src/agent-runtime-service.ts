@@ -1,4 +1,4 @@
-import type { AgentRun, AgentRunEvent, AgentTask } from '@dope/agent-core';
+import type { AgentRun, AgentRunEvent, AgentTask, ExecutionGrant } from '@dope/agent-core';
 
 export const agentRuntimeServicePath = '/services/dope/agent-runtime';
 export const AgentRuntimeService = Symbol('AgentRuntimeService');
@@ -10,12 +10,12 @@ export interface AgentRuntimeService {
     createTask(projectHandle: string, task: AgentTask): Promise<AgentTask>;
     readTask(projectHandle: string, taskId: string): Promise<AgentTask | undefined>;
     listTasks(projectHandle: string): Promise<AgentTask[]>;
-    createRun(projectHandle: string, run: AgentRun): Promise<AgentRun>;
     readRun(projectHandle: string, runId: string): Promise<AgentRun | undefined>;
     listRuns(projectHandle: string): Promise<AgentRun[]>;
-    updateRun(projectHandle: string, expected: AgentRun, next: AgentRun): Promise<AgentRun>;
-    appendEvent(projectHandle: string, event: AgentRunEvent): Promise<AgentRunEvent>;
     readEvents(projectHandle: string, runId: string, afterSequence: number, limit: number): Promise<{
         events: AgentRunEvent[]; nextSequence: number; hasMore: boolean;
     }>;
+    start(projectHandle: string, folderUri: string, taskId: string, grant: ExecutionGrant,
+        hostedProjectDataAuthorized: boolean): Promise<AgentRun>;
+    stop(projectHandle: string, runId: string): Promise<AgentRun>;
 }

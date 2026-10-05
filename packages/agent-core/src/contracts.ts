@@ -23,7 +23,7 @@ export type AgentRunStatus = 'pending' | 'running' | 'blocked' | 'cancelling' |
     'cancelled' | 'failed' | 'completed' | 'interrupted';
 export interface ExecutionProvenance {
     version: typeof AGENT_SCHEMA_VERSION; connectionId: string; modelId: string;
-    runtimeKind: 'local' | 'hosted'; adapterId: string; policyRevision?: number;
+    providerId: string; runtimeKind: 'local' | 'hosted'; adapterId: string; policyRevision?: number;
 }
 export interface ValidationResult {
     version: typeof AGENT_SCHEMA_VERSION; kind: ValidationTarget['kind']; label: string;
@@ -156,9 +156,9 @@ export function parseAgentTask(value: unknown): AgentTask {
         origin: parsedOrigin, ...(x.planningMapId === undefined ? {} : { planningMapId: id(x.planningMapId) }) });
 }
 export function parseExecutionProvenance(value: unknown): ExecutionProvenance {
-    const x = record(value, ['version', 'connectionId', 'modelId', 'runtimeKind', 'adapterId', 'policyRevision']);
+    const x = record(value, ['version', 'connectionId', 'modelId', 'providerId', 'runtimeKind', 'adapterId', 'policyRevision']);
     return freeze({ version: version(x.version), connectionId: id(x.connectionId), modelId: modelKey(x.modelId),
-        runtimeKind: select(x.runtimeKind, ['local', 'hosted'] as const), adapterId: id(x.adapterId),
+        providerId: id(x.providerId), runtimeKind: select(x.runtimeKind, ['local', 'hosted'] as const), adapterId: id(x.adapterId),
         ...(x.policyRevision === undefined ? {} : { policyRevision: integer(x.policyRevision) }) });
 }
 export function parseValidationResult(value: unknown): ValidationResult {

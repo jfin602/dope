@@ -116,12 +116,16 @@ export class RpcProcess {
         this.child.stdin.end();
         if (this.killGroup && this.child.pid || this.child.exitCode === null) {
             this.signal('SIGTERM');
+            if (this.killGroup && this.child.pid) {
+                // Mutation runs own a dedicated process group. Kill descendants before Stop returns.
+                this.signal('SIGKILL');
+                return;
+            }
             const timer = setTimeout(() => {
-                if (this.killGroup && this.child.pid) this.signal('SIGKILL');
-                else if (this.child.exitCode === null) this.signal('SIGKILL');
+                if (this.child.exitCode === null) this.signal('SIGKILL');
             }, 1000);
             timer.unref();
-            if (!this.killGroup || !this.child.pid) this.child.once('exit', () => clearTimeout(timer));
+            this.child.once('exit', () => clearTimeout(timer));
         }
     }
 }

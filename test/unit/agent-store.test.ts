@@ -64,7 +64,7 @@ test('project isolation, canonical attach, handle isolation and move/copy portab
     const handle = (await one.attach(pathToFileURL(a).href)).projectHandle;
     const other = (await two.attach(pathToFileURL(b).href)).projectHandle;
     await one.createTask(handle, task());
-    await one.createRun(handle, run());
+    await store.createRun(a, run());
     assert.deepEqual(changed, ['task-1', 'run-1']);
     assert.deepEqual(await two.listTasks(other), []);
     assert.throws(() => two.readTask(handle, 'task-1'), /handle/);

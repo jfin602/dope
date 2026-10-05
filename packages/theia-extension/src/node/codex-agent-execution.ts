@@ -213,7 +213,7 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
             });
             result.catch(() => {});
             return { recovery: { adapterId: ADAPTER_ID, handle: threadId }, result,
-                cancel: running.cancel };
+                cancel: running.cancel, terminate: () => currentRpc.stop() };
         } catch (error) {
             rpc?.stop(); if (rpc) this.active.delete(rpc);
             await rm(home, { recursive: true, force: true }).catch(() => {});
