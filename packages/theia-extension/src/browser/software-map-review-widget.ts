@@ -262,6 +262,7 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         const accept = this.button(pending ? 'Accept Architecture' : 'Save Architecture', () => {
             if (pending) void this.controller.accept(); else void this.saveAccepted();
         });
+        accept.classList.add('dope-action-primary');
         const issues = reviewDiagnostics(draft);
         validation.append(this.element('p', issues.length ? `${pending ? 'Acceptance' : 'Save'} blocked: ${issues.length} blocker${issues.length === 1 ? '' : 's'}` :
             pending ? 'Review ready for acceptance.' : this.acceptedMessage || (JSON.stringify(draft) === this.acceptedBaseline ? 'No unsaved changes.' : 'Unsaved Architecture changes.')));
@@ -272,7 +273,9 @@ export class SoftwareMapReviewWidget extends BaseWidget {
         }
         accept.disabled = !!issues.length || (pending ? this.controller.setupBusy : this.acceptedBusy || JSON.stringify(draft) === this.acceptedBaseline);
         const actions = this.element('div'); actions.className = 'dope-smap-review-actions';
-        actions.append(this.button('Add System', () => this.add('system')), validation, accept);
+        const addSystem = this.button('Add System', () => this.add('system'));
+        addSystem.classList.add('dope-action-outline');
+        actions.append(addSystem, validation, accept);
         if (pending) actions.append(this.button('Decline review', () => void this.controller.cancel()));
         else {
             const discard = this.button('Discard changes / Reload Architecture', () => void this.loadAccepted());
@@ -351,6 +354,7 @@ export class SoftwareMapReviewWidget extends BaseWidget {
                     current: () => !this.isDisposed && request === this.acceptedRequest && draft === this.acceptedDraft &&
                         fingerprint === this.acceptedFingerprint && this.controller.workspace === this.acceptedWorkspace });
             });
+            search.classList.add('dope-action-primary');
             search.disabled = !!this.controller.refinementBusyKey || this.controller.setupBusy;
             target.append(search);
             if (this.controller.refinementBusyKey === node.proposalKey) target.append(this.element('p', 'Searching this branch…'));

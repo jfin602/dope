@@ -114,15 +114,19 @@ export class AICenterWidget extends BaseWidget {
         const layout = element('div', undefined, 'dope-ai-layout');
         const list = element('nav'); list.setAttribute('aria-label', 'AI connections');
         const listTitle = element('h3', 'Connections');
-        list.append(listTitle, button('Add Connection', () => this.select(undefined), controller.busy));
+        const addConnection = button('Add Connection', () => this.select(undefined), controller.busy);
+        addConnection.classList.add('dope-action-primary');
+        list.append(listTitle, addConnection);
         const state = controller.state;
         for (const connection of state?.registry.connections ?? []) {
             const row = button('', () => this.select(connection.id), controller.busy);
             row.className = 'dope-ai-connection';
             row.setAttribute('aria-current', String(controller.selectedId === connection.id));
             const provider = controller.setups.find(setup => setup.type === connection.config.type);
-            row.append(element('strong', `${provider?.locality ?? 'AI'} · ${connection.config.type === 'local' ? connection.config.runtime : connection.config.type} · ${connection.alias}`),
-                element('span', `${connectionHealth(state!, connection)} · ${usableModelSummary(controller.usableModels, connection)}`));
+            const health = connectionHealth(state!, connection);
+            const healthSummary = element('span', `${health} · ${usableModelSummary(controller.usableModels, connection)}`);
+            if (health === 'ready') healthSummary.classList.add('dope-ai-ready');
+            row.append(element('strong', `${provider?.locality ?? 'AI'} · ${connection.config.type === 'local' ? connection.config.runtime : connection.config.type} · ${connection.alias}`), healthSummary);
             list.append(row);
         }
         const detail = element('section'); detail.setAttribute('aria-label', 'Connection details');
@@ -211,7 +215,9 @@ export class AICenterWidget extends BaseWidget {
         this.renderHard(detail, draft.hard, hard => this.roles.edit(policy => ({ ...policy, hard })));
         detail.append(element('h4', 'Soft preferences'));
         this.renderPreferences(detail, draft.preferences, preferences => this.roles.edit(policy => ({ ...policy, preferences })));
-        detail.append(button('Save role', () => void this.roles.save(), this.roles.busy || !this.roles.dirty));
+        const saveRole = button('Save role', () => void this.roles.save(), this.roles.busy || !this.roles.dirty);
+        saveRole.classList.add('dope-action-primary');
+        detail.append(saveRole);
         detail.append(button('Discard edits', () => this.roles.select(draft.roleId), this.roles.busy || !this.roles.dirty));
         this.renderEligibility(detail, draft);
     }
@@ -468,6 +474,7 @@ export class AICenterWidget extends BaseWidget {
         };
         select.addEventListener('change', renderFields); renderFields();
         const save = element('button', existing ? 'Save Connection' : 'Add Connection'); save.type = 'submit';
+        save.classList.add('dope-action-primary');
         form.append(save);
         form.addEventListener('submit', event => {
             event.preventDefault();

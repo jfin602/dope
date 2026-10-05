@@ -9,17 +9,24 @@
 .dope-ai-layout nav { border-right: 1px solid var(--theia-widget-border, var(--theia-input-border)); padding-right: 12px; }
 .dope-ai-layout section { min-width: 0; overflow-wrap: anywhere; }
 .dope-ai-center button { cursor: pointer; color: var(--theia-button-foreground); background: var(--theia-button-background); border: 1px solid var(--theia-button-background); padding: 5px 9px; margin: 3px; }
+.dope-ai-center button:hover:not(:disabled) { background: var(--theia-button-hoverBackground); }
 .dope-ai-center button:disabled { opacity: .55; cursor: default; }
 .dope-ai-center :is(button, input, select):focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-ai-connection { display: flex; flex-direction: column; width: 100%; text-align: left; white-space: normal; overflow-wrap: anywhere; }
-.dope-ai-connection[aria-current="true"] { outline: 2px solid var(--theia-focusBorder); }
+.dope-ai-center button.dope-ai-connection { color: var(--theia-foreground); background: var(--theia-button-secondaryBackground, var(--theia-button-background)); border: 1px solid var(--theia-widget-border, var(--theia-input-border)); border-left: 3px solid transparent; }
+.dope-ai-center button.dope-ai-connection[aria-current="true"] { color: var(--theia-foreground); background: var(--theia-list-activeSelectionBackground); border-left-color: var(--theia-focusBorder); font-weight: 600; }
+.dope-ai-center button.dope-ai-connection:hover:not(:disabled) { background: var(--theia-button-secondaryHoverBackground, var(--theia-button-hoverBackground)); }
+.dope-ai-center button.dope-ai-connection[aria-current="true"]:hover:not(:disabled) { background: var(--theia-list-activeSelectionBackground); }
 .dope-ai-connection span { font-weight: normal; }
+.dope-ai-connection .dope-ai-ready { color: var(--dope-ready, var(--theia-testing-iconPassed, var(--theia-foreground))); }
 .dope-ai-center label { display: block; margin: 10px 0; }
 .dope-ai-center :is(input, select) { display: block; box-sizing: border-box; max-width: 100%; width: min(100%, 32rem); margin: 4px 0; padding: 5px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border, var(--theia-focusBorder)); }
 .dope-ai-actions { display: flex; flex-wrap: wrap; margin: 12px 0; }
 .dope-ai-model { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
 .dope-ai-tabs { display: flex; flex-wrap: wrap; margin-bottom: 16px; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
-.dope-ai-tabs button[aria-current="true"] { outline: 2px solid var(--theia-focusBorder); font-weight: 700; }
+.dope-ai-center .dope-ai-tabs button { margin: 0 3px 0 0; color: var(--theia-foreground); background: transparent; border-color: transparent; border-bottom: 2px solid transparent; }
+.dope-ai-center .dope-ai-tabs button[aria-current="true"] { color: var(--theia-foreground); background: transparent; border-bottom-color: var(--dope-action-background, var(--theia-tab-activeBorder)); font-weight: 700; }
+.dope-ai-center .dope-ai-tabs button:hover:not(:disabled) { background: var(--theia-button-secondaryHoverBackground, var(--theia-button-hoverBackground)); }
 .dope-ai-role-editor h4 { margin: 16px 0 8px; }
 .dope-ai-role-authority { border-left: 3px solid var(--theia-focusBorder); padding-left: 10px; color: var(--theia-descriptionForeground); }
 .dope-ai-role-entry { padding: 8px; margin-bottom: 8px; border: 1px solid var(--theia-widget-border, var(--theia-input-border)); }
@@ -67,7 +74,7 @@
 .dope-mind-view ul { list-style: none; padding: 0; max-height: 14rem; overflow: auto; }
 .dope-mind-view li { margin: 3px 0; }
 .dope-mind-view li button { text-align: left; width: 100%; }
-.dope-mind-view button[aria-current="true"] { border-color: var(--theia-focusBorder); }
+.dope-mind-view button[aria-current="true"] { background: var(--theia-list-activeSelectionBackground); border-left: 3px solid var(--theia-focusBorder); }
 .dope-mind-view small { color: var(--theia-descriptionForeground); }
 
 .dope-smap-view { overflow: auto; height: 100%; padding: 16px; background: var(--theia-editor-background); }
@@ -86,7 +93,7 @@
 .dope-smap-view small { color: var(--theia-descriptionForeground); overflow-wrap: anywhere; }
 .dope-smap-view .dope-smap-fact { border-left: 2px solid var(--theia-focusBorder); padding-left: 8px; margin: 8px 0; }
 .dope-smap-view button:disabled { opacity: .6; cursor: default; }
-.dope-smap-view button[aria-current="true"] { border-color: var(--theia-focusBorder); }
+.dope-smap-view button[aria-current="true"] { background: var(--theia-list-activeSelectionBackground); border-left: 3px solid var(--theia-focusBorder); }
 .dope-smap-view summary { cursor: pointer; }
 .dope-smap-view .dope-smap-edge { border-left: 2px solid var(--theia-focusBorder); padding-left: 8px; margin: 8px 0; }
 .dope-smap-view p { overflow-wrap: anywhere; }
@@ -102,7 +109,7 @@
 .dope-smap-review-layout nav ul { list-style: none; padding-left: 18px; }
 .dope-smap-review-layout nav > ul { padding-left: 0; }
 .dope-smap-review-layout nav button { width: 100%; color: var(--theia-foreground); background: transparent; border-color: transparent; }
-.dope-smap-review-layout nav button[aria-current="true"] { background: var(--theia-list-activeSelectionBackground); color: var(--theia-list-activeSelectionForeground); }
+.dope-smap-review-layout nav button[aria-current="true"] { background: var(--theia-list-activeSelectionBackground); color: var(--theia-list-activeSelectionForeground); border-left: 3px solid var(--dope-action-background, var(--theia-focusBorder)); }
 .dope-smap-review-system { font-weight: 700; }
 .dope-smap-review-subsystem { font-weight: 600; }
 .dope-smap-review-layout section { min-width: 0; margin: 0; padding: 0 8px; border: 0; }
@@ -241,13 +248,28 @@
     --dope-primary: #FF7A1A;
     --dope-highlight: #FFB15C;
     --dope-deep: #C75100;
+    --dope-secondary: #4FA3A5;
+    --dope-secondary-dark: #34787A;
+    --dope-secondary-soft: #78BFC0;
+    --dope-control-background: #303030;
+    --dope-control-hover: #3B3B3B;
+    --dope-control-border: #484848;
+    --dope-selected-background: #303536;
+    --dope-action-background: var(--dope-primary);
+    --dope-action-hover: var(--dope-highlight);
+    --dope-action-pressed: var(--dope-deep);
+    --dope-ready: var(--dope-secondary-soft);
 
     --theia-editor-background: var(--dope-background);
-    --theia-focusBorder: var(--dope-primary);
-    --theia-button-background: var(--dope-primary);
-    --theia-button-foreground: var(--dope-background);
-    --theia-button-hoverBackground: var(--dope-highlight);
-    --theia-button-separator: var(--dope-deep);
+    --theia-focusBorder: var(--dope-secondary);
+    --theia-input-border: var(--dope-control-border);
+    --theia-widget-border: var(--dope-control-border);
+    --theia-button-background: var(--dope-control-background);
+    --theia-button-foreground: var(--theia-foreground);
+    --theia-button-hoverBackground: var(--dope-control-hover);
+    --theia-button-secondaryBackground: var(--dope-control-background);
+    --theia-button-secondaryHoverBackground: var(--dope-control-hover);
+    --theia-button-separator: var(--dope-control-border);
     --theia-textLink-foreground: var(--dope-highlight);
     --theia-textLink-activeForeground: var(--dope-primary);
     --theia-activityBar-foreground: var(--dope-primary);
@@ -256,11 +278,11 @@
     --theia-activityBarBadge-foreground: var(--dope-background);
     --theia-tab-activeBorderTop: var(--dope-primary);
     --theia-tab-activeBorder: var(--dope-primary);
-    --theia-list-activeSelectionBackground: color-mix(in srgb, var(--dope-primary) 35%, var(--dope-background));
+    --theia-list-activeSelectionBackground: var(--dope-selected-background);
     --theia-list-activeSelectionForeground: var(--theia-foreground);
-    --theia-list-focusOutline: var(--dope-primary);
-    --theia-editor-selectionBackground: color-mix(in srgb, var(--dope-primary) 35%, transparent);
-    --theia-editor-inactiveSelectionBackground: color-mix(in srgb, var(--dope-primary) 20%, transparent);
+    --theia-list-focusOutline: var(--dope-secondary);
+    --theia-editor-selectionBackground: color-mix(in srgb, var(--dope-secondary) 35%, transparent);
+    --theia-editor-inactiveSelectionBackground: color-mix(in srgb, var(--dope-secondary) 20%, transparent);
     --theia-editor-findMatchHighlightBackground: color-mix(in srgb, var(--dope-highlight) 30%, transparent);
     --theia-badge-background: var(--dope-primary);
     --theia-badge-foreground: var(--dope-background);
@@ -269,14 +291,14 @@
     --theia-statusBar-foreground: var(--dope-primary);
     --theia-statusBar-noFolderBackground: var(--dope-background);
     --theia-statusBar-noFolderForeground: var(--dope-primary);
-    --theia-menu-selectionBackground: var(--dope-deep);
-    --theia-quickInputList-focusBackground: var(--dope-deep);
-    --theia-editorActionList-focusBackground: var(--dope-deep);
-    --theia-editorSuggestWidget-selectedBackground: var(--dope-deep);
-    --theia-inputOption-activeBorder: var(--dope-primary);
-    --theia-radio-activeBorder: var(--dope-primary);
-    --theia-sash-activeBorder: var(--dope-primary);
-    --theia-sash-hoverBorder: var(--dope-highlight);
+    --theia-menu-selectionBackground: var(--dope-selected-background);
+    --theia-quickInputList-focusBackground: var(--dope-selected-background);
+    --theia-editorActionList-focusBackground: var(--dope-selected-background);
+    --theia-editorSuggestWidget-selectedBackground: var(--dope-selected-background);
+    --theia-inputOption-activeBorder: var(--dope-secondary);
+    --theia-radio-activeBorder: var(--dope-secondary);
+    --theia-sash-activeBorder: var(--dope-secondary-dark);
+    --theia-sash-hoverBorder: var(--dope-secondary);
     --theia-pickerGroup-foreground: var(--dope-highlight);
     --theia-notificationLink-foreground: var(--dope-highlight);
     --theia-list-highlightForeground: var(--dope-highlight);
@@ -285,7 +307,7 @@
     --theia-editorSuggestWidget-focusHighlightForeground: var(--dope-highlight);
     --theia-editorHoverWidget-highlightForeground: var(--dope-highlight);
     --theia-editorLink-activeForeground: var(--dope-highlight);
-    --theia-selection-background: var(--dope-deep);
+    --theia-selection-background: var(--dope-selected-background);
 }
 
 /* Paint Theia's existing gap without changing item geometry or click targets. */
@@ -318,10 +340,31 @@
 
 .dope-dark .theia-button:active,
 .dope-dark .dope-mind-view button:active,
-.dope-dark .dope-smap-view button:active {
-    background: var(--dope-deep);
-    color: var(--dope-background);
+.dope-dark .dope-smap-view button:active,
+.dope-dark .dope-ai-center button:active {
+    background: var(--dope-control-hover);
+    color: var(--theia-foreground);
 }
+
+/* Intentional work-starting actions opt into brand color; utilities inherit neutral controls. */
+:is(.dope-ai-center, .dope-smap-view) button.dope-action-primary {
+    color: var(--dope-background, var(--theia-button-foreground));
+    background: var(--dope-action-background, var(--theia-button-background));
+    border-color: var(--dope-action-background, var(--theia-button-background));
+}
+:is(.dope-ai-center, .dope-smap-view) button.dope-action-primary:hover:not(:disabled) {
+    background: var(--dope-action-hover, var(--theia-button-hoverBackground));
+}
+.dope-dark :is(.dope-ai-center, .dope-smap-view) button.dope-action-primary:active:not(:disabled) {
+    color: var(--dope-background);
+    background: var(--dope-action-pressed);
+}
+.dope-smap-view button.dope-action-outline {
+    color: var(--dope-action-background, var(--theia-button-foreground));
+    background: transparent;
+    border-color: var(--dope-action-background, var(--theia-button-background));
+}
+.dope-smap-view button.dope-action-outline:hover:not(:disabled) { background: var(--theia-button-hoverBackground); }
 
 .dope-smap-view .dope-smap-compact-actions { border: 0; margin: 0; }
 .dope-smap-view .dope-smap-control-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
@@ -432,7 +475,7 @@
 .dope-chat-color-picker .dope-chat-color-choice { width: 25px; height: 25px; overflow: hidden; text-indent: -999px; border-radius: 50%; background: var(--chat-color); padding: 0; }
 .dope-chat-color-choice[aria-pressed="true"] { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-chat-composer { box-sizing: border-box; display: grid; gap: 6px; flex: none; width: calc(100% - 24px); max-width: 940px; max-height: 60%; min-width: 0; overflow-y: auto; margin: 8px auto 12px; padding: 8px; border: 1px solid var(--theia-widget-border); border-radius: 12px; background: var(--theia-input-background); }
-.dope-chat-composer:focus-within { border-color: var(--theia-focusBorder); }
+.dope-chat-composer:focus-within { border-color: var(--theia-focusBorder); box-shadow: 0 0 0 1px var(--theia-focusBorder); }
 .dope-chat-composer textarea { box-sizing: border-box; width: 100%; resize: none; min-height: 2em; max-height: min(160px, 30vh); overflow-y: auto; border: 0; outline: 0; color: var(--theia-input-foreground); background: transparent; }
 .dope-chat-composer-toolbar { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .dope-chat-composer-toolbar select { min-width: 0; max-width: min(65%, 240px); margin-left: auto; }

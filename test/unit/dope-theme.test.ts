@@ -49,24 +49,33 @@ test('locked palette is centralized and widget rules consume semantic tokens', (
   const themeCss = css.slice(themeStart);
   for (const [name, color] of Object.entries({
     background: '#1F1F1F', primary: '#FF7A1A', highlight: '#FFB15C', deep: '#C75100',
+    secondary: '#4FA3A5', 'secondary-dark': '#34787A', 'secondary-soft': '#78BFC0',
   })) {
     assert.match(themeCss, new RegExp(`--dope-${name}: ${color};`, 'i'));
     assert.equal(css.match(new RegExp(color, 'gi'))?.length, 1, color);
   }
-  assert.doesNotMatch(widgetCss, /#[0-9a-f]{6}\b|--dope-/i);
+  assert.doesNotMatch(widgetCss, /#[0-9a-f]{6}\b/i);
   for (const token of ['editor-background', 'focusBorder', 'button-background', 'button-hoverBackground',
     'textLink-foreground', 'activityBar-activeBorder', 'tab-activeBorder', 'list-activeSelectionBackground',
     'editor-selectionBackground', 'badge-background', 'progressBar-background']) {
     assert.match(themeCss, new RegExp(`--theia-${token}:`));
   }
-  for (const token of ['menu-selectionBackground', 'quickInputList-focusBackground',
-    'editorActionList-focusBackground', 'editorSuggestWidget-selectedBackground', 'inputOption-activeBorder',
-    'radio-activeBorder', 'sash-activeBorder', 'sash-hoverBorder', 'pickerGroup-foreground',
+  for (const token of ['pickerGroup-foreground',
     'notificationLink-foreground', 'list-highlightForeground', 'list-focusHighlightForeground',
     'editorSuggestWidget-highlightForeground', 'editorSuggestWidget-focusHighlightForeground',
     'editorHoverWidget-highlightForeground', 'editorLink-activeForeground', 'selection-background']) {
-    assert.match(themeCss, new RegExp(`--theia-${token}: var\\(--dope-(?:primary|highlight|deep)\\);`));
+    assert.match(themeCss, new RegExp(`--theia-${token}: var\\(--dope-(?:primary|highlight|deep|selected-background)\\);`));
   }
+  for (const token of ['focusBorder', 'list-focusOutline', 'inputOption-activeBorder', 'radio-activeBorder']) {
+    assert.match(themeCss, new RegExp(`--theia-${token}: var\\(--dope-secondary\\);`));
+  }
+  for (const token of ['menu-selectionBackground', 'quickInputList-focusBackground',
+    'editorActionList-focusBackground', 'editorSuggestWidget-selectedBackground']) {
+    assert.match(themeCss, new RegExp(`--theia-${token}: var\\(--dope-selected-background\\);`));
+  }
+  assert.match(themeCss, /--theia-button-background: var\(--dope-control-background\);/);
+  assert.match(themeCss, /--theia-input-border: var\(--dope-control-border\);/);
+  assert.match(themeCss, /button\.dope-action-primary/);
   for (const app of ['browser', 'electron']) {
     const manifest = JSON.parse(readFileSync(join(root, `apps/${app}/package.json`), 'utf8'));
     assert.equal(manifest.theia.frontend.config.defaultTheme, 'dope-dark');
