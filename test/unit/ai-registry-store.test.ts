@@ -59,6 +59,36 @@ test('one-time legacy migration preserves identity and preference; copies and pr
     });
 });
 
+test('existing v1 registry bytes remain readable and acquire optional Codex fields only on explicit mutation', async () => {
+    await temporary(async directory => {
+        const unknown = { source: 'unknown' };
+        const original = { version: 1, revision: 4, connections: [create('existing', 0).mutation.connection], models: [{
+            version: 1, connectionId: 'existing', providerModelKey: 'retired', label: 'Retired', locality: 'hosted',
+            enabled: false, state: 'unavailable', capabilities: { conversationalText: { source: 'configured', value: true },
+                streaming: unknown, structuredOutput: unknown, toolCalling: unknown },
+            limits: { contextWindowTokens: unknown, maxInputTokens: unknown, maxOutputTokens: unknown }
+        }] };
+        const bytes = JSON.stringify(original);
+        await writeFile(join(directory, 'ai-registry.json'), bytes);
+        const store = new AIRegistryStore(directory);
+        try {
+            assert.deepEqual(await store.read(), original);
+            assert.equal(await readFile(store.path, 'utf8'), bytes);
+            const result = await store.mutate({ version: 1, expectedRevision: 4, mutation: {
+                type: 'create-connection', connection: { version: 1, id: 'codex', alias: 'Work', lifecycle: 'enabled',
+                    config: { type: 'codex', runtime: 'app-server' }, codexAccount: { status: 'signed-out' } } } });
+            assert.equal(result.revision, 5);
+            assert.equal(result.connections[0].id, 'existing');
+            assert.deepEqual(result.models, original.models);
+            assert.deepEqual((await new AIRegistryStore(directory).read()).connections, result.connections);
+            await assert.rejects(store.mutate({ version: 1, expectedRevision: 5, mutation: {
+                type: 'create-connection', connection: { version: 1, id: 'bad', alias: 'Bad', lifecycle: 'enabled',
+                    config: { type: 'codex', runtime: 'app-server' }, refreshToken: 'secret' } as never } }), /Invalid/);
+            assert.equal((await store.read()).revision, 5);
+        } finally { store.dispose(); }
+    });
+});
+
 test('atomic reopen, expected revision, two processes and external events', async () => {
     await temporary(async directory => {
         const first = new AIRegistryStore(directory), second = new AIRegistryStore(directory);

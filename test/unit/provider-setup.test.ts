@@ -23,7 +23,14 @@ const json = (value: unknown) => new Response(JSON.stringify(value), { headers: 
 
 test('provider setup validates identity and safe fields without conflating OpenAI with compatible endpoints', async () => {
     const descriptions = providerSetupDescriptions();
-    assert.deepEqual(descriptions.map(item => item.type), ['local', 'openai', 'openai-compatible', 'gemini']);
+    assert.deepEqual(descriptions.map(item => item.type), ['local', 'openai', 'openai-compatible', 'gemini', 'codex']);
+    assert.deepEqual(descriptions.find(item => item.type === 'codex'), {
+        type: 'codex', connectionClass: 'agent-runtime', fields: ['runtime', 'preferredModelId'], locality: 'hosted',
+        credential: 'managed', credentialSources: [], modelSource: 'discovered' });
+    assert.equal(descriptions.find(item => item.type === 'openai')?.connectionClass, 'model-runtime');
+    assert.equal(providerSetup(connection('codex', { type: 'codex', runtime: 'app-server' })).defaultConfig, undefined);
+    assert.throws(() => providerSetup(connection('codex', { type: 'codex', runtime: 'app-server' })).createRuntime(
+        connection('codex', { type: 'codex', runtime: 'app-server' })), /agent execution adapter/);
     assert.equal(descriptions.find(item => item.type === 'local')?.locality, 'local');
     assert.equal(descriptions.find(item => item.type === 'openai-compatible')?.modelSource, 'configured-or-discovered');
     assert.throws(() => providerSetup(connection('x', { type: 'openai', endpoint: 'https://other.example/v1' })),
@@ -52,7 +59,7 @@ test('duplicate-looking connections keep independent IDs; detection is explicit 
         await store.mutate(mutation(connection('two', local), 1));
         const backend = new AIRegistryBackend(store, { notifyAIRegistryChanged() {} }, async () =>
             ({ type: 'local', runtime: 'lm-studio', endpoint: 'http://127.0.0.1:1234/v1' }));
-        assert.equal((await backend.providerSetups()).length, 4);
+        assert.equal((await backend.providerSetups()).length, 5);
         assert.equal((await store.read()).connections[0].config.type, 'local');
         await assert.rejects(backend.useDetectedRuntime('one', 1), /Stale/);
         const updated = await backend.useDetectedRuntime('one', 2);

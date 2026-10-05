@@ -170,3 +170,15 @@ test('observed readiness, eligibility exclusions and caller consent do not chang
     assert.throws(() => resolveAIRole({ ...base, hostedProjectDataAuthorized: undefined as unknown as boolean }),
         /authorization/);
 });
+
+test('agentExecution hard constraint excludes unknown and generic conversational models', () => {
+    const agent = { ...model('agent'), capabilities: { ...model('agent').capabilities,
+        conversationalText: unknown, agentExecution: known(true) } };
+    const base = input(constraints({ requiredCapabilities: ['agentExecution'] }), [],
+        [model('ordinary'), agent, { ...model('unknown'), capabilities: { ...model('unknown').capabilities, agentExecution: unknown } }]);
+    const result = resolveAIRole({ ...base, roleId: 'coding-agent', requestHard: {
+        ...hard(), requiredCapabilities: ['agentExecution'] } });
+    assert.deepEqual(targets(result), ['agent']);
+    assert.equal(result.excluded.find(item => item.target?.connectionId === 'ordinary')?.reason, 'capability-unknown');
+    assert.equal(result.excluded.find(item => item.target?.connectionId === 'unknown')?.reason, 'capability-unknown');
+});

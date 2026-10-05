@@ -36,6 +36,38 @@ test('strict versioned parsing rejects unknown fields, secrets, malformed refere
         mutation: { type: 'remove-connection', id: 'one' } }));
 });
 
+test('Codex identity and non-secret account projection stay separate from API keys and model inference', () => {
+    const codex: AIConnection = { version: 1, id: 'codex-one', alias: 'Work', lifecycle: 'enabled',
+        config: { type: 'codex', runtime: 'app-server' },
+        codexAccount: { status: 'signed-in', accountLabel: 'Work account', accountId: 'subject-1',
+            clientId: 'issued-client', planUsage: 'available' } };
+    assert.deepEqual(parseAIConnection(codex), codex);
+    assert.throws(() => parseAIConnection({ ...codex, credential: { source: 'secure', status: 'available' } }));
+    assert.throws(() => parseAIConnection({ ...codex, codexAccount: { status: 'signed-in', accessToken: 'secret' } }));
+    assert.throws(() => parseAIConnection({ ...codex, config: { type: 'codex', runtime: 'app-server', endpoint: 'http://localhost' } }));
+    assert.throws(() => parseAIRegistryMutation({ type: 'update-connection', id: codex.id, changes: {
+        alias: 'Work', lifecycle: 'enabled', config: codex.config, credential: { source: 'secure', status: 'available' } } }));
+    assert.throws(() => parseAIConnection({ ...connection(), codexAccount: { status: 'signed-in' } }));
+    const agent: AIModel = { ...model('codex-one'), locality: 'hosted',
+        capabilities: { ...model().capabilities, conversationalText: unknown, agentExecution: { source: 'adapter-known', value: true } } };
+    const registry: AIRegistrySnapshot = { version: 1, revision: 0,
+        connections: [codex, { ...codex, id: 'codex-two', alias: 'Personal' }], models: [agent] };
+    assert.deepEqual(findEligibleModels(registry, { capabilities: ['agentExecution'] }).models, [agent]);
+    assert.deepEqual(findEligibleModels(registry, { capabilities: ['conversationalText'] }).models, []);
+    assert.throws(() => parseAIRegistrySnapshot({ ...registry, models: [{ ...agent, locality: 'local' }] }));
+    assert.throws(() => applyAIRegistryMutation(registry, { version: 1, expectedRevision: 0, mutation: {
+        type: 'upsert-model', model: { ...agent, locality: 'local' } } }));
+    assert.deepEqual(findEligibleModels({ ...registry, models: [{ ...agent, capabilities: { ...agent.capabilities, agentExecution: unknown } }] },
+        { capabilities: ['agentExecution'] }).models, []);
+    assert.deepEqual(findEligibleModels(snapshot(), { capabilities: ['agentExecution'] }).models, []);
+    const updated = applyAIRegistryMutation(registry, { version: 1, expectedRevision: 0, mutation: {
+        type: 'update-connection', id: 'codex-one', changes: { alias: 'Renamed', lifecycle: 'enabled',
+            config: codex.config, codexAccount: { status: 'signed-out' } } } });
+    assert.equal(updated.connections[0].id, codex.id);
+    assert.equal(updated.connections[1].id, 'codex-two');
+    assert.equal(updated.connections[0].codexAccount?.status, 'signed-out');
+});
+
 test('connection IDs survive config, alias, credential and lifecycle changes; removal is explicit', () => {
     const before = snapshot();
     const updated = applyAIRegistryMutation(before, { version: 1, expectedRevision: 0, mutation: { type: 'update-connection', id: 'one',

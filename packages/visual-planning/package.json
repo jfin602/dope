@@ -1,6 +1,6 @@
 {
   "name": "@dope/visual-planning",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": true,
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -8,6 +8,6 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@dope/software-map": "0.8.0"
+    "@dope/software-map": "0.8.1"
   }
 }

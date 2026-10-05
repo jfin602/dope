@@ -172,7 +172,7 @@ function unique<Value extends string>(value: unknown, choices: readonly Value[])
     if (new Set(parsed).size !== parsed.length) throw new Error('Duplicate AI role value');
     return parsed;
 }
-const capabilities = ['conversationalText', 'streaming', 'structuredOutput', 'toolCalling'] as const;
+const capabilities = ['conversationalText', 'streaming', 'structuredOutput', 'toolCalling', 'agentExecution'] as const;
 const preferences = ['prefer-local', 'prefer-hosted', 'prefer-reasoning-capable', 'prefer-larger-context'] as const;
 
 export function parseAIRoleId(value: unknown): AIRoleId { return select(value, AI_ROLE_IDS); }
@@ -284,7 +284,7 @@ export function resolveAIRole(input: AIRoleResolverInput): AIRoleResolution {
         if (model.locality === 'hosted' && !input.hostedProjectDataAuthorized) return 'hosted-egress-not-authorized';
         for (const capability of hard.requiredCapabilities) {
             const known = model.capabilities[capability];
-            if (known.value !== true) return known.source === 'unknown' ? 'capability-unknown' : 'capability-unsupported';
+            if (known?.value !== true) return !known || known.source === 'unknown' ? 'capability-unknown' : 'capability-unsupported';
         }
         const capacity = context(model);
         if (hard.minimumKnownContextTokens !== undefined && (!Number.isSafeInteger(capacity) || !capacity))

@@ -19,7 +19,7 @@ function inventoryModel(connection: AIConnection, model: ConnectedModel): AIMode
         label: model.label, locality, enabled: true, state: 'ready',
         capabilities: { conversationalText: coldLocal ? unknown<boolean>() : known(model.capabilities.conversationalText, 'adapter-known'),
             streaming: coldLocal ? unknown<boolean>() : known(model.capabilities.streaming, 'adapter-known'),
-            structuredOutput: unknown(), toolCalling: unknown() },
+            structuredOutput: unknown(), toolCalling: unknown(), agentExecution: unknown() },
         limits: { contextWindowTokens: locality === 'local' ? unknown() :
             known(model.capabilities.contextWindowTokens, 'adapter-known'),
             maxInputTokens: known(model.capabilities.maxInputTokens, 'adapter-known'),

@@ -18,9 +18,10 @@ export interface AIInventoryState {
 
 export interface ProviderSetupDescription {
     type: AIConnectionConfig['type'];
+    connectionClass: 'model-runtime' | 'agent-runtime';
     fields: readonly ('endpoint' | 'runtime' | 'preferredModelId')[];
     locality: 'local' | 'hosted';
-    credential: 'required' | 'optional';
+    credential: 'required' | 'optional' | 'managed';
     credentialSources: readonly ('environment' | 'session' | 'secure')[];
     environmentVariable?: string;
     modelSource: 'configured' | 'discovered' | 'configured-or-discovered';
