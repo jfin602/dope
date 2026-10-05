@@ -46,6 +46,7 @@ export interface CodexProcessOptions {
     version?: (executable: string) => Promise<string>;
     fetcher?: typeof fetch;
     timeoutMs?: number;
+    turnTimeoutMs?: number;
     idleMs?: number;
 }
 
@@ -154,6 +155,7 @@ export class CodexAppServer {
     private readonly version: (executable: string) => Promise<string>;
     private readonly fetcher: typeof fetch;
     private readonly timeoutMs: number;
+    private readonly turnTimeoutMs: number;
     private readonly idleMs: number;
     private disposed = false;
 
@@ -165,6 +167,7 @@ export class CodexAppServer {
                 (error, stdout) => error ? reject(error) : resolve(stdout))));
         this.fetcher = options.fetcher ?? fetch;
         this.timeoutMs = options.timeoutMs ?? 8000;
+        this.turnTimeoutMs = options.turnTimeoutMs ?? 60_000;
         this.idleMs = options.idleMs ?? 60_000;
     }
     async resolveExecutable(): Promise<string> {
@@ -286,7 +289,7 @@ export class CodexAppServer {
             if (typeof turnId !== 'string') throw failure('Invalid Codex turn', 'invalid-json');
             if (completed && completedTurnId !== turnId) throw failure('Invalid Codex turn', 'invalid-json');
             await Promise.race([terminal, new Promise<never>((_, reject) => {
-                const timer = setTimeout(() => reject(failure('Codex turn timed out', 'transient-transport')), this.timeoutMs);
+                const timer = setTimeout(() => reject(failure('Codex turn timed out', 'transient-transport')), this.turnTimeoutMs);
                 terminal.finally(() => clearTimeout(timer)).catch(() => {});
             })]);
             return text;

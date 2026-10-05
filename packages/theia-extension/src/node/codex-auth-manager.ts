@@ -128,7 +128,8 @@ export class CodexAuthManager {
         await this.safeDirectory();
         const path = join(this.directory, `.codex-${name}.lock`);
         let acquired = false;
-        for (let attempt = 0; attempt < 200; attempt++) {
+        const attempts = name.startsWith('account-') ? 2400 : 200;
+        for (let attempt = 0; attempt < attempts; attempt++) {
             try {
                 await mkdir(path, { mode: 0o700 });
                 acquired = true;
@@ -210,13 +211,19 @@ export class CodexAuthManager {
         }));
     }
     private async http(endpoint: string, body?: URLSearchParams): Promise<Record<string, unknown>> {
+        const purpose = endpoint.endsWith('/oauth/token') ? 'token exchange' :
+            endpoint.endsWith('/openid-configuration') ? 'OIDC metadata' : 'JWKS';
         try {
             const response = await this.fetcher(endpoint, body ? { method: 'POST', redirect: 'error',
                 headers: { 'content-type': 'application/x-www-form-urlencoded' }, body } : { redirect: 'error' });
-            if (!response.ok) this.diagnostic(`identity HTTP ${response.status} at ${endpoint.endsWith('/oauth/token') ? 'token exchange' : endpoint.endsWith('/openid-configuration') ? 'OIDC metadata' : 'JWKS'}`);
+            if (!response.ok) this.diagnostic(`identity HTTP ${response.status} at ${purpose}`);
             if (!response.ok) throw failed(response.status === 400 || response.status === 401 ? 'authorization rejected' : 'identity service unavailable');
             return await response.json() as Record<string, unknown>;
-        } catch { throw failed('identity service unavailable'); }
+        } catch (error) {
+            const cause = error instanceof Error ? error.cause : undefined;
+            this.diagnostic(`${purpose} failed: exception=${error instanceof Error ? error.name : 'unknown'} cause=${cause instanceof Error ? cause.name : 'unknown'}`);
+            throw failed('identity service unavailable');
+        }
     }
     private async identity(token: string, clientId: string, nonce?: string): Promise<{ sub: string; email?: string }> {
         try {

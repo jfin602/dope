@@ -49,10 +49,12 @@ class FakeChild extends EventEmitter {
             if (this.scenario === 'timeout') return;
             this.send({ id: message.id, result: { turn: { id: 'turn-1', status: 'inProgress' } } });
             this.send({ method: 'item/agentMessage/delta', params: { threadId: 'thread-1', delta: 'OK' } });
-            this.send({ method: 'turn/completed', params: { threadId: 'thread-1',
+            const completed = { method: 'turn/completed', params: { threadId: 'thread-1',
                 turn: { id: 'turn-1', status: this.scenario === 'failed' || this.scenario === 'interrupted' ?
                     this.scenario : this.scenario === 'usage' ? 'failed' : 'completed',
-                ...(this.scenario === 'usage' ? { error: { code: 'subscription_sharing_usage_limit_exceeded' } } : {}) } } });
+                ...(this.scenario === 'usage' ? { error: { code: 'subscription_sharing_usage_limit_exceeded' } } : {}) } } };
+            if (this.scenario === 'slow-turn') setTimeout(() => this.send(completed), 70);
+            else this.send(completed);
         }
     }
 }
@@ -69,7 +71,7 @@ function fixture(scenario = 'completed') {
         assert.equal(connectionId, 'codex'); assert.equal(registrationId, 'account-1'); return token;
     } };
     const adapter = new CodexAppServer(auth as any, {
-        version: async () => 'codex-cli 0.100.0', timeoutMs: 35, idleMs: 100,
+        version: async () => 'codex-cli 0.100.0', timeoutMs: 35, turnTimeoutMs: 110, idleMs: 100,
         spawnChild: ((command: string, args: string[], options: any) => {
             spawns.push({ command, args, options });
             const child = new FakeChild(scenario);
@@ -128,6 +130,14 @@ test('failed, interrupted, death and timeout never pass Test Connection and term
             assert.ok(children[0].exitCode !== null);
         } finally { adapter.dispose(); }
     }
+});
+
+test('a completed hosted turn may exceed the short RPC timeout', async () => {
+    const { adapter } = fixture('slow-turn');
+    try {
+        assert.deepEqual(await adapter.test('codex', 'account-1', 'entitled-model'),
+            { threadId: 'thread-1', text: 'OK' });
+    } finally { adapter.dispose(); }
 });
 
 test('token rotation restarts process and resumes an opaque provider thread; idle and disposal stop children', async () => {

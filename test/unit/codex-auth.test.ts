@@ -198,11 +198,11 @@ test('missing plan permission cannot authorize inference; failures never expose 
     assert.doesNotMatch(JSON.stringify(await environment.manager().list('codex')), /refresh-1|access-1|eyJ/);
 });
 
-test('two independent manager instances serialize rotating refresh and reuse the replacement', async t => {
+test('two independent managers wait through a slow rotating refresh and reuse its replacement', async t => {
     const environment = await fixture(t);
     const account = await environment.login();
     environment.clock += 70000;
-    environment.holdRefresh = () => new Promise(resolve => setTimeout(resolve, 80));
+    environment.holdRefresh = () => new Promise(resolve => setTimeout(resolve, 5400));
     const [first, second] = await Promise.all([
         environment.manager().accessToken('codex', account.id), environment.manager().accessToken('codex', account.id)
     ]);
