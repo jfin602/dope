@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 7 is **OWNER APPROVED / QUALIFIED / CLOSED at the actual `0.7.31` source**. The post-closeout **`c7-chat-project-grounding`** correction stack is now written and ready for execution at unchanged `0.7.31`; it makes ordinary repository/map Chat questions deterministically evidence-backed before Phase 8. No `0.7.32` artifact is claimed.
+Current stage: Product Phase 7 is **OWNER APPROVED / QUALIFIED / CLOSED at the actual `0.7.31` source**. The post-closeout `c7-chat-project-grounding` correction remains the current execution gate at unchanged `0.7.31`. Phase 8 coding-agent planning is approved under ADR 0027 and `docs/planning/p8/phase-8-plan.md` but is **not activated** until that gate closes Green or the owner explicitly waives it. No `0.7.32` artifact is claimed.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
@@ -915,25 +915,97 @@ Phase 7 planning does not authorize general filesystem/process/Git mutation, aut
 ## Product Phase 8 — Coding Agent / Scoped Delegation
 
 Purpose:
-Give AI bounded hands without giving away the developer's authorship or control. This is the phase where Dope becomes a real coding agent: it may perform explicitly delegated implementation work inside a constrained WorkItem, use approved mutation/process/Git capabilities, validate the result and return the work for developer review.
+Give AI bounded hands without giving away the developer's authorship or control, while first replacing the external sequential prompt-runner workflow that currently carries most Dope implementation work.
 
-Initial scope:
-- bounded WorkItem delegation as the unit of agent execution;
-- HUMAN / AI / SHARED ownership;
-- explicit observation versus mutation authority;
-- ProposedAction and visible execution intent before consequential mutation;
-- implement/test/refactor actions through capability-gated filesystem, process and Git tools;
-- diff/apply/reject flow and conceptual ChangeSet review;
-- validation integration with durable evidence tied to the delegated work;
-- continuous steering, cancellation and intervention while work is active;
-- model/tool/action provenance sufficient to understand what the coding agent did and why;
-- no hidden authority escalation, silent provider fallback or mutation outside the delegated scope;
-- bounded post-edit reconciliation: accepted/applied changes identify affected Software Map identities and may mark those areas potentially stale or request targeted re-analysis;
-- post-edit staleness is a bridge to later alignment, not a continuous background knowledge system. Full source/runtime/map/docs/contracts alignment remains Phase 10.
+Phase 8 uses the existing phase runner as a **behavioral reference**, not as product runtime architecture. The product imports/adapts prompt-stack intent into Dope-owned AgentTask/AgentRun/AgentTaskSequence contracts and executes those through provider-independent Agent Runtime, Authority and execution adapters.
+
+### Ordered Phase 8 slices
+
+1. **8A — Codex reference agent connection**
+   - extend AI Center with a first-class Codex App Server connection;
+   - Sign in with ChatGPT / authorized ChatGPT-plan usage;
+   - hosted egress classification;
+   - secure token/session lifecycle and model inventory;
+   - Coding Agent role eligibility through an `agentExecution` capability;
+   - zero-project-data Test Connection;
+   - no repository mutation yet.
+
+2. **8B — Agent execution core**
+   - provider-neutral AgentTask and AgentRun;
+   - bounded execution grant over one repository root;
+   - observation, workspace mutation, process and Git capability classes;
+   - strong reference coding-agent adapter first;
+   - visible activity/tool/file/command events;
+   - cancellation, failure and restart-safe run state;
+   - diff/change and validation result capture.
+
+3. **8C — Sequential task / phase-stack execution**
+   - adapt existing `docs/tasks/<stack>/P*.txt` metadata into AgentTaskSequence;
+   - preserve ordered prompt/model/reasoning/version/browser-gate semantics;
+   - clean-tree and Git/version preflight;
+   - run current prompt, validate, checkpoint/commit under Dope ownership, then advance;
+   - stop on failure, cancellation, authority escalation or manual/browser gate;
+   - reopen Dope and resume the same sequence from durable state and Git truth.
+
+4. **8D — General Scoped Delegation**
+   - a WorkItem may create one or more AgentTasks but is not itself the execution primitive;
+   - HUMAN / AI / SHARED ownership;
+   - ProposedAction / authority review where required;
+   - richer steering, diff/review/accept/reject and validation evidence;
+   - affected Software Map identities and bounded post-edit staleness/re-analysis bridge.
+
+5. **8E — Local coding-agent compatibility**
+   - reuse the same AgentTask/AgentRun/Authority contracts against a local agent/model adapter;
+   - benchmark identical representative tasks against the qualified reference harness;
+   - diagnose model/context/tool capability differences without redesigning the product domain.
+
+### Authority law
+
+Approval operates at useful execution granularity.
+
+Before an AgentTask/AgentTaskSequence starts, the developer approves a bounded **ExecutionGrant** containing:
+- canonical project/repository root;
+- observation/read scope;
+- workspace mutation scope;
+- process capability/working-directory constraints;
+- Git permissions/checkpoint policy;
+- network/secrets/destructive permissions, normally denied unless explicitly required;
+- stop/escalation conditions.
+
+Within an accepted grant, routine permitted reads/writes/tests/Git inspection do not require repetitive per-call approval. An attempted effect outside the grant pauses and requests explicit escalation. A model/provider cannot enlarge the grant.
+
+The first phase-stack workflow keeps the existing runner principle that **Dope owns checkpoint commits**. The coding agent leaves the authoritative commit boundary to Dope unless a later explicit task policy says otherwise.
+
+### First major dogfood gate
+
+Dope must be able to develop Dope through a real existing prompt stack:
+
+```text
+open Dope repository in Dope
+-> select/import an existing phase/correction stack
+-> detect completed/pending tasks from durable state + Git truth
+-> execute next task with Coding Agent
+-> stream commands/file changes/activity
+-> run required validation
+-> inspect resulting change/diff
+-> create/verify Dope-owned checkpoint commit
+-> advance automatically
+-> stop correctly at a browser/manual gate
+-> restart Dope
+-> resume at the same task/gate
+```
+
+This workflow is the first substantial Phase 8 Green target because it replaces the bulk external development loop.
+
+Initial scope also retains:
+- validation evidence tied to AgentRun/delegated work;
+- model/tool/action provenance sufficient to understand what happened without persisting hidden chain-of-thought;
+- no hidden authority escalation or silent provider/billing fallback;
+- bounded post-edit Software Map impact/staleness markers only; full continuous alignment remains Phase 10.
 
 Exit condition:
 
-A developer can delegate a bounded WorkItem, see what the agent believes and intends, allow it to edit and validate software, intervene during execution, inspect/reject/accept the resulting changes, and retain control over mutation. Accepted changes leave enough provenance to identify affected Software Map areas without requiring the full Phase 10 alignment engine.
+A developer can run a real sequential implementation stack inside Dope through the Coding Agent role, safely resume it across restart/manual gates, and inspect/control its repository effects. The same execution substrate can then accept WorkItem-derived AgentTasks with explicit authority, steering, diff/review and validation. Reference-agent qualification precedes local coding-model qualification so harness failures and model-capability failures remain separable.
 
 ## Product Phase 9 — Development Sessions
 

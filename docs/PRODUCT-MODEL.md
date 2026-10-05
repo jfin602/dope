@@ -563,7 +563,60 @@ A bounded actionable implementation unit attached to one or more PlannedTransfor
 
 A WorkItem may contain stable identity/title/objective, transformation references, dependencies, requirements/constraints, acceptance criteria, validation targets, project-relative working-set references, status and completion notes.
 
+A WorkItem may later produce one or more AgentTasks, but the WorkItem is not the coding-agent execution primitive. The same AgentTask substrate must also support prompt-stack and direct developer execution without manufacturing fake WorkItems.
+
 WorkItems are implementation planning state, not architecture authority. Editing or completing one does not silently alter the PlanningMap target, canonical architecture or Physical Map.
+
+### AgentTask
+
+A provider-independent bounded unit of delegated execution.
+
+An AgentTask may originate from:
+- one imported phase/correction prompt;
+- a WorkItem;
+- a direct developer coding request;
+- a future DeveloperSession workflow.
+
+It contains stable Dope identity plus objective/instructions, project scope, model/role policy, authority requirements, validation/completion policy and optional links to WorkItems/Planning transformations/project knowledge.
+
+An AgentTask is not a provider-native thread, response or session. It does not become a WorkItem merely because both describe bounded work.
+
+### AgentRun
+
+One concrete execution attempt of an AgentTask.
+
+An AgentRun records observable execution state such as:
+- AgentTask identity;
+- requested Coding Agent role / resolved actual connection-model-runtime provenance;
+- ExecutionGrant / effective authority revision;
+- status and timing;
+- provider-neutral activity/tool/file/process events;
+- affected project-relative files;
+- validation results;
+- diff/change summary;
+- checkpoint/commit identity where Dope owns one;
+- failure/cancel/interruption/recovery state;
+- provider-native recovery handles only as non-canonical adapter metadata.
+
+AgentRun is durable enough to inspect and resume/reconcile work across application restart, but it never turns model narration or hidden reasoning into project truth.
+
+### AgentTaskSequence
+
+An ordered orchestration of AgentTasks with explicit progression and stop conditions.
+
+Initial primary consumer is the Phase 8 **phase-stack adapter**, which translates the existing repository prompt-stack grammar into a sequence while preserving prompt order, model/reasoning requirement, version policy, browser/manual gate and closeout semantics.
+
+A sequence records which task is pending/running/completed/blocked, the checkpoint associated with completed tasks and enough basis to reject an unsafe resume when Git/version/project reality no longer matches.
+
+AgentTaskSequence is not PlanStep reborn. It is execution orchestration. WorkItems may create tasks/sequences later, but the first product consumer is the proven sequential prompt workflow.
+
+### ExecutionGrant
+
+The developer-approved authority envelope for one AgentTask or AgentTaskSequence.
+
+It defines the canonical project root and allowed effect classes/scope: observation, workspace mutation, process execution, Git actions, network/secrets/destructive actions and stop/escalation conditions.
+
+Routine effects already inside the grant execute without repetitive approval. Effects outside it pause for explicit escalation. Neither model output, provider metadata nor repository content can widen the grant.
 
 ### Reconciliation
 

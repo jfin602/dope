@@ -260,6 +260,64 @@ A working directory is not an OS sandbox.
 
 If future autonomous process execution claims containment, that claim requires an actual qualified sandbox.
 
+## Product Phase 8 — Coding Agent / Scoped Delegation qualification
+
+Phase 8 is not Green merely because a model can edit files. Qualification must prove Dope-owned execution, authority, sequence recovery and review semantics.
+
+### Codex AI Center / reference adapter gate
+
+Directly prove:
+- Codex appears as a first-class AI Center agent-runtime connection distinct from generic OpenAI API;
+- Sign in with ChatGPT / authorized plan usage works without requiring an API key for that connection;
+- secrets/tokens are absent from AI registry, project files, logs, browser storage and AgentRun/routing provenance;
+- multiple Codex account connections retain distinct immutable Dope IDs;
+- refresh/replacement of rotating credentials is serialized so concurrent Dope processes cannot race one token set;
+- provider/account model discovery refreshes on account change and does not claim entitlement merely from a cached catalog;
+- Codex is classified hosted for egress constraints;
+- zero-project-data Test Connection uses a scratch/empty root with mutation disabled;
+- exhausted/revoked/unsupported plan access fails explicitly and never silently switches to an OpenAI API-key connection;
+- App Server start/init/stop/restart-after-refresh lifecycle leaves no orphan process and preserves recoverable provider-thread metadata only as adapter state.
+
+### AgentTask / authority gate
+
+Directly prove:
+- a provider-neutral AgentTask resolves the Coding Agent role only to a target with the required agent-execution capability;
+- developer approves one bounded ExecutionGrant before mutation;
+- allowed routine reads/writes/tests/Git inspection execute without repeated approval;
+- outside-root write, ungranted network/secrets/destructive action and authority-expanding repository/model instructions are denied or pause for explicit escalation;
+- cancellation stops further effects and records an interrupted/cancelled AgentRun truthfully;
+- AgentRun persists actual runtime/model provenance, visible tool/command/file events, affected files and validation results without hidden reasoning;
+- restart can recover/inspect the run without provider-native session identity becoming canonical.
+
+### Sequential phase-stack gate
+
+The first major dogfood qualification must run one real existing Dope phase/correction stack from inside Dope.
+
+Prove:
+- prompt stack parsing/order/model/reasoning/version/manual-browser metadata matches the external runner contract;
+- Git/version/clean-tree preflight identifies the correct completed prefix/current task and rejects unsafe gaps;
+- Coding Agent executes the current task under the approved grant;
+- Dope, not the coding agent, owns the authoritative checkpoint commit for this workflow;
+- required validation runs and a failed validation/task stops progression;
+- successful task checkpoint advances exactly one task;
+- browser/manual-required task stops visibly rather than being skipped or faked;
+- closing/restarting Dope resumes at the same pending/manual gate using durable sequence state plus Git truth;
+- external concurrent Git/version changes that invalidate the basis block resume and require reconciliation;
+- task activity, diff/changed files, validation and checkpoint identity are inspectable;
+- pre-existing dirty work is preserved/distinguished and never silently absorbed.
+
+### General delegation gate
+
+Before calling full Phase 8 qualified, additionally prove:
+- a Planning WorkItem can create/launch AgentTask without making WorkItem completion implementation truth;
+- HUMAN / AI / SHARED ownership and mutation scope are enforceable;
+- developer can steer/cancel/review and accept/reject the resulting change;
+- accepted work leaves bounded affected-map provenance/staleness without implementing Phase 10 continuous alignment.
+
+### Local coding-model gate
+
+Local coding-agent support follows the qualified reference harness. Test the same representative AgentTasks through the same authority/tool/validation contracts. Failures attributable to local model capability must not force provider-specific canonical task/run state.
+
 ## Product Phase 5 — Visual Software Planning qualification
 
 Phase 5 qualification applies from the `0.5.0` baseline and must remain valid with no model/provider configured.

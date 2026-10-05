@@ -244,7 +244,7 @@ Desired completion feeling:
 
 The approved post-closeout `c7-chat-project-grounding` correction is the current gate at unchanged `0.7.31`. It is separate from the Phase 7 closeout and must earn its own qualification; Phase 7 owner approval does not make that correction Green.
 
-After a Green grounding-correction closeout, start a fresh Product Phase 8 — Scoped Delegation / Coding Agent `/docs-review`. Mutation/delegation authority remains deferred until Phase 8 is explicitly reviewed and activated.
+Phase 8 product planning is now approved under ADR 0027 and `docs/planning/p8/phase-8-plan.md`, but activation remains blocked by this grounding-correction gate unless the owner explicitly waives it. After the gate closes, activate Phase 8 with Codex AI Center setup/reference AgentTask execution first, sequential phase-stack dogfooding second, general WorkItem delegation third, and local coding models after the reference harness is proven.
 
 Phase 7 keeps the project—not chat—as the center of gravity. Chats persist and are reusable, but canonical Project Mind, Architecture, Planning and Physical/Flow evidence retain their own authority.
 

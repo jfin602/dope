@@ -37,7 +37,22 @@ Phase 5's retained implementation includes center-workspace Physical/Planning Ma
 
 Phase 6 may add only provider-free Flow projection capabilities authorized by ADR 0020 as amended by ADR 0021: evidence-backed directional Flow over existing Physical Map identities, source/provenance inspection and Architecture/Flow view switching. It must not create a separate canonical Flow database or pull Phase 7 AI Presence, Agent Mind, ProposedAction, tool authority or delegation forward.
 
-Only the narrow provider-independent sMap synthesis boundary and reference adapters authorized by ADR 0010/0011/0013 were valid before Phase 7. ADR 0022 authorized the bounded `c6-branch-seam` correction at `0.6.7`; it did not activate general AI Presence. Phase 5 visual planning and Phase 6 Flow remain retained owner-closed implementation, with their qualification gaps preserved. Phase 7A general AI Presence is implemented; Phase 7B/7C continue under ADR 0026. Product Phase 8 is Scoped Delegation / Coding Agent, Product Phase 9 is Development Sessions, and Product Phase 10 is the Living Software Knowledge Model. ADR 0023 does not authorize Phase 10 background alignment before that phase is activated.
+Only the narrow provider-independent sMap synthesis boundary and reference adapters authorized by ADR 0010/0011/0013 were valid before Phase 7. ADR 0022 authorized the bounded `c6-branch-seam` correction at `0.6.7`; it did not activate general AI Presence. Phase 5 visual planning and Phase 6 Flow remain retained owner-closed implementation, with their qualification gaps preserved. Phase 7A/7B/7C are complete under ADR 0025/0026. Product Phase 8 planning is approved under ADR 0027 but is not activated until the current `c7-chat-project-grounding` gate closes or the owner explicitly waives it. Phase 8 uses Codex App Server as the first reference AgentExecutionAdapter, proves AgentTask/AgentRun and sequential prompt-stack execution first, then general WorkItem delegation and local coding-agent compatibility. Product Phase 9 is Development Sessions, and Product Phase 10 is the Living Software Knowledge Model. ADR 0023 does not authorize Phase 10 background alignment before that phase is activated.
+
+
+### Phase 8 planning laws
+
+- The external Codex phase runner is a behavioral reference/development tool, never the Dope product runtime.
+- AgentTask is the execution primitive; WorkItem may create AgentTasks but is not required for prompt-stack/direct execution.
+- AgentRun records observable execution/provenance/validation, not hidden chain-of-thought.
+- AgentTaskSequence owns ordered progression/stop/resume semantics.
+- AI Center owns Codex connection/auth/model inventory; Agent Runtime owns task execution.
+- Codex App Server + ChatGPT-plan auth is the first reference coding-agent adapter and is classified hosted.
+- Coding Agent routing requires an explicit agent-execution capability; provider name alone is insufficient.
+- Dope Authority owns the ExecutionGrant. Routine in-grant effects need no repeated approval; out-of-grant effects pause/escalate.
+- Dope owns commits/checkpoints for the initial phase-stack workflow.
+- No silent ChatGPT-plan -> OpenAI API-key billing fallback.
+- Reference harness qualification precedes local coding-agent qualification.
 
 
 ### Phase 6 Flow laws

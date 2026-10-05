@@ -390,6 +390,35 @@ Phase 10 requests Background with hard local-only/no-hosted-fallback constraints
 Coding Agent may be configured before Product Phase 8 but has no mutation-capable consumer in Phase 7.
 
 
+
+### Codex agent-runtime connection
+
+ADR 0026 as amended for Phase 8 allows AI Center to own a first-class Codex connection distinct from generic OpenAI API.
+
+```text
+AI Center / global registry
+    -> Codex connection + secure ChatGPT-plan auth
+        -> CodexAgentAdapter
+            -> codex app-server (local child process)
+                -> hosted OpenAI inference
+
+Agent Runtime
+    -> AgentTask / AgentRun / AgentTaskSequence
+    -> Coding Agent role resolution
+    -> Authority / ExecutionGrant
+    -> CodexAgentAdapter or future local AgentExecutionAdapter
+```
+
+The Codex connection is **hosted** for egress/locality constraints even though App Server and repository tools run locally.
+
+Authentication/session lifecycle is adapter state. Access/refresh/ID tokens remain protected secrets outside AI registry/project state. Non-secret account/issued-client/host identity and health may be projected through AI Center. Token refresh is serialized for one account/session across processes.
+
+Codex models expose an agent-execution capability for Coding Agent role eligibility. They are not automatically generic Chat/Software Map models.
+
+The adapter lazily manages App Server process lifecycle, translates provider events into provider-neutral AgentRun activity, and may retain provider-native thread IDs solely as recovery metadata. Provider-native thread identity never replaces AgentTask/AgentRun identity.
+
+A ChatGPT-plan Codex connection never silently falls back to an API-key OpenAI connection or another billing path. Role fallback requires an independently configured eligible target and all normal feature authority.
+
 ## Living Software Knowledge Model and background alignment boundary
 
 Product Phase 10 adds a knowledge-alignment layer over existing Software Map identities after Scoped Delegation and Development Sessions, using their change/session provenance while remaining observation-first.
@@ -622,9 +651,13 @@ No provider or UI dependency.
 
 ### Agent Runtime
 
-Introduced with AI Presence/Scoped Delegation.
+Introduced with Scoped Delegation.
 
-Consumes canonical task/session/project state, assembles bounded context, requests model output, interprets structured proposals, coordinates tools through authority, updates working state, emits observable events, and preserves cancellation/recovery semantics.
+Consumes Dope-owned AgentTask / AgentTaskSequence plus project/session context, resolves the Coding Agent role, coordinates execution under Authority, updates AgentRun/working state, emits observable events, and preserves cancellation/recovery semantics.
+
+The first Phase 8 consumer is the existing sequential prompt-stack workflow. A PhaseStackAdapter may parse/reuse pure prompt grammar, but the external `codex-phase.mjs` process remains development tooling and is not the product runtime.
+
+Agent Runtime owns orchestration, not provider intelligence. Provider-specific coding harnesses sit behind **AgentExecutionAdapter** contracts. The first reference adapter is Codex App Server; later local-agent adapters must consume the same AgentTask/AgentRun/authority contracts.
 
 No direct Theia dependency.
 
@@ -640,15 +673,19 @@ Introduced before mutation delegation.
 
 Owns effect classification and permission decisions.
 
-A model cannot grant itself authority.
+The initial developer approval unit is a bounded **ExecutionGrant** for one AgentTask/AgentTaskSequence: project root, allowed observation/workspace/process/Git/network/secrets/destructive scopes, checkpoint policy and escalation conditions.
+
+Routine effects inside that grant do not require noisy per-call approval. Any effect outside it pauses for explicit escalation. A model/provider/repository cannot grant itself additional authority.
 
 Observation and mutation permissions are separate.
 
-### Tool Runtime
+### Tool Runtime / agent execution boundary
 
-Typed tools execute only after authority permits them.
+Dope-owned tools execute only after Authority permits them; results are structured and observable.
 
-Tool results are structured and observable.
+A reference agent harness such as Codex App Server may internally coordinate file/process tools. Its adapter must map the Dope ExecutionGrant into the strongest available sandbox/approval restrictions and expose observable command/file/tool events back into AgentRun. If the harness cannot reliably constrain a requested capability to the Dope grant, that capability is unavailable through that adapter rather than implicitly trusted.
+
+Dope retains checkpoint/commit authority for the initial phase-stack workflow.
 
 ## Foundation Spike 0 boundary
 

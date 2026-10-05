@@ -566,3 +566,106 @@ This decision does not:
 Revisit custom roles, project-specific role policy, dynamic cost/latency/quality routing, policy history or richer optimization only after real usage demonstrates a need that the fixed deterministic policy cannot express cleanly.
 
 Preserve the separation between connection inventory, routing preference, feature authority and canonical project state.
+
+## Amendment — Codex agent-runtime connections for Phase 8 (2026-10-05)
+
+Product Phase 8 consumes the existing **Coding Agent** role and extends AI Center with a first-class **Codex agent-runtime connection**. This does not reopen Phase 7 qualification or turn Codex into Dope's canonical agent ontology.
+
+### Codex is distinct from generic OpenAI API
+
+AI Center treats these as different connection/runtime types:
+
+- **OpenAI** — generic hosted Model Runtime connection using ordinary OpenAI API credentials/billing;
+- **Codex** — coding-agent runtime using Codex App Server and, when authorized, Sign in with ChatGPT / ChatGPT-plan usage.
+
+A Codex connection is not an `openai` connection with a hidden mode flag. Authentication, usage, process lifecycle and agent execution semantics differ enough to require an explicit runtime type.
+
+The provider-neutral capability model gains an agent-execution capability such as **`agentExecution`**. Phase 8 requests the Coding Agent role with that hard capability. A connection that only supports ordinary conversational generation does not satisfy that request merely because its underlying provider is OpenAI.
+
+Codex agent models need not appear in ordinary Chat or Software Map pickers unless the same connection explicitly supports those generic feature contracts. Product surfaces select by capability, not provider name.
+
+### Hosted classification
+
+Codex App Server may run as a local child process and may execute local repository tools, but its model inference uses hosted OpenAI service. For routing, privacy and evidence-egress purposes a ChatGPT-plan Codex connection is therefore **hosted**.
+
+Running the harness locally never converts hosted inference into a local-model connection.
+
+### ChatGPT-plan authentication
+
+The initial Codex connection supports **Continue with ChatGPT / Sign in with ChatGPT** for eligible ChatGPT-plan usage.
+
+AI Center owns the safe account/session projection:
+- immutable Dope connection identity;
+- account label / verified non-secret identity needed for selection;
+- issued OAuth client identity / stable host identity where required by the provider flow;
+- granted-plan-usage status;
+- sign-in / reauthorize / sign-out lifecycle;
+- connection health and current model catalog.
+
+Access, refresh and retained ID tokens are secrets. They never enter the AI registry, `.dope/`, AgentTask/AgentRun persistence, routing provenance, logs, analytics, support transcripts or browser storage. Dope keeps them only in protected runtime/OS-secure storage with no plaintext application-preference fallback.
+
+Refresh for one account/session is serialized across Dope processes so rotating refresh credentials cannot be raced. Temporary network/provider failures do not erase otherwise valid credentials. Confirmed terminal/revoked credentials move the connection to a repairable authentication state.
+
+Provider-specific OAuth/token mechanics remain adapter facts. Dope domain contracts retain only non-secret connection/auth status and identity.
+
+### Multiple Codex accounts
+
+The existing rule permitting multiple connections of the same provider/runtime applies to Codex. Personal/work or otherwise separate ChatGPT accounts may be represented as distinct immutable Dope connection IDs.
+
+Switching accounts refreshes account-specific model inventory and never rewrites historical execution provenance.
+
+### Model discovery and entitlement
+
+The Codex adapter may use App Server discovery and/or the provider's account-specific model catalog. Discovery is a catalog, not proof that every model can execute for the selected account.
+
+AI Center preserves Known / Ready / Unavailable / Unknown semantics. A successful inference on the selected account/model is the authoritative execution check for that request.
+
+### Test Connection
+
+Codex **Test Connection** remains a zero-project-data connectivity test.
+
+It may:
+- validate secure account/session availability;
+- start/initialize Codex App Server;
+- use one selected/usable agent model;
+- run one tiny synthetic task in a scratch/empty working directory with mutation authority disabled;
+- observe successful completion;
+- tear down or return the process to the normal idle policy.
+
+It does not prove repository mutation authority, process/Git permissions, phase-stack execution or Phase 8 qualification.
+
+### Usage presentation
+
+AI Center states that the connection uses the user's authorized ChatGPT Work/Codex plan allowance (and provider-managed credits where explicitly authorized by that account flow). Dope does not invent a local remaining-usage meter when the provider has not supplied an authoritative API.
+
+AI Center may link the developer to ChatGPT usage/settings for app usage and limits.
+
+Failure of a ChatGPT-plan Codex connection never silently changes billing paths to a generic OpenAI API-key connection. Any such fallback must be an independently configured Coding Agent role target and already satisfy feature authority.
+
+### App Server lifecycle
+
+AI Center owns connection/auth/runtime readiness; Phase 8 Agent Runtime owns active execution.
+
+The Codex adapter may lazily start App Server on first test or AgentRun, initialize it, retain the provider-native thread/session handle only as adapter recovery metadata, stop it after bounded idle/application shutdown, and restart it after token refresh. A resumed Dope AgentRun may use provider-native resume facilities, but provider-native thread identity never becomes AgentTask or AgentRun identity.
+
+### Phase 8 ownership split
+
+AI Center owns:
+- Codex connection identity;
+- ChatGPT-plan authentication;
+- model inventory;
+- runtime availability/health;
+- Coding Agent role target eligibility.
+
+Phase 8 owns:
+- AgentTask / AgentRun / AgentTaskSequence;
+- repository/workspace scope;
+- mutation/process/Git authority;
+- tool/effect visibility;
+- diffs and validation;
+- checkpoint/commit policy;
+- cancellation/steering/recovery;
+- sequential task execution.
+
+A global Codex connection or Coding Agent role never grants mutation authority by itself.
+
