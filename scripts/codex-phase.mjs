@@ -345,6 +345,55 @@ export function buildCodexArguments(prompt, rootDirectory, finalFile) {
   ];
 }
 
+export const MODEL_CAPACITY_MAX_RETRIES = 3;
+export const MODEL_CAPACITY_RETRY_SECONDS = 20;
+
+const modelCapacityPatterns = Object.freeze([
+  /\\bmodel[_ -]?at[_ -]?capacity\\b/i,
+  /\\b(?:model|service|server)\\b.{0,120}\\bat capacity\\b/i,
+  /\\bat capacity\\b.{0,120}\\btry again\\b/i,
+  /\\bcapacity\\b.{0,120}\\btry again later\\b/i,
+]);
+
+export function isModelCapacityText(value) {
+  const text = String(value ?? '');
+  return modelCapacityPatterns.some((pattern) => pattern.test(text));
+}
+
+export function isModelCapacityFailure(result) {
+  if (!result) return false;
+  if (result.capacityError === true) return true;
+  if (result.code === 0 && !result.signal) return false;
+  return [result.stderr, result.finalResponse].some(isModelCapacityText);
+}
+
+const defaultSleep = (milliseconds) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+export async function waitForModelCapacityRetry({
+  seconds = MODEL_CAPACITY_RETRY_SECONDS,
+  sleepFunction = defaultSleep,
+  onTick = () => {},
+  isInterrupted = () => false,
+  interruptionMessage = 'Phase run was interrupted.',
+} = {}) {
+  for (let remaining = seconds; remaining > 0; remaining -= 1) {
+    if (isInterrupted()) throw new Error(interruptionMessage);
+    onTick(remaining);
+    await sleepFunction(1000);
+  }
+  if (isInterrupted()) throw new Error(interruptionMessage);
+}
+
+const CAPACITY_RETRY_CONTINUATION = `CAPACITY RETRY CONTINUATION
+
+A previous attempt of this same prompt was interrupted because the selected model was at capacity.
+
+The current dirty working tree is intentional partial work from that interrupted attempt.
+Do not reset, revert, checkout, discard, or otherwise erase those uncommitted changes.
+Inspect the current working tree and continue the same task from the existing partial state.
+The original phase-runner Git ownership contract still applies.`;
+
 const PHASE_RUNNER_EXECUTION_CONTRACT = `PHASE RUNNER EXECUTION CONTRACT
 
 You are being executed by the Dope phase runner.
@@ -375,8 +424,8 @@ your turn completes.
 The task instructions remain authoritative except where they conflict
 with this runner-owned Git commit boundary.`;
 
-export function buildCodexExecutionPrompt(taskText) {
-  return `${PHASE_RUNNER_EXECUTION_CONTRACT}\n\n${taskText}`;
+export function buildCodexExecutionPrompt(taskText, { capacityRetryAttempt = 0 } = {}) {
+  return `${PHASE_RUNNER_EXECUTION_CONTRACT}\n\n${capacityRetryAttempt > 0 ? `${CAPACITY_RETRY_CONTINUATION}\n\nRetry attempt: ${capacityRetryAttempt} of ${MODEL_CAPACITY_MAX_RETRIES}.\n\n` : ''}${taskText}`;
 }
 
 export async function runCodex(
@@ -388,11 +437,13 @@ export async function runCodex(
     rootDirectory = root,
     spawnProcess = spawn,
     verbose = false,
+    capacityRetryAttempt = 0,
   } = {},
 ) {
   if (!launcher) throw new Error('A resolved Codex launcher is required.');
-  const eventsFile = path.join(runDirectory, `P${prompt.number}.events.jsonl`);
-  const finalFile = path.join(runDirectory, `P${prompt.number}.final.txt`);
+  const retrySuffix = capacityRetryAttempt > 0 ? `.retry-${capacityRetryAttempt}` : '';
+  const eventsFile = path.join(runDirectory, `P${prompt.number}${retrySuffix}.events.jsonl`);
+  const finalFile = path.join(runDirectory, `P${prompt.number}${retrySuffix}.final.txt`);
   await Promise.all([writeFile(eventsFile, ''), writeFile(finalFile, '')]);
   const childArgs = buildCodexArguments(prompt, rootDirectory, finalFile);
   const child = spawnProcess(
@@ -406,9 +457,18 @@ export async function runCodex(
   );
   activeChild = child;
 
+  let capacityError = false;
   const processor = createStructuredEventProcessor({
     appendLine: (line) => appendFile(eventsFile, line),
-    onEvent,
+    onEvent: async (event) => {
+      const isErrorEvent =
+        String(event?.type ?? event?.item?.type ?? '').includes('error') ||
+        Boolean(event?.error);
+      if (isErrorEvent && isModelCapacityText(JSON.stringify(event))) {
+        capacityError = true;
+      }
+      await onEvent(event);
+    },
   });
   child.stdout.setEncoding('utf8');
   child.stdout.on('data', (chunk) => processor.push(chunk));
@@ -419,7 +479,9 @@ export async function runCodex(
     if (verbose) process.stderr.write(chunk);
   });
 
-  child.stdin.end(buildCodexExecutionPrompt(prompt.text));
+  child.stdin.end(
+    buildCodexExecutionPrompt(prompt.text, { capacityRetryAttempt }),
+  );
   let processFailure;
   const result = await new Promise((resolve) => {
     child.once('error', (error) => {
@@ -440,7 +502,78 @@ export async function runCodex(
   if (processFailure) throw processFailure;
 
   const finalResponse = await readFile(finalFile, 'utf8');
-  return { ...result, finalResponse, stderr, childArgs };
+  return {
+    ...result,
+    finalResponse,
+    stderr,
+    childArgs,
+    capacityError,
+    eventsFile: path.basename(eventsFile),
+    finalResponseFile: path.basename(finalFile),
+  };
+}
+
+export async function runCodexWithCapacityRetries(
+  prompt,
+  runDirectory,
+  onEvent,
+  {
+    runCodexProcess = runCodex,
+    launcher,
+    verbose = false,
+    rootDirectory = root,
+    maxRetries = MODEL_CAPACITY_MAX_RETRIES,
+    retrySeconds = MODEL_CAPACITY_RETRY_SECONDS,
+    sleepFunction = defaultSleep,
+    onCapacityRetry = async () => {},
+    onCapacityTick = () => {},
+    isInterrupted = () => false,
+    interruptionMessage = 'Phase run was interrupted.',
+  } = {},
+) {
+  let retryAttempt = 0;
+  while (true) {
+    const result = await runCodexProcess(prompt, runDirectory, onEvent, {
+      launcher,
+      verbose,
+      rootDirectory,
+      capacityRetryAttempt: retryAttempt,
+    });
+    if (result?.signal || isInterrupted()) {
+      return { ...result, capacityRetries: retryAttempt };
+    }
+    if (!isModelCapacityFailure(result)) {
+      return { ...result, capacityRetries: retryAttempt };
+    }
+    if (retryAttempt >= maxRetries) {
+      const error = new Error(
+        `Codex model remained at capacity after ${maxRetries} retries (${maxRetries + 1} total attempts). Partial dirty working tree preserved.`,
+      );
+      error.code = 'MODEL_CAPACITY_RETRIES_EXHAUSTED';
+      throw error;
+    }
+
+    retryAttempt += 1;
+    await onCapacityRetry({
+      retryAttempt,
+      maxRetries,
+      retrySeconds,
+      result,
+    });
+    await waitForModelCapacityRetry({
+      seconds: retrySeconds,
+      sleepFunction,
+      isInterrupted,
+      interruptionMessage,
+      onTick: (remaining) =>
+        onCapacityTick({
+          retryAttempt,
+          maxRetries,
+          remaining,
+          retrySeconds,
+        }),
+    });
+  }
 }
 
 export async function commitPromptChanges(
@@ -616,6 +749,11 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
     dependencies.resolveLauncher ?? (() => resolveCodexLauncher());
   const runCodexProcess = dependencies.runCodexProcess ?? runCodex;
   const spawnSyncProcess = dependencies.spawnSyncProcess ?? spawnSync;
+  const capacityRetrySleep = dependencies.capacityRetrySleep ?? defaultSleep;
+  const capacityRetrySeconds =
+    dependencies.capacityRetrySeconds ?? MODEL_CAPACITY_RETRY_SECONDS;
+  const capacityMaxRetries =
+    dependencies.capacityMaxRetries ?? MODEL_CAPACITY_MAX_RETRIES;
   const runGit = (arguments_) =>
     invokeGit(arguments_, { rootDirectory, spawnSyncProcess });
   interrupted = false;
@@ -857,7 +995,7 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
 
     let result;
     try {
-      result = await runCodexProcess(
+      result = await runCodexWithCapacityRetries(
         prompt,
         runDirectory,
         (event) => {
@@ -875,14 +1013,39 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
             redraw();
           }
         },
-        { launcher, verbose, rootDirectory },
+        {
+          runCodexProcess,
+          launcher,
+          verbose,
+          rootDirectory,
+          maxRetries: capacityMaxRetries,
+          retrySeconds: capacityRetrySeconds,
+          sleepFunction: capacityRetrySleep,
+          isInterrupted: () => interrupted,
+          interruptionMessage,
+          onCapacityRetry: async ({ retryAttempt, maxRetries, retrySeconds }) => {
+            record.capacityRetries = retryAttempt;
+            state.capacityRetries = retryAttempt;
+            record.lastCapacityAt = new Date().toISOString();
+            latest = `[!] Model at capacity - retry ${retryAttempt}/${maxRetries} begins after ${retrySeconds}s; dirty work preserved`;
+            if (display.interactive) redraw();
+            else display.progress(latest);
+            await saveRun();
+          },
+          onCapacityTick: ({ retryAttempt, maxRetries, remaining }) => {
+            latest = `[!] Model at capacity - retry ${retryAttempt}/${maxRetries} in ${remaining}s; dirty work preserved`;
+            if (display.interactive) redraw();
+            else display.progress(latest);
+          },
+        },
       );
     } finally {
       stopActiveRedraw?.();
       stopActiveRedraw = undefined;
     }
     if (interrupted || result.signal) throw new Error(interruptionMessage);
-    record.finalResponseFile = `P${prompt.number}.final.txt`;
+    record.finalResponseFile =
+      result.finalResponseFile ?? `P${prompt.number}.final.txt`;
     const conflicts = runGit(['diff', '--check']);
     assertPostPrompt({
       exitCode: result.code,
@@ -976,7 +1139,7 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
 
     let result;
     try {
-      result = await runCodexProcess(
+      result = await runCodexWithCapacityRetries(
         closeout,
         runDirectory,
         (event) => {
@@ -994,13 +1157,38 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
             redraw();
           }
         },
-        { launcher, verbose, rootDirectory },
+        {
+          runCodexProcess,
+          launcher,
+          verbose,
+          rootDirectory,
+          maxRetries: capacityMaxRetries,
+          retrySeconds: capacityRetrySeconds,
+          sleepFunction: capacityRetrySleep,
+          isInterrupted: () => interrupted,
+          interruptionMessage,
+          onCapacityRetry: async ({ retryAttempt, maxRetries, retrySeconds }) => {
+            record.capacityRetries = retryAttempt;
+            state.capacityRetries = retryAttempt;
+            record.lastCapacityAt = new Date().toISOString();
+            latest = `[!] Model at capacity - retry ${retryAttempt}/${maxRetries} begins after ${retrySeconds}s; dirty work preserved`;
+            if (display.interactive) redraw();
+            else display.progress(latest);
+            await saveRun();
+          },
+          onCapacityTick: ({ retryAttempt, maxRetries, remaining }) => {
+            latest = `[!] Model at capacity - retry ${retryAttempt}/${maxRetries} in ${remaining}s; dirty work preserved`;
+            if (display.interactive) redraw();
+            else display.progress(latest);
+          },
+        },
       );
     } finally {
       stopActiveRedraw?.();
       stopActiveRedraw = undefined;
     }
-    record.finalResponseFile = `P${closeout.number}.final.txt`;
+    record.finalResponseFile =
+      result.finalResponseFile ?? `P${closeout.number}.final.txt`;
     activeCloseoutFinalResponse = result.finalResponse;
     activeCloseoutOutput = stdout;
     if (interrupted || result.signal) throw new Error(interruptionMessage);

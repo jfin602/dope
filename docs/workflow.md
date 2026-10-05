@@ -299,6 +299,21 @@ Every substantial task should answer:
 6. Did UI/framework convenience accidentally become canonical product state?
 7. Did implementation convenience accidentally create provider/model coupling?
 
+### Model-capacity retry
+
+The phase runner treats a selected-model **at capacity** failure as transient only when the Codex error explicitly identifies model/service capacity.
+
+For one prompt:
+- preserve the existing dirty working tree exactly;
+- wait 20 seconds with a visible terminal countdown;
+- retry the same prompt with an explicit continuation instruction to inspect and continue partial uncommitted work;
+- keep each retry's event/final-response artifacts distinct;
+- allow at most three wait/retry cycles (four total attempts);
+- commit only after a non-capacity successful attempt passes normal post-prompt validation;
+- after the third retry also reports capacity, stop and leave the partial working tree untouched for developer recovery.
+
+Do not apply this retry loop to arbitrary provider/process/test failures.
+
 ## Test-command truth
 
 Current aggregate commands:

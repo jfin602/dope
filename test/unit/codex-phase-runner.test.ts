@@ -57,11 +57,17 @@ const {
   handleFailure,
   MINIMUM_GPT_5_6_CODEX_VERSION,
   MINIMUM_GPT_6_CODEX_VERSION,
+  MODEL_CAPACITY_MAX_RETRIES,
+  MODEL_CAPACITY_RETRY_SECONDS,
   parseCodexCliVersion,
   invokeGit,
+  isModelCapacityFailure,
+  isModelCapacityText,
   resolveCodexLauncher,
   runCodex,
+  runCodexWithCapacityRetries,
   runCli,
+  waitForModelCapacityRetry,
 } = cli;
 
 const directTestLauncher = Object.freeze({
@@ -408,6 +414,36 @@ test('unknown recommendations still fail closed', () => {
     () => parsePrompt('P1-task.txt', prompt(1, { config: 'Terra Max' }).text),
     /Unknown/,
   );
+});
+
+test('capacity detection is narrow and retry continuation preserves dirty work', async () => {
+  assert.equal(MODEL_CAPACITY_MAX_RETRIES, 3);
+  assert.equal(MODEL_CAPACITY_RETRY_SECONDS, 20);
+  for (const message of [
+    'The model is at capacity. Please try again later.',
+    'model_at_capacity',
+    'server is currently at capacity',
+    'capacity reached; try again later',
+  ]) assert.equal(isModelCapacityText(message), true, message);
+  assert.equal(isModelCapacityText('context capacity is 128k tokens'), false);
+  assert.equal(isModelCapacityFailure({ code: 1, signal: null, stderr: 'model is at capacity', finalResponse: '' }), true);
+  assert.equal(isModelCapacityFailure({ code: 1, signal: null, stderr: 'network failed', finalResponse: '' }), false);
+  assert.equal(isModelCapacityFailure({ code: 0, signal: null, stderr: 'model is at capacity', finalResponse: '' }), false);
+
+  const retryPrompt = buildCodexExecutionPrompt('Continue task.', { capacityRetryAttempt: 1 });
+  assert.match(retryPrompt, /dirty working tree is intentional partial work/);
+  assert.match(retryPrompt, /Do not reset, revert, checkout, discard/);
+  assert.match(retryPrompt, /Retry attempt: 1 of 3/);
+
+  const ticks: number[] = [];
+  const sleeps: number[] = [];
+  await waitForModelCapacityRetry({
+    seconds: 3,
+    sleepFunction: async milliseconds => { sleeps.push(milliseconds); },
+    onTick: remaining => ticks.push(remaining),
+  });
+  assert.deepEqual(ticks, [3, 2, 1]);
+  assert.deepEqual(sleeps, [1000, 1000, 1000]);
 });
 
 test('GPT-5.6 Codex CLI versions are parsed and compared numerically', () => {
@@ -2559,6 +2595,115 @@ test('correction post-commit version mismatch fails closed before the next promp
     );
     assert.equal(mutatedAfterCommit, true);
     assert.deepEqual(codexCalls, [1]);
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
+});
+
+test('capacity retry keeps partial dirty work and continues the same prompt', async () => {
+  const rootDirectory = await createPhaseRepository(1);
+  const output = testOutput(false);
+  const attempts: number[] = [];
+  const waits: number[] = [];
+  try {
+    const result = await runCli(['p8'], {
+      rootDirectory,
+      stdout: output,
+      resolveLauncher: async () => ({
+        launcher: directTestLauncher,
+        version: compatibleCodexVersion,
+      }),
+      capacityRetrySeconds: 2,
+      capacityRetrySleep: async (milliseconds: number) => { waits.push(milliseconds); },
+      runCodexProcess: async (
+        parsedPrompt: { number: number },
+        _runDirectory: string,
+        _onEvent: (event: unknown) => void,
+        options: { capacityRetryAttempt?: number },
+      ) => {
+        attempts.push(options.capacityRetryAttempt ?? 0);
+        if ((options.capacityRetryAttempt ?? 0) === 0) {
+          await writeFile(path.join(rootDirectory, 'partial.txt'), 'partial from interrupted attempt\n');
+          return {
+            code: 1,
+            signal: null,
+            finalResponse: '',
+            stderr: 'The model is at capacity. Please try again later.',
+            childArgs: [],
+          };
+        }
+        assert.equal(await readFile(path.join(rootDirectory, 'partial.txt'), 'utf8'),
+          'partial from interrupted attempt\n');
+        await writeFile(
+          path.join(rootDirectory, 'package.json'),
+          `${JSON.stringify({ name: 'phase-test', version: '0.8.1' }, null, 2)}\n`,
+        );
+        await writeFile(path.join(rootDirectory, 'finished.txt'), 'continued successfully\n');
+        return {
+          code: 0,
+          signal: null,
+          finalResponse: 'continued from dirty tree\n',
+          stderr: '',
+          childArgs: [],
+          finalResponseFile: 'P1.retry-1.final.txt',
+        };
+      },
+    });
+
+    assert.equal(result, 0);
+    assert.deepEqual(attempts, [0, 1]);
+    assert.deepEqual(waits, [1000, 1000]);
+    assert.match(output.read(), /retry 1\/3 in 2s; dirty work preserved/);
+    assert.equal(gitResult(rootDirectory, ['log', '-1', '--format=%s']), '0.8.1');
+    assert.equal(gitResult(rootDirectory, ['status', '--porcelain=v1']), '');
+
+    const [runName] = await readdir(path.join(rootDirectory, '.codex-runs', 'p8'));
+    const run = JSON.parse(await readFile(
+      path.join(rootDirectory, '.codex-runs', 'p8', runName!, 'run.json'), 'utf8'));
+    assert.equal(run.prompts[0].capacityRetries, 1);
+    assert.equal(run.prompts[0].finalResponseFile, 'P1.retry-1.final.txt');
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
+});
+
+test('capacity retry stops after three cycles and preserves the dirty tree', async () => {
+  const rootDirectory = await createPhaseRepository(1);
+  const attempts: number[] = [];
+  try {
+    await assert.rejects(
+      runCli(['p8'], {
+        rootDirectory,
+        stdout: testOutput(false),
+        resolveLauncher: async () => ({
+          launcher: directTestLauncher,
+          version: compatibleCodexVersion,
+        }),
+        capacityRetrySeconds: 1,
+        capacityRetrySleep: async () => {},
+        runCodexProcess: async (
+          _parsedPrompt: { number: number },
+          _runDirectory: string,
+          _onEvent: (event: unknown) => void,
+          options: { capacityRetryAttempt?: number },
+        ) => {
+          const attempt = options.capacityRetryAttempt ?? 0;
+          attempts.push(attempt);
+          await writeFile(path.join(rootDirectory, `partial-${attempt}.txt`), `attempt ${attempt}\n`);
+          return {
+            code: 1,
+            signal: null,
+            finalResponse: '',
+            stderr: 'model_at_capacity',
+            childArgs: [],
+          };
+        },
+      }),
+      /remained at capacity after 3 retries \(4 total attempts\).*dirty working tree preserved/i,
+    );
+    assert.deepEqual(attempts, [0, 1, 2, 3]);
+    assert.match(gitResult(rootDirectory, ['status', '--porcelain=v1']), /partial-0\.txt/);
+    assert.equal(gitResult(rootDirectory, ['log', '-1', '--format=%s']), 'baseline');
   } finally {
     await rm(rootDirectory, { recursive: true, force: true });
   }
