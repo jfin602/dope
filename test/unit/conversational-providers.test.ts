@@ -30,6 +30,8 @@ test('Local discovery and streaming preserve exact model, order, usage and synth
         if (String(url).endsWith('/api/v1/models')) return native();
         if (String(url).endsWith('/v1/models')) return json({ data: [{ id: 'chat-model' }, { id: 'chat-model' }] });
         return sse([
+            JSON.stringify({ choices: [{ delta: { role: 'assistant', content: null } }] }),
+            JSON.stringify({ choices: [{ delta: { reasoning_content: 'Internal reasoning is not output.' } }] }),
             JSON.stringify({ choices: [{ delta: { content: 'Hel' } }] }),
             JSON.stringify({ choices: [{ delta: { content: 'lo' }, finish_reason: 'stop' }] }),
             JSON.stringify({ choices: [], usage: { prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 } }),

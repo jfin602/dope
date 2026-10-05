@@ -133,7 +133,7 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
                     try { event = JSON.parse(data); } catch { throw new ModelRuntimeFailure('Invalid local stream event', 'invalid-json'); }
                     if (event?.error) throw new ModelRuntimeFailure('Local generation failed', 'nonretryable-provider');
                     const delta = event?.choices?.[0]?.delta?.content;
-                    if (delta !== undefined && typeof delta !== 'string')
+                    if (delta !== undefined && delta !== null && typeof delta !== 'string')
                         throw new ModelRuntimeFailure('Invalid local stream event', 'invalid-json');
                     if (delta) { output += delta; yield { type: 'delta', text: delta }; }
                     if (typeof event?.choices?.[0]?.finish_reason === 'string') finishReason = event.choices[0].finish_reason;

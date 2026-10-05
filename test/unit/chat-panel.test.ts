@@ -27,11 +27,11 @@ function connect(repository: ChatRepository): ChatConnection {
     return Object.assign(backend, { setClient(value: ChatClient | undefined) { client = value; } });
 }
 
-test('Chat keeps exact default and turn authority as shared inventory changes', () => {
+test('Chat keeps follow-role, exact default and turn authority as shared inventory changes', () => {
     const first = { connectionId: 'first', modelId: 'chat' };
     const second = { connectionId: 'second', modelId: 'chat' };
     const available = [{ selection: first }, { selection: second }];
-    assert.deepEqual(resolveChatModel(available), first);
+    assert.equal(resolveChatModel(available), undefined);
     assert.deepEqual(resolveChatModel(available, undefined, second), second);
     assert.deepEqual(resolveChatModel(available, first, second), first);
     assert.equal(resolveChatModel([available[0]], undefined, second), undefined);
