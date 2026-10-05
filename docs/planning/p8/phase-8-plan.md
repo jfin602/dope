@@ -1,9 +1,9 @@
 # Product Phase 8 — Coding Agent / Scoped Delegation Plan
 
-Status: **PLANNING APPROVED / 8A `p8` PROMPTS WRITTEN / NOT ACTIVATED — c7-chat-project-grounding remains the current execution gate**
+Status: **OWNER-ACTIVATED AT `0.8.0` / 8A `p8a` ACTIVE**
 Date: 2026-10-05
 Expected package family after activation: `0.8.x`
-Activation baseline: **TBD after the grounding correction is Green or explicitly waived by the owner**
+Activation baseline: coherent `0.8.0` from owner sequencing waiver after retained `c7-chat-project-grounding` Not Green
 Primary authority: ADR 0027, ADR 0026, ADR 0006, PRODUCT-MODEL, ARCHITECTURE, stability contract
 
 ## Goal
@@ -16,9 +16,9 @@ The first product workflow is not generic autonomy. It is the proven sequential 
 
 Phase 7 is owner-approved closed at actual `0.7.31`.
 
-The approved `c7-chat-project-grounding` correction remains the current gate. This Phase 8 plan may be refined now, but activation/version transition and mutation-capable implementation do not begin until that correction closes Green or the owner explicitly records a sequencing waiver.
+The approved `c7-chat-project-grounding` correction executed and closed **Not Green**. On 2026-10-05 the owner explicitly accepted those retained gaps for sequencing and activated Phase 8. This waiver does not make the correction Green and does not erase its open qualification record.
 
-On activation, create a dedicated Phase 8 activation record and coherent `0.8.0` baseline rather than inferring qualification from version numbers.
+The coherent activation baseline is `0.8.0`; Phase 8A begins from that baseline.
 
 ## Core product contracts
 
@@ -68,11 +68,9 @@ Default first-run posture:
 
 ## Phase 8A execution stack
 
-The written 8A stack lives at `docs/tasks/p8/` and targets `0.8.1` through `0.8.6`.
+The active 8A stack lives at `docs/tasks/p8a/` and targets `0.8.1` through `0.8.6`.
 
-Execution folder is intentionally `p8`, not `p8a`: the first slice uses the base phase folder, matching Phase 7A -> `p7`. Later Phase 8 slices may use continuation folders.
-
-Do not validate/execute the stack as an active phase until the entry gate closes and a coherent committed `0.8.0` activation baseline exists.
+The runner now treats slice `A` as the explicit first pre-1.0 slice: `p8a` may begin at patch 1 from `0.8.0`; later lettered slices remain continuations. The earlier `docs/tasks/p8/` draft is superseded by `p8a`.
 
 ## 8A — Codex reference connection
 

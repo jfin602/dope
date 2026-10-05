@@ -242,9 +242,9 @@ Desired completion feeling:
 
 **Product Phase 7 is OWNER APPROVED / QUALIFIED / CLOSED at the actual `0.7.31` source.** Durable Chat/AI Presence, AI Center and deterministic role routing are complete. The planned `0.7.32` version transition did not materialize and no `0.7.32` artifact is claimed. Historical P12/P13 results remain truthful history.
 
-The approved post-closeout `c7-chat-project-grounding` correction is the current gate at unchanged `0.7.31`. It is separate from the Phase 7 closeout and must earn its own qualification; Phase 7 owner approval does not make that correction Green.
+The approved post-closeout `c7-chat-project-grounding` correction executed and closed **Not Green** at `0.7.31`. On 2026-10-05 the owner explicitly accepted those retained gaps for sequencing only; they remain historical qualification truth.
 
-Phase 8 product planning is approved under ADR 0027 and `docs/planning/p8/phase-8-plan.md`, and the Phase 8A execution stack is written at `docs/tasks/p8/`. Activation remains blocked by this grounding-correction gate unless the owner explicitly waives it. After the gate closes, commit coherent `0.8.0`, then run 8A Codex AI Center setup first; later slices own AgentTask execution, sequential phase-stack dogfooding, general WorkItem delegation, and local coding models.
+Product Phase 8 is now **OWNER-ACTIVATED at coherent `0.8.0`** under ADR 0027. Phase 8A is the active `p8a` slice and owns Codex AI Center/reference runtime integration only. Later slices own AgentTask execution, sequential phase-stack dogfooding, general WorkItem delegation, and local coding models.
 
 Phase 7 keeps the project—not chat—as the center of gravity. Chats persist and are reusable, but canonical Project Mind, Architecture, Planning and Physical/Flow evidence retain their own authority.
 

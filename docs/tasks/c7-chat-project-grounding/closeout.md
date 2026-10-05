@@ -50,3 +50,14 @@ Canonical files in the disposable project matched their starting hashes after th
 - The final source lookup repair needs the aggregate `npm run check` gate. The model's `package.json` answer overstated excerpt completeness.
 
 Complete these bounded P3 gates against this exact source candidate, rerun only gates invalidated by any further repair, and update this decision before routing a fresh Phase 8 Scoped Delegation `/docs-review`.
+
+## Owner sequencing waiver — 2026-10-05
+
+The owner explicitly accepts the retained P3 qualification gaps above **for sequencing into Product Phase 8 only**.
+
+This does not change the correction decision:
+- `c7-chat-project-grounding` remains **Not Green**;
+- the missing direct second-project switch, live retry/routing/egress evidence, final-candidate aggregate check and answer-calibration residual remain open historical truth;
+- no Green/Qualified claim is created.
+
+The useful grounding implementation is retained. Phase 8 may activate from the committed `0.7.31` source containing that implementation, with a coherent `0.8.0` version transition. Any future grounding requalification must address the retained gates rather than treating this sequencing waiver as evidence.
