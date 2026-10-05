@@ -1,6 +1,6 @@
 # Phase 8A Iterative Qualification / Repair Loop
 
-Status: **ACTIVE / MANUAL ITERATIVE LOOP / PHASE 8B BLOCKED**
+Status: **COMPLETE — GREEN / QUALIFIED AFTER 3 OF 5 CYCLES**
 Date: 2026-10-05
 Folder: `c8-p8a-qualification-loop`
 Version policy: **keep Product Phase 8A at `0.8.6`**
@@ -9,7 +9,7 @@ Execution: **manual GPT-6 Sol High with browser access; do not run through `code
 
 ## Starting evidence
 
-Phase 8A is **Not Green - Evidence Gap** on the reported exact candidate:
+Phase 8A was **Not Green - Evidence Gap** on the reported initial candidate:
 
 - source HEAD: `4e73b6b`;
 - plus uncommitted coherent `0.8.6` version updates;
@@ -18,9 +18,9 @@ Phase 8A is **Not Green - Evidence Gap** on the reported exact candidate:
 - automated focused and aggregate evidence is substantially Green;
 - live Dope OAuth/account lifecycle remains the blocking evidence class.
 
-The initial live blocker is: **eligible ChatGPT OAuth callback did not complete inside Dope**.
+The initial live blocker was: **eligible ChatGPT OAuth callback did not complete inside Dope**. Its diagnosis, repairs and cleared lifecycle gates are recorded in [cycle evidence](cycle-evidence.md); the final decision is in the [Phase 8A closeout](../p8/closeout.md#supplemental-final-disposition--2026-10-05).
 
-Because of that, the following remain unqualified in live Dope:
+At the initial failed P6 checkpoint, the following remained unqualified in live Dope:
 - authenticated account inventory;
 - restart persistence;
 - refresh;
@@ -72,4 +72,3 @@ Use:
 `docs/tasks/c8-p8a-qualification-loop/one-off-p8a-qualification-repair-loop.txt`
 
 This one-off owns repair, direct qualification, cycle checkpoints and the final Phase 8A closeout update.
-

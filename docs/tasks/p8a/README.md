@@ -1,11 +1,11 @@
 # Product Phase 8A — Codex Reference Connection Task Stack
 
-Status: **ACTIVE / READY FOR EXECUTION**
+Status: **GREEN / QUALIFIED / CLOSED at `0.8.6`**
 Execution folder: `p8a`
 Product slice: Phase 8A
 Activation baseline: coherent `0.8.0` at `a2346556309174e9a24b3f8c11ac682d50460d0c`
 Version range: `0.8.1` -> `0.8.6`
-Current repository version: `0.8.0`
+Current repository version: `0.8.6`
 
 ## Slice routing
 
@@ -50,9 +50,8 @@ Use current official documentation during P2/P3/P6:
 - https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server
 - https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations
 
-## Next routing
+## Closeout and next routing
 
-Green P6 closes Phase 8A only.
+Phase 8A qualified after three bounded repair cycles on exact source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`. See the [supplemental final disposition](../p8/closeout.md#supplemental-final-disposition--2026-10-05) and [cycle evidence](../c8-p8a-qualification-loop/cycle-evidence.md). The initial P6 Not Green result remains historical evidence.
 
 Next: `/docs-review` for Phase 8B Agent execution core, then its own prompt stack.
-

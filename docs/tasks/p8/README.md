@@ -1,7 +1,7 @@
 # Product Phase 8A — Codex Reference Connection Task Stack
 
 Status: **SUPERSEDED BY `docs/tasks/p8a/` — DO NOT EXECUTE**
-P6 closeout at `0.8.6`: **NOT GREEN — EVIDENCE GAP**; see [closeout.md](closeout.md).
+Initial P6 closeout at `0.8.6`: **NOT GREEN — EVIDENCE GAP**; the later supplemental decision is **GREEN / QUALIFIED** on exact source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`. Both records are in [closeout.md](closeout.md).
 Execution folder: `p8`
 Product slice: Phase 8A
 Planned activation baseline: coherent `0.8.0`

@@ -1,6 +1,6 @@
 # Product Phase 8 — Coding Agent / Scoped Delegation Plan
 
-Status: **OWNER-ACTIVATED AT `0.8.0` / 8A `0.8.6` NOT GREEN - EVIDENCE GAP / ITERATIVE QUAL-REPAIR LOOP ACTIVE**
+Status: **OWNER-ACTIVATED AT `0.8.0` / 8A GREEN / QUALIFIED AT EXACT `0.8.6` SOURCE / 8B DOCS REVIEW NEXT**
 Date: 2026-10-05
 Expected package family after activation: `0.8.x`
 Activation baseline: coherent `0.8.0` from owner sequencing waiver after retained `c7-chat-project-grounding` Not Green
@@ -95,7 +95,9 @@ Qualification is connection/runtime only. No project mutation yet.
 
 The initial `0.8.6` qualification reached **Not Green - Evidence Gap** after the real App Server path succeeded but the live Dope ChatGPT OAuth callback/account lifecycle did not complete.
 
-Current direct blocker chain:
+The later three-cycle qualification cleared the live lifecycle and exact-source aggregate gates. Phase 8A is **Green / Qualified** at `17806d3050cd6e3d4c793bc8856af8daeaaef63f`, with the initial failed record retained in `docs/tasks/p8/closeout.md` and full cycle evidence in `docs/tasks/c8-p8a-qualification-loop/cycle-evidence.md`. Route next to fresh Phase 8B `/docs-review`; Phase 8B implementation has not begun.
+
+Initial direct blocker chain (now cleared):
 - complete the real loopback callback and token exchange;
 - prove live Dope account/model inventory;
 - prove restart persistence;
@@ -112,7 +114,7 @@ Loop rules:
 - stop immediately on all-Green;
 - after Cycle 5 stop even if gaps remain;
 - before Green, run the aggregate gate on the exact final source candidate;
-- Phase 8B remains blocked until all 8A blockers clear.
+- With all 8A blockers cleared, Phase 8B is eligible for a fresh `/docs-review`; no 8B implementation is part of this closeout.
 
 ## 8B — Agent execution core
 
@@ -280,4 +282,3 @@ Side-by-side reference/local task corpus after reference qualification.
 Phase 8 is Green when Dope can safely execute real coding work through its own AgentTask/AgentRun/Authority substrate, run the sequential development workflow that currently carries most Dope implementation work, stop/resume correctly across manual gates/restart, and generalize the same mechanism to bounded WorkItem delegation with developer-controlled review and validation.
 
 Local coding-agent compatibility should be demonstrated against the same contracts after the reference harness is qualified, but provider independence is architectural from the start.
-

@@ -51,3 +51,12 @@ Cycle 2 checkpoint: `3ad01d18e077d33719c4cb615829bc45c168591d` (`0.8.6`).
 - The required exact-candidate `npm run check` failed in three capacity-retry tests in `test/unit/codex-phase-runner.test.ts`. The full Phase 8A focused suite passed 94/94. The runner failure was in source present at the pre-loop baseline: four JavaScript regex literals used `\\b`, which matches literal backslash text, instead of the intended `\b` word boundary. Its direct capacity detector returned false and downstream retry cases did not run.
 - The owner explicitly authorized this narrow out-of-scope runner correction after the failure was observed. Changed only the four capacity-match patterns in `scripts/codex-phase.mjs`; existing focused detector and dirty-work retry tests are the permanent regression. No Phase 8A auth, authority, provider, or UI behavior changed in this cycle.
 - Focused runner and prompt grammar replay passed 103/103. `npm run check` must be repeated on this corrected exact source before final qualification; the prior failed run is retained as evidence.
+
+Cycle 3 checkpoint and final source candidate: `17806d3050cd6e3d4c793bc8856af8daeaaef63f` (`0.8.6`).
+
+## Final exact-source gate and decision
+
+- `npm run check` on source `17806d3050cd6e3d4c793bc8856af8daeaaef63f` passed: typecheck; runner 103/103; baseline 11/11; local-install 1/1; product groups 295/295 and 28/28; IDE 1/1; browser and Electron builds.
+- The full focused Phase 8A suite passed 94/94. Both `npm run codex:phase:validate -- p8` and `-- p8a` passed. Ten inspected root/workspace manifests and their internal `@dope` references were coherent at `0.8.6`; no root `package-lock.json`; `git diff --check` passed.
+- After reconnect, the exact-token scan found zero matches in 358 isolated app/config/browser files or the worktree diff and no registry credential fields. The backend and browser were stopped; no orphan App Server process or active project mutation was observed.
+- All required live Phase 8A connection/runtime gates cleared in three of five cycles. The [supplemental closeout](../p8/closeout.md#supplemental-final-disposition--2026-10-05) records **GREEN / QUALIFIED** for Phase 8A only. Phase 8B is eligible for a fresh `/docs-review`; no mutation implementation began.

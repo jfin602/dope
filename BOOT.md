@@ -263,12 +263,14 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Run the manual Phase 8A iterative qualification/repair loop against the current `0.8.6` candidate:
+Begin a fresh Phase 8B Agent execution core `/docs-review`. Phase 8B implementation has not begun.
+
+The manual Phase 8A iterative qualification/repair loop completed **GREEN / QUALIFIED** after three of five permitted cycles at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`:
 
 `docs/tasks/c8-p8a-qualification-loop/one-off-p8a-qualification-repair-loop.txt`
 
 Do **not** run this folder through `codex:phase`. It owns up to five adaptive qualify/repair cycles, beginning with the live Sign in with ChatGPT callback/account-lifecycle blocker.
 
-Phase 8A remains **Not Green - Evidence Gap** until the live Dope OAuth/account lifecycle is qualified on the exact final candidate. Phase 8B remains blocked.
+The initial **Not Green - Evidence Gap** P6 record remains historical in `docs/tasks/p8/closeout.md`; its supplemental final disposition records the completed live OAuth/account/App Server lifecycle and exact-source aggregate gate. Phase 8B is eligible for a fresh Agent execution core `/docs-review`, with no mutation implementation begun.
 
-The loop stops early on all-Green, or hard-stops after Cycle 5 with remaining blockers preserved.
+The loop stopped early on all-Green. Phase 8A remains a connection/runtime slice only.
