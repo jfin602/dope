@@ -1,6 +1,6 @@
 # Product Phase 8A Prompt Assessment — Codex Reference Connection
 
-Status: **APPROVED / PROMPTS WRITTEN / EXECUTION GATED**
+Status: **APPROVED / PROMPTS WRITTEN / READY FOR EXECUTION**
 Execution folder: `p8a`
 Product slice: **Phase 8A — Codex reference agent connection**
 Activation baseline: coherent `0.8.0` at `a2346556309174e9a24b3f8c11ac682d50460d0c`; owner sequencing waiver recorded after retained `c7-chat-project-grounding` Not Green

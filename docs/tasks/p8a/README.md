@@ -1,17 +1,17 @@
 # Product Phase 8A — Codex Reference Connection Task Stack
 
-Status: **WRITTEN / EXECUTION GATED**
+Status: **ACTIVE / READY FOR EXECUTION**
 Execution folder: `p8a`
 Product slice: Phase 8A
 Activation baseline: coherent `0.8.0` at `a2346556309174e9a24b3f8c11ac682d50460d0c`
 Version range: `0.8.1` -> `0.8.6`
 Current repository version: `0.8.0`
 
-## Why the folder is p8
+## Slice routing
 
-The first slice of a phase uses the base phase folder. This mirrors Phase 7A using `p7`; later Phase 8 continuations may use `p8b`, `p8c`, etc.
+`p8a` is the canonical first Phase 8 slice. The runner explicitly allows slice A to begin at patch 1 from the coherent `0.8.0` phase baseline.
 
-Do **not** execute this stack until Phase 8 is activated at `0.8.0`.
+The earlier `docs/tasks/p8/` draft is superseded and must not be executed.
 
 ## Stack
 
