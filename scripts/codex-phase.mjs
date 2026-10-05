@@ -10,6 +10,7 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import {
   applyEventObservation,
@@ -385,6 +386,17 @@ export async function waitForModelCapacityRetry({
   if (isInterrupted()) throw new Error(interruptionMessage);
 }
 
+const DIRTY_TREE_CONTINUATION = `DIRTY WORKING TREE CONTINUATION
+
+The developer explicitly chose to start this runner execution with an existing dirty working tree.
+
+Treat the pre-existing uncommitted changes as intentional partial work for this same pending prompt.
+Inspect and continue from the current working tree.
+Do not reset, revert, checkout, discard, overwrite wholesale, or otherwise erase those existing changes.
+Preserve unrelated-looking changes unless the task itself requires integrating them.
+The phase runner may include the resulting dirty work in this prompt's successful checkpoint commit.
+The original phase-runner Git ownership contract still applies.`;
+
 const CAPACITY_RETRY_CONTINUATION = `CAPACITY RETRY CONTINUATION
 
 A previous attempt of this same prompt was interrupted because the selected model was at capacity.
@@ -424,8 +436,11 @@ your turn completes.
 The task instructions remain authoritative except where they conflict
 with this runner-owned Git commit boundary.`;
 
-export function buildCodexExecutionPrompt(taskText, { capacityRetryAttempt = 0 } = {}) {
-  return `${PHASE_RUNNER_EXECUTION_CONTRACT}\n\n${capacityRetryAttempt > 0 ? `${CAPACITY_RETRY_CONTINUATION}\n\nRetry attempt: ${capacityRetryAttempt} of ${MODEL_CAPACITY_MAX_RETRIES}.\n\n` : ''}${taskText}`;
+export function buildCodexExecutionPrompt(
+  taskText,
+  { capacityRetryAttempt = 0, dirtyTreeContinuation = false } = {},
+) {
+  return `${PHASE_RUNNER_EXECUTION_CONTRACT}\n\n${dirtyTreeContinuation ? `${DIRTY_TREE_CONTINUATION}\n\n` : ''}${capacityRetryAttempt > 0 ? `${CAPACITY_RETRY_CONTINUATION}\n\nRetry attempt: ${capacityRetryAttempt} of ${MODEL_CAPACITY_MAX_RETRIES}.\n\n` : ''}${taskText}`;
 }
 
 export async function runCodex(
@@ -438,6 +453,7 @@ export async function runCodex(
     spawnProcess = spawn,
     verbose = false,
     capacityRetryAttempt = 0,
+    dirtyTreeContinuation = false,
   } = {},
 ) {
   if (!launcher) throw new Error('A resolved Codex launcher is required.');
@@ -480,7 +496,10 @@ export async function runCodex(
   });
 
   child.stdin.end(
-    buildCodexExecutionPrompt(prompt.text, { capacityRetryAttempt }),
+    buildCodexExecutionPrompt(prompt.text, {
+      capacityRetryAttempt,
+      dirtyTreeContinuation,
+    }),
   );
   let processFailure;
   const result = await new Promise((resolve) => {
@@ -529,6 +548,7 @@ export async function runCodexWithCapacityRetries(
     onCapacityTick = () => {},
     isInterrupted = () => false,
     interruptionMessage = 'Phase run was interrupted.',
+    dirtyTreeContinuation = false,
   } = {},
 ) {
   let retryAttempt = 0;
@@ -538,6 +558,7 @@ export async function runCodexWithCapacityRetries(
       verbose,
       rootDirectory,
       capacityRetryAttempt: retryAttempt,
+      dirtyTreeContinuation,
     });
     if (result?.signal || isInterrupted()) {
       return { ...result, capacityRetries: retryAttempt };
@@ -742,9 +763,54 @@ export async function commitPromptChanges(
   }
 }
 
+export async function promptDirtyTreeDecision({
+  stdin = process.stdin,
+  stdout = process.stdout,
+  statusText = '',
+} = {}) {
+  if (!stdin?.isTTY || !stdout?.isTTY) {
+    throw new Error(
+      'Repository has uncommitted changes; run interactively to choose whether to continue with the dirty working tree.',
+    );
+  }
+
+  const entries = String(statusText)
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean);
+  const visible = entries.slice(0, 20);
+  stdout.write('\nWorking tree has uncommitted changes:\n');
+  for (const entry of visible) stdout.write(`  ${printableAscii(entry)}\n`);
+  if (entries.length > visible.length) {
+    stdout.write(`  ... and ${entries.length - visible.length} more\n`);
+  }
+  stdout.write(
+    '\nContinuing treats these changes as intentional partial work. They may be included in the next successful prompt commit.\n',
+  );
+
+  const readline = createInterface({ input: stdin, output: stdout });
+  try {
+    const answer = await readline.question(
+      'Continue with this dirty working tree? [y/N] ',
+    );
+    return /^(?:y|yes)$/i.test(answer.trim());
+  } finally {
+    readline.close();
+  }
+}
+
 export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
   const rootDirectory = dependencies.rootDirectory ?? root;
   const stdout = dependencies.stdout ?? process.stdout;
+  const stdin = dependencies.stdin ?? process.stdin;
+  const confirmDirtyTree =
+    dependencies.confirmDirtyTree ??
+    ((context) =>
+      promptDirtyTreeDecision({
+        ...context,
+        stdin,
+        stdout,
+      }));
   const resolveLauncher =
     dependencies.resolveLauncher ?? (() => resolveCodexLauncher());
   const runCodexProcess = dependencies.runCodexProcess ?? runCodex;
@@ -820,10 +886,20 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
     throw new Error(
       `Unable to inspect repository state: ${initialStatus.stderr.trim()}`,
     );
-  if (initialStatus.stdout.trim())
-    throw new Error(
-      'Repository has uncommitted changes; start from an intentional clean phase baseline.',
-    );
+  const initialDirtyStatus = initialStatus.stdout.trim();
+  let dirtyTreeAccepted = false;
+  if (initialDirtyStatus) {
+    dirtyTreeAccepted = await confirmDirtyTree({
+      statusText: initialDirtyStatus,
+      rootDirectory,
+      plan,
+    });
+    if (!dirtyTreeAccepted) {
+      throw new Error(
+        'Runner aborted because the working tree is dirty and continuation was not approved.',
+      );
+    }
+  }
   const historyOutput = successfulGit(
     runGit(['log', '--format=%H%x09%s', 'HEAD']),
     'Unable to inspect reachable Git history',
@@ -843,7 +919,16 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
     plan,
     history,
     await packageVersion(rootDirectory),
+    { allowDirtyNextVersion: dirtyTreeAccepted },
   );
+  if (dirtyTreeAccepted && !resume.nextPrompt) {
+    throw new Error(
+      'Dirty working tree continuation requires a pending implementation prompt; clean or checkpoint the tree before closeout.',
+    );
+  }
+  const dirtyContinuationPromptNumber = dirtyTreeAccepted
+    ? resume.nextPrompt?.number
+    : undefined;
   const firstPendingPrompt =
     resume.nextPrompt ?? (closeoutAutoRun ? plan.closeout : undefined);
   let launcher;
@@ -880,6 +965,8 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
     codexVersion,
     closeoutMode: closeoutAutoRun ? 'auto' : 'manual',
     status: 'running',
+    startedWithDirtyTree: dirtyTreeAccepted,
+    ...(dirtyTreeAccepted ? { initialDirtyStatus } : {}),
     prompts: plan.prompts.map((prompt) => ({
       ...withoutPromptText(prompt),
       status:
@@ -968,6 +1055,9 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
     const record = run.prompts.find((item) => item.number === prompt.number);
     record.status = 'running';
     record.startedAt = new Date().toISOString();
+    if (dirtyContinuationPromptNumber === prompt.number) {
+      record.continuedDirtyTree = true;
+    }
     const startedAt = Date.now();
     const tracker = createEventTracker();
     let latest = '[.] Waiting for Codex response';
@@ -1023,6 +1113,8 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
           sleepFunction: capacityRetrySleep,
           isInterrupted: () => interrupted,
           interruptionMessage,
+          dirtyTreeContinuation:
+            dirtyContinuationPromptNumber === prompt.number,
           onCapacityRetry: async ({ retryAttempt, maxRetries, retrySeconds }) => {
             record.capacityRetries = retryAttempt;
             state.capacityRetries = retryAttempt;

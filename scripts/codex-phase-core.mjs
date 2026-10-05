@@ -345,7 +345,12 @@ export function promptCommitSubject(plan, prompt) {
     : `${plan.folderName}/P${prompt.number}: ${prompt.title}`;
 }
 
-export function detectCompletedPromptPrefix(plan, history, packageVersion) {
+export function detectCompletedPromptPrefix(
+  plan,
+  history,
+  packageVersion,
+  { allowDirtyNextVersion = false } = {},
+) {
   const matches = plan.implementations.map((prompt) => {
     const subject = promptCommitSubject(plan, prompt);
     const commits = history.filter((commit) => commit.subject === subject);
@@ -375,14 +380,22 @@ export function detectCompletedPromptPrefix(plan, history, packageVersion) {
       ? roadmapVersionFor(plan, completedCount)
       : plan.unchangedVersion;
   if (packageVersion !== expectedVersion) {
-    if (plan.mode === 'correction') {
+    const nextPrompt = plan.implementations[completedCount];
+    const dirtyNextVersionAllowed =
+      allowDirtyNextVersion &&
+      plan.mode === 'phase' &&
+      nextPrompt &&
+      packageVersion === nextPrompt.targetVersion;
+    if (!dirtyNextVersionAllowed) {
+      if (plan.mode === 'correction') {
+        throw new Error(
+          `Correction stack expected unchanged package version ${expectedVersion}; found ${packageVersion}.`,
+        );
+      }
       throw new Error(
-        `Correction stack expected unchanged package version ${expectedVersion}; found ${packageVersion}.`,
+        `Package version ${packageVersion} does not match the Git-proven completed prefix through ${completedCount ? `P${completedCount}` : 'no prompts'}; expected ${expectedVersion}.`,
       );
     }
-    throw new Error(
-      `Package version ${packageVersion} does not match the Git-proven completed prefix through ${completedCount ? `P${completedCount}` : 'no prompts'}; expected ${expectedVersion}.`,
-    );
   }
 
   return Object.freeze({

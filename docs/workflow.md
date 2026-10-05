@@ -299,6 +299,24 @@ Every substantial task should answer:
 6. Did UI/framework convenience accidentally become canonical product state?
 7. Did implementation convenience accidentally create provider/model coupling?
 
+### Dirty-tree start decision
+
+A fresh phase-runner invocation inspects the working tree before Codex launch.
+
+If the tree is dirty:
+- in an interactive terminal, show the current `git status --porcelain` entries and ask whether to continue;
+- default answer is **No**;
+- warn that choosing Continue treats the existing changes as intentional partial work and they may be included in the next successful prompt checkpoint commit;
+- if approved, Git history still determines the next incomplete prompt;
+- for phase stacks, a dirty package version may match either the Git-proven previous version or the next pending prompt's target version, covering interrupted work that already bumped the version;
+- inject an explicit continuation instruction telling Codex to inspect/preserve the existing changes and not reset/revert/discard them;
+- record the dirty start and status in the run log;
+- normal post-prompt validation and runner-owned commit rules still apply.
+
+Non-interactive runs fail closed unless the caller explicitly supplies the dirty-tree decision through the runner API.
+
+A dirty tree cannot be carried directly into an automatic closeout when no implementation prompt remains pending.
+
 ### Model-capacity retry
 
 The phase runner treats a selected-model **at capacity** failure as transient only when the Codex error explicitly identifies model/service capacity.

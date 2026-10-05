@@ -61,6 +61,7 @@ const {
   MODEL_CAPACITY_RETRY_SECONDS,
   parseCodexCliVersion,
   invokeGit,
+  promptDirtyTreeDecision,
   isModelCapacityFailure,
   isModelCapacityText,
   resolveCodexLauncher,
@@ -434,6 +435,10 @@ test('capacity detection is narrow and retry continuation preserves dirty work',
   assert.match(retryPrompt, /dirty working tree is intentional partial work/);
   assert.match(retryPrompt, /Do not reset, revert, checkout, discard/);
   assert.match(retryPrompt, /Retry attempt: 1 of 3/);
+
+  const dirtyPrompt = buildCodexExecutionPrompt('Continue task.', { dirtyTreeContinuation: true });
+  assert.match(dirtyPrompt, /developer explicitly chose to start this runner execution with an existing dirty working tree/i);
+  assert.match(dirtyPrompt, /may include the resulting dirty work in this prompt's successful checkpoint commit/i);
 
   const ticks: number[] = [];
   const sleeps: number[] = [];
@@ -2336,7 +2341,139 @@ test('correction resume uses the exact subject and tolerates a newer unrelated c
   }
 });
 
-test('dirty working tree still prevents resume inspection from launching Codex', async () => {
+test('dirty resume may accept the pending prompt target version without changing Git-proven progress', () => {
+  const plan = buildPlan([prompt(1), prompt(2, { closeout: true })], 'p8');
+  const history = [{ sha: 'baseline', subject: 'baseline' }];
+
+  assert.throws(
+    () => detectCompletedPromptPrefix(plan, history, '0.8.1'),
+    /does not match the Git-proven completed prefix/,
+  );
+
+  const resume = detectCompletedPromptPrefix(plan, history, '0.8.1', {
+    allowDirtyNextVersion: true,
+  });
+  assert.equal(resume.completedCount, 0);
+  assert.equal(resume.nextPrompt?.number, 1);
+  assert.equal(resume.previousVersion, '0.8.0');
+
+  assert.throws(
+    () => detectCompletedPromptPrefix(plan, history, '0.8.2', {
+      allowDirtyNextVersion: true,
+    }),
+    /does not match the Git-proven completed prefix/,
+  );
+});
+
+test('dirty tree prompt fails closed without TTY', async () => {
+  await assert.rejects(
+    promptDirtyTreeDecision({
+      stdin: { isTTY: false },
+      stdout: testOutput(false),
+      statusText: ' M file.txt',
+    }),
+    /run interactively/,
+  );
+});
+
+test('dirty working tree decision can decline before Codex launch', async () => {
+  const rootDirectory = await createPhaseRepository(1);
+  let codexCalls = 0;
+  let asked = 0;
+  try {
+    await writeFile(path.join(rootDirectory, 'dirty.txt'), 'dirty\n');
+    await assert.rejects(
+      runCli(['p8'], {
+        rootDirectory,
+        stdout: testOutput(false),
+        confirmDirtyTree: async ({ statusText }: { statusText: string }) => {
+          asked += 1;
+          assert.match(statusText, /dirty\.txt/);
+          return false;
+        },
+        resolveLauncher: async () => ({
+          launcher: directTestLauncher,
+          version: compatibleCodexVersion,
+        }),
+        runCodexProcess: async () => {
+          codexCalls += 1;
+          throw new Error('must not run');
+        },
+      }),
+      /working tree is dirty and continuation was not approved/,
+    );
+    assert.equal(asked, 1);
+    assert.equal(codexCalls, 0);
+    assert.equal(gitResult(rootDirectory, ['log', '-1', '--format=%s']), 'baseline');
+    assert.match(gitResult(rootDirectory, ['status', '--porcelain=v1']), /dirty\.txt/);
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
+});
+
+test('dirty working tree decision can continue the pending prompt from partial work', async () => {
+  const rootDirectory = await createPhaseRepository(1);
+  const output = testOutput(false);
+  let asked = 0;
+  const calls: Array<{ dirtyTreeContinuation?: boolean }> = [];
+  try {
+    await writeFile(path.join(rootDirectory, 'partial.txt'), 'partial\n');
+    await writeFile(
+      path.join(rootDirectory, 'package.json'),
+      `${JSON.stringify({ name: 'phase-test', version: '0.8.1' }, null, 2)}\n`,
+    );
+
+    const result = await runCli(['p8'], {
+      rootDirectory,
+      stdout: output,
+      confirmDirtyTree: async ({ statusText }: { statusText: string }) => {
+        asked += 1;
+        assert.match(statusText, /partial\.txt/);
+        assert.match(statusText, /package\.json/);
+        return true;
+      },
+      resolveLauncher: async () => ({
+        launcher: directTestLauncher,
+        version: compatibleCodexVersion,
+      }),
+      runCodexProcess: async (
+        _parsedPrompt: { number: number },
+        _runDirectory: string,
+        _onEvent: (event: unknown) => void,
+        options: { dirtyTreeContinuation?: boolean },
+      ) => {
+        calls.push(options);
+        assert.equal(await readFile(path.join(rootDirectory, 'partial.txt'), 'utf8'), 'partial\n');
+        await writeFile(path.join(rootDirectory, 'finished.txt'), 'finished\n');
+        return {
+          code: 0,
+          signal: null,
+          finalResponse: 'continued dirty work\n',
+          stderr: '',
+          childArgs: [],
+        };
+      },
+    });
+
+    assert.equal(result, 0);
+    assert.equal(asked, 1);
+    assert.deepEqual(calls.map(call => call.dirtyTreeContinuation), [true]);
+    assert.equal(gitResult(rootDirectory, ['log', '-1', '--format=%s']), '0.8.1');
+    assert.equal(gitResult(rootDirectory, ['status', '--porcelain=v1']), '');
+    assert.equal(await readFile(path.join(rootDirectory, 'partial.txt'), 'utf8'), 'partial\n');
+
+    const [runName] = await readdir(path.join(rootDirectory, '.codex-runs', 'p8'));
+    const run = JSON.parse(await readFile(
+      path.join(rootDirectory, '.codex-runs', 'p8', runName!, 'run.json'), 'utf8'));
+    assert.equal(run.startedWithDirtyTree, true);
+    assert.match(run.initialDirtyStatus, /partial\.txt/);
+    assert.equal(run.prompts[0].continuedDirtyTree, true);
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
+});
+
+test('dirty working tree still fails closed without an interactive or injected decision', async () => {
   const rootDirectory = await createPhaseRepository(2);
   let codexCalls = 0;
   try {
@@ -2355,7 +2492,7 @@ test('dirty working tree still prevents resume inspection from launching Codex',
           throw new Error('must not run');
         },
       }),
-      /uncommitted changes/,
+      /uncommitted changes.*run interactively/i,
     );
     assert.equal(codexCalls, 0);
   } finally {
