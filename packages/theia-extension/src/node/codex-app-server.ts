@@ -248,7 +248,7 @@ export class CodexAppServer {
         const { rpc } = await this.session(connectionId, registrationId);
         const scratch = await mkdtemp(join(tmpdir(), 'dope-codex-test-'));
         try {
-            const thread = await rpc.request('thread/start', { model, cwd: scratch, approvalPolicy: 'never', sandbox: 'readOnly' });
+            const thread = await rpc.request('thread/start', { model, cwd: scratch, approvalPolicy: 'never', sandbox: 'read-only' });
             const threadId = object(thread)?.thread?.id;
             if (typeof threadId !== 'string' || !threadId) throw failure('Invalid Codex thread', 'invalid-json');
             return { threadId, text: await this.turn(rpc, threadId, scratch) };
@@ -258,7 +258,7 @@ export class CodexAppServer {
     async resume(connectionId: string, registrationId: string, threadId: string): Promise<void> {
         if (!threadId) throw failure('Invalid Codex thread', 'invalid-json');
         const { rpc, root } = await this.session(connectionId, registrationId);
-        await rpc.request('thread/resume', { threadId, cwd: root, approvalPolicy: 'never', sandbox: 'readOnly' });
+        await rpc.request('thread/resume', { threadId, cwd: root, approvalPolicy: 'never', sandbox: 'read-only' });
     }
     private async turn(rpc: RpcProcess, threadId: string, cwd: string): Promise<string> {
         let turnId: string | undefined;
@@ -281,7 +281,7 @@ export class CodexAppServer {
         });
         try {
             const result = await rpc.request('turn/start', { threadId, cwd, approvalPolicy: 'never',
-                sandboxPolicy: { type: 'readOnly' }, input: [{ type: 'text', text: 'Reply with OK. Do not use tools.' }] });
+                sandboxPolicy: { type: 'readOnly', networkAccess: false }, input: [{ type: 'text', text: 'Reply with OK. Do not use tools.' }] });
             turnId = object(result)?.turn?.id;
             if (typeof turnId !== 'string') throw failure('Invalid Codex turn', 'invalid-json');
             if (completed && completedTurnId !== turnId) throw failure('Invalid Codex turn', 'invalid-json');

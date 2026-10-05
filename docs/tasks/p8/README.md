@@ -1,6 +1,7 @@
 # Product Phase 8A — Codex Reference Connection Task Stack
 
 Status: **SUPERSEDED BY `docs/tasks/p8a/` — DO NOT EXECUTE**
+P6 closeout at `0.8.6`: **NOT GREEN — EVIDENCE GAP**; see [closeout.md](closeout.md).
 Execution folder: `p8`
 Product slice: Phase 8A
 Planned activation baseline: coherent `0.8.0`
@@ -38,6 +39,22 @@ Before execution:
 
 It does not give Codex permission to mutate repositories. AgentTask/ExecutionGrant mutation begins in Phase 8B.
 
+## P6 closeout summary — exact `0.8.6` candidate
+
+Candidate basis: `4e73b6b41eec76658353e6500ee63d5c223f3fa5` plus the uncommitted coherent `0.8.6` version/internal-reference bump and the bounded App Server sandbox compatibility repair. No commit was created.
+
+Passed commands/evidence:
+
+- focused 92-test P6 suite; then the 58-test focused repair suite;
+- `npm run check` once before the repair;
+- `npm run codex:phase:validate -- p8` and `npm run codex:phase:validate -- p8a`;
+- version/internal-reference/no-root-lock and `git diff --check`;
+- real `codex-cli 0.155.1` App Server initialize, model list, completed tiny read-only/no-approval/no-network turn, clean shutdown, and empty scratch root.
+
+Repair: App Server's current thread sandbox wire enum is `read-only`, while the turn policy remains `readOnly` and requires `networkAccess: false`; the adapter and its permanent payload guard now use those exact forms.
+
+Direct no-project AI Center evidence reached the safe Codex sign-in-pending state with no rendered secret or authorization URL. The eligible-account OAuth callback, Dope account/model inventory, live registration restart, refresh/sign-out/reconnect, and live refreshed-token App Server replacement/resume did not complete. The resulting Phase 8A decision is **Not Green — Evidence Gap**. See [closeout.md](closeout.md) for the full evidence and retained security/role constraints.
+
 ## Official implementation references
 
 Use current official documentation during P2/P3/P6:
@@ -50,7 +67,6 @@ Use current official documentation during P2/P3/P6:
 
 ## Next routing
 
-Green P6 closes Phase 8A only.
+P6 did not close Phase 8A. The direct Dope OAuth/account-inventory lifecycle remains unqualified; do not begin Phase 8B.
 
-Next: `/docs-review` for Phase 8B Agent execution core, then its own prompt stack.
-
+After the exact-candidate gaps close Green, route to `/docs-review` for Phase 8B Agent execution core, then its own prompt stack.
