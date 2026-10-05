@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 7 is **OWNER APPROVED / QUALIFIED / CLOSED at the actual `0.7.31` source**. The post-closeout `c7-chat-project-grounding` correction remains the current execution gate at unchanged `0.7.31`. Phase 8 coding-agent planning is approved under ADR 0027 and `docs/planning/p8/phase-8-plan.md` but is **not activated** until that gate closes Green or the owner explicitly waives it. No `0.7.32` artifact is claimed.
+Current stage: Product Phase 7 is **OWNER APPROVED / QUALIFIED / CLOSED at the actual `0.7.31` source**. The post-closeout `c7-chat-project-grounding` correction remains the current execution gate at unchanged `0.7.31`. Phase 8 planning is approved and the Phase 8A `p8` stack (`0.8.1`–`0.8.6`) is written, but Phase 8 is **not activated** until that gate closes Green or the owner explicitly waives it and a coherent `0.8.0` activation baseline is committed. No `0.7.32` artifact is claimed.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.

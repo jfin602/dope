@@ -1,0 +1,68 @@
+TASK: Phase 8 / P6 — Phase 8A Codex reference connection closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+The assigned project version is `0.8.6`.
+
+GOAL
+Qualify and close only **Phase 8A — Codex reference connection** on one exact candidate. Do not claim Product Phase 8 qualification and do not add repository mutation authority.
+
+PREFLIGHT
+Read ADR 0026 amendment, ADR 0027, Phase 8 plan, p8 assessment/plan and exact P1-P5 results. Use a disposable application config/profile and no active project for connection tests whenever possible.
+
+AUTOMATED T3
+- run focused Phase 8A auth/App Server/AI Center/role tests;
+- run `npm run check` once;
+- run `npm run codex:phase:validate -- p8`;
+- exact version/internal-reference/no-root-lock and `git diff --check`;
+- run native/package evidence only if the implementation changed executable discovery/packaged process behavior such that browser-hosted evidence cannot qualify it.
+
+DIRECT AI CENTER / OAUTH
+In the real Dope UI:
+- open AI Center with no project required;
+- Add Connection -> Codex;
+- Continue with ChatGPT and complete a real eligible account authorization;
+- verify account/auth state and model inventory;
+- verify Codex models are hosted agentExecution candidates;
+- reload/restart and confirm non-secret registration/account identity returns while tokens remain hidden;
+- inspect registry/config/log/browser-visible state for token/secret leakage;
+- exercise Refresh Models, reauthorize/sign-out and reconnect.
+
+DIRECT APP SERVER
+- use the real Codex executable/App Server;
+- initialize successfully;
+- run Test Connection against a scratch/empty directory with no project data and mutation disabled;
+- require a completed tiny turn;
+- verify no project/repository files changed;
+- close/restart App Server cleanly with no orphan process;
+- exercise refreshed-token process replacement/resume in the strongest safe direct form available.
+
+SECURITY / FAILURE
+Directly or with exact-candidate controlled integration where the live provider condition is impractical:
+- two independent Dope processes cannot race one rotating refresh-token set;
+- declined/removed plan permission and expired/revoked auth become repairable auth state;
+- unavailable/unsupported model is honest;
+- usage/plan limit is surfaced without silent API-key billing fallback;
+- multiple Codex account registrations remain distinct;
+- generic OpenAI API connection remains separate.
+
+ROLE / CONSUMER
+- assign a Codex target to Coding Agent;
+- verify role health/eligibility;
+- verify ordinary Chat and Software Map do not automatically consume Codex-only agent models;
+- Coding Agent still has no mutation consumer in 8A.
+
+CLOSEOUT
+Write `docs/tasks/p8/closeout.md` and update p8 README with exact candidate, commands, automated/direct evidence, any bounded fix, residual gaps, and Green / Not Green / Evidence Gap result.
+
+A tiny P6 repair is allowed only inside the approved 8A connection/auth/App Server/AI Center/role boundary; rerun only invalidated evidence.
+
+If Green, route to a fresh Phase 8B Agent execution core `/docs-review`. Do not activate mutation in this closeout.
+
+Do not create commits; the phase runner/manual closeout process owns the checkpoint boundary.
+
+FINAL RESPONSE
+Report exact candidate, OAuth/App Server/model/AI Center/role evidence, security residuals and the Phase 8A decision.

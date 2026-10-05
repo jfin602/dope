@@ -273,4 +273,4 @@ then:
 
 The three-prompt stack owns deterministic read-only project grounding, Chat Auto context integration, and one adversarial browser qualification/closeout. Preserve Phase 7 history and do not introduce write/process/Git/network/delegation authority.
 
-After a Green correction closeout, activate the already-approved Phase 8 coding-agent plan. ADR 0027 locks Codex-in-AI-Center, reference-agent-first AgentTask/AgentRun execution, sequential phase-stack dogfooding, then general WorkItem delegation and local coding models.
+After a Green correction closeout, create the coherent `0.8.0` Phase 8 activation baseline, then validate/execute the already-written 8A stack in `docs/tasks/p8/` (`0.8.1`–`0.8.6`). ADR 0027 locks Codex-in-AI-Center, reference-agent-first AgentTask/AgentRun execution, sequential phase-stack dogfooding, then general WorkItem delegation and local coding models.

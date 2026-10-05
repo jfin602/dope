@@ -1,6 +1,6 @@
 # Product Phase 8 — Coding Agent / Scoped Delegation Plan
 
-Status: **PLANNING APPROVED / NOT ACTIVATED — c7-chat-project-grounding remains the current execution gate**
+Status: **PLANNING APPROVED / 8A `p8` PROMPTS WRITTEN / NOT ACTIVATED — c7-chat-project-grounding remains the current execution gate**
 Date: 2026-10-05
 Expected package family after activation: `0.8.x`
 Activation baseline: **TBD after the grounding correction is Green or explicitly waived by the owner**
@@ -65,6 +65,14 @@ Default first-run posture:
 - checkpoint commit: Dope-owned for phase-stack flow;
 - outside-project write: denied;
 - network/secrets/destructive/system actions: denied unless explicitly requested and approved.
+
+## Phase 8A execution stack
+
+The written 8A stack lives at `docs/tasks/p8/` and targets `0.8.1` through `0.8.6`.
+
+Execution folder is intentionally `p8`, not `p8a`: the first slice uses the base phase folder, matching Phase 7A -> `p7`. Later Phase 8 slices may use continuation folders.
+
+Do not validate/execute the stack as an active phase until the entry gate closes and a coherent committed `0.8.0` activation baseline exists.
 
 ## 8A — Codex reference connection
 
