@@ -263,14 +263,10 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Begin a fresh Phase 8B Agent execution core `/docs-review`. Phase 8B implementation has not begun.
+Plan the current Phase 8B Agent execution core implementation:
 
-The manual Phase 8A iterative qualification/repair loop completed **GREEN / QUALIFIED** after three of five permitted cycles at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`:
+`/prompt-ass -> /prompt-plan -> /prompt-write p8b`
 
-`docs/tasks/c8-p8a-qualification-loop/one-off-p8a-qualification-repair-loop.txt`
+Phase 8A is **GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`. The later `bc151cb` commit is docs-only qualification.
 
-Do **not** run this folder through `codex:phase`. It owns up to five adaptive qualify/repair cycles, beginning with the live Sign in with ChatGPT callback/account-lifecycle blocker.
-
-The initial **Not Green - Evidence Gap** P6 record remains historical in `docs/tasks/p8/closeout.md`; its supplemental final disposition records the completed live OAuth/account/App Server lifecycle and exact-source aggregate gate. Phase 8B is eligible for a fresh Agent execution core `/docs-review`, with no mutation implementation begun.
-
-The loop stopped early on all-Green. Phase 8A remains a connection/runtime slice only.
+Phase 8B starts from that `0.8.6` product source and should continue at `0.8.7+`. It owns one bounded mutation-capable AgentTask / AgentRun / ExecutionGrant path and a minimal Agent Run surface. It does **not** yet own sequential phase-stack execution, dirty-tree continuation or Git checkpoint commits; those remain Phase 8C.

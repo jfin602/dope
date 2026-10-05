@@ -27,7 +27,7 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-**Current roadmap scope:** Product Phase 5 remains owner-closed for sequencing with P11 Not Green and P12 unexecuted. Product Phase 6 — Flow is OWNER-CLOSED FOR SEQUENCING at `0.6.8`, while its P8 audit remains Not Qualified. Product Phase 7 is **OWNER APPROVED / QUALIFIED / CLOSED at the actual `0.7.31` source**; the planned `0.7.32` closeout version did not materialize and must not be invented. Phase 7A/c7 history, Phase 7B Qualified/Closed evidence and Phase 7C Green integrated/final audit remain retained. Before Phase 8, execute and qualify the written bounded post-closeout correction `c7-chat-project-grounding` at unchanged `0.7.31`. It may add only deterministic read-only project grounding (list/read/search/query), visible Auto context and fail-closed evidence rules. It must not add write/process/Git/network/delegation authority.
+**Current roadmap scope:** Product Phase 5 remains owner-closed for sequencing with P11 Not Green and P12 unexecuted. Product Phase 6 — Flow is OWNER-CLOSED FOR SEQUENCING at `0.6.8`, while its P8 audit remains Not Qualified. Product Phase 7 is OWNER APPROVED / QUALIFIED / CLOSED at actual `0.7.31`; historical Phase 7 and `c7-chat-project-grounding` evidence remains preserved. Product Phase 8 is ACTIVE under ADR 0027. Phase 8A Codex reference connection is **GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`; `bc151cb` is docs-only qualification. **Phase 8B Agent execution core is current.** It may add one bounded mutation-capable AgentTask/AgentRun/ExecutionGrant path and minimal Agent Run UI. It must not add AgentTaskSequence/phase-stack execution, dirty-tree continuation or Git checkpoint commits; those belong to 8C.
 
 Product Phase 5 — Visual Software Planning is **OWNER-CLOSED FOR SEQUENCING**. Its retained P11 result is Not Green and P12 was not executed; see `docs/tasks/p5/closeout.md`. Product Phase 6 — Flow is owner-closed for sequencing at `0.6.8`; P8 remains Not Qualified. Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved core scope. Architecture-discovery follow-ons remain historical evidence; `c4-smap-storage` and `c4-color-theme` remain GREEN / QUALIFIED at unchanged `0.4.6`.
 
@@ -53,6 +53,12 @@ Only the narrow provider-independent sMap synthesis boundary and reference adapt
 - Dope owns commits/checkpoints for the initial phase-stack workflow.
 - No silent ChatGPT-plan -> OpenAI API-key billing fallback.
 - Reference harness qualification precedes local coding-agent qualification.
+- Phase 8B starts from a clean disposable repository and proves one direct AgentTask only.
+- Initial ExecutionGrant allows project read/write, project-local process/test/build and Git inspection; Git writes, network, secrets, outside-root and destructive/system actions are denied.
+- 8A Test Connection remains read-only/no-project-data forever; 8B uses a separate mutation-capable AgentExecutionAdapter path.
+- 8B persists inspectable task/run/events state beneath `.dope/agent/` and never persists OAuth tokens or hidden reasoning.
+- Cancellation preserves existing modifications; it does not auto-revert.
+- Phase 8C owns AgentTaskSequence, runner-style prompt/version progression, dirty-tree continuation, capacity retries and Dope-owned checkpoint commits.
 
 
 ### Phase 6 Flow laws

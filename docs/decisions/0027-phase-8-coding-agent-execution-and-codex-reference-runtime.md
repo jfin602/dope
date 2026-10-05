@@ -209,3 +209,176 @@ Provider-specific implementation details are non-canonical and may evolve:
 - Account/session/token refresh guidance: https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions
 - ChatGPT app usage/limits: https://help.openai.com/en/articles/20001542-using-your-chatgpt-plan-in-other-apps-and-sites
 
+## Amendment — Phase 8B Agent execution core (2026-10-05)
+
+Phase 8A is Green / Qualified at exact source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`, coherent `0.8.6`. The Codex AI Center connection, ChatGPT-plan auth, model inventory, App Server lifecycle and Coding Agent role eligibility are therefore available as the reference substrate.
+
+Phase 8B now activates the first mutation-capable product path, but remains deliberately narrower than the later phase-stack workflow.
+
+### 8B goal
+
+Phase 8B proves one safe, observable, cancellable, restart-inspectable **AgentTask** against one clean disposable project.
+
+It does not yet implement:
+- AgentTaskSequence;
+- phase/correction prompt-stack parsing;
+- version progression;
+- browser/manual gates;
+- runner-owned Git checkpoints;
+- dirty-tree continuation;
+- capacity retry policy;
+- automatic sequence resume;
+- WorkItem delegation.
+
+Those are later Phase 8 slices.
+
+### Initial AgentTask contract
+
+The first live AgentTask carries:
+- stable Dope task ID and schema version;
+- creation time;
+- objective and executable instructions;
+- canonical project identity/root;
+- model policy: follow Coding Agent or exact connection/model;
+- model execution settings such as reasoning effort where supported;
+- authority requirements;
+- bounded validation/completion policy;
+- origin: direct, phase-stack, WorkItem or future session;
+- optional links to higher-level planning/project context.
+
+AgentTask never stores provider-native thread/session identity as canonical task identity.
+
+### Initial AgentRun contract
+
+One AgentRun records one execution attempt:
+- stable run ID + AgentTask ID;
+- status: pending / running / blocked / cancelling / cancelled / failed / completed / interrupted;
+- started/ended times;
+- requested role/exact policy and actual immutable connection/model/runtime provenance;
+- ExecutionGrant identity/revision;
+- starting project identity + Git HEAD + clean/dirty basis;
+- provider-neutral activity events;
+- affected project-relative files;
+- validation results;
+- bounded diff/change summary;
+- provider recovery metadata such as Codex thread ID;
+- failure/cancel/interruption/recovery state.
+
+Provider recovery metadata remains non-canonical and never grants authority.
+
+### Project-local persistence
+
+8B persists inspectable execution state beneath the project:
+
+```text
+.dope/agent/
+  tasks/
+    <task-id>.json
+  runs/
+    <run-id>/
+      run.json
+      events.jsonl
+```
+
+This persistence is project work state, not Physical Map source/config input.
+
+Never persist:
+- OAuth/access/refresh/ID tokens;
+- provider secrets;
+- hidden chain-of-thought;
+- arbitrary environment dumps;
+- unbounded raw provider payloads.
+
+Copying the repository preserves Dope task/run history. Provider-native resume metadata may become unusable on another machine without corrupting the Dope record.
+
+### 8B ExecutionGrant default
+
+The first mutation-capable grant defaults to:
+
+- project read/observation: allowed;
+- project workspace file mutation: allowed;
+- project-local process/test/build execution: allowed;
+- Git inspection: allowed;
+- Git stage/commit/reset/rebase/checkout/switch/history rewrite: denied;
+- network: denied;
+- secrets/credential access: denied;
+- outside-project filesystem mutation/read of private user state: denied;
+- destructive/system/package-administration actions: denied.
+
+The developer accepts this bounded grant once before execution. Routine effects inside it proceed without repetitive approval. Effects outside it are denied and recorded in 8B; richer interactive authority escalation is deferred.
+
+A task cannot start mutation until its grant is explicitly accepted.
+
+### Codex mutation path is separate from Test Connection
+
+The 8A zero-project-data `CodexAppServer.test()` path remains permanently read-only/no-network/no-mutation.
+
+8B adds a distinct AgentExecutionAdapter execution path for real work. It maps the accepted ExecutionGrant to the strongest supported Codex sandbox/approval restrictions.
+
+The reference 8B Codex path may use workspace-write behavior only when:
+- the canonical working directory is the approved project root;
+- network is disabled;
+- Git write/history-changing commands are outside the Dope grant;
+- outside-root effects are denied;
+- the adapter can actually enforce the requested boundary.
+
+If the current Codex harness cannot reliably enforce a requested Dope grant boundary, the adapter must reject that grant/capability instead of running more permissively.
+
+Codex process HOME / CODEX_HOME remains isolated in a Dope-owned temporary/runtime directory; the thread working directory is the approved project root.
+
+### ProposedAction in 8B
+
+An already-approved ExecutionGrant is the authority for routine in-grant effects. 8B does not create a ProposedAction approval object for every permitted file write or test command.
+
+ProposedAction remains the product vocabulary for consequential effects that require explicit per-action review or exceed the standing grant. Rich consequential-action UX is deferred beyond the first execution core.
+
+### AgentRun events
+
+8B normalizes observable provider activity into a Dope vocabulary, at minimum:
+- agent-message;
+- command-started;
+- command-completed;
+- file-changed;
+- validation;
+- status;
+- warning;
+- authority-denied;
+- bounded provider-event when needed for diagnosis.
+
+Persist timestamps, project-relative paths/command summaries/status where available. Do not persist raw hidden reasoning.
+
+### Cancellation and restart
+
+Stop must be real:
+- transition to cancelling;
+- interrupt the active Codex turn/process path;
+- prevent further effects;
+- preserve already-created workspace modifications;
+- persist cancelled/interrupted truth.
+
+Do not auto-revert.
+
+After application restart, the AgentRun remains inspectable. 8B may offer bounded provider resume where safe, but seamless automatic task continuation is not required yet. If continuation cannot be proven safe, present the run as interrupted with preserved changes.
+
+### Git and dirty-state boundary
+
+The first 8B mutation qualification uses a clean disposable repository.
+
+8B records starting HEAD and final diff but does not stage or commit.
+
+Pre-existing dirty-tree attribution, intentional dirty continuation and runner-owned checkpoint commits are deferred to 8C.
+
+### Minimal UI
+
+8B adds only a small Agent Run workbench surface sufficient to:
+- enter/review objective/instructions;
+- show resolved Coding Agent;
+- review/accept ExecutionGrant;
+- start/stop;
+- stream activity;
+- list changed files;
+- show bounded validation/diff summary;
+- inspect completed/cancelled/failed run state after restart.
+
+This is not the final Development Session or delegation UX.
+

@@ -655,9 +655,20 @@ Introduced with Scoped Delegation.
 
 Consumes Dope-owned AgentTask / AgentTaskSequence plus project/session context, resolves the Coding Agent role, coordinates execution under Authority, updates AgentRun/working state, emits observable events, and preserves cancellation/recovery semantics.
 
-The first Phase 8 consumer is the existing sequential prompt-stack workflow. A PhaseStackAdapter may parse/reuse pure prompt grammar, but the external `codex-phase.mjs` process remains development tooling and is not the product runtime.
+Phase 8B's first consumer is one direct bounded AgentTask against a clean project. Sequential prompt-stack orchestration is deliberately deferred to 8C. A later PhaseStackAdapter may parse/reuse pure prompt grammar, but the external `codex-phase.mjs` process remains development tooling and is not the product runtime.
 
 Agent Runtime owns orchestration, not provider intelligence. Provider-specific coding harnesses sit behind **AgentExecutionAdapter** contracts. The first reference adapter is Codex App Server; later local-agent adapters must consume the same AgentTask/AgentRun/authority contracts.
+
+AgentTask/AgentRun persistence is project-local and presentation-independent:
+
+```text
+.dope/agent/
+  tasks/<task-id>.json
+  runs/<run-id>/run.json
+  runs/<run-id>/events.jsonl
+```
+
+This is Dope work state and is excluded from generic Physical Map input just like other `.dope/` work state. Provider tokens, hidden reasoning and arbitrary environment dumps are forbidden.
 
 No direct Theia dependency.
 
@@ -685,7 +696,11 @@ Dope-owned tools execute only after Authority permits them; results are structur
 
 A reference agent harness such as Codex App Server may internally coordinate file/process tools. Its adapter must map the Dope ExecutionGrant into the strongest available sandbox/approval restrictions and expose observable command/file/tool events back into AgentRun. If the harness cannot reliably constrain a requested capability to the Dope grant, that capability is unavailable through that adapter rather than implicitly trusted.
 
-Dope retains checkpoint/commit authority for the initial phase-stack workflow.
+The 8A zero-data Test Connection remains a permanently separate read-only/no-network path. 8B introduces a distinct mutation-capable AgentExecutionAdapter method rather than widening `test()`.
+
+For the initial Codex execution grant, the adapter may use workspace-write semantics only inside the approved canonical project root, with network disabled and no Git-write/history-changing authority. Codex HOME/CODEX_HOME remains isolated in a Dope-owned temporary runtime location while the thread cwd is the approved project root.
+
+8B does not stage or commit. Dope checkpoint/commit authority becomes active in the 8C phase-stack workflow.
 
 ## Foundation Spike 0 boundary
 
@@ -755,6 +770,29 @@ Post-Phase-7 correction `c7-chat-project-grounding` adds a backend-owned **Proje
 Project Grounding is not Tool Runtime and not a coding-agent capability. It does not expose write/process/Git/network authority, and SoftwareMapIndex remains a map source rather than becoming the generic repository-search owner.
 
 Phase 7 Chat tools are observation/context capabilities only. Mutation-capable filesystem/process/Git/network actions remain behind future Tool Runtime + Authority/ProposedAction boundaries and are not authorized by ChatPanel existence.
+
+
+## Phase 8B Agent Run presentation boundary
+
+The initial Agent Run center-workspace surface is a projection over Agent Runtime state, not the owner of execution truth.
+
+It may:
+- create/review one direct AgentTask;
+- show the resolved Coding Agent target;
+- present the ExecutionGrant before start;
+- start/stop one run;
+- stream normalized activity;
+- show changed project-relative files;
+- show bounded validation/diff summary;
+- reopen completed/cancelled/failed/interrupted run state after restart.
+
+It must not:
+- own provider-native thread identity;
+- bypass Authority;
+- auto-revert cancelled work;
+- create Git commits;
+- implement AgentTaskSequence or phase-runner semantics;
+- become DeveloperSession.
 
 ## Frontend/backend communication
 

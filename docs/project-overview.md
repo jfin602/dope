@@ -238,15 +238,16 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 6 — Flow is owner-closed for sequencing at package `0.6.8`; P8 remains Not Qualified.** The accepted exact-candidate G/H evidence gaps remain historical truth in `docs/tasks/p6/closeout.md`.
+**Product Phase 6 — Flow is owner-closed for sequencing at package `0.6.8`; P8 remains Not Qualified.** Historical gaps remain in `docs/tasks/p6/closeout.md`.
 
-**Product Phase 7 is OWNER APPROVED / QUALIFIED / CLOSED at the actual `0.7.31` source.** Durable Chat/AI Presence, AI Center and deterministic role routing are complete. The planned `0.7.32` version transition did not materialize and no `0.7.32` artifact is claimed. Historical P12/P13 results remain truthful history.
+**Product Phase 7 is OWNER APPROVED / QUALIFIED / CLOSED at actual `0.7.31`.** Historical P12/P13 and post-closeout grounding evidence remain preserved.
 
-The approved post-closeout `c7-chat-project-grounding` correction executed and closed **Not Green** at `0.7.31`. On 2026-10-05 the owner explicitly accepted those retained gaps for sequencing only; they remain historical qualification truth.
+**Product Phase 8 is ACTIVE. Phase 8A is GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`. The later `bc151cb` commit records qualification/docs only.
 
-Product Phase 8 is now **OWNER-ACTIVATED at coherent `0.8.0`** under ADR 0027. Phase 8A is the active `p8a` slice and owns Codex AI Center/reference runtime integration only. Later slices own AgentTask execution, sequential phase-stack dogfooding, general WorkItem delegation, and local coding models.
+**Current gate: Phase 8B — Agent execution core.** 8B introduces one bounded mutation-capable AgentTask under an explicit ExecutionGrant, durable AgentRun/event state and a minimal Agent Run surface. It may write inside the approved project and run local validation commands, but cannot write Git history, use network/secrets, escape the project root or implement the sequential phase-stack workflow.
 
-Phase 7 keeps the project—not chat—as the center of gravity. Chats persist and are reusable, but canonical Project Mind, Architecture, Planning and Physical/Flow evidence retain their own authority.
+Phase 8C remains the first Dope-in-Dope phase-runner replacement: AgentTaskSequence, prompt/version progression, dirty-tree continuation, manual/browser gates, restart sequence resume and Dope-owned checkpoint commits.
+
 
 ## Phase 3 result — live human-first Planning
 

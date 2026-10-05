@@ -118,20 +118,28 @@ Loop rules:
 
 ## 8B — Agent execution core
 
-Build provider-neutral AgentTask/AgentRun/ExecutionGrant plus Agent Runtime.
+**Current slice.** Phase 8A is Green / Qualified at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`; the later `bc151cb` commit is documentation-only qualification over that source.
+
+8B builds provider-neutral AgentTask/AgentRun/ExecutionGrant plus Agent Runtime.
 
 First vertical slice:
-- one bounded task against a disposable project;
+- one direct bounded AgentTask against a **clean disposable project**;
 - resolve Coding Agent role to Codex;
 - developer approves one ExecutionGrant;
-- stream agent/message/tool/command/file activity;
-- permit in-grant workspace changes/process validation;
-- block/escalate out-of-grant effects;
-- cancel safely;
-- collect changed files/diff/validation;
-- preserve run truth across restart.
+- grant allows project read/write, project-local process/test/build and Git inspection only;
+- deny network, secrets/private-home access, outside-root effects, Git writes/history changes and destructive/system actions;
+- stream normalized agent/message/command/file/status activity;
+- cancel safely without auto-reverting existing modifications;
+- collect changed files, bounded diff summary and validation;
+- persist `.dope/agent/` task/run/events state;
+- preserve inspectable run truth across restart;
+- record provider-native thread ID only as non-canonical recovery metadata.
+
+8B adds a mutation-capable Codex AgentExecutionAdapter path separate from the permanently read-only Test Connection.
 
 Do not require WorkItem yet.
+
+Do not implement AgentTaskSequence, prompt-stack parsing, package-version progression, browser/manual gates, dirty-tree continuation, capacity-retry policy, Dope-owned Git checkpoint commits or automatic sequence resume. Those belong to 8C.
 
 ## 8C — Sequential phase-stack execution
 

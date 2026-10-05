@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 8 is **ACTIVE**. Phase 8A reached **Not Green - Evidence Gap** on `0.8.6`: the real Codex App Server path is substantially evidenced, but the live Dope Sign in with ChatGPT callback/account lifecycle remains unqualified. A bounded manual `c8-p8a-qualification-loop` now owns up to five qualify/repair cycles, beginning with that blocker. Phase 8B remains blocked until Phase 8A is Green.
+Current stage: Product Phase 8 is **ACTIVE**. Phase 8A Codex reference connection is **GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`; `bc151cb` is docs-only qualification. Phase 8B Agent execution core is the current slice: one bounded mutation-capable AgentTask/AgentRun/ExecutionGrant path with no Git writes or phase-stack sequencing yet. Phase 8C remains the sequential phase-runner replacement.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.

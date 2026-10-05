@@ -278,16 +278,39 @@ Directly prove:
 - exhausted/revoked/unsupported plan access fails explicitly and never silently switches to an OpenAI API-key connection;
 - App Server start/init/stop/restart-after-refresh lifecycle leaves no orphan process and preserves recoverable provider-thread metadata only as adapter state.
 
-### AgentTask / authority gate
+### Phase 8B — Agent execution core gate
 
-Directly prove:
-- a provider-neutral AgentTask resolves the Coding Agent role only to a target with the required agent-execution capability;
-- developer approves one bounded ExecutionGrant before mutation;
-- allowed routine reads/writes/tests/Git inspection execute without repeated approval;
-- outside-root write, ungranted network/secrets/destructive action and authority-expanding repository/model instructions are denied or pause for explicit escalation;
-- cancellation stops further effects and records an interrupted/cancelled AgentRun truthfully;
-- AgentRun persists actual runtime/model provenance, visible tool/command/file events, affected files and validation results without hidden reasoning;
-- restart can recover/inspect the run without provider-native session identity becoming canonical.
+8B qualifies only one direct mutation-capable AgentTask. It must not claim the later phase-stack workflow.
+
+Directly prove on one clean disposable repository:
+- provider-neutral AgentTask persists with stable Dope identity, objective/instructions, project scope, model policy and validation policy;
+- Coding Agent resolution selects only an eligible `agentExecution` target and records actual immutable connection/model/runtime provenance;
+- developer sees and explicitly accepts one bounded ExecutionGrant before mutation;
+- initial grant permits project reads, project-workspace writes, project-local process/test/build execution and Git inspection only;
+- Git writes/history-changing commands, outside-root filesystem effects, network, secrets/private home state and destructive/system actions are denied and recorded;
+- routine in-grant effects execute without repetitive approval;
+- the Codex adapter uses a mutation path separate from the read-only Test Connection and maps the grant to enforceable sandbox/approval restrictions;
+- if a requested grant cannot be enforced by the adapter, execution refuses rather than widening authority;
+- Codex process HOME/CODEX_HOME remains isolated while task cwd is the approved project root;
+- one real task modifies source/tests inside the project, runs a local validation command and reaches completed state;
+- AgentRun persists normalized activity, changed files, validation, bounded diff summary and actual runtime/model provenance without hidden reasoning or secrets;
+- provider-native thread ID is recovery metadata only;
+- Stop/cancel prevents future effects, preserves already-created workspace changes and records truthful cancelled/interrupted status;
+- restart preserves inspectable task/run/events/change state; unsafe automatic continuation is not required;
+- starting Git HEAD is recorded, final diff is inspectable, and no staging/commit occurs;
+- Test Connection remains read-only/no-project-data/no-mutation after 8B ships.
+
+Adversarial qualification must directly attempt:
+- outside-root write;
+- network access;
+- Git commit/history mutation;
+- private-home/secret read;
+- repository/model instruction attempting to expand authority.
+
+Filesystem/process/Git reality and persisted AgentRun truth must agree.
+
+8B may use a simple Dope-owned structural validation such as `git diff --check` plus observed agent-run test/build commands. Full phase-stack validation orchestration belongs to 8C.
+
 
 ### Sequential phase-stack gate
 

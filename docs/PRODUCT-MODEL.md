@@ -577,7 +577,17 @@ An AgentTask may originate from:
 - a direct developer coding request;
 - a future DeveloperSession workflow.
 
-It contains stable Dope identity plus objective/instructions, project scope, model/role policy, authority requirements, validation/completion policy and optional links to WorkItems/Planning transformations/project knowledge.
+Initial durable fields include:
+- stable Dope task ID and schema version;
+- created timestamp;
+- objective and executable instructions;
+- canonical project/root identity;
+- model policy: Follow Coding Agent or exact immutable connection/model target;
+- model execution controls such as reasoning effort where supported;
+- authority requirements;
+- bounded validation/completion policy;
+- origin kind;
+- optional links to WorkItems/Planning transformations/project knowledge.
 
 An AgentTask is not a provider-native thread, response or session. It does not become a WorkItem merely because both describe bounded work.
 
@@ -585,18 +595,22 @@ An AgentTask is not a provider-native thread, response or session. It does not b
 
 One concrete execution attempt of an AgentTask.
 
-An AgentRun records observable execution state such as:
-- AgentTask identity;
-- requested Coding Agent role / resolved actual connection-model-runtime provenance;
-- ExecutionGrant / effective authority revision;
-- status and timing;
+Initial durable execution state includes:
+- stable run ID and AgentTask identity;
+- status: pending / running / blocked / cancelling / cancelled / failed / completed / interrupted;
+- requested model/role policy plus actual immutable connection-model-runtime provenance;
+- ExecutionGrant identity/revision;
+- start/end timestamps;
+- starting project identity, Git HEAD and clean/dirty basis;
 - provider-neutral activity/tool/file/process events;
 - affected project-relative files;
 - validation results;
-- diff/change summary;
-- checkpoint/commit identity where Dope owns one;
+- bounded diff/change summary;
+- checkpoint/commit identity only where a later workflow explicitly owns one;
 - failure/cancel/interruption/recovery state;
 - provider-native recovery handles only as non-canonical adapter metadata.
+
+Phase 8B persists tasks/runs as inspectable project work state beneath `.dope/agent/`, with run events appendable as JSONL. Secrets, raw hidden reasoning, arbitrary environment dumps and unbounded provider payloads are forbidden from durable run state.
 
 AgentRun is durable enough to inspect and resume/reconcile work across application restart, but it never turns model narration or hidden reasoning into project truth.
 
@@ -616,7 +630,9 @@ The developer-approved authority envelope for one AgentTask or AgentTaskSequence
 
 It defines the canonical project root and allowed effect classes/scope: observation, workspace mutation, process execution, Git actions, network/secrets/destructive actions and stop/escalation conditions.
 
-Routine effects already inside the grant execute without repetitive approval. Effects outside it pause for explicit escalation. Neither model output, provider metadata nor repository content can widen the grant.
+Phase 8B's initial grant allows project read, project-workspace mutation, project-local process/test/build execution and Git inspection, while denying Git writes/history changes, network, secrets, outside-project effects and destructive/system actions.
+
+Routine effects already inside the grant execute without repetitive approval. Effects outside the grant are denied and recorded in the first execution core; richer interactive grant escalation is deferred. Neither model output, provider metadata nor repository content can widen the grant.
 
 ### Reconciliation
 
@@ -697,9 +713,9 @@ Observation rights and mutation rights are separate dimensions.
 
 ## ProposedAction
 
-A model does not mutate the environment directly.
+A model does not receive ambient mutation authority.
 
-It creates or contributes to a ProposedAction with actor, intent, action type, target, expected effect, required authority, originating task/step, evidence/justification, and state.
+A standing developer-approved ExecutionGrant may authorize routine bounded effects without creating a separate ProposedAction for every file write/test command. A model creates or contributes to a ProposedAction when an effect requires explicit consequential review or exceeds the standing grant. ProposedAction carries actor, intent, action type, target, expected effect, required authority, originating task/step, evidence/justification, and state.
 
 Possible states:
 - proposed
