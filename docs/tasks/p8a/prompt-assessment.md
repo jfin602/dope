@@ -1,20 +1,18 @@
 # Product Phase 8A Prompt Assessment — Codex Reference Connection
 
-> **SUPERSEDED EXECUTION ROUTING:** canonical Phase 8A execution is now `docs/tasks/p8a/`. Retain this file only as prompt-authoring history; do not execute `p8`.
-
-Status: **SUPERSEDED BY `p8a` / DO NOT EXECUTE**
-Execution folder: `p8`
+Status: **APPROVED / PROMPTS WRITTEN / EXECUTION GATED**
+Execution folder: `p8a`
 Product slice: **Phase 8A — Codex reference agent connection**
-Planned activation baseline: coherent `0.8.0` after `c7-chat-project-grounding` closes Green or the owner records an explicit sequencing waiver
-Current planning/source baseline: `683e9cec5bb272427d5bf470f7359e2e8c98ebdd`, package `0.7.31`
+Activation baseline: coherent `0.8.0` at `a2346556309174e9a24b3f8c11ac682d50460d0c`; owner sequencing waiver recorded after retained `c7-chat-project-grounding` Not Green
+Active source baseline: `a2346556309174e9a24b3f8c11ac682d50460d0c`, package `0.8.0`
 
 ## Naming decision
 
-Use execution folder **`p8`**, not `p8a`.
+Use execution folder **`p8a`**.
 
-The phase runner treats the first slice of a phase as the base phase folder; this matches the Phase 7 pattern where 7A used `p7` and later slices used `p7b` / `p7c`. Using `p8` allows P1 to target `0.8.1` from a real `0.8.0` activation baseline without inventing an earlier continuation checkpoint or changing runner grammar.
+The owner explicitly selected a named first slice. The runner now supports a pre-1.0 slice `A` beginning at patch 1 from the coherent phase baseline, so `p8a` legitimately maps `0.8.0 -> 0.8.1` without inventing a predecessor. Later slices remain continuations such as `p8b`, `p8c`, and so on.
 
-Later slices may use `p8b`, `p8c`, and so on.
+The earlier `docs/tasks/p8/` draft is superseded execution history and must not be run in parallel with `p8a`.
 
 ## Conclusion
 

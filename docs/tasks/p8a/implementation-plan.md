@@ -1,25 +1,18 @@
 # Product Phase 8A Implementation Plan — Codex Reference Connection
 
-> **SUPERSEDED EXECUTION ROUTING:** canonical Phase 8A execution is now `docs/tasks/p8a/`. Retain this file only as prompt-authoring history; do not execute `p8`.
-
-Status: **SUPERSEDED BY `p8a` / DO NOT EXECUTE**
-Execution folder: `p8`
-Planned activation baseline: `0.8.0`
+Status: **APPROVED / PROMPTS WRITTEN / EXECUTION GATED**
+Execution folder: `p8a`
+Activation baseline: `0.8.0` at `a2346556309174e9a24b3f8c11ac682d50460d0c`
 Version range: `0.8.1` through `0.8.6`
 Assessment: `prompt-assessment.md`
 
 ## Entry condition
 
-Do not execute this stack while the repository remains on `0.7.31`.
+Satisfied by owner sequencing waiver and activation commit `a2346556309174e9a24b3f8c11ac682d50460d0c`.
 
-Before execution:
-1. `c7-chat-project-grounding` must close Green, or the owner must record an explicit sequencing waiver;
-2. create the Phase 8 activation record;
-3. transition all required package/app/internal references coherently to `0.8.0`;
-4. commit that clean activation baseline;
-5. validate `p8` against that baseline.
+The retained `c7-chat-project-grounding` closeout is **Not Green**; its gaps remain historical truth and are not a Phase 8 qualification claim.
 
-The current task only writes the stack; it does not activate Phase 8.
+Validate `p8a` against the coherent `0.8.0` baseline before execution.
 
 ## Shared invariants
 

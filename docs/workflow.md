@@ -255,6 +255,14 @@ Browser-required prompts are manual handoff points.
 
 ## Corrections
 
+### Pre-1.0 slice naming
+
+For a pre-1.0 phase split into lettered slices, an explicit **slice A** folder such as `p8a` may be used as the first execution slice from the coherent phase baseline. Slice A starts at patch 1 (`0.<phase>.1`).
+
+Later slices (`p8b`, `p8c`, ...) are continuations and start at the actual next patch after prior work. This preserves one Phase identity while allowing the first slice to be named explicitly.
+
+The first-slice alias does not create a second baseline or duplicate phase; `p8a` and a hypothetical `p8` stack must not both be treated as active execution authority for the same work.
+
 Use c<phase>-<slug> for bounded repairs.
 
 A correction keeps the current package version unchanged, repairs the defect, installs permanent executable regression coverage, proves the repair at its assigned validation tier, and preserves historical failure evidence. Broader affected-system qualification belongs in an explicit T2/T3 gate unless the repair itself crosses boundaries that require immediate integration evidence.

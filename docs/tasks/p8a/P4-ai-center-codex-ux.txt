@@ -1,0 +1,45 @@
+TASK: Phase 8 / P4 — AI Center Codex connection experience
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.4`.
+
+GOAL
+Expose the stable P1-P3 Codex connection in the existing global AI Center without creating a parallel provider UI or project-scoped configuration.
+
+PREFLIGHT
+Inspect AI Center controller/widget/contribution, current Add Connection flow, credential UI, model management/accessibility tests and P1-P3 service contracts.
+
+IMPLEMENT
+- Add a distinct Codex / Agent Runtime option in Add Connection.
+- Explain that this path uses eligible ChatGPT plan authorization and is distinct from OpenAI API-key setup.
+- Add Continue with ChatGPT action and safe pending/success/error UI.
+- Connection detail shows alias/lifecycle, Codex/App Server status, account label/auth status, reauthorize/sign-out, discovered models, enable/disable model controls, Refresh Models and Test Connection.
+- Test Connection disclosure states that it uses zero project data and may consume a tiny amount of plan usage.
+- Add a usage/settings link to the provider's ChatGPT usage surface; do not invent a local weekly remaining meter.
+- Support multiple Codex account connections clearly.
+- Never render access/refresh/ID token values, token-bearing authorization URLs, raw provider payloads or sensitive local paths.
+- Preserve AI Center singleton/no-project behavior and existing Local/OpenAI-compatible/Gemini/OpenAI setup.
+- Codex-only agent models should be visually identifiable as agent-runtime models without implying generic Chat availability.
+
+TESTS
+Focused AI Center controller/presentation/accessibility source tests:
+- Add Connection option;
+- sign-in/reauthorize/sign-out wiring;
+- account/model/runtime states;
+- multiple account labels;
+- Test Connection disclosure;
+- usage link;
+- no secret DOM/state fields;
+- existing provider setup unaffected.
+
+VALIDATION
+T1/T2 only: focused AI Center tests + extension build/typecheck + version/no-lock/diff checks. No real OAuth/browser session yet and no `npm run check`.
+
+Do not create commits; the phase runner owns the commit boundary.
+
+FINAL RESPONSE
+Report UX behavior/security and P5 readiness.

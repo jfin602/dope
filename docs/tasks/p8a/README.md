@@ -1,17 +1,17 @@
 # Product Phase 8A — Codex Reference Connection Task Stack
 
-Status: **SUPERSEDED BY `docs/tasks/p8a/` — DO NOT EXECUTE**
-Execution folder: `p8`
+Status: **WRITTEN / EXECUTION GATED**
+Execution folder: `p8a`
 Product slice: Phase 8A
-Planned activation baseline: coherent `0.8.0`
+Activation baseline: coherent `0.8.0` at `a2346556309174e9a24b3f8c11ac682d50460d0c`
 Version range: `0.8.1` -> `0.8.6`
-Current repository version while writing: `0.7.31`
+Current repository version: `0.8.0`
 
-## Superseded routing
+## Why the folder is p8
 
-The owner explicitly selected `p8a` as the canonical first Phase 8 slice after the `0.8.0` activation. The runner now supports slice A beginning at patch 1. These files are retained only as prompt-authoring history.
+The first slice of a phase uses the base phase folder. This mirrors Phase 7A using `p7`; later Phase 8 continuations may use `p8b`, `p8c`, etc.
 
-Do **not** execute `p8`; use `p8a`.
+Do **not** execute this stack until Phase 8 is activated at `0.8.0`.
 
 ## Stack
 
@@ -26,11 +26,13 @@ Do **not** execute `p8`; use `p8a`.
 
 ## Entry gate
 
-Before execution:
-- `c7-chat-project-grounding` closes Green, or owner explicitly waives it;
-- Phase 8 activation record is written;
-- coherent `0.8.0` source is committed;
-- `npm run codex:phase:validate -- p8` passes.
+Satisfied:
+- owner sequencing waiver recorded after the retained Not Green grounding closeout;
+- Phase 8 activation record written;
+- coherent `0.8.0` committed.
+
+Before execution run:
+`npm run codex:phase:validate -- p8a`.
 
 ## Scope law
 

@@ -259,6 +259,28 @@ test('pre-1.0 continuation folders keep Phase identity and continue patch versio
   );
 });
 
+
+test('pre-1.0 slice A may begin at patch 1 from the phase baseline', () => {
+  const p1 = prompt(1, { phase: 8, version: '0.8.1' });
+  const p2 = prompt(2, { closeout: true, phase: 8, version: '0.8.2',
+    title: 'Phase 8A closeout' });
+  const plan = buildPlan([p2, p1], 'p8a');
+
+  assert.equal(plan.mode, 'phase');
+  if (plan.mode !== 'phase') throw new Error('Expected a phase plan.');
+  assert.equal(plan.phase, 8);
+  assert.equal(plan.roadmapFamily, 'pre-1.0');
+  assert.equal(plan.roadmapMajor, 0);
+  assert.equal(plan.versionOffset, 0);
+  assert.equal(plan.continuationSlice, 'A');
+  assert.deepEqual(plan.prompts.map(prompt => prompt.targetVersion), ['0.8.1', '0.8.2']);
+
+  assert.throws(
+    () => buildPlan([prompt(1, { phase: 8, version: '0.8.0' }), p2], 'p8a'),
+    /Continuation p8a P1 must target 0\.8\.<patch> with patch >= 1/,
+  );
+});
+
 test('post-1.0 phase folders normalize Phase 0+ and validate their assigned versions', () => {
   const phase0P1 = prompt(1, { phase: 0, version: '1.0.1' });
   const phase0P2 = prompt(2, {

@@ -265,15 +265,16 @@ export function buildPlan(entries, folderName) {
   if (mode === 'phase') {
     if (historicalContinuationFolderMatch) {
       const parts = prompts[0].targetVersion.split('.').map(Number);
+      const minimumPatch = continuationSlice === 'A' ? 1 : 2;
       if (
         parts.length !== 3 ||
         parts[0] !== ROADMAP_FAMILIES.historical.major ||
         parts[1] !== phase ||
         !Number.isSafeInteger(parts[2]) ||
-        parts[2] < 2
+        parts[2] < minimumPatch
       ) {
         throw new Error(
-          `Continuation ${folderName} P1 must target 0.${phase}.<patch> with patch >= 2.`,
+          `Continuation ${folderName} P1 must target 0.${phase}.<patch> with patch >= ${minimumPatch}.`,
         );
       }
       versionOffset = parts[2] - 1;
