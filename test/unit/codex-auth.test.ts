@@ -159,7 +159,8 @@ test('callback state and issued client mismatch fail before token exchange', asy
 
 test('issuer, audience, nonce and selected subject are verified before replacing credentials', async t => {
     const environment = await fixture(t);
-    for (const invalid of [{ iss: 'https://wrong.test' }, { aud: 'oaiapp_wrong' }, { nonce: 'wrong' }, { exp: 1 }]) {
+    for (const invalid of [{ iss: 'https://wrong.test' }, { aud: 'oaiapp_wrong' },
+        { aud: ['oaiapp_wrong'] }, { aud: [clientId, 42] }, { nonce: 'wrong' }, { exp: 1 }]) {
         environment.claims = invalid;
         await environment.manager().signIn('codex');
         await assert.rejects(environment.callback());
@@ -174,7 +175,16 @@ test('issuer, audience, nonce and selected subject are verified before replacing
     environment.subject = 'different-subject';
     await environment.manager().signIn('codex', account.id);
     await assert.rejects(environment.callback());
-    assert.equal(await environment.manager().accessToken('codex', account.id), 'access-6');
+    assert.equal(await environment.manager().accessToken('codex', account.id), 'access-8');
+});
+
+test('ID token audience array containing the issued client ID completes sign-in', async t => {
+    const environment = await fixture(t);
+    environment.claims = { aud: ['another-audience', clientId] };
+    const account = await environment.login();
+    assert.equal(account.clientId, clientId);
+    assert.equal(account.status, 'signed-in');
+    assert.equal(account.planUsage, 'available');
 });
 
 test('missing plan permission cannot authorize inference; failures never expose token payloads', async t => {

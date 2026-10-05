@@ -61,6 +61,10 @@ export class CodexAuthManager {
     private readonly callbackListener: CallbackListener;
     private readonly pending = new Map<string, Pending>();
 
+    private diagnostic(message: string): void {
+        if (process.env.DOPE_CODEX_AUTH_DIAGNOSTICS === '1') console.info(`[dope-codex-auth] ${message}`);
+    }
+
     constructor(private readonly registry: Pick<AIRegistryStore, 'read'>, options: CodexAuthOptions = {}) {
         this.directory = options.directory ?? aiConfigDirectory();
         this.issuer = options.issuer ?? 'https://auth.openai.com';
@@ -82,6 +86,7 @@ export class CodexAuthManager {
             await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
             const address = server.address();
             if (!address || typeof address === 'string') { server.close(); throw failed('callback unavailable'); }
+            this.diagnostic(`callback listener bound at http://127.0.0.1:${address.port}/auth/callback`);
             return { redirectUri: `http://127.0.0.1:${address.port}/auth/callback`, server };
         });
         this.openBrowser = options.openBrowser ?? (url => new Promise((resolve, reject) => {
@@ -208,6 +213,7 @@ export class CodexAuthManager {
         try {
             const response = await this.fetcher(endpoint, body ? { method: 'POST', redirect: 'error',
                 headers: { 'content-type': 'application/x-www-form-urlencoded' }, body } : { redirect: 'error' });
+            if (!response.ok) this.diagnostic(`identity HTTP ${response.status} at ${endpoint.endsWith('/oauth/token') ? 'token exchange' : endpoint.endsWith('/openid-configuration') ? 'OIDC metadata' : 'JWKS'}`);
             if (!response.ok) throw failed(response.status === 400 || response.status === 401 ? 'authorization rejected' : 'identity service unavailable');
             return await response.json() as Record<string, unknown>;
         } catch { throw failed('identity service unavailable'); }
@@ -218,18 +224,25 @@ export class CodexAuthManager {
             if (parts.length !== 3) throw failed('invalid ID token');
             const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString()) as { alg: string; kid: string };
             const claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString()) as Record<string, unknown>;
+            const audienceMatches = claims.aud === clientId ||
+                (Array.isArray(claims.aud) && claims.aud.length > 0 &&
+                    claims.aud.every(value => typeof value === 'string') && claims.aud.includes(clientId));
+            this.diagnostic(`ID claims: alg=${header.alg === 'RS256'} kid=${!!header.kid} issuer=${claims.iss === this.issuer} audience=${audienceMatches} audienceArray=${Array.isArray(claims.aud)} nonce=${nonce === undefined || claims.nonce === nonce} subject=${typeof claims.sub === 'string' && !!claims.sub} expiry=${typeof claims.exp === 'number' && claims.exp > this.now() / 1000} notBefore=${typeof claims.nbf !== 'number' || claims.nbf <= this.now() / 1000}`);
             if (header.alg !== 'RS256' || !header.kid || claims.iss !== this.issuer ||
-                claims.aud !== clientId || (nonce !== undefined && claims.nonce !== nonce) ||
+                !audienceMatches || (nonce !== undefined && claims.nonce !== nonce) ||
                 typeof claims.sub !== 'string' || !claims.sub ||
                 typeof claims.exp !== 'number' || claims.exp <= this.now() / 1000 ||
                 (typeof claims.nbf === 'number' && claims.nbf > this.now() / 1000)) throw failed('invalid ID token');
+            this.diagnostic('ID claims accepted; loading OIDC metadata');
             const config = await this.http(`${this.issuer}/.well-known/openid-configuration`);
             if (config.issuer !== this.issuer || typeof config.jwks_uri !== 'string' ||
                 !config.jwks_uri.startsWith(`${this.issuer}/`)) throw failed('invalid identity metadata');
+            this.diagnostic('OIDC metadata accepted; loading JWKS');
             const keys = await this.http(config.jwks_uri);
             if (!Array.isArray(keys.keys)) throw failed('invalid signing keys');
             const key = keys.keys.find(item => item && item.kid === header.kid && item.kty === 'RSA' &&
                 item.use === 'sig' && (!item.alg || item.alg === 'RS256'));
+            this.diagnostic(`JWKS signing key matched=${!!key}`);
             if (!key || !verify('RSA-SHA256', Buffer.from(`${parts[0]}.${parts[1]}`), createPublicKey({ key, format: 'jwk' }),
                 Buffer.from(parts[2], 'base64url'))) throw failed('invalid ID signature');
             return { sub: claims.sub, ...(typeof claims.email === 'string' ? { email: claims.email } : {}) };
@@ -276,6 +289,7 @@ export class CodexAuthManager {
             for (const [key, value] of Object.entries({ response_type: 'code', redirect_uri: redirectUri, scope: scopes,
                 resource, state, nonce, code_challenge_method: 'S256',
                 code_challenge: createHash('sha256').update(verifier).digest('base64url') })) url.searchParams.set(key, value);
+            this.diagnostic(`authorization opening with matching redirect URI ${redirectUri}`);
             await this.openBrowser(url.toString());
             const timer = setTimeout(() => { this.pending.delete(state); pending.server.close(); }, 300000);
             timer.unref();
@@ -286,9 +300,11 @@ export class CodexAuthManager {
         const pending = this.pending.get(state);
         if (!pending) throw failed('unknown sign-in');
         const param = callback.searchParams;
+        this.diagnostic(`callback received: code=${param.has('code')} state=${param.has('state')} scope=${param.has('scope')} client_id=${param.has('client_id')} error=${param.has('error')}`);
         if (callback.origin !== new URL(pending.redirectUri).origin || callback.pathname !== '/auth/callback' ||
                 param.getAll('state').length !== 1 ||
             !this.same(param.get('state'), state)) throw failed('invalid callback state');
+        this.diagnostic('callback state and redirect URI validated');
         this.pending.delete(state);
         pending.server.close();
         if (this.now() >= pending.expiresAt || param.has('error') || param.getAll('code').length !== 1 || !param.get('code'))
@@ -300,18 +316,23 @@ export class CodexAuthManager {
         if (supplied.length > 1 || (!selected && (supplied.length !== 1 || !/^oaiapp_[A-Za-z0-9_-]+$/.test(supplied[0]))) ||
             (selected && supplied.length && supplied[0] !== selected.clientId)) throw failed('invalid issued client');
         const clientId = selected?.clientId ?? supplied[0];
+        this.diagnostic('issued client ID accepted');
         const tokens = await this.http(`${this.issuer}/api/accounts/oauth/token`, new URLSearchParams({
             grant_type: 'authorization_code', code: param.get('code')!, client_id: clientId,
             code_verifier: pending.verifier, redirect_uri: pending.redirectUri, resource
         }));
+        this.diagnostic('authorization code exchange succeeded');
         if (typeof tokens.id_token !== 'string') throw failed('missing ID token');
         const identity = await this.identity(tokens.id_token, clientId, pending.nonce);
+        this.diagnostic('ID token verified');
         if (selected && selected.subject !== identity.sub) throw failed('wrong account');
         const bundle = this.tokenBundle(tokens, identity.sub, clientId);
+        this.diagnostic(`token response accepted; direct plan scope granted=${bundle.scopes.includes(planScope)}`);
         const id = selected?.id ?? randomUUID();
         await this.locked(`account-${id}`, async () => {
             const store = await this.store();
             await this.putBundle(store, id, bundle);
+            this.diagnostic('protected credential bundle saved');
             await this.locked('profiles', async () => {
                 const current = await this.profiles();
                 const profile: Profile = { id, connectionId: pending.connectionId, clientId, subject: identity.sub,
@@ -320,6 +341,7 @@ export class CodexAuthManager {
                 await this.saveProfiles([...current.filter(item => item.id !== id), profile]);
             });
         });
+        this.diagnostic('account metadata saved');
     }
     private same(left: string | null, right: string): boolean {
         if (left === null) return false;
