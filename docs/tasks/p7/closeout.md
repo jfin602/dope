@@ -59,3 +59,25 @@ Current next route:
 
 After that correction is qualified, continue with bounded 7B AI Center, 7C role routing, integrated qualification and a later final Phase 7 evidence audit.
 
+## Final Phase 7 disposition after 7B/7C
+
+The **Not Qualified** P13 decision above remains truthful historical evidence for the earlier 7A-only state and is not rewritten.
+
+Subsequent Phase 7 work completed and qualified:
+- `c7-chat-conversation-ux` at unchanged `0.7.13`;
+- Phase 7B AI Center, Qualified / Closed at `0.7.23`;
+- Phase 7C deterministic role policy/routing, with Green integrated qualification at `0.7.31`;
+- the final P9 Phase 7 audit.
+
+The planned P9 `0.7.32` version/documentation transition did **not** materialize. No `0.7.32` candidate, package or artifact is claimed. The actual final Phase 7 source/version is therefore **`0.7.31`**, and Product Phase 7 is **QUALIFIED / CLOSED** on that actual source.
+
+A later presentation-only Color Scheme Change commit remains on the same `0.7.31` package line. It does not create a new Phase 7 version claim.
+
+### Post-closeout grounding correction
+
+Direct Chat use exposed a separate read-only grounding defect: a normal repository question may reach the model with Chat history and manually attached context only, without deterministic repository/map evidence. Earlier evidence already recorded at least one invented Local-model path and explicitly did not claim semantic answer quality.
+
+The approved `c7-chat-project-grounding` correction at unchanged `0.7.31` adds deterministic project-scoped grounding and an anti-fabrication contract without reopening Phase 7 routing or adding Phase 8 mutation authority.
+
+The correction must be qualified separately. A Green correction supplements this closeout; it does not relabel historical P12/P13 observations.
+

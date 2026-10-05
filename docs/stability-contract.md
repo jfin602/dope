@@ -190,6 +190,27 @@ Require executable evidence for:
 
 
 
+
+### Post-Phase-7 `c7-chat-project-grounding` qualification
+
+This correction is Green only when the unchanged `0.7.31` candidate directly proves that ordinary Chat can answer basic project questions from current evidence rather than model invention.
+
+Required direct gates:
+- list the repository root and a real nested directory such as `test/` from the active project;
+- confirm one existing and one nonexistent project-relative path;
+- answer one implementation-location question from bounded path/text search;
+- answer one canonical Architecture question;
+- answer one current Physical Map or Flow question;
+- reject traversal, absolute external paths and a symlink escape;
+- reject stale/nonexistent map identities rather than substituting model guesses;
+- show automatic evidence visibly as Auto context and persist its turn references/hashes/generation metadata;
+- switch between two projects and prove no grounding evidence crosses roots;
+- preserve manual typed context, Chat history budgets, routing/no-fallback and hosted-egress rules;
+- prove grounding does not change canonical Architecture/Project Mind/Planning state or the Physical Map input fingerprint;
+- prove no write/process/Git/network capability is introduced.
+
+The model-facing grounding instruction must prohibit claims of file/directory/map inspection without supplied evidence, but qualification must prove backend evidence behavior rather than relying on prompt wording alone.
+
 ## Agent Mind
 
 Applicable when AI Presence introduces Agent Mind.

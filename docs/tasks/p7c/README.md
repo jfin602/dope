@@ -1,6 +1,6 @@
 # Product Phase 7C — AI Roles & Routing Task Stack
 
-Status: **READY FOR EXECUTION**
+Status: **COMPLETED / PHASE 7 CLOSED AT ACTUAL `0.7.31` SOURCE**
 Product source baseline: `42353d5d817b1c57c72ccb28e52a6bdf5eb1d66b`, package `0.7.23`
 Task folder: `p7c` (Phase 7 continuation slice C)
 
@@ -24,8 +24,17 @@ Validate:
 Execute:
 `npm run codex:phase -- p7c`
 
-The runner owns P1-P7 commits and stops for P8 direct qualification. After the coherent manual `0.7.31` checkpoint, resume with `--closeout` for P9.
+Historical execution note: the runner-owned P1-P7 commits and P8 `0.7.31` manual checkpoint completed. P9 was executed as the final audit, but did not create the planned `0.7.32` version transition.
 
 P3 resolves over the qualified 7B inventory without executing models. Its inventory has no known reasoning-capable signal, so `prefer-reasoning-capable` is neutral; it never infers reasoning support from a provider name. Other preferences use known locality and observed/known context within an entry only.
 
-P9 is the one later final Phase 7 closeout required by the Phase 7 plan. A Green P9 may close Product Phase 7; it does not create Phase 8 implementation prompts.
+P9 supplied the final Phase 7 audit. Phase 7 is closed at the actual `0.7.31` source; Phase 8 implementation remains deferred until the post-closeout grounding correction is qualified.
+
+## Final disposition
+
+P8 direct integrated qualification is Green at `0.7.31`. P9 final Phase 7 audit was executed, but its planned `0.7.32` version/documentation transition did not materialize. Repository truth therefore retains `0.7.31` as the final Phase 7 source/version and does not claim a nonexistent `0.7.32` candidate.
+
+Product Phase 7 is **Qualified / Closed** on that actual source. Historical P13 remains Not Qualified for its earlier incomplete scope and is not rewritten.
+
+Before Phase 8, the approved post-closeout correction is `c7-chat-project-grounding` at unchanged `0.7.31`.
+

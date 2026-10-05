@@ -681,16 +681,20 @@ The intended dependency shape is:
 ChatPanel(s)
     |
 ChatService
-   / \
-ChatRepository   Context Composer
-    |              |
-.dope/chats/      +-- editor/selection
-                   +-- Project Mind
-                   +-- Architecture / Physical Map / Flow
-                   +-- Planning Maps / WorkItems
-                   +-- bounded saved-Chat retrieval
-                         |
-                    Model Runtime
+   / | \
+ChatRepository   Project Grounding
+    |                 |
+.dope/chats/          +-- bounded project directory/file/path/text retrieval
+                      +-- Architecture
+                      +-- Physical Map / Flow
+                      |
+                 Context Composer
+                      +-- editor/selection
+                      +-- Project Mind
+                      +-- Planning Maps / WorkItems
+                      +-- bounded saved-Chat retrieval
+                            |
+                       Model Runtime
                   /      |       \
               Local    Gemini    OpenAI / future
 ```
@@ -708,6 +712,10 @@ Transcript rendering is presentation-only. Developer messages are right-aligned 
 Each Chat has persistent settings reached from a right-justified cog in the ChatPanel top bar. These settings belong to the Chat identity, not the panel location. They may govern context eligibility/budget/history/retrieval and default model/model-specific capability preferences. Global provider connections, credentials and endpoints remain application/runtime configuration and must not be copied into project Chat state.
 
 Context composition is Dope-owned orchestration. Active conversation history is direct context subject to budgeting; other saved Chats are an available corpus reached through explicit attachment/search/bounded retrieval. Context may reference source/editor state and existing Dope domains, and turn provenance may record which references were supplied. It must not persist hidden provider reasoning or reinterpret model narration as deterministic evidence/canonical project truth.
+
+Post-Phase-7 correction `c7-chat-project-grounding` adds a backend-owned **Project Grounding** boundary before final context composition for ordinary repository/map questions. It may perform only bounded project-relative list/read/path-search/text-search and typed Architecture/Physical Map/Flow queries. Filesystem grounding is anchored to the attached canonical project root, rejects absolute/traversal/symlink escape, and never treats generic `.dope/` files as source context. Automatic evidence is visible/persisted as turn context provenance. If evidence cannot be established, the model must not present a project fact as inspected or verified.
+
+Project Grounding is not Tool Runtime and not a coding-agent capability. It does not expose write/process/Git/network authority, and SoftwareMapIndex remains a map source rather than becoming the generic repository-search owner.
 
 Phase 7 Chat tools are observation/context capabilities only. Mutation-capable filesystem/process/Git/network actions remain behind future Tool Runtime + Authority/ProposedAction boundaries and are not authorized by ChatPanel existence.
 

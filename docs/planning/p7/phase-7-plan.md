@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Plan
 
-Status: **ACTIVE / 7A RETAINED / 7B QUALIFIED + CLOSED AT 0.7.23 / p7c P1 AT 0.7.24 / FINAL PHASE 7 CLOSEOUT IN p7c P9**
+Status: **QUALIFIED / CLOSED AT ACTUAL 0.7.31 / POST-CLOSEOUT c7-chat-project-grounding APPROVED BEFORE PHASE 8**
 Activation baseline: coherent `0.7.0` at commit `59c7f72a29dcdecdf9b908176754bfd02179b004`
 Package family: `0.7.x`
 Primary decisions: ADR 0025 and ADR 0026
@@ -196,6 +196,20 @@ The final closeout may occur only after 7A, 7B and 7C are implemented/qualified 
 - no feature-owned duplicate provider registry;
 - no silent model/provider fallback after explicit selection;
 - no global preference that bypasses privacy/egress/locality/authority constraints.
+
+
+
+## Post-closeout correction — c7-chat-project-grounding
+
+The final Phase 7 audit was executed after the Green `0.7.31` integrated 7C qualification, but the planned `0.7.32` version/documentation transition did not materialize. Repository truth therefore records Product Phase 7 as **Qualified / Closed at the actual `0.7.31` source**; no `0.7.32` candidate or package is invented.
+
+Before Phase 8, apply one bounded correction at unchanged `0.7.31` to fix a Chat grounding defect discovered in direct use: ordinary repository/map questions are not automatically supplied current project evidence and may invite model-fabricated file/path claims.
+
+The correction adds a backend-owned Project Grounding layer with bounded project-relative directory listing, file reading, path/file search, text search and typed Architecture/Physical Map/Flow queries. Automatic evidence is visible/persisted as Auto context. Project-root realpath containment, project-switch isolation and stale-map rejection are mandatory.
+
+The correction remains observational only and does not authorize writes, process execution, Git mutation, arbitrary network actions or delegation.
+
+After this correction is Green, Phase 8 Scoped Delegation starts from a fresh docs review. Historical P12/P13 and prior Phase 7 qualification records remain unchanged.
 
 ## Exit condition
 

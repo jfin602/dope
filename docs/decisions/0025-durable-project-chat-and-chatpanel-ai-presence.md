@@ -178,3 +178,115 @@ Chat is directly discoverable from both side workbench toolbars without requirin
 
 A bounded `c7-chat-conversation-ux` correction at unchanged `0.7.13` must add focused regression coverage plus direct GUI evidence for the persistent shell, unified composer, safe Markdown transcript, compact metadata, scroll-follow behavior, color assignment/migration/editing and selector/bubble color continuity. Historical P9 implementation text, P12 qualification records and the P13 evidence-only Not Qualified closeout remain unchanged; successful correction evidence supplements them rather than rewriting them.
 
+## Amendment — c7-chat-project-grounding (2026-10-05)
+
+The completed Phase 7 Chat/runtime/routing work exposed a grounding gap that is separate from coding-agent authority: an ordinary Chat turn may contain only recent Chat history, manually attached typed context and the developer's sentence. A repository question such as "what is in test/?" therefore has no guaranteed repository evidence unless the developer manually attached it. A model may then produce a plausible but unverified path or file claim.
+
+This post-Phase-7 correction strengthens Chat's existing observation/context boundary without adding mutation, process, Git, network or delegation authority.
+
+### Project facts require supplied evidence
+
+Dope must not represent a repository file, directory, symbol, Architecture entity, Physical Map fact, Flow fact or other project state as inspected or verified unless current project evidence for that fact was supplied to the model for the turn.
+
+When required evidence is unavailable, stale, out of bounds or cannot be retrieved within the correction's deterministic limits, Chat must surface that limitation rather than inventing project facts.
+
+This is a product contract, not merely prompt wording. Model-facing instructions should reinforce it, but correctness depends on the grounding boundary supplying auditable evidence and failing closed.
+
+### Deterministic project grounding
+
+Before normal project Chat execution, a backend-owned project-grounding boundary may add bounded automatic context when the developer's question clearly requires repository or map facts.
+
+Initial read-only grounding primitives are limited to:
+- list a project-relative directory;
+- read a bounded project-relative file;
+- find project-relative paths/files by bounded deterministic query or pattern;
+- perform bounded project text search;
+- query canonical Architecture;
+- query the current Physical Map;
+- query current Flow.
+
+These are context-retrieval operations, not general model-controlled tools. The model does not receive arbitrary filesystem APIs and does not choose unrestricted host paths.
+
+Grounding should prefer deterministic intent/path cues for obvious repository questions before introducing broader semantic retrieval. Advanced semantic project search may be added later when it has its own evidence and performance contract.
+
+### Project-root containment
+
+Every filesystem grounding request is anchored to the Chat connection's already-attached canonical project root.
+
+Public grounding inputs are project-relative. Absolute paths and traversal outside the active project are rejected. Filesystem reads resolve the requested path against the canonical project root, use realpath containment and reject symlink escapes.
+
+Generic filesystem grounding must not read `.dope/` implementation/work-state files. Project Mind, Architecture, Physical Map, Flow, Planning and Chat state continue to enter context through their typed domain readers.
+
+A project switch invalidates automatic grounding state. Evidence retrieved for one project may never be reused for another project merely because a path string matches.
+
+### Small always-on orientation
+
+A project Chat may receive a tiny deterministic orientation block even when no deeper retrieval is triggered. It should identify only non-sensitive current project facts useful for interpretation, such as:
+- that the turn is attached to the current Dope project;
+- Architecture available/unavailable;
+- Physical Map available/current-generation/unavailable;
+- optionally a bounded top-level repository outline when inexpensive.
+
+The model does not need the developer's absolute machine path to answer ordinary repository questions. Grounding and provenance use project-relative identities.
+
+### Visible automatic context
+
+Automatically retrieved evidence is visible to the developer as Auto context rather than hidden prompt stuffing.
+
+Automatic references use the same auditable principles as manually attached context: project-relative identity, context kind, bounded size/token accounting, content hash where content is supplied, and project/generation identity for map-derived evidence.
+
+Automatic grounding references persist with the turn so later inspection can answer what evidence the model actually received. They remain non-canonical observations and do not become Project Mind, Architecture or validation truth.
+
+### Ownership
+
+The grounding implementation belongs on the backend beside Chat context composition, not inside ChatPanel presentation code.
+
+The intended shape is:
+
+```text
+ChatPanel
+    -> ChatService
+        -> Project Grounding
+            -> bounded repository reader/search
+            -> Architecture reader
+            -> Physical Map / Flow query
+        -> Context Composer
+        -> Model Runtime / role routing
+```
+
+SoftwareMapIndex remains the source of current Physical Map/Flow state. It is not stretched into a generic repository-search index merely to support Chat.
+
+### Authority boundary
+
+This correction authorizes only observation:
+- list;
+- read;
+- search;
+- query.
+
+It does not authorize:
+- write/patch/delete;
+- process execution;
+- Git mutation;
+- arbitrary network actions;
+- coding-agent delegation;
+- any other Phase 8 mutation authority.
+
+The correction therefore remains compatible with Phase 7's read-only collaboration boundary even though it is applied after Phase 7 closeout.
+
+### Qualification amendment
+
+The bounded `c7-chat-project-grounding` correction runs at unchanged `0.7.31` and must directly prove:
+- repository-root and nested-directory questions such as root and `test/`;
+- existing and nonexistent project-relative paths;
+- bounded source lookup for an implementation question;
+- canonical Architecture questions;
+- current Physical Map/Flow questions;
+- explicit failure for `../`, absolute external paths, symlink escape and stale/nonexistent map identities;
+- visible/persisted Auto context provenance;
+- project-switch isolation;
+- unchanged manual context behavior and Chat history budgeting;
+- no change to Physical Map input fingerprints or canonical project state;
+- no mutation/process/Git/network authority.
+
+A successful correction supplements the completed Phase 7 evidence. It does not rewrite historical P12/P13 results or reopen the qualified 7B/7C routing decisions.

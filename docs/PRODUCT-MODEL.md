@@ -259,6 +259,17 @@ Per-Chat settings may define eligible automatic context sources, context/history
 
 Chat is an interface for understanding and proposing project work. Promotion into Project Mind or other canonical domains remains explicit developer-controlled behavior.
 
+
+#### Verified project grounding
+
+Post-Phase-7 correction `c7-chat-project-grounding` strengthens the read-only Chat context boundary so basic repository/map questions are evidence-backed without requiring manual attachment every time.
+
+For project facts, **verified** means the relevant current project evidence was actually supplied to the model for that turn. A model may interpret supplied evidence, but it may not present an unobserved repository path, directory, source fact, Architecture identity, Physical Map fact or Flow fact as inspected/known.
+
+Grounding is deterministic and bounded: project-relative directory listing, project-file reading, path/file search, text search, Architecture query, Physical Map query and Flow query. Automatic evidence is shown as **Auto context** and persists with normal turn provenance. Missing/stale/out-of-project evidence produces an explicit limitation rather than a guess.
+
+This correction does not add mutation or delegation. Write/process/Git/network authority begins only in the later Scoped Delegation phase.
+
 ### Phase 7B-7C — AI Center, connections and role policy
 
 `AIConnection` is a machine-local/application-global provider/runtime connection identity. Its Dope-owned ID is immutable across endpoint, alias, credential, readiness and model-inventory changes. Enabled/Disabled/Removed lifecycle is distinct from transient health.
