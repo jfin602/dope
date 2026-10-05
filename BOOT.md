@@ -261,12 +261,14 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Apply and qualify post-Phase-7 correction `c7-chat-project-grounding` at unchanged `0.7.31`.
+Validate and execute the written post-Phase-7 grounding correction at unchanged `0.7.31`:
 
-Next workflow:
+`npm run codex:phase:validate -- c7-chat-project-grounding`
 
-`/prompt-ass -> /prompt-plan -> /prompt-write c7-chat-project-grounding`
+then:
 
-The correction adds deterministic read-only project grounding for Chat: bounded project-relative list/read/path-search/text-search plus typed Architecture/Physical Map/Flow lookup, visible Auto context and fail-closed anti-fabrication behavior. It must not add write/process/Git/network/delegation authority.
+`npm run codex:phase -- c7-chat-project-grounding`
 
-After the correction is Green, begin a fresh Phase 8 Scoped Delegation `/docs-review`.
+The three-prompt stack owns deterministic read-only project grounding, Chat Auto context integration, and one adversarial browser qualification/closeout. Preserve Phase 7 history and do not introduce write/process/Git/network/delegation authority.
+
+After a Green correction closeout, begin a fresh Phase 8 Scoped Delegation `/docs-review`.

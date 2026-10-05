@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Plan
 
-Status: **QUALIFIED / CLOSED AT ACTUAL 0.7.31 / POST-CLOSEOUT c7-chat-project-grounding APPROVED BEFORE PHASE 8**
+Status: **QUALIFIED / CLOSED AT ACTUAL 0.7.31 / POST-CLOSEOUT c7-chat-project-grounding PROMPTS WRITTEN + NEXT BEFORE PHASE 8**
 Activation baseline: coherent `0.7.0` at commit `59c7f72a29dcdecdf9b908176754bfd02179b004`
 Package family: `0.7.x`
 Primary decisions: ADR 0025 and ADR 0026

@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 7 is **QUALIFIED / CLOSED at the actual `0.7.31` source**. Phase 7B AI Center is Qualified/Closed and Phase 7C integrated routing qualification/final audit completed; the planned `0.7.32` version transition did not materialize, so no `0.7.32` artifact is claimed. Before Phase 8, apply bounded post-Phase-7 correction **`c7-chat-project-grounding`** at unchanged `0.7.31` to make ordinary repository/map Chat questions deterministically evidence-backed.
+Current stage: Product Phase 7 is **QUALIFIED / CLOSED at the actual `0.7.31` source**. The post-closeout **`c7-chat-project-grounding`** correction stack is now written and ready for execution at unchanged `0.7.31`; it makes ordinary repository/map Chat questions deterministically evidence-backed before Phase 8. No `0.7.32` artifact is claimed.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
