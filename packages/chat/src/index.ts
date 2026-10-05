@@ -8,7 +8,7 @@ export const CHAT_COLORS = ['blue', 'cyan', 'teal', 'green', 'yellow', 'orange',
 export type ChatColor = typeof CHAT_COLORS[number];
 export type AssistantStatus = 'pending' | 'streaming' | 'complete' | 'failed' | 'cancelled';
 export type ChatContextKind = 'editor' | 'selection' | 'file' | 'project-mind' | 'architecture' |
-    'physical-map' | 'flow' | 'planning-map' | 'work-item' | 'saved-chat' | 'directory' | 'path-search' | 'text-search' | 'project-orientation';
+    'physical-map' | 'flow' | 'planning-map' | 'work-item' | 'saved-chat' | 'directory' | 'path-search' | 'text-search' | 'project-orientation' | 'grounding-status';
 
 export interface ChatContextRef {
     schemaVersion: 1;
@@ -104,7 +104,7 @@ export interface ChatCollection {
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const contextKinds: readonly ChatContextKind[] = ['editor', 'selection', 'file', 'project-mind', 'architecture',
-    'physical-map', 'flow', 'planning-map', 'work-item', 'saved-chat', 'directory', 'path-search', 'text-search', 'project-orientation'];
+    'physical-map', 'flow', 'planning-map', 'work-item', 'saved-chat', 'directory', 'path-search', 'text-search', 'project-orientation', 'grounding-status'];
 const statuses: readonly AssistantStatus[] = ['pending', 'streaming', 'complete', 'failed', 'cancelled'];
 
 export function parseChatColor(value: unknown): ChatColor { return choice(value, CHAT_COLORS, 'Chat color'); }

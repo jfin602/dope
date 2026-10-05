@@ -150,16 +150,28 @@ export class ChatProjectGrounder {
         return stopped || omitted ? [{ kind: stopped ? 'truncated' : 'omitted', source: '.',
             message: `Generic search examined ${Math.min(visited, GROUNDING_LIMITS.visited)} entries; ${omitted} skipped; ${queue.length} directories or remaining entries omitted` }] : [];
     }
-    async searchPaths(root: string, query: string): Promise<GroundingResult> {
+    async searchPaths(root: string, query: string, hint = ''): Promise<GroundingResult & { matchedPaths: string[] }> {
         const canonical = await this.root(root), needle = safeQuery(query).toLowerCase();
         const paths: string[] = [];
         const diagnostics = await this.walk(canonical, async path => {
             if (path.toLowerCase().includes(needle)) paths.push(path);
-            return paths.length < GROUNDING_LIMITS.results;
+            return true;
         });
-        paths.sort(cmp);
+        const rank = (path: string) => {
+            if (hint === 'persistence' && /(?:repository|store|persistence)/i.test(path) &&
+                /^packages\/.+\/src\/.+\.[cm]?[jt]sx?$/.test(path)) return 0;
+            if (/^(?:packages|apps)\/.+\/src\/.+\.[cm]?[jt]sx?$/.test(path)) return 1;
+            if (/^(?:packages|apps)\//.test(path)) return 2;
+            if (/^test\//.test(path)) return 3;
+            return 4;
+        };
+        paths.sort((a, b) => rank(a) - rank(b) || cmp(a, b));
+        if (paths.length > GROUNDING_LIMITS.results) diagnostics.push({ kind: 'truncated', source: '.',
+            message: `${paths.length - GROUNDING_LIMITS.results} matching paths omitted` });
+        const matchedPaths = paths.slice(0, GROUNDING_LIMITS.results);
         return { blocks: [this.block(canonical, 'path-search', needle, `Paths matching ${needle}`,
-            `Project path search ${JSON.stringify(needle)}: ${paths.length ? paths.join('\n') : '(no matches within search bounds)'}`)], diagnostics };
+            `Project path search ${JSON.stringify(needle)}: ${matchedPaths.length ? matchedPaths.join('\n') : '(no matches within search bounds)'}`)],
+            diagnostics, matchedPaths };
     }
     async searchText(root: string, query: string): Promise<GroundingResult> {
         const canonical = await this.root(root), needle = safeQuery(query).toLowerCase();
@@ -218,7 +230,11 @@ export class ChatProjectGrounder {
         catch { /* A changing or unreadable input makes the index unavailable for this turn. */ }
         if (!snapshot) return { blocks: [], diagnostics: [{ kind: 'unavailable', source: kind, message: 'Current Physical Map unavailable; analyze again' }] };
         const metadata = { projectId: snapshot.metadata.projectId, generation: snapshot.metadata.generation };
-        const selected = snapshot.nodes.find(node => question.toLowerCase().includes(node.name.toLowerCase()) && node.name.length > 2);
+        const requestedId = /\b(?:node|identity)\s+id\s*[:=]?\s*([\w:.-]+)/i.exec(question)?.[1];
+        const selected = requestedId ? snapshot.nodes.find(node => node.id === requestedId) :
+            snapshot.nodes.find(node => question.toLowerCase().includes(node.name.toLowerCase()) && node.name.length > 2);
+        if (requestedId && !selected) return { blocks: [], diagnostics: [{ kind: 'unavailable', source: kind,
+            message: 'Requested map identity unavailable in the current generation' }] };
         if (flow) {
             const result = queryStaticFlow(snapshot, { ...metadata, selectedId: selected?.id, maxNodes: 16, maxFacts: 12, maxHops: 8 });
             const ids = new Set(result.facts.flatMap(fact => fact.evidenceIds));
@@ -252,6 +268,14 @@ export class ChatProjectGrounder {
         blocks.push(this.block(canonical, 'project-orientation', 'project:orientation', 'Project orientation',
             `Attached project. Architecture: ${architecture ? 'available' : 'unavailable'}. Physical Map: ${map ? `current generation ${status.generation}` : 'unavailable'}.`));
         const finish = (): GroundingResult => {
+            // Rejection and unavailability are themselves turn evidence. Never put the
+            // rejected path (which may be an absolute host path) in a model ref or label.
+            for (const [index, diagnostic] of diagnostics.entries()) {
+                if (diagnostic.kind !== 'rejected' && diagnostic.kind !== 'unavailable') continue;
+                const label = diagnostic.kind === 'rejected' ? 'Rejected project request' : 'Unavailable project evidence';
+                blocks.push(this.block(canonical, 'grounding-status', `${diagnostic.kind}:${index}`, label,
+                    `${label}: ${diagnostic.message}`));
+            }
             let remaining = GROUNDING_LIMITS.totalBytes;
             const included = blocks.filter(block => {
                 const bytes = block.ref.includedBytes ?? Buffer.byteLength(block.text);
@@ -280,7 +304,7 @@ export class ChatProjectGrounder {
                         await this.listDirectory(canonical, explicit) : await this.readFile(canonical, explicit)); }
                     catch (error) { if (!missing(error)) throw error; add(await this.readFile(canonical, explicit)); }
                 } else add(await this.readFile(canonical, explicit));
-            } catch { diagnostics.push({ kind: 'rejected', source: explicit, message: 'Requested project path is unsafe or unavailable' }); }
+            } catch { diagnostics.push({ kind: 'rejected', source: 'project path', message: 'Requested project path is unsafe or unavailable' }); }
         } else if (/\b(?:repository root|project root|root directory|root folder)\b/i.test(q)) add(await this.listDirectory(canonical));
         if (/\b(?:architecture|subsystem|component|system)\b/i.test(q)) {
             try { add(await this.architecture(canonical, q)); }
@@ -293,7 +317,18 @@ export class ChatProjectGrounder {
                 word.length > 2 && !new Set(['where', 'find', 'locate', 'implemented', 'implementation', 'search',
                     'the', 'for', 'is', 'are', 'code', 'that', 'does', 'this', 'please']).has(word));
             if (terms.length) {
-                add(await this.searchPaths(canonical, terms[0]));
+                const paths = await this.searchPaths(canonical, terms[0], terms.includes('persistence') ? 'persistence' : '');
+                add(paths);
+                const source = paths.matchedPaths.find(path => /^(?:packages|apps)\/.+\/src\/.+\.[cm]?[jt]sx?$/.test(path));
+                if (source) {
+                    try {
+                        const read = await this.read(canonical, source);
+                        const excerpt = Buffer.from(read.text, 'utf8').subarray(0, 12 * 1024).toString('utf8').replace(/\uFFFD+$/, '');
+                        add({ blocks: [this.block(canonical, 'file', source, source, excerpt)], diagnostics:
+                            read.truncated || excerpt.length < read.text.length ? [
+                                { kind: 'truncated', source, message: 'Implementation source excerpt limited to 12 KiB' }] : [] });
+                    } catch { diagnostics.push({ kind: 'unavailable', source: 'source excerpt', message: 'Implementation source unavailable' }); }
+                }
                 add(await this.searchText(canonical, terms[0]));
             }
         }

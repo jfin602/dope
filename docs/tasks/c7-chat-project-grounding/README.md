@@ -1,6 +1,6 @@
 # Correction 7 — Chat Project Grounding
 
-Status: **READY FOR EXECUTION**
+Status: **P3 NOT GREEN** — see [closeout](closeout.md)
 Correction folder: `c7-chat-project-grounding`
 Required unchanged package version: `0.7.31`
 Activation/source baseline: `2a83c637415f682b91d60babd8f89c6cb896662a`
@@ -41,4 +41,4 @@ Execute:
 
 The runner owns P1/P2 commits and stops for the P3 browser/manual closeout.
 
-If P3 closes Green, the next route is a fresh Phase 8 Scoped Delegation `/docs-review`.
+P3's direct browser pass and bounded repairs are recorded in `closeout.md`. Remaining direct and aggregate gates must complete on the exact candidate before a fresh Phase 8 Scoped Delegation `/docs-review`.

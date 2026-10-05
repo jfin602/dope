@@ -16,7 +16,11 @@ const fixture = async () => {
   await mkdir(join(root, 'test'));
   await mkdir(join(root, '.dope'));
   await mkdir(join(root, 'node_modules'));
+  await mkdir(join(root, 'packages/chat/src/node'), { recursive: true });
+  await mkdir(join(root, 'docs'));
   await writeFile(join(root, 'package.json'), '{"name":"fixture"}');
+  await writeFile(join(root, 'packages/chat/src/node/chat-repository.ts'), 'export class ChatRepository { /* project-local chat persistence */ }');
+  await writeFile(join(root, 'docs/chat-persistence.md'), 'Historical discussion, not source');
   await writeFile(join(root, 'test/a.test.ts'), 'Chat persistence is here\nother line');
   await writeFile(join(root, 'test/b.test.ts'), 'Second source');
   await writeFile(join(root, '.dope/private.txt'), 'private state');
@@ -59,7 +63,10 @@ test('path/text search is stable, skips generated trees and reports bounds', asy
     assert.match(text.blocks[0].text, /test\/a\.test\.ts:1/);
     assert.doesNotMatch(text.blocks[0].text, /node_modules/);
     assert.ok(text.diagnostics.some(item => item.message.includes('skipped')));
-    assert.equal((await grounder.ground(root, 'where is Chat persistence implemented?')).blocks.some(block => block.ref.kind === 'path-search'), true);
+    const located = await grounder.ground(root, 'where is Chat persistence implemented?');
+    assert.equal(located.blocks.some(block => block.ref.kind === 'path-search'), true);
+    assert.equal(located.blocks.find(block => block.ref.kind === 'file')?.ref.id, 'packages/chat/src/node/chat-repository.ts');
+    assert.match(located.blocks.find(block => block.ref.kind === 'file')!.text, /ChatRepository/);
     for (let i = 0; i < GROUNDING_LIMITS.entries + 4; i++) await writeFile(join(root, `file-${String(i).padStart(3, '0')}`), 'x');
     const listing = await grounder.listDirectory(root);
     assert.ok(listing.diagnostics.some(item => item.kind === 'truncated'));
@@ -79,7 +86,11 @@ test('generic access rejects .dope, absolute/traversal/control paths and symlink
       await assert.rejects(grounder.readFile(root, path), /Unsafe|protected|escapes/);
     }
     await assert.rejects(grounder.readFile(root, 'test/escape'), /escapes/);
-    assert.ok((await grounder.ground(root, 'read ../secret')).diagnostics.some(item => item.kind === 'rejected'));
+    const rejected = await grounder.ground(root, 'read ../secret');
+    assert.ok(rejected.diagnostics.some(item => item.kind === 'rejected'));
+    assert.equal(rejected.blocks.at(-1)?.ref.kind, 'grounding-status');
+    assert.match(rejected.blocks.at(-1)!.text, /Rejected project request/);
+    assert.ok(!JSON.stringify(rejected.blocks).includes('../secret'));
     assert.ok(!JSON.stringify(await grounder.ground(root, 'read test/escape')).includes('host-secret'));
   } finally { await rm(root, { recursive: true, force: true }); await rm(outside, { recursive: true, force: true }); }
 });
@@ -114,10 +125,14 @@ test('canonical Architecture and only current Physical Map/Flow supply evidence'
     const flow = await grounder.ground(root, 'trace the Flow for Sender');
     assert.equal(flow.blocks.at(-1)?.ref.kind, 'flow');
     assert.match(flow.blocks.at(-1)!.text, /invokes/);
+    const unknown = await grounder.ground(root, 'Physical Map node id definitely-not-real');
+    assert.equal(unknown.blocks.some(block => block.ref.kind === 'physical-map'), false);
+    assert.match(unknown.blocks.at(-1)!.text, /Requested map identity unavailable/);
     current = false;
     const stale = await grounder.ground(root, 'trace the Flow');
     assert.equal(stale.blocks.some(block => block.ref.kind === 'flow'), false);
     assert.ok(stale.diagnostics.some(item => item.kind === 'unavailable'));
+    assert.equal(stale.blocks.at(-1)?.ref.kind, 'grounding-status');
     const wrongGeneration = new ChatProjectGrounder({ ...index,
       status: () => ({ state: 'ready', generation: 8, inputFingerprint: 'input' }) } as SoftwareMapIndex);
     assert.equal((await wrongGeneration.ground(root, 'Physical Map')).blocks.some(block => block.ref.kind === 'physical-map'), false);
