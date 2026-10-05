@@ -81,3 +81,16 @@ The approved `c7-chat-project-grounding` correction at unchanged `0.7.31` adds d
 
 The correction must be qualified separately. A Green correction supplements this closeout; it does not relabel historical P12/P13 observations.
 
+## Owner-approved Phase 7 closeout — 2026-10-05
+
+The owner explicitly approves Product Phase 7 closeout on the actual coherent `0.7.31` source.
+
+This owner disposition confirms the roadmap transition from Phase 7 to the post-closeout correction / Phase 8 sequence. It does **not** rewrite historical evidence:
+- the original P12 Not Green record remains historical;
+- the P13 `0.7.13` Not Qualified audit remains historical;
+- Phase 5 and Phase 6 retained qualification gaps remain unchanged;
+- the nonexistent planned `0.7.32` transition is still not claimed.
+
+Owner closeout status: **OWNER APPROVED / QUALIFIED / CLOSED**.
+
+`c7-chat-project-grounding` remains a separate post-Phase-7 correction at unchanged `0.7.31`. It is not implicitly Green by this owner approval and must retain its own qualification result. Phase 8 should not absorb that correction's scope.
