@@ -33,6 +33,8 @@ import { AICredentialManager } from './ai-credential-manager';
 import { AICredentialBackend } from './ai-credential-backend';
 import { codexAuthServicePath } from '@dope/contracts/lib/codex-auth-service';
 import { CodexAuthManager } from './codex-auth-manager';
+import { CodexAppServer } from './codex-app-server';
+import { BackendApplicationContribution } from '@theia/core/lib/node/backend-application';
 import { CodexAuthBackend } from './codex-auth-backend';
 
 export default new ContainerModule(bind => {
@@ -59,6 +61,10 @@ export default new ContainerModule(bind => {
     })).inSingletonScope();
     bind(AICredentialManager).toDynamicValue(context => new AICredentialManager(context.container.get(AIRegistryStore))).inSingletonScope();
     bind(CodexAuthManager).toDynamicValue(context => new CodexAuthManager(context.container.get(AIRegistryStore))).inSingletonScope();
+    bind(CodexAppServer).toDynamicValue(context => new CodexAppServer(context.container.get(CodexAuthManager))).inSingletonScope();
+    bind(BackendApplicationContribution).toDynamicValue(context => ({
+        onStop: () => context.container.get(CodexAppServer).dispose()
+    })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler(codexAuthServicePath,
         () => new CodexAuthBackend(context.container.get(CodexAuthManager)))).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<AICredentialClient>(aiCredentialServicePath, client => {
@@ -69,7 +75,8 @@ export default new ContainerModule(bind => {
     bind(ModelConnectionsRegistry).toDynamicValue(context => new ModelConnectionsRegistry(undefined,
         context.container.get(AIRegistryStore), context.container.get(AICredentialManager))).inSingletonScope();
     bind(AIInventoryController).toDynamicValue(context => new AIInventoryController(context.container.get(AIRegistryStore),
-        context.container.get(ModelConnectionsRegistry), context.container.get(AICredentialManager))).inSingletonScope();
+        context.container.get(ModelConnectionsRegistry), context.container.get(AICredentialManager),
+        context.container.get(CodexAppServer))).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<AIRegistryClient>(aiRegistryServicePath, client => {
         const backend = new AIRegistryBackend(context.container.get(AIRegistryStore), client, undefined,
             context.container.get(AIInventoryController));

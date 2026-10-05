@@ -7,6 +7,7 @@ import { AIRegistryStore } from './ai-registry-store';
 import { AICredentialManager } from './ai-credential-manager';
 import { ModelConnectionsRegistry } from './model-connections';
 import { detectLocalRuntime, providerSetup, providerSetupDescriptions, useDetectedRuntime } from './provider-setup';
+import { CodexAppServer } from './codex-app-server';
 
 const unknown = <Value>(): { source: 'unknown'; value?: Value } => ({ source: 'unknown' });
 const known = <Value>(value: Value | undefined, source: 'adapter-known' | 'provider-reported' | 'configured') =>
@@ -38,20 +39,22 @@ export class AIInventoryController {
     private readonly unlisten: (() => void)[];
 
     constructor(private readonly store: AIRegistryStore, private readonly runtimes: ModelConnectionsRegistry,
-        private readonly credentials: AICredentialManager) {
+        private readonly credentials: AICredentialManager, private readonly codex?: CodexAppServer) {
         this.unlisten = [store.onChange(snapshot => {
             for (const connection of snapshot.connections) {
                 const fingerprint = JSON.stringify([connection.config, connection.lifecycle,
-                    connection.credential, connection.preferredModelId]);
+                    connection.credential, connection.codexAccount, connection.preferredModelId]);
                 if (this.fingerprints.has(connection.id) && this.fingerprints.get(connection.id) !== fingerprint) {
                     this.health.delete(connection.id);
                     this.clearLoaded(connection.id);
+                    if (connection.config.type === 'codex') this.codex?.disconnect(connection.id);
                 }
                 this.changes.set(connection.id, (this.changes.get(connection.id) ?? 0) + 1);
                 this.fingerprints.set(connection.id, fingerprint);
             }
             for (const id of this.fingerprints.keys()) if (!snapshot.connections.some(connection => connection.id === id)) {
                 this.fingerprints.delete(id); this.health.delete(id); this.clearLoaded(id);
+                this.codex?.disconnect(id);
             }
             this.tested.clear();
             this.changed();
@@ -92,7 +95,8 @@ export class AIInventoryController {
         const health = (connection: AIConnection): AIConnectionHealth => {
             if (connection.lifecycle === 'disabled') return 'disabled';
             const state = this.health.get(connection.id) ?? 'unknown';
-            return state === 'ready' && !live.connections.find(item => item.id === connection.id)?.ready ? 'unknown' : state;
+            return state === 'ready' && connection.config.type !== 'codex' &&
+                !live.connections.find(item => item.id === connection.id)?.ready ? 'unknown' : state;
         };
         return { registry: { ...registry, models: registry.models.map(model => {
             const connection = registry.connections.find(item => item.id === model.connectionId)!;
@@ -130,6 +134,28 @@ export class AIInventoryController {
         try {
             try { providerSetup(connection); }
             catch { this.health.set(id, 'invalid-configuration'); throw new Error('Invalid connection configuration'); }
+            if (connection.config.type === 'codex') {
+                if (!connection.codexAccount?.accountId || connection.codexAccount.status !== 'signed-in' ||
+                    connection.codexAccount.planUsage !== 'available')
+                    throw new ModelRuntimeFailure('ChatGPT account needs authorization', 'authentication');
+                if (!this.codex) throw new ModelRuntimeFailure('Codex runtime unavailable', 'connection-unavailable');
+                await this.codex.resolveExecutable();
+                const models = await this.codex.models(id, connection.codexAccount.accountId);
+                const current = await this.connection(id);
+                if (JSON.stringify(current) !== JSON.stringify(connection))
+                    throw new ModelRuntimeFailure('Connection changed during discovery', 'connection-unavailable');
+                const snapshot = await this.store.read();
+                await this.store.mutate({ version: AI_REGISTRY_VERSION, expectedRevision: snapshot.revision,
+                    mutation: { type: 'reconcile-models', connectionId: id, models: models.map(model => ({
+                        version: AI_REGISTRY_VERSION, connectionId: id, providerModelKey: model.id, label: model.label,
+                        locality: 'hosted' as const, enabled: true, state: 'ready' as const,
+                        capabilities: { conversationalText: unknown(), streaming: unknown(), structuredOutput: unknown(),
+                            toolCalling: unknown(), agentExecution: known(true, 'adapter-known') },
+                        limits: { contextWindowTokens: unknown(), maxInputTokens: unknown(), maxOutputTokens: unknown() }
+                    })) } });
+                this.health.set(id, models.length ? 'unknown' : 'degraded'); this.changed();
+                return this.inventory();
+            }
             if (providerSetup(connection).credential === 'required' || connection.credential) {
                 const status = await this.credentials.status(id);
                 if (!status.effectiveSource) {
@@ -177,6 +203,28 @@ export class AIInventoryController {
     async testConnection(id: string): Promise<AITestConnectionResult> {
         await this.refreshModels(id);
         const connection = await this.connection(id);
+        if (connection.config.type === 'codex') {
+            const model = (await this.store.read()).models.find(item => item.connectionId === id && item.enabled &&
+                item.state !== 'unavailable' &&
+                item.providerModelKey === connection.preferredModelId) ??
+                (await this.store.read()).models.find(item => item.connectionId === id && item.enabled && item.state !== 'unavailable');
+            if (!model || !connection.codexAccount?.accountId || !this.codex)
+                throw new ModelRuntimeFailure('No usable Codex model', 'model-unavailable');
+            const generation = this.changes.get(id);
+            const start = performance.now();
+            try {
+                await this.codex.test(id, connection.codexAccount.accountId, model.providerModelKey);
+                if (generation !== this.changes.get(id))
+                    throw new ModelRuntimeFailure('Connection changed during test', 'connection-unavailable');
+                const result = { connectionId: id, modelId: model.providerModelKey,
+                    latencyMs: Math.round(performance.now() - start), hostedCostPossible: true };
+                this.tested.set(id, result); this.health.set(id, 'ready'); this.changed();
+                return result;
+            } catch (error) {
+                this.tested.delete(id); this.health.set(id, this.failure(error)); this.changed();
+                throw error;
+            }
+        }
         const inventory = await this.inventory();
         const live = (await this.runtimes.list()).connections.find(item => item.id === id);
         const usable = live?.models.filter(model => model.usable &&
