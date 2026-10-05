@@ -31,6 +31,9 @@ import { AIInventoryController, AIRegistryBackend } from './ai-registry-backend'
 import { aiCredentialServicePath, type AICredentialClient } from '@dope/contracts/lib/ai-credential-service';
 import { AICredentialManager } from './ai-credential-manager';
 import { AICredentialBackend } from './ai-credential-backend';
+import { codexAuthServicePath } from '@dope/contracts/lib/codex-auth-service';
+import { CodexAuthManager } from './codex-auth-manager';
+import { CodexAuthBackend } from './codex-auth-backend';
 
 export default new ContainerModule(bind => {
     bind(NoteStore).toSelf().inSingletonScope();
@@ -55,6 +58,9 @@ export default new ContainerModule(bind => {
         return backend;
     })).inSingletonScope();
     bind(AICredentialManager).toDynamicValue(context => new AICredentialManager(context.container.get(AIRegistryStore))).inSingletonScope();
+    bind(CodexAuthManager).toDynamicValue(context => new CodexAuthManager(context.container.get(AIRegistryStore))).inSingletonScope();
+    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler(codexAuthServicePath,
+        () => new CodexAuthBackend(context.container.get(CodexAuthManager)))).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<AICredentialClient>(aiCredentialServicePath, client => {
         const backend = new AICredentialBackend(context.container.get(AICredentialManager), client);
         client.onDidCloseConnection(() => backend.dispose());
