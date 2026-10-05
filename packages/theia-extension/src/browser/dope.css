@@ -497,3 +497,19 @@
 .dope-chat-panel [data-color="pink"] { --chat-color: #a63773; --chat-ink: white; }
 .dope-chat-panel [data-color="purple"] { --chat-color: #7548a9; --chat-ink: white; }
 .dope-chat-panel [data-color="indigo"] { --chat-color: #494eac; --chat-ink: white; }
+
+.dope-agent-run { box-sizing: border-box; height: 100%; overflow: auto; padding: 20px; color: var(--theia-editor-foreground); background: var(--theia-editor-background); }
+.dope-agent-run h2 { margin: 0 0 8px; }
+.dope-agent-run section { max-width: 52rem; border-top: 1px solid var(--theia-widget-border, var(--theia-input-border)); padding-top: 10px; margin-top: 14px; }
+.dope-agent-run section section { margin-top: 8px; }
+.dope-agent-run label { display: block; margin: 8px 0; }
+.dope-agent-run input:not([type="checkbox"]), .dope-agent-run textarea, .dope-agent-run select { display: block; box-sizing: border-box; width: min(100%, 44rem); margin-top: 4px; padding: 6px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border, var(--theia-focusBorder)); }
+.dope-agent-run textarea { min-height: 7rem; resize: vertical; }
+.dope-agent-run fieldset { border: 1px solid var(--theia-widget-border, var(--theia-input-border)); margin: 14px 0; }
+.dope-agent-run fieldset > div { margin: 8px 0; }
+.dope-agent-run button { color: var(--theia-button-foreground); background: var(--theia-button-background); border: 1px solid var(--theia-button-background); padding: 5px 9px; margin: 3px; cursor: pointer; }
+.dope-agent-run button:disabled { opacity: .55; cursor: default; }
+.dope-agent-run :is(button, input, textarea, select):focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-agent-run [aria-current="true"] { border-left: 3px solid var(--theia-focusBorder); }
+.dope-agent-run ol { max-height: 20rem; overflow: auto; padding-left: 2rem; }
+.dope-agent-run li { overflow-wrap: anywhere; margin: 4px 0; }

@@ -43,6 +43,8 @@ import { AIRolePolicyService, aiRolePolicyServicePath, type AIRolePolicyClient }
 import type { AIRolePolicyMutationRequest } from '@dope/ai';
 import { AICenterWidget, AI_CENTER_ID } from './ai-center-widget';
 import { AICenterContribution } from './ai-center-contribution';
+import { AgentRunWidget, AGENT_RUN_ID } from './agent-run-widget';
+import { AgentRunContribution } from './agent-run-contribution';
 import { AICenterBottomMenuWidget } from './ai-center-launcher';
 import { SidebarBottomMenuWidget } from '@theia/core/lib/browser/shell/sidebar-bottom-menu-widget';
 import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
@@ -83,6 +85,11 @@ class RightChatLauncher extends ChatLauncherView { constructor() { super('right'
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     rebind(SidebarBottomMenuWidget).to(AICenterBottomMenuWidget);
     bind(AICenterContribution).toSelf().inSingletonScope();
+    bind(AgentRunContribution).toSelf().inSingletonScope();
+    bind(CommandContribution).toService(AgentRunContribution);
+    bind(WidgetFactory).toDynamicValue(context => ({ id: AGENT_RUN_ID, createWidget: () => new AgentRunWidget(
+        () => context.container.get(AgentRuntimeService), context.container.get(AIRegistryService),
+        context.container.get(AIRolePolicyService), context.container.get(WorkspaceService)) })).inSingletonScope();
     bind(codexAuthServicePath).toDynamicValue(context =>
         ServiceConnectionProvider.createProxy<CodexAuthService>(context.container, codexAuthServicePath)).inSingletonScope();
     bind(CommandContribution).toService(AICenterContribution);
@@ -148,7 +155,10 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(NoteService).toDynamicValue(context => ServiceConnectionProvider.createProxy<NoteService>(context.container, noteServicePath)).inSingletonScope();
     bind(ProjectMindService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ProjectMindService & RpcServer<ProjectMindClient>>(context.container, projectMindServicePath));
     bind(AgentRuntimeService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AgentRuntimeService & RpcServer<AgentRuntimeClient>>(
-        context.container, agentRuntimeServicePath));
+        context.container, agentRuntimeServicePath, { notifyAgentStateChanged: () => {
+            const widget = context.container.get(WidgetManager).tryGetWidget<AgentRunWidget>(AGENT_RUN_ID);
+            void widget?.controller.refresh();
+        } } satisfies AgentRuntimeClient));
     bind(ChatOpenOwners).toSelf().inSingletonScope();
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();
     bind(AICredentialService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AICredentialService & RpcServer<AICredentialClient>>(
