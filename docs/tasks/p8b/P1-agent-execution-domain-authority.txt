@@ -1,0 +1,44 @@
+TASK: Phase 8 / P1 — Agent execution domain and authority
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.7`.
+
+GOAL
+Create the provider-neutral AgentTask / AgentRun / ExecutionGrant domain and deterministic authority/state rules for Phase 8B. No provider process, persistence, Git integration or UI yet.
+
+PREFLIGHT
+- Require coherent committed p8b baseline package `0.8.6`.
+- Read BOOT, AGENTS, ADR 0027 8B amendment, PRODUCT-MODEL AgentTask/AgentRun/ExecutionGrant, ARCHITECTURE agent-runtime boundary, p8b assessment/plan and current AI role types.
+- Inspect current package conventions before adding a package.
+
+IMPLEMENT
+- Create one real `@dope/agent-core` package. Do not create empty agent-state/agent-runtime/authority package ceremony.
+- Add strict versioned provider-neutral contracts/parsers for AgentTask, AgentRun, AgentRunEvent, ExecutionGrant, execution provenance, bounded validation results and bounded change summary.
+- AgentTask supports direct / phase-stack / WorkItem / future-session origins without requiring WorkItem.
+- Model policy supports Follow Coding Agent or exact immutable connection/model reference plus supported execution controls.
+- Durable project reference stays portable; do not invent a second canonical project identity or persist an absolute host path as project truth.
+- Define the exact 8B run statuses and legal transition function.
+- Define an immutable/revisioned accepted grant and deterministic effect-check function.
+- Default grant: allow project observation, project workspace mutation, project-local process/test/build and Git inspection; deny Git writes/history changes, network, secrets/private state, outside-root access/effects and destructive/system/package-admin effects.
+- Out-of-grant effects return a typed deny decision; provider/model text cannot widen authority.
+- Durable vocabulary must have no secret/token, hidden-reasoning, arbitrary-env or raw-unbounded-provider fields.
+- Update workspace/build ordering and MODULES only as necessary for the new real boundary.
+
+TESTS
+Add focused agent-core tests for strict parsing, unknown fields, status transitions, immutable grant/revision, full allow/deny matrix, invalid path/root references and durable-field safety.
+
+VALIDATION
+T1 only:
+- new agent-core focused tests;
+- build/typecheck `@dope/ai` + `@dope/agent-core` and only directly affected dependents;
+- version/internal-reference/no-root-lock + `git diff --check`.
+Do not run App Server, Git mutation, browser, packaging or `npm run check`.
+
+Do not create commits; the phase runner owns the commit boundary.
+
+FINAL RESPONSE
+Report the domain/package boundary, authority matrix, state-transition contract, focused evidence and P2 readiness.

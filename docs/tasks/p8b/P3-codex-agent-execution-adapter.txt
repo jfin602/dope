@@ -1,0 +1,49 @@
+TASK: Phase 8 / P3 — Codex AgentExecutionAdapter and sandbox enforcement
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.9`.
+
+GOAL
+Add the first mutation-capable provider adapter while preserving the Phase 8A Test Connection as permanently read-only. The adapter must fail closed if it cannot enforce the accepted 8B grant.
+
+PREFLIGHT
+- Read P1/P2 results and current `codex-app-server.ts`.
+- Inspect the installed/current official Codex App Server protocol/configuration for workspace-write sandbox, writable-root/network controls, Git protection, observable tool events and supported interruption. Do not guess provider event or interrupt method names.
+- Preserve existing ChatGPT-plan auth and no-billing-fallback rules.
+
+IMPLEMENT
+- Add a distinct provider-neutral AgentExecutionAdapter seam and Codex implementation; do not turn `CodexAppServer.test()` into a mutation API.
+- Reuse/extract only low-level JSON-RPC/process plumbing that is safe to share.
+- Prefer a dedicated App Server process/session per active mutation run if it materially strengthens cancellation and grant isolation.
+- Map the accepted default grant to the strongest enforceable Codex sandbox:
+  - cwd = canonical approved project root;
+  - workspace writes only inside that root;
+  - network disabled;
+  - extra temporary writable roots disabled where supported;
+  - HOME/CODEX_HOME isolated in a Dope runtime location and not exposed as project authority;
+  - `.git` / Git control and history writes protected;
+  - web/remote tools disabled;
+  - no unintended MCP/child-agent capability outside the grant.
+- If any required deny boundary cannot be enforced by the installed reference harness, reject execution with safe unsupported/authority failure before mutation.
+- Start exact selected connection/model; never select/fallback providers internally.
+- Normalize verified observable provider activity into Dope events: agent-message, command-started/completed, file-changed, status, warning, authority-denied, and bounded provider-event only when needed.
+- Never persist raw hidden reasoning, secret-bearing provider payloads or full env.
+- Implement real scoped interruption using the verified protocol when reliable; otherwise allow runtime to terminate the dedicated run process as the stop boundary.
+- Sanitize provider recovery metadata; thread ID remains non-canonical.
+- Ensure child/process cleanup on failure/cancel/dispose.
+
+TESTS
+Use deterministic fake App Server/process fixtures. Cover strict mutation config, approved cwd, network off, writable-root/temp/private-home restrictions, Git-control denial/config, event normalization/bounds, malformed RPC, process death, no provider fallback, interruption/process cleanup and preservation of the 8A read-only Test Connection.
+
+VALIDATION
+T2 focused adapter/sandbox/process tests + affected builds/typecheck + version/no-lock/diff checks.
+No live project mutation/browser/package/full check yet.
+
+Do not create commits; the phase runner owns the commit boundary.
+
+FINAL RESPONSE
+Report exactly which grant boundaries are enforceable, verified provider protocol/config choices, normalized events, cancellation seam, tests and P4 readiness.

@@ -1,0 +1,47 @@
+TASK: Phase 8 / P4 — Agent Runtime lifecycle and cancellation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.10`.
+
+GOAL
+Connect AgentTask + accepted ExecutionGrant + Coding Agent/exact model resolution + AgentExecutionAdapter into one observable single-task runtime with real cancellation.
+
+PREFLIGHT
+Read P1-P3 results, `AIRoleRoutingService.resolve()`, AI registry/inventory, Coding Agent role policy and current backend RPC/DI patterns.
+
+IMPLEMENT
+- Add the Phase 8B Agent Runtime backend/service over the P2 store.
+- Start requires a persisted task and explicitly accepted grant matching the attached canonical project root and task requirements.
+- Resolve Follow Coding Agent through the existing Coding Agent role policy with `agentExecution` and explicit hosted-project-data authorization.
+- Exact policy validates the exact connection/model is current, enabled, agentExecution-capable and authorized; do not silently substitute.
+- Persist requested policy and actual immutable connection/model/provider/runtime provenance before meaningful effects.
+- Do not use conversational runtime as a coding-agent surrogate.
+- Start the selected AgentExecutionAdapter, normalize/persist bounded events and transition run truth exactly once.
+- No fallback after meaningful output/effects. Do not add general capacity-retry policy in 8B.
+- It is acceptable to permit only one active mutation run per attached project; reject competing starts clearly.
+- Stop is real:
+  - running -> cancelling;
+  - abort/interrupt adapter;
+  - if needed terminate the dedicated run process;
+  - prevent further effects;
+  - preserve existing workspace modifications;
+  - terminal cancelled or honest interrupted/failed;
+  - never auto-revert.
+- Outside-grant adapter/authority denial is persisted and stops safely; it never opens a hidden provider approval path.
+- Disposal cannot leave an owned mutation process running.
+
+TESTS
+Cover grant-not-accepted, root mismatch, Follow Coding Agent vs exact, hosted authorization, unavailable/ineligible target, immutable provenance, normal completion, normalized event persistence, pre/post-effect cancellation, adapter failure, authority denial, competing run rejection and no fallback after effects.
+
+VALIDATION
+T2 focused agent-runtime + routing/adapter/store integration tests + affected builds/typecheck + version/no-lock/diff checks.
+No live hosted mutation/browser/package/full check yet.
+
+Do not create commits; the phase runner owns the commit boundary.
+
+FINAL RESPONSE
+Report start/selection/fallback law, cancellation guarantees, lifecycle tests and P5 readiness.
