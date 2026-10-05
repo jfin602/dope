@@ -36,10 +36,14 @@ import { CodexAuthManager } from './codex-auth-manager';
 import { CodexAppServer } from './codex-app-server';
 import { BackendApplicationContribution } from '@theia/core/lib/node/backend-application';
 import { CodexAuthBackend } from './codex-auth-backend';
+import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
+import { agentRuntimeServicePath, type AgentRuntimeClient } from '@dope/contracts/lib/agent-runtime-service';
+import { AgentRuntimeBackend } from './agent-runtime-backend';
 
 export default new ContainerModule(bind => {
     bind(NoteStore).toSelf().inSingletonScope();
     bind(ProjectMindStore).toSelf().inSingletonScope();
+    bind(AgentStore).toSelf().inSingletonScope();
     bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
     bind(PlanningStore).toSelf().inSingletonScope();
     bind(ChatRepository).toSelf().inSingletonScope();
@@ -108,6 +112,11 @@ export default new ContainerModule(bind => {
     })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<ProjectMindClient>(projectMindServicePath, client => {
         const backend = new ProjectMindBackend(context.container.get(ProjectMindStore), client);
+        client.onDidCloseConnection(() => backend.dispose());
+        return backend;
+    })).inSingletonScope();
+    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<AgentRuntimeClient>(agentRuntimeServicePath, client => {
+        const backend = new AgentRuntimeBackend(context.container.get(AgentStore), client);
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

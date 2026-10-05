@@ -123,7 +123,10 @@ Own bounded coding-agent tasks, observable runs, and developer-approved executio
 - `packages/agent-core/src/contracts.ts`
 - `packages/agent-core/src/authority.ts`
 - `packages/agent-core/src/state.ts`
+- `packages/agent-core/src/node/agent-store.ts`
+- `packages/contracts/src/agent-runtime-service.ts`
+- `packages/theia-extension/src/node/agent-runtime-backend.ts`
 
 **Major relationships:**
 - The Phase 8B core defines portable task/run records, the run transition table, and a fixed accepted grant for project-local effects. AI Center owns connection and model selection; a later runtime resolves that selection and records actual execution provenance.
-- The core has no provider, filesystem, process, Git, or Theia dependency. Project-local persistence, effect enforcement, and presentation attach to this boundary in later 8B tasks.
+- The pure core has no provider, filesystem, process, Git, or Theia dependency. The Node store owns project-local task/run/event persistence, and the Theia backend exposes a narrow RPC adapter. Effect enforcement and presentation attach in later 8B tasks.

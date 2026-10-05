@@ -6,6 +6,7 @@ import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-
 import { bindViewContribution } from '@theia/core/lib/browser/shell/view-contribution';
 import { NoteService, noteServicePath } from '@dope/contracts/lib/note-service';
 import { ProjectMindClient, ProjectMindService, projectMindServicePath } from '@dope/contracts/lib/project-mind-service';
+import { AgentRuntimeService, agentRuntimeServicePath, type AgentRuntimeClient } from '@dope/contracts/lib/agent-runtime-service';
 import type { RpcServer } from '@theia/core/lib/common/messaging/proxy-factory';
 import { ServiceConnectionProvider } from '@theia/core/lib/browser/messaging/service-connection-provider';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
@@ -146,6 +147,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     } })).inSingletonScope();
     bind(NoteService).toDynamicValue(context => ServiceConnectionProvider.createProxy<NoteService>(context.container, noteServicePath)).inSingletonScope();
     bind(ProjectMindService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ProjectMindService & RpcServer<ProjectMindClient>>(context.container, projectMindServicePath));
+    bind(AgentRuntimeService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AgentRuntimeService & RpcServer<AgentRuntimeClient>>(
+        context.container, agentRuntimeServicePath));
     bind(ChatOpenOwners).toSelf().inSingletonScope();
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();
     bind(AICredentialService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AICredentialService & RpcServer<AICredentialClient>>(
