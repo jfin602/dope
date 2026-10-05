@@ -350,10 +350,10 @@ export const MODEL_CAPACITY_MAX_RETRIES = 3;
 export const MODEL_CAPACITY_RETRY_SECONDS = 20;
 
 const modelCapacityPatterns = Object.freeze([
-  /\\bmodel[_ -]?at[_ -]?capacity\\b/i,
-  /\\b(?:model|service|server)\\b.{0,120}\\bat capacity\\b/i,
-  /\\bat capacity\\b.{0,120}\\btry again\\b/i,
-  /\\bcapacity\\b.{0,120}\\btry again later\\b/i,
+  /\bmodel[_ -]?at[_ -]?capacity\b/i,
+  /\b(?:model|service|server)\b.{0,120}\bat capacity\b/i,
+  /\bat capacity\b.{0,120}\btry again\b/i,
+  /\bcapacity\b.{0,120}\btry again later\b/i,
 ]);
 
 export function isModelCapacityText(value) {

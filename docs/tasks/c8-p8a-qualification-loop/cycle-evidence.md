@@ -42,3 +42,12 @@ Cycle 1 checkpoint: `537a4b83a44065750823da4d92b6f1f98ce01b61` (`0.8.6`).
 - The real AI Center returned to signed-in/available. Refresh Models again yielded five account-specific agent models. The UI Test Connection completed on the saved account, reporting hosted usage, positive latency, and Ready. Some provider requests were transiently unavailable before the successful refresh/test; no API-key fallback or alternate account was used.
 - A second exact-token scan after reconnect covered 358 files in the isolated app/config/browser profile plus the working diff: zero access/refresh/ID-token byte matches, zero registry credential fields, and zero files skipped for size. No active project was opened or mutated. The browser callback history could not be established from the running browser's SQLite database; no claim is made about the short-lived authorization code in external browser history.
 - Live gates A–F are now cleared within Phase 8A. Direct remote sign-out revocation response was not captured, so local protected-session deletion is the direct sign-out claim; absence of a warning is only consistent with remote success. Final exact-candidate automated validation and process cleanup remain before a Green decision.
+
+Cycle 2 checkpoint: `3ad01d18e077d33719c4cb615829bc45c168591d` (`0.8.6`).
+
+## Cycle 3
+
+- Pre-cycle candidate: clean `3ad01d18e077d33719c4cb615829bc45c168591d`.
+- The required exact-candidate `npm run check` failed in three capacity-retry tests in `test/unit/codex-phase-runner.test.ts`. The full Phase 8A focused suite passed 94/94. The runner failure was in source present at the pre-loop baseline: four JavaScript regex literals used `\\b`, which matches literal backslash text, instead of the intended `\b` word boundary. Its direct capacity detector returned false and downstream retry cases did not run.
+- The owner explicitly authorized this narrow out-of-scope runner correction after the failure was observed. Changed only the four capacity-match patterns in `scripts/codex-phase.mjs`; existing focused detector and dirty-work retry tests are the permanent regression. No Phase 8A auth, authority, provider, or UI behavior changed in this cycle.
+- Focused runner and prompt grammar replay passed 103/103. `npm run check` must be repeated on this corrected exact source before final qualification; the prior failed run is retained as evidence.
