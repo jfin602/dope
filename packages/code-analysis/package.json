@@ -1,6 +1,6 @@
 {
   "name": "@dope/code-analysis",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "private": true,
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

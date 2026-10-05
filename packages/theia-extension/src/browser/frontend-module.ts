@@ -31,6 +31,7 @@ import { VisualPlanningService, visualPlanningServicePath } from '@dope/visual-p
 import { chatServicePath, type ChatService } from '@dope/chat/lib/service';
 import { ModelConnectionsService, modelConnectionsServicePath } from '@dope/contracts/lib/model-connections-service';
 import { AICredentialService, aiCredentialServicePath } from '@dope/contracts/lib/ai-credential-service';
+import { codexAuthServicePath, type CodexAuthService } from '@dope/contracts/lib/codex-auth-service';
 import type { AICredentialClient } from '@dope/contracts/lib/ai-credential-service';
 import type { ModelConnectionsClient } from '@dope/contracts/lib/model-connections-service';
 import type { ChatClient } from '@dope/chat/lib/service';
@@ -81,6 +82,8 @@ class RightChatLauncher extends ChatLauncherView { constructor() { super('right'
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     rebind(SidebarBottomMenuWidget).to(AICenterBottomMenuWidget);
     bind(AICenterContribution).toSelf().inSingletonScope();
+    bind(codexAuthServicePath).toDynamicValue(context =>
+        ServiceConnectionProvider.createProxy<CodexAuthService>(context.container, codexAuthServicePath)).inSingletonScope();
     bind(CommandContribution).toService(AICenterContribution);
     bind(MenuContribution).toService(AICenterContribution);
     bind(FrontendApplicationContribution).toService(AICenterContribution);
@@ -102,7 +105,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     }).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: AI_CENTER_ID, createWidget: () => new AICenterWidget(
         context.container.get(AIRegistryService), context.container.get(AICredentialService),
-        context.container.get(AIRolePolicyService)) })).inSingletonScope();
+        context.container.get(AIRolePolicyService), context.container.get<CodexAuthService>(codexAuthServicePath)) })).inSingletonScope();
     bind(ModelConnectionsService).toDynamicValue(context =>
         ServiceConnectionProvider.createProxy<ModelConnectionsService & RpcServer<ModelConnectionsClient>>(
             context.container, modelConnectionsServicePath,

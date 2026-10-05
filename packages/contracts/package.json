@@ -1,6 +1,6 @@
 {
   "name": "@dope/contracts",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "private": true,
   "main": "lib/project-mind.js",
   "types": "lib/project-mind.d.ts",

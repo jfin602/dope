@@ -4,6 +4,7 @@ import type { AIConnection, AIConnectionConfig, AIRoleHardConstraints, AIRoleId,
     AIRolePolicyEntry, AIRoleSoftPreference } from '@dope/ai';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
 import type { AICredentialService } from '@dope/contracts/lib/ai-credential-service';
+import type { CodexAuthService } from '@dope/contracts/lib/codex-auth-service';
 import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
 import { AICenterController, connectionHealth, usableModelSummary } from './ai-center-controller';
 import { AICenterRolesController, emptyRoleHard, ROLE_DETAILS, ROLE_REASON_LABELS,
@@ -54,7 +55,8 @@ export class AICenterWidget extends BaseWidget {
     private returnToChat?: () => void;
     private returnLabel = 'Return to Chat';
 
-    constructor(registry: AIRegistryService, credentials: AICredentialService, roles: AIRolePolicyService) {
+    constructor(registry: AIRegistryService, credentials: AICredentialService, roles: AIRolePolicyService,
+        codex: CodexAuthService) {
         super();
         this.id = AI_CENTER_ID;
         this.title.label = this.title.caption = 'AI Center';
@@ -62,7 +64,7 @@ export class AICenterWidget extends BaseWidget {
         this.title.closable = true;
         this.node.tabIndex = -1;
         this.addClass('dope-ai-center');
-        this.controller = new AICenterController(registry, credentials, () => this.render());
+        this.controller = new AICenterController(registry, credentials, () => this.render(), codex);
         this.roles = new AICenterRolesController(roles, () => this.render());
         this.node.append(this.content);
         void this.controller.load();
@@ -126,7 +128,10 @@ export class AICenterWidget extends BaseWidget {
             const health = connectionHealth(state!, connection);
             const healthSummary = element('span', `${health} · ${usableModelSummary(controller.usableModels, connection)}`);
             if (health === 'ready') healthSummary.classList.add('dope-ai-ready');
-            row.append(element('strong', `${provider?.locality ?? 'AI'} · ${connection.config.type === 'local' ? connection.config.runtime : connection.config.type} · ${connection.alias}`), healthSummary);
+            row.append(element('strong', `${provider?.locality ?? 'AI'} · ${connection.config.type === 'codex' ? 'Codex / Agent Runtime' :
+                connection.config.type === 'local' ? connection.config.runtime : connection.config.type} · ${connection.alias}`), healthSummary);
+            if (connection.config.type === 'codex') row.append(element('span',
+                `ChatGPT account: ${connection.codexAccount?.accountLabel ?? 'not selected'} · ${connection.codexAccount?.status ?? 'unknown'}`));
             list.append(row);
         }
         const detail = element('section'); detail.setAttribute('aria-label', 'Connection details');
@@ -145,7 +150,8 @@ export class AICenterWidget extends BaseWidget {
             const connection = state!.registry.connections.find(item => item.id === model.connectionId);
             const row = element('div', undefined, 'dope-ai-model');
             row.append(element('span', `${connection?.alias ?? 'Removed connection'} · ${model.label} · ${
-                model.locality} · ${model.state} · ${model.enabled ? 'enabled' : 'disabled'}`));
+                connection?.config.type === 'codex' ? 'Agent Runtime (not general Chat)' : model.locality} · ${model.state} · ${
+                model.enabled ? 'enabled' : 'disabled'}`));
             if (connection) row.append(button('Open connection', () => {
                 this.controller.selectedId = connection.id; this.surface = 'connections';
                 void this.controller.select(connection.id);
@@ -363,18 +369,27 @@ export class AICenterWidget extends BaseWidget {
         const controller = this.controller;
         const state = controller.state!;
         detail.append(element('h3', connection.alias), element('p', `Health: ${connectionHealth(state, connection)}`));
-        detail.append(element('p', `Provider: ${connection.config.type}`));
+        detail.append(element('p', `Provider: ${connection.config.type === 'codex' ? 'Codex / Agent Runtime (App Server)' : connection.config.type}`));
+        detail.append(element('p', `Lifecycle: ${connection.lifecycle}`));
         if (connection.preferredModelId) detail.append(element('p', `Preferred model: ${connection.preferredModelId}`));
         if ('endpoint' in connection.config && connection.config.endpoint)
             detail.append(element('p', `Endpoint: ${safeEndpoint(connection.config.endpoint)}`));
-        const credential = controller.credential;
-        detail.append(element('p', `Credential: ${credential?.effectiveSource ?? 'none'} · ${credential?.sources.map(item =>
-            `${item.source}${item.name ? ` (${item.name})` : ''}: ${item.status}`).join(', ') ?? 'checking'}`));
+        if (connection.config.type === 'codex') this.renderCodexAccount(detail, connection);
+        else {
+            const credential = controller.credential;
+            detail.append(element('p', `Credential: ${credential?.effectiveSource ?? 'none'} · ${credential?.sources.map(item =>
+                `${item.source}${item.name ? ` (${item.name})` : ''}: ${item.status}`).join(', ') ?? 'checking'}`));
+        }
         const actions = element('div', undefined, 'dope-ai-actions');
         actions.append(button('Edit', () => { this.editing = !this.editing; this.render(); }, controller.busy),
-            button('Refresh Models', () => void controller.check(connection.id, 'refresh'), controller.busy || connection.lifecycle === 'disabled'),
-            button('Reconnect', () => void controller.check(connection.id, 'reconnect'), controller.busy || connection.lifecycle === 'disabled'),
-            button('Test Connection', () => void this.test(connection.id), controller.busy || connection.lifecycle === 'disabled'),
+            button('Refresh Models', () => void controller.check(connection.id, 'refresh'), controller.busy || connection.lifecycle === 'disabled' ||
+                (connection.config.type === 'codex' && (connection.codexAccount?.status !== 'signed-in' ||
+                    connection.codexAccount.planUsage !== 'available'))),
+            ...(connection.config.type === 'codex' ? [] : [button('Reconnect', () => void controller.check(connection.id, 'reconnect'),
+                controller.busy || connection.lifecycle === 'disabled')]),
+            button('Test Connection', () => void this.test(connection.id), controller.busy || connection.lifecycle === 'disabled' ||
+                (connection.config.type === 'codex' && (connection.codexAccount?.status !== 'signed-in' ||
+                    connection.codexAccount.planUsage !== 'available'))),
             button(connection.lifecycle === 'enabled' ? 'Disable' : 'Enable', () => void controller.run(() =>
                 controller.mutate({ type: 'update-connection', id: connection.id, changes: {
                     alias: connection.alias, config: connection.config,
@@ -384,6 +399,8 @@ export class AICenterWidget extends BaseWidget {
                 if (window.confirm(`Remove connection ${connection.alias}?`)) void controller.remove(connection.id);
             }, controller.busy));
         detail.append(actions);
+        if (connection.config.type === 'codex') detail.append(element('p',
+            'Test Connection uses zero project data in a scratch/empty root with mutation disabled; it may consume a tiny amount of ChatGPT plan usage.'));
         if (this.editing) this.renderForm(detail, connection);
         const models = state.registry.models.filter(model => model.connectionId === connection.id);
         const disclosure = button(`Models (${models.length}) ${this.modelsOpen ? '▾' : '▸'}`, () => {
@@ -394,7 +411,7 @@ export class AICenterWidget extends BaseWidget {
             const row = element('div', undefined, 'dope-ai-model');
             const capabilities = Object.entries(model.capabilities).map(([name, item]) =>
                 `${name}: ${item.value === undefined ? 'unknown' : item.value ? 'yes' : 'no'} (${item.source})`).join(', ');
-            row.append(element('span', `${model.label} · ${model.state} · ${capabilities} · context ${
+            row.append(element('span', `${model.label} · ${connection.config.type === 'codex' ? 'Agent Runtime (not general Chat) · ' : ''}${model.state} · ${capabilities} · context ${
                 model.limits.contextWindowTokens.value ?? 'unknown'} (${model.limits.contextWindowTokens.source})`),
                 button(model.enabled ? 'Disable model' : 'Enable model', () => void controller.toggleModel(
                     connection.id, model.providerModelKey, !model.enabled), controller.busy));
@@ -404,10 +421,40 @@ export class AICenterWidget extends BaseWidget {
         if (tested) detail.append(element('p', `Last test: ${tested.latencyMs} ms${tested.hostedCostPossible ? ' · hosted usage may incur cost' : ''}`));
     }
 
+    private renderCodexAccount(detail: HTMLElement, connection: AIConnection): void {
+        const controller = this.controller;
+        const account = connection.codexAccount;
+        detail.append(element('p', `Codex App Server: ${connectionHealth(controller.state!, connection)}`),
+            element('p', `Selected ChatGPT account: ${account?.accountLabel ?? 'none'} · ${account?.status ?? 'unknown'} · plan use ${
+                account?.planUsage ?? 'unknown'}`));
+        detail.append(element('p', 'Uses eligible ChatGPT plan authorization, not an OpenAI API key. No API-key billing fallback.'));
+        const usage = element('a', 'Manage ChatGPT usage and settings');
+        usage.href = 'https://chatgpt.com/settings/usage'; usage.target = '_blank'; usage.rel = 'noopener noreferrer';
+        detail.append(usage, element('p', 'In ChatGPT, open Settings → Usage to view plan usage and app limits.'));
+        const actions = element('div', undefined, 'dope-ai-actions');
+        actions.append(button('Continue with ChatGPT', () => void controller.signIn(connection.id), controller.busy),
+            button('Refresh account status', () => void controller.refreshAccounts(connection.id), controller.busy));
+        detail.append(actions);
+        for (const registered of controller.accounts) {
+            const row = element('div', undefined, 'dope-ai-model');
+            row.append(element('span', `${registered.label} · ${registered.status} · plan use ${registered.planUsage}${
+                registered.id === account?.accountId ? ' · selected' : ''}`));
+            row.append(button(`Use ${registered.label}`, () => void controller.selectAccount(connection, registered),
+                controller.busy || registered.id === account?.accountId),
+                button(`Reauthorize ${registered.label}`, () => void controller.signIn(connection.id, registered.id), controller.busy),
+                button(`Sign out ${registered.label}`, () => {
+                    if (window.confirm(`Sign out ${registered.label}?`)) void controller.signOut(connection, registered);
+                }, controller.busy || registered.status === 'signed-out'));
+            detail.append(row);
+        }
+    }
+
     private async test(id: string): Promise<void> {
         try {
             const hosted = await this.controller.testDisclosure(id);
-            if (hosted && !window.confirm('Test Connection sends a small hosted request that may incur cost. Continue?')) return;
+            if (hosted && !window.confirm(this.controller.state?.registry.connections.find(item => item.id === id)?.config.type === 'codex' ?
+                'Test Connection uses zero project data and may consume a tiny amount of ChatGPT plan usage. Continue?' :
+                'Test Connection sends a small hosted request that may incur cost. Continue?')) return;
             await this.controller.check(id, 'test');
         } catch { this.controller.message = 'Test availability could not be checked.'; this.render(); }
     }
@@ -421,8 +468,10 @@ export class AICenterWidget extends BaseWidget {
         const label = element('label', 'Provider');
         const select = element('select'); select.name = 'provider';
         for (const setup of setups) {
-            const option = element('option', `${setup.locality} · ${setup.type}`);
+            const option = element('option', setup.type === 'codex' ? 'Codex / Agent Runtime · ChatGPT plan' :
+                `${setup.locality} · ${setup.type}`);
             option.value = setup.type; option.selected = setup.type === existing?.config.type;
+            option.disabled = !!existing && (setup.type === 'codex') !== (existing.config.type === 'codex');
             select.append(option);
         }
         label.append(select); form.append(label);
@@ -432,6 +481,10 @@ export class AICenterWidget extends BaseWidget {
             extra.replaceChildren();
             const setup = setups.find(item => item.type === select.value);
             if (!setup) return;
+            if (select.value === 'codex') {
+                extra.append(element('p', 'Continue with ChatGPT uses eligible ChatGPT plan authorization for Codex App Server. This is separate from OpenAI API-key setup and does not configure general Chat.'));
+                return;
+            }
             if (setup.fields.includes('runtime')) field(extra, 'Runtime', 'runtime',
                 existing?.config.type === 'local' ? existing.config.runtime : 'lm-studio').readOnly = true;
             if (setup.fields.includes('endpoint')) {
@@ -480,6 +533,16 @@ export class AICenterWidget extends BaseWidget {
             event.preventDefault();
             const setup = setups.find(item => item.type === select.value);
             if (!setup) return;
+            if (select.value === 'codex') {
+                const connection: AIConnection = { version: AI_REGISTRY_VERSION, id: existing?.id ?? crypto.randomUUID(),
+                    alias: value(form, 'alias'), lifecycle: existing?.lifecycle ?? 'enabled',
+                    config: { type: 'codex', runtime: 'app-server' },
+                    ...(existing?.codexAccount ? { codexAccount: existing.codexAccount } : {}) };
+                void this.controller.save(connection, !existing).then(async saved => {
+                    if (saved) { this.editing = false; this.render(); if (!existing) await this.controller.signIn(connection.id); }
+                });
+                return;
+            }
             const source = value(form, 'source') as 'environment' | 'session' | 'secure';
             const secret = value(form, 'secret');
             const config: AIConnectionConfig = select.value === 'local' ?
