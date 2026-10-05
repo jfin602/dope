@@ -113,3 +113,17 @@ Build and query the current Physical Map by matching observed code and dependenc
 
 **Key relationships:**  
 - Combines Source Evidence with Architecture Authority's declarations; its derived graph is presented by the workbench inspector and remains distinct from canonical architecture.
+
+## System: Agent Runtime
+
+**Purpose:**
+Own bounded coding-agent tasks, observable runs, and developer-approved execution authority.
+
+**Primary paths:**
+- `packages/agent-core/src/contracts.ts`
+- `packages/agent-core/src/authority.ts`
+- `packages/agent-core/src/state.ts`
+
+**Major relationships:**
+- The Phase 8B core defines portable task/run records, the run transition table, and a fixed accepted grant for project-local effects. AI Center owns connection and model selection; a later runtime resolves that selection and records actual execution provenance.
+- The core has no provider, filesystem, process, Git, or Theia dependency. Project-local persistence, effect enforcement, and presentation attach to this boundary in later 8B tasks.

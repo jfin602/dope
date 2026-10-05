@@ -1,13 +1,10 @@
 {
-  "name": "@dope/visual-planning",
+  "name": "@dope/agent-core",
   "version": "0.8.7",
   "private": true,
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
     "build": "tsc -p ."
-  },
-  "dependencies": {
-    "@dope/software-map": "0.8.7"
   }
 }
