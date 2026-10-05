@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 8 is **OWNER-ACTIVATED at coherent `0.8.0`**. The post-Phase-7 `c7-chat-project-grounding` correction closed **Not Green** at `0.7.31`; the owner explicitly accepted those retained gaps for sequencing only and did not relabel them Green. Phase 8A is the active `p8a` slice (`0.8.1`–`0.8.6`) for Codex AI Center/reference runtime integration; repository mutation authority remains Phase 8B.
+Current stage: Product Phase 8 is **ACTIVE**. Phase 8A reached **Not Green - Evidence Gap** on `0.8.6`: the real Codex App Server path is substantially evidenced, but the live Dope Sign in with ChatGPT callback/account lifecycle remains unqualified. A bounded manual `c8-p8a-qualification-loop` now owns up to five qualify/repair cycles, beginning with that blocker. Phase 8B remains blocked until Phase 8A is Green.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.

@@ -263,13 +263,12 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Validate and execute the active Phase 8A Codex reference-connection stack:
+Run the manual Phase 8A iterative qualification/repair loop against the current `0.8.6` candidate:
 
-`npm run codex:phase:validate -- p8a`
+`docs/tasks/c8-p8a-qualification-loop/one-off-p8a-qualification-repair-loop.txt`
 
-then:
+Do **not** run this folder through `codex:phase`. It owns up to five adaptive qualify/repair cycles, beginning with the live Sign in with ChatGPT callback/account-lifecycle blocker.
 
-`npm run codex:phase -- p8a`
+Phase 8A remains **Not Green - Evidence Gap** until the live Dope OAuth/account lifecycle is qualified on the exact final candidate. Phase 8B remains blocked.
 
-Phase 8A targets `0.8.1` through `0.8.6`. It adds Codex as a first-class AI Center agent-runtime connection, ChatGPT-plan OAuth/App Server integration and Coding Agent role eligibility, but **no repository mutation authority**. Phase 8B owns AgentTask/ExecutionGrant mutation after 8A closes.
-
+The loop stops early on all-Green, or hard-stops after Cycle 5 with remaining blockers preserved.

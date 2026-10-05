@@ -1,6 +1,6 @@
 # Product Phase 8 — Coding Agent / Scoped Delegation Plan
 
-Status: **OWNER-ACTIVATED AT `0.8.0` / 8A `p8a` ACTIVE**
+Status: **OWNER-ACTIVATED AT `0.8.0` / 8A `0.8.6` NOT GREEN - EVIDENCE GAP / ITERATIVE QUAL-REPAIR LOOP ACTIVE**
 Date: 2026-10-05
 Expected package family after activation: `0.8.x`
 Activation baseline: coherent `0.8.0` from owner sequencing waiver after retained `c7-chat-project-grounding` Not Green
@@ -90,6 +90,29 @@ Deliver:
 - no API-key billing fallback.
 
 Qualification is connection/runtime only. No project mutation yet.
+
+## Phase 8A iterative qualification / repair loop
+
+The initial `0.8.6` qualification reached **Not Green - Evidence Gap** after the real App Server path succeeded but the live Dope ChatGPT OAuth callback/account lifecycle did not complete.
+
+Current direct blocker chain:
+- complete the real loopback callback and token exchange;
+- prove live Dope account/model inventory;
+- prove restart persistence;
+- prove refresh;
+- prove authenticated App Server replacement + thread resume;
+- prove sign-out and reconnect/reauthorization.
+
+Use the manual loop in `docs/tasks/c8-p8a-qualification-loop/`.
+
+Loop rules:
+- maximum five cycles;
+- begin with the first live OAuth callback blocker;
+- each cycle qualifies until the first blocker, applies the smallest repair, runs only invalidated focused evidence, replays direct evidence, and checkpoints the coherent `0.8.6` candidate;
+- stop immediately on all-Green;
+- after Cycle 5 stop even if gaps remain;
+- before Green, run the aggregate gate on the exact final source candidate;
+- Phase 8B remains blocked until all 8A blockers clear.
 
 ## 8B — Agent execution core
 
