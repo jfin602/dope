@@ -33,6 +33,10 @@ test('five fixed roles show canonical descriptions, derived health and quiet fut
     assert.equal(ROLE_DETAILS['coding-agent'].name, 'Coding Agent');
     for (const id of AI_ROLE_IDS) assert.equal(roleResolution(snapshot, state, id, true).health, 'needs-configuration');
     assert.equal(roleWarning(snapshot, state), false);
+    const configured = { ...snapshot, policies: snapshot.policies.map(policy => policy.roleId === 'coding-agent' ?
+        { ...policy, preferred: { type: 'constraints' as const, hard: hard(), preferences: [] } } : policy) };
+    assert.equal(roleResolution(configured, state, 'coding-agent', true).health, 'broken');
+    assert.equal(roleWarning(configured, state), false);
     assert.equal(roleEntryLabel(undefined, state), 'Not configured');
 });
 

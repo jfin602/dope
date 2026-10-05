@@ -92,6 +92,22 @@ test('preflight ineligible or unavailable preferred falls back only when authori
     assert.deepEqual(ineligible.calls, ['b']);
 });
 
+test('Interactive never routes to agent-only inventory even when preferred', async () => {
+    const agent = { ...model('codex'), capabilities: { ...model('codex').capabilities,
+        conversationalText: unknown, streaming: unknown, agentExecution: known(true) } };
+    const base = harness({ preferred: 'codex', fallbacks: ['chat'], models: [agent, model('chat')] });
+    const requestHard = { ...hard(), requiredCapabilities: ['conversationalText', 'streaming'] as const };
+    const result = await base.run({ requestHard });
+    assert.deepEqual(base.calls, ['chat']);
+    if (result[0].type !== 'complete') throw Error('Expected completion');
+    assert.deepEqual(result[0].routingProvenance.attempts.map(item => item.outcome), ['ineligible', 'selected']);
+    const conversationalAgent = { ...agent, capabilities: { ...agent.capabilities,
+        conversationalText: known(true), streaming: known(true) } };
+    const capable = harness({ preferred: 'codex', fallbacks: ['chat'], models: [conversationalAgent, model('chat')] });
+    await capable.run({ requestHard });
+    assert.deepEqual(capable.calls, ['codex']);
+});
+
 test('preflight exclusions retain policy order and authentication, invalid config and consent stop routing', async () => {
     const ordered = harness({ preferred: 'gone', fallbacks: ['absent', 'b'], models: [model('b')] });
     const result = await ordered.run();

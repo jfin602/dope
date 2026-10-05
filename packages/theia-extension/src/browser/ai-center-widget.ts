@@ -202,6 +202,8 @@ export class AICenterWidget extends BaseWidget {
         detail.append(heading, element('p', info.purpose));
         if (['coding-agent', 'background', 'deep-reasoning'].includes(draft.roleId))
             detail.append(element('p', 'No active consumer yet'));
+        if (draft.roleId === 'coding-agent')
+            detail.append(element('p', 'Coding Agent always requires agentExecution. Policy may narrow eligible targets further.'));
         detail.append(element('p', info.authority, 'dope-ai-role-authority'));
         detail.append(element('p', 'Global role policy can restrict hosted egress; the initiating feature must approve it.'));
         const entries = element('div');
@@ -307,7 +309,7 @@ export class AICenterWidget extends BaseWidget {
             update(input.value ? { ...rest, minimumKnownContextTokens: Number(input.value) } : rest);
         });
         context.append(input); parent.append(context);
-        for (const capability of ['conversationalText', 'streaming', 'structuredOutput', 'toolCalling'] as const) {
+        for (const capability of ['conversationalText', 'streaming', 'structuredOutput', 'toolCalling', 'agentExecution'] as const) {
             const label = element('label', `Require ${capability}`); const checkbox = element('input');
             checkbox.type = 'checkbox'; checkbox.checked = hard.requiredCapabilities.includes(capability);
             checkbox.addEventListener('change', () => update({ ...hard, requiredCapabilities: checkbox.checked ?

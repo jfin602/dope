@@ -294,6 +294,37 @@ test('Software Map probe failure stays on the suggested exact target despite rol
   controller.dispose();
 });
 
+test('Software Map does not suggest an agent-only Codex target', async () => {
+  const c = connection(), registry = roleInventory();
+  registry.state.registry.connections.push({ version: 1, id: 'codex-one', alias: 'Codex', lifecycle: 'enabled',
+    config: { type: 'codex', runtime: 'app-server' } } as any);
+  registry.state.registry.models.push({ version: 1, connectionId: 'codex-one', providerModelKey: 'agent',
+    label: 'Agent', locality: 'hosted', enabled: true, state: 'ready', capabilities: {
+      conversationalText: { source: 'unknown' }, streaming: { source: 'unknown' },
+      structuredOutput: { source: 'unknown' }, toolCalling: { source: 'unknown' },
+      agentExecution: { source: 'adapter-known', value: true } }, limits: {
+      contextWindowTokens: { source: 'unknown' }, maxInputTokens: { source: 'unknown' },
+      maxOutputTokens: { source: 'unknown' } } } as any);
+  registry.state.observations.push({ connectionId: 'codex-one', health: 'ready' } as any);
+  const roles = smapRoles('local-one');
+  const snapshot = await roles.list();
+  const softwareMap: any = snapshot.policies.find((item: any) => item.roleId === 'software-map');
+  softwareMap.preferred = { type: 'exact', target: { connectionId: 'codex-one', modelId: 'agent' } };
+  softwareMap.allowFallback = true;
+  softwareMap.fallbacks = [{ type: 'exact', target: { connectionId: 'local-one',
+    modelId: 'Qwen3-Coder-30B-A3B-Instruct' } }];
+  const controller = new SoftwareMapController(() => c, () => {}, undefined, registry, undefined,
+    { list: async () => snapshot });
+  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  await controller.setup();
+  assert.equal(controller.connectionId, 'local-one');
+  controller.selectTarget('codex-one', 'agent');
+  await controller.probe();
+  assert.equal(controller.setupReady, false);
+  assert.equal(c.configured, 0);
+  controller.dispose();
+});
+
 test('generic connection test and missing target never authorize synthesis', async () => {
   const c = connection(), registry = inventory();
   registry.state.tests.push({ connectionId: 'local-one', modelId: 'Qwen3-Coder-30B-A3B-Instruct' } as any);

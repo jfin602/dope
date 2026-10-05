@@ -82,7 +82,7 @@ export interface AIRoleResolveRequest {
 export function futureFeatureRoleRequest(roleId: 'background' | 'coding-agent',
     codingAgentHostedAuthorized = false): AIRoleResolveRequest &
     { readonly allowFallback: false } {
-    return { roleId, requestHard: { requiredCapabilities: [],
+    return { roleId, requestHard: { requiredCapabilities: roleId === 'coding-agent' ? ['agentExecution'] : [],
         locality: roleId === 'background' ? 'local-only' : 'any', enabledOnly: true, usableOnly: true,
         hostedProjectData: roleId === 'background' ? 'forbidden' : 'requires-feature-authorization' },
         hostedProjectDataAuthorized: roleId === 'coding-agent' && codingAgentHostedAuthorized, allowFallback: false };
@@ -260,7 +260,10 @@ export function resolveAIRole(input: AIRoleResolverInput): AIRoleResolution {
     const inventory = parseAIRegistrySnapshot(input.inventory);
     const policy = snapshot.policies.find(item => item.roleId === parseAIRoleId(input.roleId))!;
     if (typeof input.hostedProjectDataAuthorized !== 'boolean') throw new Error('Explicit hosted egress authorization required');
-    const effectiveHard = intersectAIRoleHardConstraints(intersectAIRoleHardConstraints(policy.hard, input.requestHard),
+    const requestHard = input.roleId === 'coding-agent' ? intersectAIRoleHardConstraints(input.requestHard, {
+        requiredCapabilities: ['agentExecution'], locality: 'any', enabledOnly: true, usableOnly: true,
+        hostedProjectData: 'requires-feature-authorization' }) : input.requestHard;
+    const effectiveHard = intersectAIRoleHardConstraints(intersectAIRoleHardConstraints(policy.hard, requestHard),
         { ...policy.hard, enabledOnly: true, usableOnly: true });
     const candidates: AIRoleCandidate[] = [];
     const excluded: AIRoleExclusion[] = [];

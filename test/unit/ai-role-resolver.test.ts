@@ -57,6 +57,7 @@ test('future Background stays Local and Coding Agent is policy identity without 
     assert.equal(background.hostedProjectDataAuthorized, false);
     assert.equal(futureFeatureRoleRequest('background', true).hostedProjectDataAuthorized, false);
     assert.equal(coding.roleId, 'coding-agent');
+    assert.deepEqual(coding.requestHard.requiredCapabilities, ['agentExecution']);
     assert.equal(coding.hostedProjectDataAuthorized, false);
     assert.equal(coding.requestHard.hostedProjectData, 'requires-feature-authorization');
     assert.equal(futureFeatureRoleRequest('coding-agent', true).hostedProjectDataAuthorized, true);
@@ -65,7 +66,8 @@ test('future Background stays Local and Coding Agent is policy identity without 
 });
 
 test('every built-in role uses the same configured resolution path', () => {
-    const base = input(exact('a'));
+    const agent = { ...model('a'), capabilities: { ...model('a').capabilities, agentExecution: known(true) } };
+    const base = input(exact('a'), [], [agent]);
     for (const roleId of AI_ROLE_IDS) {
         const result = resolveAIRole({ ...base, roleId, policy: { ...base.policy,
             policies: base.policy.policies.map(item => item.roleId === roleId ? { ...item,
@@ -174,11 +176,47 @@ test('observed readiness, eligibility exclusions and caller consent do not chang
 test('agentExecution hard constraint excludes unknown and generic conversational models', () => {
     const agent = { ...model('agent'), capabilities: { ...model('agent').capabilities,
         conversationalText: unknown, agentExecution: known(true) } };
-    const base = input(constraints({ requiredCapabilities: ['agentExecution'] }), [],
-        [model('ordinary'), agent, { ...model('unknown'), capabilities: { ...model('unknown').capabilities, agentExecution: unknown } }]);
-    const result = resolveAIRole({ ...base, roleId: 'coding-agent', requestHard: {
-        ...hard(), requiredCapabilities: ['agentExecution'] } });
+    const base = input(constraints(), [], [model('ordinary'), agent,
+        { ...model('unknown'), capabilities: { ...model('unknown').capabilities, agentExecution: unknown } },
+        { ...model('unsupported'), capabilities: { ...model('unsupported').capabilities, agentExecution: known(false) } }]);
+    const result = resolveAIRole({ ...base, roleId: 'coding-agent' });
     assert.deepEqual(targets(result), ['agent']);
+    assert.deepEqual(result.effectiveHard.requiredCapabilities, ['agentExecution']);
     assert.equal(result.excluded.find(item => item.target?.connectionId === 'ordinary')?.reason, 'capability-unknown');
     assert.equal(result.excluded.find(item => item.target?.connectionId === 'unknown')?.reason, 'capability-unknown');
+    assert.equal(result.excluded.find(item => item.target?.connectionId === 'unsupported')?.reason, 'capability-unsupported');
+});
+
+test('Coding Agent keeps immutable Codex target order, repair, hosted restrictions and no generic fallback', () => {
+    const agent = (id: string): AIModel => ({ ...model(id), capabilities: { ...model(id).capabilities,
+        conversationalText: unknown, agentExecution: known(true) } });
+    const codexInventory = (...models: AIModel[]): AIRegistrySnapshot => {
+        const snapshot = inventory(...models);
+        return { ...snapshot, connections: snapshot.connections.map(item => item.id.startsWith('codex-') ?
+            { ...item, config: { type: 'codex', runtime: 'app-server' } } : item) };
+    };
+    const models = [model('api'), agent('codex-b'), agent('codex-a')];
+    const base = { ...input(exact('codex-b'), [exact('codex-a'), exact('api')], models),
+        inventory: codexInventory(...models) };
+    const coding = { ...base, roleId: 'coding-agent' as const };
+    assert.deepEqual(targets(resolveAIRole(coding)), ['codex-b', 'codex-a']);
+    assert.deepEqual(targets(resolveAIRole({ ...coding, inventory: codexInventory(...models.toReversed()) })),
+        ['codex-b', 'codex-a']);
+    const removed = { ...coding, inventory: codexInventory(model('api'), agent('codex-a')) };
+    assert.equal(resolveAIRole(removed).health, 'using-fallback');
+    assert.equal(resolveAIRole(removed).excluded[0].reason, 'missing-connection');
+    assert.deepEqual(targets(resolveAIRole(removed)), ['codex-a']);
+    const unavailable = { ...coding, observations: coding.observations.filter(item => item.connectionId !== 'codex-b') };
+    assert.equal(resolveAIRole(unavailable).health, 'using-fallback');
+    assert.equal(resolveAIRole(unavailable).excluded[0].reason, 'unavailable');
+    assert.equal(resolveAIRole(coding).selectedTarget?.connectionId, 'codex-b');
+    assert.equal(resolveAIRole({ ...coding, hostedProjectDataAuthorized: false }).excluded[0].reason,
+        'hosted-egress-not-authorized');
+    const localOnly = { ...coding, requestHard: { ...hard(), locality: 'local-only' as const } };
+    assert.deepEqual(targets(resolveAIRole(localOnly)), []);
+    assert.equal(resolveAIRole(localOnly).excluded[0].reason, 'locality');
+    const forbidden = { ...coding, requestHard: { ...hard(), hostedProjectData: 'forbidden' as const } };
+    assert.equal(resolveAIRole(forbidden).excluded[0].reason, 'hosted-egress-forbidden');
+    const sorted = input(constraints(), [], [agent('codex-b'), agent('codex-a'), model('api')]);
+    assert.deepEqual(targets(resolveAIRole({ ...sorted, roleId: 'coding-agent' })), ['codex-a', 'codex-b']);
 });
