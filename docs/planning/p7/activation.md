@@ -1,6 +1,6 @@
 # Product Phase 7 — AI Presence Activation
 
-Status: **OWNER APPROVED — ACTIVE / PHASE 7A RECORDED / P13 NOT QUALIFIED / c7 QUALIFIED / PHASE 7B NEXT**
+Status: **OWNER APPROVED / QUALIFIED / CLOSED AT ACTUAL `0.7.31` SOURCE**
 Date: 2026-10-03
 Package baseline: `0.7.0`
 Activation baseline commit: `59c7f72a29dcdecdf9b908176754bfd02179b004`
@@ -30,18 +30,12 @@ General Chat uses the application-level Model Connections boundary separate from
 - Theia `1.75.0`, Electron `42.8.1`, React `19.2.8`, Node 24;
 - no root `package-lock.json`.
 
-## Execution readiness
+## Final disposition
 
-Phase 7A implementation/evidence and the qualified `c7-chat-conversation-ux` correction are retained. Phase 7B AI Center is **QUALIFIED / CLOSED at coherent `0.7.23`**. Phase 7C Roles & Routing is the remaining Phase 7 slice.
+Product Phase 7 completed 7A durable Chat/AI Presence, 7B AI Center and 7C deterministic Roles & Routing on the actual `0.7.31` source. The planned `0.7.32` closeout version transition did not materialize and is not claimed.
 
-Current continuation baseline: coherent `0.7.24`; the 7C P1 contracts are defined, with P2 persistence next.
+On 2026-10-05 the owner explicitly approved Phase 7 closeout. Historical P12/P13 evidence remains unchanged and is not relabeled by this disposition.
 
-Execution sequence:
+The post-closeout `c7-chat-project-grounding` correction remains a separate approved correction at unchanged `0.7.31`. It is not implicitly Green through Phase 7 owner approval and must retain its own qualification result.
 
-1. validate the written `p7c` continuation;
-2. execute P1-P7 (`0.7.24`–`0.7.30`);
-3. perform P8 direct integrated qualification at `0.7.31`;
-4. run P9 as the one final Product Phase 7 closeout at `0.7.32`;
-5. if Phase 7 closes Green, start a fresh Phase 8 Scoped Delegation `/docs-review`; do not create Phase 8 implementation prompts from the closeout.
-
-7C is normal Phase 7 capability, not defect repair. It must not add mutation/delegation or Phase 10 background-alignment consumers.
+Next gate before Phase 8: execute/qualify `c7-chat-project-grounding`, then begin a fresh Product Phase 8 — Scoped Delegation / Coding Agent `/docs-review`.

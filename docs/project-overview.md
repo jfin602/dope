@@ -240,7 +240,11 @@ Desired completion feeling:
 
 **Product Phase 6 — Flow is owner-closed for sequencing at package `0.6.8`; P8 remains Not Qualified.** The accepted exact-candidate G/H evidence gaps remain historical truth in `docs/tasks/p6/closeout.md`.
 
-**Product Phase 7 is ACTIVE and Not Qualified at the `0.7.13` evidence closeout transition; its coherent `0.7.0` activation commit is `59c7f72`.** ADR 0025 defines the implemented Phase 7A slice and now approves bounded `c7-chat-conversation-ux` at unchanged `0.7.13`; ADR 0026 contains the promoted Phase 7B AI Center and Phase 7C deterministic role-routing contracts. P1-P12 and the P12 blocker correction have been recorded; P13 is an evidence-only, non-final audit. The Chat conversation UX correction is the next gate before AI Center, role routing and integrated qualification continue. Mutation/delegation authority remains deferred.
+**Product Phase 7 is OWNER APPROVED / QUALIFIED / CLOSED at the actual `0.7.31` source.** Durable Chat/AI Presence, AI Center and deterministic role routing are complete. The planned `0.7.32` version transition did not materialize and no `0.7.32` artifact is claimed. Historical P12/P13 results remain truthful history.
+
+The approved post-closeout `c7-chat-project-grounding` correction is the current gate at unchanged `0.7.31`. It is separate from the Phase 7 closeout and must earn its own qualification; Phase 7 owner approval does not make that correction Green.
+
+After a Green grounding-correction closeout, start a fresh Product Phase 8 — Scoped Delegation / Coding Agent `/docs-review`. Mutation/delegation authority remains deferred until Phase 8 is explicitly reviewed and activated.
 
 Phase 7 keeps the project—not chat—as the center of gravity. Chats persist and are reusable, but canonical Project Mind, Architecture, Planning and Physical/Flow evidence retain their own authority.
 
