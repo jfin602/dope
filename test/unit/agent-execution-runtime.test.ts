@@ -2,14 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { AgentStore } from '../../packages/agent-core/lib/node/agent-store.js';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/index.js';
 import { AgentExecutionRuntime } from '../../packages/theia-extension/lib/node/agent-execution-runtime.js';
 import { AgentRuntimeBackend } from '../../packages/theia-extension/lib/node/agent-runtime-backend.js';
+import { captureGitBasis } from '../../packages/agent-core/lib/node/git-evidence.js';
 
 const now = '2026-10-05T12:00:00Z';
+const git = promisify(execFile);
 const baseTask = (policy: any = { kind: 'follow-coding-agent' }) => ({ version: 1, id: 'task-1',
     createdAt: now, objective: 'Edit a file', instructions: 'Make the requested edit', projectRoot: '.',
     modelPolicy: policy, controls: {}, authority: { profile: 'phase-8b-project' },
@@ -37,6 +41,7 @@ async function fixture(work: (f: {
     adapter: FakeAdapter; handle: string; registry: any; routing: any;
 }) => Promise<void>, policy?: any) {
     const root = await mkdtemp(join(tmpdir(), 'dope-agent-lifecycle-'));
+    await git('git', ['clone', '--quiet', '--shared', resolve(import.meta.dirname, '../..'), root]);
     const store = new AgentStore();
     const adapter = new FakeAdapter();
     const connection = { id: 'codex', lifecycle: 'enabled', config: { type: 'codex', runtime: 'app-server' },
@@ -62,10 +67,10 @@ async function fixture(work: (f: {
 }
 
 async function terminal(store: AgentStore, root: string, runId: string) {
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 300; i++) {
         const run = await store.readRun(root, runId);
         if (run && ['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status)) return run;
-        await new Promise(resolve => setTimeout(resolve, 5));
+        await new Promise(resolve => setTimeout(resolve, 10));
     }
     throw new Error('Run did not terminate');
 }
@@ -83,6 +88,15 @@ test('start rejects absent acceptance and mismatched attached root', async () =>
     assert.equal((await f.store.listRuns(f.root)).length, 0);
 }));
 
+test('pre-existing project edits fail clean-tree preflight before run metadata is created', async () => fixture(async f => {
+    await writeFile(join(f.root, 'already-dirty.txt'), 'owner work');
+    await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true),
+        /clean project worktree/);
+    assert.deepEqual(await f.store.listRuns(f.root), []);
+    assert.equal(f.adapter.starts.length, 0);
+    assert.equal(await readFile(join(f.root, 'already-dirty.txt'), 'utf8'), 'owner work');
+}));
+
 test('Follow Coding Agent resolves policy and persists immutable actual provenance before adapter effects', async () => fixture(async f => {
     const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true);
     assert.deepEqual(f.routing.calls[0][0], 'coding-agent');
@@ -96,6 +110,7 @@ test('Follow Coding Agent resolves policy and persists immutable actual provenan
     await assert.rejects(f.store.updateRun(f.root, run, { ...run,
         provenance: { ...run.provenance!, modelId: 'other' } }), /Immutable/);
     f.adapter.onEvent!({ kind: 'command-started', summary: 'secret provider output' });
+    await writeFile(join(f.root, 'edited.txt'), 'edited');
     f.adapter.onEvent!({ kind: 'file-changed', path: 'edited.txt', summary: 'secret diff' });
     f.adapter.onEvent!({ kind: 'agent-message', summary: 'Bearer secret' });
     f.adapter.complete();
@@ -207,4 +222,78 @@ test('failed adapter interrupt invokes dedicated process termination', async () 
     const stopped = await f.backend.stop(f.handle, run.id);
     assert.equal(terminate, 1);
     assert.equal(stopped.status, 'interrupted');
+}));
+
+test('observed command exit and exact validation target determine validation truth', async () => fixture(async f => {
+    const task = { ...baseTask(), id: 'task-validation', completion: { validation: [
+        { kind: 'test', label: 'unit', command: 'node --test' } ], requireValidationPass: true } };
+    await f.backend.createTask(f.handle, task as any);
+    const accepted = { ...grant(), id: 'grant-validation', taskId: task.id };
+    const first = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
+    f.adapter.onEvent!({ kind: 'command-started', commandId: 'one', command: 'node --test', summary: 'started' });
+    f.adapter.onEvent!({ kind: 'command-completed', commandId: 'one', exitCode: 0, summary: 'completed' });
+    f.adapter.complete();
+    const passed = await terminal(f.store, f.root, first.id);
+    assert.equal(passed.status, 'completed');
+    assert.equal(passed.validationResults[0].status, 'passed');
+    assert.deepEqual(passed.commandEvidence?.[0].matchedTargets, ['unit']);
+    assert.equal(passed.commandEvidence?.[0].exitCode, 0);
+    const second = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
+    f.adapter.onEvent!({ kind: 'command-started', commandId: 'two', command: 'echo narrated success', summary: 'started' });
+    f.adapter.onEvent!({ kind: 'command-completed', commandId: 'two', exitCode: 0, summary: 'completed' });
+    f.adapter.complete();
+    const unmatched = await terminal(f.store, f.root, second.id);
+    assert.equal(unmatched.status, 'failed');
+    assert.equal(unmatched.outcome?.code, 'validation-failed');
+    assert.deepEqual(unmatched.commandEvidence?.[0].matchedTargets, []);
+    const third = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
+    f.adapter.onEvent!({ kind: 'command-started', commandId: 'three', command: 'node --test', summary: 'started' });
+    f.adapter.onEvent!({ kind: 'command-completed', commandId: 'three', exitCode: 1, summary: 'failed' });
+    f.adapter.complete();
+    const failed = await terminal(f.store, f.root, third.id);
+    assert.equal(failed.validationResults[0].status, 'failed');
+    assert.equal(failed.status, 'failed');
+}));
+
+test('fresh backend attach reconciles orphaned running and cancelling runs without resuming', async () => fixture(async f => {
+    const basis = await captureGitBasis(f.root);
+    for (const [id, status] of [['orphan-running', 'running'], ['orphan-cancelling', 'cancelling']] as const) {
+        const pending: any = { version: 1, id, taskId: 'task-1', status: 'pending', grantId: 'grant-1',
+            grantRevision: 0, requestedPolicy: { kind: 'follow-coding-agent' }, projectRoot: '.',
+            createdAt: now, basis, changedFiles: [], validationResults: [] };
+        await f.store.createRun(f.root, pending);
+        const running = await f.store.updateRun(f.root, pending, { ...pending, status: 'running', startedAt: now,
+            recovery: { adapterId: 'fake-codex', handle: 'thread-1' } });
+        if (status === 'cancelling') await f.store.updateRun(f.root, running, { ...running, status });
+    }
+    const terminalPending: any = { version: 1, id: 'terminal-unchanged', taskId: 'task-1', status: 'pending',
+        grantId: 'grant-1', grantRevision: 0, requestedPolicy: { kind: 'follow-coding-agent' },
+        projectRoot: '.', createdAt: now, basis, changedFiles: [], validationResults: [] };
+    await f.store.createRun(f.root, terminalPending);
+    const terminalRunning = await f.store.updateRun(f.root, terminalPending, { ...terminalPending,
+        status: 'running', startedAt: now });
+    const terminalBefore = await f.store.updateRun(f.root, terminalRunning, { ...terminalRunning,
+        status: 'completed', endedAt: now });
+    await writeFile(join(f.root, 'partial.txt'), 'preserve me');
+    const freshAdapter = new FakeAdapter();
+    const fresh = new AgentExecutionRuntime(f.store, f.routing as any,
+        { inventory: async () => { throw new Error('must not resolve'); } } as any,
+        new Map([['codex', freshAdapter as any]]));
+    const backend = new AgentRuntimeBackend(f.store, { notifyAgentStateChanged() {} }, fresh);
+    try {
+        await backend.attach(pathToFileURL(f.root).href);
+        for (const id of ['orphan-running', 'orphan-cancelling']) {
+            const run = await f.store.readRun(f.root, id);
+            assert.equal(run?.status, 'interrupted');
+            assert.deepEqual(run?.changedFiles, ['partial.txt']);
+            assert.equal(run?.recovery?.handle, 'thread-1');
+            assert.equal(run?.finalGit?.headChanged, false);
+            assert.ok((await f.store.readEvents(f.root, id, 0, 10)).events.some(event => event.status === 'interrupted'));
+        }
+        assert.equal(await readFile(join(f.root, 'partial.txt'), 'utf8'), 'preserve me');
+        assert.equal(freshAdapter.starts.length, 0);
+        assert.deepEqual(await f.store.readRun(f.root, 'terminal-unchanged'), terminalBefore);
+        await backend.attach(pathToFileURL(f.root).href);
+        assert.equal((await f.store.readEvents(f.root, 'orphan-running', 0, 10)).events.length, 1);
+    } finally { backend.dispose(); await fresh.dispose(); }
 }));

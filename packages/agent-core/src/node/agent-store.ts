@@ -225,7 +225,7 @@ export class AgentStore {
 
     async createRun(root: string, value: AgentRun): Promise<AgentRun> {
         const run = checked(value, parseAgentRun);
-        if (run.status !== 'pending' || run.changedFiles.length || run.validationResults.length || run.changeSummary || run.outcome)
+        if (run.status !== 'pending' || run.changedFiles.length || run.validationResults.length || run.changeSummary || run.outcome || run.finalGit || run.commandEvidence?.length)
             throw new Error('New agent run must be empty and pending');
         const task = await this.readTask(root, run.taskId);
         if (!task || task.projectId !== run.projectId || !same(task.modelPolicy, run.requestedPolicy)) throw new Error('Agent run does not match task');
@@ -257,8 +257,10 @@ export class AgentStore {
             if (current.startedAt && current.startedAt !== next.startedAt || current.endedAt && current.endedAt !== next.endedAt ||
                 current.provenance && !same(current.provenance, next.provenance) || current.basis && !same(current.basis, next.basis) ||
                 current.recovery && !same(current.recovery, next.recovery) || current.outcome && !same(current.outcome, next.outcome) ||
-                current.changedFiles.some((file, index) => next.changedFiles[index] !== file) ||
-                current.validationResults.some((item, index) => !same(item, next.validationResults[index])))
+                current.finalGit && !same(current.finalGit, next.finalGit) ||
+                (!next.finalGit && current.changedFiles.some((file, index) => next.changedFiles[index] !== file)) ||
+                current.validationResults.some((item, index) => !same(item, next.validationResults[index])) ||
+                current.commandEvidence?.some((item, index) => !same(item, next.commandEvidence?.[index])))
                 throw new Error('Immutable AgentRun evidence changed');
             await this.atomic(join(dir, 'run.json'), next);
         });

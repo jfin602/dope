@@ -22,6 +22,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         if (this.disposed) throw new Error('Disposed Agent Runtime connection');
         const root = await this.store.root(folderUri);
         if (this.root && this.root !== root) throw new Error('A different Agent Runtime project is already attached');
+        await this.execution?.reconcile(root);
         this.root = root;
         return { projectHandle: this.handle };
     }

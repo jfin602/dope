@@ -3,6 +3,7 @@ import { AGENT_SCHEMA_VERSION, parseExecutionGrant, projectPath } from '@dope/ag
 import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentRun,
     AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
+import { captureGitBasis, captureGitFinal } from '@dope/agent-core/lib/node/git-evidence';
 import type { AIInventoryController } from './ai-registry-backend';
 import type { AIRoleRoutingService } from './ai-role-routing';
 import { futureFeatureRoleRequest } from '@dope/ai';
@@ -14,9 +15,10 @@ interface Active {
     finished: Promise<void>; releaseFinished(): void;
     tail: Promise<unknown>; sequence: number; observations: number;
     stopping: boolean; denied: boolean; interruptionFailed: boolean;
+    commands: Map<string, { command: string; started: number }>;
 }
 
-/** Owns mutation lifecycle across RPC connections. P5 will reconcile interrupted runs on restart. */
+/** Owns mutation lifecycle and restart reconciliation across RPC connections. */
 export class AgentExecutionRuntime {
     private readonly active = new Map<string, Active>();
     private disposed = false;
@@ -94,10 +96,36 @@ export class AgentExecutionRuntime {
             void this.interrupt(active);
             return;
         }
+        if (observation.kind === 'command-started' && observation.commandId && observation.commandId.length <= 120)
+            active.commands.set(observation.commandId, { command: observation.command && observation.command.length <= 160 ?
+                observation.command : '', started: Date.now() });
         void this.serial(active, async () => {
             await this.event(active, kind, summary, path ? { path } : {});
-            if (path && active.run && !active.run.changedFiles.includes(path))
-                await this.update(active, run => ({ ...run, changedFiles: [...run.changedFiles, path] }));
+            if (observation.kind === 'command-completed' && active.run) {
+                const started = observation.commandId ? active.commands.get(observation.commandId) : undefined;
+                if (observation.commandId) active.commands.delete(observation.commandId);
+                if (started && Number.isSafeInteger(observation.exitCode) && observation.exitCode! >= 0) {
+                    const task = await this.store.readTask(active.root, active.run.taskId);
+                    const matched = task?.completion.validation.filter(target =>
+                        (target.command ?? target.label) === started.command.trim()) ?? [];
+                    const durationMs = Math.min(86_400_000, Math.max(0, Date.now() - started.started));
+                    if ((active.run.commandEvidence?.length ?? 0) < 24) {
+                        await this.update(active, run => ({ ...run, commandEvidence: [...(run.commandEvidence ?? []),
+                            { version: AGENT_SCHEMA_VERSION, commandSummary: matched.length ?
+                                (matched[0].command ?? matched[0].label) : 'Other project command',
+                                durationMs, exitCode: observation.exitCode!, result: observation.exitCode === 0 ? 'passed' : 'failed',
+                                matchedTargets: matched.map(target => target.label) }] }));
+                    }
+                    for (const target of matched) {
+                        if (active.run.validationResults.length >= 24) break;
+                        await this.update(active, run => ({ ...run, validationResults: [...run.validationResults,
+                            { version: AGENT_SCHEMA_VERSION, kind: target.kind, label: target.label,
+                                status: observation.exitCode === 0 ? 'passed' : 'failed', durationMs,
+                                summary: `Observed command exited ${observation.exitCode}` }] }));
+                        await this.event(active, 'validation', `Observed ${target.kind} command ${observation.exitCode === 0 ? 'passed' : 'failed'}`);
+                    }
+                }
+            }
         }).catch(() => { active.denied = true; void this.interrupt(active); });
         if (observation.kind === 'authority-denied') void this.interrupt(active);
     }
@@ -154,7 +182,7 @@ export class AgentExecutionRuntime {
         const active: Active = { root, ready: new Promise(resolve => { releaseReady = resolve; }), releaseReady: () => releaseReady(),
             finished: new Promise(resolve => { releaseFinished = resolve; }), releaseFinished: () => releaseFinished(),
             tail: Promise.resolve(), sequence: 0, observations: 0,
-            stopping: false, denied: false, interruptionFailed: false };
+            stopping: false, denied: false, interruptionFailed: false, commands: new Map() };
         this.active.set(root, active);
         try {
             const existing = await this.store.listRuns(root);
@@ -170,11 +198,14 @@ export class AgentExecutionRuntime {
                 throw new Error('Accepted ExecutionGrant does not match the task/project');
             const selected = await this.select(task, hostedAuthorized);
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
+            const basis = await captureGitBasis(root);
+            if (!basis.head) throw new Error('Phase 8B requires a committed Git HEAD');
+            if (!basis.clean) throw new Error('Phase 8B requires a clean project worktree');
             const now = new Date().toISOString();
             const pending: AgentRun = { version: AGENT_SCHEMA_VERSION, id: randomUUID(), taskId: task.id,
                 status: 'pending', grantId: grant.id, grantRevision: grant.revision,
                 requestedPolicy: task.modelPolicy, projectRoot: '.', ...(task.projectId ? { projectId: task.projectId } : {}),
-                createdAt: now, changedFiles: [], validationResults: [] };
+                createdAt: now, basis, changedFiles: [], validationResults: [] };
             active.run = await this.store.createRun(root, pending);
             await this.update(active, run => ({ ...run, status: 'running', startedAt: now,
                 provenance: selected.provenance }));
@@ -213,11 +244,18 @@ export class AgentExecutionRuntime {
         let failed = false;
         try { await result; } catch { failed = true; }
         if (active.interrupting) await active.interrupting;
-        const status = active.denied ? 'failed' : !failed ? 'completed' : active.stopping ?
+        await active.tail;
+        const task = active.run ? await this.store.readTask(active.root, active.run.taskId) : undefined;
+        const validationMissing = Boolean(!failed && !active.stopping && !active.denied &&
+            task?.completion.requireValidationPass &&
+            task.completion.validation.some(target => active.run?.validationResults.slice().reverse().find(result =>
+                result.kind === target.kind && result.label === target.label)?.status !== 'passed'));
+        const status = active.denied || validationMissing ? 'failed' : !failed ? 'completed' : active.stopping ?
             active.interruptionFailed ? 'interrupted' : 'cancelled' : 'failed';
-        const code = active.denied ? 'authority-denied' : !failed ? undefined : active.stopping ?
+        const code = active.denied ? 'authority-denied' : validationMissing ? 'validation-failed' : !failed ? undefined : active.stopping ?
             active.interruptionFailed ? 'interrupted' : 'cancelled' : 'provider-error';
         await this.finish(active, status, code, active.denied ? 'Execution authority denied' :
+            validationMissing ? 'Required validation did not pass' :
             status === 'completed' ? 'Agent run completed' : active.stopping ? 'Agent run stopped' :
                 'Agent execution failed');
     }
@@ -227,10 +265,25 @@ export class AgentExecutionRuntime {
         try {
             await this.serial(active, async () => {
                 if (!active.run || ['completed', 'cancelled', 'failed', 'interrupted'].includes(active.run.status)) return;
-                await this.update(active, run => ({ ...run, status, endedAt: new Date().toISOString(),
-                    ...(code ? { outcome: { code, summary } } : {}) }));
+                let finalStatus = status, finalCode = code, finalSummary = summary;
+                let evidence: Awaited<ReturnType<typeof captureGitFinal>> | undefined;
+                try {
+                    if (!active.run.basis) throw new Error('Missing starting Git basis');
+                    evidence = await captureGitFinal(active.root, active.run.basis);
+                    if (evidence.final.headChanged) {
+                        finalStatus = 'failed'; finalCode = 'other'; finalSummary = 'Git HEAD changed during AgentRun';
+                    }
+                } catch (error) {
+                    finalStatus = 'failed'; finalCode = 'other'; finalSummary =
+                        error instanceof Error && error.message.includes('Git HEAD changed') ?
+                            'Git HEAD changed during AgentRun evidence capture' : 'Git evidence could not be captured';
+                }
+                await this.update(active, run => ({ ...run, status: finalStatus, endedAt: new Date().toISOString(),
+                    ...(evidence ? { finalGit: evidence.final, changedFiles: evidence.changedFiles,
+                        changeSummary: evidence.changeSummary } : {}),
+                    ...(finalCode ? { outcome: { code: finalCode, summary: finalSummary } } : {}) }));
                 if (this.active.get(active.root) === active) this.active.delete(active.root);
-                await this.event(active, 'status', summary, { status });
+                await this.event(active, 'status', finalSummary, { status: finalStatus });
             });
         } finally {
             if (this.active.get(active.root) === active) this.active.delete(active.root);
@@ -261,6 +314,34 @@ export class AgentExecutionRuntime {
             throw new Error('Agent process stopped, but terminal state could not be persisted');
         if (transitionFailed) throw new Error('Agent process stopped, but cancelling state could not be persisted');
         return run;
+    }
+
+    /** Fresh backend attachment records abandoned executions; it never starts an adapter. */
+    async reconcile(root: string): Promise<void> {
+        if (this.active.has(root)) return;
+        for (const run of await this.store.listRuns(root)) {
+            if (!['running', 'cancelling', 'blocked'].includes(run.status)) continue;
+            const evidence = run.basis ? await captureGitFinal(root, run.basis).catch(() => undefined) : undefined;
+            const reconciledAt = new Date().toISOString();
+            const next = await this.store.updateRun(root, run, { ...run, status: 'interrupted',
+                endedAt: reconciledAt < run.startedAt! ? run.startedAt : reconciledAt,
+                ...(evidence ? { finalGit: evidence.final, changedFiles: evidence.changedFiles,
+                    changeSummary: evidence.changeSummary } : {}),
+                outcome: { code: 'interrupted', summary: evidence?.final.headChanged ?
+                    'Execution abandoned; Git HEAD changed' : 'Execution abandoned after backend restart' } });
+            let cursor = 0;
+            let lastAt = run.startedAt ?? run.createdAt;
+            for (;;) {
+                const page = await this.store.readEvents(root, run.id, cursor, 100);
+                cursor = page.nextSequence;
+                lastAt = page.events.at(-1)?.at ?? lastAt;
+                if (!page.hasMore) break;
+            }
+            await this.store.appendEvent(root, { version: AGENT_SCHEMA_VERSION, runId: next.id,
+                sequence: cursor + 1, at: reconciledAt < lastAt ? lastAt : reconciledAt,
+                kind: 'status', status: 'interrupted',
+                summary: 'Agent run interrupted after backend restart' });
+        }
     }
 
     async dispose(): Promise<void> {

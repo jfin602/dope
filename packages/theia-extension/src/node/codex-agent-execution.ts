@@ -228,6 +228,7 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
         let cancelled = false;
         let settled = false;
         let eventCount = 0;
+        const commands = new Map<string, string>();
         let finish!: (error?: Error) => void;
         const done = new Promise<void>((resolveDone, reject) => {
             finish = error => { if (settled) return; settled = true; error ? reject(error) : resolveDone(); };
@@ -265,10 +266,16 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
                 if (item.type === 'commandExecution') {
                     if (typeof item.cwd !== 'string' || resolve(item.cwd) !== root &&
                         !resolve(item.cwd).startsWith(root + sep)) { denied('Command cwd outside approved project'); return; }
+                    const commandId = typeof item.id === 'string' ? item.id : undefined;
+                    if (method === 'item/started' && commandId && typeof item.command === 'string')
+                        commands.set(commandId, item.command);
+                    const command = commandId ? commands.get(commandId) : undefined;
                     emit({ kind: method === 'item/started' ? 'command-started' : 'command-completed',
                         summary: method === 'item/started' ? 'Project command started' :
                             `Project command ${item.status === 'completed' ? 'completed' : 'stopped'}`,
+                        ...(commandId ? { commandId } : {}), ...(command ? { command } : {}),
                         ...(Number.isSafeInteger(item.exitCode) ? { exitCode: item.exitCode } : {}) });
+                    if (method === 'item/completed' && commandId) commands.delete(commandId);
                 } else if (method === 'item/completed' && item.type === 'agentMessage') {
                     // Provider text may contain secrets. The durable observation records only its occurrence.
                     emit({ kind: 'agent-message', summary: 'Agent message received' });

@@ -10,7 +10,7 @@ export type AgentModelPolicy =
     | { kind: 'exact'; connectionId: string; modelId: string };
 export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
 export interface ExecutionControls { reasoningEffort?: ReasoningEffort }
-export interface ValidationTarget { kind: 'test' | 'build' | 'typecheck'; label: string }
+export interface ValidationTarget { kind: 'test' | 'build' | 'typecheck'; label: string; command?: string }
 export interface CompletionPolicy { validation: ValidationTarget[]; requireValidationPass: boolean }
 export interface AgentTask {
     version: typeof AGENT_SCHEMA_VERSION; id: string; createdAt: string;
@@ -33,12 +33,21 @@ export interface ChangeSummary {
     version: typeof AGENT_SCHEMA_VERSION; filesChanged: number; insertions: number;
     deletions: number; summary: string; truncated: boolean;
 }
-export interface GitBasis { head: string | null; clean: boolean }
+export interface GitBasis { head: string | null; clean: boolean; metadataChanged?: boolean }
+export interface GitFinal {
+    head: string | null; clean: boolean; headChanged: boolean; metadataChanged: boolean;
+    statuses: { code: string; path: string; previousPath?: string }[]; truncated: boolean;
+}
+export interface CommandEvidence {
+    version: typeof AGENT_SCHEMA_VERSION; commandSummary: string; durationMs: number;
+    exitCode: number; result: 'passed' | 'failed'; matchedTargets: string[];
+}
 export interface AgentRun {
     version: typeof AGENT_SCHEMA_VERSION; id: string; taskId: string; status: AgentRunStatus;
     grantId: string; grantRevision: number; requestedPolicy: AgentModelPolicy;
     projectRoot: '.'; projectId?: string; createdAt: string; startedAt?: string; endedAt?: string;
-    provenance?: ExecutionProvenance; basis?: GitBasis; changedFiles: string[];
+    provenance?: ExecutionProvenance; basis?: GitBasis; finalGit?: GitFinal; changedFiles: string[];
+    commandEvidence?: CommandEvidence[];
     validationResults: ValidationResult[]; changeSummary?: ChangeSummary;
     recovery?: { adapterId: string; handle: string }; outcome?: { code: 'authority-denied' | 'provider-error' |
         'validation-failed' | 'cancelled' | 'interrupted' | 'other'; summary: string };
@@ -140,8 +149,9 @@ export function parseAgentTask(value: unknown): AgentTask {
         { kind, promptId: id(origin.promptId) } : kind === 'work-item' ?
             { kind, workItemId: id(origin.workItemId) } : { kind, sessionId: id(origin.sessionId) };
     const validation = array(completion.validation, 12, item => {
-        const target = record(item, ['kind', 'label']);
-        return { kind: select(target.kind, ['test', 'build', 'typecheck'] as const), label: bounded(target.label, 160) };
+        const target = record(item, ['kind', 'label', 'command']);
+        return { kind: select(target.kind, ['test', 'build', 'typecheck'] as const), label: bounded(target.label, 160),
+            ...(target.command === undefined ? {} : { command: bounded(target.command, 160) }) };
     });
     if (authority.profile !== 'phase-8b-project') throw new Error('Invalid authority profile');
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
@@ -174,16 +184,35 @@ export function parseChangeSummary(value: unknown): ChangeSummary {
         insertions: integer(x.insertions, 10_000_000), deletions: integer(x.deletions, 10_000_000),
         summary: bounded(x.summary, 2000), truncated: bool(x.truncated) });
 }
+export function parseGitFinal(value: unknown): GitFinal {
+    const x = record(value, ['head', 'clean', 'headChanged', 'metadataChanged', 'statuses', 'truncated']);
+    return freeze({ head: x.head === null ? null : id(x.head), clean: bool(x.clean),
+        headChanged: bool(x.headChanged), metadataChanged: bool(x.metadataChanged),
+        statuses: array(x.statuses, 500, item => {
+            const entry = record(item, ['code', 'path', 'previousPath']);
+            return { code: bounded(entry.code, 2), path: projectPath(entry.path),
+                ...(entry.previousPath === undefined ? {} : { previousPath: projectPath(entry.previousPath) }) };
+        }), truncated: bool(x.truncated) });
+}
+export function parseCommandEvidence(value: unknown): CommandEvidence {
+    const x = record(value, ['version', 'commandSummary', 'durationMs', 'exitCode', 'result', 'matchedTargets']);
+    if (typeof x.exitCode !== 'number' || !Number.isSafeInteger(x.exitCode) || x.exitCode < -1 || x.exitCode > 255)
+        throw new Error('Invalid command exit code');
+    return freeze({ version: version(x.version), commandSummary: bounded(x.commandSummary, 160),
+        durationMs: integer(x.durationMs, 86_400_000), exitCode: x.exitCode,
+        result: select(x.result, ['passed', 'failed'] as const),
+        matchedTargets: array(x.matchedTargets, 12, item => bounded(item, 160)) });
+}
 export const RUN_STATUSES = freeze(['pending', 'running', 'blocked', 'cancelling',
     'cancelled', 'failed', 'completed', 'interrupted'] as const);
 export function parseAgentRunStatus(value: unknown): AgentRunStatus { return select(value, RUN_STATUSES); }
 export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
         'projectRoot', 'projectId', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis',
-        'changedFiles', 'validationResults', 'changeSummary', 'recovery', 'outcome']);
+        'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
-    const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean']);
+    const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
     const recovery = x.recovery === undefined ? undefined : record(x.recovery, ['adapterId', 'handle']);
     const outcome = x.outcome === undefined ? undefined : record(x.outcome, ['code', 'summary']);
     const changedFiles = array(x.changedFiles, 500, item => projectPath(item));
@@ -191,6 +220,7 @@ export function parseAgentRun(value: unknown): AgentRun {
     const startedAt = x.startedAt === undefined ? undefined : timestamp(x.startedAt);
     const endedAt = x.endedAt === undefined ? undefined : timestamp(x.endedAt);
     const terminal = ['cancelled', 'failed', 'completed', 'interrupted'].includes(status);
+    if (x.finalGit !== undefined && !terminal) throw new Error('Final Git evidence requires terminal run');
     if ((status === 'pending' && (startedAt || endedAt)) ||
         (status !== 'pending' && !startedAt) || terminal !== Boolean(endedAt))
         throw new Error('Invalid run lifecycle timestamps');
@@ -203,8 +233,11 @@ export function parseAgentRun(value: unknown): AgentRun {
         createdAt: timestamp(x.createdAt), ...(startedAt ? { startedAt } : {}), ...(endedAt ? { endedAt } : {}),
         ...(x.provenance === undefined ? {} : { provenance: parseExecutionProvenance(x.provenance) }),
         ...(basis === undefined ? {} : { basis: { head: basis.head === null ? null : id(basis.head),
-            clean: bool(basis.clean) } }), changedFiles,
+            clean: bool(basis.clean), ...(basis.metadataChanged === undefined ? {} :
+                { metadataChanged: bool(basis.metadataChanged) }) } }), changedFiles,
         validationResults: array(x.validationResults, 24, parseValidationResult),
+        ...(x.commandEvidence === undefined ? {} : { commandEvidence: array(x.commandEvidence, 24, parseCommandEvidence) }),
+        ...(x.finalGit === undefined ? {} : { finalGit: parseGitFinal(x.finalGit) }),
         ...(x.changeSummary === undefined ? {} : { changeSummary: parseChangeSummary(x.changeSummary) }),
         ...(recovery === undefined ? {} : { recovery: { adapterId: id(recovery.adapterId),
             handle: bounded(recovery.handle, 256) } }),
