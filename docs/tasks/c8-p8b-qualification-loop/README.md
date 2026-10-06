@@ -1,6 +1,6 @@
 # Phase 8B Iterative Qualification / Repair Loop
 
-Status: **WAITING FOR c8-agent-authority-boundary — THEN RUN FRESH 5-CYCLE 8B REQUALIFICATION**
+Status: **COMPLETE — GREEN / QUALIFIED AFTER 4 OF 5 POST-CORRECTION CYCLES**
 Date: 2026-10-06
 Folder: `c8-p8b-qualification-loop`
 Version policy: **keep Phase 8B at `0.8.13`**
@@ -122,3 +122,13 @@ After `c8-agent-authority-boundary` finishes coherently, run the updated:
 That prompt now starts a **fresh post-correction five-cycle budget**. It qualifies the new ExecutionWorkspace -> CandidateDelta -> Authority/ToolExecutor boundary rather than the obsolete direct-project-write sandbox contract.
 
 Phase 8C remains gated until the post-correction loop produces a Green / Qualified exact `0.8.13` candidate.
+
+## Final qualified disposition
+
+The post-correction requalification completed Green after four of five cycles.
+
+Qualified product/test source: `bd0b6ff`.
+Docs-only closeout: `c11756e`.
+Version remains `0.8.13`.
+
+All eight corrected-boundary gates passed. Phase 8C is eligible and must consume the qualified ADR 0028 AgentTask substrate rather than reintroducing direct provider mutation authority.
