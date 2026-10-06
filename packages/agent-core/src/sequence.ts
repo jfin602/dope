@@ -22,7 +22,12 @@ export interface ImportedStack {
 export interface AgentTaskSequence {
     version: typeof SEQUENCE_SCHEMA_VERSION; id: string; createdAt: string; updatedAt: string;
     status: SequenceStatus; currentEntryNumber: number; stack: ImportedStack;
+    basis: SequenceBasis; checkpoints: SequenceCheckpoint[]; blockedReason?: SequenceBlockReason;
 }
+export interface SequenceBasis { head: string; packageVersion: string; worktreeFingerprint: string }
+export interface SequenceCheckpoint { entryNumber: number; sha: string; taskId?: string; runId?: string }
+export type SequenceBlockReason = 'source-drift' | 'git-history' | 'checkpoint-mismatch' |
+    'version-mismatch' | 'head-drift' | 'worktree-drift' | 'interrupted' | 'completion-unsupported';
 export interface PhaseStackTaskMetadata {
     objective: string; instructions: string; origin: AgentOrigin; controls: ExecutionControls;
     recommendedModel: 'gpt-6-sol'; versionPolicy: VersionPolicy; stackFingerprint: string;
@@ -205,7 +210,8 @@ export function transitionSequence(from: SequenceStatus, to: SequenceStatus): Se
     return to;
 }
 export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskSequence> {
-    const x = record(value, ['version', 'id', 'createdAt', 'updatedAt', 'status', 'currentEntryNumber', 'stack']);
+    const x = record(value, ['version', 'id', 'createdAt', 'updatedAt', 'status', 'currentEntryNumber', 'stack',
+        'basis', 'checkpoints', 'blockedReason']);
     if (x.version !== SEQUENCE_SCHEMA_VERSION) throw new Error('Invalid sequence schema version');
     const stack = await parseImportedStack(x.stack);
     const status = select(x.status, SEQUENCE_STATUSES);
@@ -216,8 +222,35 @@ export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskS
         throw new Error('Invalid sequence position or status');
     const createdAt = timestamp(x.createdAt), updatedAt = timestamp(x.updatedAt);
     if (updatedAt < createdAt) throw new Error('Invalid sequence timestamps');
+    const basisValue = record(x.basis, ['head', 'packageVersion', 'worktreeFingerprint']);
+    const sha = /^[0-9a-f]{40,64}$/u;
+    if (typeof basisValue.head !== 'string' || !sha.test(basisValue.head) ||
+        typeof basisValue.packageVersion !== 'string' || !semver.test(basisValue.packageVersion) ||
+        typeof basisValue.worktreeFingerprint !== 'string' || !/^[0-9a-f]{64}$/u.test(basisValue.worktreeFingerprint))
+        throw new Error('Invalid sequence basis');
+    if (!Array.isArray(x.checkpoints) || x.checkpoints.length > stack.entries.length)
+        throw new Error('Invalid sequence checkpoints');
+    const checkpoints = x.checkpoints.map((value, index) => {
+        const checkpoint = record(value, ['entryNumber', 'sha', 'taskId', 'runId']);
+        if (checkpoint.entryNumber !== index + 1 || typeof checkpoint.sha !== 'string' || !sha.test(checkpoint.sha) ||
+            stack.entries[index]?.execution !== 'agent-task') throw new Error('Invalid sequence checkpoint prefix');
+        return { entryNumber: index + 1, sha: checkpoint.sha,
+            ...(checkpoint.taskId === undefined ? {} : { taskId: id(checkpoint.taskId) }),
+            ...(checkpoint.runId === undefined ? {} : { runId: id(checkpoint.runId) }) };
+    });
+    const expectedCheckpoints = status === 'completed' ? currentEntryNumber - 2 : currentEntryNumber - 1;
+    if (checkpoints.length !== expectedCheckpoints ||
+        status === 'completed' && stack.entries.at(-1)?.execution !== 'manual-gate' ||
+        new Set(checkpoints.map(checkpoint => checkpoint.sha)).size !== checkpoints.length)
+        throw new Error('Sequence position disagrees with checkpoints');
+    const reasons: SequenceBlockReason[] = ['source-drift', 'git-history', 'checkpoint-mismatch',
+        'version-mismatch', 'head-drift', 'worktree-drift', 'interrupted', 'completion-unsupported'];
+    const blockedReason = x.blockedReason === undefined ? undefined : select(x.blockedReason, reasons);
+    if (blockedReason && status !== 'blocked' && status !== 'interrupted') throw new Error('Invalid sequence block reason');
     return freeze({ version: SEQUENCE_SCHEMA_VERSION, id: id(x.id), createdAt, updatedAt,
-        status, currentEntryNumber, stack });
+        status, currentEntryNumber, stack, basis: { head: basisValue.head, packageVersion: basisValue.packageVersion,
+            worktreeFingerprint: basisValue.worktreeFingerprint }, checkpoints,
+        ...(blockedReason ? { blockedReason } : {}) });
 }
 export function phaseStackTaskMetadata(stack: ImportedStack, entryNumber: number): PhaseStackTaskMetadata {
     const entry = stack.entries[entryNumber - 1];

@@ -111,7 +111,8 @@ test('sequence status transitions and strict position are versioned', async () =
     const stack = await importPhaseStack('p8', phase());
     const now = '2026-10-06T12:00:00Z';
     const base = { version: 1, id: 'sequence-1', createdAt: now, updatedAt: now,
-        status: 'ready', currentEntryNumber: 1, stack };
+        status: 'ready', currentEntryNumber: 1, stack, checkpoints: [],
+        basis: { head: 'a'.repeat(40), packageVersion: '0.8.0', worktreeFingerprint: 'b'.repeat(64) } };
     assert.deepEqual(await parseAgentTaskSequence(base), base);
     assert.equal(Object.isFrozen((await parseAgentTaskSequence(base)).stack), true);
     assert.deepEqual(SEQUENCE_STATUSES, ['ready', 'running', 'waiting-manual', 'blocked', 'interrupted', 'completed']);
@@ -129,5 +130,5 @@ test('sequence status transitions and strict position are versioned', async () =
         { status: 'running', currentEntryNumber: 2 }, { status: 'waiting-manual', currentEntryNumber: 1 },
         { currentEntryNumber: 0 }, { updatedAt: '2026-10-05T12:00:00Z' }, { providerSession: 'x' }])
         await assert.rejects(parseAgentTaskSequence({ ...base, ...change }));
-    assert.equal((await parseAgentTaskSequence({ ...base, status: 'completed', currentEntryNumber: 3 })).status, 'completed');
+    await assert.rejects(parseAgentTaskSequence({ ...base, status: 'completed', currentEntryNumber: 3 }));
 });

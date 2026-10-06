@@ -5,11 +5,13 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AgentRun, AgentRunEvent, AgentTask, id, integer, parseAgentRun, parseAgentRunEvent, parseAgentTask } from '../contracts';
 import { canTransitionAgentRun } from '../state';
+import { AgentTaskSequence, canTransitionSequence, parseAgentTaskSequence } from '../sequence';
 
 export const AGENT_EVENT_LIMIT = 10_000;
 export const AGENT_EVENT_PAGE_LIMIT = 100;
 export const AGENT_EVENT_BYTES_LIMIT = 2048;
 const JSON_BYTES_LIMIT = 128 * 1024;
+const SEQUENCE_BYTES_LIMIT = 4 * 1024 * 1024;
 const EVENTS_BYTES_LIMIT = AGENT_EVENT_LIMIT * AGENT_EVENT_BYTES_LIMIT;
 const missing = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
@@ -17,7 +19,7 @@ const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.str
 /** Free text is user/provider content. Reject credential and private-path shapes before writing it. */
 function safeText(value: unknown): void {
     if (typeof value === 'string') {
-        if (/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\b|\b(?:access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|authorization|password|secret|hidden[_ -]?reasoning|chain[_ -]?of[_ -]?thought)\s*[:=]\s*\S+|\bBearer\s+[A-Za-z0-9._~-]{8,}|(?:^|[\s"'(])\/[A-Za-z0-9._~-]+\/[^\s"')]+/iu.test(value))
+        if (/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\b|\b(?:access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|authorization|password|secret|hidden[_ -]?reasoning|chain[_ -]?of[_ -]?thought)\s*[:=]\s*\S+|\b[A-Z][A-Z0-9_]*(?:API_KEY|TOKEN|PASSWORD|SECRET)\s*=\s*\S+|\bBearer\s+[A-Za-z0-9._~-]{8,}|(?:^|[\s"'(])\/[A-Za-z0-9._~-]+\/[^\s"')]+/iu.test(value))
             throw new Error('Agent state contains credential or private-path shaped text');
     } else if (Array.isArray(value)) value.forEach(safeText);
     else if (value && typeof value === 'object') Object.values(value).forEach(safeText);
@@ -30,14 +32,14 @@ function checked<T>(value: unknown, parse: (value: unknown) => T): T {
 }
 
 export class AgentStore {
-    private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event'; id: string }) => void>();
+    private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence'; id: string }) => void>();
 
-    onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event'; id: string }) => void): () => void {
+    onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence'; id: string }) => void): () => void {
         this.listeners.add(listener);
         return () => this.listeners.delete(listener);
     }
 
-    private notify(root: string, kind: 'task' | 'run' | 'event', id: string): void {
+    private notify(root: string, kind: 'task' | 'run' | 'event' | 'sequence', id: string): void {
         for (const listener of this.listeners) try { listener(root, { kind, id }); } catch { /* Committed writes stay committed. */ }
     }
 
@@ -94,7 +96,7 @@ export class AgentStore {
         return path;
     }
 
-    private async collection(root: string, name: 'tasks' | 'runs', create: boolean): Promise<string | undefined> {
+    private async collection(root: string, name: 'tasks' | 'runs' | 'sequences', create: boolean): Promise<string | undefined> {
         const base = await this.base(root, create);
         if (!base) return undefined;
         const path = join(base, name);
@@ -127,16 +129,16 @@ export class AgentStore {
         } finally { await handle.close(); }
     }
 
-    private async json<T>(file: string, parse: (value: unknown) => T): Promise<T | undefined> {
-        const bytes = await this.bytes(file, JSON_BYTES_LIMIT);
+    private async json<T>(file: string, parse: (value: unknown) => T | Promise<T>, limit = JSON_BYTES_LIMIT): Promise<T | undefined> {
+        const bytes = await this.bytes(file, limit);
         if (bytes === undefined) return undefined;
-        try { return checked(JSON.parse(bytes), parse); }
+        try { const result = await parse(JSON.parse(bytes)); safeText(result); return result; }
         catch { throw new Error('Corrupt or unsupported agent state'); }
     }
 
-    private async atomic(file: string, value: unknown): Promise<void> {
+    private async atomic(file: string, value: unknown, limit = JSON_BYTES_LIMIT): Promise<void> {
         const bytes = `${JSON.stringify(value, null, 2)}\n`;
-        if (Buffer.byteLength(bytes) > JSON_BYTES_LIMIT) throw new Error('Agent record exceeds size limit');
+        if (Buffer.byteLength(bytes) > limit) throw new Error('Agent record exceeds size limit');
         const temp = `${file}.${randomUUID()}.tmp`;
         let replaced = false;
         try {
@@ -164,6 +166,65 @@ export class AgentStore {
             if ((await lstat(lock)).ino !== acquired.ino) throw new Error('Agent lock changed; inspect state');
             await rm(lock);
         }
+    }
+
+    async readSequence(root: string, sequenceId: string): Promise<AgentTaskSequence | undefined> {
+        const dir = await this.collection(root, 'sequences', false);
+        const sequence = dir ? await this.json(join(dir, `${id(sequenceId)}.json`), parseAgentTaskSequence,
+            SEQUENCE_BYTES_LIMIT) : undefined;
+        if (sequence && sequence.id !== sequenceId) throw new Error('Corrupt agent sequence identity');
+        return sequence;
+    }
+
+    async listSequences(root: string): Promise<AgentTaskSequence[]> {
+        const dir = await this.collection(root, 'sequences', false);
+        if (!dir) return [];
+        const names = (await readdir(dir)).filter(name => name.endsWith('.json')).sort();
+        if (names.length > 1000) throw new Error('Too many agent sequences');
+        const sequences: AgentTaskSequence[] = [];
+        for (const name of names) {
+            const sequence = await this.readSequence(root, name.slice(0, -5));
+            if (!sequence || `${sequence.id}.json` !== name) throw new Error('Corrupt agent sequence identity');
+            sequences.push(sequence);
+        }
+        return sequences;
+    }
+
+    async createSequence(root: string, value: AgentTaskSequence): Promise<AgentTaskSequence> {
+        const sequence = await parseAgentTaskSequence(value);
+        safeText(sequence);
+        const dir = (await this.collection(root, 'sequences', true))!;
+        await this.locked(dir, async () => {
+            if (await this.readSequence(root, sequence.id)) throw new Error('Agent sequence already exists');
+            await this.atomic(join(dir, `${sequence.id}.json`), sequence, SEQUENCE_BYTES_LIMIT);
+        });
+        this.notify(root, 'sequence', sequence.id);
+        return sequence;
+    }
+
+    async updateSequence(root: string, expected: AgentTaskSequence, value: AgentTaskSequence): Promise<AgentTaskSequence> {
+        const old = await parseAgentTaskSequence(expected), next = await parseAgentTaskSequence(value);
+        safeText(next);
+        if (old.id !== next.id) throw new Error('Agent sequence identity changed');
+        const dir = await this.collection(root, 'sequences', false);
+        if (!dir) throw new Error('Agent sequence missing');
+        await this.locked(dir, async () => {
+            const current = await this.readSequence(root, old.id);
+            if (!current || !same(current, old)) throw new Error('Stale agent sequence; re-read before updating');
+            if (!same(current.stack, next.stack) || !same(current.basis, next.basis) ||
+                current.createdAt !== next.createdAt || next.updatedAt < current.updatedAt ||
+                next.checkpoints.length < current.checkpoints.length ||
+                current.checkpoints.some((checkpoint, index) => !same(checkpoint, next.checkpoints[index])) ||
+                next.currentEntryNumber < current.currentEntryNumber &&
+                    !(current.status === 'completed' && next.status === 'blocked' && next.blockedReason &&
+                        next.currentEntryNumber === current.currentEntryNumber - 1) ||
+                current.status !== next.status && !canTransitionSequence(current.status, next.status) &&
+                    !(current.status === 'completed' && next.status === 'blocked' && next.blockedReason))
+                throw new Error('Illegal AgentTaskSequence update');
+            await this.atomic(join(dir, `${next.id}.json`), next, SEQUENCE_BYTES_LIMIT);
+        });
+        this.notify(root, 'sequence', next.id);
+        return next;
     }
 
     async readTask(root: string, taskId: string): Promise<AgentTask | undefined> {
