@@ -28,6 +28,7 @@ export class AgentRunWidget extends BaseWidget {
     private readonly content = el('div');
     private timer?: ReturnType<typeof setInterval>;
     private readonly workspaceListener;
+    private ready: Promise<void>;
     constructor(private readonly runtimeFactory: () => AgentRuntimeService, private readonly registry: AIRegistryService,
         private readonly roles: AIRolePolicyService,
         private readonly workspaces: WorkspaceService) {
@@ -35,8 +36,8 @@ export class AgentRunWidget extends BaseWidget {
         this.title.iconClass = codicon('play-circle'); this.title.closable = true;
         this.addClass('dope-agent-run'); this.node.tabIndex = 0; this.node.append(this.content);
         this.controller = new AgentRunController(runtimeFactory(), registry, roles, () => this.render());
-        this.workspaceListener = workspaces.onWorkspaceChanged(() => void this.attach());
-        void this.attach(); this.render();
+        this.workspaceListener = workspaces.onWorkspaceChanged(() => { this.ready = this.attach(); });
+        this.ready = this.attach(); this.render();
     }
     private async attach(): Promise<void> {
         const roots = await this.workspaces.roots;
@@ -54,6 +55,10 @@ export class AgentRunWidget extends BaseWidget {
     }
     protected override onCloseRequest(msg: Message): void {
         this.workspaceListener.dispose(); super.onCloseRequest(msg);
+    }
+    async focusRun(runId: string): Promise<void> {
+        await this.ready;
+        await this.controller.select(runId);
     }
     private syncStart(): void { const start = this.content.querySelector<HTMLButtonElement>('[data-agent-start]');
         if (start) start.disabled = !this.controller.canStart;

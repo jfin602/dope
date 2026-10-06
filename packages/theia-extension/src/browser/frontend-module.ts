@@ -45,6 +45,8 @@ import { AICenterWidget, AI_CENTER_ID } from './ai-center-widget';
 import { AICenterContribution } from './ai-center-contribution';
 import { AgentRunWidget, AGENT_RUN_ID } from './agent-run-widget';
 import { AgentRunContribution } from './agent-run-contribution';
+import { PhaseStackWidget, PHASE_STACK_ID } from './phase-stack-widget';
+import { PhaseStackContribution } from './phase-stack-contribution';
 import { AICenterBottomMenuWidget } from './ai-center-launcher';
 import { SidebarBottomMenuWidget } from '@theia/core/lib/browser/shell/sidebar-bottom-menu-widget';
 import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
@@ -85,6 +87,13 @@ class RightChatLauncher extends ChatLauncherView { constructor() { super('right'
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     rebind(SidebarBottomMenuWidget).to(AICenterBottomMenuWidget);
     bind(AICenterContribution).toSelf().inSingletonScope();
+    bind(PhaseStackContribution).toSelf().inSingletonScope();
+    bind(CommandContribution).toService(PhaseStackContribution);
+    bind(WidgetFactory).toDynamicValue(context => ({ id: PHASE_STACK_ID, createWidget: () => new PhaseStackWidget(
+        () => context.container.get(AgentRuntimeService), context.container.get(WorkspaceService), async runId => {
+            const widget = await context.container.get(AgentRunContribution).open();
+            await widget.focusRun(runId);
+        }) })).inSingletonScope();
     bind(AgentRunContribution).toSelf().inSingletonScope();
     bind(CommandContribution).toService(AgentRunContribution);
     bind(WidgetFactory).toDynamicValue(context => ({ id: AGENT_RUN_ID, createWidget: () => new AgentRunWidget(
@@ -158,6 +167,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         context.container, agentRuntimeServicePath, { notifyAgentStateChanged: () => {
             const widget = context.container.get(WidgetManager).tryGetWidget<AgentRunWidget>(AGENT_RUN_ID);
             void widget?.controller.refresh();
+            const stack = context.container.get(WidgetManager).tryGetWidget<PhaseStackWidget>(PHASE_STACK_ID);
+            void stack?.controller.refresh();
         } } satisfies AgentRuntimeClient));
     bind(ChatOpenOwners).toSelf().inSingletonScope();
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();

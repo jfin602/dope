@@ -17,6 +17,7 @@ export interface AgentRuntimeService {
     createSequence(projectHandle: string, stack: ImportedStack): Promise<AgentTaskSequence>;
     readSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence | undefined>;
     listSequences(projectHandle: string): Promise<AgentTaskSequence[]>;
+    sequenceEvidence(projectHandle: string): Promise<{ head: string; packageVersion: string; clean: boolean; worktreeFingerprint: string }>;
     reconcileSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
     reconcileManualGate(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
     prepareSequenceTask(projectHandle: string, sequenceId: string, modelPolicy: AgentModelPolicy,

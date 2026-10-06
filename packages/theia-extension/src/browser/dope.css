@@ -513,3 +513,15 @@
 .dope-agent-run [aria-current="true"] { border-left: 3px solid var(--theia-focusBorder); }
 .dope-agent-run ol { max-height: 20rem; overflow: auto; padding-left: 2rem; }
 .dope-agent-run li { overflow-wrap: anywhere; margin: 4px 0; }
+
+.dope-phase-stack { box-sizing: border-box; height: 100%; overflow: auto; padding: 20px; color: var(--theia-editor-foreground); background: var(--theia-editor-background); }
+.dope-phase-stack h2 { margin: 0 0 8px; }
+.dope-phase-stack section { max-width: 52rem; border-top: 1px solid var(--theia-widget-border, var(--theia-input-border)); padding-top: 10px; margin-top: 14px; }
+.dope-phase-stack label { display: block; margin: 8px 0; }
+.dope-phase-stack input[type="text"] { display: block; box-sizing: border-box; width: min(100%, 44rem); margin-top: 4px; padding: 6px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border, var(--theia-focusBorder)); }
+.dope-phase-stack button { color: var(--theia-button-foreground); background: var(--theia-button-background); border: 1px solid var(--theia-button-background); padding: 5px 9px; margin: 3px; cursor: pointer; }
+.dope-phase-stack button:disabled { opacity: .55; cursor: default; }
+.dope-phase-stack :is(button, input):focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-phase-stack [aria-current="true"], .dope-phase-stack [aria-current="step"] { border-left: 3px solid var(--theia-focusBorder); }
+.dope-phase-stack li { overflow-wrap: anywhere; margin: 6px 0; }
+.dope-phase-stack pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 30rem; overflow: auto; padding: 10px; background: var(--theia-input-background); }

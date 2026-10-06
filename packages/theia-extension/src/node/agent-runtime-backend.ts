@@ -71,6 +71,10 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         return this.store.readSequence(this.active(handle), sequenceId);
     }
     listSequences(handle: string): Promise<AgentTaskSequence[]> { return this.store.listSequences(this.active(handle)); }
+    async sequenceEvidence(handle: string): Promise<{ head: string; packageVersion: string; clean: boolean; worktreeFingerprint: string }> {
+        const { head, packageVersion, clean, worktreeFingerprint } = await captureSequenceEvidence(this.active(handle));
+        return { head, packageVersion, clean, worktreeFingerprint };
+    }
     async reconcileSequence(handle: string, sequenceId: string): Promise<AgentTaskSequence> {
         const root = this.active(handle), sequence = await this.store.readSequence(root, sequenceId);
         if (!sequence) throw new Error('Agent sequence missing');
