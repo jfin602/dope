@@ -32,14 +32,14 @@ class FakeAdapter {
         return { result: this.result, cancel: async () => { this.cancels++; this.reject(new Error('cancelled')); } };
     }
     complete() { this.resolve(); }
-    fail() { this.reject(new Error('provider failed')); }
+    fail(message = 'provider failed') { this.reject(new Error(message)); }
     dispose() { this.disposals++; if (this.reject) this.reject(new Error('disposed')); }
 }
 
 async function fixture(work: (f: {
     root: string; store: AgentStore; runtime: AgentExecutionRuntime; backend: AgentRuntimeBackend;
     adapter: FakeAdapter; handle: string; registry: any; routing: any;
-}) => Promise<void>, policy?: any) {
+}) => Promise<void>, policy?: any, retryDelayMs = 0) {
     const root = await mkdtemp(join(tmpdir(), 'dope-agent-lifecycle-'));
     await git('git', ['clone', '--quiet', '--shared', resolve(import.meta.dirname, '../..'), root]);
     const store = new AgentStore();
@@ -57,7 +57,7 @@ async function fixture(work: (f: {
     const runtime = new AgentExecutionRuntime(store, routing as any,
         { inventory: async () => ({ registry: { version: 1, revision: 1, connections: registry.connections,
             models: registry.models }, observations: registry.observations }) } as any,
-        new Map([['codex', adapter as any]]));
+        new Map([['codex', adapter as any]]), retryDelayMs);
     const backend = new AgentRuntimeBackend(store, { notifyAgentStateChanged() {} }, runtime);
     const handle = (await backend.attach(pathToFileURL(root).href)).projectHandle;
     try {
@@ -74,6 +74,136 @@ async function terminal(store: AgentStore, root: string, runId: string) {
     }
     throw new Error('Run did not terminate');
 }
+
+async function sequenceTerminal(store: AgentStore, root: string, sequenceId: string) {
+    for (let i = 0; i < 300; i++) {
+        const sequence = await store.readSequence(root, sequenceId);
+        if (sequence && sequence.status !== 'running') return sequence;
+        await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    throw new Error('Sequence did not stop');
+}
+
+async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: string }) {
+    const sequence = await f.backend.importSequence(f.handle, 'p8c');
+    assert.equal(sequence.currentEntryNumber, 3);
+    const task = await f.backend.prepareSequenceTask(f.handle, sequence.id,
+        { kind: 'follow-coding-agent' }, { validation: [], requireValidationPass: false });
+    const accepted = createDefaultExecutionGrant({ id: 'sequence-grant', revision: 0, taskId: task.id,
+        acceptedAt: new Date().toISOString() });
+    return { sequence, task, accepted };
+}
+
+test('sequence runs only current snapshot and retries capacity in one task/workspace without early promotion', async () => fixture(async f => {
+    const { sequence, task, accepted } = await preparedSequence(f);
+    assert.deepEqual(task.origin, { kind: 'phase-stack', promptId: `p8c-P3-${sequence.stack.fingerprint.slice(0, 12)}` });
+    assert.equal(task.phaseStack?.versionPolicy.version, '0.8.16');
+    assert.equal(task.phaseStack?.recommendedModel, 'gpt-6-sol');
+    assert.equal(task.controls.reasoningEffort, 'high');
+    assert.equal(task.instructions, sequence.stack.entries[2].promptText);
+    await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true), /origin/);
+    const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true), /already active/);
+    await assert.rejects(f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true), /not ready/);
+    const workspace = f.adapter.starts[0].executionRoot;
+    await writeFile(join(workspace, 'partial.txt'), 'candidate');
+    f.adapter.fail('model_at_capacity');
+    for (let i = 0; i < 100 && f.adapter.starts.length < 2; i++) await new Promise(resolve => setTimeout(resolve, 10));
+    assert.equal(f.adapter.starts.length, 2);
+    assert.equal(f.adapter.starts[1].executionRoot, workspace);
+    assert.ok(f.adapter.starts[1].prompt.includes('CAPACITY RETRY CONTINUATION'));
+    assert.ok(f.adapter.starts[1].prompt.endsWith(f.adapter.starts[0].prompt));
+    assert.equal(await readFile(join(workspace, 'partial.txt'), 'utf8'), 'candidate');
+    await assert.rejects(readFile(join(f.root, 'partial.txt')), { code: 'ENOENT' });
+    f.adapter.complete();
+    const done = await terminal(f.store, f.root, run.id);
+    const stopped = await sequenceTerminal(f.store, f.root, sequence.id);
+    assert.equal(done.status, 'completed');
+    assert.equal(done.capacityRetries, 1);
+    assert.equal(stopped.status, 'blocked');
+    assert.equal(stopped.blockedReason, 'checkpoint-pending');
+    assert.equal(stopped.currentEntryNumber, 3);
+    assert.deepEqual(stopped.checkpoints.map(checkpoint => checkpoint.entryNumber), [1, 2]);
+    assert.deepEqual(stopped.runIds, [run.id]);
+    assert.equal(await readFile(join(f.root, 'partial.txt'), 'utf8'), 'candidate');
+    assert.equal((await f.backend.reconcileSequence(f.handle, sequence.id)).blockedReason, 'checkpoint-pending');
+}));
+
+test('capacity exhaustion is bounded and leaves authoritative bytes unchanged', async () => fixture(async f => {
+    const { sequence, accepted } = await preparedSequence(f);
+    const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'partial.txt'), 'candidate');
+    for (let attempt = 1; attempt <= 4; attempt++) {
+        f.adapter.fail('Model at capacity; try again later');
+        if (attempt < 4) for (let i = 0; i < 100 && f.adapter.starts.length <= attempt; i++)
+            await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    const done = await terminal(f.store, f.root, run.id);
+    const stopped = await sequenceTerminal(f.store, f.root, sequence.id);
+    assert.equal(f.adapter.starts.length, 4);
+    assert.equal(done.outcome?.code, 'capacity-exhausted');
+    assert.equal(done.capacityRetries, 3);
+    assert.equal(stopped.blockedReason, 'capacity-exhausted');
+    assert.equal(stopped.currentEntryNumber, 3);
+    await assert.rejects(readFile(join(f.root, 'partial.txt')), { code: 'ENOENT' });
+}));
+
+test('stop interrupts capacity wait and non-capacity failures never retry', async () => fixture(async f => {
+    const { sequence, accepted } = await preparedSequence(f);
+    const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    f.adapter.fail('model_at_capacity');
+    for (let i = 0; i < 100; i++) {
+        if ((await f.store.readRun(f.root, run.id))?.capacityRetries === 1) break;
+        await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    const stopped = await f.backend.stopSequence(f.handle, sequence.id);
+    assert.equal(stopped.blockedReason, 'run-cancelled');
+    assert.equal(f.adapter.starts.length, 1);
+    assert.equal((await f.store.readRun(f.root, run.id))?.status, 'cancelled');
+    const next = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    f.adapter.fail('rate limit exceeded');
+    assert.equal((await terminal(f.store, f.root, next.id)).outcome?.code, 'provider-error');
+    assert.equal((await sequenceTerminal(f.store, f.root, sequence.id)).blockedReason, 'run-failed');
+    assert.equal(f.adapter.starts.length, 2);
+}, undefined, 10_000));
+
+test('sequence stays on its entry after validation and authority failure', async () => fixture(async f => {
+    const sequence = await f.backend.importSequence(f.handle, 'p8c');
+    const task = await f.backend.prepareSequenceTask(f.handle, sequence.id,
+        { kind: 'exact', connectionId: 'codex', modelId: 'model-1' },
+        { validation: [{ kind: 'test', label: 'focused', command: 'npm test' }], requireValidationPass: true });
+    const accepted = createDefaultExecutionGrant({ id: 'sequence-grant', revision: 0, taskId: task.id,
+        acceptedAt: new Date().toISOString() });
+    const first = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    assert.equal(f.routing.calls.length, 0);
+    f.adapter.onEvent!({ kind: 'command-started', commandId: 'check', command: 'npm test', summary: 'start' });
+    f.adapter.onEvent!({ kind: 'command-completed', commandId: 'check', exitCode: 1, summary: 'failed' });
+    f.adapter.complete();
+    assert.equal((await terminal(f.store, f.root, first.id)).outcome?.code, 'validation-failed');
+    assert.equal((await sequenceTerminal(f.store, f.root, sequence.id)).blockedReason, 'validation-failed');
+    const second = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    f.adapter.onEvent!({ kind: 'authority-denied', summary: 'denied' });
+    assert.equal((await terminal(f.store, f.root, second.id)).outcome?.code, 'authority-denied');
+    const stopped = await sequenceTerminal(f.store, f.root, sequence.id);
+    assert.equal(stopped.blockedReason, 'authority-denied');
+    assert.equal(stopped.currentEntryNumber, 3);
+    assert.deepEqual(stopped.runIds, [first.id, second.id]);
+}));
+
+test('direct execution holds the project slot and Stop interrupts a sequence provider attempt', async () => fixture(async f => {
+    const { sequence, accepted } = await preparedSequence(f);
+    const direct = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true);
+    await assert.rejects(f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true),
+        /already active/);
+    assert.equal((await f.store.readSequence(f.root, sequence.id))?.status, 'ready');
+    await f.backend.stop(f.handle, direct.id);
+    const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    const stopped = await f.backend.stopSequence(f.handle, sequence.id);
+    assert.equal(f.adapter.cancels, 2);
+    assert.equal((await f.store.readRun(f.root, run.id))?.status, 'cancelled');
+    assert.equal(stopped.blockedReason, 'run-cancelled');
+    assert.equal(stopped.currentEntryNumber, 3);
+}));
 
 test('start rejects absent acceptance and mismatched attached root', async () => fixture(async f => {
     await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1',

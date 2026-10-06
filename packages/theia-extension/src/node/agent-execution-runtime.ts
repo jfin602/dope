@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { AGENT_SCHEMA_VERSION, parseExecutionGrant, projectPath } from '@dope/agent-core';
+import { AGENT_SCHEMA_VERSION, isModelCapacityFailure, parseExecutionGrant, projectPath } from '@dope/agent-core';
 import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentRun,
-    AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance } from '@dope/agent-core';
+    AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance, AgentExecutionRequest } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureGitBasis, captureGitFinal } from '@dope/agent-core/lib/node/git-evidence';
 import { ExecutionWorkspace, PromotionFailure } from '@dope/agent-core/lib/node/execution-workspace';
@@ -16,6 +16,7 @@ interface Active {
     finished: Promise<void>; releaseFinished(): void;
     tail: Promise<unknown>; sequence: number; observations: number;
     stopping: boolean; denied: boolean; interruptionFailed: boolean;
+    wakeWait?: () => void;
     commands: Map<string, { command: string; started: number }>;
 }
 
@@ -27,7 +28,18 @@ export class AgentExecutionRuntime {
     constructor(private readonly store: AgentStore,
         private readonly routing: Pick<AIRoleRoutingService, 'resolve'>,
         private readonly inventory: Pick<AIInventoryController, 'inventory'>,
-        private readonly adapters: ReadonlyMap<string, AgentExecutionAdapter>) {}
+        private readonly adapters: ReadonlyMap<string, AgentExecutionAdapter>,
+        private readonly capacityRetryDelayMs = 20_000) {}
+
+    activeRunId(root: string): string | undefined { return this.active.get(root)?.run?.id; }
+    async waitForRun(root: string, runId: string): Promise<AgentRun> {
+        const active = this.active.get(root);
+        if (active?.run?.id === runId) await active.finished;
+        const run = await this.store.readRun(root, runId);
+        if (!run || !['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status))
+            throw new Error('Agent run did not reach a durable terminal state');
+        return run;
+    }
 
     private serial<T>(active: Active, action: () => Promise<T>): Promise<T> {
         const next = active.tail.then(action);
@@ -175,6 +187,16 @@ export class AgentExecutionRuntime {
 
     async start(root: string, folderUri: string, taskId: string, offeredGrant: ExecutionGrant,
         hostedAuthorized: boolean): Promise<AgentRun> {
+        return this.startInternal(root, folderUri, taskId, offeredGrant, hostedAuthorized, false);
+    }
+
+    async startSequence(root: string, folderUri: string, taskId: string, offeredGrant: ExecutionGrant,
+        hostedAuthorized: boolean): Promise<AgentRun> {
+        return this.startInternal(root, folderUri, taskId, offeredGrant, hostedAuthorized, true);
+    }
+
+    private async startInternal(root: string, folderUri: string, taskId: string, offeredGrant: ExecutionGrant,
+        hostedAuthorized: boolean, sequence: boolean): Promise<AgentRun> {
         if (this.disposed) throw new Error('Agent Runtime disposed');
         if (await this.store.root(folderUri) !== root) throw new Error('Accepted project root does not match attached project');
         const prior = this.active.get(root);
@@ -194,8 +216,8 @@ export class AgentExecutionRuntime {
                 throw new Error('A mutation run requires restart reconciliation before another start');
             const task = await this.store.readTask(root, taskId);
             if (!task) throw new Error('Persisted AgentTask required');
-            if (task.origin.kind !== 'direct' || task.authority.profile !== 'phase-8b-project')
-                throw new Error('Only a direct Phase 8B AgentTask can start');
+            if (task.origin.kind !== (sequence ? 'phase-stack' : 'direct') || task.authority.profile !== 'phase-8b-project')
+                throw new Error('AgentTask origin does not match execution path');
             const grant = parseExecutionGrant(offeredGrant);
             if (grant.taskId !== task.id || grant.projectRoot !== task.projectRoot ||
                 grant.acceptedAt < task.createdAt)
@@ -218,18 +240,23 @@ export class AgentExecutionRuntime {
                 provenance: selected.provenance }));
             await this.event(active, 'status', 'Agent run started', { status: 'running' });
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
-            const handle = await selected.adapter.start({ projectRoot: root, executionRoot: active.workspace.root,
+            const request: AgentExecutionRequest = { projectRoot: root, executionRoot: active.workspace.root,
                 grant, taskId: task.id,
                 connectionId: selected.provenance.connectionId, registrationId: selected.registrationId,
                 modelId: selected.provenance.modelId,
                 prompt: `${task.objective}\n\n${task.instructions}`,
                 ...(task.controls.reasoningEffort ? { reasoningEffort: task.controls.reasoningEffort } : {}),
-                onEvent: observation => this.observed(active, observation) });
+                onEvent: observation => this.observed(active, observation) };
+            const handle = await selected.adapter.start(request);
             active.handle = handle;
             if (handle.recovery) await this.serial(active, () => this.update(active, run => ({ ...run, recovery: handle.recovery })));
             active.releaseReady();
             if (active.stopping || active.denied || this.disposed) void this.interrupt(active);
-            void this.settle(active, handle.result).catch(() => {});
+            void this.settle(active, handle.result, sequence ? selected.adapter : undefined, request).catch(async () => {
+                // A failed evidence write must not leave a live workspace or a held mutation slot.
+                await this.finish(active, 'interrupted', 'interrupted',
+                    'Agent execution could not record completion').catch(() => {});
+            });
             return active.run!;
         } catch (error) {
             active.releaseReady();
@@ -249,16 +276,52 @@ export class AgentExecutionRuntime {
         }
     }
 
-    private async settle(active: Active, result: Promise<void>): Promise<void> {
+    private async settle(active: Active, result: Promise<void>, retryAdapter?: AgentExecutionAdapter,
+        request?: AgentExecutionRequest): Promise<void> {
         let failed = false;
-        try { await result; } catch { failed = true; }
+        let capacityExhausted = false;
+        for (let retry = 0; ; ) {
+            let error: unknown;
+            try { await result; } catch (caught) { error = caught; }
+            if (!error) break;
+            failed = true;
+            if (!retryAdapter || !request || active.stopping || active.denied ||
+                active.interruptionFailed || !isModelCapacityFailure(error)) break;
+            if (retry >= 3) { capacityExhausted = true; break; }
+            retry++;
+            active.handle = undefined;
+            await this.serial(active, async () => {
+                await this.update(active, run => ({ ...run, capacityRetries: retry }));
+                await this.event(active, 'status', `Model at capacity; retry ${retry}/3 after 20 seconds`,
+                    { status: 'running' });
+            });
+            await new Promise<void>(resolveWait => {
+                const timer = setTimeout(() => { active.wakeWait = undefined; resolveWait(); }, this.capacityRetryDelayMs);
+                active.wakeWait = () => { clearTimeout(timer); active.wakeWait = undefined; resolveWait(); };
+                if (active.stopping || this.disposed) active.wakeWait();
+            });
+            if (active.stopping || this.disposed) break;
+            try {
+                const handle = await retryAdapter.start({ ...request,
+                    prompt: `CAPACITY RETRY CONTINUATION\nA previous attempt of this same AgentTask stopped because the model was at capacity. ` +
+                        `Inspect the current ExecutionWorkspace and continue from its partial candidate state.\n\n${request.prompt}` });
+                active.handle = handle;
+                if (active.stopping) void this.interrupt(active);
+                result = handle.result;
+                failed = false;
+                active.interrupting = undefined;
+            } catch (caught) { result = Promise.reject(caught); result.catch(() => {}); }
+        }
         if (active.interrupting) await active.interrupting;
         await active.tail;
         const task = active.run ? await this.store.readTask(active.root, active.run.taskId) : undefined;
         const validationMissing = Boolean(!failed && !active.stopping && !active.denied &&
             task?.completion.requireValidationPass &&
             task.completion.validation.some(target => active.run?.validationResults.slice().reverse().find(result =>
-                result.kind === target.kind && result.label === target.label)?.status !== 'passed'));
+                result.kind === target.kind && result.label === target.label)?.status !== 'passed') ||
+            !failed && task?.origin.kind === 'phase-stack' && active.run?.validationResults.some(result =>
+                result.status === 'failed' && active.run?.validationResults.slice().reverse().find(last =>
+                    last.kind === result.kind && last.label === result.label)?.status === 'failed'));
         let promotionBlocked = false;
         let promotionError = false;
         let promotionSucceeded = false;
@@ -286,11 +349,12 @@ export class AgentExecutionRuntime {
         const status = active.denied || validationMissing || promotionBlocked ? 'failed' : promotionSucceeded ? 'completed' : active.stopping ?
             active.interruptionFailed ? 'interrupted' : 'cancelled' : failed ? 'failed' : 'completed';
         const code = promotionError ? 'other' : active.denied || promotionBlocked ? 'authority-denied' : validationMissing ? 'validation-failed' : promotionSucceeded ? undefined : active.stopping ?
-            active.interruptionFailed ? 'interrupted' : 'cancelled' : failed ? 'provider-error' : undefined;
+            active.interruptionFailed ? 'interrupted' : 'cancelled' : capacityExhausted ? 'capacity-exhausted' : failed ? 'provider-error' : undefined;
         await this.finish(active, status, code, promotionError ? 'Candidate promotion failed; inspect applied files' :
             active.denied || promotionBlocked ? 'Execution authority denied' :
             validationMissing ? 'Required validation did not pass' :
             status === 'completed' ? 'Agent run completed' : active.stopping ? 'Agent run stopped' :
+                capacityExhausted ? 'Model capacity retries exhausted' :
                 'Agent execution failed');
     }
 
@@ -332,6 +396,7 @@ export class AgentExecutionRuntime {
         let transitionFailed = false;
         if (!active.stopping) {
             active.stopping = true;
+            active.wakeWait?.();
             try {
                 await this.serial(active, async () => {
                     if (active.run?.status === 'running') {

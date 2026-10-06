@@ -18,6 +18,8 @@ export interface AgentTask {
     projectId?: string; modelPolicy: AgentModelPolicy; controls: ExecutionControls;
     authority: { profile: 'phase-8b-project' }; completion: CompletionPolicy;
     origin: AgentOrigin; planningMapId?: string;
+    phaseStack?: { stackFingerprint: string; recommendedModel: 'gpt-6-sol';
+        versionPolicy: { kind: 'target' | 'unchanged'; version: string } };
 }
 export type AgentRunStatus = 'pending' | 'running' | 'blocked' | 'cancelling' |
     'cancelled' | 'failed' | 'completed' | 'interrupted';
@@ -57,7 +59,8 @@ export interface AgentRun {
     validationBasis?: 'execution-workspace'; candidateDelta?: CandidateDelta;
     authorityDecision?: AuthorityDecision; appliedFiles?: string[];
     recovery?: { adapterId: string; handle: string }; outcome?: { code: 'authority-denied' | 'provider-error' |
-        'validation-failed' | 'cancelled' | 'interrupted' | 'other'; summary: string };
+        'validation-failed' | 'capacity-exhausted' | 'cancelled' | 'interrupted' | 'other'; summary: string };
+    capacityRetries?: number;
 }
 export interface AgentRunEvent {
     version: typeof AGENT_SCHEMA_VERSION; runId: string; sequence: number; at: string;
@@ -143,7 +146,7 @@ export function parseAgentModelPolicy(value: unknown): AgentModelPolicy {
 }
 export function parseAgentTask(value: unknown): AgentTask {
     const x = record(value, ['version', 'id', 'createdAt', 'objective', 'instructions', 'projectRoot',
-        'projectId', 'modelPolicy', 'controls', 'authority', 'completion', 'origin', 'planningMapId']);
+        'projectId', 'modelPolicy', 'controls', 'authority', 'completion', 'origin', 'planningMapId', 'phaseStack']);
     const controls = record(x.controls, ['reasoningEffort']);
     const authority = record(x.authority, ['profile']);
     const completion = record(x.completion, ['validation', 'requireValidationPass']);
@@ -155,6 +158,13 @@ export function parseAgentTask(value: unknown): AgentTask {
     const parsedOrigin: AgentOrigin = kind === 'direct' ? { kind } : kind === 'phase-stack' ?
         { kind, promptId: id(origin.promptId) } : kind === 'work-item' ?
             { kind, workItemId: id(origin.workItemId) } : { kind, sessionId: id(origin.sessionId) };
+    if (kind === 'phase-stack' !== (x.phaseStack !== undefined)) throw new Error('Phase-stack snapshot required only for phase-stack tasks');
+    const phaseStack = x.phaseStack === undefined ? undefined : record(x.phaseStack,
+        ['stackFingerprint', 'recommendedModel', 'versionPolicy']);
+    const versionPolicy = phaseStack ? record(phaseStack.versionPolicy, ['kind', 'version']) : undefined;
+    if (phaseStack && (typeof phaseStack.stackFingerprint !== 'string' || !/^[a-f0-9]{64}$/u.test(phaseStack.stackFingerprint) ||
+        phaseStack.recommendedModel !== 'gpt-6-sol' ||
+        !/^\d+\.\d+\.\d+$/u.test(String(versionPolicy?.version)))) throw new Error('Invalid phase-stack snapshot');
     const validation = array(completion.validation, 12, item => {
         const target = record(item, ['kind', 'label', 'command']);
         return { kind: select(target.kind, ['test', 'build', 'typecheck'] as const), label: bounded(target.label, 160),
@@ -170,7 +180,10 @@ export function parseAgentTask(value: unknown): AgentTask {
             { reasoningEffort: select(controls.reasoningEffort, ['low', 'medium', 'high', 'xhigh'] as const) }) },
         authority: { profile: 'phase-8b-project' },
         completion: { validation, requireValidationPass: bool(completion.requireValidationPass) },
-        origin: parsedOrigin, ...(x.planningMapId === undefined ? {} : { planningMapId: id(x.planningMapId) }) });
+        origin: parsedOrigin, ...(x.planningMapId === undefined ? {} : { planningMapId: id(x.planningMapId) }),
+        ...(phaseStack && versionPolicy ? { phaseStack: { stackFingerprint: phaseStack.stackFingerprint as string,
+            recommendedModel: 'gpt-6-sol', versionPolicy: {
+                kind: select(versionPolicy.kind, ['target', 'unchanged'] as const), version: versionPolicy.version as string } } } : {}) });
 }
 export function parseExecutionProvenance(value: unknown): ExecutionProvenance {
     const x = record(value, ['version', 'connectionId', 'modelId', 'providerId', 'runtimeKind', 'adapterId', 'policyRevision']);
@@ -248,7 +261,7 @@ export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
         'projectRoot', 'projectId', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis',
         'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome',
-        'validationBasis', 'candidateDelta', 'authorityDecision', 'appliedFiles', 'executionWorkspace']);
+        'validationBasis', 'candidateDelta', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
     const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
@@ -300,8 +313,9 @@ export function parseAgentRun(value: unknown): AgentRun {
         ...(appliedFiles === undefined ? {} : { appliedFiles }),
         ...(recovery === undefined ? {} : { recovery: { adapterId: id(recovery.adapterId),
             handle: bounded(recovery.handle, 256) } }),
+        ...(x.capacityRetries === undefined ? {} : { capacityRetries: integer(x.capacityRetries, 3) }),
         ...(outcome === undefined ? {} : { outcome: { code: select(outcome.code,
-            ['authority-denied', 'provider-error', 'validation-failed', 'cancelled', 'interrupted', 'other'] as const),
+            ['authority-denied', 'provider-error', 'validation-failed', 'capacity-exhausted', 'cancelled', 'interrupted', 'other'] as const),
             summary: bounded(outcome.summary, 1000) } }) });
 }
 export function parseAgentRunEvent(value: unknown): AgentRunEvent {

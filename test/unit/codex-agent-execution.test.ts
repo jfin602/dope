@@ -8,6 +8,14 @@ import test from 'node:test';
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/index.js';
 import { CodexAgentExecutionAdapter, mutationConfig } from '../../packages/theia-extension/lib/node/codex-agent-execution.js';
+import { providerFailure } from '../../packages/theia-extension/lib/node/codex-rpc-process.js';
+
+test('Codex capacity failure is narrowly sanitized for retry', () => {
+    assert.equal(providerFailure({ code: 'model_at_capacity' }).message, 'Codex model at capacity');
+    assert.equal(providerFailure({ message: 'Service is at capacity; try again later' }).message,
+        'Codex model at capacity');
+    assert.notEqual(providerFailure({ code: 'rate_limit_exceeded' }).message, 'Codex model at capacity');
+});
 
 type Message = { id?: number; method?: string; params?: any };
 class FakeChild extends EventEmitter {

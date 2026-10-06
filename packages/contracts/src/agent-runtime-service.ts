@@ -1,4 +1,5 @@
-import type { AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence, ExecutionGrant, ImportedStack } from '@dope/agent-core';
+import type { AgentModelPolicy, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence,
+    CompletionPolicy, ExecutionGrant, ImportedStack } from '@dope/agent-core';
 
 export const agentRuntimeServicePath = '/services/dope/agent-runtime';
 export const AgentRuntimeService = Symbol('AgentRuntimeService');
@@ -17,6 +18,11 @@ export interface AgentRuntimeService {
     readSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence | undefined>;
     listSequences(projectHandle: string): Promise<AgentTaskSequence[]>;
     reconcileSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
+    prepareSequenceTask(projectHandle: string, sequenceId: string, modelPolicy: AgentModelPolicy,
+        completion: CompletionPolicy): Promise<AgentTask>;
+    startSequence(projectHandle: string, folderUri: string, sequenceId: string, grant: ExecutionGrant,
+        hostedProjectDataAuthorized: boolean): Promise<AgentRun>;
+    stopSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
     readEvents(projectHandle: string, runId: string, afterSequence: number, limit: number): Promise<{
         events: AgentRunEvent[]; nextSequence: number; hasMore: boolean;
     }>;

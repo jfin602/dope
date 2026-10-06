@@ -211,8 +211,13 @@ export class AgentStore {
         await this.locked(dir, async () => {
             const current = await this.readSequence(root, old.id);
             if (!current || !same(current, old)) throw new Error('Stale agent sequence; re-read before updating');
+            const advanced = next.currentEntryNumber > current.currentEntryNumber &&
+                next.checkpoints.some(checkpoint => checkpoint.entryNumber === current.currentEntryNumber &&
+                    checkpoint.taskId === current.taskId && checkpoint.runId === current.runIds?.at(-1));
             if (!same(current.stack, next.stack) || !same(current.basis, next.basis) ||
                 current.createdAt !== next.createdAt || next.updatedAt < current.updatedAt ||
+                !advanced && current.taskId && current.taskId !== next.taskId ||
+                !advanced && (current.runIds ?? []).some((runId, index) => next.runIds?.[index] !== runId) ||
                 next.checkpoints.length < current.checkpoints.length ||
                 current.checkpoints.some((checkpoint, index) => !same(checkpoint, next.checkpoints[index])) ||
                 next.currentEntryNumber < current.currentEntryNumber &&
@@ -287,7 +292,7 @@ export class AgentStore {
     async createRun(root: string, value: AgentRun): Promise<AgentRun> {
         const run = checked(value, parseAgentRun);
         if (run.status !== 'pending' || run.changedFiles.length || run.validationResults.length || run.changeSummary || run.outcome || run.finalGit || run.commandEvidence?.length ||
-            run.candidateDelta || run.authorityDecision || run.appliedFiles?.length)
+            run.candidateDelta || run.authorityDecision || run.appliedFiles?.length || run.capacityRetries)
             throw new Error('New agent run must be empty and pending');
         const task = await this.readTask(root, run.taskId);
         if (!task || task.projectId !== run.projectId || !same(task.modelPolicy, run.requestedPolicy)) throw new Error('Agent run does not match task');
@@ -324,6 +329,7 @@ export class AgentStore {
                 current.authorityDecision && !same(current.authorityDecision, next.authorityDecision) ||
                 current.appliedFiles && !same(current.appliedFiles, next.appliedFiles) ||
                 current.validationBasis && current.validationBasis !== next.validationBasis ||
+                (current.capacityRetries ?? 0) > (next.capacityRetries ?? 0) ||
                 (!next.finalGit && current.changedFiles.some((file, index) => next.changedFiles[index] !== file)) ||
                 current.validationResults.some((item, index) => !same(item, next.validationResults[index])) ||
                 current.commandEvidence?.some((item, index) => !same(item, next.commandEvidence?.[index])))

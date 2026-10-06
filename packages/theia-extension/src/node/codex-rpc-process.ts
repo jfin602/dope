@@ -1,5 +1,6 @@
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
+import { isModelCapacityFailure } from '@dope/agent-core';
 
 const failure = (message: string, kind: ModelRuntimeFailure['failureClass']) => new ModelRuntimeFailure(message, kind);
 const object = (value: unknown): Record<string, any> | undefined =>
@@ -8,6 +9,10 @@ export function providerFailure(value: unknown): ModelRuntimeFailure {
     const error = object(value);
     const code = typeof error?.code === 'string' ? error.code :
         typeof object(error?.error)?.code === 'string' ? object(error?.error)!.code as string : '';
+    const message = typeof error?.message === 'string' ? error.message :
+        typeof object(error?.error)?.message === 'string' ? object(error?.error)!.message as string : '';
+    if (isModelCapacityFailure(new Error(code)) || isModelCapacityFailure(new Error(message)))
+        return failure('Codex model at capacity', 'transient-upstream');
     if (['subscription_sharing_usage_limit_exceeded', 'subscription_sharing_usage_unavailable',
         'subscription_sharing_user_unavailable'].includes(code)) return failure('ChatGPT plan usage unavailable', 'transient-upstream');
     if (['subscription_sharing_invalid_user', 'chatpass_v2_scope_not_authorized',

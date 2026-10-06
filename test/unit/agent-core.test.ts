@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { AGENT_SCHEMA_VERSION, EFFECT_KINDS, RUN_STATUSES, canTransitionAgentRun,
-    checkEffect, createDefaultExecutionGrant, parseAgentRun, parseAgentRunEvent, parseAgentTask,
+    checkEffect, createDefaultExecutionGrant, isModelCapacityFailure, parseAgentRun, parseAgentRunEvent, parseAgentTask,
     parseChangeSummary, parseExecutionGrant, parseExecutionProvenance, parseValidationResult,
     reviseExecutionGrant, transitionAgentRun } from '../../packages/agent-core/lib/index.js';
 
@@ -18,13 +18,25 @@ const run = () => ({ version: 1, id: 'run-1', taskId: 'task-1', status: 'pending
     grantId: 'grant-1', grantRevision: 0, requestedPolicy: { kind: 'follow-coding-agent' },
     projectRoot: '.', createdAt: now, changedFiles: [], validationResults: [] });
 
+test('capacity classifier accepts explicit capacity only', () => {
+    for (const message of ['model_at_capacity', 'Model at capacity; try again later',
+        'Service is at capacity', 'at capacity, try again'])
+        assert.equal(isModelCapacityFailure(new Error(message)), true);
+    for (const message of ['rate limit exceeded', 'quota exceeded', 'context window capacity',
+        'connection unavailable', 'provider failed'])
+        assert.equal(isModelCapacityFailure(new Error(message)), false);
+    assert.equal(isModelCapacityFailure({ message: 'model_at_capacity' }), false);
+});
+
 test('task parsing is versioned, strict, portable and supports all origins', () => {
     const parsed = parseAgentTask(task());
     assert.deepEqual(parsed, task());
     assert.equal(Object.isFrozen(parsed.completion.validation), true);
     for (const origin of [{ kind: 'direct' }, { kind: 'phase-stack', promptId: 'P1' },
         { kind: 'work-item', workItemId: 'work-1' }, { kind: 'future-session', sessionId: 'session-1' }])
-        assert.deepEqual(parseAgentTask({ ...task(), origin }).origin, origin);
+        assert.deepEqual(parseAgentTask({ ...task(), origin, ...(origin.kind === 'phase-stack' ? {
+            phaseStack: { stackFingerprint: 'a'.repeat(64), recommendedModel: 'gpt-6-sol',
+                versionPolicy: { kind: 'target', version: '0.8.16' } } } : {}) }).origin, origin);
     assert.deepEqual(parseAgentTask({ ...task(), modelPolicy: { kind: 'exact',
         connectionId: 'connection-1', modelId: 'org/model-1' } }).modelPolicy,
         { kind: 'exact', connectionId: 'connection-1', modelId: 'org/model-1' });

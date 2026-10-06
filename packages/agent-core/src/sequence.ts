@@ -1,4 +1,4 @@
-import { AgentOrigin, ExecutionControls, freeze, id, integer, record, select, timestamp } from './contracts';
+import { ExecutionControls, array, freeze, id, integer, record, select, timestamp } from './contracts';
 
 export const SEQUENCE_SCHEMA_VERSION = 1 as const;
 export type StackMode = 'phase' | 'correction';
@@ -23,13 +23,16 @@ export interface AgentTaskSequence {
     version: typeof SEQUENCE_SCHEMA_VERSION; id: string; createdAt: string; updatedAt: string;
     status: SequenceStatus; currentEntryNumber: number; stack: ImportedStack;
     basis: SequenceBasis; checkpoints: SequenceCheckpoint[]; blockedReason?: SequenceBlockReason;
+    taskId?: string; runIds?: string[];
 }
 export interface SequenceBasis { head: string; packageVersion: string; worktreeFingerprint: string }
 export interface SequenceCheckpoint { entryNumber: number; sha: string; taskId?: string; runId?: string }
 export type SequenceBlockReason = 'source-drift' | 'git-history' | 'checkpoint-mismatch' |
-    'version-mismatch' | 'head-drift' | 'worktree-drift' | 'interrupted' | 'completion-unsupported';
+    'version-mismatch' | 'head-drift' | 'worktree-drift' | 'interrupted' | 'completion-unsupported' |
+    'run-failed' | 'run-cancelled' | 'authority-denied' | 'validation-failed' |
+    'capacity-exhausted' | 'checkpoint-pending';
 export interface PhaseStackTaskMetadata {
-    objective: string; instructions: string; origin: AgentOrigin; controls: ExecutionControls;
+    objective: string; instructions: string; origin: { kind: 'phase-stack'; promptId: string }; controls: ExecutionControls;
     recommendedModel: 'gpt-6-sol'; versionPolicy: VersionPolicy; stackFingerprint: string;
 }
 export interface PromptSource { filename: string; text: string }
@@ -211,7 +214,7 @@ export function transitionSequence(from: SequenceStatus, to: SequenceStatus): Se
 }
 export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskSequence> {
     const x = record(value, ['version', 'id', 'createdAt', 'updatedAt', 'status', 'currentEntryNumber', 'stack',
-        'basis', 'checkpoints', 'blockedReason']);
+        'basis', 'checkpoints', 'blockedReason', 'taskId', 'runIds']);
     if (x.version !== SEQUENCE_SCHEMA_VERSION) throw new Error('Invalid sequence schema version');
     const stack = await parseImportedStack(x.stack);
     const status = select(x.status, SEQUENCE_STATUSES);
@@ -244,13 +247,20 @@ export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskS
         new Set(checkpoints.map(checkpoint => checkpoint.sha)).size !== checkpoints.length)
         throw new Error('Sequence position disagrees with checkpoints');
     const reasons: SequenceBlockReason[] = ['source-drift', 'git-history', 'checkpoint-mismatch',
-        'version-mismatch', 'head-drift', 'worktree-drift', 'interrupted', 'completion-unsupported'];
+        'version-mismatch', 'head-drift', 'worktree-drift', 'interrupted', 'completion-unsupported',
+        'run-failed', 'run-cancelled', 'authority-denied', 'validation-failed', 'capacity-exhausted', 'checkpoint-pending'];
     const blockedReason = x.blockedReason === undefined ? undefined : select(x.blockedReason, reasons);
     if (blockedReason && status !== 'blocked' && status !== 'interrupted') throw new Error('Invalid sequence block reason');
+    const taskId = x.taskId === undefined ? undefined : id(x.taskId);
+    const runIds = x.runIds === undefined ? [] : array(x.runIds, 20, id);
+    if (runIds.length && !taskId || new Set(runIds).size !== runIds.length ||
+        taskId && stack.entries[currentEntryNumber - 1]?.execution !== 'agent-task')
+        throw new Error('Invalid sequence task/run identity');
     return freeze({ version: SEQUENCE_SCHEMA_VERSION, id: id(x.id), createdAt, updatedAt,
         status, currentEntryNumber, stack, basis: { head: basisValue.head, packageVersion: basisValue.packageVersion,
             worktreeFingerprint: basisValue.worktreeFingerprint }, checkpoints,
-        ...(blockedReason ? { blockedReason } : {}) });
+        ...(blockedReason ? { blockedReason } : {}), ...(taskId ? { taskId } : {}),
+        ...(runIds.length ? { runIds } : {}) });
 }
 export function phaseStackTaskMetadata(stack: ImportedStack, entryNumber: number): PhaseStackTaskMetadata {
     const entry = stack.entries[entryNumber - 1];
