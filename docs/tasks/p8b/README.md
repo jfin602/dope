@@ -1,6 +1,6 @@
 # Product Phase 8B — Agent Execution Core Task Stack
 
-Status: **READY FOR EXECUTION**
+Status: **P7 CLOSED NOT GREEN / PHASE 8B NOT QUALIFIED**; see [closeout](closeout.md).
 Execution folder: `p8b`
 Product slice: Phase 8B — Agent execution core
 Baseline: package `0.8.6` at `bdf01b1cf518e44b8187a40db5d199fac7ad693b`
