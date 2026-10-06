@@ -669,6 +669,18 @@ AgentTask/AgentRun persistence is project-local and presentation-independent:
   runs/<run-id>/run.json
   runs/<run-id>/events.jsonl
 ```
+Phase 8C adds durable sequence orchestration:
+
+```text
+.dope/agent/
+  sequences/<sequence-id>.json
+```
+
+PhaseStackAdapter imports a normalized immutable stack snapshot/fingerprint and never shells out to the external phase runner as product runtime.
+
+Sequence progression is jointly constrained by durable AgentTaskSequence state and authoritative Git/version/worktree truth. Git proves checkpoint commits; sequence state explains imported intent/current gate. If they disagree or the source stack drifts, automatic resume blocks.
+
+The 8C checkpoint path is a Dope-owned authority boundary layered after successful ADR 0028 promotion and validation. The provider never stages or commits. Checkpoint scope is verified before staging and excludes ordinary `.dope/agent/**` runtime state. Restart cannot duplicate an already verified checkpoint.
 
 This is Dope work state and is excluded from generic Physical Map input just like other `.dope/` work state. Provider tokens, hidden reasoning and arbitrary environment dumps are forbidden.
 
