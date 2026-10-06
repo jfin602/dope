@@ -1,6 +1,6 @@
 # Product Phase 8B — Agent Execution Core Task Stack
 
-Status: **P7 CLOSED NOT GREEN / PHASE 8B NOT QUALIFIED — ITERATIVE QUALIFICATION/REPAIR LOOP ACTIVE**; see [closeout](closeout.md) and [repair loop](../c8-p8b-qualification-loop/README.md).
+Status: **P7 CLOSED NOT GREEN / PHASE 8B NOT QUALIFIED — QUALIFICATION LOOP STOPPED AFTER CYCLE 1 AT AN AUTHORITY ARCHITECTURE GAP**; see [closeout](closeout.md) and [repair loop](../c8-p8b-qualification-loop/README.md).
 Execution folder: `p8b`
 Product slice: Phase 8B — Agent execution core
 Baseline: package `0.8.6` at `bdf01b1cf518e44b8187a40db5d199fac7ad693b`
@@ -73,4 +73,4 @@ Those remain later Phase 8/9/10 work.
 
 ## Closeout routing
 
-P7 closed **Phase 8B Not Green / Not Qualified**. Run the bounded `c8-p8b-qualification-loop` at unchanged `0.8.13` for at most five cycles. Route to fresh Phase 8C planning only if that loop produces a Green / Qualified exact candidate.
+P7 closed **Phase 8B Not Green / Not Qualified**. The bounded `c8-p8b-qualification-loop` stopped after Cycle 1 at an enforceability gap in the fixed grant; the version remains `0.8.13`. Route to fresh authority architecture review. Phase 8C planning remains gated on a later Green / Qualified 8B candidate.

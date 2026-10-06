@@ -1,6 +1,6 @@
 # Phase 8B Iterative Qualification / Repair Loop
 
-Status: **ACTIVE — PHASE 8B NOT GREEN / NOT QUALIFIED**
+Status: **STOPPED AFTER CYCLE 1 — PHASE 8B NOT GREEN / NOT QUALIFIED; ARCHITECTURE DECISION REQUIRED**
 Date: 2026-10-06
 Folder: `c8-p8b-qualification-loop`
 Version policy: **keep Phase 8B at `0.8.13`**
@@ -103,3 +103,9 @@ Use:
 Record every cycle in:
 
 `docs/tasks/c8-p8b-qualification-loop/cycle-evidence.md`
+
+## Cycle 1 disposition
+
+The installed `codex-cli 0.155.1` sandbox startup defect was isolated to `:root = "deny"` hiding the resolved standalone Codex ELF. An exact read allowance for that executable starts the sandbox in a disposable config. Under that executing profile, a shell command could delete a tracked project file while ordinary project writes remained allowed. This violates the fixed 8B `destructive = false` grant. The product source was left fail-closed; a startup-only change would not qualify the grant.
+
+The loop stops after one cycle under its architecture-gap rule. No eligible live target, model mutation, cancellation, active-run restart, or persisted live-run security gate was reached. Phase 8C remains gated. Route the conflict between arbitrary project write/process access and denied destructive project effects to a fresh docs/architecture review before considering another implementation or qualification loop. See [Cycle 1 evidence](cycle-evidence.md) and the retained [P7 closeout](../p8b/closeout.md).
