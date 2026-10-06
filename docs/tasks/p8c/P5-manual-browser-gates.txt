@@ -1,0 +1,38 @@
+TASK: Phase 8 / P5 — Manual and browser gate reconciliation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.18`.
+
+GOAL
+Implement durable manual/browser/final-closeout gates so a sequence stops visibly and resumes only when external Git/version truth proves coherent completion.
+
+REQUIREMENTS
+- Any imported implementation entry with `Browser required: yes.` is waiting-manual and is not sent to Coding Agent.
+- The final closeout entry is always a terminal manual gate in 8C, regardless of Browser flag.
+- Persist exact snapshotted prompt text, model/reasoning metadata, expected version policy, entry number and pre-gate Git/version basis.
+- No later task can start while a manual gate is pending.
+- Expose a backend operation to reconcile a pending gate after external/manual work. It must re-read current HEAD/history, package/version/worktree and source-stack fingerprint.
+- A UI/user Resume signal is only a request to reconcile; it never itself marks the gate complete.
+- Recognize coherent external completion only when repository/Git/version evidence matches the imported gate contract and completed-prefix rules.
+- If the external manual operation intentionally produces a checkpoint, record its reachable SHA only after verification; do not create a duplicate Dope commit.
+- If manual work leaves an uncommitted or ambiguous state, keep the gate blocked and explain the required next action.
+- Restart reopens the same pending gate without running any provider task.
+- Source-stack drift or unexpected history change blocks.
+
+FOCUSED VALIDATION
+- Browser-required implementation gate.
+- Final closeout gate.
+- No later task starts.
+- Restart same-gate persistence.
+- Resume button without Git/version evidence performs reconciliation only.
+- Valid externally completed checkpoint advances safely.
+- Wrong version/unreachable/ambiguous checkpoint and dirty state remain blocked.
+- No duplicate checkpoint.
+- Affected integration tests/builds and git diff --check/version/no-root-lock.
+
+DEFER
+Rich manual workflow tooling and browser automation are not part of 8C.
