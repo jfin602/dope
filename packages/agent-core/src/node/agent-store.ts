@@ -211,15 +211,24 @@ export class AgentStore {
         await this.locked(dir, async () => {
             const current = await this.readSequence(root, old.id);
             if (!current || !same(current, old)) throw new Error('Stale agent sequence; re-read before updating');
-            const advanced = next.currentEntryNumber > current.currentEntryNumber &&
-                next.checkpoints.some(checkpoint => checkpoint.entryNumber === current.currentEntryNumber &&
-                    checkpoint.taskId === current.taskId && checkpoint.runId === current.runIds?.at(-1));
-            if (!same(current.stack, next.stack) || !same(current.basis, next.basis) ||
+            const advanced = next.currentEntryNumber === current.currentEntryNumber + 1 &&
+                next.checkpoints.length === current.checkpoints.length + 1 &&
+                next.checkpoints.at(-1)?.entryNumber === current.currentEntryNumber &&
+                (current.stack.entries[current.currentEntryNumber - 1]?.execution === 'manual-gate' ?
+                    !current.taskId && !current.runIds?.length && !next.checkpoints.at(-1)?.taskId &&
+                        !next.checkpoints.at(-1)?.runId :
+                    next.checkpoints.at(-1)?.taskId === current.taskId &&
+                        next.checkpoints.at(-1)?.runId === current.runIds?.at(-1));
+            const nextBasis = advanced && next.basis.head === next.checkpoints.at(-1)?.sha &&
+                next.basis.packageVersion === current.stack.entries[current.currentEntryNumber - 1]?.versionPolicy.version &&
+                next.basis.worktreeFingerprint === current.basis.worktreeFingerprint;
+            if (!same(current.stack, next.stack) || !(advanced ? nextBasis : same(current.basis, next.basis)) ||
                 current.createdAt !== next.createdAt || next.updatedAt < current.updatedAt ||
                 !advanced && current.taskId && current.taskId !== next.taskId ||
                 !advanced && (current.runIds ?? []).some((runId, index) => next.runIds?.[index] !== runId) ||
                 next.checkpoints.length < current.checkpoints.length ||
                 current.checkpoints.some((checkpoint, index) => !same(checkpoint, next.checkpoints[index])) ||
+                next.currentEntryNumber > current.currentEntryNumber && !advanced ||
                 next.currentEntryNumber < current.currentEntryNumber &&
                     !(current.status === 'completed' && next.status === 'blocked' && next.blockedReason &&
                         next.currentEntryNumber === current.currentEntryNumber - 1) ||

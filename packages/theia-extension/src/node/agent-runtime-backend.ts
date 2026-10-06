@@ -5,7 +5,8 @@ import type { AgentModelPolicy, AgentRun, AgentTask, AgentTaskSequence, Completi
     ExecutionGrant, ImportedStack, SequenceBlockReason } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureSequenceEvidence, importSequenceSnapshot, sequenceBlockReason,
-    stackSourceDrift } from '@dope/agent-core/lib/node/sequence-reconciliation';
+    stackSourceDrift, verifyManualGate } from '@dope/agent-core/lib/node/sequence-reconciliation';
+import type { ManualGateReconciliation } from '@dope/agent-core/lib/node/sequence-reconciliation';
 import { assertDirtyBasis, captureDirtyBasis, safeGit } from '@dope/agent-core/lib/node/dirty-basis';
 import { checkpointSequence as commitCheckpoint } from '@dope/agent-core/lib/node/sequence-checkpoint';
 import type { AgentRuntimeClient, AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
@@ -74,6 +75,41 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         const root = this.active(handle), sequence = await this.store.readSequence(root, sequenceId);
         if (!sequence) throw new Error('Agent sequence missing');
         return this.reconcileStoredSequence(root, sequence);
+    }
+    async reconcileManualGate(handle: string, sequenceId: string): Promise<AgentTaskSequence> {
+        const root = this.active(handle);
+        if (checkpointProjects.has(root) || this.execution?.activeRunId(root))
+            throw new Error('Project execution or checkpoint is active');
+        checkpointProjects.add(root);
+        try {
+            const sequence = await this.store.readSequence(root, sequenceId);
+            if (!sequence) throw new Error('Agent sequence missing');
+            const entry = sequence.stack.entries[sequence.currentEntryNumber - 1];
+            if (!entry || entry.execution !== 'manual-gate' ||
+                !['waiting-manual', 'blocked'].includes(sequence.status))
+                throw new Error('Sequence has no pending manual gate');
+            const result: ManualGateReconciliation = await verifyManualGate(root, sequence).catch(() => ({
+                reason: 'git-history' as const,
+                message: 'Repository evidence could not be read consistently. Inspect Git history and retry.'
+            }));
+            if (!result.sha) {
+                const status = result.reason ? 'blocked' : 'waiting-manual';
+                if (sequence.status === status && sequence.blockedReason === result.reason &&
+                    sequence.gateMessage === result.message) return sequence;
+                return this.setSequence(root, sequence, { status, blockedReason: result.reason,
+                    gateMessage: result.message });
+            }
+            const nextNumber = sequence.currentEntryNumber + 1;
+            const next = sequence.stack.entries[nextNumber - 1];
+            return this.setSequence(root, sequence, {
+                checkpoints: [...sequence.checkpoints, { entryNumber: sequence.currentEntryNumber,
+                    sha: result.sha, preGateBasis: sequence.basis }],
+                currentEntryNumber: nextNumber, status: next ?
+                    next.execution === 'manual-gate' ? 'waiting-manual' : 'ready' : 'completed',
+                blockedReason: undefined, gateMessage: undefined,
+                basis: { ...sequence.basis, head: result.sha, packageVersion: entry.versionPolicy.version }
+            });
+        } finally { checkpointProjects.delete(root); }
     }
     private async reconcileStoredSequence(root: string, sequence: AgentTaskSequence): Promise<AgentTaskSequence> {
         const activeRunId = this.execution?.activeRunId(root);

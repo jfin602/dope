@@ -75,21 +75,21 @@ test('sequence rejects secret-shaped and private-path prompt fixtures', async ()
     } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('unsupported persisted completion reconciles to an inspectable blocked manual gate', async () => {
+test('verified manual closeout completion persists its external checkpoint', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-sequence-'));
     try {
         const initial = await sequence();
         const completed = { ...initial, status: 'completed', currentEntryNumber: 4,
-            checkpoints: [{ entryNumber: 1, sha: b }, { entryNumber: 2, sha: c }] };
+            checkpoints: [{ entryNumber: 1, sha: b }, { entryNumber: 2, sha: c },
+                { entryNumber: 3, sha: 'd'.repeat(40), preGateBasis: {
+                    head: c, packageVersion: '0.8.2', worktreeFingerprint: empty } }] };
         assert.equal((await parseAgentTaskSequence(completed)).status, 'completed');
-        const history = [{ sha: c, subject: '0.8.2' }, { sha: b, subject: '0.8.1' }];
-        assert.equal(sequenceBlockReason(completed, evidence(history, '0.8.2', c), false), 'completion-unsupported');
+        const history = [{ sha: 'd'.repeat(40), subject: '0.8.3' },
+            { sha: c, subject: '0.8.2' }, { sha: b, subject: '0.8.1' }];
+        assert.equal(sequenceBlockReason(completed, evidence(history, '0.8.3', 'd'.repeat(40)), false), undefined);
         const store = new AgentStore();
         await store.createSequence(root, completed);
-        const blocked = { ...completed, status: 'blocked', currentEntryNumber: 3,
-            blockedReason: 'completion-unsupported', updatedAt: '2026-10-06T12:00:01Z' };
-        assert.deepEqual(await store.updateSequence(root, completed, blocked), blocked);
-        assert.deepEqual(await new AgentStore().readSequence(root, completed.id), blocked);
+        assert.deepEqual(await new AgentStore().readSequence(root, completed.id), completed);
     } finally { await rm(root, { recursive: true, force: true }); }
 });
 

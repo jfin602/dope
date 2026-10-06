@@ -24,8 +24,10 @@ function harness() {
         fallbacks: [], hard: { requiredCapabilities: [], locality: 'any', enabledOnly: true, usableOnly: true,
             hostedProjectData: 'requires-feature-authorization' }, preferences: [], allowFallback: false })) };
     let run: AgentRun | undefined; let task: unknown; let grant: unknown; let authorized: unknown; let stopped = false;
+    let gate: any; let reconciliations = 0;
     const runtime = { async attach() { return { projectHandle: 'handle' }; },
-        async listRuns() { return run ? [run] : []; }, async readRun() { return run; },
+        async listRuns() { return run ? [run] : []; }, async listSequences() { return gate ? [gate] : []; },
+        async reconcileManualGate() { reconciliations++; return gate; }, async readRun() { return run; },
         async readTask() { return task; }, async createTask(_handle: string, value: unknown) { task = value; return value; },
         async start(_handle: string, _uri: string, taskId: string, accepted: unknown, hosted: boolean) {
             grant = accepted; authorized = hosted;
@@ -39,6 +41,7 @@ function harness() {
         { list: async () => policy } as unknown as AIRolePolicyService, () => {});
     return { controller, runtime, get task() { return task; }, get grant() { return grant; },
         get authorized() { return authorized; }, get stopped() { return stopped; },
+        get reconciliations() { return reconciliations; }, setGate(value: unknown) { gate = value; },
         finish(status: AgentRun['status']) { run = { ...run!, status, changedFiles: ['src/a.ts'],
             validationResults: [{ version: 1, kind: 'test', label: 'unit', status: 'passed' }],
             changeSummary: { version: 1, filesChanged: 1, insertions: 2, deletions: 1, summary: 'Updated source', truncated: false } }; } };
@@ -59,6 +62,25 @@ test('direct task displays eligible target and requires explicit grant before st
     assert.equal((h.grant as { permissions: { network: boolean; 'project-modify': boolean } }).permissions['project-modify'], true);
     assert.equal(h.authorized, true); assert.equal(h.controller.selected?.status, 'running');
     await h.controller.stop(); assert.equal(h.stopped, true); assert.equal(h.controller.selected?.status, 'cancelling');
+});
+
+test('Resume requests backend gate reconciliation and restart keeps the same pending prompt', async () => {
+    const h = harness();
+    const gate = { id: 'sequence', status: 'waiting-manual', currentEntryNumber: 1,
+        stack: { entries: [{ number: 1, execution: 'manual-gate', promptText: 'Exact prompt' }] },
+        basis: { head: 'a'.repeat(40), packageVersion: '0.8.0' } };
+    h.setGate(gate);
+    await h.controller.attach('file:///project');
+    assert.equal(h.controller.sequences[0].stack.entries[0].promptText, 'Exact prompt');
+    await h.controller.resumeManualGate('sequence');
+    assert.equal(h.reconciliations, 1);
+    assert.equal(h.controller.sequences[0].status, 'waiting-manual');
+    const reopened = new AgentRunController(h.runtime as unknown as AgentRuntimeService,
+        { inventory: async () => { throw new Error('offline'); } } as unknown as AIRegistryService,
+        { list: async () => { throw new Error('offline'); } } as unknown as AIRolePolicyService, () => {});
+    await reopened.attach('file:///project');
+    assert.equal(reopened.sequences[0].id, 'sequence');
+    assert.equal(reopened.sequences[0].stack.entries[0].promptText, 'Exact prompt');
 });
 
 test('persisted terminal run is inspectable after attach with change and validation evidence', async () => {

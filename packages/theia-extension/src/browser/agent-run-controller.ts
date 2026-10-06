@@ -1,5 +1,5 @@
 import { AGENT_SCHEMA_VERSION, createDefaultExecutionGrant, parseAgentTask } from '@dope/agent-core';
-import type { AgentModelPolicy, AgentRun, AgentRunEvent, AgentTask } from '@dope/agent-core';
+import type { AgentModelPolicy, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence } from '@dope/agent-core';
 import { findEligibleModels, futureFeatureRoleRequest, resolveAIRole } from '@dope/ai';
 import type { AIInventoryState } from '@dope/contracts/lib/ai-registry-service';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
@@ -11,6 +11,7 @@ export class AgentRunController {
     project?: string;
     handle?: string;
     runs: AgentRun[] = [];
+    sequences: AgentTaskSequence[] = [];
     selected?: AgentRun;
     task?: AgentTask;
     events: AgentRunEvent[] = [];
@@ -32,7 +33,7 @@ export class AgentRunController {
 
     async attach(project?: string): Promise<void> {
         const serial = ++this.serial;
-        this.project = project; this.handle = undefined; this.runs = []; this.selected = undefined;
+        this.project = project; this.handle = undefined; this.runs = []; this.sequences = []; this.selected = undefined;
         this.task = undefined; this.events = []; this.sequence = 0; this.accepted = false;
         this.changed();
         if (!project) return;
@@ -127,14 +128,26 @@ export class AgentRunController {
         this.events = []; this.sequence = 0;
         await this.refresh();
     }
+    async resumeManualGate(sequenceId: string): Promise<void> {
+        if (!this.handle || this.busy) return;
+        this.busy = true; this.message = ''; this.changed();
+        try {
+            const result = await this.runtime.reconcileManualGate(this.handle, sequenceId);
+            this.message = result.gateMessage ?? (result.status === 'completed' ?
+                'Manual closeout checkpoint verified.' : 'Manual checkpoint verified; next entry is ready.');
+            this.sequences = await this.runtime.listSequences(this.handle);
+        } catch { this.message = 'Manual gate reconciliation failed. Inspect the repository and retry.'; }
+        finally { this.busy = false; this.changed(); }
+    }
     async refresh(): Promise<void> {
         if (!this.handle || this.refreshing) return;
         this.refreshing = true;
         const handle = this.handle;
         try {
             const before = JSON.stringify(this.runs.map(run => [run.id, run.status, run.endedAt, run.changedFiles.length, run.validationResults.length, run.changeSummary?.summary]));
+            const priorGates = JSON.stringify(this.sequences);
             const priorSequence = this.sequence;
-            this.runs = await this.runtime.listRuns(handle);
+            [this.runs, this.sequences] = await Promise.all([this.runtime.listRuns(handle), this.runtime.listSequences(handle)]);
             if (this.handle !== handle) return;
             if (this.selected) this.selected = this.runs.find(item => item.id === this.selected?.id) ?? this.selected;
             else if (this.runs.length) { this.selected = this.runs[0]; this.task = await this.runtime.readTask(handle, this.selected.taskId); }
@@ -147,7 +160,8 @@ export class AgentRunController {
                     if (!result.hasMore) break;
                 }
             }
-            if (before !== JSON.stringify(this.runs.map(run => [run.id, run.status, run.endedAt, run.changedFiles.length, run.validationResults.length, run.changeSummary?.summary])) ||
+            if (priorGates !== JSON.stringify(this.sequences) ||
+                before !== JSON.stringify(this.runs.map(run => [run.id, run.status, run.endedAt, run.changedFiles.length, run.validationResults.length, run.changeSummary?.summary])) ||
                 priorSequence !== this.sequence) this.changed();
         } catch { this.message = 'Agent Run activity could not be refreshed.'; this.changed(); }
         finally { this.refreshing = false; }

@@ -65,6 +65,26 @@ export class AgentRunWidget extends BaseWidget {
         const status = el('p', c.message || (!c.project ? 'Open one project folder to use Agent Run.' : c.targetMessage));
         status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite'); root.append(status);
         if (!c.handle) { this.content.replaceChildren(root); return; }
+        const gates = c.sequences.filter(sequence =>
+            sequence.stack.entries[sequence.currentEntryNumber - 1]?.execution === 'manual-gate' &&
+            ['waiting-manual', 'blocked'].includes(sequence.status));
+        if (gates.length) {
+            const section = el('section'); section.append(el('h3', 'Manual gates'));
+            for (const sequence of gates) {
+                const entry = sequence.stack.entries[sequence.currentEntryNumber - 1];
+                const gate = el('article'); gate.append(el('h4', `${sequence.stack.folderName} / P${entry.number} · ${entry.title}`));
+                gate.append(el('p', `${entry.kind === 'closeout' ? 'Final closeout' : 'Browser/manual'} · ${sequence.status} · ` +
+                    `${entry.recommendation.label} · ${entry.versionPolicy.kind} ${entry.versionPolicy.version}`));
+                gate.append(el('p', `Pre-gate HEAD: ${sequence.basis.head} · version ${sequence.basis.packageVersion}`));
+                gate.append(el('p', 'Complete this prompt externally, checkpoint the clean result, then request Resume.'));
+                if (sequence.blockedReason) gate.append(el('p', `Blocked: ${sequence.blockedReason}`));
+                if (sequence.gateMessage) gate.append(el('p', sequence.gateMessage));
+                const prompt = el('pre', entry.promptText); prompt.setAttribute('aria-label', `P${entry.number} snapshotted prompt`);
+                gate.append(prompt, button('Resume (verify repository)', () => void c.resumeManualGate(sequence.id), c.busy));
+                section.append(gate);
+            }
+            root.append(section);
+        }
         const form = el('section'); form.append(el('h3', 'Direct task'));
         const objectiveLabel = el('label', 'Objective'); const objective = el('input'); objective.type = 'text';
         objective.maxLength = 1000; objective.value = c.objective; objective.setAttribute('aria-label', 'Objective');

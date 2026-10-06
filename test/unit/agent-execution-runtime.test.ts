@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
+import { appendFile, mkdir, mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -42,6 +42,17 @@ async function fixture(work: (f: {
 }) => Promise<void>, policy?: any, retryDelayMs = 0) {
     const root = await mkdtemp(join(tmpdir(), 'dope-agent-lifecycle-'));
     await git('git', ['clone', '--quiet', '--shared', resolve(import.meta.dirname, '../..'), root]);
+    // Keep sequence tests independent of the live p8c checkpoint prefix and repository version.
+    const version = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).version;
+    const stackPath = join(root, 'docs/tasks/c8-lifecycle-test');
+    await mkdir(stackPath, { recursive: true });
+    await appendFile(join(root, '.git/info/exclude'), '\n/docs/tasks/c8-lifecycle-test/\n');
+    await writeFile(join(stackPath, 'P1-lifecycle.txt'), `TASK: Correction 8 / P1 — Lifecycle task\n` +
+        `- Recommended configuration: \`GPT-6 Sol High\`.\n- Browser required: no.\n` +
+        `- Required unchanged project version: \`${version}\`.\n`);
+    await writeFile(join(stackPath, 'P2-closeout.txt'), `TASK: Correction 8 / P2 — Closeout\n` +
+        `- Recommended configuration: \`GPT-6 Sol High\`.\n- Browser required: no.\n` +
+        `- Required unchanged project version: \`${version}\`.\n`);
     const store = new AgentStore();
     const adapter = new FakeAdapter();
     const connection = { id: 'codex', lifecycle: 'enabled', config: { type: 'codex', runtime: 'app-server' },
@@ -85,8 +96,8 @@ async function sequenceTerminal(store: AgentStore, root: string, sequenceId: str
 }
 
 async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: string }) {
-    const sequence = await f.backend.importSequence(f.handle, 'p8c');
-    assert.equal(sequence.currentEntryNumber, 3);
+    const sequence = await f.backend.importSequence(f.handle, 'c8-lifecycle-test');
+    assert.equal(sequence.currentEntryNumber, 1);
     const task = await f.backend.prepareSequenceTask(f.handle, sequence.id,
         { kind: 'follow-coding-agent' }, { validation: [], requireValidationPass: false });
     const accepted = createDefaultExecutionGrant({ id: 'sequence-grant', revision: 0, taskId: task.id,
@@ -96,11 +107,11 @@ async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: strin
 
 test('sequence runs only current snapshot and retries capacity in one task/workspace without early promotion', async () => fixture(async f => {
     const { sequence, task, accepted } = await preparedSequence(f);
-    assert.deepEqual(task.origin, { kind: 'phase-stack', promptId: `p8c-P3-${sequence.stack.fingerprint.slice(0, 12)}` });
-    assert.equal(task.phaseStack?.versionPolicy.version, '0.8.16');
+    assert.deepEqual(task.origin, { kind: 'phase-stack', promptId: `c8-lifecycle-test-P1-${sequence.stack.fingerprint.slice(0, 12)}` });
+    assert.equal(task.phaseStack?.versionPolicy.version, sequence.basis.packageVersion);
     assert.equal(task.phaseStack?.recommendedModel, 'gpt-6-sol');
     assert.equal(task.controls.reasoningEffort, 'high');
-    assert.equal(task.instructions, sequence.stack.entries[2].promptText);
+    assert.equal(task.instructions, sequence.stack.entries[0].promptText);
     await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true), /origin/);
     const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
     await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true), /already active/);
@@ -122,8 +133,8 @@ test('sequence runs only current snapshot and retries capacity in one task/works
     assert.equal(done.capacityRetries, 1);
     assert.equal(stopped.status, 'blocked');
     assert.equal(stopped.blockedReason, 'checkpoint-pending');
-    assert.equal(stopped.currentEntryNumber, 3);
-    assert.deepEqual(stopped.checkpoints.map(checkpoint => checkpoint.entryNumber), [1, 2]);
+    assert.equal(stopped.currentEntryNumber, 1);
+    assert.deepEqual(stopped.checkpoints.map(checkpoint => checkpoint.entryNumber), []);
     assert.deepEqual(stopped.runIds, [run.id]);
     assert.equal(await readFile(join(f.root, 'partial.txt'), 'utf8'), 'candidate');
     assert.equal((await f.backend.reconcileSequence(f.handle, sequence.id)).blockedReason, 'checkpoint-pending');
@@ -144,7 +155,7 @@ test('capacity exhaustion is bounded and leaves authoritative bytes unchanged', 
     assert.equal(done.outcome?.code, 'capacity-exhausted');
     assert.equal(done.capacityRetries, 3);
     assert.equal(stopped.blockedReason, 'capacity-exhausted');
-    assert.equal(stopped.currentEntryNumber, 3);
+    assert.equal(stopped.currentEntryNumber, 1);
     await assert.rejects(readFile(join(f.root, 'partial.txt')), { code: 'ENOENT' });
 }));
 
@@ -168,7 +179,7 @@ test('stop interrupts capacity wait and non-capacity failures never retry', asyn
 }, undefined, 10_000));
 
 test('sequence stays on its entry after validation and authority failure', async () => fixture(async f => {
-    const sequence = await f.backend.importSequence(f.handle, 'p8c');
+    const sequence = await f.backend.importSequence(f.handle, 'c8-lifecycle-test');
     const task = await f.backend.prepareSequenceTask(f.handle, sequence.id,
         { kind: 'exact', connectionId: 'codex', modelId: 'model-1' },
         { validation: [{ kind: 'test', label: 'focused', command: 'npm test' }], requireValidationPass: true });
@@ -186,7 +197,7 @@ test('sequence stays on its entry after validation and authority failure', async
     assert.equal((await terminal(f.store, f.root, second.id)).outcome?.code, 'authority-denied');
     const stopped = await sequenceTerminal(f.store, f.root, sequence.id);
     assert.equal(stopped.blockedReason, 'authority-denied');
-    assert.equal(stopped.currentEntryNumber, 3);
+    assert.equal(stopped.currentEntryNumber, 1);
     assert.deepEqual(stopped.runIds, [first.id, second.id]);
 }));
 
@@ -202,7 +213,7 @@ test('direct execution holds the project slot and Stop interrupts a sequence pro
     assert.equal(f.adapter.cancels, 2);
     assert.equal((await f.store.readRun(f.root, run.id))?.status, 'cancelled');
     assert.equal(stopped.blockedReason, 'run-cancelled');
-    assert.equal(stopped.currentEntryNumber, 3);
+    assert.equal(stopped.currentEntryNumber, 1);
 }));
 
 test('start rejects absent acceptance and mismatched attached root', async () => fixture(async f => {

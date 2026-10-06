@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { AgentTaskSequence, ImportedStack, PromptSource, SequenceBlockReason,
     SequenceCheckpoint, hasPhaseStackSourceDrift, importPhaseStack, parseImportedStack } from '../sequence';
+import { versionCoherent } from './sequence-checkpoint';
 
 const execute = promisify(execFile);
 const sha = /^[0-9a-f]{40,64}$/u;
@@ -111,22 +112,16 @@ function subject(stack: ImportedStack, number: number): string {
 
 /** Exact reachable checkpoint prefix; no state mutation or Git writes. */
 export function gitCheckpointPrefix(stack: ImportedStack, evidence: SequenceGitEvidence): SequenceCheckpoint[] {
-    const entries = stack.entries.filter(entry => entry.kind === 'implementation');
-    const gate = entries.findIndex(entry => entry.execution === 'manual-gate');
-    if (gate >= 0 && entries.slice(gate).some(entry => evidence.history.some(commit =>
-        commit.subject === subject(stack, entry.number))))
-        throw new Error('Manual gate checkpoint requires explicit reconciliation');
-    const implementations = gate < 0 ? entries : entries.slice(0, gate);
-    const matches = implementations.map(entry => {
+    const matches = stack.entries.map(entry => {
         const found = evidence.history.filter(commit => commit.subject === subject(stack, entry.number));
-        if (stack.mode === 'correction' && found.length > 1)
+        if (found.length > 1)
             throw new Error(`Ambiguous correction checkpoint P${entry.number}`);
         return found[0];
     });
     const missing = matches.findIndex(value => !value);
     const count = missing < 0 ? matches.length : missing;
     if (matches.some((value, index) => index > count && value)) throw new Error('Later checkpoint has missing earlier task');
-    const result = matches.slice(0, count).map((match, index) => ({ entryNumber: implementations[index].number, sha: match.sha }));
+    const result = matches.slice(0, count).map((match, index) => ({ entryNumber: stack.entries[index].number, sha: match.sha }));
     for (let index = 1; index < result.length; index++) {
         const older = evidence.history.findIndex(item => item.sha === result[index - 1].sha);
         const newer = evidence.history.findIndex(item => item.sha === result[index].sha);
@@ -148,18 +143,79 @@ export function sequenceBlockReason(sequence: AgentTaskSequence, evidence: Seque
     let prefix: SequenceCheckpoint[];
     try { prefix = gitCheckpointPrefix(sequence.stack, evidence); }
     catch { return 'git-history'; }
-    if (prefix.length !== sequence.checkpoints.length || prefix.some((item, index) =>
-        item.sha !== sequence.checkpoints[index].sha)) return 'checkpoint-mismatch';
-    if (evidence.head !== (sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head)) return 'head-drift';
+    const current = sequence.stack.entries[sequence.currentEntryNumber - 1];
+    const manualCandidate = current?.execution === 'manual-gate' &&
+        prefix.length === sequence.checkpoints.length + 1 && prefix.at(-1)?.sha === evidence.head;
+    if (prefix.length !== sequence.checkpoints.length + (manualCandidate ? 1 : 0) ||
+        sequence.checkpoints.some((item, index) => prefix[index]?.sha !== item.sha)) return 'checkpoint-mismatch';
+    if (!manualCandidate && evidence.head !== (sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head)) return 'head-drift';
     // P3 has applied candidate bytes but no checkpoint authority. The version and worktree may
     // reflect that successful task; the pending checkpoint remains the only safe next action.
     if (sequence.status === 'blocked' &&
         ['checkpoint-pending', 'checkpoint-failed'].includes(sequence.blockedReason ?? '')) return undefined;
     if (evidence.packageVersion !== expectedSequenceVersion(sequence.stack, prefix.length)) return 'version-mismatch';
     if (!evidence.clean || evidence.worktreeFingerprint !== sequence.basis.worktreeFingerprint) return 'worktree-drift';
-    if (sequence.status === 'completed') return 'completion-unsupported';
+    if (sequence.status === 'completed') return undefined;
     if (sequence.status === 'running') return 'interrupted';
     return undefined;
+}
+
+export interface ManualGateReconciliation { sha?: string; reason?: SequenceBlockReason; message: string }
+
+export function manualGateDecision(sequence: AgentTaskSequence, evidence: SequenceGitEvidence,
+    sourceDrift: boolean, parent?: string, changed?: readonly string[], coherentVersion = false): ManualGateReconciliation {
+    const entry = sequence.stack.entries[sequence.currentEntryNumber - 1];
+    if (!entry || entry.execution !== 'manual-gate' || sequence.status === 'completed')
+        throw new Error('Sequence has no pending manual gate');
+    const previous = sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head;
+    if (sourceDrift) return { reason: 'source-drift', message: 'Restore the imported prompt stack before resuming this gate.' };
+    if (evidence.head === previous) {
+        const basic = sequenceBlockReason(sequence, evidence, false);
+        if (basic) return { reason: basic, message: basic === 'worktree-drift' ?
+            'Commit or remove the uncommitted manual changes before resuming.' : basic === 'version-mismatch' ?
+                'Restore the pre-gate package version or complete the manual checkpoint.' :
+                'The completed checkpoint prefix is no longer reachable; restore the expected history.' };
+        return { message: 'Complete the snapshotted manual prompt and create one checkpoint commit, then request Resume.' };
+    }
+    const basic = sequenceBlockReason(sequence, evidence, false);
+    if (basic) return { reason: basic, message: basic === 'worktree-drift' ?
+        'Commit or remove the uncommitted manual changes before resuming.' :
+        'The external checkpoint does not match this gate. Restore the expected history and version, then retry.' };
+    if (parent !== previous) return { reason: 'git-history',
+        message: 'Manual completion needs one non-merge commit directly after the pre-gate HEAD.' };
+    if (!changed?.length || changed.some(path => path === '.dope/agent' || path.startsWith('.dope/agent/') ||
+        path === 'package-lock.json' || path === 'npm-shrinkwrap.json'))
+        return { reason: 'git-history',
+            message: 'The manual checkpoint must contain project changes and exclude runtime state and root npm locks.' };
+    if (!coherentVersion) return { reason: 'version-mismatch',
+        message: 'Make every workspace and internal reference match the gate version; remove forbidden root npm locks.' };
+    return { sha: evidence.head, message: `Verified external checkpoint ${evidence.head}.` };
+}
+
+/** Read-only proof for one external checkpoint. A request to resume is never completion evidence. */
+export async function verifyManualGate(root: string, sequence: AgentTaskSequence): Promise<ManualGateReconciliation> {
+    const entry = sequence.stack.entries[sequence.currentEntryNumber - 1];
+    if (!entry || entry.execution !== 'manual-gate' || sequence.status === 'completed')
+        throw new Error('Sequence has no pending manual gate');
+    const [evidence, drift] = await Promise.all([
+        captureSequenceEvidence(root), stackSourceDrift(root, sequence.stack)]);
+    if (drift || evidence.head === (sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head) ||
+        sequenceBlockReason(sequence, evidence, false))
+        return manualGateDecision(sequence, evidence, drift);
+    const parents = (await git(root, ['rev-list', '--parents', '-n', '1', 'HEAD'])).trim().split(' ');
+    const changed = (await git(root, ['diff-tree', '--no-commit-id', '--name-only', '-r', '-z', 'HEAD']))
+        .split('\0').filter(Boolean);
+    const coherent = await versionCoherent(root, entry.versionPolicy.version).then(() => true, () => false);
+    const decision = manualGateDecision(sequence, evidence, false,
+        parents.length === 2 && parents[0] === evidence.head ? parents[1] : undefined, changed, coherent);
+    if (!decision.sha) return decision;
+    const [again, sourceDrift] = await Promise.all([
+        captureSequenceEvidence(root), stackSourceDrift(root, sequence.stack)]);
+    if (sourceDrift || again.head !== evidence.head || !again.clean ||
+        again.packageVersion !== evidence.packageVersion ||
+        again.worktreeFingerprint !== evidence.worktreeFingerprint)
+        return { reason: 'git-history', message: 'Repository or prompt stack changed during reconciliation; inspect it and retry.' };
+    return decision;
 }
 
 export async function importSequenceSnapshot(root: string, folderName: string): Promise<AgentTaskSequence> {

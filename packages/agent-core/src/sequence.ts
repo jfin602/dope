@@ -24,10 +24,11 @@ export interface AgentTaskSequence {
     version: typeof SEQUENCE_SCHEMA_VERSION; id: string; createdAt: string; updatedAt: string;
     status: SequenceStatus; currentEntryNumber: number; stack: ImportedStack;
     basis: SequenceBasis; checkpoints: SequenceCheckpoint[]; blockedReason?: SequenceBlockReason;
-    taskId?: string; runIds?: string[]; acceptedDirty?: AcceptedDirtyBasis;
+    taskId?: string; runIds?: string[]; acceptedDirty?: AcceptedDirtyBasis; gateMessage?: string;
 }
 export interface SequenceBasis { head: string; packageVersion: string; worktreeFingerprint: string }
-export interface SequenceCheckpoint { entryNumber: number; sha: string; taskId?: string; runId?: string }
+export interface SequenceCheckpoint { entryNumber: number; sha: string; taskId?: string; runId?: string;
+    preGateBasis?: SequenceBasis }
 export type SequenceBlockReason = 'source-drift' | 'git-history' | 'checkpoint-mismatch' |
     'version-mismatch' | 'head-drift' | 'worktree-drift' | 'interrupted' | 'completion-unsupported' |
     'run-failed' | 'run-cancelled' | 'authority-denied' | 'validation-failed' |
@@ -203,7 +204,7 @@ const transitions: Readonly<Record<SequenceStatus, readonly SequenceStatus[]>> =
     ready: ['running', 'waiting-manual', 'blocked', 'interrupted'],
     running: ['ready', 'waiting-manual', 'blocked', 'interrupted'],
     'waiting-manual': ['ready', 'blocked', 'interrupted', 'completed'],
-    blocked: ['ready', 'waiting-manual', 'interrupted'],
+    blocked: ['ready', 'waiting-manual', 'interrupted', 'completed'],
     interrupted: ['ready', 'waiting-manual', 'blocked'], completed: []
 };
 export function canTransitionSequence(from: SequenceStatus, to: SequenceStatus): boolean {
@@ -215,7 +216,7 @@ export function transitionSequence(from: SequenceStatus, to: SequenceStatus): Se
 }
 export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskSequence> {
     const x = record(value, ['version', 'id', 'createdAt', 'updatedAt', 'status', 'currentEntryNumber', 'stack',
-        'basis', 'checkpoints', 'blockedReason', 'taskId', 'runIds', 'acceptedDirty']);
+        'basis', 'checkpoints', 'blockedReason', 'taskId', 'runIds', 'acceptedDirty', 'gateMessage']);
     if (x.version !== SEQUENCE_SCHEMA_VERSION) throw new Error('Invalid sequence schema version');
     const stack = await parseImportedStack(x.stack);
     const status = select(x.status, SEQUENCE_STATUSES);
@@ -235,14 +236,29 @@ export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskS
     if (!Array.isArray(x.checkpoints) || x.checkpoints.length > stack.entries.length)
         throw new Error('Invalid sequence checkpoints');
     const checkpoints = x.checkpoints.map((value, index) => {
-        const checkpoint = record(value, ['entryNumber', 'sha', 'taskId', 'runId']);
+        const checkpoint = record(value, ['entryNumber', 'sha', 'taskId', 'runId', 'preGateBasis']);
         if (checkpoint.entryNumber !== index + 1 || typeof checkpoint.sha !== 'string' || !sha.test(checkpoint.sha) ||
-            stack.entries[index]?.execution !== 'agent-task') throw new Error('Invalid sequence checkpoint prefix');
+            stack.entries[index]?.execution === 'manual-gate' &&
+                (checkpoint.taskId !== undefined || checkpoint.runId !== undefined) ||
+            stack.entries[index]?.execution === 'agent-task' && checkpoint.preGateBasis !== undefined)
+            throw new Error('Invalid sequence checkpoint prefix');
+        let preGateBasis: SequenceBasis | undefined;
+        if (checkpoint.preGateBasis !== undefined) {
+            const basis = record(checkpoint.preGateBasis, ['head', 'packageVersion', 'worktreeFingerprint']);
+            const previous = index ? (x.checkpoints as Array<{ sha: unknown }>)[index - 1].sha : undefined;
+            if (typeof basis.head !== 'string' || !sha.test(basis.head) ||
+                previous && basis.head !== previous || typeof basis.packageVersion !== 'string' ||
+                !semver.test(basis.packageVersion) || typeof basis.worktreeFingerprint !== 'string' ||
+                !/^[0-9a-f]{64}$/u.test(basis.worktreeFingerprint))
+                throw new Error('Invalid pre-gate basis');
+            preGateBasis = basis as unknown as SequenceBasis;
+        }
         return { entryNumber: index + 1, sha: checkpoint.sha,
             ...(checkpoint.taskId === undefined ? {} : { taskId: id(checkpoint.taskId) }),
-            ...(checkpoint.runId === undefined ? {} : { runId: id(checkpoint.runId) }) };
+            ...(checkpoint.runId === undefined ? {} : { runId: id(checkpoint.runId) }),
+            ...(preGateBasis ? { preGateBasis } : {}) };
     });
-    const expectedCheckpoints = status === 'completed' ? currentEntryNumber - 2 : currentEntryNumber - 1;
+    const expectedCheckpoints = currentEntryNumber - 1;
     if (checkpoints.length !== expectedCheckpoints ||
         status === 'completed' && stack.entries.at(-1)?.execution !== 'manual-gate' ||
         new Set(checkpoints.map(checkpoint => checkpoint.sha)).size !== checkpoints.length)
@@ -260,11 +276,15 @@ export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskS
     const acceptedDirty = x.acceptedDirty === undefined ? undefined : parseSequenceDirty(x.acceptedDirty);
     if (acceptedDirty && acceptedDirty.head !== (checkpoints.at(-1)?.sha ?? basisValue.head))
         throw new Error('Accepted dirty HEAD differs from sequence basis');
+    if (x.gateMessage !== undefined && (typeof x.gateMessage !== 'string' || x.gateMessage.length > 500 ||
+        stack.entries[currentEntryNumber - 1]?.execution !== 'manual-gate'))
+        throw new Error('Invalid manual gate message');
     return freeze({ version: SEQUENCE_SCHEMA_VERSION, id: id(x.id), createdAt, updatedAt,
         status, currentEntryNumber, stack, basis: { head: basisValue.head, packageVersion: basisValue.packageVersion,
             worktreeFingerprint: basisValue.worktreeFingerprint }, checkpoints,
         ...(blockedReason ? { blockedReason } : {}), ...(taskId ? { taskId } : {}),
-        ...(runIds.length ? { runIds } : {}), ...(acceptedDirty ? { acceptedDirty } : {}) });
+        ...(runIds.length ? { runIds } : {}), ...(acceptedDirty ? { acceptedDirty } : {}),
+        ...(x.gateMessage ? { gateMessage: x.gateMessage } : {}) });
 }
 function parseSequenceDirty(value: unknown): AcceptedDirtyBasis {
     const basis = record(value, ['head', 'paths']);
