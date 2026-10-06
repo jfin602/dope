@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 8 is **ACTIVE**. Phase 8A Codex reference connection is **GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`; `bc151cb` is docs-only qualification. Phase 8B Agent execution core is the current slice: one bounded mutation-capable AgentTask/AgentRun/ExecutionGrant path with no Git writes or phase-stack sequencing yet. Phase 8C remains the sequential phase-runner replacement.
+Current stage: Product Phase 8 is **ACTIVE**. Phase 8A Codex reference connection is **GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`. Phase 8B Agent execution core is **NOT GREEN / NOT QUALIFIED** at `0.8.13`; its qualification loop stopped after Cycle 1 when live evidence proved that direct provider write access cannot enforce the approved destructive-effect boundary. ADR 0028 is accepted. The current required correction is **`c8-agent-authority-boundary`** at unchanged `0.8.13`: isolated ExecutionWorkspace -> CandidateDelta -> Dope Authority/ToolExecutor promotion. Phase 8C remains gated until a corrected 8B candidate is Green.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
@@ -64,7 +64,8 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
 | Product Phase 6 — Flow | **OWNER-CLOSED FOR SEQUENCING / P8 NOT QUALIFIED.** Evidence-backed provider-free Static Flow over the Physical Map is retained. The P8 exact-candidate direct restart/isolation and chosen-path provenance gaps remain in `docs/tasks/p6/closeout.md`; historical P7/map-canvas Not Green results remain intact. |
 | Product Phase 7 — AI Presence / AI Center / Roles | **OWNER APPROVED / QUALIFIED / CLOSED at actual `0.7.31`.** Durable Chat, AI Center and deterministic role routing are complete; the planned `0.7.32` closeout version did not materialize. Post-closeout `c7-chat-project-grounding` strengthens read-only repository/map evidence before Phase 8 without changing explicit model choice, Software Map evidence-egress authority or Phase 10 local-only background constraints. |
-| Product Phase 8 — Coding Agent / Scoped Delegation | Dope changes Dope. A bounded WorkItem can be delegated through explicit authority, agent execution, diff/review and validation while the developer remains in control. Accepted mutations identify affected Software Map areas and may mark them potentially stale, but continuous knowledge alignment remains Phase 10. |
+| Product Phase 8 — Coding Agent / Scoped Delegation | **ACTIVE; 8B NOT GREEN.** Dope changes Dope through provider-independent AgentTask/AgentRun authority. Direct provider writes to the authoritative project are superseded by ADR 0028; Phase 8C remains gated until the corrected execution boundary qualifies. |
+| Correction c8 — Agent Authority Boundary | **APPROVED / REQUIRED BEFORE 8B REQUALIFICATION.** Implement isolated ExecutionWorkspace -> CandidateDelta -> Dope Authority/ToolExecutor promotion at unchanged `0.8.13`, preserving create/modify default authority while denying delete/rename and the existing host-security classes. |
 | Product Phase 9 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable intent, plans, WorkItems, agent runs, validation, decisions, review and session closeout inside Dope. |
 | Product Phase 10 — Living Software Knowledge Model | Dope continuously checks whether source/runtime evidence, canonical Software Map state, documentation and formal contracts still describe the same software. It can also use Phase 8 WorkItem and Phase 9 session provenance to explain why state changed. Deterministic impact analysis narrows work first; bounded local-model semantic checks maintain alignment in the background without silently mutating project truth. |
 
@@ -932,12 +933,15 @@ Phase 8 uses the existing phase runner as a **behavioral reference**, not as pro
 
 2. **8B — Agent execution core**
    - provider-neutral AgentTask and AgentRun;
-   - bounded execution grant over one repository root;
-   - observation, workspace mutation, process and Git capability classes;
+   - bounded ExecutionGrant over one accepted project basis;
+   - isolated ExecutionWorkspace for provider read/write/process/test/build;
+   - provider-neutral CandidateDelta classification;
+   - Dope-owned Authority/ToolExecutor promotion into the authoritative project;
+   - explicit authoritative create/modify/delete/rename effect classes;
    - strong reference coding-agent adapter first;
    - visible activity/tool/file/command events;
    - cancellation, failure and restart-safe run state;
-   - diff/change and validation result capture.
+   - candidate/applied change and validation result capture.
 
 3. **8C — Sequential task / phase-stack execution**
    - adapt existing `docs/tasks/<stack>/P*.txt` metadata into AgentTaskSequence;
@@ -963,16 +967,18 @@ Phase 8 uses the existing phase runner as a **behavioral reference**, not as pro
 
 Approval operates at useful execution granularity.
 
-Before an AgentTask/AgentTaskSequence starts, the developer approves a bounded **ExecutionGrant** containing:
-- canonical project/repository root;
+Before an AgentTask/AgentTaskSequence can produce authoritative project effects, the developer approves a bounded **ExecutionGrant** containing:
+- accepted project identity and starting basis;
 - observation/read scope;
-- workspace mutation scope;
-- process capability/working-directory constraints;
+- isolated ExecutionWorkspace read/write/process constraints;
+- authoritative project create/modify/delete/rename promotion permissions;
 - Git permissions/checkpoint policy;
-- network/secrets/destructive permissions, normally denied unless explicitly required;
+- network/secrets/private-state/outside-workspace/system permissions;
 - stop/escalation conditions.
 
-Within an accepted grant, routine permitted reads/writes/tests/Git inspection do not require repetitive per-call approval. An attempted effect outside the grant pauses and requests explicit escalation. A model/provider cannot enlarge the grant.
+Within an accepted grant, routine already-authorized effects do not require repetitive per-call approval. Provider/model writes occur only in the ExecutionWorkspace and produce CandidateDelta; they are not authoritative project writes. Dope-owned Authority + ToolExecutor is the only path that promotes candidate effects into the real project.
+
+The corrected initial 8B grant allows authoritative create/modify and denies delete/rename. If any candidate effect is outside the grant, 8B promotes none of the candidate delta. A model/provider cannot enlarge the grant.
 
 The first phase-stack workflow keeps the existing runner principle that **Dope owns checkpoint commits**. The coding agent leaves the authoritative commit boundary to Dope unless a later explicit task policy says otherwise.
 

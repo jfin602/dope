@@ -659,6 +659,8 @@ Phase 8B's first consumer is one direct bounded AgentTask against a clean projec
 
 Agent Runtime owns orchestration, not provider intelligence. Provider-specific coding harnesses sit behind **AgentExecutionAdapter** contracts. The first reference adapter is Codex App Server; later local-agent adapters must consume the same AgentTask/AgentRun/authority contracts.
 
+Mutation-capable adapters execute against an isolated **ExecutionWorkspace** derived from an accepted starting project basis. Provider writes/processes produce candidate work there; they do not write the developer's authoritative project root. Dope deterministically derives a **CandidateDelta** and promotes only authorized effects through Authority + ToolExecutor.
+
 AgentTask/AgentRun persistence is project-local and presentation-independent:
 
 ```text
@@ -684,23 +686,45 @@ Introduced before mutation delegation.
 
 Owns effect classification and permission decisions.
 
-The initial developer approval unit is a bounded **ExecutionGrant** for one AgentTask/AgentTaskSequence: project root, allowed observation/workspace/process/Git/network/secrets/destructive scopes, checkpoint policy and escalation conditions.
+The developer approval unit is a bounded **ExecutionGrant** for one AgentTask/AgentTaskSequence. Under ADR 0028 it distinguishes:
+- observation authority;
+- isolated ExecutionWorkspace read/write/process authority;
+- authoritative project create/modify/delete/rename promotion authority;
+- Git/checkpoint authority;
+- network/secrets/private-state/outside-workspace/system authority;
+- stop/escalation conditions.
 
-Routine effects inside that grant do not require noisy per-call approval. Any effect outside it pauses for explicit escalation. A model/provider/repository cannot grant itself additional authority.
+Routine effects already inside the grant do not require noisy per-call approval. Any authoritative effect outside it is blocked or enters a later explicit escalation path. A model/provider/repository cannot grant itself additional authority.
 
-Observation and mutation permissions are separate.
+Observation, provider execution and authoritative mutation are separate dimensions.
 
 ### Tool Runtime / agent execution boundary
 
-Dope-owned tools execute only after Authority permits them; results are structured and observable.
+Dope-owned tools execute authoritative effects only after Authority permits them; results are structured and observable.
 
-A reference agent harness such as Codex App Server may internally coordinate file/process tools. Its adapter must map the Dope ExecutionGrant into the strongest available sandbox/approval restrictions and expose observable command/file/tool events back into AgentRun. If the harness cannot reliably constrain a requested capability to the Dope grant, that capability is unavailable through that adapter rather than implicitly trusted.
+A reference agent harness such as Codex App Server may internally coordinate file/process tools inside a disposable/recoverable **ExecutionWorkspace**. The provider sandbox enforces coarse host-security boundaries, but provider write access is not authoritative project mutation.
 
-The 8A zero-data Test Connection remains a permanently separate read-only/no-network path. 8B introduces a distinct mutation-capable AgentExecutionAdapter method rather than widening `test()`.
+The mutation path is:
 
-For the initial Codex execution grant, the adapter may use workspace-write semantics only inside the approved canonical project root, with network disabled and no Git-write/history-changing authority. Codex HOME/CODEX_HOME remains isolated in a Dope-owned temporary runtime location while the thread cwd is the approved project root.
+```text
+AgentTask + accepted project basis
+    -> AgentExecutionAdapter
+    -> isolated ExecutionWorkspace
+    -> CandidateDelta
+    -> Authority / ExecutionGrant
+    -> ToolExecutor
+    -> authoritative project
+```
 
-8B does not stage or commit. Dope checkpoint/commit authority becomes active in the 8C phase-stack workflow.
+CandidateDelta classifies at least create, modify, delete and deterministically proven rename/move. The initial corrected 8B grant allows authoritative create/modify and denies delete/rename. If any candidate effect is outside the grant, the whole candidate delta is blocked from promotion in 8B.
+
+Before promotion Dope revalidates project/path containment and the accepted authoritative starting basis. Provider narration is never evidence that a mutation is safe or applied.
+
+The 8A zero-data Test Connection remains a permanently separate read-only/no-network path. 8B uses a distinct mutation-capable AgentExecutionAdapter path without widening `test()`.
+
+Codex HOME/CODEX_HOME remains isolated in a Dope-owned runtime location. The provider thread cwd is the ExecutionWorkspace, not the authoritative project root.
+
+8B does not stage or commit. Dope checkpoint/commit authority becomes active only after 8B is requalified and the 8C phase-stack workflow begins.
 
 ## Foundation Spike 0 boundary
 
@@ -886,15 +910,20 @@ Compatibility claims require real evidence.
 
 ## Security / authority boundary
 
-When mutation-capable AI is introduced, no model receives direct filesystem/process mutation authority.
+When mutation-capable AI is introduced, no model receives direct mutation authority over developer-owned project state.
 
-AI
--> ProposedAction
--> Authority / Permission Layer
--> ToolExecutor
--> filesystem / process / Git / browser / network
+```text
+AI / AgentExecutionAdapter
+    -> isolated ExecutionWorkspace
+    -> CandidateDelta
+    -> Authority / ExecutionGrant
+    -> ToolExecutor
+    -> authoritative filesystem / Git / browser / network effect adapters
+```
 
-Repository content, extensions, remote tools, MCP servers, and model output are untrusted relative to Dope's configured authority ceiling.
+A standing ExecutionGrant may pre-authorize routine authoritative effects so ProposedAction is not required per file operation. ProposedAction remains the escalation/review vocabulary for consequential effects outside the standing grant.
+
+Provider sandboxes are a coarse host-security ceiling, not the authoritative mutation boundary. Repository content, extensions, remote tools, MCP servers, provider tools and model output are untrusted relative to Dope's configured authority ceiling.
 
 ## Self-development and bootstrap independence
 

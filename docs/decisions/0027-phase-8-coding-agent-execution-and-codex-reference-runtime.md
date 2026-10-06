@@ -107,28 +107,30 @@ Agent-execution connections need not appear in ordinary Chat or Software Map mod
 
 ### ExecutionGrant is the useful approval boundary
 
-Before a task/sequence mutates the project, the developer accepts an ExecutionGrant covering:
-- canonical repository/project root;
+Before a task/sequence can produce authoritative project effects, the developer accepts an ExecutionGrant covering:
+- canonical repository/project identity and starting basis;
 - read/observation scope;
-- workspace mutation scope;
-- process execution scope;
+- isolated ExecutionWorkspace read/write/process scope;
+- authoritative project create/modify/delete/rename promotion scope;
 - Git permissions/checkpoint policy;
-- network/secrets/destructive permissions;
+- network/secrets/private-state/outside-workspace/system permissions;
 - stop/escalation conditions.
 
-Routine effects within the grant proceed visibly without repetitive confirmation. Effects beyond the grant pause for explicit escalation.
+Routine effects within the grant proceed without repetitive confirmation. Effects beyond it remain blocked or enter a later explicit escalation path.
 
 Model output, provider instructions, repository text and adapter metadata cannot expand authority.
 
+ADR 0028 refines the Phase 8B mutation boundary: provider/model writes occur in an isolated ExecutionWorkspace and become a CandidateDelta. Only Dope-owned Authority + ToolExecutor may promote authorized effects into the authoritative project.
+
 ### Reference harness tooling
 
-Codex may internally coordinate file/process tooling.
+Codex may internally coordinate file/process tooling inside the isolated ExecutionWorkspace.
 
-The Codex adapter must map ExecutionGrant into the strongest supported sandbox/approval restrictions and surface observable file/command/tool activity into AgentRun.
+The Codex adapter maps ExecutionGrant into the strongest supported coarse sandbox restrictions and surfaces observable command/file/tool activity into AgentRun. Provider sandbox authority protects host boundaries such as network, private state, outside-workspace effects and system effects; it is not treated as fine-grained authoritative project permission.
 
-If Codex cannot reliably constrain a capability to the Dope grant, that capability is unavailable through the adapter. The adapter never receives implicit unlimited host authority merely because Codex can technically perform an action.
+If Codex cannot reliably enforce a required host restriction, that capability is unavailable through the adapter. The adapter never receives implicit unlimited host authority merely because Codex can technically perform an action.
 
-Dope owns the authoritative checkpoint commit boundary for the initial phase-stack workflow, matching the current external runner's safety contract.
+CandidateDelta classification and authoritative project promotion are Dope-owned and provider-independent. Dope owns the authoritative checkpoint commit boundary for the later phase-stack workflow, matching the current external runner's safety contract.
 
 ### Phase 8 sequencing
 
@@ -293,38 +295,44 @@ Copying the repository preserves Dope task/run history. Provider-native resume m
 
 ### 8B ExecutionGrant default
 
-The first mutation-capable grant defaults to:
+ADR 0028 supersedes the initial direct-project-write grant shape.
 
-- project read/observation: allowed;
-- project workspace file mutation: allowed;
-- project-local process/test/build execution: allowed;
-- Git inspection: allowed;
-- Git stage/commit/reset/rebase/checkout/switch/history rewrite: denied;
+The corrected first mutation-capable grant defaults to two authority layers.
+
+ExecutionWorkspace:
+- read/write/process/test/build inside the isolated execution workspace: allowed;
 - network: denied;
-- secrets/credential access: denied;
-- outside-project filesystem mutation/read of private user state: denied;
-- destructive/system/package-administration actions: denied.
+- secrets/private user state: denied;
+- outside-execution-workspace effects: denied;
+- system/package-administration effects: denied;
+- authoritative Git-control/history mutation: denied.
 
-The developer accepts this bounded grant once before execution. Routine effects inside it proceed without repetitive approval. Effects outside it are denied and recorded in 8B; richer interactive authority escalation is deferred.
+Authoritative project promotion:
+- create: allowed;
+- modify: allowed;
+- delete: denied;
+- rename/move: denied;
+- Git stage/commit/reset/rebase/checkout/switch/history rewrite: denied.
 
-A task cannot start mutation until its grant is explicitly accepted.
+The developer accepts this bounded grant once before execution. Routine authorized promotion does not require one approval per file. If any CandidateDelta effect is outside the grant, initial 8B promotes none of the candidate delta and records the blocked authority result; richer escalation/partial acceptance remains later work.
+
+A task cannot produce authoritative mutation until its grant is explicitly accepted.
 
 ### Codex mutation path is separate from Test Connection
 
 The 8A zero-project-data `CodexAppServer.test()` path remains permanently read-only/no-network/no-mutation.
 
-8B adds a distinct AgentExecutionAdapter execution path for real work. It maps the accepted ExecutionGrant to the strongest supported Codex sandbox/approval restrictions.
+8B uses a distinct AgentExecutionAdapter path for real work, but the provider's writable cwd is now an isolated ExecutionWorkspace derived from the accepted project basis, not the authoritative project root.
 
-The reference 8B Codex path may use workspace-write behavior only when:
-- the canonical working directory is the approved project root;
-- network is disabled;
-- Git write/history-changing commands are outside the Dope grant;
-- outside-root effects are denied;
-- the adapter can actually enforce the requested boundary.
+The reference Codex path must:
+- execute only inside that isolated workspace;
+- keep network disabled;
+- deny private-state/outside-workspace/system effects;
+- protect authoritative Git control/history;
+- keep HOME / CODEX_HOME isolated in a Dope-owned runtime location;
+- fail closed when those host restrictions cannot be enforced.
 
-If the current Codex harness cannot reliably enforce a requested Dope grant boundary, the adapter must reject that grant/capability instead of running more permissively.
-
-Codex process HOME / CODEX_HOME remains isolated in a Dope-owned temporary/runtime directory; the thread working directory is the approved project root.
+After execution, Dope computes CandidateDelta and performs the authoritative create/modify promotion itself through Authority + ToolExecutor. Provider `workspace-write` never directly means authoritative project-write permission.
 
 ### ProposedAction in 8B
 
@@ -352,13 +360,13 @@ Persist timestamps, project-relative paths/command summaries/status where availa
 Stop must be real:
 - transition to cancelling;
 - interrupt the active Codex turn/process path;
-- prevent further effects;
-- preserve already-created workspace modifications;
+- prevent further provider effects;
+- preserve bounded candidate/execution-workspace evidence;
 - persist cancelled/interrupted truth.
 
-Do not auto-revert.
+Cancelled or interrupted provider work is not automatically promoted into the authoritative project. No authoritative-project auto-revert is required for unpromoted candidate work.
 
-After application restart, the AgentRun remains inspectable. 8B may offer bounded provider resume where safe, but seamless automatic task continuation is not required yet. If continuation cannot be proven safe, present the run as interrupted with preserved changes.
+After application restart, the AgentRun remains inspectable. 8B may retain bounded provider recovery metadata, but seamless automatic task continuation is not required yet. If continuation cannot be proven safe, present the run as interrupted with preserved candidate/evidence state.
 
 ### Git and dirty-state boundary
 

@@ -109,3 +109,10 @@ Record every cycle in:
 The installed `codex-cli 0.155.1` sandbox startup defect was isolated to `:root = "deny"` hiding the resolved standalone Codex ELF. An exact read allowance for that executable starts the sandbox in a disposable config. Under that executing profile, a shell command could delete a tracked project file while ordinary project writes remained allowed. This violates the fixed 8B `destructive = false` grant. The product source was left fail-closed; a startup-only change would not qualify the grant.
 
 The loop stops after one cycle under its architecture-gap rule. No eligible live target, model mutation, cancellation, active-run restart, or persisted live-run security gate was reached. Phase 8C remains gated. Route the conflict between arbitrary project write/process access and denied destructive project effects to a fresh docs/architecture review before considering another implementation or qualification loop. See [Cycle 1 evidence](cycle-evidence.md) and the retained [P7 closeout](../p8b/closeout.md).
+
+
+## Post-review architecture disposition
+
+The required fresh authority review is complete. ADR 0028 adopts an isolated ExecutionWorkspace -> CandidateDelta -> Dope Authority/ToolExecutor promotion boundary. This does not relabel Cycle 1 Green and does not resume Cycles 2-5.
+
+Next route: plan and implement correction `c8-agent-authority-boundary` at unchanged `0.8.13`, then perform a fresh bounded 8B qualification. Phase 8C remains gated.

@@ -602,9 +602,12 @@ Initial durable execution state includes:
 - ExecutionGrant identity/revision;
 - start/end timestamps;
 - starting project identity, Git HEAD and clean/dirty basis;
+- ExecutionWorkspace identity/basis sufficient to understand candidate work without treating it as canonical project truth;
 - provider-neutral activity/tool/file/process events;
+- CandidateDelta summary with classified create/modify/delete/rename effects;
+- authority decision and applied authoritative change summary;
 - affected project-relative files;
-- validation results;
+- validation results with explicit execution-workspace or authoritative-project basis;
 - bounded diff/change summary;
 - checkpoint/commit identity only where a later workflow explicitly owns one;
 - failure/cancel/interruption/recovery state;
@@ -628,11 +631,21 @@ AgentTaskSequence is not PlanStep reborn. It is execution orchestration. WorkIte
 
 The developer-approved authority envelope for one AgentTask or AgentTaskSequence.
 
-It defines the canonical project root and allowed effect classes/scope: observation, workspace mutation, process execution, Git actions, network/secrets/destructive actions and stop/escalation conditions.
+ADR 0028 separates provider execution authority from authoritative project mutation.
 
-Phase 8B's initial grant allows project read, project-workspace mutation, project-local process/test/build execution and Git inspection, while denying Git writes/history changes, network, secrets, outside-project effects and destructive/system actions.
+The grant defines:
+- the accepted project identity/starting basis and observation scope;
+- isolated ExecutionWorkspace read/write/process/test/build scope;
+- authoritative project promotion scope: create, modify, delete and rename/move;
+- Git actions/checkpoint policy;
+- network, secrets/private-state, outside-workspace and system/package-administration authority;
+- stop/escalation conditions.
 
-Routine effects already inside the grant execute without repetitive approval. Effects outside the grant are denied and recorded in the first execution core; richer interactive grant escalation is deferred. Neither model output, provider metadata nor repository content can widen the grant.
+Phase 8B's corrected initial grant allows ExecutionWorkspace read/write/process/test/build and authoritative project create/modify promotion. It denies authoritative delete/rename, Git writes/history changes, network, secrets/private state, outside-workspace effects and system/package-administration actions.
+
+A provider may delete or rename files inside disposable ExecutionWorkspace state; those operations become candidate effects only. Dope computes CandidateDelta, checks the entire candidate against the accepted grant and, in initial 8B, promotes none of it if any effect is unauthorized.
+
+Routine authoritative effects already inside the grant execute without repetitive approval through Dope-owned ToolExecutor. Effects outside the grant are blocked and recorded in the first execution core; richer interactive grant escalation is deferred. Neither model output, provider metadata nor repository content can widen the grant.
 
 ### Reconciliation
 
@@ -715,7 +728,7 @@ Observation rights and mutation rights are separate dimensions.
 
 A model does not receive ambient mutation authority.
 
-A standing developer-approved ExecutionGrant may authorize routine bounded effects without creating a separate ProposedAction for every file write/test command. A model creates or contributes to a ProposedAction when an effect requires explicit consequential review or exceeds the standing grant. ProposedAction carries actor, intent, action type, target, expected effect, required authority, originating task/step, evidence/justification, and state.
+A standing developer-approved ExecutionGrant may authorize routine bounded effects without creating a separate ProposedAction for every ToolExecutor promotion or test command. Provider/model writes inside an ExecutionWorkspace are candidate work, not authoritative effects. A model creates or contributes to a ProposedAction when an authoritative effect requires explicit consequential review or exceeds the standing grant. ProposedAction carries actor, intent, action type, target, expected effect, required authority, originating task/step, evidence/justification, and state.
 
 Possible states:
 - proposed

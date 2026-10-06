@@ -46,25 +46,30 @@ The first adapter maps existing `docs/tasks/<stack>/P*.txt` stacks into sequence
 
 Developer-approved effect envelope for the task/sequence.
 
+ADR 0028 now splits execution authority from authoritative project promotion.
+
 Minimum dimensions:
-- canonical project root;
-- read/observation;
-- workspace mutation;
-- process execution;
+- accepted project identity / starting basis;
+- project observation;
+- isolated ExecutionWorkspace read/write/process/test/build;
+- authoritative project create/modify/delete/rename promotion;
 - Git inspect/stage/commit policy;
 - network;
-- secrets;
-- destructive/system actions;
+- secrets/private state;
+- outside-execution-workspace effects;
+- system/package-administration effects;
 - escalation/stop conditions.
 
-Default first-run posture:
-- project reads: allowed;
-- project-file mutation: allowed only after grant;
-- project-local process/test/build: allowed after grant;
+Corrected 8B posture:
+- project reads / basis capture: allowed;
+- ExecutionWorkspace read/write/process/test/build: allowed after grant;
+- authoritative project create/modify promotion: allowed after grant;
+- authoritative project delete/rename: denied;
 - Git inspection: allowed;
-- checkpoint commit: Dope-owned for phase-stack flow;
-- outside-project write: denied;
-- network/secrets/destructive/system actions: denied unless explicitly requested and approved.
+- Git stage/commit/history mutation: denied in 8B;
+- outside-workspace, network, secrets/private state and system/package-admin: denied.
+
+The provider never writes the authoritative project root directly.
 
 ## Phase 8A execution stack
 
@@ -118,28 +123,33 @@ Loop rules:
 
 ## 8B — Agent execution core
 
-**Current slice.** Phase 8A is Green / Qualified at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`; the later `bc151cb` commit is documentation-only qualification over that source.
+**NOT GREEN / BLOCKED ON REQUIRED CORRECTION.** Phase 8A remains Green / Qualified. Phase 8B P7 and the bounded qualification loop remain historical Not Green evidence at `0.8.13`.
 
-8B builds provider-neutral AgentTask/AgentRun/ExecutionGrant plus Agent Runtime.
+Cycle 1 proved that direct provider write access to the authoritative project cannot enforce the original `project-write allowed + destructive denied` contract. ADR 0028 therefore requires correction **`c8-agent-authority-boundary`** before 8B requalification or Phase 8C planning.
 
-First vertical slice:
-- one direct bounded AgentTask against a **clean disposable project**;
+The corrected 8B vertical slice keeps AgentTask/AgentRun/ExecutionGrant + Agent Runtime, but changes mutation flow:
+- one direct bounded AgentTask against a clean disposable project;
 - resolve Coding Agent role to Codex;
 - developer approves one ExecutionGrant;
-- grant allows project read/write, project-local process/test/build and Git inspection only;
-- deny network, secrets/private-home access, outside-root effects, Git writes/history changes and destructive/system actions;
-- stream normalized agent/message/command/file/status activity;
-- cancel safely without auto-reverting existing modifications;
-- collect changed files, bounded diff summary and validation;
-- persist `.dope/agent/` task/run/events state;
-- preserve inspectable run truth across restart;
+- derive an isolated ExecutionWorkspace from the accepted project basis;
+- allow provider read/write/process/test/build only inside that execution workspace under the coarse host-security ceiling;
+- compute CandidateDelta after execution;
+- classify authoritative create/modify/delete/rename effects deterministically;
+- initial grant allows authoritative create/modify and denies delete/rename;
+- if any candidate effect is unauthorized, promote none of the candidate delta;
+- Dope-owned Authority + ToolExecutor applies authorized create/modify effects to the real project after basis/path revalidation;
+- Git inspection remains allowed; Git writes/history changes remain denied;
+- network, secrets/private-home, outside-workspace and system/package-admin effects remain denied;
+- cancellation/interruption does not auto-promote partial candidate work;
+- stream normalized activity and preserve candidate/applied/validation provenance;
+- persist `.dope/agent/` task/run/events state and inspectable restart truth;
 - record provider-native thread ID only as non-canonical recovery metadata.
 
-8B adds a mutation-capable Codex AgentExecutionAdapter path separate from the permanently read-only Test Connection.
+The Phase 8A Test Connection remains permanently read-only and separate.
 
 Do not require WorkItem yet.
 
-Do not implement AgentTaskSequence, prompt-stack parsing, package-version progression, browser/manual gates, dirty-tree continuation, capacity-retry policy, Dope-owned Git checkpoint commits or automatic sequence resume. Those belong to 8C.
+Do not implement AgentTaskSequence, prompt-stack parsing, package-version progression, browser/manual gates, dirty-tree continuation, capacity-retry policy, Dope-owned Git checkpoint commits or automatic sequence resume. Those remain 8C and stay gated on a later Green 8B candidate.
 
 ## 8C — Sequential phase-stack execution
 
@@ -255,7 +265,7 @@ T2/T3 connection/security integration:
 - no secret persistence/log leakage.
 
 ### 8B
-Focused + integration AgentTask/authority/tool tests. One real Codex task on disposable repo.
+After `c8-agent-authority-boundary`, focused + integration tests must prove ExecutionWorkspace isolation, CandidateDelta classification, all-or-blocked authority gating, Dope-owned create/modify promotion, denied delete/rename, cancellation/interruption without automatic promotion and one real Codex task on a disposable repo.
 
 ### 8C
 T3 Dope-on-Dope dogfood:

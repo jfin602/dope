@@ -39,21 +39,18 @@ Before execution:
 
 ## Scope law
 
-8B may:
-- read the approved project root;
-- mutate project workspace files after explicit grant acceptance;
-- run project-local processes/tests/builds;
-- inspect Git;
-- use the already-authorized hosted Codex connection selected through Coding Agent or an exact target.
+The executed P1-P7 stack used the original direct-project-write authority model and remains historical evidence.
 
-8B must deny:
-- Git stage/commit/reset/rebase/checkout/switch/history mutation;
-- network from the coding-agent sandbox;
-- secrets/private-home access;
-- effects outside the approved project root;
-- destructive/system/package-administration effects.
+ADR 0028 supersedes that mutation boundary for any requalification:
+- provider/model mutation occurs only inside an isolated ExecutionWorkspace;
+- provider processes never write the authoritative project root;
+- CandidateDelta classifies create/modify/delete/rename effects;
+- initial authoritative promotion allows create/modify and denies delete/rename;
+- any unauthorized candidate effect blocks the whole candidate delta from promotion in corrected 8B;
+- only Dope-owned Authority + ToolExecutor may apply authorized project changes;
+- Git write/history, network, secrets/private-home, outside-workspace and system/package-admin effects remain denied.
 
-If the reference harness cannot enforce a requested boundary, the mutation path fails closed.
+If the reference harness cannot enforce the coarse host boundary, or Dope cannot enforce candidate promotion authority, the mutation path fails closed.
 
 ## Deliberately deferred
 
@@ -73,4 +70,4 @@ Those remain later Phase 8/9/10 work.
 
 ## Closeout routing
 
-P7 closed **Phase 8B Not Green / Not Qualified**. The bounded `c8-p8b-qualification-loop` stopped after Cycle 1 at an enforceability gap in the fixed grant; the version remains `0.8.13`. Route to fresh authority architecture review. Phase 8C planning remains gated on a later Green / Qualified 8B candidate.
+P7 closed **Phase 8B Not Green / Not Qualified**. The bounded `c8-p8b-qualification-loop` stopped after Cycle 1 at the direct-write authority gap. ADR 0028 now resolves the architecture direction; route next to implementation planning for **`c8-agent-authority-boundary`** at unchanged `0.8.13`, then requalify 8B. Phase 8C planning remains gated on a later Green / Qualified 8B candidate.
