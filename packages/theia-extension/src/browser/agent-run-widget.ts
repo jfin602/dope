@@ -7,8 +7,11 @@ import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-ser
 import { createDefaultExecutionGrant, EFFECT_KINDS } from '@dope/agent-core';
 
 export const AGENT_RUN_ID = 'dope-agent-run';
-const names: Record<string, string> = { 'project-read': 'Read project files', 'project-write': 'Write project files',
-    'project-process': 'Run project processes', 'project-test': 'Run project tests', 'project-build': 'Run project builds',
+const names: Record<string, string> = { 'workspace-read': 'Read isolated workspace', 'workspace-write': 'Edit isolated workspace',
+    'workspace-process': 'Run workspace processes', 'workspace-test': 'Run workspace tests',
+    'workspace-build': 'Run workspace builds', 'project-create': 'Create project files after review',
+    'project-modify': 'Modify project files after review', 'project-delete': 'Delete project files',
+    'project-rename': 'Rename project files',
     'git-inspect': 'Inspect Git', 'git-write': 'Write Git index or refs', 'git-history': 'Change Git history',
     network: 'Network access', secrets: 'Access secrets', 'private-state': 'Access private state',
     'outside-root': 'Access outside project', destructive: 'Destructive actions', system: 'System actions',
@@ -115,9 +118,18 @@ export class AgentRunWidget extends BaseWidget {
             if (run.outcome) detail.append(el('p', `Outcome: ${run.outcome.summary}`));
             const files = el('section'); files.append(el('h4', 'Changed files'));
             files.append(el('p', run.changedFiles.length ? run.changedFiles.join(', ') : 'No changed files recorded.')); detail.append(files);
+            if (run.candidateDelta) {
+                const candidate = el('section'); candidate.append(el('h4', 'Candidate changes'));
+                candidate.append(el('p', run.candidateDelta.effects.length ?
+                    run.candidateDelta.effects.map(effect => `${effect.kind}: ${effect.path}`).join(', ') : 'No candidate changes.'));
+                if (run.authorityDecision) candidate.append(el('p', run.authorityDecision.allowed ?
+                    `Promotion allowed; applied: ${run.appliedFiles?.join(', ') || 'none'}` :
+                    `Promotion blocked: ${run.authorityDecision.blocked.map(effect => `${effect.kind}: ${effect.path}`).join(', ')}`));
+                detail.append(candidate);
+            }
             const validations = el('section'); validations.append(el('h4', 'Validation results'));
             if (!run.validationResults.length) validations.append(el('p', 'No validation results recorded.'));
-            for (const result of run.validationResults) validations.append(el('p', `${result.label}: ${result.status}${result.summary ? ` — ${result.summary}` : ''}`));
+            for (const result of run.validationResults) validations.append(el('p', `${result.label}: ${result.status} (execution workspace)${result.summary ? ` — ${result.summary}` : ''}`));
             detail.append(validations);
             if (run.changeSummary) detail.append(el('p', `Changes: ${run.changeSummary.filesChanged} files, +${run.changeSummary.insertions} / -${run.changeSummary.deletions}. ${run.changeSummary.summary}${run.changeSummary.truncated ? ' (truncated)' : ''}`));
             const activity = el('section'); activity.append(el('h4', 'Activity'));

@@ -9,7 +9,7 @@ export type AgentExecutionEvent =
     | { kind: 'status' | 'warning' | 'authority-denied' | 'provider-event'; summary: string };
 
 export interface AgentExecutionRequest {
-    projectRoot: string; grant: ExecutionGrant; taskId: string;
+    projectRoot: string; executionRoot: string; grant: ExecutionGrant; taskId: string;
     connectionId: string; registrationId: string; modelId: string;
     prompt: string; reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh';
     onEvent(event: AgentExecutionEvent): void;

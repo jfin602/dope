@@ -42,13 +42,20 @@ export interface CommandEvidence {
     version: typeof AGENT_SCHEMA_VERSION; commandSummary: string; durationMs: number;
     exitCode: number; result: 'passed' | 'failed'; matchedTargets: string[];
 }
+export interface CandidateEffect { kind: 'create' | 'modify' | 'delete' | 'rename'; path: string;
+    previousPath?: string; before?: string; after?: string }
+export interface CandidateDelta { version: typeof AGENT_SCHEMA_VERSION; effects: CandidateEffect[] }
+export interface AuthorityDecision { allowed: boolean; blocked: { kind: CandidateEffect['kind']; path: string }[] }
 export interface AgentRun {
     version: typeof AGENT_SCHEMA_VERSION; id: string; taskId: string; status: AgentRunStatus;
     grantId: string; grantRevision: number; requestedPolicy: AgentModelPolicy;
     projectRoot: '.'; projectId?: string; createdAt: string; startedAt?: string; endedAt?: string;
+    executionWorkspace?: { id: string; basisHead: string };
     provenance?: ExecutionProvenance; basis?: GitBasis; finalGit?: GitFinal; changedFiles: string[];
     commandEvidence?: CommandEvidence[];
     validationResults: ValidationResult[]; changeSummary?: ChangeSummary;
+    validationBasis?: 'execution-workspace'; candidateDelta?: CandidateDelta;
+    authorityDecision?: AuthorityDecision; appliedFiles?: string[];
     recovery?: { adapterId: string; handle: string }; outcome?: { code: 'authority-denied' | 'provider-error' |
         'validation-failed' | 'cancelled' | 'interrupted' | 'other'; summary: string };
 }
@@ -203,20 +210,66 @@ export function parseCommandEvidence(value: unknown): CommandEvidence {
         result: select(x.result, ['passed', 'failed'] as const),
         matchedTargets: array(x.matchedTargets, 12, item => bounded(item, 160)) });
 }
+const hash = (value: unknown): string => {
+    if (typeof value !== 'string' || !/^[a-f0-9]{64}$/u.test(value)) throw new Error('Invalid candidate hash');
+    return value;
+};
+export function parseCandidateDelta(value: unknown): CandidateDelta {
+    const x = record(value, ['version', 'effects']);
+    const effects = array(x.effects, 500, item => {
+        const effect = record(item, ['kind', 'path', 'previousPath', 'before', 'after']);
+        const kind = select(effect.kind, ['create', 'modify', 'delete', 'rename'] as const);
+        const path = projectPath(effect.path);
+        if (kind === 'rename' && effect.previousPath === undefined || kind !== 'rename' && effect.previousPath !== undefined ||
+            kind === 'create' && (effect.before !== undefined || effect.after === undefined) ||
+            kind === 'delete' && (effect.before === undefined || effect.after !== undefined) ||
+            kind === 'modify' && (effect.before === undefined || effect.after === undefined))
+            throw new Error('Invalid candidate effect');
+        return { kind, path, ...(effect.previousPath === undefined ? {} : { previousPath: projectPath(effect.previousPath) }),
+            ...(effect.before === undefined ? {} : { before: hash(effect.before) }),
+            ...(effect.after === undefined ? {} : { after: hash(effect.after) }) };
+    });
+    if (new Set(effects.map(item => item.path)).size !== effects.length) throw new Error('Duplicate candidate path');
+    return freeze({ version: version(x.version), effects });
+}
+export function parseAuthorityDecision(value: unknown): AuthorityDecision {
+    const x = record(value, ['allowed', 'blocked']);
+    const blocked = array(x.blocked, 500, item => {
+        const entry = record(item, ['kind', 'path']);
+        return { kind: select(entry.kind, ['create', 'modify', 'delete', 'rename'] as const), path: projectPath(entry.path) };
+    });
+    if (bool(x.allowed) === Boolean(blocked.length)) throw new Error('Invalid authority decision');
+    return freeze({ allowed: x.allowed as boolean, blocked });
+}
 export const RUN_STATUSES = freeze(['pending', 'running', 'blocked', 'cancelling',
     'cancelled', 'failed', 'completed', 'interrupted'] as const);
 export function parseAgentRunStatus(value: unknown): AgentRunStatus { return select(value, RUN_STATUSES); }
 export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
         'projectRoot', 'projectId', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis',
-        'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome']);
+        'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome',
+        'validationBasis', 'candidateDelta', 'authorityDecision', 'appliedFiles', 'executionWorkspace']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
     const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
     const recovery = x.recovery === undefined ? undefined : record(x.recovery, ['adapterId', 'handle']);
     const outcome = x.outcome === undefined ? undefined : record(x.outcome, ['code', 'summary']);
+    const executionWorkspace = x.executionWorkspace === undefined ? undefined : record(x.executionWorkspace, ['id', 'basisHead']);
+    if (executionWorkspace && (!basis || executionWorkspace.basisHead !== basis.head))
+        throw new Error('Execution workspace basis does not match run');
     const changedFiles = array(x.changedFiles, 500, item => projectPath(item));
     if (new Set(changedFiles).size !== changedFiles.length) throw new Error('Duplicate changed file');
+    const candidateDelta = x.candidateDelta === undefined ? undefined : parseCandidateDelta(x.candidateDelta);
+    const authorityDecision = x.authorityDecision === undefined ? undefined : parseAuthorityDecision(x.authorityDecision);
+    const appliedFiles = x.appliedFiles === undefined ? undefined : array(x.appliedFiles, 500, projectPath);
+    if (authorityDecision && !candidateDelta || appliedFiles && !authorityDecision ||
+        appliedFiles && new Set(appliedFiles).size !== appliedFiles.length ||
+        authorityDecision && authorityDecision.blocked.some(blocked => !candidateDelta?.effects.some(effect =>
+            effect.kind === blocked.kind && effect.path === blocked.path)) ||
+        appliedFiles && appliedFiles.some(path => !candidateDelta?.effects.some(effect =>
+            effect.path === path && ['create', 'modify'].includes(effect.kind))) ||
+        authorityDecision?.allowed === false && appliedFiles?.length)
+        throw new Error('Inconsistent candidate promotion evidence');
     const startedAt = x.startedAt === undefined ? undefined : timestamp(x.startedAt);
     const endedAt = x.endedAt === undefined ? undefined : timestamp(x.endedAt);
     const terminal = ['cancelled', 'failed', 'completed', 'interrupted'].includes(status);
@@ -231,6 +284,8 @@ export function parseAgentRun(value: unknown): AgentRun {
         requestedPolicy: parseAgentModelPolicy(x.requestedPolicy), projectRoot: '.',
         ...(x.projectId === undefined ? {} : { projectId: id(x.projectId) }),
         createdAt: timestamp(x.createdAt), ...(startedAt ? { startedAt } : {}), ...(endedAt ? { endedAt } : {}),
+        ...(executionWorkspace === undefined ? {} : { executionWorkspace: {
+            id: id(executionWorkspace.id), basisHead: id(executionWorkspace.basisHead) } }),
         ...(x.provenance === undefined ? {} : { provenance: parseExecutionProvenance(x.provenance) }),
         ...(basis === undefined ? {} : { basis: { head: basis.head === null ? null : id(basis.head),
             clean: bool(basis.clean), ...(basis.metadataChanged === undefined ? {} :
@@ -239,6 +294,10 @@ export function parseAgentRun(value: unknown): AgentRun {
         ...(x.commandEvidence === undefined ? {} : { commandEvidence: array(x.commandEvidence, 24, parseCommandEvidence) }),
         ...(x.finalGit === undefined ? {} : { finalGit: parseGitFinal(x.finalGit) }),
         ...(x.changeSummary === undefined ? {} : { changeSummary: parseChangeSummary(x.changeSummary) }),
+        ...(x.validationBasis === undefined ? {} : { validationBasis: select(x.validationBasis, ['execution-workspace'] as const) }),
+        ...(candidateDelta === undefined ? {} : { candidateDelta }),
+        ...(authorityDecision === undefined ? {} : { authorityDecision }),
+        ...(appliedFiles === undefined ? {} : { appliedFiles }),
         ...(recovery === undefined ? {} : { recovery: { adapterId: id(recovery.adapterId),
             handle: bounded(recovery.handle, 256) } }),
         ...(outcome === undefined ? {} : { outcome: { code: select(outcome.code,

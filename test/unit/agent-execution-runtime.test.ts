@@ -107,10 +107,12 @@ test('Follow Coding Agent resolves policy and persists immutable actual provenan
     assert.equal(f.adapter.starts[0].modelId, 'model-1');
     assert.equal(f.adapter.starts[0].registrationId, 'account-1');
     assert.equal(f.adapter.starts[0].grant.id, 'grant-1');
+    assert.notEqual(f.adapter.starts[0].executionRoot, f.root);
     await assert.rejects(f.store.updateRun(f.root, run, { ...run,
         provenance: { ...run.provenance!, modelId: 'other' } }), /Immutable/);
     f.adapter.onEvent!({ kind: 'command-started', summary: 'secret provider output' });
-    await writeFile(join(f.root, 'edited.txt'), 'edited');
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'edited.txt'), 'edited');
+    await assert.rejects(readFile(join(f.root, 'edited.txt')), { code: 'ENOENT' });
     f.adapter.onEvent!({ kind: 'file-changed', path: 'edited.txt', summary: 'secret diff' });
     f.adapter.onEvent!({ kind: 'agent-message', summary: 'Bearer secret' });
     f.adapter.complete();
@@ -118,7 +120,7 @@ test('Follow Coding Agent resolves policy and persists immutable actual provenan
     assert.equal(done.status, 'completed');
     assert.deepEqual(done.changedFiles, ['edited.txt']);
     const events = (await f.store.readEvents(f.root, run.id, 0, 20)).events;
-    assert.deepEqual(events.map(event => event.kind), ['status', 'process', 'file', 'message', 'status']);
+    assert.deepEqual(events.slice(0, 4).map(event => event.kind), ['status', 'process', 'file', 'message']);
     assert.ok(!JSON.stringify(events).includes('secret'));
 }));
 
@@ -159,12 +161,32 @@ test('stop before effects cancels and rejects a competing start', async () => fi
 
 test('post-effect stop preserves workspace bytes and recorded file evidence', async () => fixture(async f => {
     const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true);
-    await writeFile(join(f.root, 'edited.txt'), 'changed');
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'edited.txt'), 'changed');
     f.adapter.onEvent!({ kind: 'file-changed', path: 'edited.txt', summary: 'provider payload' });
     const stopped = await f.backend.stop(f.handle, run.id);
     assert.equal(stopped.status, 'cancelled');
-    assert.deepEqual(stopped.changedFiles, ['edited.txt']);
-    assert.equal(await readFile(join(f.root, 'edited.txt'), 'utf8'), 'changed');
+    assert.deepEqual(stopped.changedFiles, []);
+    assert.equal(stopped.candidateDelta?.effects[0]?.kind, 'create');
+    await assert.rejects(readFile(join(f.root, 'edited.txt')), { code: 'ENOENT' });
+}));
+
+test('one denied candidate deletion blocks all project promotion and persists the decision', async () => fixture(async f => {
+    const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true);
+    const work = f.adapter.starts[0].executionRoot;
+    await writeFile(join(work, 'candidate.ts'), 'candidate');
+    await rm(join(work, 'BOOT.md'));
+    f.adapter.onEvent!({ kind: 'file-changed', path: 'candidate.ts', summary: 'provider claims success' });
+    f.adapter.complete();
+    const done = await terminal(f.store, f.root, run.id);
+    assert.equal(done.status, 'failed');
+    assert.equal(done.outcome?.code, 'authority-denied');
+    assert.equal(done.candidateDelta?.effects.some(effect => effect.kind === 'delete' && effect.path === 'BOOT.md'), true);
+    assert.equal(done.authorityDecision?.allowed, false);
+    assert.deepEqual(done.appliedFiles, []);
+    assert.deepEqual(done.changedFiles, []);
+    assert.equal((await readFile(join(f.root, 'BOOT.md'), 'utf8')).startsWith('# Dope'), true);
+    await assert.rejects(readFile(join(f.root, 'candidate.ts')), { code: 'ENOENT' });
+    assert.equal((await new AgentStore().readRun(f.root, run.id))?.candidateDelta?.effects.length, 2);
 }));
 
 test('provider failure after output and authority denial terminate without fallback', async () => fixture(async f => {
@@ -260,7 +282,8 @@ test('fresh backend attach reconciles orphaned running and cancelling runs witho
     for (const [id, status] of [['orphan-running', 'running'], ['orphan-cancelling', 'cancelling']] as const) {
         const pending: any = { version: 1, id, taskId: 'task-1', status: 'pending', grantId: 'grant-1',
             grantRevision: 0, requestedPolicy: { kind: 'follow-coding-agent' }, projectRoot: '.',
-            createdAt: now, basis, changedFiles: [], validationResults: [] };
+            createdAt: now, basis, executionWorkspace: { id: `workspace-${id}`, basisHead: basis.head },
+            changedFiles: [], validationResults: [] };
         await f.store.createRun(f.root, pending);
         const running = await f.store.updateRun(f.root, pending, { ...pending, status: 'running', startedAt: now,
             recovery: { adapterId: 'fake-codex', handle: 'thread-1' } });
@@ -274,7 +297,6 @@ test('fresh backend attach reconciles orphaned running and cancelling runs witho
         status: 'running', startedAt: now });
     const terminalBefore = await f.store.updateRun(f.root, terminalRunning, { ...terminalRunning,
         status: 'completed', endedAt: now });
-    await writeFile(join(f.root, 'partial.txt'), 'preserve me');
     const freshAdapter = new FakeAdapter();
     const fresh = new AgentExecutionRuntime(f.store, f.routing as any,
         { inventory: async () => { throw new Error('must not resolve'); } } as any,
@@ -285,12 +307,12 @@ test('fresh backend attach reconciles orphaned running and cancelling runs witho
         for (const id of ['orphan-running', 'orphan-cancelling']) {
             const run = await f.store.readRun(f.root, id);
             assert.equal(run?.status, 'interrupted');
-            assert.deepEqual(run?.changedFiles, ['partial.txt']);
+            assert.deepEqual(run?.changedFiles, []);
             assert.equal(run?.recovery?.handle, 'thread-1');
             assert.equal(run?.finalGit?.headChanged, false);
             assert.ok((await f.store.readEvents(f.root, id, 0, 10)).events.some(event => event.status === 'interrupted'));
         }
-        assert.equal(await readFile(join(f.root, 'partial.txt'), 'utf8'), 'preserve me');
+        await assert.rejects(readFile(join(f.root, 'partial.txt')), { code: 'ENOENT' });
         assert.equal(freshAdapter.starts.length, 0);
         assert.deepEqual(await f.store.readRun(f.root, 'terminal-unchanged'), terminalBefore);
         await backend.attach(pathToFileURL(f.root).href);

@@ -4,12 +4,13 @@ import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, 
     AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureGitBasis, captureGitFinal } from '@dope/agent-core/lib/node/git-evidence';
+import { ExecutionWorkspace, PromotionFailure } from '@dope/agent-core/lib/node/execution-workspace';
 import type { AIInventoryController } from './ai-registry-backend';
 import type { AIRoleRoutingService } from './ai-role-routing';
 import { futureFeatureRoleRequest } from '@dope/ai';
 
 interface Active {
-    root: string; run?: AgentRun; handle?: AgentExecutionHandle;
+    root: string; run?: AgentRun; handle?: AgentExecutionHandle; workspace?: ExecutionWorkspace; grant?: ExecutionGrant;
     interrupting?: Promise<void>;
     ready: Promise<void>; releaseReady(): void;
     finished: Promise<void>; releaseFinished(): void;
@@ -176,6 +177,9 @@ export class AgentExecutionRuntime {
         hostedAuthorized: boolean): Promise<AgentRun> {
         if (this.disposed) throw new Error('Agent Runtime disposed');
         if (await this.store.root(folderUri) !== root) throw new Error('Accepted project root does not match attached project');
+        const prior = this.active.get(root);
+        if (prior && prior.run && ['completed', 'cancelled', 'failed', 'interrupted'].includes(prior.run.status))
+            await prior.finished;
         if (this.active.has(root)) throw new Error('A mutation run is already active for this project');
         let releaseReady!: () => void;
         let releaseFinished!: () => void;
@@ -201,17 +205,21 @@ export class AgentExecutionRuntime {
             const basis = await captureGitBasis(root);
             if (!basis.head) throw new Error('Phase 8B requires a committed Git HEAD');
             if (!basis.clean) throw new Error('Phase 8B requires a clean project worktree');
+            active.workspace = await ExecutionWorkspace.create(root);
+            active.grant = grant;
             const now = new Date().toISOString();
             const pending: AgentRun = { version: AGENT_SCHEMA_VERSION, id: randomUUID(), taskId: task.id,
                 status: 'pending', grantId: grant.id, grantRevision: grant.revision,
                 requestedPolicy: task.modelPolicy, projectRoot: '.', ...(task.projectId ? { projectId: task.projectId } : {}),
-                createdAt: now, basis, changedFiles: [], validationResults: [] };
+                createdAt: now, basis, executionWorkspace: { id: active.workspace.id, basisHead: active.workspace.head },
+                changedFiles: [], validationResults: [] };
             active.run = await this.store.createRun(root, pending);
             await this.update(active, run => ({ ...run, status: 'running', startedAt: now,
                 provenance: selected.provenance }));
             await this.event(active, 'status', 'Agent run started', { status: 'running' });
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
-            const handle = await selected.adapter.start({ projectRoot: root, grant, taskId: task.id,
+            const handle = await selected.adapter.start({ projectRoot: root, executionRoot: active.workspace.root,
+                grant, taskId: task.id,
                 connectionId: selected.provenance.connectionId, registrationId: selected.registrationId,
                 modelId: selected.provenance.modelId,
                 prompt: `${task.objective}\n\n${task.instructions}`,
@@ -235,7 +243,8 @@ export class AgentExecutionRuntime {
                 active.stopping && !active.interruptionFailed ? 'cancelled' :
                     active.interruptionFailed ? 'interrupted' : 'provider-error',
                 active.stopping ? 'Agent run stopped' : 'Agent start failed');
-            else { if (this.active.get(root) === active) this.active.delete(root); active.releaseFinished(); }
+            else { if (this.active.get(root) === active) this.active.delete(root);
+                await active.workspace?.dispose(); active.releaseFinished(); }
             throw error;
         }
     }
@@ -250,11 +259,36 @@ export class AgentExecutionRuntime {
             task?.completion.requireValidationPass &&
             task.completion.validation.some(target => active.run?.validationResults.slice().reverse().find(result =>
                 result.kind === target.kind && result.label === target.label)?.status !== 'passed'));
-        const status = active.denied || validationMissing ? 'failed' : !failed ? 'completed' : active.stopping ?
-            active.interruptionFailed ? 'interrupted' : 'cancelled' : 'failed';
-        const code = active.denied ? 'authority-denied' : validationMissing ? 'validation-failed' : !failed ? undefined : active.stopping ?
-            active.interruptionFailed ? 'interrupted' : 'cancelled' : 'provider-error';
-        await this.finish(active, status, code, active.denied ? 'Execution authority denied' :
+        let promotionBlocked = false;
+        let promotionError = false;
+        let promotionSucceeded = false;
+        if (active.workspace && active.run) {
+            try {
+                const delta = await active.workspace.delta();
+                await this.serial(active, () => this.update(active, run => ({ ...run,
+                    validationBasis: 'execution-workspace', candidateDelta: delta })));
+                if (!failed && !active.stopping && !active.denied && !validationMissing && active.grant) {
+                    const result = await active.workspace.promote(active.grant, delta);
+                    await this.serial(active, () => this.update(active, run => ({ ...run,
+                        authorityDecision: result.decision, appliedFiles: result.applied })));
+                    promotionBlocked = !result.decision.allowed;
+                    promotionSucceeded = result.decision.allowed;
+                    if (promotionBlocked) await this.event(active, 'authority', 'Candidate changes blocked by execution grant');
+                }
+            } catch (error) {
+                promotionBlocked = true;
+                promotionError = true;
+                if (error instanceof PromotionFailure) await this.serial(active, () => this.update(active, run => ({ ...run,
+                    authorityDecision: { allowed: true, blocked: [] }, appliedFiles: error.appliedFiles })));
+                await this.event(active, 'authority', 'Candidate classification or promotion failed');
+            }
+        }
+        const status = active.denied || validationMissing || promotionBlocked ? 'failed' : promotionSucceeded ? 'completed' : active.stopping ?
+            active.interruptionFailed ? 'interrupted' : 'cancelled' : failed ? 'failed' : 'completed';
+        const code = promotionError ? 'other' : active.denied || promotionBlocked ? 'authority-denied' : validationMissing ? 'validation-failed' : promotionSucceeded ? undefined : active.stopping ?
+            active.interruptionFailed ? 'interrupted' : 'cancelled' : failed ? 'provider-error' : undefined;
+        await this.finish(active, status, code, promotionError ? 'Candidate promotion failed; inspect applied files' :
+            active.denied || promotionBlocked ? 'Execution authority denied' :
             validationMissing ? 'Required validation did not pass' :
             status === 'completed' ? 'Agent run completed' : active.stopping ? 'Agent run stopped' :
                 'Agent execution failed');
@@ -287,6 +321,7 @@ export class AgentExecutionRuntime {
             });
         } finally {
             if (this.active.get(active.root) === active) this.active.delete(active.root);
+            await active.workspace?.dispose();
             active.releaseFinished();
         }
     }

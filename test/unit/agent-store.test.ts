@@ -35,6 +35,10 @@ test('atomic task/run round trip, legal transitions, events and terminal restart
     await store.updateRun(a, run(), active);
     await assert.rejects(store.updateRun(a, run(), active), /Stale/);
     const evidenced = { ...active, changedFiles: ['src/a.ts'],
+        validationBasis: 'execution-workspace',
+        candidateDelta: { version: 1, effects: [{ kind: 'modify', path: 'src/a.ts',
+            before: 'a'.repeat(64), after: 'b'.repeat(64) }] },
+        authorityDecision: { allowed: true, blocked: [] }, appliedFiles: ['src/a.ts'],
         validationResults: [{ version: 1, kind: 'test', label: 'unit', status: 'passed' }] };
     await store.updateRun(a, active, evidenced);
     await assert.rejects(store.updateRun(a, evidenced, active), /Immutable AgentRun evidence/);

@@ -1,10 +1,12 @@
 import { AGENT_SCHEMA_VERSION, bool, freeze, id, integer, projectPath, record, select, timestamp } from './contracts';
 
-export type EffectKind = 'project-read' | 'project-write' | 'project-process' | 'project-test' |
-    'project-build' | 'git-inspect' | 'git-write' | 'git-history' | 'network' | 'secrets' |
+export type EffectKind = 'workspace-read' | 'workspace-write' | 'workspace-process' | 'workspace-test' |
+    'workspace-build' | 'project-create' | 'project-modify' | 'project-delete' | 'project-rename' |
+    'git-inspect' | 'git-write' | 'git-history' | 'network' | 'secrets' |
     'private-state' | 'outside-root' | 'destructive' | 'system' | 'package-admin';
-export const EFFECT_KINDS: readonly EffectKind[] = freeze(['project-read', 'project-write',
-    'project-process', 'project-test', 'project-build', 'git-inspect', 'git-write',
+export const EFFECT_KINDS: readonly EffectKind[] = freeze(['workspace-read', 'workspace-write',
+    'workspace-process', 'workspace-test', 'workspace-build', 'project-create', 'project-modify',
+    'project-delete', 'project-rename', 'git-inspect', 'git-write',
     'git-history', 'network', 'secrets', 'private-state', 'outside-root',
     'destructive', 'system', 'package-admin'] as const);
 export interface ExecutionGrant {
@@ -12,14 +14,16 @@ export interface ExecutionGrant {
     projectRoot: '.'; acceptedAt: string; acceptedBy: 'developer';
     permissions: Readonly<Record<EffectKind, boolean>>;
 }
-export interface ProposedEffect { kind: EffectKind; path?: string; scope: 'project' | 'outside-root' }
+export interface ProposedEffect { kind: EffectKind; path?: string; scope: 'workspace' | 'project' | 'outside-root' }
 export type EffectDecision = { allowed: true; kind: EffectKind; grantId: string; grantRevision: number } |
     { allowed: false; kind: EffectKind; grantId: string; grantRevision: number;
         reason: 'outside-grant' | 'invalid-target' | 'unapproved-effect' };
 
 const defaults: Readonly<Record<EffectKind, boolean>> = freeze({
-    'project-read': true, 'project-write': true, 'project-process': true,
-    'project-test': true, 'project-build': true, 'git-inspect': true,
+    'workspace-read': true, 'workspace-write': true, 'workspace-process': true,
+    'workspace-test': true, 'workspace-build': true, 'project-create': true,
+    'project-modify': true, 'project-delete': false, 'project-rename': false,
+    'git-inspect': true,
     'git-write': false, 'git-history': false, network: false, secrets: false,
     'private-state': false, 'outside-root': false, destructive: false,
     system: false, 'package-admin': false
@@ -55,7 +59,7 @@ export function reviseExecutionGrant(previous: ExecutionGrant, acceptedAt: strin
 export function parseProposedEffect(value: unknown): ProposedEffect {
     const x = record(value, ['kind', 'path', 'scope']);
     const kind = select(x.kind, EFFECT_KINDS);
-    const scope = select(x.scope, ['project', 'outside-root'] as const);
+    const scope = select(x.scope, ['workspace', 'project', 'outside-root'] as const);
     if (x.path !== undefined && typeof x.path !== 'string') throw new Error('Invalid effect path');
     return { kind, scope, ...(x.path === undefined ? {} : { path: x.path }) };
 }
@@ -68,9 +72,13 @@ export function checkEffect(grant: ExecutionGrant, proposed: unknown): EffectDec
     catch { return { allowed: false, kind: 'outside-root', grantId: approved.id,
         grantRevision: approved.revision, reason: 'invalid-target' }; }
     const base = { kind: effect.kind, grantId: approved.id, grantRevision: approved.revision };
-    if (effect.scope !== 'project') return { ...base, allowed: false, reason: 'outside-grant' };
+    if (effect.scope === 'outside-root') return { ...base, allowed: false, reason: 'outside-grant' };
+    if (effect.kind.startsWith('workspace-') && effect.scope !== 'workspace' ||
+        effect.kind.startsWith('project-') && effect.scope !== 'project' ||
+        effect.kind === 'git-inspect' && effect.scope !== 'workspace')
+        return { ...base, allowed: false, reason: 'invalid-target' };
     if (effect.path !== undefined) {
-        try { projectPath(effect.path, ['project-process', 'project-test', 'project-build', 'git-inspect'].includes(effect.kind)); }
+        try { projectPath(effect.path, ['workspace-process', 'workspace-test', 'workspace-build', 'git-inspect'].includes(effect.kind)); }
         catch { return { ...base, allowed: false, reason: 'invalid-target' }; }
     }
     if (approved.permissions[effect.kind] && !effect.path)

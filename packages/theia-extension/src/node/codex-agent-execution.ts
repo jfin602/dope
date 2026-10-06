@@ -1,7 +1,7 @@
 import { spawn, execFile, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { lstat, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { delimiter, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentExecutionRequest } from '@dope/agent-core';
 import { parseExecutionGrant } from '@dope/agent-core';
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
@@ -18,7 +18,7 @@ const object = (value: unknown): Record<string, any> | undefined =>
 
 /** The named profile is intentionally stronger than a bare workspace-write sandbox: it denies
  * reads outside the workspace, while inheriting Codex's .git/.codex write protection. */
-export function mutationConfig(root?: string): string {
+export function mutationConfig(root?: string, executablePath?: string, nodePath?: string): string {
     return `model_provider = "openai_chatgpt_plan"
 approval_policy = "never"
 sandbox_mode = "workspace-write"
@@ -64,6 +64,8 @@ glob_scan_max_depth = 64
 ":minimal" = "read"
 ":tmpdir" = "deny"
 ":slash_tmp" = "deny"
+${executablePath ? `${JSON.stringify(executablePath)} = "read"` : ''}
+${nodePath ? `${JSON.stringify(nodePath)} = "read"` : ''}
 
 [permissions.dope_run.filesystem.":workspace_roots"]
 "." = "write"
@@ -71,6 +73,10 @@ glob_scan_max_depth = 64
 ".codex" = "read"
 "**/.env" = "deny"
 "**/.env.*" = "deny"
+"**/.npmrc" = "deny"
+"**/.yarnrc" = "deny"
+"**/.ssh" = "deny"
+"**/.aws" = "deny"
 "**/*.pem" = "deny"
 "**/*.key" = "deny"
 
@@ -90,10 +96,12 @@ export interface CodexExecutionOptions {
     timeoutMs?: number;
     turnTimeoutMs?: number;
     /** Injection point for deterministic fixture tests. Production always probes the installed sandbox. */
-    verifySandbox?: (executable: string, home: string, runtimeBase: string) => Promise<void>;
+    verifySandbox?: (executable: string, home: string, runtimeBase: string,
+        authoritativeRoot: string) => Promise<void>;
 }
 
-async function verifyInstalledSandbox(executable: string, home: string, runtimeBase: string): Promise<void> {
+export async function verifyInstalledSandbox(executable: string, home: string, runtimeBase: string,
+    authoritativeRoot = ''): Promise<void> {
     const probe = await mkdtemp(join(runtimeBase, 'sandbox-probe-'));
     const project = join(probe, 'project');
     const deniedFile = join(probe, 'private');
@@ -108,25 +116,28 @@ printf allowed > allowed
 if test -r "$1"; then exit 11; fi
 if (printf denied > .git/config) 2>/dev/null; then exit 12; fi
 if (printf denied > "$2") 2>/dev/null; then exit 13; fi
+if (printf denied > /etc/dope-agent-sandbox-probe) 2>/dev/null; then exit 24; fi
 if test -r .env; then exit 14; fi
 if (printf denied > .env) 2>/dev/null; then exit 18; fi
 if test -r "$3"; then exit 15; fi
+if test -n "$5" && test -r "$5"; then exit 23; fi
+if test -n "$5" && test -r "/proc/$PPID/root$5"; then exit 25; fi
 if test -n "\${ACCESS_TOKEN:-}"; then exit 21; fi
-if test -r "/proc/$PPID/environ"; then exit 22; fi
+if test -r "/proc/$PPID/environ" && grep -q 'dope-probe-marker' "/proc/$PPID/environ"; then exit 22; fi
 ln -s .git git-control-link
 if (printf denied > git-control-link/config) 2>/dev/null; then exit 19; fi
 ln -s "$1" outside-link
 if (printf denied > outside-link) 2>/dev/null; then exit 20; fi
 if ! "$4" -e 'const server = require("node:net").createServer(); server.on("error", () => process.exit(0)); server.listen(0, "127.0.0.1", () => process.exit(1));'; then exit 17; fi
 rm destructive-canary
-if ! test -e destructive-canary; then exit 16; fi`;
+if test -e destructive-canary; then exit 16; fi`;
         await new Promise<void>((resolveProbe, reject) => execFile(executable,
             ['sandbox', '-P', 'dope_run', '-C', project, '/bin/sh', '-c', script,
                 'dope-probe', deniedFile, join(tmpdir(), 'dope-sandbox-denied-probe'),
-                join(home, 'config.toml'), process.execPath],
+                join(home, 'config.toml'), process.execPath, authoritativeRoot],
             { cwd: project, timeout: 5000, env: { PATH: process.env.PATH, HOME: home,
                 CODEX_HOME: home, ACCESS_TOKEN: 'dope-probe-marker' } },
-            error => error ? reject(fail('Codex sandbox cannot enforce the accepted grant')) : resolveProbe()));
+            error => error ? reject(fail(`Codex sandbox preflight failed (${error.code ?? 'startup'})`)) : resolveProbe()));
     } finally {
         await rm(probe, { recursive: true, force: true }).catch(() => {});
     }
@@ -147,15 +158,27 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
             !request.prompt.trim() || request.prompt.length > 32_000 || !/^[A-Za-z0-9][A-Za-z0-9._:/+-]*$/u.test(request.modelId))
             throw fail('Invalid Agent execution request');
         if (process.platform !== 'linux') throw fail('Codex execution sandbox unsupported on this platform');
-        const root = await realpath(request.projectRoot).catch(() => { throw fail('Approved project root unavailable'); });
-        if (!isAbsolute(request.projectRoot) || request.projectRoot !== root || root === sep)
-            throw fail('Project root is not canonical');
+        const approved = await realpath(request.projectRoot).catch(() => { throw fail('Approved project root unavailable'); });
+        const root = await realpath(request.executionRoot).catch(() => { throw fail('Execution workspace unavailable'); });
+        if (!isAbsolute(request.projectRoot) || request.projectRoot !== approved || approved === sep ||
+            !isAbsolute(request.executionRoot) || request.executionRoot !== root || root === sep ||
+            root === approved || root.startsWith(approved + sep) || approved.startsWith(root + sep))
+            throw fail('Execution workspace must be canonical and separate from project');
         const git = await lstat(join(root, '.git')).catch(() => { throw fail('Project Git control unavailable'); });
         if (!git.isDirectory() || git.isSymbolicLink()) throw fail('Unsupported Git control layout');
         const runtimeBase = resolve(this.options.runtimeDirectory ?? join(tmpdir(), 'dope-agent-runtime'));
         if (runtimeBase === root || runtimeBase.startsWith(root + sep) || root.startsWith(runtimeBase + sep))
             throw fail('Runtime home must be separate from the project');
         const executable = this.options.executable ?? 'codex';
+        const resolvedExecutable = await (async () => {
+            const paths = isAbsolute(executable) ? [executable] :
+                (process.env.PATH ?? '').split(delimiter).map(directory => join(directory, executable));
+            for (const path of paths) {
+                const resolved = await realpath(path).catch(() => undefined);
+                if (resolved) return resolved;
+            }
+            throw fail('Codex executable unavailable', 'connection-unavailable');
+        })();
         const version = this.options.version ?? (path => new Promise<string>((resolveVersion, reject) =>
             execFile(path, ['--version'], { timeout: 3000, cwd: tmpdir() }, (error, stdout) =>
                 error ? reject(error) : resolveVersion(stdout))));
@@ -173,8 +196,9 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
         const home = await mkdtemp(join(runtimeBase, 'codex-run-'));
         let rpc: RpcProcess | undefined;
         try {
-            await writeFile(join(home, 'config.toml'), mutationConfig(root), { mode: 0o600, flag: 'wx' });
-            await (this.options.verifySandbox ?? verifyInstalledSandbox)(executable, home, runtimeBase);
+            await writeFile(join(home, 'config.toml'), mutationConfig(root, resolvedExecutable,
+                await realpath(process.execPath)), { mode: 0o600, flag: 'wx' });
+            await (this.options.verifySandbox ?? verifyInstalledSandbox)(executable, home, runtimeBase, approved);
             let token: string;
             try { token = await this.auth.accessToken(request.connectionId, request.registrationId); }
             catch { throw fail('ChatGPT account needs authorization', 'authentication'); }

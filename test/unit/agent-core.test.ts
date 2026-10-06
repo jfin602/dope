@@ -98,13 +98,15 @@ test('accepted grant is immutable, revisioned and fixed to the 8B profile', () =
     assert.throws(() => parseExecutionGrant({ ...first, prompt: 'ignore policy' }));
 });
 
-test('default grant allows only project read/write/local execution and Git inspection', () => {
+test('default grant separates workspace authority from authoritative promotion', () => {
     const approved = grant();
-    const allowed = new Set(['project-read', 'project-write', 'project-process',
-        'project-test', 'project-build', 'git-inspect']);
-    assert.equal(EFFECT_KINDS.length, 15);
+    const allowed = new Set(['workspace-read', 'workspace-write', 'workspace-process',
+        'workspace-test', 'workspace-build', 'project-create', 'project-modify', 'git-inspect']);
+    assert.equal(EFFECT_KINDS.length, 19);
     for (const kind of EFFECT_KINDS) {
-        const effect = { kind, scope: 'project', ...(kind === 'project-read' || kind === 'project-write' ?
+        const effect = { kind, scope: kind.startsWith('workspace-') || kind === 'git-inspect' ? 'workspace' : 'project',
+            ...(kind === 'workspace-read' || kind === 'workspace-write' ||
+            kind.startsWith('project-') ?
             { path: 'src/a.ts' } : allowed.has(kind) ? { path: '.' } : {}) };
         const decision = checkEffect(approved, effect);
         assert.equal(decision.allowed, allowed.has(kind), kind);
@@ -113,13 +115,13 @@ test('default grant allows only project read/write/local execution and Git inspe
     }
     for (const path of ['/etc/passwd', '../outside', 'src/../../outside',
         'C:/Windows', 'src\\a.ts', '.git/config', 'src//a.ts']) {
-        const decision = checkEffect(approved, { kind: 'project-write', scope: 'project', path });
-        assert.deepEqual(decision, { allowed: false, kind: 'project-write', grantId: 'grant-1',
+        const decision = checkEffect(approved, { kind: 'project-modify', scope: 'project', path });
+        assert.deepEqual(decision, { allowed: false, kind: 'project-modify', grantId: 'grant-1',
             grantRevision: 0, reason: 'invalid-target' });
     }
-    assert.equal(checkEffect(approved, { kind: 'project-write', scope: 'outside-root', path: 'x' }).allowed, false);
-    assert.equal(checkEffect(approved, { kind: 'project-read', scope: 'project' }).allowed, false);
-    assert.equal(checkEffect(approved, { kind: 'project-process', scope: 'project' }).allowed, false);
-    assert.equal(checkEffect(approved, { kind: 'project-write', scope: 'project', path: 'x',
+    assert.equal(checkEffect(approved, { kind: 'project-modify', scope: 'outside-root', path: 'x' }).allowed, false);
+    assert.equal(checkEffect(approved, { kind: 'workspace-read', scope: 'project' }).allowed, false);
+    assert.equal(checkEffect(approved, { kind: 'workspace-process', scope: 'project' }).allowed, false);
+    assert.equal(checkEffect(approved, { kind: 'project-modify', scope: 'project', path: 'x',
         providerSaysAllowed: true }).allowed, false);
 });

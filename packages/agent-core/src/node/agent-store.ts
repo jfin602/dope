@@ -225,7 +225,8 @@ export class AgentStore {
 
     async createRun(root: string, value: AgentRun): Promise<AgentRun> {
         const run = checked(value, parseAgentRun);
-        if (run.status !== 'pending' || run.changedFiles.length || run.validationResults.length || run.changeSummary || run.outcome || run.finalGit || run.commandEvidence?.length)
+        if (run.status !== 'pending' || run.changedFiles.length || run.validationResults.length || run.changeSummary || run.outcome || run.finalGit || run.commandEvidence?.length ||
+            run.candidateDelta || run.authorityDecision || run.appliedFiles?.length)
             throw new Error('New agent run must be empty and pending');
         const task = await this.readTask(root, run.taskId);
         if (!task || task.projectId !== run.projectId || !same(task.modelPolicy, run.requestedPolicy)) throw new Error('Agent run does not match task');
@@ -252,12 +253,16 @@ export class AgentStore {
             if (!current || !same(current, old)) throw new Error('Stale agent run; re-read before updating');
             if (!canTransitionAgentRun(current.status, next.status) && (current.status !== next.status ||
                 ['completed', 'cancelled', 'failed', 'interrupted'].includes(current.status))) throw new Error('Illegal AgentRun transition');
-            for (const key of ['version', 'id', 'taskId', 'grantId', 'grantRevision', 'requestedPolicy', 'projectRoot', 'projectId', 'createdAt'] as const)
+            for (const key of ['version', 'id', 'taskId', 'grantId', 'grantRevision', 'requestedPolicy', 'projectRoot', 'projectId', 'createdAt', 'executionWorkspace'] as const)
                 if (!same(current[key], next[key])) throw new Error('Immutable AgentRun field changed');
             if (current.startedAt && current.startedAt !== next.startedAt || current.endedAt && current.endedAt !== next.endedAt ||
                 current.provenance && !same(current.provenance, next.provenance) || current.basis && !same(current.basis, next.basis) ||
                 current.recovery && !same(current.recovery, next.recovery) || current.outcome && !same(current.outcome, next.outcome) ||
                 current.finalGit && !same(current.finalGit, next.finalGit) ||
+                current.candidateDelta && !same(current.candidateDelta, next.candidateDelta) ||
+                current.authorityDecision && !same(current.authorityDecision, next.authorityDecision) ||
+                current.appliedFiles && !same(current.appliedFiles, next.appliedFiles) ||
+                current.validationBasis && current.validationBasis !== next.validationBasis ||
                 (!next.finalGit && current.changedFiles.some((file, index) => next.changedFiles[index] !== file)) ||
                 current.validationResults.some((item, index) => !same(item, next.validationResults[index])) ||
                 current.commandEvidence?.some((item, index) => !same(item, next.commandEvidence?.[index])))

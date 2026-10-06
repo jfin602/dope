@@ -87,6 +87,8 @@ class FakeChild extends EventEmitter {
 async function fixture(scenario = 'complete') {
     const root = await mkdtemp(join(tmpdir(), 'dope-execution-project-'));
     await mkdir(join(root, '.git'));
+    const executionRoot = await mkdtemp(join(tmpdir(), 'dope-execution-work-'));
+    await mkdir(join(executionRoot, '.git'));
     const runtimeDirectory = await mkdtemp(join(tmpdir(), 'dope-execution-runtime-'));
     const spawns: { command: string; args: string[]; options: any; child: FakeChild }[] = [];
     const auth = { async accessToken(connection: string, account: string) {
@@ -103,12 +105,13 @@ async function fixture(scenario = 'complete') {
         }) as any
     });
     const events: any[] = [];
-    const request = { projectRoot: root, grant: createDefaultExecutionGrant({ id: 'grant-1', revision: 0,
+    const request = { projectRoot: root, executionRoot, grant: createDefaultExecutionGrant({ id: 'grant-1', revision: 0,
         taskId: 'task-1', acceptedAt: '2026-10-05T00:00:00Z' }), taskId: 'task-1',
         connectionId: 'codex', registrationId: 'account-1', modelId: 'exact-model',
         prompt: 'Implement one task', onEvent: (event: any) => events.push(event) };
-    return { root, runtimeDirectory, spawns, adapter, request, events,
+    return { root, executionRoot, runtimeDirectory, spawns, adapter, request, events,
         async cleanup() { adapter.dispose(); await rm(root, { recursive: true, force: true });
+            await rm(executionRoot, { recursive: true, force: true });
             await rm(runtimeDirectory, { recursive: true, force: true }); } };
 }
 
@@ -132,7 +135,7 @@ test('dedicated run uses approved root and exact model, normalizes bounded event
         await handle.result;
         assert.deepEqual(handle.recovery, { adapterId: 'codex-app-server-execution', handle: 'thread-1' });
         const spawned = f.spawns[0];
-        assert.equal(spawned.options.cwd, f.root);
+        assert.equal(spawned.options.cwd, f.executionRoot);
         assert.deepEqual(spawned.args, ['app-server', '--strict-config', '--listen', 'stdio://']);
         assert.equal(spawned.options.env.ACCESS_TOKEN, 'oauth-secret');
         assert.equal(spawned.options.env.OPENAI_API_KEY, undefined);
@@ -144,7 +147,8 @@ test('dedicated run uses approved root and exact model, normalizes bounded event
         assert.equal(thread.model, 'exact-model'); assert.equal(thread.allowProviderModelFallback, false);
         assert.equal(thread.modelProvider, 'openai_chatgpt_plan');
         assert.equal(thread.permissions, 'dope_run'); assert.equal(turn.permissions, 'dope_run');
-        assert.deepEqual(thread.runtimeWorkspaceRoots, [f.root]);
+        assert.deepEqual(thread.runtimeWorkspaceRoots, [f.executionRoot]);
+        assert.notEqual(thread.cwd, f.root);
         assert.deepEqual(turn.input, [{ type: 'text', text: 'Implement one task' }]);
         assert.deepEqual(f.events.map(e => e.kind), ['command-started', 'command-completed',
             'file-changed', 'agent-message', 'status', 'status']);

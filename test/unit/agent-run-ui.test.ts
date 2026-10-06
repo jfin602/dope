@@ -55,8 +55,8 @@ test('direct task displays eligible target and requires explicit grant before st
     h.controller.acceptGrant(true); assert.equal(h.controller.canStart, true);
     await h.controller.start(); assert.equal((h.task as { origin: { kind: string } }).origin.kind, 'direct');
     assert.equal((h.task as { modelPolicy: { kind: string } }).modelPolicy.kind, 'follow-coding-agent');
-    assert.equal((h.grant as { permissions: { network: boolean; 'project-write': boolean } }).permissions.network, false);
-    assert.equal((h.grant as { permissions: { network: boolean; 'project-write': boolean } }).permissions['project-write'], true);
+    assert.equal((h.grant as { permissions: { network: boolean; 'project-modify': boolean } }).permissions.network, false);
+    assert.equal((h.grant as { permissions: { network: boolean; 'project-modify': boolean } }).permissions['project-modify'], true);
     assert.equal(h.authorized, true); assert.equal(h.controller.selected?.status, 'running');
     await h.controller.stop(); assert.equal(h.stopped, true); assert.equal(h.controller.selected?.status, 'cancelling');
 });
