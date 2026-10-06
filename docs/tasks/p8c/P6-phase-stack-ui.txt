@@ -1,0 +1,42 @@
+TASK: Phase 8 / P6 — Minimal Phase Stack workbench
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.19`.
+
+GOAL
+Add the smallest useful workbench surface for importing, observing and controlling one AgentTaskSequence while reusing existing Agent Run detail.
+
+REQUIRED UI
+- Ordinary command/view entry such as `Dope: Open Phase Stack`.
+- Import/Open Stack from a project-local `docs/tasks/<stack>` folder.
+- Show stack identity/fingerprint status and phase/correction mode.
+- Ordered entries with current/completed/waiting-manual/blocked state.
+- Per-entry model/reasoning/version/browser metadata.
+- Current Git HEAD/package version/clean-or-accepted-dirty basis summary.
+- Checkpoint SHA for completed executable tasks.
+- Start/Resume/Stop controls using the real backend coordinator.
+- Explicit dirty-tree acceptance control before a task may include existing work.
+- Manual gate displays the exact snapshotted prompt and a clear external completion/reconcile action.
+- Blocked reason, validation result and checkpoint result.
+- Link/focus the associated Agent Run detail rather than duplicating the full activity/diff/event UI.
+
+SAFETY / UX
+- Do not expose tokens, raw provider payloads, hidden reasoning or private paths.
+- Do not silently auto-run on view open/restart.
+- Resume is disabled/blocked when reconciliation is ambiguous.
+- Use current calm Dope Dark conventions; no broad redesign.
+- No WorkItem, DevelopmentSession, multi-agent or final delegation UX.
+
+FOCUSED VALIDATION
+- Command/widget/service wiring.
+- Import/list/current-state rendering.
+- Start/Resume/Stop and dirty acceptance gating.
+- Manual gate prompt rendering/reconcile behavior.
+- Checkpoint/blocked state rendering.
+- Restart/reopen with no auto-run.
+- Accessibility labels/status.
+- Affected frontend/backend tests and browser build only where required; git diff --check/version coherence.
