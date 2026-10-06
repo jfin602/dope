@@ -1,6 +1,6 @@
 # Product Phase 8B — Agent Execution Core Task Stack
 
-Status: **P7 CLOSED NOT GREEN / PHASE 8B NOT QUALIFIED — QUALIFICATION LOOP STOPPED AFTER CYCLE 1 AT AN AUTHORITY ARCHITECTURE GAP**; see [closeout](closeout.md) and [repair loop](../c8-p8b-qualification-loop/README.md).
+Status: **GREEN / QUALIFIED — CORRECTED DIRECT AGENTTASK SCOPE CLOSED AT 0.8.13**; historical P7 Not Green and qualification-loop evidence remain retained.
 Execution folder: `p8b`
 Product slice: Phase 8B — Agent execution core
 Baseline: package `0.8.6` at `bdf01b1cf518e44b8187a40db5d199fac7ad693b`
@@ -70,4 +70,6 @@ Those remain later Phase 8/9/10 work.
 
 ## Closeout routing
 
-P7 closed **Phase 8B Not Green / Not Qualified**. The bounded `c8-p8b-qualification-loop` stopped after Cycle 1 at the direct-write authority gap. ADR 0028 now resolves the architecture direction; route next to implementation planning for **`c8-agent-authority-boundary`** at unchanged `0.8.13`, then requalify 8B. Phase 8C planning remains gated on a later Green / Qualified 8B candidate.
+Phase 8B is **Green / Qualified** after the ADR 0028 correction and four post-correction requalification cycles. Qualified product/test source: `bd0b6ff`; docs-only closeout: `c11756e`.
+
+Route next to Phase 8C sequential task / phase-stack execution. Do not reopen the 8B direct AgentTask scope unless new regression evidence invalidates its qualification.
