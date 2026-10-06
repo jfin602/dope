@@ -1,0 +1,35 @@
+TASK: Phase 8 / P1 — AgentTaskSequence domain and phase-stack import
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.14`.
+
+GOAL
+Introduce the provider-neutral Phase 8C sequence domain and import existing Dope phase/correction prompt stacks without executing anything.
+
+REQUIREMENTS
+- Read ADR 0027/0028, the Phase 8C plan, current agent-core contracts and current runner grammar before editing.
+- Add strict versioned AgentTaskSequence / imported-stack / sequence-entry contracts in agent-core. Keep provider and Theia types out.
+- Preserve P number, task title, full snapshotted prompt text, phase/correction mode, model/reasoning recommendation, Browser-required flag, version policy and closeout classification.
+- Implement provider-independent PhaseStack parsing equivalent to the current runner grammar: folder naming, contiguous P1..Pn, exactly one final closeout, Phase vs Correction consistency, continuation version progression, GPT-6 Sol labels and exact Browser-required parsing.
+- Do not shell out to scripts/codex-phase.mjs and do not import runner process lifecycle into product code. Sharing/extracting a truly pure grammar helper is allowed only if dependency direction stays clean.
+- Compute a deterministic fingerprint from the normalized imported snapshot. Later source-file edits must be detectable without rewriting the stored snapshot.
+- Browser-required implementation entries classify as manual gates. Final closeout is always a manual gate for 8C.
+- Define legal sequence statuses/transitions sufficient for ready/running/waiting-manual/blocked/interrupted/completed truth. Completed state cannot silently return to running.
+- Define deterministic phase-stack AgentTask metadata for later orchestration, but do not start Agent Runtime.
+
+PRESERVE
+- Existing AgentTask/AgentRun compatibility except for justified additive fields.
+- ADR 0028 authority semantics.
+- External runner behavior/tests.
+
+FOCUSED VALIDATION
+- Add agent-core tests for valid phase/correction imports, p8c continuation versions, malformed/duplicate/missing prompt numbers, closeout ambiguity, unknown model labels, Browser parsing, immutable snapshot/fingerprint and sequence transitions.
+- Build/typecheck only affected packages.
+- Run git diff --check and version/no-root-lock coherence checks.
+
+DEFER
+Persistence, Git resume truth, execution, retry, checkpoint commits, manual-gate external reconciliation and UI belong to later prompts.
