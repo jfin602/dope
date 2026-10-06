@@ -62,6 +62,7 @@ Cycle 1 proved the `bwrap: execvp` startup error comes from `:root = "deny"` hid
 
 No live eligible target, model mutation, five-class executing authority result, cancellation, active-run restart or persisted-run security/reopen was qualified. The loop stopped after Cycle 1 rather than weakening the grant or improvising a new sandbox architecture. The evidence-only checkpoint and exact probe details are in [Cycle 1 evidence](../c8-p8b-qualification-loop/cycle-evidence.md). A fresh docs/architecture review must resolve how Dope can enforce denied destructive effects while allowing project mutation/processes. Phase 8C is not eligible.
 
+<<<<<<< HEAD
 ## Supplemental final Green disposition — 2026-10-06
 
 **Decision: GREEN / QUALIFIED** for the corrected direct AgentTask scope at `0.8.13`.
@@ -73,3 +74,16 @@ No live eligible target, model mutation, five-class executing authority result, 
 - Final reported automated evidence: `npm run check` pass; 69/69 focused tests; p8b validator pass; fresh sandbox proof pass; seven direct promotion fixtures pass.
 - The earlier P7 Not Green result and original authority-gap Cycle 1 above remain historical evidence and are not erased by this later qualification.
 - Phase 8C is eligible for the sequential task / phase-stack implementation slice.
+=======
+## Supplemental post-ADR 0028 final disposition — 2026-10-06
+
+**Decision: GREEN / QUALIFIED** for the corrected Phase 8B direct AgentTask scope. The exact clean `0.8.13` product/test source is `bd0b6fff8b17eff1015190419a0e6125c2a0885f`, tracked-tree SHA-256 `0b29baf8d01261f204bb09f6f00e0232b3adf6da4566e41e17376679df7e6c1b`. The original P7 and original pre-ADR 0028 Cycle 1 Not Green findings above remain unchanged historical evidence. The fresh post-correction loop used four of its five cycles; see [direct run IDs, gate observations and exact-candidate checks](../c8-p8b-qualification-loop/cycle-evidence.md).
+
+The installed Codex `0.155.1` sandbox and a real eligible ChatGPT-plan **Terra** target ran only inside a separate ExecutionWorkspace. The production coarse preflight and live probes protected the tested outside/private canaries, network, Git control and system/package writes; a writable shadow view of account home never changed the real host. Dope independently classified CandidateDelta and promoted only authorized create/modify effects. Seven fresh direct fixtures proved modify, create+modify, delete, conservative rename, mixed allowed+denied, stale basis and symlink escape. Real Terra delete, rename and mixed runs recorded whole-candidate authority denial and zero authoritative effects. A real validated Terra run promoted exactly `result.txt` and `state.txt`, recorded `validationBasis: execution-workspace`, preserved target HEAD and index, and excluded `.dope/agent/` metadata from task changes.
+
+Live Stop recorded `running -> cancelling -> cancelled` after a workspace edit with no promotion. Force-closing the disposable Dope backend after a separate workspace edit stopped its Codex/sandbox processes; fresh ownership reopened the run as `interrupted` without continuation or promotion. A persisted-file scan across completed, blocked, cancelled and interrupted runs found no token, Authorization header, private absolute path, hidden reasoning, environment dump or unbounded provider payload. The UI reopened the successful run with validation, candidate, authority, applied files and bounded diff evidence. Validation targets can be created through the direct AgentTask path and viewed in the minimal Agent Run UI; the form does not yet configure them. An interrupted run does not invent candidate or validation results before the provider turn settles.
+
+The exact-candidate gate passed **69/69** focused Phase 8B/correction tests, `npm run check` (typecheck, configured tests, browser and Electron builds), `npm run codex:phase:validate -- p8b`, installed-sandbox replay, seven direct promotion fixtures, all 13 live `0.8.13` manifest/internal-reference checks, no-root-lock and `git diff --check`. No test-owned orphan Codex/App Server/sandbox process remained. The reference harness, authority, persistence and UI claims are limited to the directly observed Phase 8B scope.
+
+Phase 8C is eligible for a fresh `/docs-review -> /prompt-ass -> /prompt-plan -> /prompt-write p8c` sequence. AgentTaskSequence, dirty-tree continuation and checkpoint commits were not introduced here.
+>>>>>>> c11756e (c8-p8b-requalification: qualify corrected Phase 8B at 0.8.13)

@@ -1,6 +1,10 @@
 # Product Phase 8B — Agent Execution Core Task Stack
 
+<<<<<<< HEAD
 Status: **GREEN / QUALIFIED — CORRECTED DIRECT AGENTTASK SCOPE CLOSED AT 0.8.13**; historical P7 Not Green and qualification-loop evidence remain retained.
+=======
+Status: **GREEN / QUALIFIED for corrected ADR 0028 direct-task scope at exact `0.8.13` source `bd0b6fff8b17eff1015190419a0e6125c2a0885f`**. Historical P7 and pre-ADR 0028 loop results remain Not Green; see [closeout](closeout.md) and [post-correction repair loop](../c8-p8b-qualification-loop/README.md).
+>>>>>>> c11756e (c8-p8b-requalification: qualify corrected Phase 8B at 0.8.13)
 Execution folder: `p8b`
 Product slice: Phase 8B — Agent execution core
 Baseline: package `0.8.6` at `bdf01b1cf518e44b8187a40db5d199fac7ad693b`
@@ -70,6 +74,12 @@ Those remain later Phase 8/9/10 work.
 
 ## Closeout routing
 
+<<<<<<< HEAD
 Phase 8B is **Green / Qualified** after the ADR 0028 correction and four post-correction requalification cycles. Qualified product/test source: `bd0b6ff`; docs-only closeout: `c11756e`.
 
 Route next to Phase 8C sequential task / phase-stack execution. Do not reopen the 8B direct AgentTask scope unless new regression evidence invalidates its qualification.
+=======
+P7 closed **Phase 8B Not Green / Not Qualified**. The bounded `c8-p8b-qualification-loop` stopped after Cycle 1 at the direct-write authority gap. ADR 0028 now resolves the architecture direction; route next to implementation planning for **`c8-agent-authority-boundary`** at unchanged `0.8.13`, then requalify 8B. Phase 8C planning remains gated on a later Green / Qualified 8B candidate.
+
+The later ADR 0028 correction and fresh post-correction qualification are complete. Four of five fresh cycles produced the Green / Qualified source identified above; the historical P7 result in the preceding paragraph is preserved. The next route is fresh Phase 8C `/docs-review -> /prompt-ass -> /prompt-plan -> /prompt-write p8c`. No Phase 8C work was executed in this loop.
+>>>>>>> c11756e (c8-p8b-requalification: qualify corrected Phase 8B at 0.8.13)

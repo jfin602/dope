@@ -1,6 +1,10 @@
 # Phase 8B Iterative Qualification / Repair Loop
 
+<<<<<<< HEAD
 Status: **COMPLETE — GREEN / QUALIFIED AFTER 4 OF 5 POST-CORRECTION CYCLES**
+=======
+Status: **COMPLETE / GREEN — four of five fresh post-correction cycles used at exact `0.8.13` source `bd0b6fff8b17eff1015190419a0e6125c2a0885f`**
+>>>>>>> c11756e (c8-p8b-requalification: qualify corrected Phase 8B at 0.8.13)
 Date: 2026-10-06
 Folder: `c8-p8b-qualification-loop`
 Version policy: **keep Phase 8B at `0.8.13`**
@@ -123,6 +127,7 @@ That prompt now starts a **fresh post-correction five-cycle budget**. It qualifi
 
 Phase 8C remains gated until the post-correction loop produces a Green / Qualified exact `0.8.13` candidate.
 
+<<<<<<< HEAD
 ## Final qualified disposition
 
 The post-correction requalification completed Green after four of five cycles.
@@ -132,3 +137,10 @@ Docs-only closeout: `c11756e`.
 Version remains `0.8.13`.
 
 All eight corrected-boundary gates passed. Phase 8C is eligible and must consume the qualified ADR 0028 AgentTask substrate rather than reintroducing direct provider mutation authority.
+=======
+## Fresh post-correction closeout — 2026-10-06
+
+The ADR 0028 ExecutionWorkspace -> CandidateDelta -> Authority/ToolExecutor boundary passed all eight direct gates and the exact-candidate check after **four** fresh cycles. The qualified product/test source is clean commit `bd0b6fff8b17eff1015190419a0e6125c2a0885f` at `0.8.13`. The full repository check, 69/69 focused tests, p8b validator, fresh sandbox and seven direct promotion fixtures passed. Real Terra runs proved hosted validation and create/modify promotion, live delete/rename/mixed whole-candidate denial, cancellation, forced-backend restart interruption, and persisted security/reopen in Agent Run. See [post-correction cycle and exact-candidate evidence](cycle-evidence.md) and the [supplemental Phase 8B closeout](../p8b/closeout.md).
+
+The original P7 and first pre-ADR 0028 loop failures above remain historical Not Green evidence. Phase 8B is now **GREEN / QUALIFIED** for its corrected direct-task scope. Route Phase 8C through a fresh `/docs-review -> /prompt-ass -> /prompt-plan -> /prompt-write p8c` sequence; this loop did not implement Phase 8C.
+>>>>>>> c11756e (c8-p8b-requalification: qualify corrected Phase 8B at 0.8.13)

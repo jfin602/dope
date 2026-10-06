@@ -228,20 +228,19 @@ Use this section only after `c8-agent-authority-boundary` has finished. The hist
 
 ### Post-Correction Final Exact-Candidate Gate
 
-- exact final candidate:
-- ExecutionWorkspace isolation:
-- coarse host sandbox:
-- CandidateDelta classification:
-- create/modify authoritative promotion:
-- delete/rename/mixed-candidate full block:
-- eligible live Codex target:
-- real hosted mutation/validation/promotion:
-- live cancellation without promotion:
-- active-run restart interruption without promotion:
-- persisted-run security/reopen:
-- focused suite:
-- npm run check:
-- p8b validator:
-- version/no-root-lock/diff:
-- residuals:
-- final Phase 8B decision:
+- Exact final product/test source candidate: clean `bd0b6fff8b17eff1015190419a0e6125c2a0885f`, tracked-tree SHA-256 `0b29baf8d01261f204bb09f6f00e0232b3adf6da4566e41e17376679df7e6c1b`, package `0.8.13`. Later closeout text is documentation-only and does not change the qualified product/test source.
+- ExecutionWorkspace isolation: fresh direct installed-CLI replay created distinct canonical roots. The provider sandbox made create/modify/delete candidate effects inside its ExecutionWorkspace while all authoritative fixture bytes stayed unchanged before promotion. No provider process received the authoritative root as writable cwd.
+- Coarse host sandbox: production `verifyInstalledSandbox()` passed again with installed `codex-cli 0.155.1`; the direct replay confirmed token absence in the model-directed shell and denial of named outside read/write. The Cycle 4 real Terra probes denied network, private auth read, Git-control write, system/package write and a named outside canary. The account-home write seen in one sandbox view did not appear on the host because that home was shadowed. The installed `:minimal` runtime-read allowance permitted `/etc/hostname`; the host proof is for private/outside project canaries and prohibited effects, not a claim that no operating-system metadata is readable.
+- CandidateDelta classification and promotion: seven fresh direct fixtures passed modify-only, create+modify, delete, conservative rename as create+delete, mixed modify+delete, stale authoritative basis, and symlink escape. Authorized effects applied exactly; every denied delta applied zero files. Fixture HEADs remained fixed and indexes empty.
+- Live delete/rename/mixed full block: Cycle 4 real Terra runs `3da10d90-e110-4cb7-9d1c-cbc1cb1806ee`, `b248cc38-f383-40d3-becb-d354561a3205`, and `943a6831-5768-4464-b6fb-389c5e0f94d6` recorded durable whole-candidate authority denial. Their authoritative tracked files, HEADs and indexes were unchanged.
+- Eligible Codex target: disposable AI Center profile used an eligible signed-in ChatGPT-plan account, four real inventory models, preferred and Coding Agent exact `gpt-5.6-terra`, zero fallback entries and no API-key billing fallback. Test Connection and every post-correction mutation inference after the owner's model correction used Terra. The earlier scratch 8A Test Connection using then-default Astra remains disclosed in Cycle 1 evidence.
+- Real hosted mutation/validation/promotion: real Terra run `dcef8454-1da1-4d23-97a2-aa6f7dc87365` passed required `./validate.sh` in the ExecutionWorkspace, independently classified create `result.txt` + modify `state.txt`, approved the complete delta and applied exactly those files. Its target HEAD stayed `c949f6c711a7e3b5183d284ade5ba3551d957e3e`, index empty; persisted changed files and bounded diff matched authoritative Git/filesystem truth, with `.dope/agent/` excluded from task changes.
+- Live cancellation: run `0aad1fc8-dd72-48e3-9929-90dda820088a` recorded `running -> cancelling -> cancelled` after a workspace edit. Its process stopped; no later effect or authoritative promotion occurred.
+- Active-run restart: actual workbench run `383114b5-51ae-41e1-9cf5-c8f41e71a888` had a workspace edit before the disposable Theia backend was force-killed. Its owned Codex/sandbox processes stopped; fresh ownership reconciled it to `interrupted`, with no automatic continuation/promotion, unchanged authoritative HEAD/files/index and inspectable bounded events/recovery identity.
+- Persisted security/reopen: success, delete, rename, mixed, cancelled and interrupted `.dope/agent/` task/run/event files were scanned. No OAuth/access/refresh/ID token, Authorization header, credential bytes, hidden reasoning, arbitrary environment dump, raw unbounded provider payload or private absolute path was found. Candidate/applied/changed paths were project-relative; the largest observed event line was 200 bytes. Candidate, authority and applied fields remained distinct. The interrupted run had no validation result/basis because execution stopped before validation. Fresh Agent Run UI reopened both the interrupted run and the completed validated run, displaying the latter's validation, candidate, authority, applied files and bounded change summary.
+- Complete focused Phase 8B + authority-correction suite: **69/69 pass**, including agent-core/store, ExecutionWorkspace, execution runtime, Git evidence, Agent Run UI, Codex execution/App Server/auth, and Electron restart tests.
+- `npm run check`: **pass** on the exact product/test source; typecheck, all configured test groups, browser build and Electron build completed with zero build errors.
+- `npm run codex:phase:validate -- p8b`: **pass**; P7 remains the manual browser closeout prompt at `0.8.13`.
+- Version/no-root-lock/diff/process: all 13 live manifests/internal `@dope/*` references are `0.8.13`; no root `package-lock.json` or `npm-shrinkwrap.json`; `git diff --check` passes; no test-owned orphan Codex/App Server/sandbox processes remain.
+- Practical limits: the minimal Agent Run form does not configure validation targets; the required validation target was created through the direct AgentTask path and its result was reopened in the UI. Interrupted runs do not infer a candidate or validation result before the provider turn settles. The original P7 and pre-ADR 0028 qualification failures remain historical evidence.
+- Final Phase 8B decision: **GREEN / QUALIFIED** for the corrected ADR 0028 direct AgentTask scope at exact `0.8.13` source `bd0b6fff8b17eff1015190419a0e6125c2a0885f`. Four of five post-correction cycles were used; Cycle 5 was not started. Phase 8C is eligible for a fresh `/docs-review -> /prompt-ass -> /prompt-plan -> /prompt-write p8c` sequence; no Phase 8C implementation occurred here.
