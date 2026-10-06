@@ -123,86 +123,49 @@ Loop rules:
 
 ## 8B — Agent execution core
 
-**NOT GREEN / BLOCKED ON REQUIRED CORRECTION.** Phase 8A remains Green / Qualified. Phase 8B P7 and the bounded qualification loop remain historical Not Green evidence at `0.8.13`.
+**GREEN / QUALIFIED at `0.8.13`.** Qualified product/test source: `bd0b6ff`; docs-only closeout: `c11756e`.
 
-Cycle 1 proved that direct provider write access to the authoritative project cannot enforce the original `project-write allowed + destructive denied` contract. ADR 0028 therefore requires correction **`c8-agent-authority-boundary`** before 8B requalification or Phase 8C planning.
+The corrected direct AgentTask substrate proves the ADR 0028 boundary end-to-end:
+- isolated ExecutionWorkspace;
+- CandidateDelta classification;
+- Dope-owned create/modify promotion;
+- denied delete/rename/mixed-candidate promotion;
+- live hosted execution;
+- cancellation without authoritative promotion;
+- restart interruption without authoritative promotion;
+- durable secure AgentRun reopen.
 
-The corrected 8B vertical slice keeps AgentTask/AgentRun/ExecutionGrant + Agent Runtime, but changes mutation flow:
-- one direct bounded AgentTask against a clean disposable project;
-- resolve Coding Agent role to Codex;
-- developer approves one ExecutionGrant;
-- derive an isolated ExecutionWorkspace from the accepted project basis;
-- allow provider read/write/process/test/build only inside that execution workspace under the coarse host-security ceiling;
-- compute CandidateDelta after execution;
-- classify authoritative create/modify/delete/rename effects deterministically;
-- initial grant allows authoritative create/modify and denies delete/rename;
-- if any candidate effect is unauthorized, promote none of the candidate delta;
-- Dope-owned Authority + ToolExecutor applies authorized create/modify effects to the real project after basis/path revalidation;
-- Git inspection remains allowed; Git writes/history changes remain denied;
-- network, secrets/private-home, outside-workspace and system/package-admin effects remain denied;
-- cancellation/interruption does not auto-promote partial candidate work;
-- stream normalized activity and preserve candidate/applied/validation provenance;
-- persist `.dope/agent/` task/run/events state and inspectable restart truth;
-- record provider-native thread ID only as non-canonical recovery metadata.
+The historical P7 Not Green result and original architecture-gap Cycle 1 remain retained evidence. Four of five post-correction cycles were used. Final reported qualification included 69/69 focused tests, `npm run check`, the p8b validator, fresh sandbox proof and seven direct promotion fixtures.
 
-The Phase 8A Test Connection remains permanently read-only and separate.
+Phase 8B is closed for its direct AgentTask scope. Phase 8C is authorized.
 
-Do not require WorkItem yet.
+## 8C — Sequential task / phase-stack execution
 
-Do not implement AgentTaskSequence, prompt-stack parsing, package-version progression, browser/manual gates, dirty-tree continuation, capacity-retry policy, Dope-owned Git checkpoint commits or automatic sequence resume. Those remain 8C and stay gated on a later Green 8B candidate.
+**CURRENT SLICE.** Starts from the qualified `0.8.13` 8B substrate. First implementation version: `0.8.14`.
 
-## 8C — Sequential phase-stack execution
+PhaseStackAdapter imports `docs/tasks/<stack>/P*.txt` into a normalized immutable snapshot with a source fingerprint. It preserves prompt order, phase/correction mode, model/reasoning, browser/manual requirement, version policy, closeout classification and prompt text. The product must not shell out to the external `codex-phase.mjs` runner as runtime.
 
-This is the primary near-term product milestone.
+AgentTaskSequence persists beneath `.dope/agent/sequences/<sequence-id>.json` and records source stack/fingerprint, ordered entries, AgentTask IDs, AgentRun attempts, checkpoint SHAs, current task/gate, Git/version/worktree basis, explicit dirty-tree basis when accepted and blocked/failure/interruption reason.
 
-### PhaseStackAdapter
+Safe progression is the intersection of durable sequence state, reachable Git history/checkpoint SHAs, current HEAD, package/version state, authoritative worktree basis and stack fingerprint. Ambiguity blocks automatic resume.
 
-Read existing task stacks and preserve:
-- ordered P1..Pn;
-- Phase vs Correction mode;
-- recommended model/reasoning;
-- browser/manual requirement;
-- phase target version or correction unchanged version;
-- closeout classification;
-- prompt text.
+Default task start requires a clean authoritative worktree. The developer may explicitly accept the current dirty worktree; that exact basis is then part of checkpoint scope and ExecutionWorkspace derivation. Later unrelated dirty work is never silently absorbed.
 
-Prefer sharing/extracting pure parser/domain helpers from the external runner when clean. Do not shell out to the whole runner as product architecture.
+Each executable prompt becomes a phase-stack-origin AgentTask and runs through the qualified 8B Agent Runtime / ExecutionWorkspace / CandidateDelta / Authority path. Capacity retry is bounded orchestration for the same task/workspace and never promotes or checkpoints between attempts.
 
-### Sequence execution
+After a successful run, Dope owns staging/commit. Preconditions include successful promotion, required validation, correct phase/correction version, coherent internal references, no forbidden root lock, unchanged pre-task HEAD and an exact accepted checkpoint scope. Do not blindly stage unrelated ambient work. Runtime `.dope/agent/**` state is excluded from ordinary implementation checkpoints.
 
-Before task:
-- canonical root and clean/dirty-state assessment;
-- package/version compatibility;
-- Git-proven completed prefix/checkpoint state;
-- current HEAD/basis;
-- ExecutionGrant confirmation.
+Commit subjects remain runner-compatible: phase tasks use exact target version; correction tasks use `<folder>/P<n>: <task title>`. Commit bodies are bounded Dope-owned summaries from task/run/validation/applied evidence, not raw provider narration.
 
-During task:
-- Coding Agent performs implementation;
-- Dope shows agent activity, commands, file changes and elapsed state;
-- developer can stop/steer within approved semantics;
-- required validation runs.
+Validation failure, cancellation/interruption, authority block, checkpoint invariant failure or unexpected HEAD movement stops the sequence, creates no checkpoint and advances nothing.
 
-After task:
-- failure/Not Green/authority violation stops progression;
-- preserve pre-existing dirty changes distinctly;
-- successful implementation passes coherence/version/lock checks;
-- Dope owns staging/checkpoint commit for this workflow;
-- record commit SHA and advance exactly one task.
+`Browser required: yes.` entries are manual gates. The final closeout is also a terminal manual gate. Dope shows the exact snapshotted prompt and expected metadata, starts no later task and never fabricates manual evidence. Resume requires re-reading Git/version/stack truth; clicking Resume alone is not completion evidence.
 
-Manual/browser gate:
-- stop visibly;
-- show exact pending prompt and required manual action;
-- never skip/fake the evidence;
-- after externally completed coherent checkpoint, re-read Git/version truth and resume.
+After restart, reconcile stale AgentRuns first, then sequence/Git/version/worktree/stack truth. Determine exactly one safe next action or block.
 
-Restart:
-- durable AgentTaskSequence/AgentRun state plus Git truth identifies the safe next action;
-- ambiguous or externally changed history blocks automatic resume.
+Minimal UI extends Agent Run with Import/Open Stack, ordered entries, current task/gate, model/reasoning/version, Git/version basis, checkpoint SHA, Start/Resume/Stop and blocked/validation/checkpoint state.
 
-### First Green dogfood
-
-Run a real Dope correction/phase stack inside Dope end to end through at least two implementation prompts and a manual/browser stop, restart, and resume.
+First Green dogfood uses a real Dope phase/correction stack through at least two automated checkpoints, a real manual/browser gate, application restart, same-gate reopen, external/manual checkpoint reconciliation and safe resume. Also qualify validation failure, cancellation, authority block, capacity retry, unexpected HEAD movement, explicit dirty-tree continuation, source-stack drift and duplicate-checkpoint prevention.
 
 ## 8D — General Scoped Delegation
 
