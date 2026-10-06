@@ -1,6 +1,6 @@
 # Product Phase 8B — Agent Execution Core Plan
 
-Status: **APPROVED / CURRENT SLICE / PROMPTS NOT YET WRITTEN**
+Status: **HISTORICAL PLAN — PHASE 8B GREEN / QUALIFIED AT 0.8.13**
 Date: 2026-10-05
 Expected execution folder: `p8b`
 Starting product source: exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`
@@ -318,5 +318,5 @@ Do not implement:
 
 Phase 8B is Green when one direct AgentTask can safely modify a clean disposable project through the Coding Agent role under an explicit bounded ExecutionGrant, run local validation, expose/persist auditable AgentRun state, deny out-of-grant effects, cancel without hidden effects or auto-revert, and remain inspectable after restart.
 
-A Green 8B routes to a fresh 8C docs review for sequential phase-stack execution.
+Phase 8B is Green / Qualified for the corrected direct AgentTask scope. Qualified product/test source is `bd0b6ff`; docs-only closeout is `c11756e`. Phase 8C is now the active slice.
 
