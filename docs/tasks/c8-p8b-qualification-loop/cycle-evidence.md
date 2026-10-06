@@ -133,21 +133,37 @@ Do not reset/discard the current candidate to force it to match the historical b
 
 Use this section only after `c8-agent-authority-boundary` has finished. The historical Cycle 1 above remains immutable evidence and does not consume the fresh post-correction five-cycle budget.
 
+### Post-correction pre-cycle baseline — 2026-10-06
+
+- Entry source: clean `468aa1c74bbc49caf8f69a25d6f7ae725c2d2331` (`correction 1`); `git diff HEAD` was empty. The tracked-tree SHA-256 by the retained P7 path/length/content method was `5751884bb292bcf78970dd944a47b655b10d0b377062e753d0973b4e548c8ce0`.
+- ADR 0028 remains accepted. Source inspection found the separate `ExecutionWorkspace`, deterministic `CandidateDelta`, fixed create/modify-allowed and delete/rename-denied `ExecutionGrant`, Dope-owned promotion executor, and distinct run candidate/authority/applied evidence. Agent Runtime passes the isolated workspace root to the Codex adapter as execution cwd. It accepts only a direct 8B task; no AgentTaskSequence execution or 8C checkpoint behavior was found.
+- All 13 root/workspace manifests and live internal `@dope/*` references are exactly `0.8.13`. No root `package-lock.json` or `npm-shrinkwrap.json` exists. `git diff --check` passed.
+- Installed Codex is `codex-cli 0.155.1` via `/home/jfin/.local/bin/codex`, resolving to the standalone 0.155.1 ELF. Installed `codex sandbox --help` and `codex app-server --help` were inspected. Current official provider configuration, App Server, and ChatGPT-plan App Server documentation were checked before provider integration work; no CLI upgrade or billing fallback was made.
+- New disposable clean Git repository: `/tmp/dope-p8b-post-7gmxhn/project`, starting HEAD `1b3047d62d757dc15bdf8a95e771f20880b43821`. A separate disposable application configuration/profile was created under `/tmp/dope-p8b-post-7gmxhn/app-profile`. The Dope repository is not a live mutation target.
+- Focused correction build and tests passed: agent-core and Theia extension builds; 36/36 tests across agent-core, execution workspace, execution runtime, and Codex adapter. The browser bundle was also built with zero errors for direct UI qualification.
+
+### Post-correction direct Gates 1–2 — Cycle 1
+
+- Gate 1: `ExecutionWorkspace.create()` made a separate canonical clone of the disposable Git repository. The installed Codex 0.155.1 executable started under the generated `dope_run` profile; the production `verifyInstalledSandbox()` preflight passed. A second direct `codex sandbox -P dope_run -C <execution workspace>` shell probe modified `state.txt`, created `created.txt`, and deleted `keep.txt` inside that workspace. The resulting Dope delta was create + delete + modify. Before promotion, authoritative `state.txt` remained `status=baseline` and authoritative `keep.txt` remained byte-for-byte `keep\n`. Workspace deletion succeeded as allowed candidate work.
+- The executing sandbox probe denied tested outside-workspace and private-canary reads/writes, direct and symlink/parent-root paths to the authoritative project, `.git/config` writes, a system `/etc` write, and a local network listener. A marker `ACCESS_TOKEN` was absent from model-directed shell. The production preflight separately tested `.env`, private HOME config, and Git-control symlink access. No authoritative project path was passed as writable provider cwd. Gate 1 is Green for the tested 0.155.1 host profile.
+- Gate 2: seven fresh clean Git fixtures directly exercised Dope's `ExecutionWorkspace.delta()` and `promote()` without provider narration. Modify-only and create+modify deltas were classified and promoted exactly; fixture HEADs remained fixed and the index stayed empty. A delete candidate, conservative rename as create+delete, and mixed modify+delete candidate were each fully blocked with zero authoritative files applied. An owner edit after basis capture failed closed. A workspace symlink and an authoritative symlink parent each failed before apply. All seven direct fixture assertions passed. The focused execution-workspace tests additionally passed 5/5.
+- Gate 3: The first sign-in browser crashed; a fresh authorization request completed in Firefox. The disposable AI Center profile showed a signed-in ChatGPT-plan account, four real discovered Codex models, and a ready connection after Test Connection. The Coding Agent role was set to the exact `gpt-5.6-terra` model with no fallback; Agent Run resolved that hosted target and enabled Start only after task fields and grant acceptance. The earlier scratch Test Connection used its then-default Astra model before the owner's correction. No mutation run used Astra. All subsequent qualification inference uses Terra. Gate 3 is Green for that observed session.
+
 ### Post-Correction Cycle 1
 
-- Pre-cycle candidate:
-- Entry-gate correction verification:
-- First blocker:
-- Direct evidence:
-- Diagnosis:
-- Repair:
-- Files changed:
-- Focused validation:
-- Replay result:
-- Cleared gates:
-- Next blocker:
-- Candidate/checkpoint:
-- Decision after cycle:
+- Pre-cycle candidate: clean `468aa1c74bbc49caf8f69a25d6f7ae725c2d2331`; tracked-tree SHA-256 `5751884bb292bcf78970dd944a47b655b10d0b377062e753d0973b4e548c8ce0`.
+- Entry-gate correction verification: ADR 0028 isolated execution and Dope-owned promotion structure, exact `0.8.13` versions, no root lock, and no Phase 8C execution were confirmed above.
+- First blocker: Gate 4 real Terra Agent Run stopped at provider startup before a model turn. Its durable run `da5c4991-5f6a-4fe3-9e43-36a20f208221` ended `failed` with `provider-error` / `Agent start failed`, no changed files, no validation, and no promotion; authoritative HEAD was unchanged.
+- Direct evidence: The production sandbox preflight passed. A direct adapter replay returned sanitized `Codex request failed`; an isolated exact App Server RPC probe identified `thread/start.runtimeWorkspaceRoots requires experimentalApi capability` (`-32600`). This was a protocol handshake error, not a model or authority denial.
+- Diagnosis: The execution adapter sent the experimental `runtimeWorkspaceRoots` field at `thread/start` but omitted `capabilities.experimentalApi: true` at `initialize`. The installed 0.155.1 App Server rejected the request. The 8A read-only Test Connection does not use that field.
+- Repair: Add the experimental capability handshake only to the 8B Codex execution adapter. Make the fake App Server reject a missing handshake and assert the capability in the focused adapter test. No sandbox/grant/promotion semantics changed; version remains `0.8.13`.
+- Files changed: `packages/theia-extension/src/node/codex-agent-execution.ts`, `test/unit/codex-agent-execution.test.ts`, and this evidence file.
+- Focused validation: Theia extension build passed; focused Codex execution adapter tests passed 11/11. A real installed-CLI Terra smoke turn in a disposable ExecutionWorkspace then started and completed without tools. No Astra was used for this replay.
+- Replay result: The exact startup failure cleared in direct live App Server execution. On restarting Dope for the native UI replay, AI Center lost its in-memory readiness observation; two model-catalog refresh attempts failed. A direct authenticated `/v1/models` probe timed out, while the direct Terra inference succeeded. The native Gate 4 mutation/promotion replay remains pending.
+- Cleared gates: Gate 1 isolation/sandbox, Gate 2 CandidateDelta/authority promotion, Gate 3 eligible live Terra target in the earlier ready UI session; Gate 4 startup protocol defect repaired and smoke-tested.
+- Next blocker: Gate 4 native UI replay requires a successful live model-catalog refresh/readiness observation after the backend restart. This is an observed catalog transport timeout; its persistence and impact on qualification need the next cycle's direct observation.
+- Candidate/checkpoint: normal Cycle 1 checkpoint commit recorded below.
+- Decision after cycle: Not Green / Not Qualified; continue from Gate 4 within the five-cycle budget.
 
 ### Post-Correction Cycle 2
 

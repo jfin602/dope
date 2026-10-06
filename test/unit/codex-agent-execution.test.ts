@@ -40,6 +40,11 @@ class FakeChild extends EventEmitter {
         this.messages.push(message);
         if (message.method === 'initialize') {
             if (this.scenario === 'malformed') { this.stdout.write('{broken\n'); return; }
+            if (message.params?.capabilities?.experimentalApi !== true) {
+                this.send({ id: message.id, error: { code: -32600,
+                    message: 'thread/start.runtimeWorkspaceRoots requires experimentalApi capability' } });
+                return;
+            }
             this.send({ id: message.id, result: { userAgent: 'fake' } });
         }
         if (message.method === 'thread/start') this.send({ id: message.id, result: {
@@ -143,6 +148,7 @@ test('dedicated run uses approved root and exact model, normalizes bounded event
         await handle.result;
         assert.deepEqual(handle.recovery, { adapterId: 'codex-app-server-execution', handle: 'thread-1' });
         const spawned = f.spawns[0];
+        assert.equal(spawned.child.messages.find(message => message.method === 'initialize')?.params?.capabilities?.experimentalApi, true);
         assert.equal(spawned.options.cwd, f.executionRoot);
         assert.deepEqual(spawned.args, ['app-server', '--strict-config', '--listen', 'stdio://']);
         assert.equal(spawned.options.env.ACCESS_TOKEN, 'oauth-secret');

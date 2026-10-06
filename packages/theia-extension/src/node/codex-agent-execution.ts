@@ -212,7 +212,8 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
                 }) as ChildProcessWithoutNullStreams;
             rpc = new RpcProcess(child, this.options.timeoutMs ?? 8000, true, true);
             this.active.add(rpc);
-            await rpc.request('initialize', { clientInfo: { name: 'Dope', title: 'Dope', version: appVersion } });
+            await rpc.request('initialize', { clientInfo: { name: 'Dope', title: 'Dope', version: appVersion },
+                capabilities: { experimentalApi: true } });
             if (this.disposed) throw fail('Codex execution adapter disposed', 'connection-unavailable');
             rpc.notify('initialized');
             const thread = await rpc.request('thread/start', { model: request.modelId,
