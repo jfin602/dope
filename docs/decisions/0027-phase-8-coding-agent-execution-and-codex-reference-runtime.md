@@ -390,3 +390,41 @@ Pre-existing dirty-tree attribution, intentional dirty continuation and runner-o
 
 This is not the final Development Session or delegation UX.
 
+
+## Amendment — Phase 8C sequential task / phase-stack execution (2026-10-06)
+
+Phase 8B is Green / Qualified at `0.8.13` for the corrected ADR 0028 direct AgentTask path. Phase 8C activates AgentTaskSequence and the first Dope-owned Git checkpoint workflow.
+
+### Imported sequence truth
+
+PhaseStackAdapter imports `docs/tasks/<stack>/P*.txt` into a normalized immutable snapshot with a source fingerprint. An in-progress sequence does not silently reinterpret later prompt-file edits.
+
+Durable sequence state lives beneath `.dope/agent/sequences/` and links generated AgentTasks, AgentRuns, manual gates and checkpoint SHAs.
+
+Safe resume requires agreement among durable sequence state, reachable Git history, current HEAD, package/version state, authoritative worktree basis and stack fingerprint. Ambiguity blocks.
+
+### Execution
+
+Executable entries run through the already-qualified Agent Runtime / ExecutionWorkspace / CandidateDelta / Authority boundary. 8C does not give the provider direct Git or authoritative project-write authority.
+
+Capacity retry may preserve the same task's partial ExecutionWorkspace state for narrowly recognized capacity failures. No candidate promotion/checkpoint occurs between retries.
+
+### Checkpoints
+
+Dope owns stage/commit only after successful authoritative promotion, validation and Git/version/worktree invariants.
+
+Checkpoint scope is bounded to authorized task effects plus explicitly accepted pre-existing dirty-basis work. Runtime `.dope/agent/**` state is not ordinary implementation checkpoint content.
+
+Phase commit subjects use the exact target version. Correction commit subjects use `<folder>/P<n>: <task title>`.
+
+Sequence advancement occurs only after the resulting checkpoint commit is verified and recorded.
+
+### Manual/browser gates
+
+`Browser required: yes.` entries are manual gates. The final closeout is also manual in 8C.
+
+Dope stops at the gate and surfaces the exact imported prompt. Resume requires reconciliation of external Git/version truth; a UI action alone cannot declare the gate complete.
+
+### Restart
+
+After restart, Dope reconciles stale AgentRun truth first, then sequence/Git/version/worktree/stack truth. It selects exactly one safe next action or blocks. It never recreates an already verified checkpoint.
