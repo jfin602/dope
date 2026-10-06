@@ -167,18 +167,18 @@ Use this section only after `c8-agent-authority-boundary` has finished. The hist
 
 ### Post-Correction Cycle 2
 
-- Pre-cycle candidate:
-- First blocker:
-- Direct evidence:
-- Diagnosis:
-- Repair:
-- Files changed:
-- Focused validation:
-- Replay result:
-- Cleared gates:
-- Next blocker:
-- Candidate/checkpoint:
-- Decision after cycle:
+- Pre-cycle candidate: clean `e69fcf3` (Cycle 1 checkpoint); tracked-tree SHA-256 `63f6f24bc1b8b515172c142aa63ce15cd9d1a4637807f8b8370b81d8438fdb27`.
+- First blocker: Gate 4 validation in a real Terra AgentRun failed with exit 127, so no authoritative promotion occurred. Run `0fb91f59-1388-4c4f-8fe2-b985c842b709` recorded create `result.txt` + modify `state.txt` as workspace candidate, zero applied files, empty validation, unchanged authoritative files/HEAD, and no staged changes.
+- Direct evidence: An isolated App Server command observation showed Codex executed `/bin/bash -lc ./validate.sh` with exit 127. A bounded raw command-output diagnostic showed `./validate.sh: 2: grep: not found`. The installed sandbox could execute `grep` when given a normal PATH directly; the App Server command environment used the configured `inherit = "none"` without an explicit PATH. The catalog-refresh attempts in the restarted browser were transient; direct authenticated inventory and an exact Terra Test Connection both succeeded. Rebuilding the browser app bundle also replaced the stale pre-repair backend bundle from Cycle 1.
+- Diagnosis: The 8B mutation profile correctly stripped inherited environment, including credentials, but omitted a safe fixed PATH for ordinary workspace validation tools. This was a process-environment defect, not a provider entitlement or candidate authority issue. The installed Codex configuration reference permits an explicit `shell_environment_policy.set` value after exclusions.
+- Repair: Set only `PATH = "/usr/local/bin:/usr/bin:/bin"` for model-directed subprocesses while retaining `inherit = "none"`, no network, and all sandbox path denies. Extend production sandbox preflight to require a normal `grep` command and the focused profile regression to assert the fixed PATH. Version remains `0.8.13`.
+- Files changed: `packages/theia-extension/src/node/codex-agent-execution.ts`, `test/unit/codex-agent-execution.test.ts`, and this evidence file.
+- Focused validation: Theia extension build and 11/11 focused adapter tests passed. The production installed-CLI sandbox preflight passed with the fixed PATH; a real Terra App Server replay ran `/bin/bash -lc ./validate.sh` with exit 0 in an isolated workspace. No Astra was used.
+- Replay result: A fresh full Agent Runtime fixture `happy-native-2` reached a completed Terra turn and independently classified create+modify candidate effects. Validation still recorded no target match, so required validation failed and no candidate was promoted. The authoritative fixture remained unchanged, HEAD fixed, index empty.
+- Cleared gates: Gates 1–3 retained; Gate 4 provider startup and workspace command execution now directly passed. Gate 4 validation recording and promotion remain unproven.
+- Next blocker: `AgentExecutionRuntime.observed()` matches a validation target only when provider command text equals `./validate.sh`. The real App Server reports the safe shell form `/bin/bash -lc ./validate.sh`; an exit-0 validation command is therefore treated as `Other project command`. The native Agent Run controller also creates an empty validation policy; determine its impact after the exact command matching repair/replay.
+- Candidate/checkpoint: normal Cycle 2 checkpoint commit recorded below.
+- Decision after cycle: Not Green / Not Qualified; continue from Gate 4.
 
 ### Post-Correction Cycle 3
 

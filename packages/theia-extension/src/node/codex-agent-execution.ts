@@ -46,6 +46,9 @@ inherit = "none"
 experimental_use_profile = false
 ignore_default_excludes = false
 
+[shell_environment_policy.set]
+PATH = "/usr/local/bin:/usr/bin:/bin"
+
 [features]
 apps = false
 browser_use = false
@@ -113,6 +116,7 @@ export async function verifyInstalledSandbox(executable: string, home: string, r
         await writeFile(join(project, 'destructive-canary'), 'preserve');
         const script = `set -eu
 printf allowed > allowed
+if ! grep -q allowed allowed; then exit 26; fi
 if test -r "$1"; then exit 11; fi
 if (printf denied > .git/config) 2>/dev/null; then exit 12; fi
 if (printf denied > "$2") 2>/dev/null; then exit 13; fi

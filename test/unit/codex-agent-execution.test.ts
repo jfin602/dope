@@ -135,6 +135,7 @@ test('named sandbox profile denies outside reads, temp, network, secrets and Git
         '":slash_tmp" = "deny"', '".git" = "read"', '".codex" = "read"',
         '"**/.env" = "deny"', 'writable_roots = []', 'network_access = false',
         'exclude_tmpdir_env_var = true', 'exclude_slash_tmp = true', 'inherit = "none"',
+        'PATH = "/usr/local/bin:/usr/bin:/bin"',
         'enabled = false', 'web_search = "disabled"', 'apps = false', 'browser_use = false'])
         assert.ok(config.includes(line), line);
     assert.ok(!config.includes('OPENAI_API_KEY'));
