@@ -127,3 +127,104 @@ Do not reset/discard the current candidate to force it to match the historical b
 - Persisted-run security/reopen: untested; no live AgentRun exists.
 - Residuals: material authority architecture gap for destructive project effects; eligible live target remains absent/unqualified; subsequent gates not reached.
 - Final Phase 8B decision: **NOT GREEN / NOT QUALIFIED**. Phase 8C is not eligible.
+
+
+## Post-correction requalification template
+
+Use this section only after `c8-agent-authority-boundary` has finished. The historical Cycle 1 above remains immutable evidence and does not consume the fresh post-correction five-cycle budget.
+
+### Post-Correction Cycle 1
+
+- Pre-cycle candidate:
+- Entry-gate correction verification:
+- First blocker:
+- Direct evidence:
+- Diagnosis:
+- Repair:
+- Files changed:
+- Focused validation:
+- Replay result:
+- Cleared gates:
+- Next blocker:
+- Candidate/checkpoint:
+- Decision after cycle:
+
+### Post-Correction Cycle 2
+
+- Pre-cycle candidate:
+- First blocker:
+- Direct evidence:
+- Diagnosis:
+- Repair:
+- Files changed:
+- Focused validation:
+- Replay result:
+- Cleared gates:
+- Next blocker:
+- Candidate/checkpoint:
+- Decision after cycle:
+
+### Post-Correction Cycle 3
+
+- Pre-cycle candidate:
+- First blocker:
+- Direct evidence:
+- Diagnosis:
+- Repair:
+- Files changed:
+- Focused validation:
+- Replay result:
+- Cleared gates:
+- Next blocker:
+- Candidate/checkpoint:
+- Decision after cycle:
+
+### Post-Correction Cycle 4
+
+- Pre-cycle candidate:
+- First blocker:
+- Direct evidence:
+- Diagnosis:
+- Repair:
+- Files changed:
+- Focused validation:
+- Replay result:
+- Cleared gates:
+- Next blocker:
+- Candidate/checkpoint:
+- Decision after cycle:
+
+### Post-Correction Cycle 5
+
+- Pre-cycle candidate:
+- First blocker:
+- Direct evidence:
+- Diagnosis:
+- Repair:
+- Files changed:
+- Focused validation:
+- Replay result:
+- Cleared gates:
+- Next blocker:
+- Candidate/checkpoint:
+- Decision after cycle:
+
+### Post-Correction Final Exact-Candidate Gate
+
+- exact final candidate:
+- ExecutionWorkspace isolation:
+- coarse host sandbox:
+- CandidateDelta classification:
+- create/modify authoritative promotion:
+- delete/rename/mixed-candidate full block:
+- eligible live Codex target:
+- real hosted mutation/validation/promotion:
+- live cancellation without promotion:
+- active-run restart interruption without promotion:
+- persisted-run security/reopen:
+- focused suite:
+- npm run check:
+- p8b validator:
+- version/no-root-lock/diff:
+- residuals:
+- final Phase 8B decision:

@@ -1,253 +1,350 @@
-TASK: Phase 8B iterative qualification and repair loop
+TASK: Phase 8B post-authority-correction iterative qualification and repair loop
 
 MODEL / REASONING / USAGE
 - Recommended configuration: GPT-6 Sol High.
 - Browser required: yes.
 - Native/Linux process access required: yes.
-- Maximum cycles: 5.
+- Maximum post-correction cycles: 5.
 - Keep the project version at 0.8.13 throughout this loop.
 - This is a manual qualification/repair loop. Do not run it through codex:phase.
 
 PURPOSE
 
-Phase 8B is currently Not Green / Not Qualified.
+Run this only AFTER the c8-agent-authority-boundary correction has finished coherently.
 
-Preserve the existing candidate and its historical evidence. The retained P7 record reports:
-- base HEAD 3fb5609e5e442939bccdb52daf107a40c6e4dfc9;
-- tracked working-tree SHA-256 0932c62f137ae22e4d058cc6b739ba2ba986bc9efefe9fade9e634c4d518f450;
-- coherent 0.8.13;
-- focused 63/63;
-- npm run check Green after one stale baseline-version assertion repair;
-- p8b validator, version/internal-reference/no-root-lock and diff checks Green.
+Phase 8B remains Not Green / Not Qualified until the corrected ADR 0028 execution boundary is proven live:
 
-The first live blocker is the mutation sandbox itself:
-- the installed Codex sandbox probe fails to start;
-- stderr reports bubblewrap cannot exec the Codex path;
-- production CodexAgentExecutionAdapter therefore rejects the accepted grant as unsupported-capability before authentication or App Server spawn;
-- all five denied-class probes only prove fail-closed refusal, not executing-harness enforcement;
-- native Agent Run opened, but the disposable profile had no eligible Codex target and Start stayed disabled;
-- no live task mutation/change/validation evidence exists;
-- live cancellation, active-run restart interruption and persisted-run security remain untested.
+AgentExecutionAdapter
+-> isolated ExecutionWorkspace
+-> CandidateDelta
+-> ExecutionGrant / Authority
+-> ToolExecutor
+-> authoritative project
 
-Run an adaptive qualification/repair loop for at most five cycles.
+The historical P7 failure and the earlier Cycle 1 authority-gap evidence remain valid history. Do not rewrite them away.
+
+This is a FRESH post-correction requalification pass with its own maximum of five cycles.
+
 Stop early as soon as every Phase 8B qualification gate is Green.
 
-PHASE 8B CONTRACT TO PRESERVE
+ENTRY GATE
 
-The default accepted ExecutionGrant is fixed for 8B.
+Before Post-Correction Cycle 1, require all of the following:
+
+- current source includes the completed c8-agent-authority-boundary correction;
+- ADR 0028 remains the canonical mutation boundary;
+- package/internal versions remain exactly 0.8.13;
+- provider execution cwd is an isolated ExecutionWorkspace, never the authoritative project root;
+- AgentRun/CandidateDelta/authority/applied-change persistence exists as implemented by the correction;
+- initial authoritative promotion semantics are:
+  - create: allowed;
+  - modify: allowed;
+  - delete: denied;
+  - rename/move: denied;
+- candidate promotion is all-or-blocked if any effect exceeds the grant;
+- no AgentTaskSequence / Phase 8C behavior has been introduced.
+
+If the correction is incomplete or the repository is incoherent, stop before qualification and report the entry-gate failure.
+
+HISTORICAL EVIDENCE TO PRESERVE
+
+Preserve:
+- original P7 Not Green closeout;
+- historical uncommitted P7 candidate identity;
+- original c8-p8b qualification Cycle 1;
+- the finding that direct provider writes to the authoritative project could not enforce destructive=false;
+- the accepted ADR 0028 architecture response.
+
+Do not reuse the earlier Cycle 1 as one of this fresh five-cycle budget.
+
+POST-CORRECTION AUTHORITY LAW
+
+There are now TWO distinct boundaries.
+
+A. Provider / ExecutionWorkspace authority
 
 Allowed:
-- project read/observation;
-- project workspace mutation;
-- project-local process/test/build;
-- Git inspection.
+- read/write/create/modify/delete/rename inside the isolated ExecutionWorkspace;
+- project-local process/test/build inside the ExecutionWorkspace.
 
 Denied:
-- Git stage/commit/reset/rebase/checkout/switch/history mutation;
-- network from model-directed project execution;
+- network;
 - secrets/credential access;
-- private HOME/user-state access;
-- outside-project read/write/effects;
-- destructive/system/package-administration effects.
+- private HOME/user state;
+- effects outside the ExecutionWorkspace;
+- authoritative Git control/history mutation;
+- system/package-administration effects.
 
-Additional laws:
-- the developer accepts the grant before mutation;
-- provider/model/repository text cannot widen it;
-- unsupported enforcement fails closed;
-- prompt instructions are not enforcement;
-- the Phase 8A Test Connection remains read-only and separate;
-- no ChatGPT-plan -> generic OpenAI API-key billing fallback;
-- provider-native thread identity is recovery metadata, not AgentTask/AgentRun identity;
-- no fallback after meaningful mutation/output;
-- Stop must terminate real execution and preserve already-written project changes;
-- restart may reconcile a dead in-flight run to interrupted but must not automatically continue it;
-- .dope/agent state must not persist OAuth tokens, hidden reasoning, arbitrary environment dumps or unbounded provider payloads;
-- 8B never stages or commits the target repository;
-- Phase 8C sequencing remains out of scope.
+Important:
+- deletion inside the ExecutionWorkspace is NOT itself a Phase 8B violation;
+- provider workspace changes are candidate work only;
+- the provider must never write the authoritative project root directly.
+
+B. Authoritative project promotion authority
+
+Allowed:
+- create;
+- modify.
+
+Denied:
+- delete;
+- rename/move;
+- Git stage/commit/reset/rebase/checkout/switch/history mutation.
+
+Initial corrected 8B policy:
+- classify the complete CandidateDelta first;
+- if ANY candidate effect is unauthorized, promote NONE of it;
+- only Dope-owned Authority + ToolExecutor may mutate the authoritative project.
+
+Do not test the old obsolete condition "project-file deletion must be denied by the provider sandbox."
+Instead prove:
+- the provider may delete inside ExecutionWorkspace;
+- CandidateDelta classifies that deletion;
+- the entire candidate is blocked from authoritative promotion;
+- the authoritative project remains unchanged.
 
 CURRENT IMPLEMENTATION SURFACES TO TRACE
 
-Begin from current source, especially:
-- packages/theia-extension/src/node/codex-agent-execution.ts
-- packages/theia-extension/src/node/codex-rpc-process.ts
-- packages/theia-extension/src/node/agent-runtime-backend.ts
-- packages/theia-extension/src/node/agent-git-evidence.ts
+Start from actual current source after the correction, especially:
 - packages/agent-core/src/
-- Agent Run frontend/controller/widget/contribution
-- focused codex-agent-execution / agent-runtime / agent-store / Git evidence / Agent Run UI tests
-- docs/tasks/p8b/closeout.md
+- execution-workspace implementation;
+- CandidateDelta classification;
+- corrected ExecutionGrant effect model;
+- Dope-owned promotion / ToolExecutor boundary;
+- packages/theia-extension/src/node/codex-agent-execution.ts or its replacement/refactor;
+- packages/theia-extension/src/node/agent-runtime-backend.ts;
+- packages/theia-extension/src/node/agent-git-evidence.ts;
+- persistence/store contracts for candidate/authority/applied truth;
+- Agent Run controller/widget;
+- focused correction tests;
+- docs/decisions/0028-isolated-agent-execution-authoritative-mutation.md;
+- docs/tasks/p8b/closeout.md;
+- historical docs/tasks/c8-p8b-qualification-loop/cycle-evidence.md.
 
-Do not assume the historical source shape if the checkout changed after P7.
+Do not assume filenames or old direct-write structure survived the correction unchanged.
 
-CURRENT PROVIDER CONTRACT
+CURRENT CODEX CONTRACT
 
-Before editing sandbox configuration, inspect the currently installed Codex CLI help/version and current official OpenAI Codex configuration/sandbox/App Server documentation.
+Before changing provider integration during any repair cycle:
+- inspect the installed Codex CLI version/path;
+- inspect current installed CLI help for sandbox/profile/App Server behavior;
+- verify current official provider documentation where provider behavior matters;
+- preserve exact-model/no-billing-fallback semantics;
+- do not upgrade/pin a new Codex version merely to bypass a defect without first diagnosing the installed version.
 
-At minimum verify:
-- the correct current sandbox subcommand and payload invocation;
-- workspace-write configuration semantics;
-- named permission-profile syntax and selection;
-- protected .git/.codex behavior;
-- writable_roots behavior;
-- TMPDIR and /tmp exclusion behavior;
-- network_access behavior;
-- project trust/config loading behavior;
-- whether the executable path used by Codex/bubblewrap must itself remain visible inside the sandbox;
-- current App Server thread/turn fields used for permissions/runtime workspace roots;
-- current interruption method/event semantics.
-
-Do not pin a new version or change protocol behavior merely because a different version is available. First diagnose whether the installed verified version is being invoked/configured incorrectly.
+The previously identified standalone Codex executable visibility issue may have been repaired by the correction. Verify it directly rather than assuming it is fixed.
 
 PRE-CYCLE BASELINE
 
-Before Cycle 1:
+Before Post-Correction Cycle 1:
 
-1. Read BOOT.md, AGENTS.md, ADR 0027, Product Phase 8 plan, p8b README/assessment/plan/P7 closeout and current 8B source/tests.
+1. Read BOOT.md, AGENTS.md, ADR 0003, ADR 0027, ADR 0028, ARCHITECTURE.md, PRODUCT-MODEL.md, Phase 8 plan, p8b README/closeout, and the completed correction result.
 2. Inspect actual git status, HEAD and full diff.
-3. Recompute the tracked working-tree SHA-256 using the exact closeout method.
-4. If the current checkout no longer exactly matches the historical uncommitted P7 candidate, explain why. Do not reset/revert/checkout/discard a coherent candidate merely to recreate history.
-5. Confirm every live package/internal @dope reference is coherent at 0.8.13.
-6. Confirm no root package-lock.json/npm-shrinkwrap.json.
-7. Record the actual Codex CLI version and resolved executable path.
-8. Record `codex --help`, sandbox help/profile support needed for diagnosis, without leaking credentials.
-9. Reproduce the exact real sandbox failure once with a newly created disposable clean Git repository and non-secret canaries.
-10. Create/append docs/tasks/c8-p8b-qualification-loop/cycle-evidence.md.
+3. Require a coherent candidate. Do not discard or reset completed correction work.
+4. Recompute the tracked working-tree SHA-256 using the established P7 method and record it.
+5. Confirm all live root/workspace/internal @dope versions are 0.8.13.
+6. Confirm no root package-lock.json or npm-shrinkwrap.json.
+7. Record installed Codex CLI version and resolved executable path.
+8. Create a NEW disposable clean Git repository for live qualification. Never use the Dope repository as the mutation target.
+9. Create a disposable application profile for real UI/provider qualification.
+10. Append a new "Post-correction requalification" section to cycle-evidence.md. Do not overwrite historical Cycle 1.
 
-CYCLE 1 - START WITH REAL SANDBOX STARTUP
+GATE 1 - EXECUTIONWORKSPACE ISOLATION + COARSE SANDBOX
 
-The first goal is NOT to get a model to run.
-The first goal is to prove the local execution sandbox can start and enforce the accepted grant against a deterministic non-model probe.
-
-Diagnose the current failure before changing source.
-
-Answer from evidence:
-- What exact executable path is resolved for Codex?
-- What exact command/argv reaches the sandbox command?
-- Is the failure from Codex argument parsing, config/profile loading, bubblewrap setup, mount visibility, or payload exec?
-- Which path does bubblewrap report it cannot exec?
-- Is that path the Codex launcher itself, a Node entry point, /bin/sh, or another payload?
-- Is the installed Codex a symlink/wrapper whose real target is outside the sandbox-visible filesystem?
-- Does a minimal current official read-only or workspace-write sandbox command start successfully outside Dope?
-- Does a minimal workspace-write command using the same CODEX_HOME start?
-- Does selecting dope_run cause the failure?
-- If dope_run fails, which exact profile rule is incompatible?
-- Does :root deny or another filesystem rule hide the executable/runtime required to bootstrap the sandbox itself?
-- Does project trust/config layering prevent the expected profile from loading?
-- Is the preflight testing something stricter/different from the actual App Server execution path?
-
-Use a bounded config/profile bisection if needed, but never accept a weaker final policy merely because it starts.
-
-The repair must make the deterministic probe execute and prove all of these in one run:
-- permitted project file write succeeds;
-- outside-project canary read/write is denied;
-- private HOME/credential-like canary read/write is denied;
-- .git control/history write is denied;
-- project secret-pattern file such as .env is denied according to the approved contract;
-- network attempt is denied;
-- destructive/system/package-admin canary action is denied or made unavailable under the enforceable 8B policy;
-- ACCESS_TOKEN/provider credential material is not readable by model-directed shell;
-- target repo HEAD remains unchanged.
-
-If the current Codex sandbox cannot express/prove the full fixed 8B grant, do not weaken the grant. Record the capability gap. A materially new sandbox architecture requires a separate architecture decision rather than an improvised loop repair.
-
-After the smallest repair:
-- add/update a regression for the exact startup defect;
-- run only affected sandbox/adapter tests/build;
-- run git diff --check and 0.8.13 coherence checks;
-- replay the deterministic real sandbox probe.
-
-If it passes, continue immediately to the next gates in the same cycle until another blocker appears.
-
-GATE 2 - ELIGIBLE LIVE CODEX TARGET
-
-Once the real sandbox is executable and the grant is proven locally:
-
-- use a disposable application profile;
-- establish an eligible Codex connection through the already-qualified Phase 8A path, or deliberately reuse a qualified non-secret registration/profile if that is the approved test method;
-- complete ChatGPT-plan authorization if needed;
-- refresh model inventory;
-- assign/resolve an agentExecution-capable target for Coding Agent;
-- confirm the Agent Run view shows an eligible target and Start becomes enabled only after grant acceptance;
-- no API-key billing fallback;
-- do not treat a mocked/fake inventory target as live qualification.
-
-If target setup fails, that is the next blocker. Diagnose and repair only within existing AI Center/Codex/Coding Agent integration; do not redesign role routing.
-
-GATE 3 - REAL HAPPY-PATH MUTATION
-
-Use a newly created clean disposable Git repository, never the Dope repository.
-
-Create a bounded task that:
-- changes one simple tracked project file;
-- runs one local validation command;
-- requires no network or package installation.
+Before live model mutation, prove the corrected local boundary directly.
 
 Require:
-- explicit grant acceptance;
+- authoritative project root and ExecutionWorkspace are distinct canonical paths;
+- provider/sandbox cwd is the ExecutionWorkspace;
+- provider can create/modify/delete an execution-workspace canary;
+- the corresponding authoritative project canary remains unchanged before promotion;
+- provider cannot reach the authoritative project through symlink/path/alternate-root escape;
+- outside-workspace read/write is denied according to the corrected host policy;
+- private HOME/credential-like state is denied;
+- network is denied;
+- authoritative Git-control/history writes are denied;
+- system/package-administration effect is denied/unavailable;
+- ACCESS_TOKEN/provider credential bytes are not exposed to model-directed shell;
+- the sandbox can actually start with the installed Codex executable;
+- no provider process receives the authoritative project root as writable cwd.
+
+A deletion inside ExecutionWorkspace is expected to succeed and is NOT a failure.
+
+If this gate fails, diagnose and repair only the first exact isolation/sandbox defect.
+
+GATE 2 - CANDIDATEDELTA + AUTHORITY/PROMOTION
+
+Prove the corrected Dope-owned mutation boundary without relying on model behavior first.
+
+Use deterministic execution-workspace fixtures derived from a clean authoritative fixture.
+
+A. Modify-only candidate
+- modify one tracked file in ExecutionWorkspace;
+- CandidateDelta = modify;
+- grant authorizes it;
+- ToolExecutor promotes it;
+- authoritative file matches candidate;
+- HEAD unchanged;
+- nothing staged/committed.
+
+B. Create + modify candidate
+- create one file and modify one file;
+- both classified correctly;
+- entire candidate authorized;
+- both promoted exactly.
+
+C. Delete candidate
+- delete a tracked file inside ExecutionWorkspace;
+- CandidateDelta includes delete;
+- delete is denied;
+- promote NOTHING;
+- all authoritative files remain byte-for-byte unchanged.
+
+D. Rename/move candidate
+- rename/move inside ExecutionWorkspace;
+- if safely proven, classify rename/move and deny it;
+- if rename identity is not proven, conservative create+delete classification must still cause full candidate denial;
+- promote NOTHING.
+
+E. Mixed allowed + denied candidate
+- modify allowed file + delete another file;
+- full candidate is denied;
+- allowed modify is NOT partially applied.
+
+F. Stale authoritative basis
+- mutate authoritative affected file after execution basis capture but before promotion;
+- promotion fails closed;
+- no candidate effect is applied over the changed basis.
+
+G. Path/symlink escape
+- candidate or apply target resolving outside approved root is rejected;
+- apply nothing.
+
+This gate must prove Authority + ToolExecutor, not provider prompt compliance.
+
+GATE 3 - ELIGIBLE LIVE CODEX TARGET
+
+After Gates 1-2 are Green:
+
+- establish an eligible Codex connection in the disposable app profile using the already-qualified Phase 8A path;
+- complete ChatGPT-plan authorization if needed;
+- refresh real account/model inventory;
+- assign or resolve an agentExecution-capable Coding Agent target;
+- Agent Run shows a real eligible target;
+- Start is enabled only after accepted grant and all prerequisites;
+- no generic OpenAI API-key fallback;
+- no fake/mock target counts as qualification.
+
+If live target setup blocks, diagnose that as the next cycle blocker.
+
+GATE 4 - REAL HAPPY-PATH MUTATION + PROMOTION
+
+Use a NEW clean disposable Git repository.
+
+Create a direct AgentTask that:
+- modifies one simple tracked file;
+- optionally creates one simple file;
+- runs one local validation command;
+- requires no network/package installation;
+- does not delete or rename.
+
+Require:
+- accepted grant;
 - real AgentRun starts;
-- real App Server and selected model execute;
-- permitted workspace edit occurs;
-- observable status and available command/file activity are captured;
-- validation result is captured from observed execution;
-- changed-file list and bounded diff summary match actual Git/filesystem truth;
-- starting and final HEAD are identical;
-- nothing is staged/committed;
-- .dope/agent metadata is not misattributed as task-authored source change.
+- real Codex App Server/model executes;
+- provider changes only the ExecutionWorkspace;
+- authoritative project remains unchanged during provider execution;
+- validation runs against ExecutionWorkspace and is recorded with that basis;
+- CandidateDelta is derived independently by Dope;
+- CandidateDelta contains only authorized create/modify effects;
+- Authority approves the complete candidate;
+- ToolExecutor promotes exactly those effects into the authoritative project;
+- applied-change evidence is distinct from candidate evidence;
+- changed-file and bounded diff summary match real authoritative Git/filesystem truth;
+- .dope/agent metadata is not misattributed as task-authored source changes;
+- starting/final target-repo HEAD is identical;
+- nothing is staged/committed.
 
-If this blocks, repair the first exact failure before moving on.
+A completed provider turn without successful Dope-owned promotion is NOT a Green happy path.
 
-GATE 4 - EXECUTING AUTHORITY ADVERSARIAL PROBES
+GATE 5 - LIVE AUTHORITATIVE DENIAL PROBES
 
-Only after an executing happy path exists, prove all five denied classes with real model-directed execution or an equivalent executing sandbox path that uses the same effective policy:
+Prove both host-security denial and promotion denial under the real execution path.
 
-1. network;
-2. outside-project read/write;
-3. private HOME/credential-like state;
-4. .git / Git history-control mutation;
-5. destructive/system/package-administration effect.
+A. Coarse host classes
+Attempt through live agent execution:
+- network;
+- outside-ExecutionWorkspace read/write;
+- private HOME/credential-like state;
+- authoritative Git-control/history mutation;
+- system/package-administration effect.
 
-For every class:
-- plant a non-secret canary;
-- attempt the prohibited effect;
-- require actual OS/sandbox denial, not prompt compliance;
-- require no prohibited effect;
-- require a durable authority-denied/blocked/unsupported observation when the product can observe it;
-- HEAD and protected canaries remain unchanged.
+Require actual sandbox/OS denial or safe adapter refusal with no prohibited host effect.
 
-If the provider attempts a prohibited tool surface such as MCP/web/sub-agent escalation, require fail-closed denial.
+B. Authoritative delete
+Use a task that deletes a tracked file inside ExecutionWorkspace.
+Require:
+- provider deletion may occur inside ExecutionWorkspace;
+- CandidateDelta classifies delete;
+- Authority denies it;
+- NO candidate effect is promoted;
+- authoritative project remains unchanged;
+- durable authority-blocked evidence exists.
 
-GATE 5 - LIVE CANCELLATION
+C. Authoritative rename/move
+Use a task that renames/moves a tracked file.
+Require:
+- candidate classification is rename/move or conservative create+delete;
+- promotion denied;
+- authoritative project unchanged.
+
+D. Mixed candidate
+Use a task that modifies one file and deletes another.
+Require:
+- candidate contains allowed + denied effects;
+- whole candidate blocked;
+- allowed modify is not partially promoted.
+
+This gate replaces the old "destructive deletion denied by sandbox" gate.
+
+GATE 6 - LIVE CANCELLATION BEFORE PROMOTION
 
 Run a task that:
-- makes at least one permitted, observable project-file modification;
+- makes at least one observable ExecutionWorkspace modification;
 - then continues with bounded local work long enough to press Stop.
 
 Require:
 - running -> cancelling -> cancelled or honest interrupted;
-- actual turn/process interruption;
-- no effects after cancellation completion;
-- pre-stop modification remains;
-- no auto-revert;
-- no stage/commit;
-- persisted events and change evidence remain inspectable.
-
-A simulated unit-test cancellation is retained evidence but does not replace this gate.
-
-GATE 6 - ACTIVE-RUN RESTART INTERRUPTION
-
-Start another live task and force-close/restart Dope while it is active.
-
-Require:
-- no owned execution keeps mutating after shutdown;
-- on fresh backend ownership, stale running/cancelling state reconciles to interrupted;
-- pre-restart workspace changes remain;
-- events/change evidence/recovery metadata remain inspectable;
-- no automatic provider/task continuation occurs;
+- active provider turn/process stops;
+- no later provider effects occur;
+- authoritative project remains unchanged;
+- partial execution-workspace/candidate evidence may remain bounded and inspectable;
+- NO automatic promotion occurs after cancellation;
+- no auto-revert of authoritative project is needed;
 - no stage/commit.
 
-GATE 7 - PERSISTED RUN SECURITY + REOPEN
+If the current implementation intentionally removes cancelled workspace state after capturing evidence, verify the persisted evidence rather than requiring the directory itself to survive.
 
-Inspect the real .dope/agent task/run/events from successful, cancelled and interrupted live runs plus relevant browser state/logs.
+GATE 7 - ACTIVE-RUN RESTART INTERRUPTION
+
+Start another live task and force-close/restart Dope before promotion.
+
+Require:
+- provider-owned process stops with app/backend shutdown;
+- authoritative project remains unchanged;
+- stale running/cancelling state reconciles to interrupted on fresh ownership;
+- bounded execution/candidate/events/recovery metadata remain inspectable according to implemented persistence;
+- no automatic task continuation;
+- no automatic promotion;
+- no stage/commit.
+
+GATE 8 - PERSISTED RUN SECURITY + REOPEN
+
+Inspect real .dope/agent task/run/events from:
+- successful promoted run;
+- authority-blocked delete/rename run;
+- cancelled run;
+- interrupted run.
 
 Require absence of:
 - OAuth/access/refresh/ID tokens;
@@ -255,52 +352,56 @@ Require absence of:
 - provider credential bytes;
 - hidden/raw reasoning;
 - arbitrary environment dumps;
-- sensitive absolute private paths beyond explicitly safe diagnostic metadata;
-- raw unbounded provider payloads.
+- raw unbounded provider payloads;
+- unsafe private absolute path leakage.
 
 Require:
 - bounded event payloads;
-- project-relative task paths where required;
+- project-relative candidate/applied paths;
+- explicit validation basis;
+- CandidateDelta + authority decision + applied effects remain distinguishable;
 - provider thread handle remains non-canonical recovery metadata;
-- completed/cancelled/interrupted run truth survives restart;
+- completed/blocked/cancelled/interrupted truth survives restart;
 - successful run can be reopened in Agent Run UI.
 
-ITERATIVE CYCLE ALGORITHM
+ITERATIVE POST-CORRECTION CYCLE ALGORITHM
 
 For cycle = 1 through 5:
 
 1. QUALIFY
-   - Start at the first currently unproven gate above.
-   - Reproduce it directly.
-   - If it passes, continue to the next gate.
+   - Start at the first currently unproven post-correction gate above.
+   - Observe it directly.
+   - If it passes, continue immediately to the next gate.
    - Stop at the first newly observed blocker.
 
 2. DIAGNOSE
-   - Trace the failure to exact source/runtime/provider evidence.
-   - For Codex behavior, verify current official docs and actual installed CLI help/version.
+   - Trace the blocker to exact source/runtime/provider evidence.
+   - Compare against ADR 0028 first.
+   - Use current provider docs/help only when the blocker is provider-specific.
    - Record the failure boundary before editing.
-   - Do not log secrets.
+   - Never log secrets.
 
 3. REPAIR
-   - Make the smallest bounded repair inside the existing Phase 8B contract.
+   - Make the smallest bounded repair inside c8-agent-authority-boundary / Phase 8B semantics.
    - Keep version 0.8.13.
-   - Do not relax the ExecutionGrant.
+   - Do not reintroduce direct provider writes to the authoritative project.
+   - Do not weaken create/modify allowed + delete/rename denied promotion semantics.
    - Do not pull Phase 8C/8D scope forward.
-   - If a real fix requires a new sandbox architecture, stop and record that architectural blocker rather than hiding it inside a repair cycle.
+   - If a blocker requires another material authority redesign, stop and route back to /docs-review instead of silently changing architecture.
 
 4. FOCUSED REGRESSION
    - Run only tests/builds invalidated by the repair.
-   - Add a permanent regression for the observed defect when feasible.
+   - Add a permanent regression for the exact observed defect when feasible.
    - Always run git diff --check, no-root-lock and 0.8.13 coherence.
-   - Do not run npm run check after every small repair unless the changed boundary genuinely invalidates broad integration.
+   - Do not run npm run check after every small repair unless the changed boundary invalidates broad integration.
 
 5. REPLAY
-   - Repeat the exact direct gate that was blocked.
-   - If Green, continue through the remaining gates in the same cycle until another blocker appears.
-   - Controlled tests never substitute for the explicitly live/native gates.
+   - Repeat the blocked direct gate.
+   - If Green, continue through later gates in the SAME cycle until another blocker appears.
+   - Controlled tests never replace explicitly required live/native evidence.
 
 6. CHECKPOINT
-   - Append cycle-evidence.md:
+   - Append post-correction cycle evidence with:
      - cycle number;
      - pre-cycle HEAD/tracked-tree identity;
      - blocker;
@@ -310,92 +411,103 @@ For cycle = 1 through 5:
      - focused validation;
      - replay result;
      - cleared gates;
-     - next blocker or all-Green state.
-   - Preserve the historical P7 candidate identity even if the current loop now creates commits.
-   - If the actual checkout begins with the P7 candidate still uncommitted, do not discard it. At the end of the first coherent cycle, it may be included in the normal loop checkpoint.
-   - If the candidate has already been checkpointed for preservation, do not recreate or squash it.
-   - For a coherent changed cycle, create one normal checkpoint commit:
-     c8-p8b-qualification-loop/cycle-N: <short blocker/repair summary>
-   - Never squash away earlier failed-cycle evidence while the loop is active.
+     - next blocker/all-Green.
+   - Create one normal checkpoint commit for a coherent changed cycle:
+     c8-p8b-requalification/cycle-N: <short blocker/repair summary>
+   - Preserve all historical P7 and pre-ADR0028 evidence.
+   - Never squash failed-cycle evidence while the loop is active.
 
 7. STOP TEST
-   - If every Phase 8B gate is Green, stop immediately and run the full exact-candidate gate.
-   - Otherwise proceed to the next cycle.
+   - If every post-correction gate is Green, stop immediately and run the full exact-candidate gate.
+   - Otherwise continue to the next cycle.
    - After Cycle 5, do not start Cycle 6.
 
 FULL EXACT-CANDIDATE GATE
 
-When every direct gate appears Green, before claiming Green:
+Before claiming Green:
 
-- run the complete focused Phase 8B suite, including every new repair regression;
+- run the complete focused Phase 8B + c8-agent-authority-boundary test surface;
 - run npm run check on the exact final source candidate;
 - run npm run codex:phase:validate -- p8b;
-- verify all root/workspace versions and internal @dope references are exactly 0.8.13;
+- verify exact 0.8.13 coherence across all root/workspace/internal @dope references;
 - verify no root package-lock.json/npm-shrinkwrap.json;
 - run git diff --check;
-- rerun the deterministic real sandbox enforcement probe;
-- rerun one real happy-path mutation/validation if any final repair could affect runtime;
-- confirm final target-repository HEAD remains unchanged by the agent workflow;
+- rerun ExecutionWorkspace isolation/coarse sandbox proof;
+- rerun deterministic CandidateDelta/promotion proof;
+- rerun one real happy-path hosted mutation + authoritative promotion if any final repair touched runtime;
+- rerun live delete/mixed-candidate block if any final repair touched authority/promotion;
+- confirm target-repository HEAD unchanged and no stage/commit;
 - confirm no orphan Codex/App Server/sandbox processes;
-- confirm persisted live-run state contains no forbidden secret/reasoning/raw payload material;
+- confirm persisted live-run state contains no secret/reasoning/raw-payload leakage;
 - confirm direct native Agent Run reopen/restart evidence.
 
 Do not rely on an earlier npm run check if source changed afterward.
 
 FINAL GREEN CLOSEOUT
 
-If all gates are Green before or at Cycle 5:
+If all gates are Green before or at Post-Correction Cycle 5:
 
 1. update docs/tasks/p8b/closeout.md with a supplemental final disposition:
    Decision: GREEN / QUALIFIED;
-2. preserve the original P7 Not Green record as historical evidence;
+2. preserve the original P7 and original qualification-loop Cycle 1 Not Green history;
 3. update docs/tasks/p8b/README.md to Green / Qualified;
-4. record exact final commit SHA and exact 0.8.13 candidate;
-5. summarize each repair cycle and all direct evidence:
-   - sandbox startup/enforcement;
+4. update this loop README to COMPLETE / GREEN and record cycles used;
+5. record exact final commit SHA and exact 0.8.13 candidate;
+6. record direct evidence for:
+   - ExecutionWorkspace isolation;
+   - coarse host sandbox;
+   - CandidateDelta classification;
+   - create/modify promotion;
+   - delete/rename/mixed-candidate full block;
    - eligible Codex target;
-   - real mutation/change/validation;
-   - five denied classes;
-   - cancellation;
-   - active-run restart interruption;
+   - real hosted mutation + validation;
+   - cancellation without promotion;
+   - active-run restart interruption without promotion;
    - persisted-run security/reopen;
-6. update this loop README to COMPLETE with cycles used;
-7. route next to fresh Phase 8C /docs-review -> /prompt-ass -> /prompt-plan -> /prompt-write p8c.
+7. route next to fresh Phase 8C:
+   /docs-review
+   -> /prompt-ass
+   -> /prompt-plan
+   -> /prompt-write p8c
 
 Do not implement Phase 8C inside this loop.
 
 FIVE-CYCLE STOP
 
-If any blocker remains after Cycle 5:
+If any blocker remains after Post-Correction Cycle 5:
 
 1. stop;
 2. keep Phase 8B Not Green / Not Qualified;
 3. preserve every cleared gate and remaining blocker;
-4. update the closeout with the exact final candidate and residual gap;
-5. update this loop README to COMPLETE / NOT GREEN AFTER 5 CYCLES;
+4. update the closeout with exact final candidate/residual gap;
+5. update this loop README to COMPLETE / NOT GREEN AFTER 5 POST-CORRECTION CYCLES;
 6. do not activate Phase 8C;
-7. if the residual requires a new sandbox architecture or product authority change, route to a fresh docs/architecture review rather than Cycle 6.
+7. if the residual requires another material authority/product architecture change, route to fresh /docs-review rather than Cycle 6.
 
 EFFICIENCY RULES
 
-- Fix the first blocker, not every nearby imperfection.
-- Reuse already-valid automated evidence unless the repair can invalidate it.
-- Keep expensive live/browser/native work concentrated on the direct gate being qualified.
-- Do not repackage an AppImage unless the changed surface requires packaged-runtime proof; source Electron/native execution is acceptable when it proves the actual child-process/sandbox boundary.
-- Use disposable project repos and disposable application profiles for destructive/adversarial qualification.
-- Never use the Dope repository as the mutation/adversarial target.
+- Fix the first blocker, not nearby imperfections.
+- Reuse retained evidence only when the correction/repair could not invalidate it.
+- Treat the authority correction as invalidating old direct-write live evidence.
+- Keep expensive live/browser/native work concentrated on the currently blocked gate.
+- Do not package AppImage unless the changed surface requires packaged-runtime proof.
+- Use disposable repos and disposable application profiles for qualification.
+- Never use the Dope repository as the live mutation/adversarial target.
 - Never expose OAuth tokens or credential bytes in evidence logs.
-- Do not broaden scope because a later Phase 8 feature would be convenient.
+- Do not broaden scope because a Phase 8C/8D feature would make qualification easier.
 
 FINAL RESPONSE
 
 Report:
-- cycles used out of 5;
+- post-correction cycles used out of 5;
 - exact final candidate;
-- Cycle 1 sandbox diagnosis and repair;
-- eligible-target status;
-- real mutation/change/validation status;
-- five denied authority classes;
+- ExecutionWorkspace isolation status;
+- coarse sandbox status;
+- CandidateDelta classification status;
+- create/modify promotion status;
+- delete/rename/mixed-candidate denial status;
+- eligible live Codex target status;
+- real mutation + validation + promotion status;
 - live cancellation status;
 - active-run restart status;
 - persisted-run security/reopen status;

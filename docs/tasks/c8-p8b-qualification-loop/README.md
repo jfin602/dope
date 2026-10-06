@@ -1,6 +1,6 @@
 # Phase 8B Iterative Qualification / Repair Loop
 
-Status: **STOPPED AFTER CYCLE 1 — PHASE 8B NOT GREEN / NOT QUALIFIED; ARCHITECTURE DECISION REQUIRED**
+Status: **WAITING FOR c8-agent-authority-boundary — THEN RUN FRESH 5-CYCLE 8B REQUALIFICATION**
 Date: 2026-10-06
 Folder: `c8-p8b-qualification-loop`
 Version policy: **keep Phase 8B at `0.8.13`**
@@ -113,6 +113,12 @@ The loop stops after one cycle under its architecture-gap rule. No eligible live
 
 ## Post-review architecture disposition
 
-The required fresh authority review is complete. ADR 0028 adopts an isolated ExecutionWorkspace -> CandidateDelta -> Dope Authority/ToolExecutor promotion boundary. This does not relabel Cycle 1 Green and does not resume Cycles 2-5.
+ADR 0028 resolved the architecture direction. The original loop remains historical evidence and is not resumed from old Cycle 2.
 
-Next route: plan and implement correction `c8-agent-authority-boundary` at unchanged `0.8.13`, then perform a fresh bounded 8B qualification. Phase 8C remains gated.
+After `c8-agent-authority-boundary` finishes coherently, run the updated:
+
+`docs/tasks/c8-p8b-qualification-loop/one-off-p8b-qualification-repair-loop.txt`
+
+That prompt now starts a **fresh post-correction five-cycle budget**. It qualifies the new ExecutionWorkspace -> CandidateDelta -> Authority/ToolExecutor boundary rather than the obsolete direct-project-write sandbox contract.
+
+Phase 8C remains gated until the post-correction loop produces a Green / Qualified exact `0.8.13` candidate.
