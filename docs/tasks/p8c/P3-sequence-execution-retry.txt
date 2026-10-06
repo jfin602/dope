@@ -1,0 +1,38 @@
+TASK: Phase 8 / P3 — Sequential task execution and bounded capacity retry
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.16`.
+
+GOAL
+Execute exactly one current sequence task at a time through the already-qualified Phase 8B Agent Runtime and add bounded model-capacity retry without adding checkpoint authority yet.
+
+REQUIREMENTS
+- Add a sequence coordinator/backend that reconciles sequence truth before every start/resume.
+- Executable sequence entries create/use AgentTask with origin `{ kind: 'phase-stack', promptId: ... }` and exact snapshotted prompt/model/reasoning/version metadata.
+- Follow Coding Agent / exact target rules remain those of Agent Runtime; no new provider fallback.
+- Preserve ADR 0028: provider runs only inside ExecutionWorkspace; sequence code never bypasses existing promotion.
+- One active mutation executor per project. A sequence run and direct Agent Run cannot race.
+- Sequence stops at the same entry on AgentRun failed/cancelled/interrupted/authority-denied/validation failure. No checkpoint and no advancement.
+- Add narrow capacity classification compatible with current runner behavior. Only a recognized capacity failure is retryable.
+- Retry uses the same logical AgentTask and preserves the same ExecutionWorkspace/partial candidate state when safe. Do not promote between retry attempts.
+- Use the current external runner bounded retry count/delay as behavioral reference unless source evidence requires a smaller compatible implementation.
+- Stop must interrupt an active provider attempt or capacity wait and persist truthful sequence state.
+- Retry exhaustion blocks sequence and leaves authoritative project unchanged.
+
+ARCHITECTURE NOTE
+If current AgentExecutionRuntime disposes ExecutionWorkspace immediately on a capacity failure, introduce the smallest explicit run/workspace lifecycle seam needed for retry. Do not copy Agent Runtime into a second sequence runtime.
+
+FOCUSED VALIDATION
+- Current-entry-only execution and next-entry not started early.
+- Phase-stack task metadata/model/reasoning mapping.
+- Failure/cancel/authority/validation stop laws.
+- Capacity retry same task/workspace, bounded count, stop-during-wait, exhaustion and non-capacity no-retry.
+- Competing direct/sequence start rejection.
+- Affected integration tests/builds and git diff --check/version/no-root-lock.
+
+DEFER
+Dope-owned checkpoint commit, dirty continuation, browser/manual gates and UI.
