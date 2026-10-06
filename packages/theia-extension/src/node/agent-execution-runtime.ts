@@ -21,6 +21,13 @@ interface Active {
     commands: Map<string, { command: string; started: number }>;
 }
 
+/** Codex reports the shell invocation, not only its argument. Keep the match exact so a
+ * compound or extended command cannot satisfy a required validation target. */
+function matchesValidationCommand(observed: string, target: string): boolean {
+    const command = observed.trim();
+    return command === target || command === `/bin/bash -lc ${target}`;
+}
+
 /** Owns mutation lifecycle and restart reconciliation across RPC connections. */
 export class AgentExecutionRuntime {
     private readonly active = new Map<string, Active>();
@@ -121,7 +128,7 @@ export class AgentExecutionRuntime {
                 if (started && Number.isSafeInteger(observation.exitCode) && observation.exitCode! >= 0) {
                     const task = await this.store.readTask(active.root, active.run.taskId);
                     const matched = task?.completion.validation.filter(target =>
-                        (target.command ?? target.label) === started.command.trim()) ?? [];
+                        matchesValidationCommand(started.command, target.command ?? target.label)) ?? [];
                     const durationMs = Math.min(86_400_000, Math.max(0, Date.now() - started.started));
                     if ((active.run.commandEvidence?.length ?? 0) < 24) {
                         await this.update(active, run => ({ ...run, commandEvidence: [...(run.commandEvidence ?? []),

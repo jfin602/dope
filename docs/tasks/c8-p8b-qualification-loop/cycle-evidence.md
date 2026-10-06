@@ -182,18 +182,18 @@ Use this section only after `c8-agent-authority-boundary` has finished. The hist
 
 ### Post-Correction Cycle 3
 
-- Pre-cycle candidate:
-- First blocker:
-- Direct evidence:
-- Diagnosis:
-- Repair:
-- Files changed:
-- Focused validation:
-- Replay result:
-- Cleared gates:
-- Next blocker:
-- Candidate/checkpoint:
-- Decision after cycle:
+- Pre-cycle candidate: clean `c6f39d6` (Cycle 2 checkpoint); tracked-tree SHA-256 `10e4f552b583bea6bafe5265a51643beefd4777ff1b4ccd9ea0fee003563a38d` by the retained path/length/content method.
+- First blocker: Gate 4 required validation did not match the real Codex App Server command observation, so `happy-native-2` finished `validation-failed` and promoted nothing despite a successful workspace command.
+- Direct evidence: Codex reported `/bin/bash -lc ./validate.sh` for the command target `./validate.sh`. The Cycle 2 run recorded the successful command as `Other project command`, with no validation result. Its create + modify candidate remained in the execution workspace; authoritative files, HEAD and index were unchanged.
+- Diagnosis: `AgentExecutionRuntime.observed()` required literal equality between the target and the full provider command string. The provider's exact shell wrapper was omitted from the match.
+- Repair: Accept the exact bare target or the exact observed `/bin/bash -lc ` prefix plus target. A command with an appended shell operation cannot satisfy required validation. No grant, sandbox, or promotion semantics changed; version remains `0.8.13`.
+- Files changed: `packages/theia-extension/src/node/agent-execution-runtime.ts`, `test/unit/agent-execution-runtime.test.ts`, and this evidence file.
+- Focused validation: Theia extension build and 15/15 focused runtime tests passed. The regression covers the exact wrapper and rejects `/bin/bash -lc ./validate.sh; echo extra`. Browser/node bundles rebuilt with zero errors.
+- Replay result: Fresh clean fixture `happy-native-3` ran through the real Agent Runtime and exact `gpt-5.6-terra` App Server target. Run `3bcbdd81-c3cf-4fec-a80c-af13b634fb9d` completed with a passed `fixture validation` result, `validationBasis: execution-workspace`, independently classified create `result.txt` + modify `state.txt`, `authorityDecision.allowed: true`, and exactly those two `appliedFiles`. Authoritative `state.txt` was `status=updated`, `result.txt` was `phase8b=ok`; target HEAD stayed `1b3047d62d757dc15bdf8a95e771f20880b43821` with no staged changes. The new browser bundle and backend started on a separate clean UI fixture, but the browser-control session was interrupted before that UI replay. The volatile `/tmp` fixture and profile were subsequently removed by the host between turns, so later gates require fresh fixtures and authorization.
+- Cleared gates: Gates 1–3 retained; Gate 4 is Green for the real backend Agent Runtime path, including required workspace validation and Dope-owned authoritative promotion. Native UI replay and reopen remain part of Gate 8.
+- Next blocker: Gate 5 live denial probes have not run. The disposable profile and fixture must be re-established after host cleanup; this is environmental loss of test artifacts, not a demonstrated product defect. The direct UI controller currently creates tasks with no validation target, so UI validation recording must be assessed before a final Green claim.
+- Candidate/checkpoint: normal Cycle 3 checkpoint commit recorded below.
+- Decision after cycle: Not Green / Not Qualified; continue at Gate 5 within the five-cycle budget.
 
 ### Post-Correction Cycle 4
 

@@ -416,6 +416,21 @@ test('observed command exit and exact validation target determine validation tru
     const failed = await terminal(f.store, f.root, third.id);
     assert.equal(failed.validationResults[0].status, 'failed');
     assert.equal(failed.status, 'failed');
+    const fourth = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
+    f.adapter.onEvent!({ kind: 'command-started', commandId: 'four', command: '/bin/bash -lc node --test', summary: 'started' });
+    f.adapter.onEvent!({ kind: 'command-completed', commandId: 'four', exitCode: 0, summary: 'completed' });
+    f.adapter.complete();
+    const wrapped = await terminal(f.store, f.root, fourth.id);
+    assert.equal(wrapped.status, 'completed');
+    assert.deepEqual(wrapped.commandEvidence?.[0].matchedTargets, ['unit']);
+    const fifth = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
+    f.adapter.onEvent!({ kind: 'command-started', commandId: 'five',
+        command: '/bin/bash -lc node --test; echo extra', summary: 'started' });
+    f.adapter.onEvent!({ kind: 'command-completed', commandId: 'five', exitCode: 0, summary: 'completed' });
+    f.adapter.complete();
+    const extended = await terminal(f.store, f.root, fifth.id);
+    assert.equal(extended.status, 'failed');
+    assert.deepEqual(extended.commandEvidence?.[0].matchedTargets, []);
 }));
 
 test('fresh backend attach reconciles orphaned running and cancelling runs without resuming', async () => fixture(async f => {
