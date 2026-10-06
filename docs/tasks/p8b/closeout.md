@@ -61,3 +61,15 @@ The disposable repository has no `.dope/agent/` task/run/event files because no 
 Cycle 1 proved the `bwrap: execvp` startup error comes from `:root = "deny"` hiding the resolved standalone Codex executable. A disposable profile with an exact read rule for that ELF started successfully. The executing sandbox then allowed a normal project write **and deletion of a tracked project file**. It denied the tested outside/private canaries, `.git/config`, `.env`, network attempt and system write; HEAD stayed fixed. The deletion directly violates the default grant's denied destructive class. The current adapter preflight would reject this profile after startup, so its fail-closed behavior remains appropriate.
 
 No live eligible target, model mutation, five-class executing authority result, cancellation, active-run restart or persisted-run security/reopen was qualified. The loop stopped after Cycle 1 rather than weakening the grant or improvising a new sandbox architecture. The evidence-only checkpoint and exact probe details are in [Cycle 1 evidence](../c8-p8b-qualification-loop/cycle-evidence.md). A fresh docs/architecture review must resolve how Dope can enforce denied destructive effects while allowing project mutation/processes. Phase 8C is not eligible.
+
+## Supplemental final Green disposition — 2026-10-06
+
+**Decision: GREEN / QUALIFIED** for the corrected direct AgentTask scope at `0.8.13`.
+
+- Qualified product/test source: `bd0b6ff`.
+- Docs-only closeout checkpoint: `c11756e`.
+- Four of five post-correction cycles were used.
+- All eight post-correction qualification gates passed with live agent execution, including authoritative promotion/denial, cancellation, restart interruption and Agent Run reopen.
+- Final reported automated evidence: `npm run check` pass; 69/69 focused tests; p8b validator pass; fresh sandbox proof pass; seven direct promotion fixtures pass.
+- The earlier P7 Not Green result and original authority-gap Cycle 1 above remain historical evidence and are not erased by this later qualification.
+- Phase 8C is eligible for the sequential task / phase-stack implementation slice.
