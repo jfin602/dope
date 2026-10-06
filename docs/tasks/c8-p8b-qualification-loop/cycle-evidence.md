@@ -197,18 +197,19 @@ Use this section only after `c8-agent-authority-boundary` has finished. The hist
 
 ### Post-Correction Cycle 4
 
-- Pre-cycle candidate:
-- First blocker:
-- Direct evidence:
-- Diagnosis:
-- Repair:
-- Files changed:
-- Focused validation:
-- Replay result:
-- Cleared gates:
-- Next blocker:
-- Candidate/checkpoint:
-- Decision after cycle:
+- Pre-cycle candidate: clean `7a5291cbed7bfe2dee3848d7091ee712601c278e` (Cycle 3 checkpoint), tracked-tree SHA-256 `a5522e1d2d68cc938eabf64057a5342d862a9c791fb24d9f398b169dc881d4f5` by the retained path/length/content method. The host had removed the earlier `/tmp` fixture/profile between turns, so fresh clean Git clones and a separate persistent scratch application profile were established under `/home/jfin/.cache/dope-p8b-post-qualification/`. The new profile completed ordinary ChatGPT-plan sign-in; every subsequent model test selected exact `gpt-5.6-terra` with no fallback.
+- First blocker: none in the remaining live gates. An initial host-probe task was rejected before execution because its prompt contained literal private absolute paths; the disposable test prompt was corrected to construct paths inside the sandbox. This was a safe task-store refusal, not a product repair.
+- Direct evidence, Gate 5 host security: Real Terra run `959c2307-fbd6-47b9-871a-6cde7a205c20` attempted local TCP, system write, account-auth read, Git-control write and package-database write; its bounded result reported those denied. A follow-up real Terra run `21ab5b3c-148b-470a-be42-250881909d17` attempted read/write of a named outside-workspace canary under the real account home; both failed and the host canary was unchanged. The first probe could read the system hostname through the installed profile's `:minimal` runtime-read allowance. It also reported a successful write to the account-home path, but a direct installed-sandbox reproduction showed this is a shadowed filesystem view: the real host canary was absent after execution; private account auth remained unreadable. These observations qualify the tested host effects without claiming that every system metadata file is unreadable.
+- Direct evidence, Gate 5 promotion: Real Terra delete run `3da10d90-e110-4cb7-9d1c-cbc1cb1806ee` produced `delete keep.txt`; rename run `b248cc38-f383-40d3-becb-d354561a3205` produced conservative `delete keep.txt` + `create moved.txt`; mixed run `943a6831-5768-4464-b6fb-389c5e0f94d6` produced `delete keep.txt` + `modify state.txt`. All three ended `authority-denied`, with `authorityDecision.allowed: false`, zero applied files, unchanged authoritative tracked bytes/HEAD and empty index. The mixed allowed modify was not partially applied.
+- Direct evidence, Gate 6: Terra run `0aad1fc8-dd72-48e3-9929-90dda820088a` changed `state.txt` only in its ExecutionWorkspace, then Stop produced persisted `running -> cancelling -> cancelled` events and a bounded modify candidate. The provider process and workspace were removed after stop; authoritative `state.txt` remained baseline, HEAD unchanged, index empty, with no later effect or promotion.
+- Direct evidence, Gate 7: An actual Dope workbench Agent Run on clean `restart-ui-1` used the exact Terra Coding Agent role, no fallback. Run `383114b5-51ae-41e1-9cf5-c8f41e71a888` was `running` after workspace `state.txt` changed to `status=updated`; the authoritative file was still baseline. Force-killing only the disposable Theia backend stopped its owned Codex App Server and sandbox processes. Fresh backend/UI attachment persisted `interrupted` with an interrupted event, execution-workspace identity, recovery handle and unchanged final Git evidence. No continuation, promotion, stage or commit occurred. No CandidateDelta or validation result was recorded because the provider turn had not settled.
+- Direct evidence, Gate 8: Fresh real Terra run `dcef8454-1da1-4d23-97a2-aa6f7dc87365` completed required `./validate.sh` with `validationBasis: execution-workspace`, independently classified create `result.txt` + modify `state.txt`, approved the whole candidate and applied exactly those two files. The reopened Agent Run UI displayed its passed validation, candidate, authority approval, applied files, activity and bounded diff summary. A scan of the success, delete, rename, mixed, cancelled and interrupted `.dope/agent/` task/run/event files found no OAuth or authorization header material, credential-shaped values, private absolute paths, hidden reasoning, arbitrary environment dumps or raw provider payloads. Every candidate/applied/changed path was project-relative; largest observed event line was 200 bytes. The interrupted run has no validation basis because no validation was observed before shutdown; runs with recorded validation state the execution-workspace basis.
+- Diagnosis/repair/files changed: no product defect was established in this cycle, so no product/test source changed. This evidence file is the only checkpoint change. The scratch probe harness is outside the repository and is not product runtime.
+- Focused validation/replay: The direct live runs above are the focused evidence. The successful target repository retained HEAD `c949f6c711a7e3b5183d284ade5ba3551d957e3e` and an empty index; its authoritative `state.txt` and `result.txt` matched the requested bytes. Version `0.8.13`, no-root-lock and `git diff --check` are checked at the checkpoint and again in the exact-candidate gate.
+- Cleared gates: Gates 1-3 retained; Gate 4 was replayed with required validation; Gates 5-8 passed for the directly observed scope. Native UI start, interrupted reopen and successful reopen were observed in the disposable browser workbench.
+- Next blocker: none observed. Proceed to the full exact-candidate gate; a Green disposition is conditional on that gate.
+- Candidate/checkpoint: evidence-only Cycle 4 checkpoint commit recorded below.
+- Decision after cycle: all eight live gates are Green for this candidate; run the full exact-candidate gate before a final qualification decision. Cycle 5 is not used.
 
 ### Post-Correction Cycle 5
 
