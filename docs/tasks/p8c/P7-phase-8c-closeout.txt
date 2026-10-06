@@ -1,0 +1,70 @@
+TASK: Phase 8 / P7 — Phase 8C sequential execution closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+The assigned project version is `0.8.20`.
+
+GOAL
+Qualify and close Phase 8C on one exact candidate with real sequential AgentTaskSequence execution, Dope-owned checkpoints, a real manual/browser gate and restart/resume.
+
+PREFLIGHT
+- Read ADR 0027/0028, the Phase 8C plan, p8c assessment/implementation plan and exact P1-P6 results.
+- Use a disposable project/repository for destructive/failure fixtures.
+- For the primary dogfood, use a real representative Dope phase/correction stack or a faithful copied stack whose prompts exercise the real parser/version/checkpoint rules.
+- Use a real eligible hosted Coding Agent connection.
+
+AUTOMATED T3
+- Run the complete focused p8c/agent sequence/import/store/runtime/checkpoint/manual-gate/UI test surface.
+- Run `npm run check` on the exact candidate.
+- Run `npm run codex:phase:validate -- p8c`.
+- Verify exact versions/internal `@dope` references/no root lock and `git diff --check`.
+- Use direct Electron/native evidence where child process, restart, Git or browser/manual UI truth requires it.
+
+DIRECT HAPPY PATH
+1. Import the stack in the real Dope UI.
+2. Verify normalized entries/model/reasoning/version/manual metadata.
+3. Accept the grant and start P1.
+4. Require real AgentRun -> ExecutionWorkspace -> CandidateDelta -> authoritative promotion.
+5. Require validation Green.
+6. Require Dope-owned exact-scope checkpoint commit with correct subject/body and recorded SHA.
+7. Automatically advance exactly one entry.
+8. Execute/checkpoint P2 the same way.
+9. Reach a real Browser-required or final manual gate and stop with no later task started.
+10. Restart Dope and reopen the same sequence/gate with no auto-run.
+11. Complete the manual step externally in the required repository form, then reconcile.
+12. Require Git/version truth to advance safely without duplicate checkpoint.
+
+DIRECT FAILURE / SAFETY MATRIX
+- validation failure: no checkpoint/advance;
+- cancellation: stop current task/retry, no checkpoint/advance;
+- CandidateDelta authority block: no checkpoint/advance;
+- narrowly recognized capacity failure: bounded retry preserves the same logical task/workspace; exhaustion stops;
+- unexpected HEAD movement before checkpoint: block, no repair/reset;
+- explicit dirty-tree continuation: accepted initial dirty work + task effects checkpoint exactly; unrelated later dirty change blocks;
+- stack source changes after import: resume blocks on fingerprint drift;
+- restart after already verified checkpoint: no duplicate commit;
+- persisted sequence vs Git disagreement: block rather than reinterpret;
+- `.dope/agent/**` runtime state is not staged into an ordinary checkpoint.
+
+MANUAL GATE TRUTH
+- Browser-required prompt is shown exactly from the imported snapshot and never run automatically.
+- Resume button alone cannot complete the gate.
+- Incorrect or missing external checkpoint/version evidence remains waiting/blocked.
+
+SECURITY / AUTHORITY
+- Provider never receives direct authoritative Git-write authority.
+- ADR 0028 execution/promotion remains the mutation path.
+- No secrets, hidden reasoning, arbitrary environment dump or unbounded provider payload in sequence/run state.
+
+CLOSEOUT
+- Write `docs/tasks/p8c/closeout.md` with exact candidate, commands, automated results, direct sequence evidence, checkpoint SHAs, manual-gate/restart evidence, adversarial results and residuals.
+- Preserve any failed evidence; do not overwrite it with later success.
+- A tiny P7 repair is allowed only inside approved 8C scope; rerun only invalidated evidence.
+- If Green, route next to a fresh Phase 8D General Scoped Delegation docs review.
+- Do not implement 8D in this closeout.
+
+FINAL RESPONSE
+Report exact candidate, two-task sequence/checkpoints, manual gate/restart/resume, dirty-tree/checkpoint authority, failure matrix, aggregate validation, residuals and final Phase 8C decision.
