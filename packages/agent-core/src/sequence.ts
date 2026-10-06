@@ -1,4 +1,5 @@
 import { ExecutionControls, array, freeze, id, integer, record, select, timestamp } from './contracts';
+import type { AcceptedDirtyBasis } from './node/dirty-basis';
 
 export const SEQUENCE_SCHEMA_VERSION = 1 as const;
 export type StackMode = 'phase' | 'correction';
@@ -23,14 +24,14 @@ export interface AgentTaskSequence {
     version: typeof SEQUENCE_SCHEMA_VERSION; id: string; createdAt: string; updatedAt: string;
     status: SequenceStatus; currentEntryNumber: number; stack: ImportedStack;
     basis: SequenceBasis; checkpoints: SequenceCheckpoint[]; blockedReason?: SequenceBlockReason;
-    taskId?: string; runIds?: string[];
+    taskId?: string; runIds?: string[]; acceptedDirty?: AcceptedDirtyBasis;
 }
 export interface SequenceBasis { head: string; packageVersion: string; worktreeFingerprint: string }
 export interface SequenceCheckpoint { entryNumber: number; sha: string; taskId?: string; runId?: string }
 export type SequenceBlockReason = 'source-drift' | 'git-history' | 'checkpoint-mismatch' |
     'version-mismatch' | 'head-drift' | 'worktree-drift' | 'interrupted' | 'completion-unsupported' |
     'run-failed' | 'run-cancelled' | 'authority-denied' | 'validation-failed' |
-    'capacity-exhausted' | 'checkpoint-pending';
+    'capacity-exhausted' | 'checkpoint-pending' | 'checkpoint-failed';
 export interface PhaseStackTaskMetadata {
     objective: string; instructions: string; origin: { kind: 'phase-stack'; promptId: string }; controls: ExecutionControls;
     recommendedModel: 'gpt-6-sol'; versionPolicy: VersionPolicy; stackFingerprint: string;
@@ -214,7 +215,7 @@ export function transitionSequence(from: SequenceStatus, to: SequenceStatus): Se
 }
 export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskSequence> {
     const x = record(value, ['version', 'id', 'createdAt', 'updatedAt', 'status', 'currentEntryNumber', 'stack',
-        'basis', 'checkpoints', 'blockedReason', 'taskId', 'runIds']);
+        'basis', 'checkpoints', 'blockedReason', 'taskId', 'runIds', 'acceptedDirty']);
     if (x.version !== SEQUENCE_SCHEMA_VERSION) throw new Error('Invalid sequence schema version');
     const stack = await parseImportedStack(x.stack);
     const status = select(x.status, SEQUENCE_STATUSES);
@@ -248,7 +249,7 @@ export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskS
         throw new Error('Sequence position disagrees with checkpoints');
     const reasons: SequenceBlockReason[] = ['source-drift', 'git-history', 'checkpoint-mismatch',
         'version-mismatch', 'head-drift', 'worktree-drift', 'interrupted', 'completion-unsupported',
-        'run-failed', 'run-cancelled', 'authority-denied', 'validation-failed', 'capacity-exhausted', 'checkpoint-pending'];
+        'run-failed', 'run-cancelled', 'authority-denied', 'validation-failed', 'capacity-exhausted', 'checkpoint-pending', 'checkpoint-failed'];
     const blockedReason = x.blockedReason === undefined ? undefined : select(x.blockedReason, reasons);
     if (blockedReason && status !== 'blocked' && status !== 'interrupted') throw new Error('Invalid sequence block reason');
     const taskId = x.taskId === undefined ? undefined : id(x.taskId);
@@ -256,11 +257,41 @@ export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskS
     if (runIds.length && !taskId || new Set(runIds).size !== runIds.length ||
         taskId && stack.entries[currentEntryNumber - 1]?.execution !== 'agent-task')
         throw new Error('Invalid sequence task/run identity');
+    const acceptedDirty = x.acceptedDirty === undefined ? undefined : parseSequenceDirty(x.acceptedDirty);
+    if (acceptedDirty && acceptedDirty.head !== (checkpoints.at(-1)?.sha ?? basisValue.head))
+        throw new Error('Accepted dirty HEAD differs from sequence basis');
     return freeze({ version: SEQUENCE_SCHEMA_VERSION, id: id(x.id), createdAt, updatedAt,
         status, currentEntryNumber, stack, basis: { head: basisValue.head, packageVersion: basisValue.packageVersion,
             worktreeFingerprint: basisValue.worktreeFingerprint }, checkpoints,
         ...(blockedReason ? { blockedReason } : {}), ...(taskId ? { taskId } : {}),
-        ...(runIds.length ? { runIds } : {}) });
+        ...(runIds.length ? { runIds } : {}), ...(acceptedDirty ? { acceptedDirty } : {}) });
+}
+function parseSequenceDirty(value: unknown): AcceptedDirtyBasis {
+    const basis = record(value, ['head', 'paths']);
+    if (typeof basis.head !== 'string' || !/^[a-f0-9]{40,64}$/u.test(basis.head)) throw new Error('Invalid dirty HEAD');
+    const paths = array(basis.paths, 500, item => {
+        const entry = record(item, ['path', 'code', 'hash', 'size', 'mode']);
+        const path = String(entry.path);
+        if (path === '.dope/agent' || path.startsWith('.dope/agent/') ||
+            path.split('/').some(part => ['.dope', '.codex', '.ssh', '.aws', '.npmrc', '.yarnrc'].includes(part) ||
+                part === '.env' || part.startsWith('.env.') || part.endsWith('.pem') || part.endsWith('.key')))
+            throw new Error('Invalid dirty path');
+        const code = select(entry.code, [' M', ' D', '??'] as const);
+        const size = integer(entry.size, 32 * 1024 * 1024);
+        if (code === ' D' ? entry.hash !== null || size !== 0 || entry.mode !== null :
+            typeof entry.hash !== 'string' || !/^[a-f0-9]{64}$/u.test(entry.hash))
+            throw new Error('Invalid dirty hash');
+        const mode = code === ' D' ? null : integer(entry.mode, 0o777);
+        return { path: idPath(path), code, hash: entry.hash as string | null, size, mode };
+    });
+    if (new Set(paths.map(item => item.path)).size !== paths.length) throw new Error('Duplicate dirty path');
+    return { head: basis.head, paths };
+}
+function idPath(path: string): string {
+    if (path.startsWith('/') || path.includes('\\') || path.includes(':') ||
+        path.split('/').some(part => !part || part === '.' || part === '..' || part === '.git'))
+        throw new Error('Invalid dirty path');
+    return path;
 }
 export function phaseStackTaskMetadata(stack: ImportedStack, entryNumber: number): PhaseStackTaskMetadata {
     const entry = stack.entries[entryNumber - 1];

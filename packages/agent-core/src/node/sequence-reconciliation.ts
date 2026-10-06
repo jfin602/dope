@@ -153,7 +153,8 @@ export function sequenceBlockReason(sequence: AgentTaskSequence, evidence: Seque
     if (evidence.head !== (sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head)) return 'head-drift';
     // P3 has applied candidate bytes but no checkpoint authority. The version and worktree may
     // reflect that successful task; the pending checkpoint remains the only safe next action.
-    if (sequence.status === 'blocked' && sequence.blockedReason === 'checkpoint-pending') return undefined;
+    if (sequence.status === 'blocked' &&
+        ['checkpoint-pending', 'checkpoint-failed'].includes(sequence.blockedReason ?? '')) return undefined;
     if (evidence.packageVersion !== expectedSequenceVersion(sequence.stack, prefix.length)) return 'version-mismatch';
     if (!evidence.clean || evidence.worktreeFingerprint !== sequence.basis.worktreeFingerprint) return 'worktree-drift';
     if (sequence.status === 'completed') return 'completion-unsupported';

@@ -6,8 +6,13 @@ import type { AgentModelPolicy, AgentRun, AgentTask, AgentTaskSequence, Completi
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureSequenceEvidence, importSequenceSnapshot, sequenceBlockReason,
     stackSourceDrift } from '@dope/agent-core/lib/node/sequence-reconciliation';
+import { assertDirtyBasis, captureDirtyBasis, safeGit } from '@dope/agent-core/lib/node/dirty-basis';
+import { checkpointSequence as commitCheckpoint } from '@dope/agent-core/lib/node/sequence-checkpoint';
 import type { AgentRuntimeClient, AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { AgentExecutionRuntime } from './agent-execution-runtime';
+
+// Shared by RPC backend instances in this process; persisted HEAD/checkpoint evidence owns restart safety.
+const checkpointProjects = new Set<string>();
 
 /** One RPC connection attaches one canonical project root. The handle never enters durable state. */
 export class AgentRuntimeBackend implements AgentRuntimeService {
@@ -85,7 +90,13 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         }
         const [evidence, drift] = await Promise.all([
             captureSequenceEvidence(root), stackSourceDrift(root, sequence.stack)]);
-        const reason = sequenceBlockReason(sequence, evidence, drift);
+        let acceptedValid = false;
+        if (sequence.acceptedDirty && sequence.blockedReason !== 'checkpoint-pending') {
+            acceptedValid = await assertDirtyBasis(root, sequence.acceptedDirty).then(() => true, () => false);
+        }
+        const acceptedEvidence = acceptedValid ? { ...evidence, clean: true,
+            worktreeFingerprint: sequence.basis.worktreeFingerprint } : evidence;
+        const reason = sequenceBlockReason(sequence, acceptedEvidence, drift);
         if (!reason) return sequence;
         const status = reason === 'interrupted' ? 'interrupted' : 'blocked';
         if (sequence.status === status && sequence.blockedReason === reason) return sequence;
@@ -105,8 +116,20 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             updatedAt: new Date(Math.max(Date.now(), Date.parse(sequence.updatedAt) + 1)).toISOString() });
     }
     async prepareSequenceTask(handle: string, sequenceId: string, modelPolicy: AgentModelPolicy,
-        completion: CompletionPolicy): Promise<AgentTask> {
-        const root = this.active(handle), sequence = await this.sequenceState(root, sequenceId);
+        completion: CompletionPolicy, acceptDirty = false): Promise<AgentTask> {
+        const root = this.active(handle);
+        let sequence = await this.sequenceState(root, sequenceId);
+        if (acceptDirty && sequence.status === 'blocked' && sequence.blockedReason === 'worktree-drift') {
+            const dirty = await captureDirtyBasis(root);
+            if (!dirty.paths.length || dirty.head !== (sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head))
+                throw new Error('No eligible dirty worktree to accept');
+            const evidence = await captureSequenceEvidence(root);
+            if (sequenceBlockReason(sequence, { ...evidence, clean: true,
+                worktreeFingerprint: sequence.basis.worktreeFingerprint }, await stackSourceDrift(root, sequence.stack)))
+                throw new Error('Sequence has another reconciliation blocker');
+            sequence = await this.setSequence(root, sequence, { status: 'ready', blockedReason: undefined,
+                acceptedDirty: dirty });
+        }
         if (sequence.status !== 'ready' && !(sequence.status === 'blocked' &&
             ['run-failed', 'run-cancelled', 'authority-denied', 'validation-failed', 'capacity-exhausted'].includes(sequence.blockedReason ?? '')))
             throw new Error('Sequence is not ready for an executable task');
@@ -131,6 +154,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         hostedProjectDataAuthorized: boolean): Promise<AgentRun> {
         if (!this.execution) throw new Error('Agent execution unavailable');
         const root = this.active(handle);
+        if (checkpointProjects.has(root)) throw new Error('Project checkpoint in progress');
         let sequence = await this.sequenceState(root, sequenceId);
         if (sequence.status === 'blocked' && ['run-failed', 'run-cancelled', 'authority-denied',
             'validation-failed', 'capacity-exhausted'].includes(sequence.blockedReason ?? ''))
@@ -152,7 +176,8 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             throw new Error('Accepted ExecutionGrant does not match sequence task/project');
         if (this.execution.activeRunId(root)) throw new Error('A mutation run is already active for this project');
         sequence = await this.setSequence(root, sequence, { status: 'running', blockedReason: undefined });
-        const start = this.execution.startSequence(root, folderUri, task.id, grant, hostedProjectDataAuthorized);
+        const start = this.execution.startSequence(root, folderUri, task.id, grant, hostedProjectDataAuthorized,
+            sequence.acceptedDirty);
         this.pendingStarts.set(sequence.id, start);
         try {
             const run = await start;
@@ -199,13 +224,48 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         if (!final) throw new Error('Agent sequence missing after stop');
         return final;
     }
+    async checkpointSequence(handle: string, sequenceId: string): Promise<AgentTaskSequence> {
+        const root = this.active(handle);
+        if (checkpointProjects.has(root)) throw new Error('Project checkpoint already in progress');
+        checkpointProjects.add(root);
+        try {
+            const sequence = await this.sequenceState(root, sequenceId);
+            if (sequence.status !== 'blocked' || sequence.blockedReason !== 'checkpoint-pending' ||
+                !sequence.taskId || !sequence.runIds?.length || this.execution?.activeRunId(root))
+                throw new Error('Sequence has no pending checkpoint');
+            const [task, run] = await Promise.all([this.store.readTask(root, sequence.taskId),
+                this.store.readRun(root, sequence.runIds.at(-1)!)]);
+            if (!task || !run) throw new Error('Checkpoint task/run evidence missing');
+            const sha = await commitCheckpoint(root, sequence, task, run);
+            if ((await safeGit(root, ['rev-parse', '--verify', 'HEAD'])).trim() !== sha ||
+                (await safeGit(root, ['diff', '--cached', '--name-only', '-z'])).length ||
+                (await captureDirtyBasis(root)).paths.length)
+                throw new Error('Checkpoint changed before durable sequence advancement');
+            const nextNumber = sequence.currentEntryNumber + 1;
+            const next = sequence.stack.entries[nextNumber - 1];
+            return this.setSequence(root, sequence, { checkpoints: [...sequence.checkpoints,
+                { entryNumber: sequence.currentEntryNumber, sha, taskId: task.id, runId: run.id }],
+                currentEntryNumber: nextNumber, status: next?.execution === 'manual-gate' ? 'waiting-manual' : 'ready',
+                blockedReason: undefined, taskId: undefined, runIds: undefined, acceptedDirty: undefined,
+                basis: { head: sha,
+                    packageVersion: sequence.stack.entries[sequence.currentEntryNumber - 1].versionPolicy.version,
+                    worktreeFingerprint: sequence.basis.worktreeFingerprint } });
+        } catch (error) {
+            const sequence = await this.store.readSequence(root, sequenceId);
+            if (sequence?.status === 'blocked' && sequence.blockedReason === 'checkpoint-pending')
+                await this.setSequence(root, sequence, { blockedReason: 'checkpoint-failed' });
+            throw error;
+        } finally { checkpointProjects.delete(root); }
+    }
     readEvents(handle: string, runId: string, afterSequence: number, limit: number) {
         return this.store.readEvents(this.active(handle), runId, afterSequence, limit);
     }
     start(handle: string, folderUri: string, taskId: string, grant: ExecutionGrant,
         hostedProjectDataAuthorized: boolean): Promise<AgentRun> {
         if (!this.execution) throw new Error('Agent execution unavailable');
-        return this.execution.start(this.active(handle), folderUri, taskId, grant, hostedProjectDataAuthorized);
+        const root = this.active(handle);
+        if (checkpointProjects.has(root)) throw new Error('Project checkpoint in progress');
+        return this.execution.start(root, folderUri, taskId, grant, hostedProjectDataAuthorized);
     }
     stop(handle: string, runId: string): Promise<AgentRun> {
         if (!this.execution) throw new Error('Agent execution unavailable');

@@ -19,10 +19,11 @@ export interface AgentRuntimeService {
     listSequences(projectHandle: string): Promise<AgentTaskSequence[]>;
     reconcileSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
     prepareSequenceTask(projectHandle: string, sequenceId: string, modelPolicy: AgentModelPolicy,
-        completion: CompletionPolicy): Promise<AgentTask>;
+        completion: CompletionPolicy, acceptDirty?: boolean): Promise<AgentTask>;
     startSequence(projectHandle: string, folderUri: string, sequenceId: string, grant: ExecutionGrant,
         hostedProjectDataAuthorized: boolean): Promise<AgentRun>;
     stopSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
+    checkpointSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
     readEvents(projectHandle: string, runId: string, afterSequence: number, limit: number): Promise<{
         events: AgentRunEvent[]; nextSequence: number; hasMore: boolean;
     }>;

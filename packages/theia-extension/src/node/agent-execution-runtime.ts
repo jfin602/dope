@@ -5,6 +5,7 @@ import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, 
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureGitBasis, captureGitFinal } from '@dope/agent-core/lib/node/git-evidence';
 import { ExecutionWorkspace, PromotionFailure } from '@dope/agent-core/lib/node/execution-workspace';
+import { AcceptedDirtyBasis, assertDirtyBasis } from '@dope/agent-core/lib/node/dirty-basis';
 import type { AIInventoryController } from './ai-registry-backend';
 import type { AIRoleRoutingService } from './ai-role-routing';
 import { futureFeatureRoleRequest } from '@dope/ai';
@@ -191,12 +192,12 @@ export class AgentExecutionRuntime {
     }
 
     async startSequence(root: string, folderUri: string, taskId: string, offeredGrant: ExecutionGrant,
-        hostedAuthorized: boolean): Promise<AgentRun> {
-        return this.startInternal(root, folderUri, taskId, offeredGrant, hostedAuthorized, true);
+        hostedAuthorized: boolean, acceptedDirty?: AcceptedDirtyBasis): Promise<AgentRun> {
+        return this.startInternal(root, folderUri, taskId, offeredGrant, hostedAuthorized, true, acceptedDirty);
     }
 
     private async startInternal(root: string, folderUri: string, taskId: string, offeredGrant: ExecutionGrant,
-        hostedAuthorized: boolean, sequence: boolean): Promise<AgentRun> {
+        hostedAuthorized: boolean, sequence: boolean, acceptedDirty?: AcceptedDirtyBasis): Promise<AgentRun> {
         if (this.disposed) throw new Error('Agent Runtime disposed');
         if (await this.store.root(folderUri) !== root) throw new Error('Accepted project root does not match attached project');
         const prior = this.active.get(root);
@@ -226,8 +227,11 @@ export class AgentExecutionRuntime {
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
             const basis = await captureGitBasis(root);
             if (!basis.head) throw new Error('Phase 8B requires a committed Git HEAD');
-            if (!basis.clean) throw new Error('Phase 8B requires a clean project worktree');
-            active.workspace = await ExecutionWorkspace.create(root);
+            if (acceptedDirty) {
+                if (!sequence || acceptedDirty.head !== basis.head) throw new Error('Dirty basis requires matching sequence HEAD');
+                await assertDirtyBasis(root, acceptedDirty);
+            } else if (!basis.clean) throw new Error('Phase 8B requires a clean project worktree');
+            active.workspace = await ExecutionWorkspace.create(root, acceptedDirty);
             active.grant = grant;
             const now = new Date().toISOString();
             const pending: AgentRun = { version: AGENT_SCHEMA_VERSION, id: randomUUID(), taskId: task.id,

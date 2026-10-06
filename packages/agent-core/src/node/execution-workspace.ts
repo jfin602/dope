@@ -10,6 +10,7 @@ import type { AuthorityDecision, CandidateDelta, CandidateEffect } from '../cont
 import { checkEffect, parseExecutionGrant } from '../authority';
 import type { ExecutionGrant } from '../authority';
 import { captureGitBasis } from './git-evidence';
+import { AcceptedDirtyBasis, assertDirtyBasis } from './dirty-basis';
 
 const execute = promisify(execFile);
 const MAX_FILES = 50_000;
@@ -166,11 +167,12 @@ class AuthoritativeToolExecutor {
 export class ExecutionWorkspace {
     private constructor(readonly projectRoot: string, readonly root: string,
         private readonly parent: string, private readonly basis: Map<string, FileState>, readonly head: string,
-        readonly id: string) {}
+        readonly id: string, private readonly acceptedDirty?: AcceptedDirtyBasis) {}
 
-    static async create(projectRoot: string): Promise<ExecutionWorkspace> {
+    static async create(projectRoot: string, acceptedDirty?: AcceptedDirtyBasis): Promise<ExecutionWorkspace> {
         if (!isAbsolute(projectRoot) || await realpath(projectRoot) !== projectRoot)
             throw new Error('Execution workspace requires canonical project root');
+        if (acceptedDirty) await assertDirtyBasis(projectRoot, acceptedDirty);
         const parent = await mkdtemp(join(tmpdir(), 'dope-execution-'));
         const root = join(parent, 'work');
         try {
@@ -188,6 +190,19 @@ export class ExecutionWorkspace {
             const alternates = join(root, '.git/objects/info/alternates');
             try { await lstat(alternates); throw new Error('Execution Git shares authoritative objects'); }
             catch (error) { if (!missing(error)) throw error; }
+            if (acceptedDirty) {
+                if (head.stdout.trim() !== acceptedDirty.head) throw new Error('Accepted dirty HEAD changed');
+                for (const entry of acceptedDirty.paths) {
+                    const target = await safeTarget(root, entry.path, entry.code === '??' ? 'absent' : 'file');
+                    if (entry.code === ' D') await rm(target);
+                    else {
+                        const source = await safeTarget(projectRoot, entry.path, 'file');
+                        await mkdir(join(target, '..'), { recursive: true });
+                        await cp(source, target);
+                    }
+                }
+                await assertDirtyBasis(projectRoot, acceptedDirty);
+            }
             const dependencyPaths: string[] = [];
             const findDependencies = async (directory: string, depth: number): Promise<void> => {
                 if (depth > 4) return;
@@ -226,7 +241,7 @@ export class ExecutionWorkspace {
                 const source = await safeTarget(projectRoot, path, 'file', true);
                 if (await fileHash(source) !== state.hash) throw new Error('Project basis changed during workspace creation');
             }
-            return new ExecutionWorkspace(projectRoot, root, parent, basis, head.stdout.trim(), randomUUID());
+            return new ExecutionWorkspace(projectRoot, root, parent, basis, head.stdout.trim(), randomUUID(), acceptedDirty);
         } catch (error) { await rm(parent, { recursive: true, force: true }); throw error; }
     }
 
@@ -269,7 +284,8 @@ export class ExecutionWorkspace {
                 if (await fileHash(target) !== effect.before) throw new Error('Authoritative project basis changed');
             }
         }
-        if (!(await captureGitBasis(this.projectRoot)).clean)
+        if (this.acceptedDirty) await assertDirtyBasis(this.projectRoot, this.acceptedDirty);
+        else if (!(await captureGitBasis(this.projectRoot)).clean)
             throw new Error('Authoritative project changed during execution');
         if (blocked.length) return { decision: { allowed: false, blocked }, applied: [] };
         const applied = await new AuthoritativeToolExecutor(this.projectRoot, this.root).apply(delta.effects);
