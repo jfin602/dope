@@ -619,14 +619,35 @@ AgentRun is durable enough to inspect and resume/reconcile work across applicati
 
 ### AgentTaskSequence
 
-An ordered orchestration of AgentTasks with explicit progression and stop conditions.
+An ordered, durable orchestration of AgentTasks with explicit progression, checkpoint and stop/resume conditions.
 
-Initial primary consumer is the Phase 8 **phase-stack adapter**, which translates the existing repository prompt-stack grammar into a sequence while preserving prompt order, model/reasoning requirement, version policy, browser/manual gate and closeout semantics.
+The initial Phase 8C consumer is PhaseStackAdapter, which imports the existing repository prompt-stack grammar into a normalized immutable snapshot.
 
-A sequence records which task is pending/running/completed/blocked, the checkpoint associated with completed tasks and enough basis to reject an unsafe resume when Git/version/project reality no longer matches.
+Initial durable sequence state includes:
+- stable sequence ID/schema/revision;
+- project identity/root reference;
+- source stack project-relative path and fingerprint;
+- phase/correction identity and version policy;
+- ordered imported entries with prompt/model/reasoning/browser/closeout metadata;
+- generated AgentTask IDs and AgentRun attempts;
+- current entry and sequence status;
+- completed checkpoint SHAs;
+- current accepted Git/version/worktree basis;
+- explicitly accepted dirty-tree basis where applicable;
+- manual/browser gate state;
+- blocked/failure/interruption reason.
+
+Git history proves checkpoint reality; AgentTaskSequence state preserves imported intent and execution progress. Safe resume requires those representations to agree. Neither silently repairs the other.
+
+Source-stack drift, unreachable/missing checkpoints, unexpected HEAD movement, invalid version progression or mismatched dirty basis block automatic continuation.
+
+An executable sequence entry runs through ordinary AgentTask/AgentRun/ExecutionGrant and ADR 0028 authority. Sequence orchestration never grants a provider direct authoritative Git or filesystem mutation authority.
+
+The initial phase-stack checkpoint is a Dope-owned effect after successful promotion and validation. Sequence advancement occurs only after the checkpoint commit is verified and recorded.
+
+Browser-required prompts and the final closeout are manual gates. A gate remains pending until external repository/Git/version truth proves a coherent continuation; clicking Resume is not completion evidence.
 
 AgentTaskSequence is not PlanStep reborn. It is execution orchestration. WorkItems may create tasks/sequences later, but the first product consumer is the proven sequential prompt workflow.
-
 ### ExecutionGrant
 
 The developer-approved authority envelope for one AgentTask or AgentTaskSequence.
