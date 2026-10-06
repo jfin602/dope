@@ -1,0 +1,405 @@
+TASK: Phase 8B iterative qualification and repair loop
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: yes.
+- Native/Linux process access required: yes.
+- Maximum cycles: 5.
+- Keep the project version at 0.8.13 throughout this loop.
+- This is a manual qualification/repair loop. Do not run it through codex:phase.
+
+PURPOSE
+
+Phase 8B is currently Not Green / Not Qualified.
+
+Preserve the existing candidate and its historical evidence. The retained P7 record reports:
+- base HEAD 3fb5609e5e442939bccdb52daf107a40c6e4dfc9;
+- tracked working-tree SHA-256 0932c62f137ae22e4d058cc6b739ba2ba986bc9efefe9fade9e634c4d518f450;
+- coherent 0.8.13;
+- focused 63/63;
+- npm run check Green after one stale baseline-version assertion repair;
+- p8b validator, version/internal-reference/no-root-lock and diff checks Green.
+
+The first live blocker is the mutation sandbox itself:
+- the installed Codex sandbox probe fails to start;
+- stderr reports bubblewrap cannot exec the Codex path;
+- production CodexAgentExecutionAdapter therefore rejects the accepted grant as unsupported-capability before authentication or App Server spawn;
+- all five denied-class probes only prove fail-closed refusal, not executing-harness enforcement;
+- native Agent Run opened, but the disposable profile had no eligible Codex target and Start stayed disabled;
+- no live task mutation/change/validation evidence exists;
+- live cancellation, active-run restart interruption and persisted-run security remain untested.
+
+Run an adaptive qualification/repair loop for at most five cycles.
+Stop early as soon as every Phase 8B qualification gate is Green.
+
+PHASE 8B CONTRACT TO PRESERVE
+
+The default accepted ExecutionGrant is fixed for 8B.
+
+Allowed:
+- project read/observation;
+- project workspace mutation;
+- project-local process/test/build;
+- Git inspection.
+
+Denied:
+- Git stage/commit/reset/rebase/checkout/switch/history mutation;
+- network from model-directed project execution;
+- secrets/credential access;
+- private HOME/user-state access;
+- outside-project read/write/effects;
+- destructive/system/package-administration effects.
+
+Additional laws:
+- the developer accepts the grant before mutation;
+- provider/model/repository text cannot widen it;
+- unsupported enforcement fails closed;
+- prompt instructions are not enforcement;
+- the Phase 8A Test Connection remains read-only and separate;
+- no ChatGPT-plan -> generic OpenAI API-key billing fallback;
+- provider-native thread identity is recovery metadata, not AgentTask/AgentRun identity;
+- no fallback after meaningful mutation/output;
+- Stop must terminate real execution and preserve already-written project changes;
+- restart may reconcile a dead in-flight run to interrupted but must not automatically continue it;
+- .dope/agent state must not persist OAuth tokens, hidden reasoning, arbitrary environment dumps or unbounded provider payloads;
+- 8B never stages or commits the target repository;
+- Phase 8C sequencing remains out of scope.
+
+CURRENT IMPLEMENTATION SURFACES TO TRACE
+
+Begin from current source, especially:
+- packages/theia-extension/src/node/codex-agent-execution.ts
+- packages/theia-extension/src/node/codex-rpc-process.ts
+- packages/theia-extension/src/node/agent-runtime-backend.ts
+- packages/theia-extension/src/node/agent-git-evidence.ts
+- packages/agent-core/src/
+- Agent Run frontend/controller/widget/contribution
+- focused codex-agent-execution / agent-runtime / agent-store / Git evidence / Agent Run UI tests
+- docs/tasks/p8b/closeout.md
+
+Do not assume the historical source shape if the checkout changed after P7.
+
+CURRENT PROVIDER CONTRACT
+
+Before editing sandbox configuration, inspect the currently installed Codex CLI help/version and current official OpenAI Codex configuration/sandbox/App Server documentation.
+
+At minimum verify:
+- the correct current sandbox subcommand and payload invocation;
+- workspace-write configuration semantics;
+- named permission-profile syntax and selection;
+- protected .git/.codex behavior;
+- writable_roots behavior;
+- TMPDIR and /tmp exclusion behavior;
+- network_access behavior;
+- project trust/config loading behavior;
+- whether the executable path used by Codex/bubblewrap must itself remain visible inside the sandbox;
+- current App Server thread/turn fields used for permissions/runtime workspace roots;
+- current interruption method/event semantics.
+
+Do not pin a new version or change protocol behavior merely because a different version is available. First diagnose whether the installed verified version is being invoked/configured incorrectly.
+
+PRE-CYCLE BASELINE
+
+Before Cycle 1:
+
+1. Read BOOT.md, AGENTS.md, ADR 0027, Product Phase 8 plan, p8b README/assessment/plan/P7 closeout and current 8B source/tests.
+2. Inspect actual git status, HEAD and full diff.
+3. Recompute the tracked working-tree SHA-256 using the exact closeout method.
+4. If the current checkout no longer exactly matches the historical uncommitted P7 candidate, explain why. Do not reset/revert/checkout/discard a coherent candidate merely to recreate history.
+5. Confirm every live package/internal @dope reference is coherent at 0.8.13.
+6. Confirm no root package-lock.json/npm-shrinkwrap.json.
+7. Record the actual Codex CLI version and resolved executable path.
+8. Record `codex --help`, sandbox help/profile support needed for diagnosis, without leaking credentials.
+9. Reproduce the exact real sandbox failure once with a newly created disposable clean Git repository and non-secret canaries.
+10. Create/append docs/tasks/c8-p8b-qualification-loop/cycle-evidence.md.
+
+CYCLE 1 - START WITH REAL SANDBOX STARTUP
+
+The first goal is NOT to get a model to run.
+The first goal is to prove the local execution sandbox can start and enforce the accepted grant against a deterministic non-model probe.
+
+Diagnose the current failure before changing source.
+
+Answer from evidence:
+- What exact executable path is resolved for Codex?
+- What exact command/argv reaches the sandbox command?
+- Is the failure from Codex argument parsing, config/profile loading, bubblewrap setup, mount visibility, or payload exec?
+- Which path does bubblewrap report it cannot exec?
+- Is that path the Codex launcher itself, a Node entry point, /bin/sh, or another payload?
+- Is the installed Codex a symlink/wrapper whose real target is outside the sandbox-visible filesystem?
+- Does a minimal current official read-only or workspace-write sandbox command start successfully outside Dope?
+- Does a minimal workspace-write command using the same CODEX_HOME start?
+- Does selecting dope_run cause the failure?
+- If dope_run fails, which exact profile rule is incompatible?
+- Does :root deny or another filesystem rule hide the executable/runtime required to bootstrap the sandbox itself?
+- Does project trust/config layering prevent the expected profile from loading?
+- Is the preflight testing something stricter/different from the actual App Server execution path?
+
+Use a bounded config/profile bisection if needed, but never accept a weaker final policy merely because it starts.
+
+The repair must make the deterministic probe execute and prove all of these in one run:
+- permitted project file write succeeds;
+- outside-project canary read/write is denied;
+- private HOME/credential-like canary read/write is denied;
+- .git control/history write is denied;
+- project secret-pattern file such as .env is denied according to the approved contract;
+- network attempt is denied;
+- destructive/system/package-admin canary action is denied or made unavailable under the enforceable 8B policy;
+- ACCESS_TOKEN/provider credential material is not readable by model-directed shell;
+- target repo HEAD remains unchanged.
+
+If the current Codex sandbox cannot express/prove the full fixed 8B grant, do not weaken the grant. Record the capability gap. A materially new sandbox architecture requires a separate architecture decision rather than an improvised loop repair.
+
+After the smallest repair:
+- add/update a regression for the exact startup defect;
+- run only affected sandbox/adapter tests/build;
+- run git diff --check and 0.8.13 coherence checks;
+- replay the deterministic real sandbox probe.
+
+If it passes, continue immediately to the next gates in the same cycle until another blocker appears.
+
+GATE 2 - ELIGIBLE LIVE CODEX TARGET
+
+Once the real sandbox is executable and the grant is proven locally:
+
+- use a disposable application profile;
+- establish an eligible Codex connection through the already-qualified Phase 8A path, or deliberately reuse a qualified non-secret registration/profile if that is the approved test method;
+- complete ChatGPT-plan authorization if needed;
+- refresh model inventory;
+- assign/resolve an agentExecution-capable target for Coding Agent;
+- confirm the Agent Run view shows an eligible target and Start becomes enabled only after grant acceptance;
+- no API-key billing fallback;
+- do not treat a mocked/fake inventory target as live qualification.
+
+If target setup fails, that is the next blocker. Diagnose and repair only within existing AI Center/Codex/Coding Agent integration; do not redesign role routing.
+
+GATE 3 - REAL HAPPY-PATH MUTATION
+
+Use a newly created clean disposable Git repository, never the Dope repository.
+
+Create a bounded task that:
+- changes one simple tracked project file;
+- runs one local validation command;
+- requires no network or package installation.
+
+Require:
+- explicit grant acceptance;
+- real AgentRun starts;
+- real App Server and selected model execute;
+- permitted workspace edit occurs;
+- observable status and available command/file activity are captured;
+- validation result is captured from observed execution;
+- changed-file list and bounded diff summary match actual Git/filesystem truth;
+- starting and final HEAD are identical;
+- nothing is staged/committed;
+- .dope/agent metadata is not misattributed as task-authored source change.
+
+If this blocks, repair the first exact failure before moving on.
+
+GATE 4 - EXECUTING AUTHORITY ADVERSARIAL PROBES
+
+Only after an executing happy path exists, prove all five denied classes with real model-directed execution or an equivalent executing sandbox path that uses the same effective policy:
+
+1. network;
+2. outside-project read/write;
+3. private HOME/credential-like state;
+4. .git / Git history-control mutation;
+5. destructive/system/package-administration effect.
+
+For every class:
+- plant a non-secret canary;
+- attempt the prohibited effect;
+- require actual OS/sandbox denial, not prompt compliance;
+- require no prohibited effect;
+- require a durable authority-denied/blocked/unsupported observation when the product can observe it;
+- HEAD and protected canaries remain unchanged.
+
+If the provider attempts a prohibited tool surface such as MCP/web/sub-agent escalation, require fail-closed denial.
+
+GATE 5 - LIVE CANCELLATION
+
+Run a task that:
+- makes at least one permitted, observable project-file modification;
+- then continues with bounded local work long enough to press Stop.
+
+Require:
+- running -> cancelling -> cancelled or honest interrupted;
+- actual turn/process interruption;
+- no effects after cancellation completion;
+- pre-stop modification remains;
+- no auto-revert;
+- no stage/commit;
+- persisted events and change evidence remain inspectable.
+
+A simulated unit-test cancellation is retained evidence but does not replace this gate.
+
+GATE 6 - ACTIVE-RUN RESTART INTERRUPTION
+
+Start another live task and force-close/restart Dope while it is active.
+
+Require:
+- no owned execution keeps mutating after shutdown;
+- on fresh backend ownership, stale running/cancelling state reconciles to interrupted;
+- pre-restart workspace changes remain;
+- events/change evidence/recovery metadata remain inspectable;
+- no automatic provider/task continuation occurs;
+- no stage/commit.
+
+GATE 7 - PERSISTED RUN SECURITY + REOPEN
+
+Inspect the real .dope/agent task/run/events from successful, cancelled and interrupted live runs plus relevant browser state/logs.
+
+Require absence of:
+- OAuth/access/refresh/ID tokens;
+- Authorization headers;
+- provider credential bytes;
+- hidden/raw reasoning;
+- arbitrary environment dumps;
+- sensitive absolute private paths beyond explicitly safe diagnostic metadata;
+- raw unbounded provider payloads.
+
+Require:
+- bounded event payloads;
+- project-relative task paths where required;
+- provider thread handle remains non-canonical recovery metadata;
+- completed/cancelled/interrupted run truth survives restart;
+- successful run can be reopened in Agent Run UI.
+
+ITERATIVE CYCLE ALGORITHM
+
+For cycle = 1 through 5:
+
+1. QUALIFY
+   - Start at the first currently unproven gate above.
+   - Reproduce it directly.
+   - If it passes, continue to the next gate.
+   - Stop at the first newly observed blocker.
+
+2. DIAGNOSE
+   - Trace the failure to exact source/runtime/provider evidence.
+   - For Codex behavior, verify current official docs and actual installed CLI help/version.
+   - Record the failure boundary before editing.
+   - Do not log secrets.
+
+3. REPAIR
+   - Make the smallest bounded repair inside the existing Phase 8B contract.
+   - Keep version 0.8.13.
+   - Do not relax the ExecutionGrant.
+   - Do not pull Phase 8C/8D scope forward.
+   - If a real fix requires a new sandbox architecture, stop and record that architectural blocker rather than hiding it inside a repair cycle.
+
+4. FOCUSED REGRESSION
+   - Run only tests/builds invalidated by the repair.
+   - Add a permanent regression for the observed defect when feasible.
+   - Always run git diff --check, no-root-lock and 0.8.13 coherence.
+   - Do not run npm run check after every small repair unless the changed boundary genuinely invalidates broad integration.
+
+5. REPLAY
+   - Repeat the exact direct gate that was blocked.
+   - If Green, continue through the remaining gates in the same cycle until another blocker appears.
+   - Controlled tests never substitute for the explicitly live/native gates.
+
+6. CHECKPOINT
+   - Append cycle-evidence.md:
+     - cycle number;
+     - pre-cycle HEAD/tracked-tree identity;
+     - blocker;
+     - direct evidence;
+     - diagnosis;
+     - files changed;
+     - focused validation;
+     - replay result;
+     - cleared gates;
+     - next blocker or all-Green state.
+   - Preserve the historical P7 candidate identity even if the current loop now creates commits.
+   - If the actual checkout begins with the P7 candidate still uncommitted, do not discard it. At the end of the first coherent cycle, it may be included in the normal loop checkpoint.
+   - If the candidate has already been checkpointed for preservation, do not recreate or squash it.
+   - For a coherent changed cycle, create one normal checkpoint commit:
+     c8-p8b-qualification-loop/cycle-N: <short blocker/repair summary>
+   - Never squash away earlier failed-cycle evidence while the loop is active.
+
+7. STOP TEST
+   - If every Phase 8B gate is Green, stop immediately and run the full exact-candidate gate.
+   - Otherwise proceed to the next cycle.
+   - After Cycle 5, do not start Cycle 6.
+
+FULL EXACT-CANDIDATE GATE
+
+When every direct gate appears Green, before claiming Green:
+
+- run the complete focused Phase 8B suite, including every new repair regression;
+- run npm run check on the exact final source candidate;
+- run npm run codex:phase:validate -- p8b;
+- verify all root/workspace versions and internal @dope references are exactly 0.8.13;
+- verify no root package-lock.json/npm-shrinkwrap.json;
+- run git diff --check;
+- rerun the deterministic real sandbox enforcement probe;
+- rerun one real happy-path mutation/validation if any final repair could affect runtime;
+- confirm final target-repository HEAD remains unchanged by the agent workflow;
+- confirm no orphan Codex/App Server/sandbox processes;
+- confirm persisted live-run state contains no forbidden secret/reasoning/raw payload material;
+- confirm direct native Agent Run reopen/restart evidence.
+
+Do not rely on an earlier npm run check if source changed afterward.
+
+FINAL GREEN CLOSEOUT
+
+If all gates are Green before or at Cycle 5:
+
+1. update docs/tasks/p8b/closeout.md with a supplemental final disposition:
+   Decision: GREEN / QUALIFIED;
+2. preserve the original P7 Not Green record as historical evidence;
+3. update docs/tasks/p8b/README.md to Green / Qualified;
+4. record exact final commit SHA and exact 0.8.13 candidate;
+5. summarize each repair cycle and all direct evidence:
+   - sandbox startup/enforcement;
+   - eligible Codex target;
+   - real mutation/change/validation;
+   - five denied classes;
+   - cancellation;
+   - active-run restart interruption;
+   - persisted-run security/reopen;
+6. update this loop README to COMPLETE with cycles used;
+7. route next to fresh Phase 8C /docs-review -> /prompt-ass -> /prompt-plan -> /prompt-write p8c.
+
+Do not implement Phase 8C inside this loop.
+
+FIVE-CYCLE STOP
+
+If any blocker remains after Cycle 5:
+
+1. stop;
+2. keep Phase 8B Not Green / Not Qualified;
+3. preserve every cleared gate and remaining blocker;
+4. update the closeout with the exact final candidate and residual gap;
+5. update this loop README to COMPLETE / NOT GREEN AFTER 5 CYCLES;
+6. do not activate Phase 8C;
+7. if the residual requires a new sandbox architecture or product authority change, route to a fresh docs/architecture review rather than Cycle 6.
+
+EFFICIENCY RULES
+
+- Fix the first blocker, not every nearby imperfection.
+- Reuse already-valid automated evidence unless the repair can invalidate it.
+- Keep expensive live/browser/native work concentrated on the direct gate being qualified.
+- Do not repackage an AppImage unless the changed surface requires packaged-runtime proof; source Electron/native execution is acceptable when it proves the actual child-process/sandbox boundary.
+- Use disposable project repos and disposable application profiles for destructive/adversarial qualification.
+- Never use the Dope repository as the mutation/adversarial target.
+- Never expose OAuth tokens or credential bytes in evidence logs.
+- Do not broaden scope because a later Phase 8 feature would be convenient.
+
+FINAL RESPONSE
+
+Report:
+- cycles used out of 5;
+- exact final candidate;
+- Cycle 1 sandbox diagnosis and repair;
+- eligible-target status;
+- real mutation/change/validation status;
+- five denied authority classes;
+- live cancellation status;
+- active-run restart status;
+- persisted-run security/reopen status;
+- focused and final aggregate validation;
+- residuals;
+- final Phase 8B decision;
+- whether Phase 8C is eligible.
