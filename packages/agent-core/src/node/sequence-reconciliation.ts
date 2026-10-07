@@ -11,10 +11,10 @@ import { versionCoherent } from './sequence-checkpoint';
 const execute = promisify(execFile);
 const sha = /^[0-9a-f]{40,64}$/u;
 const maxOutput = 2 * 1024 * 1024;
-export type SequenceImportFailure = 'dirty-confirmation-required' | 'invalid-stack' |
+export type TaskStackSnapshotFailure = 'invalid-stack' |
     'version-mismatch' | 'unsafe-source' | 'source-changed' | 'checkpoint-mismatch';
-export class SequenceImportError extends Error {
-    constructor(readonly code: SequenceImportFailure) { super(code); }
+export class TaskStackSnapshotError extends Error {
+    constructor(readonly code: TaskStackSnapshotFailure) { super(code); }
 }
 
 async function git(root: string, args: string[]): Promise<string> {
@@ -32,16 +32,40 @@ async function checkedRoot(root: string): Promise<void> {
         throw new Error('Sequence requires canonical Git project root');
 }
 
-export async function readStackSources(root: string, folderName: string): Promise<PromptSource[]> {
-    if (!/^(?:p\d+[a-z]?|p[12]-\d+|c\d+-[a-z0-9]+(?:-[a-z0-9]+)*)$/u.test(folderName))
-        throw new Error('Invalid stack folder');
+export function normalizeTasksRoot(value = 'docs/tasks'): string {
+    const normalized = value.replace(/\/$/u, '');
+    if (!normalized || normalized.startsWith('/') || normalized.includes('\\') || normalized.includes(':') ||
+        /[\u0000-\u001f\u007f]/u.test(normalized) ||
+        normalized.split('/').some(part => !part || part === '.' || part === '..' || part.startsWith('.')))
+        throw new Error('Tasks folder must be inside the current project.');
+    return normalized;
+}
+
+export async function checkedTasksRoot(root: string, value = 'docs/tasks'): Promise<{ relative: string; absolute: string }> {
+    const relative = normalizeTasksRoot(value);
     await checkedRoot(root);
     let path = root;
-    for (const part of ['docs', 'tasks', folderName]) {
+    for (const part of relative.split('/')) {
         path = join(path, part);
-        const info = await lstat(path);
-        if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('Unsafe stack directory');
+        let info;
+        try { info = await lstat(path); }
+        catch (error) {
+            if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new Error(`Tasks folder not found: ${relative}/`);
+            throw error;
+        }
+        if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('Tasks folder must be inside the current project.');
     }
+    return { relative, absolute: path };
+}
+
+export async function readStackSources(root: string, folderName: string, tasksRoot = 'docs/tasks'): Promise<PromptSource[]> {
+    // The parser owns the naming grammar; filesystem reads use the already validated name.
+    if (folderName.includes('/') || folderName.includes('\\') || folderName === '.' || folderName === '..')
+        throw new Error('Invalid stack folder');
+    const { absolute } = await checkedTasksRoot(root, tasksRoot);
+    const path = join(absolute, folderName);
+    const directory = await lstat(path);
+    if (!directory.isDirectory() || directory.isSymbolicLink()) throw new Error('Unsafe stack directory');
     const names = (await readdir(path)).filter(name => /^P\d+.*\.txt$/u.test(name)).sort();
     if (!names.length || names.length > 100) throw new Error('Invalid stack source count');
     if (names.some(name => !/^P\d+-[a-z0-9-]+\.txt$/u.test(name))) throw new Error('Invalid stack prompt filename');
@@ -191,7 +215,7 @@ export function manualGateDecision(sequence: AgentTaskSequence, evidence: Sequen
     if (!entry || entry.execution !== 'manual-gate' || sequence.status === 'completed')
         throw new Error('Sequence has no pending manual gate');
     const previous = sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head;
-    if (sourceDrift) return { reason: 'source-drift', message: 'Restore the imported prompt stack before resuming this gate.' };
+    if (sourceDrift) return { reason: 'source-drift', message: 'Restore the snapshotted prompt stack before resuming this gate.' };
     if (evidence.head === previous) {
         const basic = sequenceBlockReason(sequence, evidence, false);
         if (basic) return { reason: basic, message: basic === 'worktree-drift' ?
@@ -241,39 +265,39 @@ export async function verifyManualGate(root: string, sequence: AgentTaskSequence
     return decision;
 }
 
-export async function importSequenceSnapshot(root: string, folderName: string,
-    allowDirtyImport = false): Promise<AgentTaskSequence> {
+export async function snapshotTaskStack(root: string, folderName: string,
+    tasksRoot = 'docs/tasks'): Promise<AgentTaskSequence> {
     let stack: ImportedStack;
-    try { stack = await importPhaseStack(folderName, await readStackSources(root, folderName));
+    try { stack = await importPhaseStack(folderName, await readStackSources(root, folderName, tasksRoot),
+        normalizeTasksRoot(tasksRoot) === 'docs/tasks' ? undefined : `${normalizeTasksRoot(tasksRoot)}/${folderName}`);
         await parseImportedStack(stack); }
     catch (error) {
         const unsafe = error instanceof Error && /^(Invalid stack folder|Unsafe stack|Unsafe or oversized|Oversized stack|Sequence requires canonical Git project root|Invalid stack source count|Invalid stack prompt filename)/u.test(error.message);
         const unavailable = error && typeof error === 'object' && 'code' in error &&
             ['ENOENT', 'ELOOP', 'ENOTDIR', 'EACCES', 'EPERM'].includes(String(error.code));
         if (unsafe || unavailable)
-            throw new SequenceImportError('unsafe-source');
-        throw new SequenceImportError('invalid-stack');
+            throw new TaskStackSnapshotError('unsafe-source');
+        throw new TaskStackSnapshotError('invalid-stack');
     }
     let evidence: SequenceGitEvidence;
     try { evidence = await captureSequenceEvidence(root); }
     catch (error) {
         if (error instanceof SyntaxError || error instanceof Error && /Invalid root package version/u.test(error.message))
-            throw new SequenceImportError('version-mismatch');
+            throw new TaskStackSnapshotError('version-mismatch');
         throw error;
     }
-    if (!evidence.clean && !allowDirtyImport) throw new SequenceImportError('dirty-confirmation-required');
     let checkpoints: SequenceCheckpoint[];
     try { checkpoints = gitCheckpointPrefix(stack, evidence); }
-    catch { throw new SequenceImportError('checkpoint-mismatch'); }
+    catch { throw new TaskStackSnapshotError('checkpoint-mismatch'); }
     if (evidence.packageVersion !== expectedSequenceVersion(stack, checkpoints.length))
-        throw new SequenceImportError('version-mismatch');
+        throw new TaskStackSnapshotError('version-mismatch');
     if (checkpoints.length && evidence.head !== checkpoints.at(-1)!.sha)
-        throw new SequenceImportError('checkpoint-mismatch');
+        throw new TaskStackSnapshotError('checkpoint-mismatch');
     const again = await captureSequenceEvidence(root);
     if (again.head !== evidence.head || again.packageVersion !== evidence.packageVersion ||
         again.worktreeFingerprint !== evidence.worktreeFingerprint || again.clean !== evidence.clean)
-        throw new SequenceImportError('checkpoint-mismatch');
-    if (await stackSourceDrift(root, stack)) throw new SequenceImportError('source-changed');
+        throw new TaskStackSnapshotError('checkpoint-mismatch');
+    if (await stackSourceDrift(root, stack)) throw new TaskStackSnapshotError('source-changed');
     const now = new Date().toISOString();
     const currentEntryNumber = checkpoints.length + 1;
     return { version: 1, id: randomUUID(), createdAt: now, updatedAt: now, stack, checkpoints,
@@ -287,6 +311,7 @@ export async function importSequenceSnapshot(root: string, folderName: string,
 }
 
 export async function stackSourceDrift(root: string, stack: ImportedStack): Promise<boolean> {
-    try { return await hasPhaseStackSourceDrift(stack, await readStackSources(root, stack.folderName)); }
+    try { return await hasPhaseStackSourceDrift(stack, await readStackSources(root, stack.folderName,
+        stack.sourcePath?.slice(0, -(stack.folderName.length + 1)) ?? 'docs/tasks')); }
     catch { return true; }
 }

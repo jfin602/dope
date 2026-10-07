@@ -1,14 +1,18 @@
 import type { AgentModelPolicy, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence,
-    CompletionPolicy, ExecutionGrant, ImportedStack } from '@dope/agent-core';
+    CompletionPolicy, ExecutionGrant, StackMode, SequenceStatus } from '@dope/agent-core';
 
 export const agentRuntimeServicePath = '/services/dope/agent-runtime';
 export const AgentRuntimeService = Symbol('AgentRuntimeService');
 
 export interface AgentStoreChange { kind: 'task' | 'run' | 'event' | 'sequence'; id: string }
 export interface AgentRuntimeClient { notifyAgentStateChanged(change: AgentStoreChange): void }
-export type SequenceImportResult = { kind: 'imported'; sequence: AgentTaskSequence } |
-    { kind: 'dirty-confirmation-required' | 'invalid-stack' | 'version-mismatch' |
-        'unsafe-source' | 'source-changed' | 'checkpoint-mismatch' };
+export interface DiscoveredTaskStack {
+    folderName: string; path: string; mode: StackMode; phase: number;
+    valid: boolean; error?: string; fingerprint?: string;
+    sequenceId?: string; sequenceStatus?: SequenceStatus;
+}
+export type OpenTaskStackResult = { kind: 'opened'; sequence: AgentTaskSequence } |
+    { kind: 'invalid-stack' | 'version-mismatch' | 'unsafe-source' | 'source-changed' | 'checkpoint-mismatch' };
 export interface AgentRuntimeService {
     attach(folderUri: string): Promise<{ projectHandle: string }>;
     createTask(projectHandle: string, task: AgentTask): Promise<AgentTask>;
@@ -16,16 +20,16 @@ export interface AgentRuntimeService {
     listTasks(projectHandle: string): Promise<AgentTask[]>;
     readRun(projectHandle: string, runId: string): Promise<AgentRun | undefined>;
     listRuns(projectHandle: string): Promise<AgentRun[]>;
-    importSequence(projectHandle: string, folderName: string,
-        options?: { allowDirtyImport: boolean }): Promise<SequenceImportResult>;
-    createSequence(projectHandle: string, stack: ImportedStack): Promise<AgentTaskSequence>;
+    listTaskStacks(projectHandle: string, tasksRoot: string): Promise<DiscoveredTaskStack[]>;
+    openTaskStack(projectHandle: string, tasksRoot: string, folderName: string): Promise<OpenTaskStackResult>;
+    acceptSequenceDirtyBasis(projectHandle: string, sequenceId: string, worktreeFingerprint: string): Promise<AgentTaskSequence>;
     readSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence | undefined>;
     listSequences(projectHandle: string): Promise<AgentTaskSequence[]>;
     sequenceEvidence(projectHandle: string): Promise<{ head: string; packageVersion: string; clean: boolean; worktreeFingerprint: string }>;
     reconcileSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
     reconcileManualGate(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
     prepareSequenceTask(projectHandle: string, sequenceId: string, modelPolicy: AgentModelPolicy,
-        completion: CompletionPolicy, dirtyAcceptance?: { worktreeFingerprint: string }): Promise<AgentTask>;
+        completion: CompletionPolicy): Promise<AgentTask>;
     startSequence(projectHandle: string, folderUri: string, sequenceId: string, grant: ExecutionGrant,
         hostedProjectDataAuthorized: boolean): Promise<AgentRun>;
     stopSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;

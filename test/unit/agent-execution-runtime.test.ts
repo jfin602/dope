@@ -104,9 +104,9 @@ async function sequenceTerminal(store: AgentStore, root: string, sequenceId: str
 }
 
 async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: string }) {
-    const result = await f.backend.importSequence(f.handle, 'c8-lifecycle-test');
-    assert.equal(result.kind, 'imported');
-    if (result.kind !== 'imported') throw new Error('Import failed');
+    const result = await f.backend.openTaskStack(f.handle, 'docs/tasks', 'c8-lifecycle-test');
+    assert.equal(result.kind, 'opened');
+    if (result.kind !== 'opened') throw new Error('Open failed');
     const sequence = result.sequence;
     assert.equal(sequence.currentEntryNumber, 1);
     const task = await f.backend.prepareSequenceTask(f.handle, sequence.id,
@@ -116,18 +116,18 @@ async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: strin
     return { sequence, task, accepted };
 }
 
-test('dirty import acceptance persists exact basis and starts P1 in its execution workspace', async () => fixture(async f => {
+test('dirty stack acceptance persists exact basis and starts P1 in its execution workspace', async () => fixture(async f => {
     await writeFile(join(f.root, 'notes.txt'), 'developer work\n');
-    const imported = await f.backend.importSequence(f.handle, 'c8-lifecycle-test', { allowDirtyImport: true });
-    assert.equal(imported.kind, 'imported');
-    if (imported.kind !== 'imported') return;
+    const imported = await f.backend.openTaskStack(f.handle, 'docs/tasks', 'c8-lifecycle-test');
+    assert.equal(imported.kind, 'opened');
+    if (imported.kind !== 'opened') return;
     assert.equal(imported.sequence.blockedReason, 'dirty-acceptance-required');
     const evidence = await f.backend.sequenceEvidence(f.handle);
+    await f.backend.acceptSequenceDirtyBasis(f.handle, imported.sequence.id, evidence.worktreeFingerprint);
     const task = await f.backend.prepareSequenceTask(f.handle, imported.sequence.id,
         { kind: 'follow-coding-agent' },
         { validation: [{ kind: 'test', label: 'phase-stack', command: './validate.sh' }],
-            requireValidationPass: true },
-        { worktreeFingerprint: evidence.worktreeFingerprint });
+            requireValidationPass: true });
     const prepared = (await f.backend.readSequence(f.handle, imported.sequence.id))!;
     assert.equal(prepared.status, 'ready');
     assert.equal(prepared.blockedReason, undefined);
@@ -237,9 +237,9 @@ test('stop interrupts capacity wait and non-capacity failures never retry', asyn
 }, undefined, 10_000));
 
 test('sequence stays on its entry after validation and authority failure', async () => fixture(async f => {
-    const result = await f.backend.importSequence(f.handle, 'c8-lifecycle-test');
-    assert.equal(result.kind, 'imported');
-    if (result.kind !== 'imported') throw new Error('Import failed');
+    const result = await f.backend.openTaskStack(f.handle, 'docs/tasks', 'c8-lifecycle-test');
+    assert.equal(result.kind, 'opened');
+    if (result.kind !== 'opened') throw new Error('Open failed');
     const sequence = result.sequence;
     const task = await f.backend.prepareSequenceTask(f.handle, sequence.id,
         { kind: 'exact', connectionId: 'codex', modelId: 'model-1' },

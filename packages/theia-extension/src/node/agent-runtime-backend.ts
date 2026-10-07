@@ -1,19 +1,21 @@
 import { randomUUID } from 'node:crypto';
-import { AGENT_SCHEMA_VERSION, parseAgentTask, parseExecutionGrant, parseImportedStack,
-    phaseStackTaskMetadata, sequenceNeedsDirtyAcceptance } from '@dope/agent-core';
+import { readdir } from 'node:fs/promises';
+import { AGENT_SCHEMA_VERSION, parseAgentTask, parseExecutionGrant,
+    phaseStackFolder, phaseStackTaskMetadata, sequenceNeedsDirtyAcceptance, importPhaseStack } from '@dope/agent-core';
 import type { AgentModelPolicy, AgentRun, AgentTask, AgentTaskSequence, CompletionPolicy,
-    ExecutionGrant, ImportedStack, SequenceBlockReason } from '@dope/agent-core';
+    ExecutionGrant, SequenceBlockReason } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
-import { captureSequenceEvidence, importSequenceSnapshot, SequenceImportError, sequenceBlockReason,
-    stackSourceDrift, verifyManualGate } from '@dope/agent-core/lib/node/sequence-reconciliation';
+import { captureSequenceEvidence, checkedTasksRoot, snapshotTaskStack, readStackSources,
+    TaskStackSnapshotError, sequenceBlockReason, stackSourceDrift, verifyManualGate } from '@dope/agent-core/lib/node/sequence-reconciliation';
 import type { ManualGateReconciliation } from '@dope/agent-core/lib/node/sequence-reconciliation';
 import { assertDirtyBasis, captureDirtyBasis, safeGit } from '@dope/agent-core/lib/node/dirty-basis';
 import { checkpointSequence as commitCheckpoint } from '@dope/agent-core/lib/node/sequence-checkpoint';
-import type { AgentRuntimeClient, AgentRuntimeService, SequenceImportResult } from '@dope/contracts/lib/agent-runtime-service';
+import type { AgentRuntimeClient, AgentRuntimeService, DiscoveredTaskStack, OpenTaskStackResult } from '@dope/contracts/lib/agent-runtime-service';
 import type { AgentExecutionRuntime } from './agent-execution-runtime';
 
 // Shared by RPC backend instances in this process; persisted HEAD/checkpoint evidence owns restart safety.
 const checkpointProjects = new Set<string>();
+const openingTaskStacks = new Map<string, Promise<OpenTaskStackResult>>();
 
 /** One RPC connection attaches one canonical project root. The handle never enters durable state. */
 export class AgentRuntimeBackend implements AgentRuntimeService {
@@ -56,23 +58,87 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     listTasks(handle: string): Promise<AgentTask[]> { return this.store.listTasks(this.active(handle)); }
     readRun(handle: string, runId: string): Promise<AgentRun | undefined> { return this.store.readRun(this.active(handle), runId); }
     listRuns(handle: string): Promise<AgentRun[]> { return this.store.listRuns(this.active(handle)); }
-    async importSequence(handle: string, folderName: string,
-        options?: { allowDirtyImport: boolean }): Promise<SequenceImportResult> {
+    async listTaskStacks(handle: string, tasksRoot: string): Promise<DiscoveredTaskStack[]> {
         const root = this.active(handle);
-        try {
-            const snapshot = await importSequenceSnapshot(root, folderName, options?.allowDirtyImport === true);
-            return { kind: 'imported', sequence: await this.store.createSequence(root, snapshot) };
-        } catch (error) {
-            if (error instanceof SequenceImportError) return { kind: error.code };
-            throw error;
+        const directory = await checkedTasksRoot(root, tasksRoot);
+        const children = (await readdir(directory.absolute, { withFileTypes: true }))
+            .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+            .sort((a, b) => a.name.localeCompare(b.name, 'en'));
+        if (children.length > 256) throw new Error('Tasks folder has too many child folders.');
+        const candidates = children.flatMap(entry => {
+            try { return [{ name: entry.name, info: phaseStackFolder(entry.name) }]; }
+            catch { return []; }
+        });
+        if (candidates.length > 64) throw new Error('Tasks folder has too many Phase Stacks.');
+        const stored = await this.store.listSequences(root);
+        const result: DiscoveredTaskStack[] = [];
+        for (const { name, info } of candidates) {
+            const path = `${directory.relative}/${name}`;
+            const existing = stored.find(sequence =>
+                (sequence.stack.sourcePath ?? `docs/tasks/${sequence.stack.folderName}`) === path);
+            const summary: DiscoveredTaskStack = { folderName: name, path, mode: info.mode, phase: info.phase,
+                valid: false, ...(existing ? { sequenceId: existing.id, sequenceStatus: existing.status } : {}) };
+            try {
+                const stack = await importPhaseStack(name, await readStackSources(root, name, directory.relative),
+                    directory.relative === 'docs/tasks' ? undefined : path);
+                summary.valid = true; summary.fingerprint = stack.fingerprint;
+                if (existing && existing.stack.fingerprint !== stack.fingerprint) {
+                    const reconciled = await this.reconcileStoredSequence(root, existing);
+                    summary.sequenceStatus = reconciled.status;
+                }
+            } catch (error) {
+                summary.error = error instanceof Error ? error.message.slice(0, 180) : 'Invalid prompt stack.';
+            }
+            result.push(summary);
         }
+        return result;
     }
-    async createSequence(handle: string, stack: ImportedStack): Promise<AgentTaskSequence> {
-        const parsed = await parseImportedStack(stack);
+    async openTaskStack(handle: string, tasksRoot: string, folderName: string): Promise<OpenTaskStackResult> {
         const root = this.active(handle);
-        const snapshot = await importSequenceSnapshot(root, parsed.folderName);
-        if (snapshot.stack.fingerprint !== parsed.fingerprint) throw new Error('Source-stack drift during sequence creation');
-        return this.store.createSequence(root, snapshot);
+        const directory = await checkedTasksRoot(root, tasksRoot);
+        try { phaseStackFolder(folderName); }
+        catch { return { kind: 'invalid-stack' }; }
+        const path = `${directory.relative}/${folderName}`;
+        const key = `${root}\0${path}`;
+        const pending = openingTaskStacks.get(key);
+        if (pending) return pending;
+        const opening = (async (): Promise<OpenTaskStackResult> => {
+            const existing = (await this.store.listSequences(root)).find(sequence =>
+                (sequence.stack.sourcePath ?? `docs/tasks/${sequence.stack.folderName}`) === path);
+            if (existing) return { kind: 'opened', sequence: await this.reconcileStoredSequence(root, existing) };
+            try {
+                const snapshot = await snapshotTaskStack(root, folderName, directory.relative);
+                return { kind: 'opened', sequence: await this.store.createSequence(root, snapshot) };
+            } catch (error) {
+                if (error instanceof TaskStackSnapshotError) return { kind: error.code };
+                throw error;
+            }
+        })();
+        openingTaskStacks.set(key, opening);
+        try { return await opening; }
+        finally { if (openingTaskStacks.get(key) === opening) openingTaskStacks.delete(key); }
+    }
+    async acceptSequenceDirtyBasis(handle: string, sequenceId: string,
+        worktreeFingerprint: string): Promise<AgentTaskSequence> {
+        const root = this.active(handle);
+        if (checkpointProjects.has(root) || this.execution?.activeRunId(root))
+            throw new Error('Project execution or checkpoint is active');
+        const sequence = await this.sequenceState(root, sequenceId);
+        const before = await captureSequenceEvidence(root);
+        if (!sequenceNeedsDirtyAcceptance(sequence, before) || before.worktreeFingerprint !== worktreeFingerprint)
+            throw new Error('Dirty worktree changed since acceptance; review and accept it again');
+        const dirty = await captureDirtyBasis(root);
+        if (!dirty.paths.length || dirty.head !== (sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head))
+            throw new Error('No eligible dirty worktree to accept');
+        const evidence = await captureSequenceEvidence(root);
+        if (evidence.worktreeFingerprint !== worktreeFingerprint || evidence.head !== before.head ||
+            evidence.packageVersion !== before.packageVersion || evidence.clean !== before.clean)
+            throw new Error('Dirty worktree changed since acceptance; review and accept it again');
+        await assertDirtyBasis(root, dirty);
+        if (sequenceBlockReason({ ...sequence, acceptedDirty: dirty }, { ...evidence, clean: true,
+            worktreeFingerprint: sequence.basis.worktreeFingerprint }, await stackSourceDrift(root, sequence.stack)))
+            throw new Error('Sequence has another reconciliation blocker');
+        return this.setSequence(root, sequence, { status: 'ready', blockedReason: undefined, acceptedDirty: dirty });
     }
     readSequence(handle: string, sequenceId: string): Promise<AgentTaskSequence | undefined> {
         return this.store.readSequence(this.active(handle), sequenceId);
@@ -145,7 +211,10 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         }
         const acceptedEvidence = acceptedValid ? { ...evidence, clean: true,
             worktreeFingerprint: sequence.basis.worktreeFingerprint } : evidence;
-        const reason = sequenceBlockReason(sequence, acceptedEvidence, drift);
+        const reason = sequenceBlockReason(sequence, acceptedEvidence, drift) ??
+            (sequence.status !== 'completed' && sequence.acceptedDirty && !acceptedValid &&
+                !['checkpoint-pending', 'checkpoint-failed'].includes(sequence.blockedReason ?? '') ?
+                'worktree-drift' : undefined);
         if (!reason) return sequence;
         const status = reason === 'interrupted' ? 'interrupted' : 'blocked';
         if (sequence.status === status && sequence.blockedReason === reason) return sequence;
@@ -165,31 +234,11 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             updatedAt: new Date(Math.max(Date.now(), Date.parse(sequence.updatedAt) + 1)).toISOString() });
     }
     async prepareSequenceTask(handle: string, sequenceId: string, modelPolicy: AgentModelPolicy,
-        completion: CompletionPolicy, dirtyAcceptance?: { worktreeFingerprint: string }): Promise<AgentTask> {
+        completion: CompletionPolicy): Promise<AgentTask> {
         const root = this.active(handle);
         if (checkpointProjects.has(root) || this.execution?.activeRunId(root))
             throw new Error('Project execution or checkpoint is active');
-        let sequence = await this.sequenceState(root, sequenceId);
-        if (dirtyAcceptance) {
-            const before = await captureSequenceEvidence(root);
-            if (!sequenceNeedsDirtyAcceptance(sequence, before) ||
-                before.worktreeFingerprint !== dirtyAcceptance.worktreeFingerprint)
-                throw new Error('Dirty worktree changed since acceptance; review and accept it again');
-            const dirty = await captureDirtyBasis(root);
-            if (!dirty.paths.length || dirty.head !== (sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head))
-                throw new Error('No eligible dirty worktree to accept');
-            const evidence = await captureSequenceEvidence(root);
-            if (evidence.worktreeFingerprint !== dirtyAcceptance.worktreeFingerprint ||
-                evidence.head !== before.head || evidence.packageVersion !== before.packageVersion ||
-                evidence.clean !== before.clean)
-                throw new Error('Dirty worktree changed since acceptance; review and accept it again');
-            await assertDirtyBasis(root, dirty);
-            if (sequenceBlockReason({ ...sequence, acceptedDirty: dirty }, { ...evidence, clean: true,
-                worktreeFingerprint: sequence.basis.worktreeFingerprint }, await stackSourceDrift(root, sequence.stack)))
-                throw new Error('Sequence has another reconciliation blocker');
-            sequence = await this.setSequence(root, sequence, { status: 'ready', blockedReason: undefined,
-                acceptedDirty: dirty });
-        }
+        const sequence = await this.sequenceState(root, sequenceId);
         if (sequence.status !== 'ready' && !(sequence.status === 'blocked' &&
             ['run-failed', 'run-cancelled', 'authority-denied', 'validation-failed', 'capacity-exhausted'].includes(sequence.blockedReason ?? '')))
             throw new Error('Sequence is not ready for an executable task');

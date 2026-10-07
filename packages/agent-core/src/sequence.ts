@@ -15,7 +15,7 @@ export interface SequenceEntry {
     browserRequired: boolean; versionPolicy: VersionPolicy;
 }
 export interface ImportedStack {
-    version: typeof SEQUENCE_SCHEMA_VERSION; folderName: string; mode: StackMode; phase: number;
+    version: typeof SEQUENCE_SCHEMA_VERSION; folderName: string; sourcePath?: string; mode: StackMode; phase: number;
     roadmapFamily?: 'pre-1.0' | 'post-1.0' | 'post-2.0'; versionOffset?: number;
     continuationSlice?: string; correctionSlug?: string; unchangedVersion?: string;
     entries: SequenceEntry[]; fingerprint: string;
@@ -110,6 +110,10 @@ function parsePrompt(source: PromptSource): { entry: SequenceEntry; mode: StackM
         promptText: text, kind, execution: kind === 'closeout' || browserRequired ? 'manual-gate' : 'agent-task',
         recommendation, browserRequired, versionPolicy } };
 }
+export function phaseStackFolder(name: string): { mode: StackMode; phase: number } {
+    const { mode, phase } = folder(name);
+    return { mode, phase };
+}
 function folder(name: string) {
     const historical = /^p(0|[1-9]\d*)$/u.exec(name);
     const continuation = /^p(0|[1-9]\d*)([a-z])$/u.exec(name);
@@ -170,8 +174,12 @@ async function fingerprint(snapshot: Omit<ImportedStack, 'fingerprint'>): Promis
     return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
 }
 /** Import from already-read text. File access, execution and Git reconciliation belong to adapters. */
-export async function importPhaseStack(folderName: string, sources: readonly PromptSource[]): Promise<ImportedStack> {
-    const snapshot = normalizedStack(folderName, sources);
+export async function importPhaseStack(folderName: string, sources: readonly PromptSource[], sourcePath?: string): Promise<ImportedStack> {
+    if (sourcePath !== undefined && (typeof sourcePath !== 'string' || /[\u0000-\u001f\u007f]/u.test(sourcePath) ||
+        sourcePath.startsWith('/') || sourcePath.includes('\\') || sourcePath.includes(':') ||
+        sourcePath.split('/').some(part => !part || part === '.' || part === '..' || part.startsWith('.')) ||
+        !sourcePath.endsWith(`/${folderName}`))) throw new Error('Invalid stack source path');
+    const snapshot = { ...normalizedStack(folderName, sources), ...(sourcePath ? { sourcePath } : {}) };
     return freeze({ ...snapshot, fingerprint: await fingerprint(snapshot) });
 }
 export function parseSequenceEntry(value: unknown): SequenceEntry {
@@ -182,7 +190,7 @@ export function parseSequenceEntry(value: unknown): SequenceEntry {
     return freeze(canonical);
 }
 export async function parseImportedStack(value: unknown): Promise<ImportedStack> {
-    const x = record(value, ['version', 'folderName', 'mode', 'phase', 'roadmapFamily', 'versionOffset',
+    const x = record(value, ['version', 'folderName', 'sourcePath', 'mode', 'phase', 'roadmapFamily', 'versionOffset',
         'continuationSlice', 'correctionSlug', 'unchangedVersion', 'entries', 'fingerprint']);
     if (x.version !== SEQUENCE_SCHEMA_VERSION || typeof x.folderName !== 'string' || !Array.isArray(x.entries) ||
         typeof x.fingerprint !== 'string' || !/^[a-f0-9]{64}$/u.test(x.fingerprint)) throw new Error('Invalid imported stack');
@@ -190,7 +198,8 @@ export async function parseImportedStack(value: unknown): Promise<ImportedStack>
         const entry = parseSequenceEntry(value);
         return { filename: entry.filename, text: entry.promptText };
     });
-    const canonical = await importPhaseStack(x.folderName, sources);
+    const canonical = await importPhaseStack(x.folderName, sources,
+        typeof x.sourcePath === 'string' ? x.sourcePath : undefined);
     if (!sameStructure(value, canonical)) throw new Error('Imported stack snapshot or fingerprint mismatch');
     return canonical;
 }
@@ -203,7 +212,7 @@ function sameStructure(left: unknown, right: unknown): boolean {
 }
 export async function hasPhaseStackSourceDrift(stack: ImportedStack, sources: readonly PromptSource[]): Promise<boolean> {
     const stored = await parseImportedStack(stack);
-    try { return (await importPhaseStack(stored.folderName, sources)).fingerprint !== stored.fingerprint; }
+    try { return (await importPhaseStack(stored.folderName, sources, stored.sourcePath)).fingerprint !== stored.fingerprint; }
     catch { return true; }
 }
 

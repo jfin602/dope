@@ -48,24 +48,19 @@ export class PhaseStackWidget extends BaseWidget {
             !c.handle ? 'Attaching to project…' : 'Review the stack and repository basis before execution.'));
         status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite'); root.append(status);
         if (!c.handle) { this.content.replaceChildren(root); return; }
-        const importer = el('section'), label = el('label', 'Project-local stack folder');
-        const input = el('input'); input.type = 'text'; input.value = c.folderName; input.disabled = c.busy;
-        input.placeholder = 'docs/tasks/p8c'; input.setAttribute('aria-label', 'Project-local stack folder');
-        input.oninput = () => c.setFolderName(input.value); label.append(input);
-        importer.append(label, button('Import Stack', () => void c.importStack(), c.busy));
-        if (c.pendingDirtyImport) {
-            const confirm = el('div'); confirm.append(el('p', 'Worktree is dirty: continue?'));
-            confirm.append(el('p', 'Importing snapshots this stack against the current repository state. Starting a task with existing changes still requires explicit dirty-worktree acceptance.'));
-            confirm.append(button('Continue', () => void c.continueDirtyImport(), c.busy),
-                button('Cancel', () => c.cancelDirtyImport(), c.busy));
-            importer.append(confirm);
-        }
-        root.append(importer);
-        const list = el('section'); list.append(el('h3', 'Imported stacks'));
-        if (!c.sequences.length) list.append(el('p', 'No stacks imported.'));
-        for (const sequence of c.sequences) {
-            const item = button(`${sequence.stack.folderName} · ${sequence.status}`, () => c.select(sequence.id), c.busy);
-            item.setAttribute('aria-current', String(c.selected?.id === sequence.id)); list.append(item);
+        const configuration = el('section'), label = el('label', 'Tasks folder');
+        const input = el('input'); input.type = 'text'; input.value = c.tasksRoot; input.disabled = c.busy;
+        input.setAttribute('aria-label', 'Tasks folder'); input.oninput = () => c.setTasksRoot(input.value);
+        input.onkeydown = event => { if (event.key === 'Enter') void c.scan(); };
+        label.append(input); configuration.append(label, button('Refresh', () => void c.scan(), c.busy));
+        root.append(configuration);
+        const list = el('section'); list.append(el('h3', 'Available task stacks'));
+        for (const stack of c.stacks) {
+            const item = button(`${stack.folderName}${stack.sequenceStatus ? ` · ${stack.sequenceStatus}` : ''}`,
+                () => void c.select(stack.folderName), c.busy || !stack.valid && !stack.sequenceId);
+            item.setAttribute('aria-current', String(c.selected?.stack.folderName === stack.folderName));
+            list.append(item);
+            if (!stack.valid) list.append(el('p', `${stack.folderName}: ${stack.error ?? 'Invalid Phase Stack.'}`));
         }
         root.append(list);
         const s = c.selected;
@@ -74,14 +69,11 @@ export class PhaseStackWidget extends BaseWidget {
         detail.append(el('p', `Snapshot fingerprint: ${s.stack.fingerprint}`));
         detail.append(el('p', `Sequence: ${s.status} · source fingerprint: ${s.blockedReason === 'source-drift' ? 'drifted' : 'no drift recorded at last reconciliation'}`));
         if (c.evidence) detail.append(el('p', `Current HEAD: ${c.evidence.head} · package ${c.evidence.packageVersion} · ` +
-            `${c.evidence.clean ? 'clean' : c.dirtyAcceptanceReady ? 'dirty basis selected, pending backend verification' :
-                s.blockedReason === 'worktree-drift' ? 'dirty worktree drift' :
+            `${c.evidence.clean ? 'clean' : s.blockedReason === 'worktree-drift' ? 'dirty worktree drift' :
                     s.acceptedDirty ? 'accepted dirty basis' : 'dirty, acceptance required'}`));
-        detail.append(el('p', `Imported basis: ${s.basis.head} · package ${s.basis.packageVersion}`));
+        detail.append(el('p', `Starting basis: ${s.basis.head} · package ${s.basis.packageVersion}`));
         if (s.acceptedDirty) detail.append(el('p', `Accepted dirty basis: ${s.acceptedDirty.head} · ${s.acceptedDirty.paths.length} paths`));
-        if (s.blockedReason) detail.append(el('p', c.dirtyAcceptanceReady ?
-            `Recorded blocker (clears when Resume verifies the basis): ${s.blockedReason}` :
-            `Blocked: ${s.blockedReason}`));
+        if (s.blockedReason) detail.append(el('p', `Blocked: ${s.blockedReason}`));
         if (s.gateMessage) detail.append(el('p', s.gateMessage));
         const entries = el('ol'); entries.setAttribute('aria-label', 'Phase Stack entries');
         for (const entry of s.stack.entries) {
@@ -112,12 +104,10 @@ export class PhaseStackWidget extends BaseWidget {
             grantCheck.onchange = () => { c.acceptedGrant = grantCheck.checked; this.render(); };
             grant.append(grantCheck, document.createTextNode(' Accept project execution grant: project read/write and local process, test and build. Git writes, network, secrets, outside-root and destructive effects are denied.'));
             controls.append(grant);
-            if (c.needsDirtyAcceptance) {
-                const dirty = el('label'), check = el('input'); check.type = 'checkbox'; check.checked = c.acceptedDirty;
-                check.setAttribute('aria-label', 'Accept current dirty worktree for this task');
-                check.onchange = () => c.setDirtyAcceptance(check.checked);
-                dirty.append(check, document.createTextNode(' Accept current dirty worktree as this task’s starting basis.'));
-                controls.append(dirty);
+            if (c.needsDirtyAcceptance && !c.dirtyPromptDismissed) {
+                const dirty = el('div'); dirty.append(el('p', 'Worktree is dirty: continue?'));
+                dirty.append(button('Continue', () => void c.continueDirty(), c.busy),
+                    button('Cancel', () => c.cancelDirty(), c.busy)); controls.append(dirty);
             }
             const readiness = el('p', c.readinessMessage); readiness.setAttribute('role', 'status');
             const resume = button(s.status === 'ready' ? 'Start' : 'Resume', () => void c.start(), !c.canStart);
