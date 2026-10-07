@@ -17,7 +17,7 @@ function harness(status: string = 'ready', reason?: string, manual = false) {
     const runtime = { async attach() { return { projectHandle: 'handle' }; },
         async listSequences() { return [sequence]; }, async sequenceEvidence() { return { head: sha,
             packageVersion: '0.8.18', clean: !dirty, worktreeFingerprint: 'c'.repeat(64) }; },
-        async readRun() { return run; }, async importSequence() { imports++; return sequence; },
+        async readRun() { return run; }, async importSequence() { imports++; return { kind: 'imported', sequence }; },
         async prepareSequenceTask(_h: string, _id: string, _policy: unknown, completion: any, acceptDirty: boolean) {
             assert.equal(acceptDirty, dirty);
             assert.deepEqual(completion, { validation: [{ kind: 'test', label: 'phase-stack', command: './validate.sh' }],
@@ -38,6 +38,7 @@ test('reopen loads sequence without auto-running; import and explicit grant star
     const h = harness(); await h.controller.attach('file:///project');
     assert.equal(h.starts, 0); assert.equal(h.controller.selected?.stack.entries[0].promptText, 'Exact snapshotted prompt');
     h.controller.folderName = 'docs/tasks/p8c'; await h.controller.importStack(); assert.equal(h.imports, 1);
+    assert.equal(h.controller.pendingDirtyImport, undefined);
     assert.equal(h.controller.canStart, false); h.controller.acceptedGrant = true;
     assert.equal(h.controller.canStart, false); h.controller.validationCommand = './validate.sh';
     assert.equal(h.controller.canStart, true); await h.controller.start(); assert.equal(h.starts, 1);
@@ -62,6 +63,40 @@ test('manual gate only reconciles; checkpoint pending uses backend checkpoint op
     assert.equal(pending.controller.canStart, false); await pending.controller.checkpoint(); assert.equal(pending.checkpoints, 1);
 });
 
+test('dirty import confirmation keeps path, cancels, retries exact folder, and clears on edit', async () => {
+    const calls: { folder: string; allow: boolean }[] = [];
+    const sequence: any = { id: 'imported', status: 'blocked', blockedReason: 'dirty-acceptance-required',
+        currentEntryNumber: 1, basis: { head: sha, packageVersion: '0.8.18', clean: false },
+        checkpoints: [], stack: { folderName: 'p8c', entries: [] } };
+    let imported = false;
+    const runtime = { async attach() { return { projectHandle: 'handle' }; },
+        async listSequences() { return imported ? [sequence] : []; },
+        async sequenceEvidence() { return { head: sha, packageVersion: '0.8.18', clean: false,
+            worktreeFingerprint: 'b'.repeat(64) }; },
+        async importSequence(_handle: string, folder: string, options: { allowDirtyImport: boolean }) {
+            calls.push({ folder, allow: options.allowDirtyImport });
+            if (!options.allowDirtyImport) return { kind: 'dirty-confirmation-required' };
+            imported = true; return { kind: 'imported', sequence };
+        } };
+    const controller = new PhaseStackController(runtime as unknown as AgentRuntimeService, () => {});
+    await controller.attach('file:///project');
+    controller.setFolderName('docs/tasks/p8c'); await controller.importStack();
+    assert.deepEqual(controller.pendingDirtyImport, { folderName: 'p8c', input: 'docs/tasks/p8c' });
+    assert.equal(controller.folderName, 'docs/tasks/p8c');
+    assert.doesNotMatch(controller.message, /operation failed/);
+    controller.cancelDirtyImport(); assert.equal(controller.pendingDirtyImport, undefined);
+    assert.equal(imported, false); assert.equal(controller.folderName, 'docs/tasks/p8c');
+    await controller.importStack(); controller.setFolderName('docs/tasks/p8d');
+    assert.equal(controller.pendingDirtyImport, undefined);
+    controller.setFolderName('docs/tasks/p8c'); await controller.importStack();
+    await controller.continueDirtyImport();
+    assert.deepEqual(calls, [{ folder: 'p8c', allow: false }, { folder: 'p8c', allow: false },
+        { folder: 'p8c', allow: false }, { folder: 'p8c', allow: true }]);
+    assert.equal(controller.pendingDirtyImport, undefined);
+    assert.equal(controller.selected?.id, 'imported');
+    assert.equal(controller.folderName, 'docs/tasks/p8c');
+});
+
 test('Phase Stack command, service, safe rendering, labels and Agent Run focus are wired', async () => {
     const base = new URL('../../packages/theia-extension/src/browser/', import.meta.url);
     const [contribution, widget, module, backend, contracts] = await Promise.all([
@@ -71,6 +106,7 @@ test('Phase Stack command, service, safe rendering, labels and Agent Run focus a
     assert.match(contribution, /Dope: Open Phase Stack/); assert.match(module, /PhaseStackContribution/);
     assert.match(module, /widget\.focusRun\(runId\)/);
     for (const label of ['Project-local stack folder', 'Phase Stack entries', 'Required validation command', 'Accept current dirty worktree',
+        'Worktree is dirty: continue?', 'Continue', 'Cancel',
         'External completion: reconcile gate', 'Checkpoint:', 'Blocked:', 'Validation:', 'Open Agent Run detail'])
         assert.ok(widget.includes(label), label);
     assert.match(widget, /textContent = content/); assert.match(backend, /sequenceEvidence\(/);

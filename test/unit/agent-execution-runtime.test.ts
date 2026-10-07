@@ -96,7 +96,10 @@ async function sequenceTerminal(store: AgentStore, root: string, sequenceId: str
 }
 
 async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: string }) {
-    const sequence = await f.backend.importSequence(f.handle, 'c8-lifecycle-test');
+    const result = await f.backend.importSequence(f.handle, 'c8-lifecycle-test');
+    assert.equal(result.kind, 'imported');
+    if (result.kind !== 'imported') throw new Error('Import failed');
+    const sequence = result.sequence;
     assert.equal(sequence.currentEntryNumber, 1);
     const task = await f.backend.prepareSequenceTask(f.handle, sequence.id,
         { kind: 'follow-coding-agent' }, { validation: [], requireValidationPass: false });
@@ -192,7 +195,10 @@ test('stop interrupts capacity wait and non-capacity failures never retry', asyn
 }, undefined, 10_000));
 
 test('sequence stays on its entry after validation and authority failure', async () => fixture(async f => {
-    const sequence = await f.backend.importSequence(f.handle, 'c8-lifecycle-test');
+    const result = await f.backend.importSequence(f.handle, 'c8-lifecycle-test');
+    assert.equal(result.kind, 'imported');
+    if (result.kind !== 'imported') throw new Error('Import failed');
+    const sequence = result.sequence;
     const task = await f.backend.prepareSequenceTask(f.handle, sequence.id,
         { kind: 'exact', connectionId: 'codex', modelId: 'model-1' },
         { validation: [{ kind: 'test', label: 'focused', command: 'npm test' }], requireValidationPass: true });

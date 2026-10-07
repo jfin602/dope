@@ -6,6 +6,9 @@ export const AgentRuntimeService = Symbol('AgentRuntimeService');
 
 export interface AgentStoreChange { kind: 'task' | 'run' | 'event' | 'sequence'; id: string }
 export interface AgentRuntimeClient { notifyAgentStateChanged(change: AgentStoreChange): void }
+export type SequenceImportResult = { kind: 'imported'; sequence: AgentTaskSequence } |
+    { kind: 'dirty-confirmation-required' | 'invalid-stack' | 'version-mismatch' |
+        'unsafe-source' | 'source-changed' | 'checkpoint-mismatch' };
 export interface AgentRuntimeService {
     attach(folderUri: string): Promise<{ projectHandle: string }>;
     createTask(projectHandle: string, task: AgentTask): Promise<AgentTask>;
@@ -13,7 +16,8 @@ export interface AgentRuntimeService {
     listTasks(projectHandle: string): Promise<AgentTask[]>;
     readRun(projectHandle: string, runId: string): Promise<AgentRun | undefined>;
     listRuns(projectHandle: string): Promise<AgentRun[]>;
-    importSequence(projectHandle: string, folderName: string): Promise<AgentTaskSequence>;
+    importSequence(projectHandle: string, folderName: string,
+        options?: { allowDirtyImport: boolean }): Promise<SequenceImportResult>;
     createSequence(projectHandle: string, stack: ImportedStack): Promise<AgentTaskSequence>;
     readSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence | undefined>;
     listSequences(projectHandle: string): Promise<AgentTaskSequence[]>;

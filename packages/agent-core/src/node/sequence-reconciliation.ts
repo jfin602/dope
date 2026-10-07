@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { lstat, open, readdir, realpath } from 'node:fs/promises';
-import { constants } from 'node:fs';
+import { lstat, open, readdir, readlink, realpath } from 'node:fs/promises';
+import { constants, createReadStream } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { AgentTaskSequence, ImportedStack, PromptSource, SequenceBlockReason,
@@ -11,6 +11,11 @@ import { versionCoherent } from './sequence-checkpoint';
 const execute = promisify(execFile);
 const sha = /^[0-9a-f]{40,64}$/u;
 const maxOutput = 2 * 1024 * 1024;
+export type SequenceImportFailure = 'dirty-confirmation-required' | 'invalid-stack' |
+    'version-mismatch' | 'unsafe-source' | 'source-changed' | 'checkpoint-mismatch';
+export class SequenceImportError extends Error {
+    constructor(readonly code: SequenceImportFailure) { super(code); }
+}
 
 async function git(root: string, args: string[]): Promise<string> {
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
@@ -84,6 +89,20 @@ export async function captureSequenceEvidence(root: string): Promise<SequenceGit
         if (path === '.dope/agent' || path.startsWith('.dope/agent/')) continue;
         material.push(field, ...(previous ? [previous] : []));
         if (material.length > 4000) throw new Error('Git status exceeds sequence limit');
+        const target = join(root, path);
+        try {
+            const info = await lstat(target);
+            material.push(String(info.mode), String(info.size));
+            if (info.isSymbolicLink()) material.push(await readlink(target));
+            else if (info.isFile()) {
+                const hash = createHash('sha256');
+                for await (const chunk of createReadStream(target)) hash.update(chunk as Buffer);
+                material.push(hash.digest('hex'));
+            } else material.push('non-file');
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+            material.push('missing');
+        }
     }
     const packageFile = join(root, 'package.json');
     const packageInfo = await lstat(packageFile);
@@ -101,8 +120,10 @@ export async function captureSequenceEvidence(root: string): Promise<SequenceGit
     if (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/u.test(version)) throw new Error('Invalid root package version');
     if ((await git(root, ['rev-parse', '--verify', 'HEAD'])).trim() !== head)
         throw new Error('Git HEAD changed during sequence evidence capture');
+    const index = await git(root, ['diff', '--cached', '--raw', '-z', 'HEAD', '--', '.',
+        ':(exclude).dope/agent', ':(exclude).dope/agent/**']);
     return { head, packageVersion: version, clean: material.length === 0,
-        worktreeFingerprint: createHash('sha256').update(material.join('\0')).digest('hex'), history };
+        worktreeFingerprint: createHash('sha256').update(material.join('\0')).update(index).digest('hex'), history };
 }
 
 function subject(stack: ImportedStack, number: number): string {
@@ -154,8 +175,10 @@ export function sequenceBlockReason(sequence: AgentTaskSequence, evidence: Seque
     if (sequence.status === 'blocked' &&
         ['checkpoint-pending', 'checkpoint-failed'].includes(sequence.blockedReason ?? '')) return undefined;
     if (evidence.packageVersion !== expectedSequenceVersion(sequence.stack, prefix.length)) return 'version-mismatch';
-    if (!evidence.clean || evidence.worktreeFingerprint !== sequence.basis.worktreeFingerprint) return 'worktree-drift';
     if (sequence.status === 'completed') return undefined;
+    if (evidence.worktreeFingerprint !== sequence.basis.worktreeFingerprint ||
+        (sequence.basis.clean ?? true) !== evidence.clean && !sequence.acceptedDirty) return 'worktree-drift';
+    if (!evidence.clean && !sequence.acceptedDirty) return 'dirty-acceptance-required';
     if (sequence.status === 'running') return 'interrupted';
     return undefined;
 }
@@ -218,22 +241,49 @@ export async function verifyManualGate(root: string, sequence: AgentTaskSequence
     return decision;
 }
 
-export async function importSequenceSnapshot(root: string, folderName: string): Promise<AgentTaskSequence> {
-    const stack = await importPhaseStack(folderName, await readStackSources(root, folderName));
-    await parseImportedStack(stack);
-    const evidence = await captureSequenceEvidence(root);
-    if (!evidence.clean) throw new Error('Sequence import requires clean worktree');
-    const checkpoints = gitCheckpointPrefix(stack, evidence);
+export async function importSequenceSnapshot(root: string, folderName: string,
+    allowDirtyImport = false): Promise<AgentTaskSequence> {
+    let stack: ImportedStack;
+    try { stack = await importPhaseStack(folderName, await readStackSources(root, folderName));
+        await parseImportedStack(stack); }
+    catch (error) {
+        const unsafe = error instanceof Error && /^(Invalid stack folder|Unsafe stack|Unsafe or oversized|Oversized stack|Sequence requires canonical Git project root|Invalid stack source count|Invalid stack prompt filename)/u.test(error.message);
+        const unavailable = error && typeof error === 'object' && 'code' in error &&
+            ['ENOENT', 'ELOOP', 'ENOTDIR', 'EACCES', 'EPERM'].includes(String(error.code));
+        if (unsafe || unavailable)
+            throw new SequenceImportError('unsafe-source');
+        throw new SequenceImportError('invalid-stack');
+    }
+    let evidence: SequenceGitEvidence;
+    try { evidence = await captureSequenceEvidence(root); }
+    catch (error) {
+        if (error instanceof SyntaxError || error instanceof Error && /Invalid root package version/u.test(error.message))
+            throw new SequenceImportError('version-mismatch');
+        throw error;
+    }
+    if (!evidence.clean && !allowDirtyImport) throw new SequenceImportError('dirty-confirmation-required');
+    let checkpoints: SequenceCheckpoint[];
+    try { checkpoints = gitCheckpointPrefix(stack, evidence); }
+    catch { throw new SequenceImportError('checkpoint-mismatch'); }
     if (evidence.packageVersion !== expectedSequenceVersion(stack, checkpoints.length))
-        throw new Error('Sequence import version mismatch');
+        throw new SequenceImportError('version-mismatch');
     if (checkpoints.length && evidence.head !== checkpoints.at(-1)!.sha)
-        throw new Error('Sequence import HEAD does not match checkpoint');
+        throw new SequenceImportError('checkpoint-mismatch');
+    const again = await captureSequenceEvidence(root);
+    if (again.head !== evidence.head || again.packageVersion !== evidence.packageVersion ||
+        again.worktreeFingerprint !== evidence.worktreeFingerprint || again.clean !== evidence.clean)
+        throw new SequenceImportError('checkpoint-mismatch');
+    if (await stackSourceDrift(root, stack)) throw new SequenceImportError('source-changed');
     const now = new Date().toISOString();
     const currentEntryNumber = checkpoints.length + 1;
     return { version: 1, id: randomUUID(), createdAt: now, updatedAt: now, stack, checkpoints,
-        currentEntryNumber, status: stack.entries[currentEntryNumber - 1]?.execution === 'manual-gate' ? 'waiting-manual' : 'ready',
+        currentEntryNumber, status: currentEntryNumber > stack.entries.length ? 'completed' :
+            !evidence.clean ? 'blocked' :
+            stack.entries[currentEntryNumber - 1]?.execution === 'manual-gate' ? 'waiting-manual' : 'ready',
+        ...(!evidence.clean && currentEntryNumber <= stack.entries.length ?
+            { blockedReason: 'dirty-acceptance-required' as const } : {}),
         basis: { head: evidence.head, packageVersion: evidence.packageVersion,
-            worktreeFingerprint: evidence.worktreeFingerprint } };
+            worktreeFingerprint: evidence.worktreeFingerprint, clean: evidence.clean } };
 }
 
 export async function stackSourceDrift(root: string, stack: ImportedStack): Promise<boolean> {

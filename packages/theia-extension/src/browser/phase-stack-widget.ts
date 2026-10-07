@@ -49,10 +49,18 @@ export class PhaseStackWidget extends BaseWidget {
         status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite'); root.append(status);
         if (!c.handle) { this.content.replaceChildren(root); return; }
         const importer = el('section'), label = el('label', 'Project-local stack folder');
-        const input = el('input'); input.type = 'text'; input.value = c.folderName;
+        const input = el('input'); input.type = 'text'; input.value = c.folderName; input.disabled = c.busy;
         input.placeholder = 'docs/tasks/p8c'; input.setAttribute('aria-label', 'Project-local stack folder');
-        input.oninput = () => { c.folderName = input.value; }; label.append(input);
-        importer.append(label, button('Import Stack', () => void c.importStack(), c.busy)); root.append(importer);
+        input.oninput = () => c.setFolderName(input.value); label.append(input);
+        importer.append(label, button('Import Stack', () => void c.importStack(), c.busy));
+        if (c.pendingDirtyImport) {
+            const confirm = el('div'); confirm.append(el('p', 'Worktree is dirty: continue?'));
+            confirm.append(el('p', 'Importing snapshots this stack against the current repository state. Starting a task with existing changes still requires explicit dirty-worktree acceptance.'));
+            confirm.append(button('Continue', () => void c.continueDirtyImport(), c.busy),
+                button('Cancel', () => c.cancelDirtyImport(), c.busy));
+            importer.append(confirm);
+        }
+        root.append(importer);
         const list = el('section'); list.append(el('h3', 'Imported stacks'));
         if (!c.sequences.length) list.append(el('p', 'No stacks imported.'));
         for (const sequence of c.sequences) {

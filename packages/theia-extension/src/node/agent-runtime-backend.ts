@@ -4,12 +4,12 @@ import { AGENT_SCHEMA_VERSION, parseAgentTask, parseExecutionGrant, parseImporte
 import type { AgentModelPolicy, AgentRun, AgentTask, AgentTaskSequence, CompletionPolicy,
     ExecutionGrant, ImportedStack, SequenceBlockReason } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
-import { captureSequenceEvidence, importSequenceSnapshot, sequenceBlockReason,
+import { captureSequenceEvidence, importSequenceSnapshot, SequenceImportError, sequenceBlockReason,
     stackSourceDrift, verifyManualGate } from '@dope/agent-core/lib/node/sequence-reconciliation';
 import type { ManualGateReconciliation } from '@dope/agent-core/lib/node/sequence-reconciliation';
 import { assertDirtyBasis, captureDirtyBasis, safeGit } from '@dope/agent-core/lib/node/dirty-basis';
 import { checkpointSequence as commitCheckpoint } from '@dope/agent-core/lib/node/sequence-checkpoint';
-import type { AgentRuntimeClient, AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
+import type { AgentRuntimeClient, AgentRuntimeService, SequenceImportResult } from '@dope/contracts/lib/agent-runtime-service';
 import type { AgentExecutionRuntime } from './agent-execution-runtime';
 
 // Shared by RPC backend instances in this process; persisted HEAD/checkpoint evidence owns restart safety.
@@ -56,9 +56,16 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     listTasks(handle: string): Promise<AgentTask[]> { return this.store.listTasks(this.active(handle)); }
     readRun(handle: string, runId: string): Promise<AgentRun | undefined> { return this.store.readRun(this.active(handle), runId); }
     listRuns(handle: string): Promise<AgentRun[]> { return this.store.listRuns(this.active(handle)); }
-    async importSequence(handle: string, folderName: string): Promise<AgentTaskSequence> {
+    async importSequence(handle: string, folderName: string,
+        options?: { allowDirtyImport: boolean }): Promise<SequenceImportResult> {
         const root = this.active(handle);
-        return this.store.createSequence(root, await importSequenceSnapshot(root, folderName));
+        try {
+            const snapshot = await importSequenceSnapshot(root, folderName, options?.allowDirtyImport === true);
+            return { kind: 'imported', sequence: await this.store.createSequence(root, snapshot) };
+        } catch (error) {
+            if (error instanceof SequenceImportError) return { kind: error.code };
+            throw error;
+        }
     }
     async createSequence(handle: string, stack: ImportedStack): Promise<AgentTaskSequence> {
         const parsed = await parseImportedStack(stack);
@@ -105,13 +112,15 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             }
             const nextNumber = sequence.currentEntryNumber + 1;
             const next = sequence.stack.entries[nextNumber - 1];
+            const cleanBasis = await captureSequenceEvidence(root);
             return this.setSequence(root, sequence, {
                 checkpoints: [...sequence.checkpoints, { entryNumber: sequence.currentEntryNumber,
                     sha: result.sha, preGateBasis: sequence.basis }],
                 currentEntryNumber: nextNumber, status: next ?
                     next.execution === 'manual-gate' ? 'waiting-manual' : 'ready' : 'completed',
                 blockedReason: undefined, gateMessage: undefined,
-                basis: { ...sequence.basis, head: result.sha, packageVersion: entry.versionPolicy.version }
+                basis: { head: result.sha, packageVersion: entry.versionPolicy.version,
+                    worktreeFingerprint: cleanBasis.worktreeFingerprint, clean: true }
             });
         } finally { checkpointProjects.delete(root); }
     }
@@ -159,12 +168,13 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         completion: CompletionPolicy, acceptDirty = false): Promise<AgentTask> {
         const root = this.active(handle);
         let sequence = await this.sequenceState(root, sequenceId);
-        if (acceptDirty && sequence.status === 'blocked' && sequence.blockedReason === 'worktree-drift') {
+        if (acceptDirty && sequence.status === 'blocked' &&
+            ['worktree-drift', 'dirty-acceptance-required'].includes(sequence.blockedReason ?? '')) {
             const dirty = await captureDirtyBasis(root);
             if (!dirty.paths.length || dirty.head !== (sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head))
                 throw new Error('No eligible dirty worktree to accept');
             const evidence = await captureSequenceEvidence(root);
-            if (sequenceBlockReason(sequence, { ...evidence, clean: true,
+            if (sequenceBlockReason({ ...sequence, acceptedDirty: dirty }, { ...evidence, clean: true,
                 worktreeFingerprint: sequence.basis.worktreeFingerprint }, await stackSourceDrift(root, sequence.stack)))
                 throw new Error('Sequence has another reconciliation blocker');
             sequence = await this.setSequence(root, sequence, { status: 'ready', blockedReason: undefined,
@@ -289,13 +299,14 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
                 throw new Error('Checkpoint changed before durable sequence advancement');
             const nextNumber = sequence.currentEntryNumber + 1;
             const next = sequence.stack.entries[nextNumber - 1];
+            const cleanBasis = await captureSequenceEvidence(root);
             return this.setSequence(root, sequence, { checkpoints: [...sequence.checkpoints,
                 { entryNumber: sequence.currentEntryNumber, sha, taskId: task.id, runId: run.id }],
                 currentEntryNumber: nextNumber, status: next?.execution === 'manual-gate' ? 'waiting-manual' : 'ready',
                 blockedReason: undefined, taskId: undefined, runIds: undefined, acceptedDirty: undefined,
-                basis: { head: sha,
+                basis: { head: sha, clean: true,
                     packageVersion: sequence.stack.entries[sequence.currentEntryNumber - 1].versionPolicy.version,
-                    worktreeFingerprint: sequence.basis.worktreeFingerprint } });
+                    worktreeFingerprint: cleanBasis.worktreeFingerprint } });
         } catch (error) {
             const sequence = await this.store.readSequence(root, sequenceId);
             if (sequence?.status === 'blocked' && sequence.blockedReason === 'checkpoint-pending')

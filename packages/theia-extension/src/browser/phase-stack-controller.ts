@@ -18,6 +18,7 @@ export class PhaseStackController {
     acceptedDirty = false;
     message = '';
     busy = false;
+    pendingDirtyImport?: { folderName: string; input: string };
     private serial = 0;
     private refreshing = false;
     private lastView = '';
@@ -29,7 +30,7 @@ export class PhaseStackController {
         this.project = project; this.handle = undefined; this.sequences = []; this.selected = undefined;
         this.evidence = undefined; this.run = undefined; this.acceptedGrant = false; this.acceptedDirty = false;
         this.validationCommand = ''; this.validationTaskId = undefined;
-        this.message = ''; this.lastView = ''; this.changed();
+        this.message = ''; this.pendingDirtyImport = undefined; this.lastView = ''; this.changed();
         if (!project) return;
         try {
             const { projectHandle } = await this.runtime.attach(project);
@@ -68,18 +69,56 @@ export class PhaseStackController {
         this.validationCommand = ''; this.validationTaskId = undefined;
         void this.refresh(); this.changed();
     }
+    setFolderName(value: string): void {
+        this.folderName = value;
+        if (this.pendingDirtyImport && value !== this.pendingDirtyImport.input) {
+            this.pendingDirtyImport = undefined; this.message = ''; this.changed();
+        }
+    }
+    cancelDirtyImport(): void {
+        if (this.busy) return;
+        this.pendingDirtyImport = undefined; this.message = ''; this.changed();
+    }
+    async continueDirtyImport(): Promise<void> {
+        const pending = this.pendingDirtyImport;
+        if (!pending || this.folderName !== pending.input || this.busy) return;
+        await this.importFolder(pending.folderName, true);
+    }
     async importStack(): Promise<void> {
         if (!this.handle || this.busy) return;
         const match = /^(?:docs\/tasks\/)?((?:p\d+[a-z]?|p[12]-\d+|c\d+-[a-z0-9]+(?:-[a-z0-9]+)*))\/?$/u.exec(this.folderName.trim());
         if (!match) { this.message = 'Enter a project-local docs/tasks/<stack> folder.'; this.changed(); return; }
-        await this.perform(async () => {
-            const sequence = await this.runtime.importSequence(this.handle!, match[1]);
-            await this.refresh(); this.select(sequence.id); this.message = 'Stack imported. Review its basis and grant before starting.';
-        });
+        this.pendingDirtyImport = undefined;
+        await this.importFolder(match[1], false);
+    }
+    private async importFolder(folderName: string, allowDirtyImport: boolean): Promise<void> {
+        if (!this.handle || this.busy) return;
+        const handle = this.handle, input = this.folderName;
+        this.busy = true; this.message = ''; this.changed();
+        try {
+            const result = await this.runtime.importSequence(handle, folderName, { allowDirtyImport });
+            if (this.handle !== handle || this.folderName !== input) return;
+            if (result.kind === 'dirty-confirmation-required') {
+                this.pendingDirtyImport = { folderName, input };
+            } else if (result.kind === 'imported') {
+                this.pendingDirtyImport = undefined;
+                await this.refresh(); this.select(result.sequence.id);
+                this.message = 'Stack imported. Review its basis and grant before starting.';
+            } else {
+                this.pendingDirtyImport = undefined;
+                this.message = ({ 'invalid-stack': 'Stack import failed: invalid prompt grammar. Check TASK, model, version, numbering, and closeout fields.',
+                    'version-mismatch': 'Stack import failed: version mismatch.',
+                    'unsafe-source': 'Stack import failed: invalid or unsafe stack source.',
+                    'source-changed': 'Stack import failed: stack source changed during import.',
+                    'checkpoint-mismatch': 'Stack import failed: repository checkpoint mismatch.' } as const)[result.kind];
+            }
+        } catch { this.message = 'Phase Stack operation failed. Inspect repository, stack, and grant state, then retry.'; }
+        finally { this.busy = false; await this.refresh(); this.changed(); }
     }
     get current() { return this.selected?.stack.entries[this.selected.currentEntryNumber - 1]; }
     get needsDirtyAcceptance(): boolean {
-        return Boolean(this.selected?.blockedReason === 'worktree-drift' && this.evidence && !this.evidence.clean);
+        return Boolean(['worktree-drift', 'dirty-acceptance-required'].includes(this.selected?.blockedReason ?? '') &&
+            this.evidence && !this.evidence.clean);
     }
     get canStart(): boolean {
         const s = this.selected;

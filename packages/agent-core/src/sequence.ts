@@ -26,11 +26,12 @@ export interface AgentTaskSequence {
     basis: SequenceBasis; checkpoints: SequenceCheckpoint[]; blockedReason?: SequenceBlockReason;
     taskId?: string; runIds?: string[]; acceptedDirty?: AcceptedDirtyBasis; gateMessage?: string;
 }
-export interface SequenceBasis { head: string; packageVersion: string; worktreeFingerprint: string }
+export interface SequenceBasis { head: string; packageVersion: string; worktreeFingerprint: string; clean?: boolean }
 export interface SequenceCheckpoint { entryNumber: number; sha: string; taskId?: string; runId?: string;
     preGateBasis?: SequenceBasis }
 export type SequenceBlockReason = 'source-drift' | 'git-history' | 'checkpoint-mismatch' |
     'version-mismatch' | 'head-drift' | 'worktree-drift' | 'interrupted' | 'completion-unsupported' |
+    'dirty-acceptance-required' |
     'run-failed' | 'run-cancelled' | 'authority-denied' | 'validation-failed' |
     'capacity-exhausted' | 'checkpoint-pending' | 'checkpoint-failed';
 export interface PhaseStackTaskMetadata {
@@ -227,12 +228,13 @@ export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskS
         throw new Error('Invalid sequence position or status');
     const createdAt = timestamp(x.createdAt), updatedAt = timestamp(x.updatedAt);
     if (updatedAt < createdAt) throw new Error('Invalid sequence timestamps');
-    const basisValue = record(x.basis, ['head', 'packageVersion', 'worktreeFingerprint']);
+    const basisValue = record(x.basis, ['head', 'packageVersion', 'worktreeFingerprint', 'clean']);
     const sha = /^[0-9a-f]{40,64}$/u;
     if (typeof basisValue.head !== 'string' || !sha.test(basisValue.head) ||
         typeof basisValue.packageVersion !== 'string' || !semver.test(basisValue.packageVersion) ||
         typeof basisValue.worktreeFingerprint !== 'string' || !/^[0-9a-f]{64}$/u.test(basisValue.worktreeFingerprint))
         throw new Error('Invalid sequence basis');
+    if (basisValue.clean !== undefined && typeof basisValue.clean !== 'boolean') throw new Error('Invalid sequence basis cleanliness');
     if (!Array.isArray(x.checkpoints) || x.checkpoints.length > stack.entries.length)
         throw new Error('Invalid sequence checkpoints');
     const checkpoints = x.checkpoints.map((value, index) => {
@@ -244,13 +246,14 @@ export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskS
             throw new Error('Invalid sequence checkpoint prefix');
         let preGateBasis: SequenceBasis | undefined;
         if (checkpoint.preGateBasis !== undefined) {
-            const basis = record(checkpoint.preGateBasis, ['head', 'packageVersion', 'worktreeFingerprint']);
+            const basis = record(checkpoint.preGateBasis, ['head', 'packageVersion', 'worktreeFingerprint', 'clean']);
             const previous = index ? (x.checkpoints as Array<{ sha: unknown }>)[index - 1].sha : undefined;
             if (typeof basis.head !== 'string' || !sha.test(basis.head) ||
                 previous && basis.head !== previous || typeof basis.packageVersion !== 'string' ||
                 !semver.test(basis.packageVersion) || typeof basis.worktreeFingerprint !== 'string' ||
                 !/^[0-9a-f]{64}$/u.test(basis.worktreeFingerprint))
                 throw new Error('Invalid pre-gate basis');
+            if (basis.clean !== undefined && typeof basis.clean !== 'boolean') throw new Error('Invalid pre-gate cleanliness');
             preGateBasis = basis as unknown as SequenceBasis;
         }
         return { entryNumber: index + 1, sha: checkpoint.sha,
@@ -264,7 +267,7 @@ export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskS
         new Set(checkpoints.map(checkpoint => checkpoint.sha)).size !== checkpoints.length)
         throw new Error('Sequence position disagrees with checkpoints');
     const reasons: SequenceBlockReason[] = ['source-drift', 'git-history', 'checkpoint-mismatch',
-        'version-mismatch', 'head-drift', 'worktree-drift', 'interrupted', 'completion-unsupported',
+        'version-mismatch', 'head-drift', 'worktree-drift', 'dirty-acceptance-required', 'interrupted', 'completion-unsupported',
         'run-failed', 'run-cancelled', 'authority-denied', 'validation-failed', 'capacity-exhausted', 'checkpoint-pending', 'checkpoint-failed'];
     const blockedReason = x.blockedReason === undefined ? undefined : select(x.blockedReason, reasons);
     if (blockedReason && status !== 'blocked' && status !== 'interrupted') throw new Error('Invalid sequence block reason');
@@ -281,7 +284,8 @@ export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskS
         throw new Error('Invalid manual gate message');
     return freeze({ version: SEQUENCE_SCHEMA_VERSION, id: id(x.id), createdAt, updatedAt,
         status, currentEntryNumber, stack, basis: { head: basisValue.head, packageVersion: basisValue.packageVersion,
-            worktreeFingerprint: basisValue.worktreeFingerprint }, checkpoints,
+            worktreeFingerprint: basisValue.worktreeFingerprint,
+            ...(basisValue.clean === undefined ? {} : { clean: basisValue.clean }) }, checkpoints,
         ...(blockedReason ? { blockedReason } : {}), ...(taskId ? { taskId } : {}),
         ...(runIds.length ? { runIds } : {}), ...(acceptedDirty ? { acceptedDirty } : {}),
         ...(x.gateMessage ? { gateMessage: x.gateMessage } : {}) });

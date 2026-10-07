@@ -221,7 +221,7 @@ export class AgentStore {
                         next.checkpoints.at(-1)?.runId === current.runIds?.at(-1));
             const nextBasis = advanced && next.basis.head === next.checkpoints.at(-1)?.sha &&
                 next.basis.packageVersion === current.stack.entries[current.currentEntryNumber - 1]?.versionPolicy.version &&
-                next.basis.worktreeFingerprint === current.basis.worktreeFingerprint;
+                (next.basis.clean ?? true) === true;
             if (!same(current.stack, next.stack) || !(advanced ? nextBasis : same(current.basis, next.basis)) ||
                 current.createdAt !== next.createdAt || next.updatedAt < current.updatedAt ||
                 !advanced && current.taskId && current.taskId !== next.taskId ||
