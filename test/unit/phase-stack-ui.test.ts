@@ -18,8 +18,9 @@ function harness(status: string = 'ready', reason?: string, manual = false) {
         async listSequences() { return [sequence]; }, async sequenceEvidence() { return { head: sha,
             packageVersion: '0.8.18', clean: !dirty, worktreeFingerprint: 'c'.repeat(64) }; },
         async readRun() { return run; }, async importSequence() { imports++; return { kind: 'imported', sequence }; },
-        async prepareSequenceTask(_h: string, _id: string, _policy: unknown, completion: any, acceptDirty: boolean) {
-            assert.equal(acceptDirty, dirty);
+        async prepareSequenceTask(_h: string, _id: string, _policy: unknown, completion: any,
+            dirtyAcceptance?: { worktreeFingerprint: string }) {
+            assert.deepEqual(dirtyAcceptance, dirty ? { worktreeFingerprint: 'c'.repeat(64) } : undefined);
             assert.deepEqual(completion, { validation: [{ kind: 'test', label: 'phase-stack', command: './validate.sh' }],
                 requireValidationPass: true });
             return { id: 'task' }; },
@@ -48,11 +49,58 @@ test('reopen loads sequence without auto-running; import and explicit grant star
 test('dirty worktree needs explicit acceptance; ambiguous blocker cannot resume', async () => {
     const h = harness('blocked', 'worktree-drift'); h.setDirty(true); await h.controller.attach('file:///project');
     h.controller.acceptedGrant = true; assert.equal(h.controller.canStart, false);
-    h.controller.acceptedDirty = true; h.controller.validationCommand = './validate.sh';
+    h.controller.setDirtyAcceptance(true); h.controller.validationCommand = './validate.sh';
     assert.equal(h.controller.canStart, true);
     await h.controller.start(); assert.equal(h.starts, 1);
     const ambiguous = harness('blocked', 'checkpoint-mismatch'); await ambiguous.controller.attach('file:///project');
     ambiguous.controller.acceptedGrant = true; assert.equal(ambiguous.controller.canStart, false);
+});
+
+test('dirty import acceptance enables Resume only after grant and validation, and stale evidence revokes it', async () => {
+    const h = harness('blocked', 'dirty-acceptance-required'); h.setDirty(true);
+    await h.controller.attach('file:///project');
+    assert.equal(h.controller.needsDirtyAcceptance, true);
+    assert.equal(h.controller.readinessMessage,
+        "Worktree is dirty: accept it as this task's starting basis to continue.");
+    h.controller.setDirtyAcceptance(true);
+    assert.equal(h.controller.canStart, false);
+    assert.equal(h.controller.readinessMessage, 'Accept the project execution grant to continue.');
+    h.controller.acceptedGrant = true;
+    assert.equal(h.controller.readinessMessage, 'Enter a required validation command to continue.');
+    h.controller.validationCommand = './validate.sh';
+    assert.equal(h.controller.canStart, true);
+    await h.controller.start();
+    assert.equal(h.starts, 1);
+
+    const changed = harness('blocked', 'dirty-acceptance-required'); changed.setDirty(true);
+    await changed.controller.attach('file:///project');
+    changed.controller.setDirtyAcceptance(true);
+    changed.controller.acceptedGrant = true; changed.controller.validationCommand = './validate.sh';
+    changed.controller.evidence = { ...changed.controller.evidence!, worktreeFingerprint: 'd'.repeat(64) };
+    assert.equal(changed.controller.canStart, false);
+});
+
+test('dirty acceptance does not bypass unrelated blockers', async () => {
+    for (const reason of ['source-drift', 'head-drift', 'version-mismatch', 'git-history',
+        'checkpoint-mismatch', 'checkpoint-failed', 'interrupted']) {
+        const h = harness('blocked', reason); h.setDirty(true); await h.controller.attach('file:///project');
+        assert.equal(h.controller.needsDirtyAcceptance, false, reason);
+        h.controller.setDirtyAcceptance(true);
+        h.controller.acceptedGrant = true; h.controller.validationCommand = './validate.sh';
+        assert.equal(h.controller.canStart, false, reason);
+    }
+});
+
+test('retry with an already accepted dirty basis still requires a fresh execution grant', async () => {
+    const h = harness('blocked', 'run-failed'); h.setDirty(true);
+    h.sequence.acceptedDirty = { head: sha, paths: [{ path: 'existing.txt', code: ' M',
+        hash: 'b'.repeat(64), size: 1, mode: 0o644 }] };
+    await h.controller.attach('file:///project');
+    assert.equal(h.controller.needsDirtyAcceptance, false);
+    h.controller.validationCommand = './validate.sh';
+    assert.equal(h.controller.canStart, false);
+    h.controller.acceptedGrant = true;
+    assert.equal(h.controller.canStart, true);
 });
 
 test('manual gate only reconciles; checkpoint pending uses backend checkpoint operation', async () => {
@@ -110,6 +158,8 @@ test('Phase Stack command, service, safe rendering, labels and Agent Run focus a
         'External completion: reconcile gate', 'Checkpoint:', 'Blocked:', 'Validation:', 'Open Agent Run detail'])
         assert.ok(widget.includes(label), label);
     assert.match(widget, /textContent = content/); assert.match(backend, /sequenceEvidence\(/);
+    assert.match(widget, /c\.needsDirtyAcceptance/);
+    assert.match(widget, /c\.setDirtyAcceptance\(check\.checked\)/);
     assert.match(contracts, /sequenceEvidence\(/);
     assert.doesNotMatch(widget, /rawPayload|hiddenReasoning|process\.env/);
 });

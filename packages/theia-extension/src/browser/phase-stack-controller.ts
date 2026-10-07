@@ -1,4 +1,4 @@
-import { createDefaultExecutionGrant } from '@dope/agent-core';
+import { createDefaultExecutionGrant, sequenceNeedsDirtyAcceptance } from '@dope/agent-core';
 import type { AgentRun, AgentTaskSequence } from '@dope/agent-core';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 
@@ -16,6 +16,7 @@ export class PhaseStackController {
     validationCommand = '';
     acceptedGrant = false;
     acceptedDirty = false;
+    private acceptedDirtyFingerprint?: string;
     message = '';
     busy = false;
     pendingDirtyImport?: { folderName: string; input: string };
@@ -28,7 +29,8 @@ export class PhaseStackController {
     async attach(project?: string): Promise<void> {
         const serial = ++this.serial;
         this.project = project; this.handle = undefined; this.sequences = []; this.selected = undefined;
-        this.evidence = undefined; this.run = undefined; this.acceptedGrant = false; this.acceptedDirty = false;
+        this.evidence = undefined; this.run = undefined; this.acceptedGrant = false;
+        this.acceptedDirty = false; this.acceptedDirtyFingerprint = undefined;
         this.validationCommand = ''; this.validationTaskId = undefined;
         this.message = ''; this.pendingDirtyImport = undefined; this.lastView = ''; this.changed();
         if (!project) return;
@@ -49,6 +51,10 @@ export class PhaseStackController {
             if (this.handle !== handle) return;
             this.sequences = sequences;
             this.evidence = evidence;
+            if (this.acceptedDirty && this.acceptedDirtyFingerprint !== evidence.worktreeFingerprint) {
+                this.acceptedDirty = false; this.acceptedDirtyFingerprint = undefined;
+                this.message = 'Worktree changed after acceptance. Review and accept the current dirty basis again.';
+            }
             this.selected = sequences.find(item => item.id === this.selected?.id) ?? sequences[0];
             const taskId = this.selected?.taskId;
             if (taskId && taskId !== this.validationTaskId) {
@@ -65,7 +71,8 @@ export class PhaseStackController {
     }
     select(id: string): void {
         this.selected = this.sequences.find(item => item.id === id);
-        this.acceptedGrant = false; this.acceptedDirty = false; this.run = undefined;
+        this.acceptedGrant = false; this.acceptedDirty = false; this.acceptedDirtyFingerprint = undefined;
+        this.run = undefined;
         this.validationCommand = ''; this.validationTaskId = undefined;
         void this.refresh(); this.changed();
     }
@@ -117,18 +124,42 @@ export class PhaseStackController {
     }
     get current() { return this.selected?.stack.entries[this.selected.currentEntryNumber - 1]; }
     get needsDirtyAcceptance(): boolean {
-        return Boolean(['worktree-drift', 'dirty-acceptance-required'].includes(this.selected?.blockedReason ?? '') &&
-            this.evidence && !this.evidence.clean);
+        return sequenceNeedsDirtyAcceptance(this.selected, this.evidence);
+    }
+    setDirtyAcceptance(accepted: boolean): void {
+        this.acceptedDirty = accepted;
+        this.acceptedDirtyFingerprint = accepted ? this.evidence?.worktreeFingerprint : undefined;
+        this.changed();
+    }
+    get dirtyAcceptanceReady(): boolean {
+        return this.needsDirtyAcceptance && this.acceptedDirty &&
+            this.acceptedDirtyFingerprint === this.evidence?.worktreeFingerprint;
+    }
+    get readinessMessage(): string {
+        if (!this.selected || this.current?.execution !== 'agent-task' || this.selected.status === 'running') return '';
+        if (this.selected.status === 'blocked' && !this.needsDirtyAcceptance &&
+            !retryable.includes(this.selected.blockedReason ?? ''))
+            return `Resolve repository blocker: ${this.selected.blockedReason ?? 'unknown'}.`;
+        if (this.evidence && this.evidence.head !== (this.selected.checkpoints.at(-1)?.sha ?? this.selected.basis.head))
+            return 'Repository HEAD changed. Reconcile the sequence before continuing.';
+        if (this.needsDirtyAcceptance && !this.dirtyAcceptanceReady)
+            return 'Worktree is dirty: accept it as this task\'s starting basis to continue.';
+        if (!this.acceptedGrant) return 'Accept the project execution grant to continue.';
+        if (!this.validationCommand.trim()) return 'Enter a required validation command to continue.';
+        if (this.validationCommand.trim().length > 160) return 'Validation command is too long.';
+        return '';
     }
     get canStart(): boolean {
         const s = this.selected;
+        const acceptedBasisRetry = Boolean(s?.acceptedDirty && s.status === 'blocked' &&
+            retryable.includes(s.blockedReason ?? ''));
         return Boolean(this.handle && this.project && this.evidence && s &&
             this.evidence.head === (s.checkpoints.at(-1)?.sha ?? s.basis.head) &&
-            (this.evidence.clean || this.needsDirtyAcceptance && this.acceptedDirty) &&
+            (this.evidence.clean || this.dirtyAcceptanceReady || acceptedBasisRetry) &&
             this.current?.execution === 'agent-task' &&
             (s.status === 'ready' || s.status === 'blocked' && retryable.includes(s.blockedReason ?? '') ||
-                this.needsDirtyAcceptance && this.acceptedDirty) &&
-            (!this.needsDirtyAcceptance || this.acceptedDirty) && this.acceptedGrant &&
+                this.dirtyAcceptanceReady) &&
+            (!this.needsDirtyAcceptance || this.dirtyAcceptanceReady) && this.acceptedGrant &&
             this.validationCommand.trim().length > 0 && this.validationCommand.trim().length <= 160 && !this.busy);
     }
     async start(): Promise<void> {
@@ -138,10 +169,10 @@ export class PhaseStackController {
             const command = this.validationCommand.trim();
             const task = await this.runtime.prepareSequenceTask(this.handle!, id, { kind: 'follow-coding-agent' },
                 { validation: [{ kind: 'test', label: 'phase-stack', command }], requireValidationPass: true },
-                this.needsDirtyAcceptance && this.acceptedDirty);
+                this.dirtyAcceptanceReady ? { worktreeFingerprint: this.acceptedDirtyFingerprint! } : undefined);
             const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1, taskId: task.id,
                 acceptedAt: new Date().toISOString() });
-            this.acceptedGrant = false; this.acceptedDirty = false;
+            this.acceptedGrant = false; this.acceptedDirty = false; this.acceptedDirtyFingerprint = undefined;
             this.run = await this.runtime.startSequence(this.handle!, this.project!, id, grant, true);
             this.message = 'Sequence task started.';
         });
@@ -172,7 +203,12 @@ export class PhaseStackController {
     private async perform(action: () => Promise<void>): Promise<void> {
         this.busy = true; this.message = ''; this.changed();
         try { await action(); }
-        catch { this.message = 'Phase Stack operation failed. Inspect repository, stack, and grant state, then retry.'; }
+        catch (error) {
+            if (error instanceof Error && /Dirty worktree changed since acceptance/u.test(error.message)) {
+                this.setDirtyAcceptance(false);
+                this.message = 'Worktree changed after acceptance. Review and accept the current dirty basis again.';
+            } else this.message = 'Phase Stack operation failed. Inspect repository, stack, and grant state, then retry.';
+        }
         finally { this.busy = false; await this.refresh(); this.changed(); }
     }
 }

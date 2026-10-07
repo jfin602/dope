@@ -62,11 +62,38 @@ test('dirty import is typed, opt-in, read-only to project/Git, and execution sti
         assert.equal((await reopened.readSequence(reopenedHandle, sequence.id))?.blockedReason,
             'dirty-acceptance-required');
         reopened.dispose();
+        const fingerprint = (await backend.sequenceEvidence(handle)).worktreeFingerprint;
         const task = await backend.prepareSequenceTask(handle, sequence.id, { kind: 'follow-coding-agent' },
-            { validation: [], requireValidationPass: false }, true);
+            { validation: [], requireValidationPass: false }, { worktreeFingerprint: fingerprint });
         assert.equal(task.authority.profile, 'phase-8b-project');
-        assert.equal((await backend.readSequence(handle, sequence.id))?.acceptedDirty?.paths[0]?.path, 'existing.txt');
+        const accepted = (await backend.readSequence(handle, sequence.id))!;
+        assert.equal(accepted.status, 'ready');
+        assert.equal(accepted.blockedReason, undefined);
+        assert.equal(accepted.acceptedDirty?.paths[0]?.path, 'existing.txt');
+        assert.equal(accepted.acceptedDirty?.paths[0]?.code, ' M');
+        assert.equal(accepted.acceptedDirty?.paths[0]?.size, before.length);
+        assert.equal((await backend.reconcileSequence(handle, sequence.id)).blockedReason, undefined);
+        await writeFile(join(root, 'later.txt'), 'unrelated\n');
+        const drifted = await backend.reconcileSequence(handle, sequence.id);
+        assert.equal(drifted.blockedReason, 'worktree-drift');
+        assert.deepEqual(drifted.acceptedDirty, accepted.acceptedDirty);
     }));
+
+test('dirty basis changes after confirmation require renewed acceptance', async () => fixture(async (root, backend, handle) => {
+    await writeFile(join(root, 'existing.txt'), 'first\n');
+    const result = await backend.importSequence(handle, 'c8-dirty-import', { allowDirtyImport: true });
+    assert.equal(result.kind, 'imported');
+    if (result.kind !== 'imported') return;
+    const fingerprint = (await backend.sequenceEvidence(handle)).worktreeFingerprint;
+    await writeFile(join(root, 'existing.txt'), 'second\n');
+    await assert.rejects(backend.prepareSequenceTask(handle, result.sequence.id,
+        { kind: 'follow-coding-agent' }, { validation: [], requireValidationPass: false },
+        { worktreeFingerprint: fingerprint }), /changed since acceptance/);
+    const blocked = (await backend.readSequence(handle, result.sequence.id))!;
+    assert.equal(blocked.status, 'blocked');
+    assert.equal(blocked.acceptedDirty, undefined);
+    assert.equal(blocked.taskId, undefined);
+}));
 
 test('clean import succeeds without a confirmation option', async () => fixture(async (_root, backend, handle) => {
     const result = await backend.importSequence(handle, 'c8-dirty-import');

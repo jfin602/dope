@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { AGENT_SCHEMA_VERSION, parseAgentTask, parseExecutionGrant, parseImportedStack,
-    phaseStackTaskMetadata } from '@dope/agent-core';
+    phaseStackTaskMetadata, sequenceNeedsDirtyAcceptance } from '@dope/agent-core';
 import type { AgentModelPolicy, AgentRun, AgentTask, AgentTaskSequence, CompletionPolicy,
     ExecutionGrant, ImportedStack, SequenceBlockReason } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
@@ -165,15 +165,25 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             updatedAt: new Date(Math.max(Date.now(), Date.parse(sequence.updatedAt) + 1)).toISOString() });
     }
     async prepareSequenceTask(handle: string, sequenceId: string, modelPolicy: AgentModelPolicy,
-        completion: CompletionPolicy, acceptDirty = false): Promise<AgentTask> {
+        completion: CompletionPolicy, dirtyAcceptance?: { worktreeFingerprint: string }): Promise<AgentTask> {
         const root = this.active(handle);
+        if (checkpointProjects.has(root) || this.execution?.activeRunId(root))
+            throw new Error('Project execution or checkpoint is active');
         let sequence = await this.sequenceState(root, sequenceId);
-        if (acceptDirty && sequence.status === 'blocked' &&
-            ['worktree-drift', 'dirty-acceptance-required'].includes(sequence.blockedReason ?? '')) {
+        if (dirtyAcceptance) {
+            const before = await captureSequenceEvidence(root);
+            if (!sequenceNeedsDirtyAcceptance(sequence, before) ||
+                before.worktreeFingerprint !== dirtyAcceptance.worktreeFingerprint)
+                throw new Error('Dirty worktree changed since acceptance; review and accept it again');
             const dirty = await captureDirtyBasis(root);
             if (!dirty.paths.length || dirty.head !== (sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head))
                 throw new Error('No eligible dirty worktree to accept');
             const evidence = await captureSequenceEvidence(root);
+            if (evidence.worktreeFingerprint !== dirtyAcceptance.worktreeFingerprint ||
+                evidence.head !== before.head || evidence.packageVersion !== before.packageVersion ||
+                evidence.clean !== before.clean)
+                throw new Error('Dirty worktree changed since acceptance; review and accept it again');
+            await assertDirtyBasis(root, dirty);
             if (sequenceBlockReason({ ...sequence, acceptedDirty: dirty }, { ...evidence, clean: true,
                 worktreeFingerprint: sequence.basis.worktreeFingerprint }, await stackSourceDrift(root, sequence.stack)))
                 throw new Error('Sequence has another reconciliation blocker');

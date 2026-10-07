@@ -34,6 +34,13 @@ export type SequenceBlockReason = 'source-drift' | 'git-history' | 'checkpoint-m
     'dirty-acceptance-required' |
     'run-failed' | 'run-cancelled' | 'authority-denied' | 'validation-failed' |
     'capacity-exhausted' | 'checkpoint-pending' | 'checkpoint-failed';
+/** A dirty blocker is actionable only for a pending executable entry and a dirty repository. */
+export function sequenceNeedsDirtyAcceptance(sequence: AgentTaskSequence | undefined,
+    evidence: { clean: boolean } | undefined): boolean {
+    return Boolean(sequence?.status === 'blocked' &&
+        (sequence.blockedReason === 'dirty-acceptance-required' || sequence.blockedReason === 'worktree-drift') &&
+        sequence.stack.entries[sequence.currentEntryNumber - 1]?.execution === 'agent-task' && evidence && !evidence.clean);
+}
 export interface PhaseStackTaskMetadata {
     objective: string; instructions: string; origin: { kind: 'phase-stack'; promptId: string }; controls: ExecutionControls;
     recommendedModel: 'gpt-6-sol'; versionPolicy: VersionPolicy; stackFingerprint: string;

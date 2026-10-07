@@ -74,10 +74,14 @@ export class PhaseStackWidget extends BaseWidget {
         detail.append(el('p', `Snapshot fingerprint: ${s.stack.fingerprint}`));
         detail.append(el('p', `Sequence: ${s.status} · source fingerprint: ${s.blockedReason === 'source-drift' ? 'drifted' : 'no drift recorded at last reconciliation'}`));
         if (c.evidence) detail.append(el('p', `Current HEAD: ${c.evidence.head} · package ${c.evidence.packageVersion} · ` +
-            `${c.evidence.clean ? 'clean' : s.acceptedDirty ? 'accepted dirty basis' : 'dirty, acceptance required'}`));
+            `${c.evidence.clean ? 'clean' : c.dirtyAcceptanceReady ? 'dirty basis selected, pending backend verification' :
+                s.blockedReason === 'worktree-drift' ? 'dirty worktree drift' :
+                    s.acceptedDirty ? 'accepted dirty basis' : 'dirty, acceptance required'}`));
         detail.append(el('p', `Imported basis: ${s.basis.head} · package ${s.basis.packageVersion}`));
         if (s.acceptedDirty) detail.append(el('p', `Accepted dirty basis: ${s.acceptedDirty.head} · ${s.acceptedDirty.paths.length} paths`));
-        if (s.blockedReason) detail.append(el('p', `Blocked: ${s.blockedReason}`));
+        if (s.blockedReason) detail.append(el('p', c.dirtyAcceptanceReady ?
+            `Recorded blocker (clears when Resume verifies the basis): ${s.blockedReason}` :
+            `Blocked: ${s.blockedReason}`));
         if (s.gateMessage) detail.append(el('p', s.gateMessage));
         const entries = el('ol'); entries.setAttribute('aria-label', 'Phase Stack entries');
         for (const entry of s.stack.entries) {
@@ -102,7 +106,6 @@ export class PhaseStackWidget extends BaseWidget {
             const command = el('input'); command.type = 'text'; command.value = c.validationCommand;
             command.placeholder = './validate.sh'; command.maxLength = 160;
             command.setAttribute('aria-label', 'Required validation command');
-            command.onchange = () => { c.validationCommand = command.value; this.render(); };
             validation.append(command); controls.append(validation);
             const grant = el('label'), grantCheck = el('input'); grantCheck.type = 'checkbox'; grantCheck.checked = c.acceptedGrant;
             grantCheck.setAttribute('aria-label', 'Accept project execution grant');
@@ -112,11 +115,15 @@ export class PhaseStackWidget extends BaseWidget {
             if (c.needsDirtyAcceptance) {
                 const dirty = el('label'), check = el('input'); check.type = 'checkbox'; check.checked = c.acceptedDirty;
                 check.setAttribute('aria-label', 'Accept current dirty worktree for this task');
-                check.onchange = () => { c.acceptedDirty = check.checked; this.render(); };
+                check.onchange = () => c.setDirtyAcceptance(check.checked);
                 dirty.append(check, document.createTextNode(' Accept current dirty worktree as this task’s starting basis.'));
                 controls.append(dirty);
             }
-            controls.append(button(s.status === 'ready' ? 'Start' : 'Resume', () => void c.start(), !c.canStart));
+            const readiness = el('p', c.readinessMessage); readiness.setAttribute('role', 'status');
+            const resume = button(s.status === 'ready' ? 'Start' : 'Resume', () => void c.start(), !c.canStart);
+            command.oninput = () => { c.validationCommand = command.value; readiness.textContent = c.readinessMessage;
+                resume.disabled = !c.canStart; };
+            controls.append(readiness, resume);
             controls.append(button('Stop', () => void c.stop(), c.busy || s.status !== 'running'));
             if (s.blockedReason === 'checkpoint-pending') controls.append(button('Create checkpoint', () => void c.checkpoint(), c.busy));
             else if (s.status !== 'running') controls.append(button('Reconcile repository', () => void c.reconcile(), c.busy));

@@ -25,7 +25,7 @@ export interface AgentRuntimeService {
     reconcileSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
     reconcileManualGate(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
     prepareSequenceTask(projectHandle: string, sequenceId: string, modelPolicy: AgentModelPolicy,
-        completion: CompletionPolicy, acceptDirty?: boolean): Promise<AgentTask>;
+        completion: CompletionPolicy, dirtyAcceptance?: { worktreeFingerprint: string }): Promise<AgentTask>;
     startSequence(projectHandle: string, folderUri: string, sequenceId: string, grant: ExecutionGrant,
         hostedProjectDataAuthorized: boolean): Promise<AgentRun>;
     stopSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;

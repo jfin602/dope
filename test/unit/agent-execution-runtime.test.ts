@@ -86,6 +86,14 @@ async function terminal(store: AgentStore, root: string, runId: string) {
     throw new Error('Run did not terminate');
 }
 
+async function released(runtime: AgentExecutionRuntime, root: string): Promise<void> {
+    for (let i = 0; i < 300; i++) {
+        if (!runtime.activeRunId(root)) return;
+        await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    throw new Error('Project execution slot was not released');
+}
+
 async function sequenceTerminal(store: AgentStore, root: string, sequenceId: string) {
     for (let i = 0; i < 300; i++) {
         const sequence = await store.readSequence(root, sequenceId);
@@ -107,6 +115,40 @@ async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: strin
         acceptedAt: new Date().toISOString() });
     return { sequence, task, accepted };
 }
+
+test('dirty import acceptance persists exact basis and starts P1 in its execution workspace', async () => fixture(async f => {
+    await writeFile(join(f.root, 'notes.txt'), 'developer work\n');
+    const imported = await f.backend.importSequence(f.handle, 'c8-lifecycle-test', { allowDirtyImport: true });
+    assert.equal(imported.kind, 'imported');
+    if (imported.kind !== 'imported') return;
+    assert.equal(imported.sequence.blockedReason, 'dirty-acceptance-required');
+    const evidence = await f.backend.sequenceEvidence(f.handle);
+    const task = await f.backend.prepareSequenceTask(f.handle, imported.sequence.id,
+        { kind: 'follow-coding-agent' },
+        { validation: [{ kind: 'test', label: 'phase-stack', command: './validate.sh' }],
+            requireValidationPass: true },
+        { worktreeFingerprint: evidence.worktreeFingerprint });
+    const prepared = (await f.backend.readSequence(f.handle, imported.sequence.id))!;
+    assert.equal(prepared.status, 'ready');
+    assert.equal(prepared.blockedReason, undefined);
+    assert.equal(prepared.acceptedDirty?.paths[0]?.path, 'notes.txt');
+    assert.equal((await f.backend.reconcileSequence(f.handle, imported.sequence.id)).blockedReason, undefined);
+    const accepted = createDefaultExecutionGrant({ id: 'dirty-sequence-grant', revision: 1,
+        taskId: task.id, acceptedAt: new Date().toISOString() });
+    const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href,
+        imported.sequence.id, accepted, true);
+    assert.equal(run.status, 'running');
+    assert.equal((await f.backend.readSequence(f.handle, imported.sequence.id))?.status, 'running');
+    assert.equal(await readFile(join(f.adapter.starts[0].executionRoot, 'notes.txt'), 'utf8'), 'developer work\n');
+    await f.backend.stopSequence(f.handle, imported.sequence.id);
+    assert.equal((await f.backend.readSequence(f.handle, imported.sequence.id))?.acceptedDirty?.paths[0]?.path,
+        'notes.txt');
+    await released(f.runtime, f.root);
+    const retry = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href,
+        imported.sequence.id, accepted, true);
+    assert.equal(retry.status, 'running');
+    await f.backend.stopSequence(f.handle, imported.sequence.id);
+}));
 
 test('sequence retains the failed AgentRun when provider startup rejects after run creation', async () => fixture(async f => {
     const { sequence, accepted } = await preparedSequence(f);
@@ -420,6 +462,7 @@ test('observed command exit and exact validation target determine validation tru
     assert.equal(passed.validationResults[0].status, 'passed');
     assert.deepEqual(passed.commandEvidence?.[0].matchedTargets, ['unit']);
     assert.equal(passed.commandEvidence?.[0].exitCode, 0);
+    await released(f.runtime, f.root);
     const second = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
     f.adapter.onEvent!({ kind: 'command-started', commandId: 'two', command: 'echo narrated success', summary: 'started' });
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'two', exitCode: 0, summary: 'completed' });
@@ -428,6 +471,7 @@ test('observed command exit and exact validation target determine validation tru
     assert.equal(unmatched.status, 'failed');
     assert.equal(unmatched.outcome?.code, 'validation-failed');
     assert.deepEqual(unmatched.commandEvidence?.[0].matchedTargets, []);
+    await released(f.runtime, f.root);
     const third = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
     f.adapter.onEvent!({ kind: 'command-started', commandId: 'three', command: 'node --test', summary: 'started' });
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'three', exitCode: 1, summary: 'failed' });
@@ -435,6 +479,7 @@ test('observed command exit and exact validation target determine validation tru
     const failed = await terminal(f.store, f.root, third.id);
     assert.equal(failed.validationResults[0].status, 'failed');
     assert.equal(failed.status, 'failed');
+    await released(f.runtime, f.root);
     const fourth = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
     f.adapter.onEvent!({ kind: 'command-started', commandId: 'four', command: '/bin/bash -lc node --test', summary: 'started' });
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'four', exitCode: 0, summary: 'completed' });
@@ -442,6 +487,7 @@ test('observed command exit and exact validation target determine validation tru
     const wrapped = await terminal(f.store, f.root, fourth.id);
     assert.equal(wrapped.status, 'completed');
     assert.deepEqual(wrapped.commandEvidence?.[0].matchedTargets, ['unit']);
+    await released(f.runtime, f.root);
     const fifth = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
     f.adapter.onEvent!({ kind: 'command-started', commandId: 'five',
         command: '/bin/bash -lc node --test; echo extra', summary: 'started' });
