@@ -1,14 +1,19 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { chmod, mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, realpath, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import test from 'node:test';
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/index.js';
-import { CodexAgentExecutionAdapter, mutationConfig } from '../../packages/theia-extension/lib/node/codex-agent-execution.js';
+import { CodexAgentExecutionAdapter, mutationConfig, resolveSandboxNode } from '../../packages/theia-extension/lib/node/codex-agent-execution.js';
 import { providerFailure } from '../../packages/theia-extension/lib/node/codex-rpc-process.js';
+
+test('sandbox probe resolves standalone Node 24 independently of Electron process.execPath', async () => {
+    assert.equal(await resolveSandboxNode(dirname(process.execPath)), await realpath(process.execPath));
+    await assert.rejects(resolveSandboxNode('/nonexistent-node-directory'), /Node 24 executable unavailable/);
+});
 
 test('Codex capacity failure is narrowly sanitized for retry', () => {
     assert.equal(providerFailure({ code: 'model_at_capacity' }).message, 'Codex model at capacity');

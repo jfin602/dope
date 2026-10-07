@@ -1,6 +1,6 @@
 # Product Phase 8C — Sequential Task / Phase-Stack Execution
 
-Status: **READY FOR EXECUTION**
+Status: **GREEN / QUALIFIED / CLOSED** at `0.8.20`; see [P7 closeout](closeout.md).
 Execution folder: `p8c`
 Product slice: Phase 8C — Sequential task / phase-stack execution
 Starting product version: `0.8.13`
@@ -42,4 +42,4 @@ Before execution:
 
 ## Closeout routing
 
-P7 closes Phase 8C only. If Green, route next to fresh Phase 8D planning for general Scoped Delegation.
+P7 closes Phase 8C only. The next step is a fresh Phase 8D General Scoped Delegation docs review.

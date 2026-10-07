@@ -215,6 +215,8 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         if (accepted.taskId !== task.id || accepted.projectRoot !== task.projectRoot || accepted.acceptedAt < task.createdAt)
             throw new Error('Accepted ExecutionGrant does not match sequence task/project');
         if (this.execution.activeRunId(root)) throw new Error('A mutation run is already active for this project');
+        const knownRunIds = new Set((await this.store.listRuns(root)).filter(run => run.taskId === task.id)
+            .map(run => run.id));
         sequence = await this.setSequence(root, sequence, { status: 'running', blockedReason: undefined });
         const start = this.execution.startSequence(root, folderUri, task.id, grant, hostedProjectDataAuthorized,
             sequence.acceptedDirty);
@@ -232,8 +234,12 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             return run;
         } catch (error) {
             const current = await this.store.readSequence(root, sequence.id);
-            if (current?.status === 'running') await this.setSequence(root, current,
-                { status: 'blocked', blockedReason: 'run-failed' });
+            if (current?.status === 'running') {
+                const failedRuns = (await this.store.listRuns(root)).filter(run =>
+                    run.taskId === task.id && !knownRunIds.has(run.id));
+                await this.setSequence(root, current, { status: 'blocked', blockedReason: 'run-failed',
+                    ...(failedRuns.length === 1 ? { runIds: [...(current.runIds ?? []), failedRuns[0].id] } : {}) });
+            }
             throw error;
         } finally { this.pendingStarts.delete(sequence.id); }
     }

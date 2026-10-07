@@ -105,6 +105,19 @@ async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: strin
     return { sequence, task, accepted };
 }
 
+test('sequence retains the failed AgentRun when provider startup rejects after run creation', async () => fixture(async f => {
+    const { sequence, accepted } = await preparedSequence(f);
+    f.adapter.start = async () => { throw new Error('controlled startup failure'); };
+    await assert.rejects(f.backend.startSequence(f.handle, pathToFileURL(f.root).href,
+        sequence.id, accepted, true), /controlled startup failure/);
+    const runs = (await f.store.listRuns(f.root)).filter(run => run.taskId === `${sequence.id}-P1`);
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0].status, 'failed');
+    const persisted = await f.store.readSequence(f.root, sequence.id);
+    assert.equal(persisted?.blockedReason, 'run-failed');
+    assert.deepEqual(persisted?.runIds, [runs[0].id]);
+}));
+
 test('sequence runs only current snapshot and retries capacity in one task/workspace without early promotion', async () => fixture(async f => {
     const { sequence, task, accepted } = await preparedSequence(f);
     assert.deepEqual(task.origin, { kind: 'phase-stack', promptId: `c8-lifecycle-test-P1-${sequence.stack.fingerprint.slice(0, 12)}` });

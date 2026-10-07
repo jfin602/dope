@@ -263,10 +263,8 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Plan the current Phase 8B Agent execution core implementation:
+Begin a fresh Phase 8D General Scoped Delegation docs review:
 
-`/prompt-ass -> /prompt-plan -> /prompt-write p8b`
+`/docs-review -> explicit approval -> /docs-apply`
 
-Phase 8A is **GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`. The later `bc151cb` commit is docs-only qualification.
-
-Phase 8B starts from that `0.8.6` product source and should continue at `0.8.7+`. It owns one bounded mutation-capable AgentTask / AgentRun / ExecutionGrant path and a minimal Agent Run surface. It does **not** yet own sequential phase-stack execution, dirty-tree continuation or Git checkpoint commits; those remain Phase 8C.
+Phase 8C sequential execution is **GREEN / QUALIFIED / CLOSED** at exact `0.8.20`; see `docs/tasks/p8c/closeout.md`. Phase 8D implementation is not authorized by the 8C closeout.

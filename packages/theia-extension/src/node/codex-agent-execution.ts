@@ -103,8 +103,20 @@ export interface CodexExecutionOptions {
         authoritativeRoot: string) => Promise<void>;
 }
 
+export async function resolveSandboxNode(pathValue = process.env.PATH ?? ''): Promise<string> {
+    for (const directory of pathValue.split(delimiter).filter(isAbsolute)) {
+        const candidate = await realpath(join(directory, 'node')).catch(() => undefined);
+        if (!candidate) continue;
+        const version = await new Promise<string | undefined>(resolveVersion =>
+            execFile(candidate, ['--version'], { timeout: 3000 }, (error, stdout) =>
+                resolveVersion(error ? undefined : stdout.trim())));
+        if (/^v24\.\d+\.\d+$/u.test(version ?? '')) return candidate;
+    }
+    throw fail('Node 24 executable unavailable for sandbox preflight', 'connection-unavailable');
+}
+
 export async function verifyInstalledSandbox(executable: string, home: string, runtimeBase: string,
-    authoritativeRoot = ''): Promise<void> {
+    authoritativeRoot = '', nodeExecutable = process.execPath): Promise<void> {
     const probe = await mkdtemp(join(runtimeBase, 'sandbox-probe-'));
     const project = join(probe, 'project');
     const deniedFile = join(probe, 'private');
@@ -138,7 +150,7 @@ if test -e destructive-canary; then exit 16; fi`;
         await new Promise<void>((resolveProbe, reject) => execFile(executable,
             ['sandbox', '-P', 'dope_run', '-C', project, '/bin/sh', '-c', script,
                 'dope-probe', deniedFile, join(tmpdir(), 'dope-sandbox-denied-probe'),
-                join(home, 'config.toml'), process.execPath, authoritativeRoot],
+                join(home, 'config.toml'), nodeExecutable, authoritativeRoot],
             { cwd: project, timeout: 5000, env: { PATH: process.env.PATH, HOME: home,
                 CODEX_HOME: home, ACCESS_TOKEN: 'dope-probe-marker' } },
             error => error ? reject(fail(`Codex sandbox preflight failed (${error.code ?? 'startup'})`)) : resolveProbe()));
@@ -200,9 +212,11 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
         const home = await mkdtemp(join(runtimeBase, 'codex-run-'));
         let rpc: RpcProcess | undefined;
         try {
+            const nodeExecutable = await resolveSandboxNode();
             await writeFile(join(home, 'config.toml'), mutationConfig(root, resolvedExecutable,
-                await realpath(process.execPath)), { mode: 0o600, flag: 'wx' });
-            await (this.options.verifySandbox ?? verifyInstalledSandbox)(executable, home, runtimeBase, approved);
+                nodeExecutable), { mode: 0o600, flag: 'wx' });
+            if (this.options.verifySandbox) await this.options.verifySandbox(executable, home, runtimeBase, approved);
+            else await verifyInstalledSandbox(executable, home, runtimeBase, approved, nodeExecutable);
             let token: string;
             try { token = await this.auth.accessToken(request.connectionId, request.registrationId); }
             catch { throw fail('ChatGPT account needs authorization', 'authentication'); }

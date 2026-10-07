@@ -90,6 +90,12 @@ export class PhaseStackWidget extends BaseWidget {
             gate.append(prompt, button('External completion: reconcile gate', () => void c.reconcile(), c.busy)); detail.append(gate);
         } else if (current?.execution === 'agent-task') {
             const controls = el('section'); controls.append(el('h4', 'Execution'));
+            const validation = el('label', 'Required validation command');
+            const command = el('input'); command.type = 'text'; command.value = c.validationCommand;
+            command.placeholder = './validate.sh'; command.maxLength = 160;
+            command.setAttribute('aria-label', 'Required validation command');
+            command.onchange = () => { c.validationCommand = command.value; this.render(); };
+            validation.append(command); controls.append(validation);
             const grant = el('label'), grantCheck = el('input'); grantCheck.type = 'checkbox'; grantCheck.checked = c.acceptedGrant;
             grantCheck.setAttribute('aria-label', 'Accept project execution grant');
             grantCheck.onchange = () => { c.acceptedGrant = grantCheck.checked; this.render(); };

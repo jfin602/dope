@@ -13,6 +13,7 @@ export class PhaseStackController {
     evidence?: StackEvidence;
     run?: AgentRun;
     folderName = '';
+    validationCommand = '';
     acceptedGrant = false;
     acceptedDirty = false;
     message = '';
@@ -20,12 +21,14 @@ export class PhaseStackController {
     private serial = 0;
     private refreshing = false;
     private lastView = '';
+    private validationTaskId?: string;
 
     constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void) {}
     async attach(project?: string): Promise<void> {
         const serial = ++this.serial;
         this.project = project; this.handle = undefined; this.sequences = []; this.selected = undefined;
         this.evidence = undefined; this.run = undefined; this.acceptedGrant = false; this.acceptedDirty = false;
+        this.validationCommand = ''; this.validationTaskId = undefined;
         this.message = ''; this.lastView = ''; this.changed();
         if (!project) return;
         try {
@@ -46,6 +49,12 @@ export class PhaseStackController {
             this.sequences = sequences;
             this.evidence = evidence;
             this.selected = sequences.find(item => item.id === this.selected?.id) ?? sequences[0];
+            const taskId = this.selected?.taskId;
+            if (taskId && taskId !== this.validationTaskId) {
+                const task = await this.runtime.readTask(handle, taskId);
+                this.validationCommand = task?.completion.validation[0]?.command ?? '';
+                this.validationTaskId = taskId;
+            } else if (!taskId && this.validationTaskId) this.validationTaskId = undefined;
             const runId = this.selected?.runIds?.at(-1);
             this.run = runId ? await this.runtime.readRun(handle, runId) : undefined;
             const view = JSON.stringify([this.sequences, this.evidence, this.run, this.message]);
@@ -56,6 +65,7 @@ export class PhaseStackController {
     select(id: string): void {
         this.selected = this.sequences.find(item => item.id === id);
         this.acceptedGrant = false; this.acceptedDirty = false; this.run = undefined;
+        this.validationCommand = ''; this.validationTaskId = undefined;
         void this.refresh(); this.changed();
     }
     async importStack(): Promise<void> {
@@ -79,14 +89,17 @@ export class PhaseStackController {
             this.current?.execution === 'agent-task' &&
             (s.status === 'ready' || s.status === 'blocked' && retryable.includes(s.blockedReason ?? '') ||
                 this.needsDirtyAcceptance && this.acceptedDirty) &&
-            (!this.needsDirtyAcceptance || this.acceptedDirty) && this.acceptedGrant && !this.busy);
+            (!this.needsDirtyAcceptance || this.acceptedDirty) && this.acceptedGrant &&
+            this.validationCommand.trim().length > 0 && this.validationCommand.trim().length <= 160 && !this.busy);
     }
     async start(): Promise<void> {
         if (!this.canStart || !this.handle || !this.project || !this.selected) return;
         const id = this.selected.id;
         await this.perform(async () => {
+            const command = this.validationCommand.trim();
             const task = await this.runtime.prepareSequenceTask(this.handle!, id, { kind: 'follow-coding-agent' },
-                { validation: [], requireValidationPass: false }, this.needsDirtyAcceptance && this.acceptedDirty);
+                { validation: [{ kind: 'test', label: 'phase-stack', command }], requireValidationPass: true },
+                this.needsDirtyAcceptance && this.acceptedDirty);
             const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1, taskId: task.id,
                 acceptedAt: new Date().toISOString() });
             this.acceptedGrant = false; this.acceptedDirty = false;
