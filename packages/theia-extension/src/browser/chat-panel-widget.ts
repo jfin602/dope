@@ -690,12 +690,19 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private renderTree(node: ChatTree): HTMLElement {
         const list = document.createElement('ul');
+        list.className = 'dope-chat-tree';
         for (const folder of node.folders) {
             const item = document.createElement('li');
+            item.className = 'dope-chat-folder';
             const details = document.createElement('details');
             const summary = document.createElement('summary');
             summary.textContent = folder.path.slice(folder.path.lastIndexOf('/') + 1);
             details.append(summary);
+            const menu = document.createElement('details');
+            menu.className = 'dope-chat-context';
+            const menuLabel = document.createElement('summary');
+            menuLabel.textContent = 'Actions';
+            menuLabel.setAttribute('aria-label', `Actions for folder ${folder.path}`);
             const actions = document.createElement('div');
             actions.className = 'dope-chat-actions';
             actions.append(
@@ -708,7 +715,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     if (destination !== undefined) this.mutate({ type: 'move-folder', path: folder.path, destination });
                 }))
             );
-            details.append(actions, this.renderTree(folder));
+            menu.append(menuLabel, actions);
+            details.append(menu, this.renderTree(folder));
             item.append(details);
             list.append(item);
         }
@@ -716,24 +724,38 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const item = document.createElement('li');
             const row = document.createElement('div');
             row.className = 'dope-chat-row';
-            const select = this.button(chat.title, () => this.controller.select(chat.id));
+            const select = this.button('', () => void this.controller.select(chat.id));
             select.className = 'dope-chat-select';
-            select.title = `Last interaction ${chat.lastInteractedAt}`;
+            select.setAttribute('aria-label', `Open Chat ${chat.title}`);
             const dot = document.createElement('span');
             dot.className = 'dope-chat-color-dot'; dot.dataset.color = chat.color;
             dot.setAttribute('aria-hidden', 'true');
-            select.prepend(dot);
+            const text = document.createElement('span');
+            text.className = 'dope-chat-row-text';
+            const title = document.createElement('span');
+            title.className = 'dope-chat-row-title'; title.textContent = chat.title;
             const time = document.createElement('time');
             time.dateTime = chat.lastInteractedAt;
             time.title = `Created ${chat.createdAt}; last interaction ${chat.lastInteractedAt}`;
             time.textContent = new Date(chat.lastInteractedAt).toLocaleDateString();
+            text.append(title, time);
+            select.append(dot, text);
+            const menu = document.createElement('details');
+            menu.className = 'dope-chat-context';
+            const menuLabel = document.createElement('summary');
+            menuLabel.textContent = '⋯';
+            menuLabel.setAttribute('aria-label', `Actions for Chat ${chat.title}`);
+            const actions = document.createElement('div');
+            actions.className = 'dope-chat-actions';
             const rename = this.button('Rename', () => void this.name('Rename Chat', chat.title).then(title => {
                 if (title) this.mutate({ type: 'rename-chat', chatId: chat.id, title });
             }));
             const move = this.button('Move', () => void this.folderChoice('Move Chat', chat.folderPath).then(folderPath => {
                 if (folderPath !== undefined) this.mutate({ type: 'move-chat', chatId: chat.id, folderPath });
             }));
-            row.append(select, time, rename, move);
+            actions.append(rename, move);
+            menu.append(menuLabel, actions);
+            row.append(select, menu);
             item.append(row);
             list.append(item);
         }
@@ -800,16 +822,23 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (state.mode === 'select-chat') {
             this.settingsOpen = false; this.settingsDraft = undefined; this.settingsChatId = undefined;
             const header = document.createElement('header');
+            header.className = 'dope-chat-selector-header';
             const heading = document.createElement('h2');
             heading.textContent = 'Select Chat';
-            header.append(heading,
-                this.button('New Chat', () => void state.newChat(''), state.pending),
+            const create = document.createElement('div');
+            create.className = 'dope-chat-selector-create';
+            create.append(this.button('New Chat', () => void state.newChat(''), state.pending),
                 this.button('New Folder', () => void this.name('New folder').then(name => {
                     if (name) void state.newFolder('', name);
                 }), state.pending));
+            header.append(heading, create);
             if (!this.usableModels().length)
                 header.append(this.button('Manage AI connections', () => { void this.aiCenter?.openFromChat(this.id); }));
-            this.content.append(header, this.renderTree(chatTree(state.snapshot)));
+            const navigation = document.createElement('nav');
+            navigation.className = 'dope-chat-selector-list';
+            navigation.setAttribute('aria-label', 'Chats and folders');
+            navigation.append(this.renderTree(chatTree(state.snapshot)));
+            this.content.append(header, navigation);
             return;
         }
         const chat = state.chat;

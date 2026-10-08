@@ -48,3 +48,23 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
     assert.match(widget, /dope-chat-message-alert/);
     assert.match(widget, /Scroll to latest/);
 });
+
+test('Select Chat keeps nested disclosure and contextual actions separate from selection', async () => {
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+    const tree = widget.slice(widget.indexOf('private renderTree('), widget.indexOf('private render():'));
+    assert.match(tree, /details\.append\(menu, this\.renderTree\(folder\)\)/);
+    assert.match(tree, /menuLabel\.setAttribute\('aria-label', `Actions for folder \$\{folder\.path\}`\)/);
+    assert.match(tree, /select = this\.button\('', \(\) => void this\.controller\.select\(chat\.id\)\)/);
+    assert.match(tree, /select\.setAttribute\('aria-label', `Open Chat \$\{chat\.title\}`\)/);
+    assert.match(tree, /title\.textContent = chat\.title/);
+    assert.match(tree, /dot\.dataset\.color = chat\.color/);
+    assert.match(tree, /time\.dateTime = chat\.lastInteractedAt/);
+    assert.match(tree, /menuLabel\.setAttribute\('aria-label', `Actions for Chat \$\{chat\.title\}`\)/);
+    assert.match(tree, /menu\.append\(menuLabel, actions\);\s*row\.append\(select, menu\)/);
+    assert.match(tree, /type: 'rename-chat'/);
+    assert.match(tree, /type: 'move-chat'/);
+    assert.match(widget, /navigation\.setAttribute\('aria-label', 'Chats and folders'\)/);
+    assert.match(css, /\.dope-chat-selector-list \{[^}]*overflow: auto/);
+    assert.match(css, /\.dope-chat-panel button:focus-visible, \.dope-chat-panel summary:focus-visible/);
+});

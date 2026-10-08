@@ -267,6 +267,9 @@ test('saved panel selection waits for repository attach and never rewrites conve
         assert.equal(restored.mode, 'chat');
         assert.equal(restored.snapshot?.revision, revision);
         assert.equal((await repository.read(root)).revision, revision);
+        await restored.select(undefined);
+        assert.equal(await restored.select(chatId), true);
+        assert.equal((await repository.read(root)).revision, revision);
         await restored.attach(pathToFileURL(other).href);
         assert.equal(restored.mode, 'select-chat');
         assert.equal(await original.select(chatId), true);
