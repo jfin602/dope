@@ -1,6 +1,6 @@
 # c8-work-mode - Work module and Prompt Stack presentation
 
-Status: P1–P8 implemented; P9 remains Not Green after bounded RPC repair/replay; approved pre-qualification c8-chat-work-ui documentation awaiting implementation
+Status: P1–P8 implemented; P9 remains Not Green after bounded RPC repair/replay; c8-chat-work-ui P1-P5 prompt stack ready, implementation pending
 Phase: 8
 Mode: Correction
 Required unchanged Dope version: `0.8.20`
