@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { constants } from 'node:fs';
 import { cp, lstat, mkdir, mkdtemp, open, readdir, readlink, realpath, rename, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -60,6 +60,35 @@ async function scan(root: string): Promise<Map<string, FileState>> {
     };
     await visit(root, '');
     return files;
+}
+
+async function ignoredNewPaths(root: string, paths: string[]): Promise<Set<string>> {
+    const ignored = new Set<string>();
+    const env = { PATH: process.env.PATH, GIT_CONFIG_NOSYSTEM: '1',
+        GIT_CONFIG_GLOBAL: '/dev/null', GIT_OPTIONAL_LOCKS: '0' };
+    for (let offset = 0; offset < paths.length; offset += 128) {
+        const stdout = await new Promise<string>((resolveResult, reject) => {
+            const child = spawn('git', ['check-ignore', '--no-index', '--stdin', '-z'], { cwd: root, env });
+            const chunks: Buffer[] = [];
+            let bytes = 0;
+            const timeout = setTimeout(() => { child.kill('SIGKILL'); reject(new Error('Git ignore check timed out')); }, 10_000);
+            child.stdout.on('data', (chunk: Buffer) => {
+                bytes += chunk.length;
+                if (bytes > 1024 * 1024) { child.kill('SIGKILL'); reject(new Error('Git ignore output too large')); }
+                else chunks.push(chunk);
+            });
+            child.stderr.resume();
+            child.on('error', error => { clearTimeout(timeout); reject(error); });
+            child.on('close', code => {
+                clearTimeout(timeout);
+                if (code === 0 || code === 1) resolveResult(Buffer.concat(chunks).toString('utf8'));
+                else reject(new Error('Git ignore check failed'));
+            });
+            child.stdin.end(paths.slice(offset, offset + 128).join('\0') + '\0');
+        });
+        for (const path of stdout.split('\0')) if (path) ignored.add(path);
+    }
+    return ignored;
 }
 
 async function safeTarget(root: string, path: string, expect: 'file' | 'absent',
@@ -247,13 +276,15 @@ export class ExecutionWorkspace {
 
     async delta(): Promise<CandidateDelta> {
         const current = await scan(this.root);
+        const ignored = await ignoredNewPaths(this.root, [...current.keys()].filter(path =>
+            !this.basis.has(path) && !protectedPath(path)));
         const effects: CandidateEffect[] = [];
         for (const [path, before] of this.basis) {
             const after = current.get(path);
             if (!after) effects.push({ kind: 'delete', path, before: before.hash });
             else if (after.hash !== before.hash) effects.push({ kind: 'modify', path, before: before.hash, after: after.hash });
         }
-        for (const [path, after] of current) if (!this.basis.has(path))
+        for (const [path, after] of current) if (!this.basis.has(path) && !ignored.has(path))
             effects.push({ kind: 'create', path, after: after.hash });
         // No path identity is inferred from matching bytes. Moves are create + delete.
         return { version: AGENT_SCHEMA_VERSION, effects: effects.sort((a, b) => a.path.localeCompare(b.path)) };

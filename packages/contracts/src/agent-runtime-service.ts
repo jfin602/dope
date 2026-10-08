@@ -26,6 +26,7 @@ export interface AgentRuntimeService {
     readSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence | undefined>;
     listSequences(projectHandle: string): Promise<AgentTaskSequence[]>;
     sequenceEvidence(projectHandle: string): Promise<{ head: string; packageVersion: string; clean: boolean; worktreeFingerprint: string }>;
+    codingAgentReady(projectHandle: string): Promise<boolean>;
     reconcileSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
     reconcileManualGate(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
     prepareSequenceTask(projectHandle: string, sequenceId: string, modelPolicy: AgentModelPolicy,

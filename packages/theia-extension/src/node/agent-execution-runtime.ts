@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { AGENT_SCHEMA_VERSION, isModelCapacityFailure, parseExecutionGrant, projectPath } from '@dope/agent-core';
-import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentRun,
+import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentModelPolicy, AgentRun,
     AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance, AgentExecutionRequest } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureGitBasis, captureGitFinal } from '@dope/agent-core/lib/node/git-evidence';
@@ -151,13 +151,18 @@ export class AgentExecutionRuntime {
         if (observation.kind === 'authority-denied') void this.interrupt(active);
     }
 
-    private async select(task: AgentTask, hostedAuthorized: boolean): Promise<{
+    async codingAgentReady(): Promise<boolean> {
+        try { await this.select({ kind: 'follow-coding-agent' }, true); return true; }
+        catch { return false; }
+    }
+
+    private async select(modelPolicy: AgentModelPolicy, hostedAuthorized: boolean): Promise<{
         provenance: ExecutionProvenance; registrationId: string; adapter: AgentExecutionAdapter }> {
         if (typeof hostedAuthorized !== 'boolean') throw new Error('Explicit hosted project-data authorization required');
         let connectionId: string;
         let modelId: string;
         let policyRevision: number | undefined;
-        if (task.modelPolicy.kind === 'follow-coding-agent') {
+        if (modelPolicy.kind === 'follow-coding-agent') {
             const request = futureFeatureRoleRequest('coding-agent', hostedAuthorized);
             const { resolution } = await this.routing.resolve('coding-agent', request.requestHard, hostedAuthorized);
             const target = resolution.candidates[0]?.target;
@@ -165,8 +170,8 @@ export class AgentExecutionRuntime {
             connectionId = target.connectionId; modelId = target.modelId;
             policyRevision = resolution.policyRevision;
         } else {
-            connectionId = task.modelPolicy.connectionId;
-            modelId = task.modelPolicy.modelId;
+            connectionId = modelPolicy.connectionId;
+            modelId = modelPolicy.modelId;
         }
         const state = await this.inventory.inventory();
         const registry = state.registry;
@@ -230,7 +235,7 @@ export class AgentExecutionRuntime {
             if (grant.taskId !== task.id || grant.projectRoot !== task.projectRoot ||
                 grant.acceptedAt < task.createdAt)
                 throw new Error('Accepted ExecutionGrant does not match the task/project');
-            const selected = await this.select(task, hostedAuthorized);
+            const selected = await this.select(task.modelPolicy, hostedAuthorized);
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
             const basis = await captureGitBasis(root);
             if (!basis.head) throw new Error('Phase 8B requires a committed Git HEAD');
@@ -251,11 +256,15 @@ export class AgentExecutionRuntime {
                 provenance: selected.provenance }));
             await this.event(active, 'status', 'Agent run started', { status: 'running' });
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
+            const validationInstructions = task.origin.kind === 'phase-stack' && task.completion.requireValidationPass ?
+                `\n\nDOPE REQUIRED VALIDATION\nBefore finishing, run the following exact command(s) in the execution workspace. ` +
+                `Dope must observe their exit status before it can promote or checkpoint this task:\n` +
+                task.completion.validation.map(target => `- ${target.command ?? target.label}`).join('\n') : '';
             const request: AgentExecutionRequest = { projectRoot: root, executionRoot: active.workspace.root,
                 grant, taskId: task.id,
                 connectionId: selected.provenance.connectionId, registrationId: selected.registrationId,
                 modelId: selected.provenance.modelId,
-                prompt: `${task.objective}\n\n${task.instructions}`,
+                prompt: `${task.objective}\n\n${task.instructions}${validationInstructions}`,
                 ...(task.controls.reasoningEffort ? { reasoningEffort: task.controls.reasoningEffort } : {}),
                 onEvent: observation => this.observed(active, observation) };
             const handle = await selected.adapter.start(request);

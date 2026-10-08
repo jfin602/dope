@@ -33,7 +33,6 @@ export interface CodexProcessOptions {
     executable?: string;
     spawnChild?: typeof spawn;
     version?: (executable: string) => Promise<string>;
-    fetcher?: typeof fetch;
     timeoutMs?: number;
     turnTimeoutMs?: number;
     idleMs?: number;
@@ -47,7 +46,6 @@ export class CodexAppServer {
     private readonly executable: string;
     private readonly spawnChild: typeof spawn;
     private readonly version: (executable: string) => Promise<string>;
-    private readonly fetcher: typeof fetch;
     private readonly timeoutMs: number;
     private readonly turnTimeoutMs: number;
     private readonly idleMs: number;
@@ -59,7 +57,6 @@ export class CodexAppServer {
         this.version = options.version ?? (executable => new Promise((resolve, reject) =>
             execFile(executable, ['--version'], { timeout: 3000, cwd: tmpdir() },
                 (error, stdout) => error ? reject(error) : resolve(stdout))));
-        this.fetcher = options.fetcher ?? fetch;
         this.timeoutMs = options.timeoutMs ?? 8000;
         this.turnTimeoutMs = options.turnTimeoutMs ?? 60_000;
         this.idleMs = options.idleMs ?? 60_000;
@@ -127,19 +124,24 @@ export class CodexAppServer {
         try { return await start; } finally { this.starting.delete(connectionId); }
     }
     async models(connectionId: string, registrationId: string): Promise<{ id: string; label: string }[]> {
-        const token = await this.accessToken(connectionId, registrationId);
-        let response: Response;
-        try { response = await this.fetcher('https://api.openai.com/v1/models', {
-            headers: { Authorization: `Bearer ${token}` }, redirect: 'error', signal: AbortSignal.timeout(this.timeoutMs)
-        }); } catch { throw failure('ChatGPT model catalog unavailable', 'transient-transport'); }
-        if (!response.ok) throw failure('ChatGPT model catalog unavailable', response.status === 401 || response.status === 403 ?
-            'authentication' : response.status === 429 || response.status >= 500 ? 'transient-upstream' : 'nonretryable-provider');
-        let body: unknown;
-        try { body = await response.json(); } catch { throw failure('Invalid ChatGPT model catalog', 'invalid-json'); }
-        const models = object(body)?.models;
-        if (!Array.isArray(models)) throw failure('Invalid ChatGPT model catalog', 'invalid-json');
-        return models.filter(model => object(model)?.visibility === 'list' && typeof model.slug === 'string' && model.slug &&
-            typeof model.display_name === 'string').map(model => ({ id: model.slug, label: model.display_name }));
+        const { rpc } = await this.session(connectionId, registrationId);
+        const models: { id: string; label: string }[] = [];
+        let cursor: string | null = null;
+        do {
+            const response = object(await rpc.request('model/list', { limit: 100, includeHidden: false,
+                ...(cursor ? { cursor } : {}) }));
+            if (!Array.isArray(response?.data) || (response.nextCursor !== null &&
+                response.nextCursor !== undefined && typeof response.nextCursor !== 'string'))
+                throw failure('Invalid Codex model catalog', 'invalid-json');
+            for (const entry of response.data) {
+                const model = object(entry);
+                if (model?.hidden !== false || typeof model.model !== 'string' || !model.model ||
+                    typeof model.displayName !== 'string') continue;
+                models.push({ id: model.model, label: model.displayName });
+            }
+            cursor = response.nextCursor ?? null;
+        } while (cursor);
+        return models;
     }
     async test(connectionId: string, registrationId: string, model: string): Promise<{ threadId: string; text: string }> {
         const { rpc } = await this.session(connectionId, registrationId);

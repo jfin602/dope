@@ -18,7 +18,7 @@ async function fixture(work: (root: string, workspace: ExecutionWorkspace) => Pr
         await run('git', ['init', '-q', root]);
         await writeFile(join(root, 'a.ts'), 'first\n');
         await writeFile(join(root, 'old.ts'), 'old\n');
-        await writeFile(join(root, '.gitignore'), 'node_modules/\n');
+        await writeFile(join(root, '.gitignore'), 'node_modules/\ndist/\n.dope/\n');
         await run('git', ['add', 'a.ts', 'old.ts', '.gitignore'], { cwd: root });
         await run('git', ['-c', 'user.name=Dope Test', '-c', 'user.email=dope@test.invalid',
             'commit', '-qm', 'basis'], { cwd: root });
@@ -47,6 +47,16 @@ test('workspace edits are candidates; create and modify promote without Git writ
     assert.equal((await run('git', ['rev-parse', 'HEAD'], { cwd: root })).stdout.trim(), startingHead);
     assert.match((await run('git', ['status', '--porcelain'], { cwd: root })).stdout, / M a\.ts/);
     assert.equal((await run('git', ['diff', '--cached', '--name-only'], { cwd: root })).stdout, '');
+}));
+
+test('ignored build output stays outside the candidate while protected state remains visible', async () => fixture(async (_root, workspace) => {
+    await mkdir(join(workspace.root, 'dist'), { recursive: true });
+    await writeFile(join(workspace.root, 'dist/index.html'), 'generated');
+    await writeFile(join(workspace.root, 'new.ts'), 'source');
+    await mkdir(join(workspace.root, '.dope'), { recursive: true });
+    await writeFile(join(workspace.root, '.dope/agent.json'), '{}');
+    const delta = await workspace.delta();
+    assert.deepEqual(delta.effects.map(effect => effect.path), ['.dope/agent.json', 'new.ts']);
 }));
 
 test('delete or conservative rename blocks the entire candidate', async () => fixture(async (root, workspace) => {

@@ -12,6 +12,7 @@ export class PhaseStackController {
     stacks: DiscoveredTaskStack[] = [];
     selected?: AgentTaskSequence;
     evidence?: StackEvidence;
+    codingAgentReady = false;
     run?: AgentRun;
     tasksRoot = 'docs/tasks/';
     validationCommand = '';
@@ -28,7 +29,7 @@ export class PhaseStackController {
     async attach(project?: string): Promise<void> {
         const serial = ++this.serial;
         this.project = project; this.handle = undefined; this.sequences = []; this.stacks = []; this.selected = undefined;
-        this.evidence = undefined; this.run = undefined; this.acceptedGrant = false;
+        this.evidence = undefined; this.codingAgentReady = false; this.run = undefined; this.acceptedGrant = false;
         this.dirtyPromptDismissed = false;
         this.validationCommand = ''; this.validationTaskId = undefined;
         this.message = ''; this.lastView = ''; this.changed();
@@ -63,8 +64,9 @@ export class PhaseStackController {
         this.refreshing = true;
         const handle = this.handle;
         try {
-            const [stored, evidence] = await Promise.all([
-                this.runtime.listSequences(handle), this.runtime.sequenceEvidence(handle)]);
+            const [stored, evidence, codingAgentReady] = await Promise.all([
+                this.runtime.listSequences(handle), this.runtime.sequenceEvidence(handle),
+                this.runtime.codingAgentReady(handle)]);
             if (this.handle !== handle) return;
             const previous = this.evidence;
             const evidenceChanged = previous && (previous.head !== evidence.head ||
@@ -76,6 +78,7 @@ export class PhaseStackController {
             const sequences = reconciled ? stored.map(item => item.id === selectedId ? reconciled : item) : stored;
             this.sequences = sequences;
             this.evidence = evidence;
+            this.codingAgentReady = codingAgentReady;
             this.selected = sequences.find(item => item.id === this.selected?.id);
             const taskId = this.selected?.taskId;
             if (taskId && taskId !== this.validationTaskId) {
@@ -85,7 +88,7 @@ export class PhaseStackController {
             } else if (!taskId && this.validationTaskId) this.validationTaskId = undefined;
             const runId = this.selected?.runIds?.at(-1);
             this.run = runId ? await this.runtime.readRun(handle, runId) : undefined;
-            const view = JSON.stringify([this.sequences, this.evidence, this.run, this.message]);
+            const view = JSON.stringify([this.sequences, this.evidence, this.codingAgentReady, this.run, this.message]);
             if (view !== this.lastView) { this.lastView = view; this.changed(); }
         } catch { this.message = 'Sequence evidence could not be read. Execution is unavailable.'; this.evidence = undefined; this.changed(); }
         finally { this.refreshing = false; }
@@ -153,6 +156,7 @@ export class PhaseStackController {
         if (!this.acceptedGrant) return 'Accept the project execution grant to continue.';
         if (!this.validationCommand.trim()) return 'Enter a required validation command to continue.';
         if (this.validationCommand.trim().length > 160) return 'Validation command is too long.';
+        if (!this.codingAgentReady) return 'Configure and test an eligible Coding Agent in AI Center.';
         return '';
     }
     get canStart(): boolean {
@@ -164,7 +168,7 @@ export class PhaseStackController {
             (this.evidence.clean || Boolean(s.acceptedDirty) && !this.needsDirtyAcceptance || acceptedBasisRetry) &&
             this.current?.execution === 'agent-task' &&
             (s.status === 'ready' || s.status === 'blocked' && retryable.includes(s.blockedReason ?? '')) &&
-            !this.needsDirtyAcceptance && this.acceptedGrant &&
+            !this.needsDirtyAcceptance && this.acceptedGrant && this.codingAgentReady &&
             this.validationCommand.trim().length > 0 && this.validationCommand.trim().length <= 160 && !this.busy);
     }
     async start(): Promise<void> {

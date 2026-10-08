@@ -138,6 +138,8 @@ test('dirty stack acceptance persists exact basis and starts P1 in its execution
     const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href,
         imported.sequence.id, accepted, true);
     assert.equal(run.status, 'running');
+    assert.ok(f.adapter.starts[0].prompt.startsWith(`${task.objective}\n\n${task.instructions}`));
+    assert.match(f.adapter.starts[0].prompt, /DOPE REQUIRED VALIDATION[\s\S]*- \.\/validate\.sh/);
     assert.equal((await f.backend.readSequence(f.handle, imported.sequence.id))?.status, 'running');
     assert.equal(await readFile(join(f.adapter.starts[0].executionRoot, 'notes.txt'), 'utf8'), 'developer work\n');
     await f.backend.stopSequence(f.handle, imported.sequence.id);

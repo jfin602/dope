@@ -23,9 +23,11 @@ class FakeChild extends EventEmitter {
     exitCode: number | null = null;
     kills: string[] = [];
     private readonly scenario: string;
-    constructor(scenario: string) {
+    private readonly catalog: () => any;
+    constructor(scenario: string, catalog: () => any) {
         super();
         this.scenario = scenario;
+        this.catalog = catalog;
         this.stdin.on('data', chunk => {
             for (const line of String(chunk).trim().split('\n')) if (line) this.receive(JSON.parse(line));
         });
@@ -44,6 +46,7 @@ class FakeChild extends EventEmitter {
         if (message.method === 'thread/start' || message.method === 'thread/resume') {
             this.send({ id: message.id, result: { thread: { id: 'thread-1' } } });
         }
+        if (message.method === 'model/list') this.send({ id: message.id, result: this.catalog() });
         if (message.method === 'turn/start') {
             if (this.scenario === 'death') { this.die(); return; }
             if (this.scenario === 'timeout') return;
@@ -63,10 +66,10 @@ function fixture(scenario = 'completed') {
     const children: FakeChild[] = [];
     const spawns: { command: string; args: string[]; options: any }[] = [];
     let token = 'oauth-first';
-    let catalog = { models: [
-        { slug: 'entitled-model', display_name: 'Entitled', visibility: 'list' },
-        { slug: 'hidden', display_name: 'Hidden', visibility: 'hidden' }
-    ] };
+    let catalog = { data: [
+        { model: 'entitled-model', displayName: 'Entitled', hidden: false },
+        { model: 'hidden', displayName: 'Hidden', hidden: true }
+    ], nextCursor: null };
     const auth = { async accessToken(connectionId: string, registrationId: string) {
         assert.equal(connectionId, 'codex'); assert.equal(registrationId, 'account-1'); return token;
     } };
@@ -74,14 +77,10 @@ function fixture(scenario = 'completed') {
         version: async () => 'codex-cli 0.100.0', timeoutMs: 35, turnTimeoutMs: 110, idleMs: 100,
         spawnChild: ((command: string, args: string[], options: any) => {
             spawns.push({ command, args, options });
-            const child = new FakeChild(scenario);
+            const child = new FakeChild(scenario, () => catalog);
             children.push(child);
             return child as unknown as ChildProcessWithoutNullStreams;
-        }) as any,
-        fetcher: async (_url, options) => {
-            assert.equal(options?.headers?.Authorization, `Bearer ${token}`);
-            return new Response(JSON.stringify(catalog), { status: 200 });
-        }
+        }) as any
     });
     return { adapter, children, spawns, setToken(value: string) { token = value; }, setCatalog(value: typeof catalog) { catalog = value; } };
 }
@@ -92,10 +91,10 @@ test('initialize precedes initialized; malformed and late responses are ignored;
         assert.deepEqual(await adapter.models('codex', 'account-1'), [{ id: 'entitled-model', label: 'Entitled' }]);
         assert.deepEqual(await adapter.test('codex', 'account-1', 'entitled-model'), { threadId: 'thread-1', text: 'OK' });
         const methods = children[0].messages.map(message => message.method);
-        assert.deepEqual(methods, ['initialize', 'initialized', 'thread/start', 'turn/start']);
+        assert.deepEqual(methods, ['initialize', 'initialized', 'model/list', 'thread/start', 'turn/start']);
         assert.equal(children[0].messages[0].params.clientInfo.name, 'Dope');
-        const start = children[0].messages[2].params;
-        const turn = children[0].messages[3].params;
+        const start = children[0].messages[3].params;
+        const turn = children[0].messages[4].params;
         assert.equal(start.sandbox, 'read-only');
         assert.equal(start.approvalPolicy, 'never');
         assert.deepEqual(turn.sandboxPolicy, { type: 'readOnly', networkAccess: false });
@@ -162,9 +161,9 @@ test('token rotation restarts process and resumes an opaque provider thread; idl
 test('executable and model-catalog failures are safe and cannot fall back to API credentials', async () => {
     const { adapter, children, setCatalog } = fixture();
     try {
-        setCatalog({ models: [] });
+        setCatalog({ data: [], nextCursor: null });
         assert.deepEqual(await adapter.models('codex', 'account-1'), []);
-        assert.equal(children.length, 0);
+        assert.equal(children.length, 1);
         const missing = new CodexAppServer({ accessToken: async () => 'token' } as any,
             { version: async () => { throw Error('secret path'); } });
         await assert.rejects(missing.resolveExecutable(), { failureClass: 'connection-unavailable', message: 'Codex executable unavailable' });
@@ -188,7 +187,7 @@ test('auth failure does not spawn a child or use an API key; disposal terminates
     assert.deepEqual(children[0].kills, ['SIGTERM']);
 });
 
-test('AI inventory uses account catalog, not bundled app-server entitlement, and marks agent execution only', async () => {
+test('AI inventory uses app-server model catalog and marks agent execution only', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'dope-codex-inventory-'));
     const store = new AIRegistryStore(directory);
     const credentials = new AICredentialManager(store, async () => undefined, { OPENAI_API_KEY: 'not-a-fallback' });
@@ -201,7 +200,7 @@ test('AI inventory uses account catalog, not bundled app-server entitlement, and
             codexAccount: { status: 'signed-in', accountId: 'account-1', planUsage: 'available' }
         } } });
         const inventory = await controller.refreshModels('codex');
-        assert.equal(children.length, 0);
+        assert.equal(children.length, 1);
         assert.deepEqual(inventory.registry.models.map(model => model.providerModelKey), ['entitled-model']);
         assert.deepEqual(inventory.registry.models[0].capabilities.agentExecution, { source: 'adapter-known', value: true });
         assert.equal(inventory.registry.models[0].capabilities.conversationalText.source, 'unknown');
