@@ -212,6 +212,12 @@ Qualification: schema/persistence/sanitization/command correlation/full transcri
 
 **Phase 8D remains gated on `c8-work-mode` Green.** Candidate validation and the external Adaptive SEO Prompt Stack are already Green.
 
+### Pre-qualification visual correction — c8-chat-work-ui (approved documentation; unimplemented)
+
+October 8, 2026: before another `c8-work-mode` P9 qualification replay, apply a bounded **UI-only** correction to Chat, Work, Select Chat, Select Work and the read-only center AgentRun transcript using AI Center's visual grammar and the current amended Dope Dark primary accent `#336699`. See ADR 0016 (October 8 amendment) and ADR 0030. Align compact selection/navigation, subdued Work diagnostics, and centered safe-Markdown agent prose with Chat assistant messages (without user bubbles), while preserving pagination, command disclosures, scroll follow, restoration, alternative user themes and accessibility.
+
+Route: `/prompt-ass -> /prompt-plan -> /prompt-write c8-chat-work-ui`; prefer bounded selector/controls and transcript presentation implementation slices, followed by one direct UI/T3 qualification gate. Do not run the existing Work P9 as if it were Green. Its October 8 repaired replay remains **Not Green**: a live command expansion was not observed because a disposable reference run ended `authority-denied`, also leaving required validation/promotion unqualified. That **separate execution-adapter/authority investigation** must be repaired and tested without widening ADR 0028/0029 boundaries before P9 can close Green. The UI correction does not change AgentTask, AgentRun, AgentTaskSequence, grants, checkpoint identities, historical evidence or package version.
+
 ## 8D — General Scoped Delegation
 
 After phase-stack execution is reliable, generalize the same substrate.

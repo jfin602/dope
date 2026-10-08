@@ -1,6 +1,6 @@
 # c8-work-mode - Work module and Prompt Stack presentation
 
-Status: P1–P8 implemented; first P9 GUI attempt Not Green; bounded repair and requalification active
+Status: P1–P8 implemented; P9 remains Not Green after bounded RPC repair/replay; approved pre-qualification c8-chat-work-ui documentation awaiting implementation
 Phase: 8
 Mode: Correction
 Required unchanged Dope version: `0.8.20`
@@ -37,6 +37,21 @@ P1-P8 target <=8 minutes each (15-minute hard limit), using one changed-package 
 - User-visible agent text and structured command history persist and fully reload in the optional center transcript under bounded, explicit truncation limits. Commands are collapsed by default.
 - Opening/selecting Work in a sidebar leaves the center tab unchanged. Closing/relocating Work never cancels execution, creates a second run, or bypasses execution grant/validation.
 - Completed Adaptive SEO `c4-dope-phase-stack-smoke` sequence remains readable with P1-P4 SHAs unchanged.
+
+## Pre-qualification UI correction — c8-chat-work-ui
+
+Owner-approved October 8, 2026 documentation route: **before resuming P9 GUI qualification**, run a bounded UI-only correction at unchanged `0.8.20`. ADR 0030 and the October 8 ADR 0016 amendment govern the Chat/Work visual contract. The existing AI Center is the accepted reference for calm dark surfaces, compact neutral controls, restrained `#336699` selected/primary emphasis and semantic statuses. Avoid reproducing the historical orange-as-primary palette or proliferating one-off component hex values.
+
+Required UI outcomes:
+- Select Chat: compact folder/conversation hierarchy with chat title, muted recency, preserved per-Chat color dot, accessible keyboard selection and actions that do not crowd every row.
+- Select Work: compact Running, History and Prompt Stacks groups; readable task titles/status/activity/timestamps; consistent active, hover and focus treatment; no mislabeling pending or blocked runs as Running.
+- Chat and Work panels: coherent spacing and input/buttons, narrow-side-panel responsiveness, user-selectable theme compatibility, separate module identities and independent selection/restoration.
+- Work detail: operational controls and high-value state first, expandable diagnostics secondary; no authority/validation shortcut.
+- AgentRun center transcript: the **same centered width-constrained assistant Chat Markdown presentation**, without user bubbles; safe headings/lists/code/tables/links; chronological compact commands expanded on demand; readable evidence markers, honest truncation and no-transcript fallback; correct follow/manual-scroll/jump behavior.
+
+Acceptance: focused permanent presentation/interaction regressions and a direct real Theia GUI visual/functional replay (side panels and center transcript, default and alternative theme, narrow width, restart). Keep original P9 Not Green and the repaired replay evidence unchanged. The live command expansion/required validation gap caused by `authority-denied` remains **independently unqualified** and requires its own investigation under ADR 0028/0029 before P9 may close Green. Do not treat this documentation approval as a code or product qualification result.
+
+Follow-up workflow: `/prompt-ass -> /prompt-plan -> /prompt-write c8-chat-work-ui`, implement/qualify the UI correction, repair/replay the separate command-evidence blocker safely, then resume `c8-work-mode` P9 closeout.
 
 ## Completion / checkpoint rules
 

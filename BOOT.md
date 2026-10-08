@@ -263,12 +263,10 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Plan and implement the bounded **`c8-work-mode`** correction:
+**Approved documentation route as of 2026-10-08: `c8-chat-work-ui`, before `c8-work-mode` P9 requalification.** Apply the bounded Chat/Work/Select Chat/Select Work theme and layout correction plus centered AgentRun safe-Markdown presentation with no user bubbles. AI Center is the visual reference; `#336699` is the current primary accent under the October 8 amendment to ADR 0016. ADR 0030 owns shared presentation, without changing project-domain state, active agent authority, grants, or transcript persistence.
 
-`/prompt-ass -> /prompt-plan -> /prompt-write c8-work-mode`
+Next workflow: `/prompt-ass -> /prompt-plan -> /prompt-write c8-chat-work-ui`. Separate selector/control styling from the center transcript implementation and assign one direct GUI qualification gate. Keep Dope package `0.8.20` unchanged.
 
-This repairs the Agent Runtime RPC loading blocker found in the first P9 GUI attempt and establishes **Work** as a separate module from Chat. Select Work groups Running, History and Prompt Stacks; Work detail owns control and observation. The center editor/visualization workspace remains independent and opens a read-only AgentRun transcript only on explicit request. Left/right toolbar launchers remain distinct. The correction preserves stable task-derived titles, bounded durable transcript/command evidence, the internal AgentTask/AgentRun/AgentTaskSequence/ExecutionGrant model, and Chat's separate identity, routing and read-only authority. The first P9 Not Green evidence remains in `docs/tasks/c8-work-mode/closeout.md`.
+`c8-work-mode` P1-P8 implementation and the bounded renderer RPC repair already exist. The repaired P9 replay is still **NOT GREEN**, independently of the UI pass: an in-grant disposable command execution ended `authority-denied`, preventing real command expansion and candidate-validation/promotion evidence. Investigate and qualify that separate blocker without relaxing ADR 0028/0029 execution boundaries. Only then resume the remaining `c8-work-mode` P9 closeout and consider Phase 8D. The Adaptive SEO `c4-dope-phase-stack-smoke` completed Green in Cycle 2; historic failures and checkpoint SHAs are preserved.
 
-`c8-candidate-validation` and the real Adaptive SEO `c4-dope-phase-stack-smoke` Prompt Stack qualification are **GREEN / QUALIFIED**. External qualification completed in Cycle 2 of 5: P1/P2 Dope-owned checkpoints, P3 browser/manual 48/48, P4 final closeout, pending-gate restart and completed reopen without duplicates. Cycle 1 remains historical Not Green evidence. The browser smoke used fixture API data; live analytics and production integrations were out of scope.
-
-Phase 8B/8C historical closeout evidence stays intact. **Phase 8D remains gated** on qualifying `c8-work-mode`; WorkItem delegation, free-form mid-run steering and provider/authority widening are not part of the correction.
+This is a documentation application, not a UI implementation or qualification claim.

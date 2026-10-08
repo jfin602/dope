@@ -113,3 +113,18 @@ It must not change:
 2. manually perform a quick browser visual check of default appearance plus theme override and close out the correction.
 
 Green routes to a fresh Product Phase 5 `/docs-review`.
+
+## Amendment — 2026-10-08: current Dope Dark palette and emphasis
+
+This amendment supersedes the October 1 locked orange-as-primary color allocation and its brand-mapping examples above for **current and future UI implementation**. Those earlier values and the Green result of historical `c4-color-theme` remain accurate history; this decision does not assert that current source CSS has been migrated or that earlier qualification covers the new palette.
+
+Current Dope Dark design tokens / intent:
+- Workbench/editor anchor: `#1F1F1F` (dark-first, calm and neutral).
+- **Primary interactive accent: `#336699`**, for selective active states, primary actions and intentional visual emphasis.
+- Neutral secondary-control surface: `#303030`; neutral border/separator reference: `#484848`. Derive hover/focus/selected variants centrally with sufficient contrast rather than hard-coding component-specific colors.
+- Orange from the original branding may remain a **rare, purposeful accent**, never the persistent default button, input-border, panel-outline, status-text or selection color. The earlier teal palette is historical and is not a competing global action accent.
+- Errors, warnings, success, syntax and source-control semantics retain their meaningful theme/status colors. Do not substitute the brand accent for those semantic channels.
+
+AI Center is the accepted reference for the quiet, compact dark visual grammar. Chat, Work, their selection states and AgentRun transcripts must use the same semantic Theia/Dope token layer, restrained boundaries and understated utility controls; see ADR 0030. Focus must remain visibly distinguishable without loud persistent borders, selected state must have non-color cues, and the user's explicitly selected compatible theme must still override Dope Dark without leakage.
+
+Implementation and direct browser/Electron visual evidence for the updated palette are pending the bounded pre-qualification `c8-chat-work-ui` correction at unchanged `0.8.20`. Do not relabel its documentation approval as implementation or qualification.

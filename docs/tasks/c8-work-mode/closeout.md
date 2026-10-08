@@ -60,3 +60,11 @@ Work loaded `/home/jfin/dev/adaptive-seo-dope` and auto-discovered completed `c4
 ### Remaining qualification gate
 
 **NOT GREEN.** The required live transcript gate includes an actual compact command row with expandable output. The disposable command run returned `authority-denied` and produced no displayable command evidence, so that gate remains unqualified. The authority result also prevented live validation/promotion qualification for the file task. Keep the P9 Green commit subject reserved, preserve this failed evidence, and do not advance Phase 8D. The next repair should determine why the reference execution adapter denies these in-grant disposable commands while retaining ADR 0028 isolation and Dope's existing authority boundary; then replay the command and validation gates in a disposable project.
+
+## Documentation-only pre-qualification UI decision — 2026-10-08
+
+Following the repaired but **Not Green** P9 replay above, the owner approved a bounded `c8-chat-work-ui` correction **before further qualification**. This decision aligns Select Chat, Select Work, Chat/Work controls and center AgentRun transcript presentation with the AI Center visual grammar and the superseding `#336699` Dope Dark palette (ADR 0016 amendment; ADR 0030).
+
+The correction must reuse Chat's centered, safe-Markdown assistant-message layout for AgentRun text without fabricating user bubbles; preserve chronological collapsed commands, truncation, scrolling, panel ownership, run continuation, project isolation, alternative themes and accessibility. This entry records approval/docs routing **only**, not an implementation, visual test, candidate result, or Green P9 checkpoint.
+
+The existing live command expansion/required validation and authority-denied gaps above remain open and must be repaired/requalified separately under unchanged ADR 0028/0029 constraints. Historical Not Green evidence remains unchanged; Phase 8D is still gated.
