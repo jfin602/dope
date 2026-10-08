@@ -25,7 +25,8 @@ interface Active {
  * compound or extended command cannot satisfy a required validation target. */
 function matchesValidationCommand(observed: string, target: string): boolean {
     const command = observed.trim();
-    return command === target || command === `/bin/bash -lc ${target}`;
+    return command === target || command === `/bin/bash -lc ${target}` ||
+        (!target.includes("'") && command === `/bin/bash -lc '${target}'`);
 }
 
 /** Owns mutation lifecycle and restart reconciliation across RPC connections. */

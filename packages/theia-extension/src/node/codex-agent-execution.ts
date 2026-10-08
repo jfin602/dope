@@ -1,7 +1,7 @@
 import { spawn, execFile, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { lstat, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { cp, lstat, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { delimiter, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentExecutionRequest } from '@dope/agent-core';
 import { parseExecutionGrant } from '@dope/agent-core';
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
@@ -47,7 +47,8 @@ experimental_use_profile = false
 ignore_default_excludes = false
 
 [shell_environment_policy.set]
-PATH = "/usr/local/bin:/usr/bin:/bin"
+PATH = ${JSON.stringify(root ? `${join(root, 'node_modules', '.dope-bin')}:/usr/local/bin:/usr/bin:/bin` :
+    '/usr/local/bin:/usr/bin:/bin')}
 
 [features]
 apps = false
@@ -101,6 +102,7 @@ export interface CodexExecutionOptions {
     /** Injection point for deterministic fixture tests. Production always probes the installed sandbox. */
     verifySandbox?: (executable: string, home: string, runtimeBase: string,
         authoritativeRoot: string) => Promise<void>;
+    prepareToolchain?: (root: string, nodeExecutable: string) => Promise<void>;
 }
 
 export async function resolveSandboxNode(pathValue = process.env.PATH ?? ''): Promise<string> {
@@ -113,6 +115,29 @@ export async function resolveSandboxNode(pathValue = process.env.PATH ?? ''): Pr
         if (/^v24\.\d+\.\d+$/u.test(version ?? '')) return candidate;
     }
     throw fail('Node 24 executable unavailable for sandbox preflight', 'connection-unavailable');
+}
+
+const shellQuote = (value: string): string => `'${value.replaceAll("'", "'\\''")}'`;
+
+/** Give the isolated agent a project-local Node/npm toolchain without granting reads into
+ * the host's npm installation. node_modules is disposable and excluded from CandidateDelta. */
+export async function prepareSandboxNpm(root: string, nodeExecutable: string): Promise<void> {
+    const installation = dirname(dirname(nodeExecutable));
+    const npmCli = await realpath(join(installation, 'bin', 'npm')).catch(() => {
+        throw fail('Node 24 npm executable unavailable', 'connection-unavailable');
+    });
+    const npmPackage = join(installation, 'lib', 'node_modules', 'npm');
+    if (npmCli !== join(npmPackage, 'bin', 'npm-cli.js') ||
+        JSON.parse(await readFile(join(npmPackage, 'package.json'), 'utf8')).name !== 'npm')
+        throw fail('Node 24 npm installation is unsupported', 'connection-unavailable');
+    const dependencyRoot = join(root, 'node_modules');
+    const bin = join(dependencyRoot, '.dope-bin');
+    await mkdir(bin, { recursive: true });
+    await cp(npmPackage, join(dependencyRoot, '.dope-npm'), { recursive: true });
+    await writeFile(join(bin, 'node'), `#!/bin/sh\nexec ${shellQuote(nodeExecutable)} "$@"\n`,
+        { mode: 0o755, flag: 'wx' });
+    await writeFile(join(bin, 'npm'), `#!/bin/sh\nexec ${shellQuote(join(bin, 'node'))} ${shellQuote(join(dependencyRoot,
+        '.dope-npm', 'bin', 'npm-cli.js'))} "$@"\n`, { mode: 0o755, flag: 'wx' });
 }
 
 export async function verifyInstalledSandbox(executable: string, home: string, runtimeBase: string,
@@ -213,6 +238,7 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
         let rpc: RpcProcess | undefined;
         try {
             const nodeExecutable = await resolveSandboxNode();
+            await (this.options.prepareToolchain ?? prepareSandboxNpm)(root, nodeExecutable);
             await writeFile(join(home, 'config.toml'), mutationConfig(root, resolvedExecutable,
                 nodeExecutable), { mode: 0o600, flag: 'wx' });
             if (this.options.verifySandbox) await this.options.verifySandbox(executable, home, runtimeBase, approved);

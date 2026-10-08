@@ -1,18 +1,34 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { chmod, mkdir, mkdtemp, realpath, rm, stat } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import test from 'node:test';
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/index.js';
-import { CodexAgentExecutionAdapter, mutationConfig, resolveSandboxNode } from '../../packages/theia-extension/lib/node/codex-agent-execution.js';
+import { CodexAgentExecutionAdapter, mutationConfig, prepareSandboxNpm, resolveSandboxNode } from '../../packages/theia-extension/lib/node/codex-agent-execution.js';
 import { providerFailure } from '../../packages/theia-extension/lib/node/codex-rpc-process.js';
 
 test('sandbox probe resolves standalone Node 24 independently of Electron process.execPath', async () => {
     assert.equal(await resolveSandboxNode(dirname(process.execPath)), await realpath(process.execPath));
     await assert.rejects(resolveSandboxNode('/nonexistent-node-directory'), /Node 24 executable unavailable/);
+});
+
+test('isolated npm toolchain runs project commands without host npm read access', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-npm-toolchain-'));
+    try {
+        const node = await resolveSandboxNode(dirname(process.execPath));
+        await prepareSandboxNpm(root, node);
+        const bin = join(root, 'node_modules', '.dope-bin');
+        const { stdout } = await promisify(execFile)(join(bin, 'npm'), ['--version'], {
+            cwd: root, env: { PATH: `${bin}:/usr/local/bin:/usr/bin:/bin` }
+        });
+        assert.match(stdout.trim(), /^\d+\.\d+\.\d+$/u);
+        assert.ok(mutationConfig(root).includes(`PATH = "${bin}:/usr/local/bin:/usr/bin:/bin"`));
+    } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('Codex capacity failure is narrowly sanitized for retry', () => {
@@ -115,6 +131,7 @@ async function fixture(scenario = 'complete') {
     const adapter = new CodexAgentExecutionAdapter(auth as any, {
         runtimeDirectory, timeoutMs: 40, turnTimeoutMs: 120,
         verifySandbox: async () => {},
+        prepareToolchain: async () => {},
         version: async () => 'codex-cli 0.155.1',
         spawnChild: ((command: string, args: string[], options: any) => {
             const child = new FakeChild(scenario);

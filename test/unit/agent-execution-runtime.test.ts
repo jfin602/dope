@@ -483,7 +483,7 @@ test('observed command exit and exact validation target determine validation tru
     assert.equal(failed.status, 'failed');
     await released(f.runtime, f.root);
     const fourth = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
-    f.adapter.onEvent!({ kind: 'command-started', commandId: 'four', command: '/bin/bash -lc node --test', summary: 'started' });
+    f.adapter.onEvent!({ kind: 'command-started', commandId: 'four', command: "/bin/bash -lc 'node --test'", summary: 'started' });
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'four', exitCode: 0, summary: 'completed' });
     f.adapter.complete();
     const wrapped = await terminal(f.store, f.root, fourth.id);
