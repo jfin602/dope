@@ -245,23 +245,21 @@
 .dope-rebase-conflict { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .dope-dark {
     --dope-background: #1F1F1F;
-    --dope-primary: #FF7A1A;
-    --dope-highlight: #FFB15C;
-    --dope-deep: #C75100;
-    --dope-secondary: #4FA3A5;
-    --dope-secondary-dark: #34787A;
-    --dope-secondary-soft: #78BFC0;
+    --dope-primary: #336699;
+    --dope-on-primary: #FFFFFF;
+    --dope-text-accent: color-mix(in srgb, var(--dope-primary) 55%, white);
+    --dope-focus: color-mix(in srgb, var(--dope-primary) 65%, white);
     --dope-control-background: #303030;
     --dope-control-hover: #3B3B3B;
     --dope-control-border: #484848;
-    --dope-selected-background: #303536;
+    --dope-selected-background: color-mix(in srgb, var(--dope-primary) 25%, var(--dope-control-background));
     --dope-action-background: var(--dope-primary);
-    --dope-action-hover: var(--dope-highlight);
-    --dope-action-pressed: var(--dope-deep);
-    --dope-ready: var(--dope-secondary-soft);
+    --dope-action-hover: color-mix(in srgb, var(--dope-primary) 85%, var(--dope-background));
+    --dope-action-pressed: color-mix(in srgb, var(--dope-primary) 70%, var(--dope-background));
+    --dope-ready: var(--theia-testing-iconPassed, var(--theia-foreground));
 
     --theia-editor-background: var(--dope-background);
-    --theia-focusBorder: var(--dope-secondary);
+    --theia-focusBorder: var(--dope-focus);
     --theia-input-border: var(--dope-control-border);
     --theia-widget-border: var(--dope-control-border);
     --theia-button-background: var(--dope-control-background);
@@ -270,43 +268,43 @@
     --theia-button-secondaryBackground: var(--dope-control-background);
     --theia-button-secondaryHoverBackground: var(--dope-control-hover);
     --theia-button-separator: var(--dope-control-border);
-    --theia-textLink-foreground: var(--dope-highlight);
-    --theia-textLink-activeForeground: var(--dope-primary);
-    --theia-activityBar-foreground: var(--dope-primary);
+    --theia-textLink-foreground: var(--dope-text-accent);
+    --theia-textLink-activeForeground: var(--dope-text-accent);
+    --theia-activityBar-foreground: var(--theia-foreground);
     --theia-activityBar-activeBorder: var(--dope-primary);
     --theia-activityBarBadge-background: var(--dope-primary);
-    --theia-activityBarBadge-foreground: var(--dope-background);
+    --theia-activityBarBadge-foreground: var(--dope-on-primary);
     --theia-tab-activeBorderTop: var(--dope-primary);
     --theia-tab-activeBorder: var(--dope-primary);
     --theia-list-activeSelectionBackground: var(--dope-selected-background);
     --theia-list-activeSelectionForeground: var(--theia-foreground);
-    --theia-list-focusOutline: var(--dope-secondary);
-    --theia-editor-selectionBackground: color-mix(in srgb, var(--dope-secondary) 35%, transparent);
-    --theia-editor-inactiveSelectionBackground: color-mix(in srgb, var(--dope-secondary) 20%, transparent);
-    --theia-editor-findMatchHighlightBackground: color-mix(in srgb, var(--dope-highlight) 30%, transparent);
+    --theia-list-focusOutline: var(--dope-focus);
+    --theia-editor-selectionBackground: color-mix(in srgb, var(--dope-primary) 35%, transparent);
+    --theia-editor-inactiveSelectionBackground: color-mix(in srgb, var(--dope-primary) 20%, transparent);
+    --theia-editor-findMatchHighlightBackground: color-mix(in srgb, var(--dope-primary) 30%, transparent);
     --theia-badge-background: var(--dope-primary);
-    --theia-badge-foreground: var(--dope-background);
+    --theia-badge-foreground: var(--dope-on-primary);
     --theia-progressBar-background: var(--dope-primary);
     --theia-statusBar-background: var(--dope-background);
-    --theia-statusBar-foreground: var(--dope-primary);
+    --theia-statusBar-foreground: var(--theia-foreground);
     --theia-statusBar-noFolderBackground: var(--dope-background);
-    --theia-statusBar-noFolderForeground: var(--dope-primary);
+    --theia-statusBar-noFolderForeground: var(--theia-foreground);
     --theia-menu-selectionBackground: var(--dope-selected-background);
     --theia-quickInputList-focusBackground: var(--dope-selected-background);
     --theia-editorActionList-focusBackground: var(--dope-selected-background);
     --theia-editorSuggestWidget-selectedBackground: var(--dope-selected-background);
-    --theia-inputOption-activeBorder: var(--dope-secondary);
-    --theia-radio-activeBorder: var(--dope-secondary);
-    --theia-sash-activeBorder: var(--dope-secondary-dark);
-    --theia-sash-hoverBorder: var(--dope-secondary);
-    --theia-pickerGroup-foreground: var(--dope-highlight);
-    --theia-notificationLink-foreground: var(--dope-highlight);
-    --theia-list-highlightForeground: var(--dope-highlight);
-    --theia-list-focusHighlightForeground: var(--dope-highlight);
-    --theia-editorSuggestWidget-highlightForeground: var(--dope-highlight);
-    --theia-editorSuggestWidget-focusHighlightForeground: var(--dope-highlight);
-    --theia-editorHoverWidget-highlightForeground: var(--dope-highlight);
-    --theia-editorLink-activeForeground: var(--dope-highlight);
+    --theia-inputOption-activeBorder: var(--dope-focus);
+    --theia-radio-activeBorder: var(--dope-focus);
+    --theia-sash-activeBorder: var(--dope-focus);
+    --theia-sash-hoverBorder: var(--dope-control-border);
+    --theia-pickerGroup-foreground: var(--dope-text-accent);
+    --theia-notificationLink-foreground: var(--dope-text-accent);
+    --theia-list-highlightForeground: var(--dope-text-accent);
+    --theia-list-focusHighlightForeground: var(--dope-text-accent);
+    --theia-editorSuggestWidget-highlightForeground: var(--dope-text-accent);
+    --theia-editorSuggestWidget-focusHighlightForeground: var(--dope-text-accent);
+    --theia-editorHoverWidget-highlightForeground: var(--dope-text-accent);
+    --theia-editorLink-activeForeground: var(--dope-text-accent);
     --theia-selection-background: var(--dope-selected-background);
 }
 
@@ -314,7 +312,7 @@
 .dope-dark #theia-statusBar .area [id="status-bar-scm.status.0"],
 .dope-dark #theia-statusBar .area [id="status-bar-scm.status.1"] {
     background: var(--dope-primary);
-    color: var(--dope-background);
+    color: var(--dope-on-primary);
     box-shadow: calc(-1 * var(--theia-ui-padding)) 0 0 var(--dope-primary);
 }
 
@@ -348,7 +346,7 @@
 
 /* Intentional work-starting actions opt into brand color; utilities inherit neutral controls. */
 :is(.dope-ai-center, .dope-smap-view) button.dope-action-primary {
-    color: var(--dope-background, var(--theia-button-foreground));
+    color: var(--dope-on-primary, var(--theia-button-foreground));
     background: var(--dope-action-background, var(--theia-button-background));
     border-color: var(--dope-action-background, var(--theia-button-background));
 }
@@ -356,11 +354,11 @@
     background: var(--dope-action-hover, var(--theia-button-hoverBackground));
 }
 .dope-dark :is(.dope-ai-center, .dope-smap-view) button.dope-action-primary:active:not(:disabled) {
-    color: var(--dope-background);
+    color: var(--dope-on-primary);
     background: var(--dope-action-pressed);
 }
 .dope-smap-view button.dope-action-outline {
-    color: var(--dope-action-background, var(--theia-button-foreground));
+    color: var(--dope-text-accent, var(--theia-button-foreground));
     background: transparent;
     border-color: var(--dope-action-background, var(--theia-button-background));
 }
