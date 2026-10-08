@@ -113,7 +113,7 @@ test('Work uses the direct authority controller and aliases without a standalone
         'chat-panel-widget.ts', 'agent-run-controller.ts', 'frontend-module.ts'
     ].map(name => readFile(new URL(name, base), 'utf8')));
     assert.match(module, /id: 'dope\.agentRun\.open'/); assert.doesNotMatch(module, /AgentRunWidget/);
-    for (const label of ['Work instructions', 'Coding Agent model', 'Accept Grant', 'Stop Work'])
+    for (const label of ['Work instructions', 'Coding Agent model', 'Accept project execution grant', 'Stop Work'])
         assert.ok(widget.includes(label));
     assert.match(widget, /this\.directController\.select\(run\.id\)/);
     assert.match(controller, /runtime\.stop\(/); assert.match(controller, /createDefaultExecutionGrant/);

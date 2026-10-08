@@ -1,6 +1,6 @@
 # c8-chat-work-ui - Chat and Work presentation alignment
 
-Status: **PLANNED / PROMPTS WRITTEN / NOT IMPLEMENTED**
+Status: **GREEN / QUALIFIED for UI only** at P1–P4 source `21c49546a08320be140a8764cf50735c19cb5758`; see `closeout.md`. The separate `c8-work-mode` P9 remains **NOT GREEN**.
 Mode: Correction
 Phase: 8
 Required unchanged project version: `0.8.20`
