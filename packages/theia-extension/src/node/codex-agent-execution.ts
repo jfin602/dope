@@ -402,7 +402,7 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
                         ...(observed.command?.text ? { command: observed.command.text,
                             commandTruncated: observed.command.truncated, commandRedacted: observed.command.redacted } : {}),
                         commandDropped: observed.commandDropped === true,
-                        cwd: relative(root, resolve(item.cwd)),
+                        cwd: relative(root, resolve(item.cwd)) || '.',
                         ...(Number.isSafeInteger(item.exitCode) && item.exitCode >= 0 ? { exitCode: item.exitCode } : {}),
                         ...(method === 'item/completed' ? {
                             stdoutPresent: observed.stdout !== undefined, stderrPresent: observed.stderr !== undefined,

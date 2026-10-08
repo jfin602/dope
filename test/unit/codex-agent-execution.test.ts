@@ -244,7 +244,7 @@ test('visible item snapshots retain incremental prose once and correlate bounded
         const completed = f.events.find(event => event.kind === 'command-completed');
         assert.equal(started.commandId, 'cmd-1');
         assert.equal(started.command, 'echo ready');
-        assert.equal(started.cwd, '');
+        assert.equal(started.cwd, '.');
         assert.equal(started.status, 'running');
         assert.equal(completed.commandId, started.commandId);
         assert.equal(completed.status, 'completed');

@@ -497,6 +497,23 @@ test('failed adapter interrupt invokes dedicated process termination', async () 
     assert.equal(stopped.status, 'interrupted');
 }));
 
+test('execution-root command cwd survives durable transcript storage and completion', async () => fixture(async f => {
+    const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true);
+    f.adapter.onEvent!({ kind: 'command-started', commandId: 'root-command', command: 'printf hello',
+        cwd: '.', summary: 'started' });
+    f.adapter.onEvent!({ kind: 'command-completed', commandId: 'root-command', command: 'printf hello',
+        cwd: '.', exitCode: 0, status: 'completed', stdout: 'hello', summary: 'completed' });
+    f.adapter.complete();
+    const done = await terminal(f.store, f.root, run.id);
+    assert.equal(done.status, 'completed');
+    assert.notEqual(done.outcome?.code, 'authority-denied');
+    const transcript = await f.store.readTranscript(f.root, run.id, 0, 100);
+    const command = transcript.entries.find(entry => entry.kind === 'command');
+    assert.equal(command?.cwd, '.');
+    assert.equal(command?.status, 'completed');
+    assert.equal(command?.stdout, 'hello');
+}));
+
 test('provider command evidence never substitutes for Dope-owned required validation', async () => fixture(async f => {
     const task = { ...baseTask(), id: 'task-validation', completion: { validation: [
         { kind: 'test', label: 'unit', command: 'node --test' } ], requireValidationPass: true } };
