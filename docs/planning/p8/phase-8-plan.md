@@ -190,6 +190,37 @@ Qualification gate:
 
 Phase 8D remains blocked until this correction and resumed external qualification are Green.
 
+## c8-agent-run-transcript — Complete Agent Run transcript correction
+
+Real Phase Stack qualification exposed a separate observability/usability gap in the Agent Run surface: provider-visible agent messages are currently collapsed to occurrence-only summaries and command activity is rendered as a flat event log. That is insufficient for a developer supervising an agent or diagnosing a failed run.
+
+This bounded correction does not change ADR 0028 authority or ADR 0029 candidate validation.
+
+Deliver:
+- retain sanitized provider-visible agent message text as durable non-canonical AgentRun output;
+- add a Dope-owned ordered transcript that survives restart independently of provider-native session/thread state;
+- correlate command start/completion into one structured command-history entry;
+- show commands minimized/collapsed by default with command, status/exit and duration visible and bounded output expandable;
+- keep file/validation/authority/status events compact and subordinate to transcript content;
+- preserve raw operational events for diagnostics without making the flat event log the primary Agent Run experience;
+- explicitly mark transcript/output truncation at hard storage ceilings;
+- never persist hidden reasoning, raw provider RPC payloads, credentials or arbitrary environment state.
+
+Qualification gate:
+- multiple visible agent messages retain ordering and text across restart;
+- long runs reopen from the beginning rather than only an in-memory event tail;
+- one command start/completion pair becomes one durable command entry;
+- command status/exit/duration and bounded output survive restart;
+- transcript ordering between messages and commands is stable;
+- provider-run command history remains distinct from Dope-owned CandidateValidation;
+- Phase Stack "Open Agent Run detail" opens the same complete transcript.
+
+Sequencing:
+- `c8-candidate-validation` remains the immediate execution-safety blocker;
+- land `c8-agent-run-transcript` after candidate validation is Green, or combine only the overlapping AgentRun schema/runtime work deliberately while preserving separate qualification claims;
+- then resume/finalize the Adaptive SEO `c4-dope-phase-stack-smoke` qualification;
+- Phase 8D remains blocked until both corrections and the external qualification are Green.
+
 ## 8D — General Scoped Delegation
 
 After phase-stack execution is reliable, generalize the same substrate.
@@ -262,6 +293,9 @@ T3 Dope-on-Dope dogfood:
 - manual gate;
 - restart/resume;
 - direct GUI observability.
+
+### c8-agent-run-transcript
+Focused AgentRun transcript persistence, command correlation, restart reconstruction, storage-bound/security and UI presentation qualification.
 
 ### 8D
 Focused WorkItem delegation + direct review/steering qualification.

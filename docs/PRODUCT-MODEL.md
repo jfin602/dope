@@ -604,6 +604,8 @@ Initial durable execution state includes:
 - starting project identity, Git HEAD and clean/dirty basis;
 - ExecutionWorkspace identity/basis sufficient to understand candidate work without treating it as canonical project truth;
 - provider-neutral activity/tool/file/process events;
+- a durable ordered user-visible agent transcript containing sanitized provider-visible agent messages and structured command entries;
+- structured command history with stable command identity, relative cwd, timing, terminal status/exit code and bounded output evidence where retained;
 - CandidateDelta summary with classified create/modify/delete/rename effects;
 - authority decision and applied authoritative change summary;
 - affected project-relative files;
@@ -613,9 +615,35 @@ Initial durable execution state includes:
 - failure/cancel/interruption/recovery state;
 - provider-native recovery handles only as non-canonical adapter metadata.
 
-Phase 8B persists tasks/runs as inspectable project work state beneath `.dope/agent/`, with run events appendable as JSONL. Secrets, raw hidden reasoning, arbitrary environment dumps and unbounded provider payloads are forbidden from durable run state.
+Phase 8B persists tasks/runs as inspectable project work state beneath `.dope/agent/`, with operational run events and a presentation-grade transcript appendable as bounded JSONL. Secrets, raw hidden reasoning, arbitrary environment dumps and unbounded provider payloads are forbidden from durable run state.
 
-AgentRun is durable enough to inspect and resume/reconcile work across application restart, but it never turns model narration or hidden reasoning into project truth.
+AgentRun is durable enough to inspect and resume/reconcile work across application restart. Provider-visible agent messages are durable user-facing execution output, but they are non-canonical project truth. Hidden reasoning, provider-internal traces and raw provider payloads are not transcript content.
+
+### AgentRun transcript and command history
+
+Agent Run presents one durable execution transcript in chronological order.
+
+The transcript may contain:
+- sanitized provider-visible agent messages exactly as exposed to the developer;
+- structured command entries correlated from command start/completion observations;
+- compact Dope-owned system/evidence entries where they materially explain validation, file-change, authority, retry, cancellation or terminal state.
+
+The transcript is not a provider-native conversation and does not depend on a provider thread/session surviving. Reopening a run after restart reconstructs the same retained transcript from Dope-owned state.
+
+"Complete transcript" means all ordinary user-visible agent messages retained for the run within explicit safety/storage ceilings. Normal messages must not be replaced by occurrence-only summaries such as "Agent message received." If a hard transcript ceiling is reached, Dope records that truncation explicitly rather than silently presenting an incomplete transcript as complete.
+
+Command history is structured evidence, not conversational prose. One logical command record should correlate command start and completion and retain, when available:
+- stable command identity;
+- sanitized command text;
+- ExecutionWorkspace-relative cwd;
+- start/end or duration;
+- running/completed/stopped status;
+- exit code;
+- bounded stdout/stderr or bounded output summary with explicit truncation state.
+
+Provider command history is distinct from CandidateValidation. A provider-run command may appear in the transcript and command evidence, but only Dope-owned CandidateValidation can satisfy a required CompletionPolicy validation target.
+
+Durable transcript storage must never include hidden chain-of-thought, raw provider RPC payloads, credentials/tokens, arbitrary environment dumps or unbounded command output. Visible agent text is sanitized and bounded as user-facing output without reducing routine prose to generic summaries.
 
 ### AgentTaskSequence
 

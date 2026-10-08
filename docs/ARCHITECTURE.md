@@ -659,6 +659,8 @@ Phase 8B's first consumer is one direct bounded AgentTask against a clean projec
 
 Agent Runtime owns orchestration, not provider intelligence. Provider-specific coding harnesses sit behind **AgentExecutionAdapter** contracts. The first reference adapter is Codex App Server; later local-agent adapters must consume the same AgentTask/AgentRun/authority contracts.
 
+AgentExecutionAdapter exposes only provider-visible/sanitized agent messages and normalized command/file/status observations. Agent Runtime converts those observations into Dope-owned durable AgentRun transcript and command history. The UI must not depend on a live provider-native thread to reconstruct prior execution, and provider-internal reasoning is never part of the transcript contract.
+
 Mutation-capable adapters execute against an isolated **ExecutionWorkspace** derived from an accepted starting project basis. Provider writes/processes produce candidate work there; they do not write the developer's authoritative project root. Dope deterministically derives a **CandidateDelta** and promotes only authorized effects through Authority + ToolExecutor.
 
 AgentTask/AgentRun persistence is project-local and presentation-independent:
@@ -668,7 +670,12 @@ AgentTask/AgentRun persistence is project-local and presentation-independent:
   tasks/<task-id>.json
   runs/<run-id>/run.json
   runs/<run-id>/events.jsonl
+  runs/<run-id>/transcript.jsonl
 ```
+
+`events.jsonl` remains bounded normalized operational evidence. `transcript.jsonl` is the ordered presentation-grade execution transcript used to reconstruct the developer-visible Agent Run across restart. AgentExecutionAdapter observations may supply sanitized provider-visible messages and command lifecycle data, but Agent Runtime owns the provider-independent transcript projection and persistence.
+
+Visible agent messages are durable user-facing execution output, not canonical project truth. Hidden reasoning, raw provider payloads, arbitrary environment state and secrets remain forbidden. Structured command entries correlate start/completion into one logical command record with bounded output evidence; they remain distinct from ADR 0029 CandidateValidation.
 Phase 8C adds durable sequence orchestration:
 
 ```text

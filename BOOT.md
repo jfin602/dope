@@ -267,6 +267,10 @@ Plan and implement the bounded `c8-candidate-validation` correction:
 
 `/prompt-ass -> /prompt-plan -> /prompt-write c8-candidate-validation`
 
-ADR 0029 requires Dope-owned required validation against a frozen candidate with bounded private temp and private-loopback capabilities. After that correction is Green, resume the real Adaptive SEO `c4-dope-phase-stack-smoke` qualification. Phase 8D remains gated until that external qualification is Green.
+ADR 0029 requires Dope-owned required validation against a frozen candidate with bounded private temp and private-loopback capabilities. This remains the immediate execution-safety blocker.
+
+A second bounded pre-8D correction is now approved: `c8-agent-run-transcript`. It makes Agent Run retain the complete sanitized user-visible agent transcript, structured/minimized command history, and restart-stable execution presentation without persisting hidden reasoning or raw provider payloads. Land it after candidate validation is Green, or deliberately combine only overlapping AgentRun schema/runtime work while keeping the two qualification claims separate.
+
+Then resume/finalize the real Adaptive SEO `c4-dope-phase-stack-smoke` qualification. Phase 8D remains gated until `c8-candidate-validation`, `c8-agent-run-transcript`, and that external qualification are Green.
 
 Phase 8C sequential execution remains **GREEN / QUALIFIED / CLOSED** for its exact `0.8.20` qualified fixture; see `docs/tasks/p8c/closeout.md`. The later Adaptive SEO dogfood failure is preserved as a post-closeout project-generalization gap, not a rewrite of historical evidence.

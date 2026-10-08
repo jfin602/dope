@@ -314,6 +314,24 @@ Do not implement:
 8E:
 - local coding-agent adapter compatibility.
 
+## Post-closeout amendment — Agent Run transcript fidelity (2026-10-08)
+
+Phase 8B remains historically **GREEN / QUALIFIED** for its exact direct AgentTask authority/execution scope. Later real Phase Stack usage exposed an observability gap that the original 8B qualification did not require: Agent Run persists normalized activity evidence, but provider-visible agent text is reduced to occurrence-only summaries and command history is presented as a flat event stream.
+
+Correction `c8-agent-run-transcript` owns that follow-up usability/evidence contract.
+
+The correction requires:
+- durable sanitized provider-visible agent messages;
+- an ordered Dope-owned transcript independent of provider-native session availability;
+- structured command history that correlates start/completion and preserves bounded status/exit/duration/output evidence;
+- minimized command rows by default in Agent Run;
+- compact system/evidence events subordinate to transcript content;
+- restart reconstruction of the complete retained transcript;
+- explicit storage/truncation limits;
+- continued exclusion of hidden reasoning, raw provider payloads, credentials and arbitrary environment state.
+
+This amendment does not rewrite the original 8B closeout, change provider authority, or make transcript text canonical project truth.
+
 ## Exit condition
 
 Phase 8B is Green when one direct AgentTask can safely modify a clean disposable project through the Coding Agent role under an explicit bounded ExecutionGrant, run local validation, expose/persist auditable AgentRun state, deny out-of-grant effects, cancel without hidden effects or auto-revert, and remain inspectable after restart.
