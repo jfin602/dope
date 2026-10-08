@@ -28,6 +28,7 @@ export class PhaseStackController {
     constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void) {}
     async attach(project?: string): Promise<void> {
         const serial = ++this.serial;
+        this.busy = false; this.refreshing = false;
         this.project = project; this.handle = undefined; this.sequences = []; this.stacks = []; this.selected = undefined;
         this.evidence = undefined; this.codingAgentReady = false; this.run = undefined; this.acceptedGrant = false;
         this.dirtyPromptDismissed = false;
@@ -47,27 +48,27 @@ export class PhaseStackController {
     }
     async scan(): Promise<void> {
         if (!this.handle || this.busy) return;
-        const handle = this.handle, tasksRoot = this.tasksRoot;
+        const handle = this.handle, tasksRoot = this.tasksRoot, serial = this.serial;
         this.busy = true; this.message = ''; this.changed();
         try {
             const stacks = await this.runtime.listTaskStacks(handle, tasksRoot.trim());
-            if (this.handle !== handle || this.tasksRoot !== tasksRoot) return;
+            if (serial !== this.serial || this.handle !== handle || this.tasksRoot !== tasksRoot) return;
             this.stacks = stacks;
             if (!stacks.length) this.message = `No Phase Stacks found in ${tasksRoot.trim() || 'the tasks folder'}.`;
             await this.refresh();
         } catch (error) {
-            if (this.handle === handle) { this.stacks = []; this.message = this.errorMessage(error); }
-        } finally { this.busy = false; this.changed(); }
+            if (serial === this.serial && this.handle === handle) { this.stacks = []; this.message = this.errorMessage(error); }
+        } finally { if (serial === this.serial) { this.busy = false; this.changed(); } }
     }
     async refresh(): Promise<void> {
         if (!this.handle || this.refreshing) return;
         this.refreshing = true;
-        const handle = this.handle;
+        const handle = this.handle, serial = this.serial;
         try {
             const [stored, evidence, codingAgentReady] = await Promise.all([
                 this.runtime.listSequences(handle), this.runtime.sequenceEvidence(handle),
                 this.runtime.codingAgentReady(handle)]);
-            if (this.handle !== handle) return;
+            if (serial !== this.serial || this.handle !== handle) return;
             const previous = this.evidence;
             const evidenceChanged = previous && (previous.head !== evidence.head ||
                 previous.packageVersion !== evidence.packageVersion ||
@@ -75,6 +76,7 @@ export class PhaseStackController {
             const selectedId = this.selected?.id;
             const reconciled = selectedId && evidenceChanged ?
                 await this.runtime.reconcileSequence(handle, selectedId) : undefined;
+            if (serial !== this.serial || this.handle !== handle) return;
             const sequences = reconciled ? stored.map(item => item.id === selectedId ? reconciled : item) : stored;
             this.sequences = sequences;
             this.evidence = evidence;
@@ -83,15 +85,17 @@ export class PhaseStackController {
             const taskId = this.selected?.taskId;
             if (taskId && taskId !== this.validationTaskId) {
                 const task = await this.runtime.readTask(handle, taskId);
+                if (serial !== this.serial || this.handle !== handle) return;
                 this.validationCommand = task?.completion.validation[0]?.command ?? '';
                 this.validationTaskId = taskId;
             } else if (!taskId && this.validationTaskId) this.validationTaskId = undefined;
             const runId = this.selected?.runIds?.at(-1);
             this.run = runId ? await this.runtime.readRun(handle, runId) : undefined;
+            if (serial !== this.serial || this.handle !== handle) return;
             const view = JSON.stringify([this.sequences, this.evidence, this.codingAgentReady, this.run, this.message]);
             if (view !== this.lastView) { this.lastView = view; this.changed(); }
-        } catch { this.message = 'Sequence evidence could not be read. Execution is unavailable.'; this.evidence = undefined; this.changed(); }
-        finally { this.refreshing = false; }
+        } catch { if (serial === this.serial) { this.message = 'Sequence evidence could not be read. Execution is unavailable.'; this.evidence = undefined; this.changed(); } }
+        finally { if (serial === this.serial) this.refreshing = false; }
     }
     async select(folderName: string): Promise<void> {
         if (!this.handle || this.busy) return;
@@ -101,19 +105,19 @@ export class PhaseStackController {
             this.message = `${folderName} is not a valid Phase Stack: ${candidate.error ?? 'check its prompt files.'}`;
             this.changed(); return;
         }
-        const handle = this.handle, tasksRoot = this.tasksRoot;
+        const handle = this.handle, tasksRoot = this.tasksRoot, serial = this.serial;
         this.busy = true; this.message = ''; this.changed();
         try {
             const result = await this.runtime.openTaskStack(handle, tasksRoot.trim(), folderName);
-            if (this.handle !== handle || this.tasksRoot !== tasksRoot) return;
+            if (serial !== this.serial || this.handle !== handle || this.tasksRoot !== tasksRoot) return;
             if (result.kind === 'opened') {
                 this.selected = result.sequence;
                 this.acceptedGrant = false; this.dirtyPromptDismissed = false;
                 this.validationCommand = ''; this.validationTaskId = undefined; this.run = undefined;
                 await this.refresh();
             } else this.message = this.selectionError(folderName, result);
-        } catch (error) { this.message = this.errorMessage(error); }
-        finally { this.busy = false; this.changed(); }
+        } catch (error) { if (serial === this.serial) this.message = this.errorMessage(error); }
+        finally { if (serial === this.serial) { this.busy = false; this.changed(); } }
     }
     async selectStored(sequenceId: string): Promise<void> {
         if (!this.handle || this.busy) return;
