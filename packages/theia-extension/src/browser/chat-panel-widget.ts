@@ -15,12 +15,15 @@ import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
 import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, chatPanelWidgetId, resizeChatInput, resolveChatModel, safeChatLink, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     readonly controller: ChatPanelController;
+    readonly panel: SharedPanelState;
     private readonly rootsListener;
     private readonly modelsListener;
     private readonly status = document.createElement('p');
+    private readonly modeNav = document.createElement('nav');
     private readonly content = document.createElement('div');
     private workspaceRequest = 0;
     private modelsRequest = 0;
@@ -37,7 +40,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private scrollAnimationUntil = 0;
 
     constructor(connect: () => ChatConnection, private readonly workspaces: WorkspaceService,
-        private readonly shell: ApplicationShell, owners: ChatOpenOwners, options: ChatPanelOptions,
+        private readonly shell: ApplicationShell, owners: ChatOpenOwners, workOwners: WorkOpenOwners, options: ChatPanelOptions,
         private readonly markdown: MarkdownRenderer,
         private readonly modelConnections?: ModelConnectionsService,
         private readonly editors?: EditorManager, private readonly map?: SoftwareMapController,
@@ -50,9 +53,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.addClass('dope-chat-panel');
         this.controller = new ChatPanelController(connect, () => this.render(), owners, this.id,
             () => { void this.shell.activateWidget(this.id); });
+        this.panel = new SharedPanelState(workOwners, this.id,
+            () => { this.panel.setMode('work'); void this.shell.activateWidget(this.id); }, () => this.render());
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
-        this.node.append(this.status, this.content);
+        this.modeNav.className = 'dope-chat-panel-modes';
+        this.modeNav.setAttribute('aria-label', 'Panel mode');
+        this.node.append(this.modeNav, this.status, this.content);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.attach(); });
         this.modelsListener = onModelsChanged?.(() => { void this.loadModels(); });
         void this.attach();
@@ -110,24 +117,30 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
 
     storeState(): object {
-        return { version: 1, area: this.shell.getAreaFor(this), workspace: this.controller.workspace,
-            mode: this.controller.mode, chatId: this.controller.chatId };
+        return { ...this.panel.layout(this.controller.chatId), area: this.shell.getAreaFor(this) };
     }
     restoreState(state: object): void {
-        const value = state as Record<string, unknown>;
-        if (value?.version === 1 && typeof value.workspace === 'string' &&
-            (value.mode === 'select-chat' || value.mode === 'chat') &&
-            (value.mode === 'select-chat' || typeof value.chatId === 'string'))
-            this.controller.restore(value.workspace, value.mode, value.chatId as string | undefined);
+        const layout = readSharedPanelLayout(state);
+        if (!layout?.workspace) return;
+        this.panel.restore(layout);
+        this.controller.restore(layout.workspace, layout.chatId ? 'chat' : 'select-chat', layout.chatId);
     }
 
     private async attach(): Promise<void> {
         const request = ++this.workspaceRequest;
         // Invalidate the old project immediately while workspace roots resolve.
+        this.panel.attach(undefined);
         await this.controller.attach(undefined);
         const roots = await this.workspaces.roots;
         if (this.isDisposed || request !== this.workspaceRequest) return;
-        await this.controller.attach(roots.length === 1 ? roots[0].resource.toString() : undefined);
+        const workspace = roots.length === 1 ? roots[0].resource.toString() : undefined;
+        this.panel.attach(workspace);
+        await this.controller.attach(workspace);
+    }
+
+    async selectChatLauncher(): Promise<void> {
+        this.panel.setMode('chat');
+        await this.controller.select(undefined);
     }
 
     private button(label: string, action: () => void, disabled = false): HTMLButtonElement {
@@ -370,19 +383,72 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private render(): void {
         const state = this.controller;
-        if (this.dragPointerId !== undefined && (state.mode !== 'chat' || state.chatId !== this.dragChatId))
+        if (this.dragPointerId !== undefined && (this.panel.mode !== 'chat' || state.mode !== 'chat' || state.chatId !== this.dragChatId))
             this.endTranscriptDrag();
-        this.content.className = state.mode === 'chat' ? 'dope-chat-content dope-chat-content-conversation' : 'dope-chat-content dope-chat-content-select';
-        this.scrollFollow.select(state.mode === 'chat' ? state.chatId : undefined);
+        this.title.label = this.title.caption = this.panel.mode === 'work' ? 'Work' : 'Chat';
+        this.content.className = this.panel.mode === 'work' ? 'dope-chat-content dope-chat-content-work' :
+            state.mode !== 'chat' ? 'dope-chat-content dope-chat-content-select' :
+                'dope-chat-content dope-chat-content-conversation';
+        this.scrollFollow.select(this.panel.mode === 'chat' && state.mode === 'chat' ? state.chatId : undefined);
         const oldScroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
         const scrollTop = oldScroll?.scrollTop ?? 0;
         const active = document.activeElement as HTMLElement | null;
         const focused = this.content.contains(active) ? active?.getAttribute('aria-label') : undefined;
         const selection = active instanceof HTMLTextAreaElement ? [active.selectionStart, active.selectionEnd] : undefined;
-        this.status.textContent = state.error || (state.loading ? 'Loading Chats…' : !state.workspace ? 'Open one project to use Chats.' : '');
-        if (state.error.includes('Interactive role')) this.status.append(' ',
+        this.status.textContent = this.panel.mode === 'chat' ?
+            state.error || (state.loading ? 'Loading Chats…' : !state.workspace ? 'Open one project to use Chats.' : '') :
+            !this.panel.workspace ? 'Open one project to use Work.' : '';
+        if (this.panel.mode === 'chat' && state.error.includes('Interactive role')) this.status.append(' ',
             this.button('Configure Interactive in Roles', () => { void this.aiCenter?.openRole('interactive'); }));
         this.content.replaceChildren();
+        const focusedMode = this.modeNav.contains(document.activeElement) ?
+            document.activeElement?.textContent : undefined;
+        this.modeNav.replaceChildren();
+        for (const mode of ['chat', 'work'] as const) {
+            const button = this.button(mode === 'chat' ? 'Chat' : 'Work', () => this.panel.setMode(mode));
+            button.setAttribute('aria-pressed', String(this.panel.mode === mode));
+            this.modeNav.append(button);
+            if (focusedMode === button.textContent) button.focus({ preventScroll: true });
+        }
+        if (this.panel.mode === 'work') {
+            const header = document.createElement('header');
+            const heading = document.createElement('h2');
+            heading.textContent = this.panel.work ? 'Work' : 'Select Work';
+            header.append(heading);
+            if (this.panel.work) header.append(this.button('Back / Work', () => this.panel.selectWork(undefined)));
+            this.content.append(header);
+            if (this.panel.workspace) {
+                if (!this.panel.work) {
+                    const selection = document.createElement('form');
+                    const label = document.createElement('label');
+                    label.textContent = 'Work ID';
+                    const input = document.createElement('input');
+                    input.name = 'workId'; input.required = true;
+                    label.append(input);
+                    const kind = document.createElement('select');
+                    kind.setAttribute('aria-label', 'Work kind');
+                    kind.append(new Option('Task', 'task'), new Option('Prompt Stack', 'sequence'));
+                    const open = document.createElement('button');
+                    open.type = 'submit'; open.textContent = 'Open Work';
+                    selection.onsubmit = event => {
+                        event.preventDefault();
+                        this.panel.selectWork({ kind: kind.value as 'task' | 'sequence', id: input.value.trim() });
+                    };
+                    selection.append(label, kind, open);
+                    this.content.append(selection);
+                } else {
+                    const region = document.createElement('section');
+                    region.className = 'dope-chat-transcript-region';
+                    region.setAttribute('aria-label', 'Selected Work');
+                    const scroll = document.createElement('div');
+                    scroll.className = 'dope-chat-scroll';
+                    scroll.textContent = `${this.panel.work.kind === 'sequence' ? 'Prompt Stack' : 'Task'} · ${this.panel.work.id}`;
+                    region.append(scroll);
+                    this.content.append(region);
+                }
+            }
+            return;
+        }
         if (!state.snapshot) {
             if (state.error && state.workspace) this.content.append(this.button('Retry', () => void this.attach()));
             return;
@@ -734,6 +800,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         ++this.modelsRequest;
         this.rootsListener.dispose();
         this.modelsListener?.dispose();
+        this.panel.dispose();
         this.controller.dispose();
         super.dispose();
     }

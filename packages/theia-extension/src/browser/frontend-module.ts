@@ -38,6 +38,7 @@ import type { ModelConnectionsClient } from '@dope/contracts/lib/model-connectio
 import type { ChatClient } from '@dope/chat/lib/service';
 import { ChatPanelWidget } from './chat-panel-widget';
 import { ChatOpenOwners } from './chat-panel-controller';
+import { WorkOpenOwners } from './shared-panel-state';
 import { AIRegistryService, aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
 import { AIRolePolicyService, aiRolePolicyServicePath, type AIRolePolicyClient } from '@dope/contracts/lib/ai-role-policy-service';
 import type { AIRolePolicyMutationRequest } from '@dope/ai';
@@ -61,7 +62,7 @@ abstract class ChatLauncherView extends AbstractViewContribution<ChatPanelWidget
     async onDidInitializeLayout(): Promise<void> { this.observe(await this.openView()); }
     async openLauncher(): Promise<ChatPanelWidget> {
         const widget = await this.widget;
-        await widget.controller.select(undefined);
+        await widget.selectChatLauncher();
         this.observe(await this.openView({ activate: true }));
         return widget;
     }
@@ -70,7 +71,7 @@ abstract class ChatLauncherView extends AbstractViewContribution<ChatPanelWidget
         const tabBar = this.shell.getTabBarFor(widget);
         if (!tabBar) return;
         const activated = (_sender: typeof tabBar, { title }: { title: typeof widget.title }) => {
-            if (title.owner === widget) void widget.controller.select(undefined);
+            if (title.owner === widget && widget.panel.mode === 'chat') void widget.selectChatLauncher();
         };
         tabBar.tabActivateRequested.connect(activated);
         widget.disposed.connect(() => tabBar.tabActivateRequested.disconnect(activated));
@@ -171,6 +172,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             void stack?.controller.refresh();
         } } satisfies AgentRuntimeClient));
     bind(ChatOpenOwners).toSelf().inSingletonScope();
+    bind(WorkOpenOwners).toSelf().inSingletonScope();
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();
     bind(AICredentialService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AICredentialService & RpcServer<AICredentialClient>>(
         context.container, aiCredentialServicePath, {
@@ -211,7 +213,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         new ChatPanelWidget(() => ServiceConnectionProvider.createProxy<ChatService & RpcServer<ChatClient>>(
             context.container, `${chatServicePath}/${options.instanceId}`),
             context.container.get(WorkspaceService), context.container.get(ApplicationShell),
-            context.container.get(ChatOpenOwners), options,
+            context.container.get(ChatOpenOwners), context.container.get(WorkOpenOwners), options,
             context.container.get<MarkdownRenderer>(CoreMarkdownRenderer),
             context.container.get(ModelConnectionsService), context.container.get(EditorManager),
             context.container.get(SoftwareMapController), context.container.get(AICenterContribution), modelInventoryChanged.event);

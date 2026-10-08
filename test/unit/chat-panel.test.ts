@@ -344,8 +344,8 @@ test('side Chat launchers use stable separate identities and normal Select Chat 
     assert.match(source, /name === 'right'.*RightChatLauncher/s);
     assert.match(source, /openChatPanel\(name/);
     assert.match(source, /tabBar\.tabActivateRequested\.connect\(activated\)/);
-    assert.match(source, /if \(title\.owner === widget\) void widget\.controller\.select\(undefined\)/);
-    assert.match(source, /await widget\.controller\.select\(undefined\)/);
+    assert.match(source, /if \(title\.owner === widget && widget\.panel\.mode === 'chat'\) void widget\.selectChatLauncher\(\)/);
+    assert.match(source, /await widget\.selectChatLauncher\(\)/);
     assert.match(widget, /codicon\('comment-discussion'\)/);
 });
 
