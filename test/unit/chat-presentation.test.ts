@@ -25,6 +25,7 @@ test('Theia Markdown path formats documents while escaping model-authored HTML',
 
 test('conversation surface keeps shell, roles, color and safe Markdown boundaries', async () => {
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const markdown = await readFile(new URL('../../packages/theia-extension/src/browser/untrusted-message-markdown.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     const module = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
     assert.match(widget, /shell\.append\(header, region\)/);
@@ -38,8 +39,13 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
     assert.match(widget, /dot\.dataset\.color = chat\.color/);
     assert.match(widget, /for \(const value of CHAT_COLORS\)/);
     assert.match(widget, /type: 'set-color', chatId, color: value/);
-    assert.match(widget, /new MarkdownStringImpl\(body, \{ supportHtml: false, isTrusted: false \}\)/);
-    assert.match(widget, /safeChatLink\(link\.getAttribute\('href'\)!/);
+    assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, body\)/);
+    assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, state\.stream\.content\)/);
+    assert.match(markdown, /markdown\.render\(new MarkdownStringImpl\(text,\s*\{ supportHtml: false, isTrusted: false \}\)\)\.element/);
+    assert.match(markdown, /safeChatLink\(link\.getAttribute\('href'\)!, document\.baseURI\)/);
+    assert.match(markdown, /link\.removeAttribute\('href'\)/);
+    assert.match(markdown, /link\.setAttribute\('rel', 'noopener noreferrer'\)/);
+    assert.doesNotMatch(markdown, /innerHTML|outerHTML/);
     assert.match(module, /CoreMarkdownRenderer/);
     assert.match(widget, /dope-chat-message-meta/);
     assert.match(widget, /\['automatic', 'Auto context'\]/);

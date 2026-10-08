@@ -42,9 +42,27 @@ test('Work reads every saved page from the beginning, including truncation state
 
 test('Work keeps untrusted Markdown sanitized, commands collapsed and follow independent', async () => {
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/agent-transcript-widget.ts', import.meta.url), 'utf8');
-    assert.match(widget, /new MarkdownStringImpl\(entry\.text,\s*\{ supportHtml: false, isTrusted: false \}\)/);
-    assert.match(widget, /safeChatLink\(link\.getAttribute\('href'\)!/);
+    const markdown = await readFile(new URL('../../packages/theia-extension/src/browser/untrusted-message-markdown.ts', import.meta.url), 'utf8');
+    const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+    assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, entry\.text\)/);
+    assert.match(markdown, /new MarkdownStringImpl\(text,\s*\{ supportHtml: false, isTrusted: false \}\)/);
+    assert.match(markdown, /safeChatLink\(link\.getAttribute\('href'\)!/);
+    assert.match(widget, /transcript\.className = 'dope-chat-transcript dope-work-transcript'/);
+    assert.match(widget, /article\.className = 'dope-chat-message dope-chat-message-assistant dope-work-message'/);
+    assert.match(widget, /transcript\.append\(article\)/);
+    assert.doesNotMatch(widget, /dope-chat-message-user|textContent = 'Assistant'/);
     assert.match(widget, /document\.createElement\('details'\); details\.className = 'dope-work-command'/);
+    assert.doesNotMatch(widget, /details\.open\s*=/);
+    assert.match(widget, /summary\.textContent = workCommandLabel\(entry\)/);
+    assert.match(widget, /transcript\.append\(details\)/);
+    assert.match(widget, /cursor = page\.nextSequence/);
+    assert.match(widget, /let cursor = 0/);
+    assert.match(widget, /Transcript not recorded for this historical run/);
+    assert.match(css, /\.dope-chat-panel \.dope-chat-message-content ul \{[^}]*list-style: disc outside/);
+    assert.match(css, /\.dope-chat-panel \.dope-chat-message-content ol \{[^}]*list-style: decimal outside/);
+    assert.match(css, /\.dope-work-transcript \{[^}]*width: 100%/);
+    assert.match(css, /\.dope-chat-message-content pre \{[^}]*max-width: 100%; overflow: auto/);
+    assert.match(css, /\.dope-chat-message-content table \{[^}]*max-width: 100%; overflow: auto/);
     assert.match(widget, /private readonly follow = new ChatScrollFollow\(\)/);
     assert.match(widget, /this\.follow\.scrolled\(scroll\.scrollTop, scroll\.scrollHeight, scroll\.clientHeight\)/);
     assert.match(widget, /this\.follow\.jump\(\)/);

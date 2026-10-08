@@ -1,10 +1,10 @@
 import { BaseWidget, codicon } from '@theia/core/lib/browser/widgets/widget';
-import { MarkdownStringImpl } from '@theia/core/lib/common/markdown-rendering/markdown-string';
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import type { AgentTranscriptEntry } from '@dope/agent-core';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
-import { ChatScrollFollow, safeChatLink } from './chat-panel-presentation';
+import { ChatScrollFollow } from './chat-panel-presentation';
+import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { agentTranscriptWidgetId, workCommandLabel, workCommandOutput,
     type AgentTranscriptOptions } from './work-transcript-presentation';
 import { workTitle } from './work-selection-controller';
@@ -90,23 +90,22 @@ export class AgentTranscriptWidget extends BaseWidget {
         scroll.onscroll = () => { this.scrollTop = scroll.scrollTop;
             this.follow.scrolled(scroll.scrollTop, scroll.scrollHeight, scroll.clientHeight);
             latest.hidden = !this.follow.latestBelow; };
+        const transcript = document.createElement('div');
+        transcript.className = 'dope-chat-transcript dope-work-transcript';
         if (this.state === 'not-recorded') {
-            const note = document.createElement('p'); note.textContent = 'Transcript not recorded for this historical run.';
-            scroll.append(note);
+            const note = document.createElement('p'); note.className = 'dope-work-system';
+            note.textContent = 'Transcript not recorded for this historical run.';
+            transcript.append(note);
         }
         for (const entry of this.entries) {
             if (entry.kind === 'message') {
                 const article = document.createElement('article');
-                article.className = 'dope-work-message dope-chat-message-content';
-                const rendered = this.markdown.render(new MarkdownStringImpl(entry.text,
-                    { supportHtml: false, isTrusted: false })).element;
-                for (const link of rendered.querySelectorAll('a[href]')) {
-                    if (!safeChatLink(link.getAttribute('href')!, document.baseURI)) link.removeAttribute('href');
-                    else link.setAttribute('rel', 'noopener noreferrer');
-                }
-                article.append(rendered);
-                if (entry.truncated) article.append(' [Message truncated]');
-                scroll.append(article);
+                article.className = 'dope-chat-message dope-chat-message-assistant dope-work-message';
+                const content = document.createElement('div'); content.className = 'dope-chat-message-content';
+                content.append(renderUntrustedMessageMarkdown(this.markdown, entry.text));
+                if (entry.truncated) content.append(' [Message truncated]');
+                article.append(content);
+                transcript.append(article);
             } else if (entry.kind === 'command') {
                 const details = document.createElement('details'); details.className = 'dope-work-command';
                 const summary = document.createElement('summary'); summary.textContent = workCommandLabel(entry);
@@ -114,18 +113,20 @@ export class AgentTranscriptWidget extends BaseWidget {
                 for (const output of workCommandOutput(entry)) {
                     const pre = document.createElement('pre'); pre.textContent = output; details.append(pre);
                 }
-                scroll.append(details);
+                transcript.append(details);
             } else {
                 const note = document.createElement('small'); note.className = 'dope-work-system';
                 note.textContent = entry.code === 'transcript-incomplete' ? 'Transcript truncated: recording limit reached.' :
-                    'System event';
-                scroll.append(note);
+                    entry.code === 'run-started' ? 'Run started.' : 'Run ended.';
+                transcript.append(note);
             }
         }
         if (this.incomplete && !this.entries.some(entry => entry.kind === 'marker' && entry.code === 'transcript-incomplete')) {
-            const note = document.createElement('p'); note.textContent = 'Transcript truncated: recording limit reached.';
-            scroll.append(note);
+            const note = document.createElement('p'); note.className = 'dope-work-system';
+            note.textContent = 'Transcript truncated: recording limit reached.';
+            transcript.append(note);
         }
+        scroll.append(transcript);
         region.append(scroll, latest);
         this.content.replaceChildren(region);
         scroll.scrollTop = this.follow.restore(this.scrollTop, scroll.scrollHeight, scroll.clientHeight);

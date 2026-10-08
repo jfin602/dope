@@ -5,7 +5,6 @@ import type { Event } from '@theia/core/lib/common';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
-import { MarkdownStringImpl } from '@theia/core/lib/common/markdown-rendering/markdown-string';
 import type { ChatOperation } from '@dope/chat/lib/service';
 import { CHAT_COLORS, type ChatSettings, type ChatContextKind, type ChatModelSelection } from '@dope/chat';
 import type { ChatContextSelection } from '@dope/chat/lib/service';
@@ -14,7 +13,8 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, resizeChatInput, resolveChatModel, safeChatLink, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
 import { WorkSelectionController, workRows, workTitle } from './work-selection-controller';
@@ -972,13 +972,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const dots = document.createElement('span'); dots.textContent = '…'; dots.setAttribute('aria-hidden', 'true');
                 content.append(dots);
             } else if (message.role === 'assistant') {
-                // Untrusted model output: MarkdownString defaults to HTML and command links disabled.
-                const rendered = this.markdown.render(new MarkdownStringImpl(body, { supportHtml: false, isTrusted: false })).element;
-                for (const link of rendered.querySelectorAll('a[href]')) {
-                    if (!safeChatLink(link.getAttribute('href')!, document.baseURI)) link.removeAttribute('href');
-                    else link.setAttribute('rel', 'noopener noreferrer');
-                }
-                content.append(rendered);
+                content.append(renderUntrustedMessageMarkdown(this.markdown, body));
             } else content.textContent = body;
             const time = document.createElement('time');
             time.dateTime = message.createdAt;
@@ -1057,13 +1051,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             item.setAttribute('aria-label', state.stream?.content ? 'Assistant' : 'Assistant working');
             const content = document.createElement('div'); content.className = 'dope-chat-message-content';
             if (state.stream?.content) {
-                const rendered = this.markdown.render(new MarkdownStringImpl(state.stream.content,
-                    { supportHtml: false, isTrusted: false })).element;
-                for (const link of rendered.querySelectorAll('a[href]')) {
-                    if (!safeChatLink(link.getAttribute('href')!, document.baseURI)) link.removeAttribute('href');
-                    else link.setAttribute('rel', 'noopener noreferrer');
-                }
-                content.append(rendered);
+                content.append(renderUntrustedMessageMarkdown(this.markdown, state.stream.content));
             } else {
                 content.classList.add('dope-chat-working'); content.textContent = 'Working';
                 const dots = document.createElement('span'); dots.textContent = '…'; dots.setAttribute('aria-hidden', 'true');
