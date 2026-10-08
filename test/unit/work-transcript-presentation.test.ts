@@ -12,6 +12,8 @@ test('command is compact and output is only claimed when recorded', () => {
         status: 'completed', exitCode: 0, durationMs: 42 };
     assert.equal(workCommandLabel(command), 'npm test · completed · exit 0 · 42 ms');
     assert.deepEqual(workCommandOutput(command), ['Output not recorded by adapter.']);
+    assert.deepEqual(workCommandOutput({ ...command, cwd: '.', output: 'hello', outputTruncated: false }),
+        ['cwd: .', 'output (combined):\nhello']);
     assert.deepEqual(workCommandOutput({ ...command, cwd: 'project', stdout: 'partial', stdoutTruncated: true,
         stderr: '', stderrTruncated: false }), ['cwd: project', 'stdout [truncated]:\npartial', 'stderr:\n']);
 });

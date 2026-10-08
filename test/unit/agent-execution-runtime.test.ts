@@ -502,7 +502,7 @@ test('execution-root command cwd survives durable transcript storage and complet
     f.adapter.onEvent!({ kind: 'command-started', commandId: 'root-command', command: 'printf hello',
         cwd: '.', summary: 'started' });
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'root-command', command: 'printf hello',
-        cwd: '.', exitCode: 0, status: 'completed', stdout: 'hello', summary: 'completed' });
+        cwd: '.', exitCode: 0, status: 'completed', output: 'hello', summary: 'completed' });
     f.adapter.complete();
     const done = await terminal(f.store, f.root, run.id);
     assert.equal(done.status, 'completed');
@@ -511,7 +511,7 @@ test('execution-root command cwd survives durable transcript storage and complet
     const command = transcript.entries.find(entry => entry.kind === 'command');
     assert.equal(command?.cwd, '.');
     assert.equal(command?.status, 'completed');
-    assert.equal(command?.stdout, 'hello');
+    assert.equal(command?.output, 'hello');
 }));
 
 test('provider command evidence never substitutes for Dope-owned required validation', async () => fixture(async f => {

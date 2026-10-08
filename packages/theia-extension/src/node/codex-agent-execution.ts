@@ -328,7 +328,7 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
         let eventCount = 0;
         const commands = new Map<string, { command?: ReturnType<typeof visible>; stdout?: ReturnType<typeof visible>;
             stderr?: ReturnType<typeof visible>; commandDropped?: boolean; stdoutDropped?: boolean;
-            stderrDropped?: boolean }>();
+            stderrDropped?: boolean; output?: ReturnType<typeof visible>; outputDropped?: boolean }>();
         const messages = new Map<string, string>();
         let finish!: (error?: Error) => void;
         const done = new Promise<void>((resolveDone, reject) => {
@@ -386,6 +386,13 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
                         else if (observed[stream].truncated || observed[stream].redacted)
                             emit({ kind: 'warning', summary: `Provider ${stream} redacted or truncated` });
                     }
+                    if (method === 'item/completed' && item.aggregatedOutput !== undefined && item.aggregatedOutput !== null) {
+                        observed.output = visible(item.aggregatedOutput, 4_000);
+                        observed.outputDropped = observed.output === undefined;
+                        if (!observed.output) emit({ kind: 'warning', summary: 'Unsafe provider output dropped' });
+                        else if (observed.output.truncated || observed.output.redacted)
+                            emit({ kind: 'warning', summary: 'Provider output redacted or truncated' });
+                    }
                     if (commandId && (method === 'item/started' || commands.has(commandId))) {
                         if (method === 'item/completed') commands.delete(commandId);
                         else commands.set(commandId, observed);
@@ -407,6 +414,9 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
                         ...(method === 'item/completed' ? {
                             stdoutPresent: observed.stdout !== undefined, stderrPresent: observed.stderr !== undefined,
                             stdoutDropped: observed.stdoutDropped === true, stderrDropped: observed.stderrDropped === true,
+                            outputDropped: observed.outputDropped === true,
+                            ...(observed.output ? { output: observed.output.text,
+                                outputTruncated: observed.output.truncated } : {}),
                             ...(observed.stdout ? { stdout: observed.stdout.text, stdoutTruncated: observed.stdout.truncated } : {}),
                             ...(observed.stderr ? { stderr: observed.stderr.text, stderrTruncated: observed.stderr.truncated } : {})
                         } : {}) });

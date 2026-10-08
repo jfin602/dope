@@ -156,7 +156,9 @@ export class AgentExecutionRuntime {
                     ...(observation.stdout === undefined ? {} : { stdout: observation.stdout,
                         stdoutTruncated: observation.stdoutTruncated ?? false }),
                     ...(observation.stderr === undefined ? {} : { stderr: observation.stderr,
-                        stderrTruncated: observation.stderrTruncated ?? false }) });
+                        stderrTruncated: observation.stderrTruncated ?? false }),
+                    ...(observation.output === undefined ? {} : { output: observation.output,
+                        outputTruncated: observation.outputTruncated ?? false }) });
                 active.transcriptCommands.delete(observation.commandId);
                 active.lastMessage = undefined;
             }

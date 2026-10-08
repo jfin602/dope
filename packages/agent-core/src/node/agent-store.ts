@@ -221,7 +221,8 @@ export class AgentStore implements AgentTranscriptStorage {
                         ...(item.exitCode === undefined ? {} : { exitCode: item.exitCode }),
                         ...(item.durationMs === undefined ? {} : { durationMs: item.durationMs }),
                         ...(item.stdout === undefined ? {} : { stdout: item.stdout, stdoutTruncated: item.stdoutTruncated }),
-                        ...(item.stderr === undefined ? {} : { stderr: item.stderr, stderrTruncated: item.stderrTruncated }) });
+                        ...(item.stderr === undefined ? {} : { stderr: item.stderr, stderrTruncated: item.stderrTruncated }),
+                        ...(item.output === undefined ? {} : { output: item.output, outputTruncated: item.outputTruncated }) });
                 } else entries.push(item);
             }
             const snapshot = { records, entries, text, recorded: true, identity: identity! };
@@ -286,7 +287,9 @@ export class AgentStore implements AgentTranscriptStorage {
                     ...(storedRecord.stdout === undefined ? {} : { stdout: storedRecord.stdout,
                         stdoutTruncated: storedRecord.stdoutTruncated }),
                     ...(storedRecord.stderr === undefined ? {} : { stderr: storedRecord.stderr,
-                        stderrTruncated: storedRecord.stderrTruncated }) });
+                        stderrTruncated: storedRecord.stderrTruncated }),
+                    ...(storedRecord.output === undefined ? {} : { output: storedRecord.output,
+                        outputTruncated: storedRecord.outputTruncated }) });
             } else nextEntries.push(storedRecord);
             const info = await stat(file);
             this.transcriptCache.set(file, { identity: `${info.ino}:${info.size}:${info.mtimeMs}:${info.ctimeMs}`,

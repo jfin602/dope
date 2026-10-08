@@ -6,8 +6,9 @@ export type AgentExecutionEvent =
     | { kind: 'command-started' | 'command-completed'; summary: string; commandId?: string;
         command?: string; commandTruncated?: boolean; commandRedacted?: boolean; commandDropped?: boolean; cwd?: string;
         status: 'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted'; exitCode?: number;
-        stdout?: string; stderr?: string; stdoutPresent?: boolean; stderrPresent?: boolean;
-        stdoutTruncated?: boolean; stderrTruncated?: boolean; stdoutDropped?: boolean; stderrDropped?: boolean }
+        stdout?: string; stderr?: string; output?: string; stdoutPresent?: boolean; stderrPresent?: boolean;
+        stdoutTruncated?: boolean; stderrTruncated?: boolean; outputTruncated?: boolean;
+        stdoutDropped?: boolean; stderrDropped?: boolean; outputDropped?: boolean }
     | { kind: 'file-changed'; summary: string; path: string }
     | { kind: 'status' | 'warning' | 'authority-denied' | 'provider-event'; summary: string };
 

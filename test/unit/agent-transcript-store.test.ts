@@ -34,7 +34,8 @@ test('ordered append, command reconstruction, pagination and reopen without acti
     await store.appendTranscript(root, 'run-1', { kind: 'command-start', at, commandId: 'cmd-1', command: 'npm test', cwd: 'src' });
     await store.appendTranscript(root, 'run-1', { kind: 'message', at, text: 'Tests are running.' });
     await store.appendTranscript(root, 'run-1', { kind: 'command-finish', at, commandId: 'cmd-1',
-        status: 'completed', exitCode: 0, durationMs: 25, stdout: 'passed', stdoutTruncated: true, stderr: '' });
+        status: 'completed', exitCode: 0, durationMs: 25, stdout: 'passed', stdoutTruncated: true,
+        stderr: '', output: 'combined output', outputTruncated: false });
     await store.appendTranscript(root, 'run-1', { kind: 'marker', at, code: 'run-ended' });
     const reopened = new AgentStore();
     const first = await reopened.readTranscript(root, 'run-1', 0, 2);
@@ -45,7 +46,7 @@ test('ordered append, command reconstruction, pagination and reopen without acti
     assert.deepEqual(first.entries[1], { version: 1, runId: 'run-1', sequence: 2, at, kind: 'command',
         commandId: 'cmd-1', command: 'npm test', commandTruncated: false, cwd: 'src', status: 'completed',
         completedSequence: 4, exitCode: 0, durationMs: 25, stdout: 'passed', stdoutTruncated: true,
-        stderr: '', stderrTruncated: false });
+        stderr: '', stderrTruncated: false, output: 'combined output', outputTruncated: false });
     assert.equal(first.hasMore, true);
     const second = await reopened.readTranscript(root, 'run-1', first.nextSequence, 2);
     assert.deepEqual(second.entries.map(item => item.sequence), [3, 5]);
@@ -70,10 +71,12 @@ test('bounded content redacts secrets and private paths, rejects non-visible con
     await assert.rejects(store.appendTranscript(root, 'run-1', { kind: 'command-start', at, commandId: 'cmd-2', command: 'pwd', cwd: '../escape' }), /path/);
     await store.appendTranscript(root, 'run-1', { kind: 'command-start', at, commandId: 'cmd-2', command: 'echo password=abc123' });
     await store.appendTranscript(root, 'run-1', { kind: 'command-finish', at, commandId: 'cmd-2', status: 'failed',
-        exitCode: 1, stderr: 'problem: Bearer abcdefghijklmnopqrstuvwxyz then ' + 'z'.repeat(5000) });
+        exitCode: 1, stderr: 'problem: Bearer abcdefghijklmnopqrstuvwxyz then ' + 'z'.repeat(5000),
+        output: 'Bearer abcdefghijklmnopqrstuvwxyz' });
     const command = (await store.readTranscript(root, 'run-1', 1, 2)).entries[0];
     assert.equal(command.kind, 'command');
     assert.equal(command.stderrTruncated, true);
+    assert.equal(command.output, '[redacted]');
     assert.doesNotMatch(JSON.stringify(command), /abc123|abcdefghijklmnopqrstuvwxyz/);
     const seed = await readFile(file, 'utf8');
     const padding = Array.from({ length: AGENT_TRANSCRIPT_ENTRY_LIMIT - 5 }, (_, index) =>

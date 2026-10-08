@@ -10,23 +10,24 @@ export type AgentTranscriptInput =
     | { kind: 'message'; at: string; text: string }
     | { kind: 'command-start'; at: string; commandId: string; command: string; cwd?: string }
     | { kind: 'command-finish'; at: string; commandId: string; status: 'completed' | 'failed' | 'cancelled' | 'interrupted';
-        exitCode?: number; durationMs?: number; stdout?: string; stderr?: string;
-        stdoutTruncated?: boolean; stderrTruncated?: boolean }
+        exitCode?: number; durationMs?: number; stdout?: string; stderr?: string; output?: string;
+        stdoutTruncated?: boolean; stderrTruncated?: boolean; outputTruncated?: boolean }
     | { kind: 'marker'; at: string; code: 'run-started' | 'run-ended' };
 
 export type AgentTranscriptEntry =
     | { version: 1; runId: string; sequence: number; at: string; kind: 'message'; text: string; truncated: boolean }
     | { version: 1; runId: string; sequence: number; at: string; kind: 'command'; commandId: string;
         command: string; commandTruncated: boolean; cwd?: string; status: 'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
-        completedSequence?: number; exitCode?: number; durationMs?: number; stdout?: string; stderr?: string;
-        stdoutTruncated?: boolean; stderrTruncated?: boolean }
+        completedSequence?: number; exitCode?: number; durationMs?: number; stdout?: string; stderr?: string; output?: string;
+        stdoutTruncated?: boolean; stderrTruncated?: boolean; outputTruncated?: boolean }
     | { version: 1; runId: string; sequence: number; at: string; kind: 'marker';
         code: 'run-started' | 'run-ended' | 'transcript-incomplete' };
 
 export type AgentTranscriptRecord = AgentTranscriptEntry | {
     version: 1; runId: string; sequence: number; at: string; kind: 'command-finish'; commandId: string;
     status: 'completed' | 'failed' | 'cancelled' | 'interrupted'; exitCode?: number; durationMs?: number;
-    stdout?: string; stderr?: string; stdoutTruncated?: boolean; stderrTruncated?: boolean;
+    stdout?: string; stderr?: string; output?: string;
+    stdoutTruncated?: boolean; stderrTruncated?: boolean; outputTruncated?: boolean;
 };
 
 export interface AgentTranscriptStorage {
@@ -84,17 +85,21 @@ export function prepareAgentTranscriptRecord(runId: string, sequence: number, in
                 ...(input.cwd === undefined ? {} : { cwd: projectPath(input.cwd, true) }), status: 'running' }; break;
         }
         case 'command-finish': {
-            record(input, ['kind', 'at', 'commandId', 'status', 'exitCode', 'durationMs', 'stdout', 'stderr', 'stdoutTruncated', 'stderrTruncated']);
+            record(input, ['kind', 'at', 'commandId', 'status', 'exitCode', 'durationMs', 'stdout', 'stderr', 'output',
+                'stdoutTruncated', 'stderrTruncated', 'outputTruncated']);
             const stdout = input.stdout === undefined ? undefined : clean(input.stdout, 4_000);
             const stderr = input.stderr === undefined ? undefined : clean(input.stderr, 4_000);
+            const output = input.output === undefined ? undefined : clean(input.output, 4_000);
             if ((input.stdoutTruncated !== undefined && input.stdout === undefined) ||
-                (input.stderrTruncated !== undefined && input.stderr === undefined)) throw new Error('Invalid transcript output flags');
+                (input.stderrTruncated !== undefined && input.stderr === undefined) ||
+                (input.outputTruncated !== undefined && input.output === undefined)) throw new Error('Invalid transcript output flags');
             result = { ...base, kind: 'command-finish', commandId: id(input.commandId),
                 status: select(input.status, ['completed', 'failed', 'cancelled', 'interrupted'] as const),
                 ...(input.exitCode === undefined ? {} : { exitCode: integer(input.exitCode, 255) }),
                 ...(input.durationMs === undefined ? {} : { durationMs: integer(input.durationMs) }),
                 ...(stdout === undefined ? {} : { stdout: stdout.text, stdoutTruncated: stdout.truncated || input.stdoutTruncated === true }),
-                ...(stderr === undefined ? {} : { stderr: stderr.text, stderrTruncated: stderr.truncated || input.stderrTruncated === true }) }; break;
+                ...(stderr === undefined ? {} : { stderr: stderr.text, stderrTruncated: stderr.truncated || input.stderrTruncated === true }),
+                ...(output === undefined ? {} : { output: output.text, outputTruncated: output.truncated || input.outputTruncated === true }) }; break;
         }
         case 'marker':
             record(input, ['kind', 'at', 'code']);
@@ -106,7 +111,8 @@ export function prepareAgentTranscriptRecord(runId: string, sequence: number, in
 
 export function parseAgentTranscriptRecord(value: unknown): AgentTranscriptRecord {
     const common = record(value, ['version', 'runId', 'sequence', 'at', 'kind', 'text', 'truncated', 'commandId', 'command', 'commandTruncated',
-        'cwd', 'status', 'completedSequence', 'exitCode', 'durationMs', 'stdout', 'stderr', 'stdoutTruncated', 'stderrTruncated', 'code']);
+        'cwd', 'status', 'completedSequence', 'exitCode', 'durationMs', 'stdout', 'stderr', 'output',
+        'stdoutTruncated', 'stderrTruncated', 'outputTruncated', 'code']);
     if (common.version !== AGENT_TRANSCRIPT_VERSION) throw new Error('Unsupported transcript version');
     const base = { version: AGENT_TRANSCRIPT_VERSION, runId: id(common.runId),
         sequence: integer(common.sequence, AGENT_TRANSCRIPT_ENTRY_LIMIT), at: timestamp(common.at) };
@@ -115,7 +121,8 @@ export function parseAgentTranscriptRecord(value: unknown): AgentTranscriptRecor
     const allowed = {
         message: ['version', 'runId', 'sequence', 'at', 'kind', 'text', 'truncated'],
         command: ['version', 'runId', 'sequence', 'at', 'kind', 'commandId', 'command', 'commandTruncated', 'cwd', 'status'],
-        'command-finish': ['version', 'runId', 'sequence', 'at', 'kind', 'commandId', 'status', 'exitCode', 'durationMs', 'stdout', 'stderr', 'stdoutTruncated', 'stderrTruncated'],
+        'command-finish': ['version', 'runId', 'sequence', 'at', 'kind', 'commandId', 'status', 'exitCode', 'durationMs',
+            'stdout', 'stderr', 'output', 'stdoutTruncated', 'stderrTruncated', 'outputTruncated'],
         marker: ['version', 'runId', 'sequence', 'at', 'kind', 'code']
     } as const;
     record(value, allowed[kind]);
@@ -134,11 +141,13 @@ export function parseAgentTranscriptRecord(value: unknown): AgentTranscriptRecor
             ...(common.cwd === undefined ? {} : { cwd: projectPath(common.cwd, true) }), status: 'running' });
     }
     if ((common.stdoutTruncated !== undefined && common.stdout === undefined) ||
-        (common.stderrTruncated !== undefined && common.stderr === undefined)) throw new Error('Invalid transcript output flags');
+        (common.stderrTruncated !== undefined && common.stderr === undefined) ||
+        (common.outputTruncated !== undefined && common.output === undefined)) throw new Error('Invalid transcript output flags');
     return freeze({ ...base, kind, commandId,
         status: select(common.status, ['completed', 'failed', 'cancelled', 'interrupted'] as const),
         ...(common.exitCode === undefined ? {} : { exitCode: integer(common.exitCode, 255) }),
         ...(common.durationMs === undefined ? {} : { durationMs: integer(common.durationMs) }),
         ...(common.stdout === undefined ? {} : { stdout: safe(common.stdout, 4_000, true), stdoutTruncated: bool(common.stdoutTruncated) }),
-        ...(common.stderr === undefined ? {} : { stderr: safe(common.stderr, 4_000, true), stderrTruncated: bool(common.stderrTruncated) }) });
+        ...(common.stderr === undefined ? {} : { stderr: safe(common.stderr, 4_000, true), stderrTruncated: bool(common.stderrTruncated) }),
+        ...(common.output === undefined ? {} : { output: safe(common.output, 4_000, true), outputTruncated: bool(common.outputTruncated) }) });
 }

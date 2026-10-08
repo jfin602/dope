@@ -128,12 +128,12 @@ class FakeChild extends EventEmitter {
                 notify('item/updated', { type: 'commandExecution', id: 'cmd-1', cwd: message.params.cwd,
                     status: 'inProgress', stdout: 'ready\n' });
                 notify('item/completed', { type: 'commandExecution', id: 'cmd-1', cwd: message.params.cwd,
-                    status: 'completed', exitCode: 0, stderr: 'Bearer secret123' });
+                    status: 'completed', exitCode: 0, stderr: 'Bearer secret123', aggregatedOutput: 'ready\n' });
                 notify('item/started', { type: 'commandExecution', id: 'cmd-2', cwd: join(message.params.cwd, 'src'),
                     command: 'cat /home/jfin/.ssh/id_rsa', status: 'inProgress' });
                 notify('item/completed', { type: 'commandExecution', id: 'cmd-2', cwd: join(message.params.cwd, 'src'),
                     status: 'completed', exitCode: 1, stdout: 'z'.repeat(5_000),
-                    stderr: 'A=one\nB=two\nC=three' });
+                    stderr: 'A=one\nB=two\nC=three', aggregatedOutput: 'Bearer secret123 and ' + 'q'.repeat(5_000) });
                 this.send({ method: 'turn/completed', params: { ...common, turn: { id: 'turn-1', status: 'completed' } } });
                 return;
             }
@@ -253,6 +253,8 @@ test('visible item snapshots retain incremental prose once and correlate bounded
         assert.equal(completed.stdoutPresent, true);
         assert.equal(completed.stderr, '[redacted]');
         assert.equal(completed.stderrPresent, true);
+        assert.equal(completed.output, 'ready\n');
+        assert.equal(completed.outputTruncated, false);
         const second = f.events.filter(event => event.kind === 'command-completed')[1];
         assert.equal(second.commandId, 'cmd-2');
         assert.equal(second.cwd, 'src');
@@ -264,6 +266,9 @@ test('visible item snapshots retain incremental prose once and correlate bounded
         assert.equal(second.stdoutTruncated, true);
         assert.equal(second.stderrPresent, false);
         assert.equal(second.stderrDropped, true);
+        assert.equal(second.outputTruncated, true);
+        assert.match(second.output, /\[redacted\]/);
+        assert.ok(second.output.length <= 4_000);
         assert.ok(f.events.some(event => event.summary === 'Unsafe or oversized agent message dropped'));
         assert.ok(!JSON.stringify(f.events).includes('private reasoning'));
         assert.ok(!JSON.stringify(f.events).includes('secret123'));

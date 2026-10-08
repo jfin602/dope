@@ -34,6 +34,9 @@ export function workCommandOutput(entry: Extract<AgentTranscriptEntry, { kind: '
     const lines = entry.cwd ? [`cwd: ${entry.cwd}`] : [];
     if (entry.stdout !== undefined) lines.push(`stdout${entry.stdoutTruncated ? ' [truncated]' : ''}:\n${entry.stdout}`);
     if (entry.stderr !== undefined) lines.push(`stderr${entry.stderrTruncated ? ' [truncated]' : ''}:\n${entry.stderr}`);
-    if (entry.stdout === undefined && entry.stderr === undefined) lines.push('Output not recorded by adapter.');
+    if (entry.stdout === undefined && entry.stderr === undefined && entry.output !== undefined)
+        lines.push(`output (combined)${entry.outputTruncated ? ' [truncated]' : ''}:\n${entry.output}`);
+    if (entry.stdout === undefined && entry.stderr === undefined && entry.output === undefined)
+        lines.push('Output not recorded by adapter.');
     return lines;
 }
