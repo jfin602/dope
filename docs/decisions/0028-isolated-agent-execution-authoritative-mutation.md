@@ -86,16 +86,28 @@ Richer per-effect escalation/partial acceptance may be added later through Propo
 
 ### Validation basis is explicit
 
-Validation performed by the coding agent runs against the ExecutionWorkspace and is recorded with that basis.
+Provider/model commands executed inside the ExecutionWorkspace are observable candidate-work evidence. They may include tests or builds, but they do not satisfy a required Dope CompletionPolicy validation target merely because the provider reports or emits an equivalent command.
 
-A successful provider validation does not by itself prove that authoritative promotion occurred. AgentRun distinguishes:
-- candidate change;
-- candidate validation;
+ADR 0029 adds the canonical required-validation boundary:
+
+- provider execution finishes inside the isolated ExecutionWorkspace;
+- Dope freezes candidate identity and derives CandidateDelta;
+- Dope-owned CandidateValidationRunner executes required validation against an isolated ValidationWorkspace derived from that frozen candidate;
+- required validation must reach a durable terminal result;
+- promotion remains blocked unless required validation passes and the frozen candidate identity is unchanged;
+- Authority + ToolExecutor remain the only authoritative promotion path.
+
+The provider sandbox remains unchanged and restrictive. CandidateValidationRunner has a separate, bounded local-test profile that may provide private temporary storage and private loopback networking without granting LAN/Internet egress, host-loopback access, private user state, authoritative-project writes, Git writes or system/package administration.
+
+AgentRun distinguishes:
+- provider command/activity evidence;
+- frozen candidate identity and CandidateDelta;
+- Dope-owned required candidate validation;
 - authority decision;
 - applied authoritative change;
 - any later authoritative validation.
 
-For 8B qualification, an allowed create/modify-only candidate must be promoted exactly, and Dope must prove the authoritative project matches the applied candidate effects. Phase 8C may add stronger post-promotion validation before checkpoint commits.
+A successful provider-run test does not imply required validation passed, and a successful candidate validation does not imply promotion occurred.
 
 ### Cancellation and interruption
 

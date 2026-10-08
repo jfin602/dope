@@ -607,7 +607,7 @@ Initial durable execution state includes:
 - CandidateDelta summary with classified create/modify/delete/rename effects;
 - authority decision and applied authoritative change summary;
 - affected project-relative files;
-- validation results with explicit execution-workspace or authoritative-project basis;
+- provider command evidence plus Dope-owned required candidate-validation results with explicit frozen-candidate/ValidationWorkspace basis;
 - bounded diff/change summary;
 - checkpoint/commit identity only where a later workflow explicitly owns one;
 - failure/cancel/interruption/recovery state;
@@ -648,6 +648,24 @@ The initial phase-stack checkpoint is a Dope-owned effect after successful promo
 Browser-required prompts and the final closeout are manual gates. A gate remains pending until external repository/Git/version truth proves a coherent continuation; clicking Resume is not completion evidence.
 
 AgentTaskSequence is not PlanStep reborn. It is execution orchestration. WorkItems may create tasks/sequences later, but the first product consumer is the proven sequential prompt workflow.
+### CandidateValidation
+
+A Dope-owned required validation attempt over one frozen candidate.
+
+Required CompletionPolicy validation is not delegated to the coding-agent provider. Provider commands may prove that the agent ran a test while working, but only CandidateValidationRunner can satisfy a required validation target.
+
+CandidateValidation records the approved target/command, frozen candidate identity/fingerprint, ValidationWorkspace identity, terminal status, bounded duration/output evidence and explicit failure/cancellation/not-started reason where applicable.
+
+Required terminal states are:
+- passed;
+- failed;
+- cancelled;
+- not-started with explicit reason.
+
+CandidateValidation executes in a disposable ValidationWorkspace derived from the frozen candidate, with isolated HOME and bounded private temporary storage. When the approved validation genuinely requires local HTTP/socket fixtures, it may receive a private network namespace with loopback only. It never receives LAN/Internet egress, host-loopback access, authoritative-project writes, Git-write authority, private user state or system/package-administration authority.
+
+A required validation without a durable passing terminal result blocks promotion. Validation cannot silently mutate the promotable candidate; Dope re-verifies candidate identity before Authority evaluates CandidateDelta.
+
 ### ExecutionGrant
 
 The developer-approved authority envelope for one AgentTask or AgentTaskSequence.

@@ -167,6 +167,29 @@ Minimal UI extends Agent Run with Import/Open Stack, ordered entries, current ta
 
 First Green dogfood uses a real Dope phase/correction stack through at least two automated checkpoints, a real manual/browser gate, application restart, same-gate reopen, external/manual checkpoint reconciliation and safe resume. Also qualify validation failure, cancellation, authority block, capacity retry, unexpected HEAD movement, explicit dirty-tree continuation, source-stack drift and duplicate-checkpoint prevention.
 
+## c8-candidate-validation — Dope-owned required validation correction
+
+The historical Phase 8C closeout remains Green for its exact qualified fixture. Subsequent Adaptive SEO dogfooding exposed a project-generalization gap: the authoritative project passes `npm run check`, while required validation inside the provider sandbox fails because the real suite needs private temporary filesystem state and a loopback HTTP fixture.
+
+ADR 0029 therefore inserts a bounded correction before 8D.
+
+Deliver:
+- Dope-owned CandidateValidationRunner after provider execution and before promotion;
+- frozen candidate identity plus isolated ValidationWorkspace;
+- private bounded temp / `TMPDIR` / private `/tmp`;
+- private network namespace with loopback only where required;
+- no host loopback, LAN/Internet, private user state, authoritative writes, Git writes or package-admin authority;
+- durable passed/failed/cancelled/not-started validation evidence with bounded output;
+- provider-run test commands remain activity evidence and cannot satisfy required CompletionPolicy validation;
+- promotion/checkpoint denied unless required candidate validation passes and frozen candidate identity remains unchanged.
+
+Qualification gate:
+- focused security/process tests for temp, loopback, host/network denial, cancellation/timeout, bounded evidence and candidate immutability;
+- real Adaptive SEO P1 `npm run check` passes through CandidateValidationRunner;
+- resume `c4-dope-phase-stack-smoke` through P2, P3 browser/manual gate, restart, P4 closeout and completed reopen.
+
+Phase 8D remains blocked until this correction and resumed external qualification are Green.
+
 ## 8D — General Scoped Delegation
 
 After phase-stack execution is reliable, generalize the same substrate.

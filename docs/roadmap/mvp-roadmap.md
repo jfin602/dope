@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 8 is **ACTIVE**. Phase 8A Codex reference connection is **GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`. Phase 8B Agent execution core is **GREEN / QUALIFIED** for the corrected direct AgentTask scope at `0.8.13`; qualified product/test source is `bd0b6ff` and the docs-only closeout is `c11756e`. Four of five post-correction cycles were used and all eight live gates passed. **Phase 8C — Sequential task / phase-stack execution is now the current slice**, starting at `0.8.14`.
+Current stage: Product Phase 8 is **ACTIVE**. Phase 8A Codex reference connection is **GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`. Phase 8B Agent execution core is **GREEN / QUALIFIED** for the corrected direct AgentTask scope at `0.8.13`; qualified product/test source is `bd0b6ff` and the docs-only closeout is `c11756e`. Phase 8C Sequential task / phase-stack execution remains **GREEN / QUALIFIED / CLOSED** for its exact `0.8.20` fixture. A later Adaptive SEO dogfood run exposed a required-validation generalization gap, so **correction `c8-candidate-validation` is now the active gate before Phase 8D**.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
@@ -64,8 +64,9 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
 | Product Phase 6 — Flow | **OWNER-CLOSED FOR SEQUENCING / P8 NOT QUALIFIED.** Evidence-backed provider-free Static Flow over the Physical Map is retained. The P8 exact-candidate direct restart/isolation and chosen-path provenance gaps remain in `docs/tasks/p6/closeout.md`; historical P7/map-canvas Not Green results remain intact. |
 | Product Phase 7 — AI Presence / AI Center / Roles | **OWNER APPROVED / QUALIFIED / CLOSED at actual `0.7.31`.** Durable Chat, AI Center and deterministic role routing are complete; the planned `0.7.32` closeout version did not materialize. Post-closeout `c7-chat-project-grounding` strengthens read-only repository/map evidence before Phase 8 without changing explicit model choice, Software Map evidence-egress authority or Phase 10 local-only background constraints. |
-| Product Phase 8 — Coding Agent / Scoped Delegation | **ACTIVE; 8B GREEN / 8C CURRENT.** The corrected direct AgentTask substrate is qualified at `0.8.13`. 8C adds durable AgentTaskSequence orchestration, prompt-stack import, Git/version truth, Dope-owned checkpoints, manual/browser gates and restart/resume while preserving ADR 0028. |
+| Product Phase 8 — Coding Agent / Scoped Delegation | **ACTIVE; 8B GREEN / 8C HISTORICALLY GREEN / CANDIDATE-VALIDATION CORRECTION ACTIVE.** 8C remains qualified for its exact `0.8.20` fixture; external Adaptive SEO dogfooding exposed a project-general required-validation gap that now gates 8D. |
 | Correction c8 — Agent Authority Boundary | **GREEN / INCORPORATED INTO QUALIFIED 8B.** Isolated ExecutionWorkspace -> CandidateDelta -> Dope Authority/ToolExecutor promotion is the canonical mutation boundary. |
+| Correction c8-candidate-validation — Dope-owned Candidate Validation | **ACTIVE GATE BEFORE 8D.** ADR 0029 separates required validation from the provider sandbox: freeze candidate -> isolated ValidationWorkspace -> bounded private temp/private loopback -> durable validation result -> Authority/promotion. Resume Adaptive SEO phase-stack qualification after this correction. |
 | Product Phase 9 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable intent, plans, WorkItems, agent runs, validation, decisions, review and session closeout inside Dope. |
 | Product Phase 10 — Living Software Knowledge Model | Dope continuously checks whether source/runtime evidence, canonical Software Map state, documentation and formal contracts still describe the same software. It can also use Phase 8 WorkItem and Phase 9 session provenance to explain why state changed. Deterministic impact analysis narrows work first; bounded local-model semantic checks maintain alignment in the background without silently mutating project truth. |
 
@@ -951,14 +952,22 @@ Phase 8 uses the existing phase runner as a **behavioral reference**, not as pro
    - stop on failure, cancellation, authority escalation or manual/browser gate;
    - reopen Dope and resume the same sequence from durable state and Git truth.
 
-4. **8D — General Scoped Delegation**
+4. **Correction c8-candidate-validation — Dope-owned required validation**
+   - keep the Coding Agent sandbox restrictive;
+   - freeze provider candidate state before required validation;
+   - run developer/task-approved validation through a Dope-owned isolated ValidationWorkspace;
+   - allow bounded private temp and private loopback without LAN/Internet or host-loopback access;
+   - persist terminal validation evidence and block promotion unless required validation passes;
+   - resume the real Adaptive SEO phase-stack smoke qualification before advancing.
+
+5. **8D — General Scoped Delegation**
    - a WorkItem may create one or more AgentTasks but is not itself the execution primitive;
    - HUMAN / AI / SHARED ownership;
    - ProposedAction / authority review where required;
    - richer steering, diff/review/accept/reject and validation evidence;
    - affected Software Map identities and bounded post-edit staleness/re-analysis bridge.
 
-5. **8E — Local coding-agent compatibility**
+6. **8E — Local coding-agent compatibility**
    - reuse the same AgentTask/AgentRun/Authority contracts against a local agent/model adapter;
    - benchmark identical representative tasks against the qualified reference harness;
    - diagnose model/context/tool capability differences without redesigning the product domain.

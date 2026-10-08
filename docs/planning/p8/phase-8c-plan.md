@@ -147,3 +147,24 @@ Do not implement WorkItem -> AgentTask delegation; HUMAN/AI/SHARED ownership UX;
 ## Exit condition
 
 8C is Green when a real phase/correction stack can execute sequentially inside Dope using the qualified 8B authority path, create verified Dope-owned checkpoints, stop honestly at failures/manual gates, and reopen/resume from durable sequence state plus Git truth without duplicate or ambiguous execution.
+
+
+## Post-closeout amendment — external candidate-validation generalization gate (2026-10-08)
+
+Phase 8C remains historically **GREEN / QUALIFIED / CLOSED** for the exact `0.8.20` fixture recorded in `docs/tasks/p8c/closeout.md`.
+
+Later real Adaptive SEO dogfooding exposed a broader project-validation requirement that the original fixture did not exercise. Adaptive SEO's authoritative source passes `npm run check`; the same candidate source fails when required validation is constrained to the Coding Agent provider sandbox because its unit suite legitimately needs temporary filesystem state and an ephemeral loopback HTTP fixture.
+
+This does not authorize widening the provider sandbox. ADR 0029 introduces a separate Dope-owned CandidateValidationRunner over a frozen candidate, with bounded private temp and private-loopback capabilities and durable terminal validation evidence.
+
+Sequencing is therefore:
+
+```text
+historical Phase 8C closeout
+-> c8-candidate-validation
+-> resume real Adaptive SEO c4-dope-phase-stack-smoke qualification
+-> Green
+-> Phase 8D
+```
+
+The failed external qualification loops remain retained evidence. No P1 checkpoint was created before this architecture stop, and P2-P4/manual-restart gates remain unqualified in that external project until the resumed smoke run clears them.

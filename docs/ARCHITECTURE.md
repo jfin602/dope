@@ -680,7 +680,7 @@ PhaseStackAdapter imports a normalized immutable stack snapshot/fingerprint and 
 
 Sequence progression is jointly constrained by durable AgentTaskSequence state and authoritative Git/version/worktree truth. Git proves checkpoint commits; sequence state explains imported intent/current gate. If they disagree or the source stack drifts, automatic resume blocks.
 
-The 8C checkpoint path is a Dope-owned authority boundary layered after successful ADR 0028 promotion and validation. The provider never stages or commits. Checkpoint scope is verified before staging and excludes ordinary `.dope/agent/**` runtime state. Restart cannot duplicate an already verified checkpoint.
+The 8C checkpoint path is a Dope-owned authority boundary layered after successful ADR 0028 promotion and required validation. ADR 0029 makes required candidate validation a separate Dope-owned process boundary: provider command activity is evidence, not completion authority. Dope freezes candidate identity, validates an isolated ValidationWorkspace derived from that candidate, re-verifies the frozen candidate, then permits ADR 0028 Authority/ToolExecutor promotion only after required validation passes. The provider never stages or commits. Checkpoint scope is verified before staging and excludes ordinary `.dope/agent/**` runtime state. Restart cannot duplicate an already verified checkpoint.
 
 This is Dope work state and is excluded from generic Physical Map input just like other `.dope/` work state. Provider tokens, hidden reasoning and arbitrary environment dumps are forbidden.
 
@@ -716,17 +716,26 @@ Dope-owned tools execute authoritative effects only after Authority permits them
 
 A reference agent harness such as Codex App Server may internally coordinate file/process tools inside a disposable/recoverable **ExecutionWorkspace**. The provider sandbox enforces coarse host-security boundaries, but provider write access is not authoritative project mutation.
 
-The mutation path is:
+The mutation and required-validation path is:
 
 ```text
 AgentTask + accepted project basis
     -> AgentExecutionAdapter
     -> isolated ExecutionWorkspace
-    -> CandidateDelta
+    -> freeze candidate identity + CandidateDelta
+    -> CandidateValidationRunner
+         -> isolated ValidationWorkspace
+         -> private temp
+         -> private loopback only when required
+    -> verify frozen candidate identity
     -> Authority / ExecutionGrant
     -> ToolExecutor
     -> authoritative project
 ```
+
+The provider sandbox and CandidateValidationRunner are separate security/process boundaries. The provider remains denied network and ambient host temp/private state. Dope-owned required validation may use bounded private temp and a private loopback network namespace, but it never receives LAN/Internet egress, host-loopback access, authoritative-project writes, Git writes or secrets. If the platform cannot prove those boundaries, validation fails closed.
+
+Provider-run tests/builds remain useful activity evidence but cannot satisfy a required CompletionPolicy validation target. Required validation is Dope-owned and must produce durable terminal evidence before promotion.
 
 CandidateDelta classifies at least create, modify, delete and deterministically proven rename/move. The initial corrected 8B grant allows authoritative create/modify and denies delete/rename. If any candidate effect is outside the grant, the whole candidate delta is blocked from promotion in 8B.
 
