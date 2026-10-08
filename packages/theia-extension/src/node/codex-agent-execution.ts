@@ -112,9 +112,18 @@ export async function resolveSandboxNode(pathValue = process.env.PATH ?? ''): Pr
         const version = await new Promise<string | undefined>(resolveVersion =>
             execFile(candidate, ['--version'], { timeout: 3000 }, (error, stdout) =>
                 resolveVersion(error ? undefined : stdout.trim())));
-        if (/^v24\.\d+\.\d+$/u.test(version ?? '')) return candidate;
+        if (!/^v24\.\d+\.\d+$/u.test(version ?? '')) continue;
+        // Yarn can prepend a temporary Node shim to PATH. Its binary reports Node 24,
+        // but it has no npm installation beside it for the isolated workspace.
+        const installation = dirname(dirname(candidate));
+        const npmCli = await realpath(join(installation, 'bin', 'npm')).catch(() => undefined);
+        if (npmCli !== join(installation, 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js')) continue;
+        try {
+            if (JSON.parse(await readFile(join(installation, 'lib', 'node_modules', 'npm', 'package.json'),
+                'utf8')).name === 'npm') return candidate;
+        } catch { /* Keep looking for a complete Node/npm installation. */ }
     }
-    throw fail('Node 24 executable unavailable for sandbox preflight', 'connection-unavailable');
+    throw fail('Node 24 npm installation unavailable for sandbox execution', 'connection-unavailable');
 }
 
 const shellQuote = (value: string): string => `'${value.replaceAll("'", "'\\''")}'`;

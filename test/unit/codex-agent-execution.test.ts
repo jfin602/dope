@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { chmod, mkdir, mkdtemp, realpath, rm, stat } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
@@ -14,7 +14,16 @@ import { providerFailure } from '../../packages/theia-extension/lib/node/codex-r
 
 test('sandbox probe resolves standalone Node 24 independently of Electron process.execPath', async () => {
     assert.equal(await resolveSandboxNode(dirname(process.execPath)), await realpath(process.execPath));
-    await assert.rejects(resolveSandboxNode('/nonexistent-node-directory'), /Node 24 executable unavailable/);
+    await assert.rejects(resolveSandboxNode('/nonexistent-node-directory'), /Node 24 npm installation unavailable/);
+});
+
+test('sandbox Node resolver skips Yarn-style Node shim without sibling npm', async () => {
+    const shim = await mkdtemp(join(tmpdir(), 'dope-node-shim-'));
+    try {
+        await writeFile(join(shim, 'node'), `#!/bin/sh\nexec "${process.execPath}" "$@"\n`, { mode: 0o755 });
+        assert.equal(await resolveSandboxNode(`${shim}:${dirname(process.execPath)}`),
+            await realpath(process.execPath));
+    } finally { await rm(shim, { recursive: true, force: true }); }
 });
 
 test('isolated npm toolchain runs project commands without host npm read access', async () => {
