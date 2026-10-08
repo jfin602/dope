@@ -1,0 +1,30 @@
+TASK: Correction 8 / P1 — Align current Dope Dark theme tokens
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Apply the October 8 ADR 0016 theme amendment centrally so AI Center, Chat, Work and other Dope-owned surfaces share calm dark controls. Do not re-theme the product through scattered widget hex values.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0016 amendment, ADR 0030, this stack README/assessment/plan. Inspect current dope.css token block, dope-theme.ts activation, AI Center controls and test/unit/dope-theme.test.ts. Keep prior historical theme evidence intact.
+
+IMPLEMENT
+- Set the scoped Dope Dark workbench anchor #1F1F1F, primary accent #336699, neutral secondary controls #303030, borders #484848. Define any derived focus/hover/selection tokens centrally with readable contrast.
+- Replace old default orange action/status/text and teal focus allocations, but preserve meaningful error/warning/success, syntax and 10 independent Chat organizational colors. Brand orange may remain only purposefully, not as global input/button borders.
+- Retain dark full-width status bar, bounded Git accent and semantic diagnostics. Preserve AI Center's neutral utilities and opt-in primary action.
+- Do not leak dope-dark CSS into an explicitly chosen compatible theme, change ThemeService/the default-theme preference contract, or perform a general workbench restyle.
+
+REGRESSION
+Update the historical literal-palette assertions in dope-theme.test.ts to the amended authority; cover central values, dark activation/deactivation, muted controls, focus/selection and statusbar semantic colors. Keep tests about supported alternate themes and no repeated scattered brand hex values.
+
+VALIDATION
+T1: node --test test/unit/dope-theme.test.ts; git diff --check; exact package 0.8.20 and no root package-lock.json. No npm run check, browser/Electron build, package/AppImage or live provider use. Build the extension only if a changed TS seam actually needs it.
+
+DONE WHEN
+Central dark tokens and focused tests match ADR 0016/0030, with alternate-theme semantics intact. Do not commit; runner owns this implementation checkpoint.
+
+FINAL RESPONSE
+Report exact theme mapping, focused test results, unchanged version and P2 handoff.
