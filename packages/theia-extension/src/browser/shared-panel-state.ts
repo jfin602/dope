@@ -1,5 +1,5 @@
 export type PanelMode = 'chat' | 'work';
-export type WorkSelection = { kind: 'task' | 'sequence'; id: string };
+export type WorkSelection = { kind: 'task' | 'run' | 'sequence'; id: string };
 
 export interface SharedPanelLayout {
     version: 2;
@@ -22,7 +22,7 @@ export function readSharedPanelLayout(value: object): SharedPanelLayout | undefi
     const work = state.work as Record<string, unknown> | undefined;
     return { version: 2, workspace: state.workspace, panelMode: state.panelMode,
         chatId: typeof state.chatId === 'string' ? state.chatId : undefined,
-        work: work && (work.kind === 'task' || work.kind === 'sequence') &&
+        work: work && (work.kind === 'task' || work.kind === 'run' || work.kind === 'sequence') &&
             typeof work.id === 'string' && !!work.id ? { kind: work.kind, id: work.id } : undefined };
 }
 

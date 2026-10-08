@@ -16,10 +16,14 @@ import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from '.
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
 import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, chatPanelWidgetId, resizeChatInput, resolveChatModel, safeChatLink, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
+import type { WorkSelection } from './shared-panel-state';
+import { WorkSelectionController, workTitle } from './work-selection-controller';
+import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     readonly controller: ChatPanelController;
     readonly panel: SharedPanelState;
+    readonly workController?: WorkSelectionController;
     private readonly rootsListener;
     private readonly modelsListener;
     private readonly status = document.createElement('p');
@@ -44,7 +48,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly markdown: MarkdownRenderer,
         private readonly modelConnections?: ModelConnectionsService,
         private readonly editors?: EditorManager, private readonly map?: SoftwareMapController,
-        private readonly aiCenter?: AICenterContribution, onModelsChanged?: Event<void>) {
+        private readonly aiCenter?: AICenterContribution, onModelsChanged?: Event<void>,
+        runtime?: AgentRuntimeService) {
         super();
         this.id = chatPanelWidgetId(options);
         this.title.label = this.title.caption = 'Chat';
@@ -55,6 +60,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             () => { void this.shell.activateWidget(this.id); });
         this.panel = new SharedPanelState(workOwners, this.id,
             () => { this.panel.setMode('work'); void this.shell.activateWidget(this.id); }, () => this.render());
+        if (runtime) this.workController = new WorkSelectionController(runtime, () => this.render());
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.modeNav.className = 'dope-chat-panel-modes';
@@ -130,11 +136,17 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const request = ++this.workspaceRequest;
         // Invalidate the old project immediately while workspace roots resolve.
         this.panel.attach(undefined);
+        await this.workController?.attach(undefined);
         await this.controller.attach(undefined);
         const roots = await this.workspaces.roots;
         if (this.isDisposed || request !== this.workspaceRequest) return;
         const workspace = roots.length === 1 ? roots[0].resource.toString() : undefined;
         this.panel.attach(workspace);
+        const workAttached = this.workController?.attach(workspace);
+        void workAttached?.then(() => {
+            if (!this.isDisposed && request === this.workspaceRequest && this.panel.work)
+                void this.workController?.select(this.panel.work);
+        });
         await this.controller.attach(workspace);
     }
 
@@ -150,6 +162,127 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         button.disabled = disabled;
         button.onclick = action;
         return button;
+    }
+    private selectWork(selection?: WorkSelection): void {
+        if (!this.panel.selectWork(selection)) return;
+        void (async () => {
+            await this.workController?.select(selection);
+            if (!selection) await this.workController?.refresh();
+            if (selection?.kind === 'sequence' && this.panel.work?.id === selection.id) {
+                const id = this.workController?.phase.selected?.id;
+                if (id && id !== selection.id) this.panel.selectWork({ kind: 'sequence', id });
+            }
+        })();
+    }
+    private renderWork(): void {
+        const work = this.panel.work, controller = this.workController;
+        const header = document.createElement('header');
+        const heading = document.createElement('h2');
+        heading.textContent = work && controller ? workTitle(work, controller.selectedRun, controller.selectedTask,
+            controller.phase.selected) : 'Select Work';
+        header.append(heading);
+        if (work) header.append(this.button('Select Work', () => this.selectWork()));
+        if (work) header.append(this.button('Refresh Work', () => {
+            if (work.kind === 'sequence') {
+                void controller?.phase.refresh(); void controller?.refresh();
+            } else void controller?.select(work);
+        }));
+        this.content.append(header);
+        if (!controller?.handle) return;
+        if (controller.message || controller.phase.message) {
+            const status = document.createElement('p'); status.setAttribute('role', 'status');
+            status.textContent = (controller.message || controller.phase.message).replaceAll('Phase Stack', 'Prompt Stack');
+            this.content.append(status);
+        }
+        if (!work) {
+            const history = document.createElement('section');
+            const title = document.createElement('h3'); title.textContent = 'Work history'; history.append(title);
+            for (const sequence of controller.phase.sequences) {
+                const item = this.button(`${workTitle({ kind: 'sequence', id: sequence.id }, undefined, undefined, sequence)} · ${sequence.status}`,
+                    () => this.selectWork({ kind: 'sequence', id: sequence.id }));
+                history.append(item);
+            }
+            for (const run of controller.runs) {
+                const task = controller.tasks.find(item => item.id === run.taskId);
+                history.append(this.button(`${workTitle({ kind: 'run', id: run.id }, run, task)} · ${run.status}`,
+                    () => this.selectWork({ kind: 'run', id: run.id })));
+            }
+            for (const task of controller.tasks.filter(item => !controller.runs.some(run => run.taskId === item.id)))
+                history.append(this.button(task.objective, () => this.selectWork({ kind: 'task', id: task.id })));
+            this.content.append(history);
+            const stacks = document.createElement('section');
+            const label = document.createElement('h3'); label.textContent = 'Prompt Stacks'; stacks.append(label);
+            const root = document.createElement('input'); root.type = 'text'; root.value = controller.phase.tasksRoot;
+            root.setAttribute('aria-label', 'Tasks folder');
+            root.onchange = () => controller.phase.setTasksRoot(root.value);
+            stacks.append(root, this.button('Refresh', () => { controller.phase.setTasksRoot(root.value); void controller.scan(); },
+                controller.phase.busy));
+            for (const stack of controller.phase.stacks) {
+                stacks.append(this.button(`${stack.folderName}${stack.sequenceStatus ? ` · ${stack.sequenceStatus}` : ''}`,
+                    () => this.selectWork({ kind: 'sequence', id: stack.sequenceId ?? stack.folderName }),
+                    controller.phase.busy || !stack.valid && !stack.sequenceId));
+                if (!stack.valid) { const error = document.createElement('p'); error.textContent = stack.error ?? 'Invalid Prompt Stack.';
+                    stacks.append(error); }
+            }
+            this.content.append(stacks);
+            return;
+        }
+        const region = document.createElement('section'); region.className = 'dope-chat-transcript-region';
+        region.setAttribute('aria-label', 'Selected Work');
+        const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll'; region.append(scroll);
+        const detail = (text: string) => { const paragraph = document.createElement('p'); paragraph.textContent = text; scroll.append(paragraph); };
+        if (work.kind === 'sequence') {
+            const phase = controller.phase, sequence = phase.selected;
+            if (sequence) {
+                detail(`Prompt Stack · ${sequence.status}`);
+                const metadata = document.createElement('small');
+                metadata.textContent = `${sequence.stack.mode === 'correction' ? 'Correction' : 'Phase'} ${sequence.stack.phase} · ${sequence.stack.folderName}`;
+                scroll.append(metadata);
+                const entry = phase.current;
+                if (entry) {
+                    detail(`P${entry.number} · ${entry.execution === 'manual-gate' ? 'Manual/browser gate' : 'Agent task'}`);
+                    if (entry.execution === 'manual-gate' && sequence.status !== 'completed') {
+                        const prompt = document.createElement('pre'); prompt.textContent = entry.promptText; scroll.append(prompt);
+                        scroll.append(this.button('Verify manual gate', () => void phase.reconcile(), phase.busy));
+                    } else if (entry.execution === 'agent-task' && sequence.status !== 'completed') {
+                        const validation = document.createElement('input'); validation.type = 'text';
+                        validation.value = phase.validationCommand; validation.maxLength = 160;
+                        validation.setAttribute('aria-label', 'Required validation command');
+                        validation.oninput = () => { phase.validationCommand = validation.value; start.disabled = !phase.canStart; };
+                        scroll.append(validation);
+                        const grant = document.createElement('label');
+                        const check = document.createElement('input'); check.type = 'checkbox'; check.checked = phase.acceptedGrant;
+                        check.onchange = () => { phase.acceptedGrant = check.checked; start.disabled = !phase.canStart; };
+                        grant.append(check, ' Accept project execution grant'); scroll.append(grant);
+                        if (phase.needsDirtyAcceptance && !phase.dirtyPromptDismissed)
+                            scroll.append(this.button('Continue with dirty worktree', () => void phase.continueDirty(), phase.busy),
+                                this.button('Cancel dirty acceptance', () => phase.cancelDirty(), phase.busy));
+                        detail(phase.readinessMessage);
+                        const start = this.button(sequence.status === 'ready' ? 'Start' : 'Resume', () => void phase.start(), !phase.canStart);
+                        scroll.append(start, this.button('Stop', () => void phase.stop(), phase.busy || sequence.status !== 'running'));
+                    }
+                }
+                if (sequence.blockedReason === 'checkpoint-pending' || sequence.blockedReason === 'checkpoint-failed')
+                    scroll.append(this.button('Verify checkpoint', () => void phase.checkpoint(), phase.busy));
+                else if (sequence.status !== 'running' && sequence.status !== 'completed')
+                    scroll.append(this.button('Reconcile repository', () => void phase.reconcile(), phase.busy));
+                if (sequence.gateMessage) detail(sequence.gateMessage);
+                if (phase.run) scroll.append(this.button('Open Run', () => this.selectWork({ kind: 'run', id: phase.run!.id })));
+            } else detail('Prompt Stack could not be opened. Refresh and try again.');
+        } else {
+            const run = controller.selectedRun;
+            if (run) {
+                detail(`Run · ${run.status}`);
+                if (controller.selectedTask) detail(controller.selectedTask.instructions);
+                if (controller.transcriptState === 'not-recorded') detail('Transcript not recorded.');
+                for (const entry of controller.transcript) {
+                    if (entry.kind === 'message') detail(entry.text);
+                    else if (entry.kind === 'command') detail(`${entry.command} · ${entry.status}`);
+                }
+            } else if (controller.selectedTask) detail(controller.selectedTask.instructions);
+            else detail('Work record could not be found.');
+        }
+        this.content.append(region);
     }
     private async name(title: string, value = ''): Promise<string | undefined> {
         const result = await new SingleTextInputDialog({ title, initialValue: value, confirmButtonLabel: 'Save' }).open();
@@ -397,7 +530,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const selection = active instanceof HTMLTextAreaElement ? [active.selectionStart, active.selectionEnd] : undefined;
         this.status.textContent = this.panel.mode === 'chat' ?
             state.error || (state.loading ? 'Loading Chats…' : !state.workspace ? 'Open one project to use Chats.' : '') :
-            !this.panel.workspace ? 'Open one project to use Work.' : '';
+            !this.panel.workspace ? 'Open one project to use Work.' : !this.workController?.handle ? 'Loading Work…' : '';
         if (this.panel.mode === 'chat' && state.error.includes('Interactive role')) this.status.append(' ',
             this.button('Configure Interactive in Roles', () => { void this.aiCenter?.openRole('interactive'); }));
         this.content.replaceChildren();
@@ -411,42 +544,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (focusedMode === button.textContent) button.focus({ preventScroll: true });
         }
         if (this.panel.mode === 'work') {
-            const header = document.createElement('header');
-            const heading = document.createElement('h2');
-            heading.textContent = this.panel.work ? 'Work' : 'Select Work';
-            header.append(heading);
-            if (this.panel.work) header.append(this.button('Back / Work', () => this.panel.selectWork(undefined)));
-            this.content.append(header);
-            if (this.panel.workspace) {
-                if (!this.panel.work) {
-                    const selection = document.createElement('form');
-                    const label = document.createElement('label');
-                    label.textContent = 'Work ID';
-                    const input = document.createElement('input');
-                    input.name = 'workId'; input.required = true;
-                    label.append(input);
-                    const kind = document.createElement('select');
-                    kind.setAttribute('aria-label', 'Work kind');
-                    kind.append(new Option('Task', 'task'), new Option('Prompt Stack', 'sequence'));
-                    const open = document.createElement('button');
-                    open.type = 'submit'; open.textContent = 'Open Work';
-                    selection.onsubmit = event => {
-                        event.preventDefault();
-                        this.panel.selectWork({ kind: kind.value as 'task' | 'sequence', id: input.value.trim() });
-                    };
-                    selection.append(label, kind, open);
-                    this.content.append(selection);
-                } else {
-                    const region = document.createElement('section');
-                    region.className = 'dope-chat-transcript-region';
-                    region.setAttribute('aria-label', 'Selected Work');
-                    const scroll = document.createElement('div');
-                    scroll.className = 'dope-chat-scroll';
-                    scroll.textContent = `${this.panel.work.kind === 'sequence' ? 'Prompt Stack' : 'Task'} · ${this.panel.work.id}`;
-                    region.append(scroll);
-                    this.content.append(region);
-                }
-            }
+            this.renderWork();
             return;
         }
         if (!state.snapshot) {

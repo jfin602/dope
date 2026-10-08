@@ -216,7 +216,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             context.container.get(ChatOpenOwners), context.container.get(WorkOpenOwners), options,
             context.container.get<MarkdownRenderer>(CoreMarkdownRenderer),
             context.container.get(ModelConnectionsService), context.container.get(EditorManager),
-            context.container.get(SoftwareMapController), context.container.get(AICenterContribution), modelInventoryChanged.event);
+            context.container.get(SoftwareMapController), context.container.get(AICenterContribution), modelInventoryChanged.event,
+            context.container.get(AgentRuntimeService));
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({

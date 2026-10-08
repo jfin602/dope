@@ -79,5 +79,6 @@ test('project switch and close release presentation only, ignore stale restored 
     pending.dispose();
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/shared-panel-state.ts', import.meta.url), 'utf8');
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
-    assert.doesNotMatch(source + widget, /AgentRuntime|\.stop\(/);
+    assert.doesNotMatch(source, /AgentRuntime|\.stop\(/);
+    assert.doesNotMatch(widget.slice(widget.indexOf('override dispose():')), /\.stop\(/);
 });
