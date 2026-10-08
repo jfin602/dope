@@ -111,17 +111,16 @@ test('manual gate only reconciles and pending checkpoint uses backend operation'
     await pending.controller.checkpoint(); assert.equal(pending.checkpoints, 1);
 });
 
-test('Phase Stack view has discovery controls and no import UI', async () => {
+test('Prompt Stack uses shared Work discovery and detail without import UI', async () => {
     const base = new URL('../../packages/theia-extension/src/browser/', import.meta.url);
     const [widget, backend, contracts] = await Promise.all([
-        'phase-stack-widget.ts', '../node/agent-runtime-backend.ts',
+        'chat-panel-widget.ts', '../node/agent-runtime-backend.ts',
         '../../../contracts/src/agent-runtime-service.ts'].map(name => readFile(new URL(name, base), 'utf8')));
-    for (const label of ['Tasks folder', 'Available task stacks', 'Phase Stack entries',
-        'Required validation command', 'Worktree is dirty: continue?', 'Continue', 'Cancel',
-        'External completion: reconcile gate', 'Checkpoint:', 'Open Agent Run detail'])
+    for (const label of ['Tasks folder', 'Prompt Stacks', 'Required validation command',
+        'Continue with dirty worktree', 'Cancel dirty acceptance', 'Verify checkpoint', 'Open Agent Run detail'])
         assert.ok(widget.includes(label), label);
-    assert.doesNotMatch(widget, /Import Stack|Imported stacks|Project-local stack folder|Accept current dirty worktree/);
-    assert.match(widget, /textContent = content/);
+    assert.doesNotMatch(widget, /Import Stack|Imported stacks|Project-local stack folder/);
+    assert.match(widget, /this\.selectWork\(\{ kind: 'run'/);
     assert.match(backend, /listTaskStacks\(/); assert.match(backend, /openTaskStack\(/);
     assert.match(contracts, /acceptSequenceDirtyBasis\(/);
 });

@@ -23,6 +23,7 @@ export class AgentRunController {
     accepted = false;
     objective = '';
     instructions = '';
+    validationCommand = '';
     policy: AgentModelPolicy = { kind: 'follow-coding-agent' };
     private sequence = 0;
     private refreshing = false;
@@ -35,6 +36,7 @@ export class AgentRunController {
         const serial = ++this.serial;
         this.project = project; this.handle = undefined; this.runs = []; this.sequences = []; this.selected = undefined;
         this.task = undefined; this.events = []; this.sequence = 0; this.accepted = false;
+        this.objective = ''; this.instructions = ''; this.validationCommand = '';
         this.changed();
         if (!project) return;
         try {
@@ -92,24 +94,28 @@ export class AgentRunController {
     setPolicy(policy: AgentModelPolicy): void { this.policy = policy; this.accepted = false; void this.resolveTarget(); this.changed(); }
     edit(objective: string, instructions: string): void { this.objective = objective; this.instructions = instructions;
         this.accepted = false; }
+    setValidation(command: string): void { this.validationCommand = command; this.accepted = false; this.changed(); }
     acceptGrant(accepted: boolean): void { this.accepted = accepted; this.changed(); }
     get canStart(): boolean { return Boolean(this.handle && this.project && this.resolved && this.accepted &&
         this.objective.trim() && this.instructions.trim() && !this.busy && !this.runs.some(run =>
             ['pending', 'running', 'blocked', 'cancelling'].includes(run.status))); }
-    async start(): Promise<void> {
+    async start(): Promise<AgentRun | undefined> {
         if (!this.canStart || !this.handle || !this.project) return;
         this.busy = true; this.message = ''; this.changed();
         try {
             const task = parseAgentTask({ version: AGENT_SCHEMA_VERSION, id: crypto.randomUUID(), createdAt: new Date().toISOString(),
                 objective: this.objective.trim(), instructions: this.instructions.trim(), projectRoot: '.',
                 modelPolicy: this.policy, controls: {}, authority: { profile: 'phase-8b-project' },
-                completion: { validation: [], requireValidationPass: false }, origin: { kind: 'direct' } });
+                completion: { validation: this.validationCommand.trim() ?
+                    [{ kind: 'test', label: 'Required validation', command: this.validationCommand.trim() }] : [],
+                    requireValidationPass: Boolean(this.validationCommand.trim()) }, origin: { kind: 'direct' } });
             this.task = await this.runtime.createTask(this.handle, task);
             const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1, taskId: task.id,
                 acceptedAt: new Date().toISOString() });
             const run = await this.runtime.start(this.handle, this.project, task.id, grant, true);
             this.selected = run; this.accepted = false;
             await this.refresh();
+            return run;
         } catch { this.message = 'Agent Run could not start. Review the project, target and grant, then retry.'; }
         finally { this.busy = false; this.changed(); }
     }

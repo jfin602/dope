@@ -64,6 +64,17 @@ test('direct task displays eligible target and requires explicit grant before st
     await h.controller.stop(); assert.equal(h.stopped, true); assert.equal(h.controller.selected?.status, 'cancelling');
 });
 
+test('direct task keeps validation bounded and requires a fresh grant after edits', async () => {
+    const h = harness(); await h.controller.attach('file:///project');
+    h.controller.edit('One task', 'Implement and verify');
+    h.controller.acceptGrant(true);
+    h.controller.setValidation('npm test');
+    assert.equal(h.controller.canStart, false);
+    h.controller.acceptGrant(true); await h.controller.start();
+    assert.deepEqual((h.task as { completion: unknown }).completion, { validation: [
+        { kind: 'test', label: 'Required validation', command: 'npm test' }], requireValidationPass: true });
+});
+
 test('Resume requests backend gate reconciliation and restart keeps the same pending prompt', async () => {
     const h = harness();
     const gate = { id: 'sequence', status: 'waiting-manual', currentEntryNumber: 1,
@@ -96,16 +107,16 @@ test('persisted terminal run is inspectable after attach with change and validat
     assert.equal(reopened.selected?.changeSummary?.summary, 'Updated source');
 });
 
-test('Agent Run source wires command, safe text, accessible controls and bounded activity without raw provider fields', async () => {
+test('Work uses the direct authority controller and aliases without a standalone Agent Run view', async () => {
     const base = new URL('../../packages/theia-extension/src/browser/', import.meta.url);
-    const [contribution, widget, controller, module] = await Promise.all([
-        'agent-run-contribution.ts', 'agent-run-widget.ts', 'agent-run-controller.ts', 'frontend-module.ts'
+    const [widget, controller, module] = await Promise.all([
+        'chat-panel-widget.ts', 'agent-run-controller.ts', 'frontend-module.ts'
     ].map(name => readFile(new URL(name, base), 'utf8')));
-    assert.match(contribution, /Dope: Open Agent Run/); assert.match(module, /AgentRunContribution/);
-    for (const label of ['Objective', 'Executable instructions', 'Model policy', 'Accept Grant', 'Agent Run activity'])
+    assert.match(module, /id: 'dope\.agentRun\.open'/); assert.doesNotMatch(module, /AgentRunWidget/);
+    for (const label of ['Work instructions', 'Coding Agent model', 'Accept Grant', 'Stop Work'])
         assert.ok(widget.includes(label));
-    assert.match(widget, /textContent = content/); assert.match(widget, /event\.at.*event\.kind/);
-    assert.match(widget, /Changed files/); assert.match(widget, /Validation results/); assert.match(widget, /changeSummary/);
-    assert.match(controller, /runtime\.stop\(/); assert.match(controller, /events\.slice\(-300\)/);
-    assert.doesNotMatch(widget, /token|hiddenReasoning|rawPayload|process\.env/i);
+    assert.match(widget, /this\.directController\.select\(run\.id\)/);
+    assert.match(controller, /runtime\.stop\(/); assert.match(controller, /createDefaultExecutionGrant/);
+    assert.doesNotMatch(widget.slice(widget.indexOf('private renderWorkComposer'), widget.indexOf('private async name')),
+        /hiddenReasoning|rawPayload|process\.env/i);
 });

@@ -44,13 +44,9 @@ import { AIRolePolicyService, aiRolePolicyServicePath, type AIRolePolicyClient }
 import type { AIRolePolicyMutationRequest } from '@dope/ai';
 import { AICenterWidget, AI_CENTER_ID } from './ai-center-widget';
 import { AICenterContribution } from './ai-center-contribution';
-import { AgentRunWidget, AGENT_RUN_ID } from './agent-run-widget';
-import { AgentRunContribution } from './agent-run-contribution';
-import { PhaseStackWidget, PHASE_STACK_ID } from './phase-stack-widget';
-import { PhaseStackContribution } from './phase-stack-contribution';
 import { AICenterBottomMenuWidget } from './ai-center-launcher';
 import { SidebarBottomMenuWidget } from '@theia/core/lib/browser/shell/sidebar-bottom-menu-widget';
-import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
+import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, workLauncherIds, workLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
 
 const modelInventoryChanged = new Emitter<void>();
 
@@ -85,21 +81,37 @@ class LeftChatLauncher extends ChatLauncherView { constructor() { super('left');
 @injectable()
 class RightChatLauncher extends ChatLauncherView { constructor() { super('right'); } }
 
+abstract class WorkLauncherView extends AbstractViewContribution<ChatPanelWidget> implements FrontendApplicationContribution {
+    protected constructor(side: 'left' | 'right') {
+        super({ widgetId: workLauncherIds[side], widgetName: 'Work', defaultWidgetOptions: { area: side, rank: 251 } });
+    }
+    async onDidInitializeLayout(): Promise<void> {
+        const widget = await this.openView();
+        const tabBar = this.shell.getTabBarFor(widget);
+        if (tabBar) {
+            const activated = (_sender: typeof tabBar, { title }: { title: typeof widget.title }) => {
+                if (title.owner === widget && widget.panel.mode === 'chat') void widget.selectWorkLauncher();
+            };
+            tabBar.tabActivateRequested.connect(activated);
+            widget.disposed.connect(() => tabBar.tabActivateRequested.disconnect(activated));
+        }
+    }
+    async openLauncher(): Promise<ChatPanelWidget> {
+        const widget = await this.openView({ activate: true });
+        await widget.selectWorkLauncher();
+        return widget;
+    }
+}
+
+@injectable()
+class LeftWorkLauncher extends WorkLauncherView { constructor() { super('left'); } }
+
+@injectable()
+class RightWorkLauncher extends WorkLauncherView { constructor() { super('right'); } }
+
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     rebind(SidebarBottomMenuWidget).to(AICenterBottomMenuWidget);
     bind(AICenterContribution).toSelf().inSingletonScope();
-    bind(PhaseStackContribution).toSelf().inSingletonScope();
-    bind(CommandContribution).toService(PhaseStackContribution);
-    bind(WidgetFactory).toDynamicValue(context => ({ id: PHASE_STACK_ID, createWidget: () => new PhaseStackWidget(
-        () => context.container.get(AgentRuntimeService), context.container.get(WorkspaceService), async runId => {
-            const widget = await context.container.get(AgentRunContribution).open();
-            await widget.focusRun(runId);
-        }) })).inSingletonScope();
-    bind(AgentRunContribution).toSelf().inSingletonScope();
-    bind(CommandContribution).toService(AgentRunContribution);
-    bind(WidgetFactory).toDynamicValue(context => ({ id: AGENT_RUN_ID, createWidget: () => new AgentRunWidget(
-        () => context.container.get(AgentRuntimeService), context.container.get(AIRegistryService),
-        context.container.get(AIRolePolicyService), context.container.get(WorkspaceService)) })).inSingletonScope();
     bind(codexAuthServicePath).toDynamicValue(context =>
         ServiceConnectionProvider.createProxy<CodexAuthService>(context.container, codexAuthServicePath)).inSingletonScope();
     bind(CommandContribution).toService(AICenterContribution);
@@ -135,9 +147,13 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bindViewContribution(bind, SoftwareMapView);
     bindViewContribution(bind, LeftChatLauncher);
     bindViewContribution(bind, RightChatLauncher);
+    bindViewContribution(bind, LeftWorkLauncher);
+    bindViewContribution(bind, RightWorkLauncher);
     bind(FrontendApplicationContribution).toService(SoftwareMapView);
     bind(FrontendApplicationContribution).toService(LeftChatLauncher);
     bind(FrontendApplicationContribution).toService(RightChatLauncher);
+    bind(FrontendApplicationContribution).toService(LeftWorkLauncher);
+    bind(FrontendApplicationContribution).toService(RightWorkLauncher);
     const openPhysicalMap = async (manager: WidgetManager, shell: ApplicationShell,
         map?: SoftwareMapController, options?: PhysicalMapTabOptions) => {
         const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID, options);
@@ -162,14 +178,35 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 openChatPanel(name, options => context.container.get(WidgetManager)
                     .getOrCreateWidget<ChatPanelWidget>(CHAT_PANEL_ID, options), context.container.get(ApplicationShell)) });
     } })).inSingletonScope();
+    bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) => {
+        const openWork = async (area: ChatArea, promptStack = false): Promise<ChatPanelWidget> => {
+            const widget = area === 'left' ? await context.container.get(LeftWorkLauncher).openLauncher() :
+                area === 'right' ? await context.container.get(RightWorkLauncher).openLauncher() :
+                    await openChatPanel<ChatPanelWidget>(area, options => context.container.get(WidgetManager)
+                        .getOrCreateWidget<ChatPanelWidget>(CHAT_PANEL_ID, options), context.container.get(ApplicationShell));
+            if (promptStack) await widget.selectPromptStacks();
+            else await widget.selectWorkLauncher();
+            return widget;
+        };
+        for (const area of Object.keys(chatAreas) as ChatArea[]) commands.registerCommand(
+            { id: `dope.work.open.${area}`, label: `Dope: Open Work in ${area[0].toUpperCase()}${area.slice(1)}` },
+            { execute: () => openWork(area) });
+        commands.registerCommand({ id: 'dope.work.open', label: 'Dope: Open Work' },
+            { execute: () => openWork('center') });
+        commands.registerCommand({ id: 'dope.work.openPromptStack', label: 'Dope: Open Prompt Stack' },
+            { execute: () => openWork('center', true) });
+        commands.registerCommand({ id: 'dope.agentRun.open' }, { execute: () => openWork('center') });
+        commands.registerCommand({ id: 'dope.phaseStack.open' }, { execute: () => openWork('center', true) });
+    } })).inSingletonScope();
     bind(NoteService).toDynamicValue(context => ServiceConnectionProvider.createProxy<NoteService>(context.container, noteServicePath)).inSingletonScope();
     bind(ProjectMindService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ProjectMindService & RpcServer<ProjectMindClient>>(context.container, projectMindServicePath));
     bind(AgentRuntimeService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AgentRuntimeService & RpcServer<AgentRuntimeClient>>(
         context.container, agentRuntimeServicePath, { notifyAgentStateChanged: () => {
-            const widget = context.container.get(WidgetManager).tryGetWidget<AgentRunWidget>(AGENT_RUN_ID);
-            void widget?.controller.refresh();
-            const stack = context.container.get(WidgetManager).tryGetWidget<PhaseStackWidget>(PHASE_STACK_ID);
-            void stack?.controller.refresh();
+            const widgets = context.container.get(WidgetManager);
+            for (const widget of [...widgets.getWidgets(CHAT_PANEL_ID),
+                ...(['left', 'right'] as const).flatMap(side => [widgets.tryGetWidget(chatLauncherIds[side]),
+                    widgets.tryGetWidget(workLauncherIds[side])])].filter(Boolean) as ChatPanelWidget[])
+                void widget.refreshWork();
         } } satisfies AgentRuntimeClient));
     bind(ChatOpenOwners).toSelf().inSingletonScope();
     bind(WorkOpenOwners).toSelf().inSingletonScope();
@@ -217,11 +254,15 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             context.container.get<MarkdownRenderer>(CoreMarkdownRenderer),
             context.container.get(ModelConnectionsService), context.container.get(EditorManager),
             context.container.get(SoftwareMapController), context.container.get(AICenterContribution), modelInventoryChanged.event,
-            context.container.get(AgentRuntimeService));
+            context.container.get(AgentRuntimeService), context.container.get(AIRegistryService),
+            context.container.get(AIRolePolicyService));
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({
         id: chatLauncherIds[side], createWidget: () => createChatWidget(context, chatLauncherOptions[side])
+    })).inSingletonScope();
+    for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({
+        id: workLauncherIds[side], createWidget: () => createChatWidget(context, workLauncherOptions[side])
     })).inSingletonScope();
     rebind(WindowTitleService).to(DopeWindowTitleService).inSingletonScope();
 });

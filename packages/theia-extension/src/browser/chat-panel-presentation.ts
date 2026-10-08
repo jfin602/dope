@@ -16,6 +16,14 @@ export const chatLauncherIds = {
     left: `${CHAT_PANEL_ID}:${chatLauncherOptions.left.instanceId}`,
     right: `${CHAT_PANEL_ID}:${chatLauncherOptions.right.instanceId}`,
 } as const;
+export const workLauncherOptions = {
+    left: { instanceId: '00000000-0000-4000-8000-000000000003' },
+    right: { instanceId: '00000000-0000-4000-8000-000000000004' },
+} as const;
+export const workLauncherIds = {
+    left: `${CHAT_PANEL_ID}:${workLauncherOptions.left.instanceId}`,
+    right: `${CHAT_PANEL_ID}:${workLauncherOptions.right.instanceId}`,
+} as const;
 export function shouldSendChatInput(event: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'isComposing' | 'keyCode'>): boolean {
     return event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229;
 }
