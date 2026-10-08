@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { AgentRun, AgentRunEvent, AgentTask, id, integer, parseAgentRun, parseAgentRunEvent, parseAgentTask } from '../contracts';
 import { canTransitionAgentRun } from '../state';
 import { AgentTaskSequence, canTransitionSequence, parseAgentTaskSequence } from '../sequence';
+import { AGENT_TRANSCRIPT_BYTES_LIMIT, AGENT_TRANSCRIPT_ENTRY_LIMIT, AGENT_TRANSCRIPT_PAGE_LIMIT,
+    AGENT_TRANSCRIPT_RECORD_BYTES_LIMIT, AgentTranscriptEntry, AgentTranscriptInput, AgentTranscriptRecord, AgentTranscriptStorage,
+    parseAgentTranscriptRecord, prepareAgentTranscriptRecord } from '../transcript';
 
 export const AGENT_EVENT_LIMIT = 10_000;
 export const AGENT_EVENT_PAGE_LIMIT = 100;
@@ -31,7 +34,7 @@ function checked<T>(value: unknown, parse: (value: unknown) => T): T {
     return result;
 }
 
-export class AgentStore {
+export class AgentStore implements AgentTranscriptStorage {
     private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence'; id: string }) => void>();
 
     onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence'; id: string }) => void): () => void {
@@ -153,6 +156,111 @@ export class AgentStore {
             if (replaced) throw new Error('Agent write outcome uncertain; re-read before retrying');
             throw error;
         } finally { await rm(temp, { force: true }); }
+    }
+
+    private async atomicTranscript(file: string, text: string): Promise<void> {
+        if (Buffer.byteLength(text) > AGENT_TRANSCRIPT_BYTES_LIMIT) throw new Error('Agent transcript exceeds size limit');
+        const temp = `${file}.${randomUUID()}.tmp`;
+        let replaced = false;
+        try {
+            const handle = await open(temp, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+            try { await handle.writeFile(text); await handle.sync(); } finally { await handle.close(); }
+            await this.file(file);
+            await rename(temp, file);
+            replaced = true;
+            const parent = await open(resolve(file, '..'), constants.O_RDONLY);
+            try { await parent.sync(); } finally { await parent.close(); }
+        } catch (error) {
+            if (replaced) throw new Error('Agent transcript write outcome uncertain; re-read before retrying');
+            throw error;
+        } finally { await rm(temp, { force: true }); }
+    }
+
+    private async transcript(root: string, runId: string): Promise<{ records: AgentTranscriptRecord[];
+        entries: AgentTranscriptEntry[]; text: string; recorded: boolean }> {
+        const dir = await this.runDir(root, runId, false);
+        if (!dir || !await this.readRun(root, runId)) throw new Error('Agent run missing');
+        const text = await this.bytes(join(dir, 'transcript.jsonl'), AGENT_TRANSCRIPT_BYTES_LIMIT);
+        if (text === undefined) return { records: [], entries: [], text: '', recorded: false };
+        try {
+            if (text && !text.endsWith('\n')) throw new Error('Partial transcript');
+            const lines = text ? text.slice(0, -1).split('\n') : [];
+            if (lines.length > AGENT_TRANSCRIPT_ENTRY_LIMIT) throw new Error('Too many transcript records');
+            const records: AgentTranscriptRecord[] = [];
+            const entries: AgentTranscriptEntry[] = [];
+            const commands = new Map<string, number>();
+            for (const [index, line] of lines.entries()) {
+                if (Buffer.byteLength(`${line}\n`) > AGENT_TRANSCRIPT_RECORD_BYTES_LIMIT) throw new Error('Oversized transcript record');
+                const item = parseAgentTranscriptRecord(JSON.parse(line));
+                const previous = records[index - 1];
+                if (item.runId !== runId || item.sequence !== index + 1 ||
+                    (previous && item.at < previous.at) ||
+                    (previous?.kind === 'marker' && previous.code === 'transcript-incomplete'))
+                    throw new Error('Invalid transcript order');
+                records.push(item);
+                if (item.kind === 'command') {
+                    if (commands.has(item.commandId)) throw new Error('Duplicate transcript command');
+                    commands.set(item.commandId, entries.length);
+                    entries.push(item);
+                } else if (item.kind === 'command-finish') {
+                    const position = commands.get(item.commandId);
+                    if (position === undefined) throw new Error('Orphan transcript command finish');
+                    const start = entries[position];
+                    if (start.kind !== 'command' || start.status !== 'running') throw new Error('Duplicate transcript command finish');
+                    entries[position] = Object.freeze({ ...start, status: item.status, completedSequence: item.sequence,
+                        ...(item.exitCode === undefined ? {} : { exitCode: item.exitCode }),
+                        ...(item.durationMs === undefined ? {} : { durationMs: item.durationMs }),
+                        ...(item.stdout === undefined ? {} : { stdout: item.stdout, stdoutTruncated: item.stdoutTruncated }),
+                        ...(item.stderr === undefined ? {} : { stderr: item.stderr, stderrTruncated: item.stderrTruncated }) });
+                } else entries.push(item);
+            }
+            return { records, entries, text, recorded: true };
+        } catch { throw new Error('Corrupt or unsupported agent transcript'); }
+    }
+
+    async readTranscript(root: string, runId: string, afterSequence: number, limit: number): Promise<{
+        state: 'recorded' | 'not-recorded'; entries: AgentTranscriptEntry[]; nextSequence: number;
+        hasMore: boolean; incomplete: boolean }> {
+        integer(afterSequence, AGENT_TRANSCRIPT_ENTRY_LIMIT);
+        integer(limit, AGENT_TRANSCRIPT_PAGE_LIMIT);
+        if (!limit) throw new Error('Invalid agent transcript page size');
+        const { records, entries, recorded } = await this.transcript(root, runId);
+        if (afterSequence > records.length) throw new Error('Agent transcript cursor exceeds log');
+        const available = entries.filter(entry => entry.sequence > afterSequence);
+        const page = available.slice(0, limit);
+        return { state: recorded ? 'recorded' : 'not-recorded', entries: page,
+            nextSequence: page.length ? page[page.length - 1].sequence : afterSequence,
+            hasMore: available.length > page.length,
+            incomplete: records.some(item => item.kind === 'marker' && item.code === 'transcript-incomplete') };
+    }
+
+    async appendTranscript(root: string, runId: string, input: AgentTranscriptInput): Promise<{
+        recorded: boolean; incomplete: boolean; sequence: number }> {
+        const dir = await this.runDir(root, runId, false);
+        if (!dir) throw new Error('Agent run missing');
+        return this.locked(dir, async () => {
+            const { records, text } = await this.transcript(root, runId);
+            if (records.some(item => item.kind === 'marker' && item.code === 'transcript-incomplete'))
+                return { recorded: false, incomplete: true, sequence: records.length };
+            const item = prepareAgentTranscriptRecord(runId, records.length + 1, input);
+            if (records.length && item.at < records[records.length - 1].at) throw new Error('Agent transcript timestamp order mismatch');
+            if (item.kind === 'command' && records.some(previous =>
+                (previous.kind === 'command' || previous.kind === 'command-finish') && previous.commandId === item.commandId))
+                throw new Error('Duplicate transcript command');
+            if (item.kind === 'command-finish') {
+                if (!records.some(previous => previous.kind === 'command' && previous.commandId === item.commandId) ||
+                    records.some(previous => previous.kind === 'command-finish' && previous.commandId === item.commandId))
+                    throw new Error('Invalid transcript command finish');
+            }
+            const line = `${JSON.stringify(item)}\n`;
+            const marker = `${JSON.stringify({ version: 1, runId, sequence: records.length + 1,
+                at: item.at, kind: 'marker', code: 'transcript-incomplete' })}\n`;
+            const limited = records.length + 2 > AGENT_TRANSCRIPT_ENTRY_LIMIT ||
+                Buffer.byteLength(line) > AGENT_TRANSCRIPT_RECORD_BYTES_LIMIT ||
+                Buffer.byteLength(text) + Buffer.byteLength(line) + Buffer.byteLength(marker) > AGENT_TRANSCRIPT_BYTES_LIMIT;
+            await this.atomicTranscript(join(dir, 'transcript.jsonl'), text + (limited ? marker : line));
+            return { recorded: !limited, incomplete: limited, sequence: records.length + 1 };
+        });
     }
 
     private async locked<T>(directory: string, work: () => Promise<T>): Promise<T> {
