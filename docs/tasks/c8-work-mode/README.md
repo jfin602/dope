@@ -19,14 +19,14 @@ The correction retains the previously approved complete sanitized agent transcri
 | P1 | Durable transcript domain, store and read API | T1 | GPT-6 Sol High | no |
 | P2 | Codex provider-visible message and command observations | T1 | GPT-6 Sol High | no |
 | P3 | Agent Runtime ordered transcript projection, paging and recovery | T2 | GPT-6 Sol High | no |
-| P4 | Reusable Chat/Work panel state, mode and ownership | T2 | GPT-6 Sol High | no |
+| P4 | Reusable Chat/Work panel state, mode and ownership | T1 | GPT-6 Sol High | no |
 | P5 | Work selection, Prompt Stack discovery, stable titles | T1 | GPT-6 Sol High | no |
-| P6 | Work transcript UI, compact command history and follow behavior | T2 | GPT-6 Sol Medium | no |
+| P6 | Work transcript UI, compact command history and follow behavior | T1 | GPT-6 Sol Medium | no |
 | P7 | Work launchers, new direct Work composer and legacy actions | T2 | GPT-6 Sol High | no |
 | P8 | Focused cross-panel/restart compatibility integration | T2 | GPT-6 Sol High | no |
 | P9 | Native/browser GUI qualification and final closeout | T3 | GPT-6 Sol High | yes |
 
-P1-P8 are implementation/integration prompts with runner-owned commits. P9 is the **only final closeout prompt**, a browser-required manual handoff. No agent-run transcript, task snapshots, Git subjects or historical closeout is rewritten to match the new user-facing vocabulary.
+P1-P8 target <=8 minutes each (15-minute hard limit), using one changed-package build plus a minimal focused test where compiled tests require it. Do not repeat passing tests from earlier prompts. P8 consolidates the integration regressions; P9 is the only broad aggregate/GUI gate. P1-P8 are implementation/integration prompts with runner-owned commits. P9 is the **only final closeout prompt**, a browser-required manual handoff. No agent-run transcript, task snapshots, Git subjects or historical closeout is rewritten to match the new user-facing vocabulary.
 
 ## Expected outcome
 

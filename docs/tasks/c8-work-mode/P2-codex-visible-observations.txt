@@ -11,7 +11,7 @@ GOAL
 Make the Codex reference AgentExecutionAdapter emit actual user-visible agent text and structured provider command observations instead of occurrence-only messages. Keep provider permissions and required validation separate.
 
 PREFLIGHT
-Read P1 result; inspect `packages/theia-extension/src/node/codex-agent-execution.ts`, adapter-level AgentExecutionEvent contracts, `test/unit/codex-agent-execution.test.ts`, existing Codex RPC item shapes and ADR 0028/0029. Do not guess hidden-reasoning shapes.
+Read P1 result; inspect the Codex event mapping and `test/unit/codex-agent-execution.test.ts`. Follow the relevant ADR 0028/0029 bounds; no full architecture reread.
 
 IMPLEMENT
 - Emit only deliberately user-visible `agentMessage` content from supported Codex App Server `item/started`, `item/updated`, `item/completed` forms. Handle incremental updates without repeated final text; dedupe using provider item identity where present. Do not ingest reasoning/thought/debug items.
@@ -21,10 +21,10 @@ IMPLEMENT
 - Keep existing provider event cap, cancellation/deny behavior, sandbox config, network/temp/Git restrictions and model-provenance checks unchanged. Provider command activity must NOT satisfy required CompletionPolicy validation.
 
 TESTS
-Extend fake Codex RPC tests for multi-message, update/final dedupe, command start/finish, failed/unfinished command, bounded output, secrets/hidden reasoning exclusion, malformed event and cancellation.
+Extend the existing Codex adapter test with visible-text retention, incremental/final dedupe, correlated command finish, and hidden-reasoning/secret exclusion. Preserve existing sandbox-denial tests without rerunning unrelated suites.
 
 VALIDATION
-T1 only: build affected adapter package after its dependencies and run `test/unit/codex-agent-execution.test.ts` plus affected direct adapter tests and `git diff --check`. Do not run live hosted tasks or the full suite.
+T1: build only the changed extension package so the test imports current compiled code; run `node --test test/unit/codex-agent-execution.test.ts` and `git diff --check`. No extra adapter suites, generic typecheck, hosted replay or browser build.
 
 DONE WHEN
 Safe agent-visible text survives adapter normalization and structured command observations retain identities without granting any new permission. No manual commit; runner checkpoint only.

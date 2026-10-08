@@ -34,7 +34,7 @@ The approved new product vocabulary is **Work** and **Prompt Stack**. The main o
 
 ## Validation tiers and effort
 
-Each P1-P8 is bounded to a <=8 minute target / 15 minute hard budget. Do not append a full `npm run check` to every prompt. T1 = focused altered tests and affected build/typecheck. T2 = the smallest cross-boundary integration test set, with browser build when integration affects workbench compilation. P9 T3 owns the full aggregate `npm run check`, real GUI (Electron/browser as available), restart and final closeout. The command runner's exact prompt grammar is validated once after writing.
+Each P1-P8 targets <=8 minutes, with a 10-minute soft and 15-minute hard ceiling. For implementation prompts run only the new/changed focused test(s) plus one directly affected existing suite when warranted. Build only changed package(s) when compiled JS tests require it; avoid redundant separate typecheck, browser, Electron and aggregate builds. P4 and P6 are T1, P3/P7/P8 are T2 with narrowly scoped integration assertions. P8 owns cross-component regressions but defers real GUI/browser builds. P9 alone runs `npm run check` once on its final code candidate and only focused tests omitted by that aggregate, plus direct GUI/restart. After a local repair, repeat only invalidated evidence. If an implementation prompt approaches 10 minutes, stop expanding test scope and preserve the work; do not weaken any required safety test.
 
 ## Risk review
 

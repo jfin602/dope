@@ -11,7 +11,7 @@ GOAL
 Make Work accessible alongside Chat from the left/right toolbar and command palette, preserving old command IDs, and allow initiating one direct bounded task via the Work composer.
 
 PREFLIGHT
-Read P1-P6 result. Inspect `frontend-module.ts`, `chat-panel-presentation.ts`, `chat-panel-widget.ts`, `agent-run-contribution.ts`, `phase-stack-contribution.ts`, `agent-run-controller.ts`, `phase-stack-controller.ts`, Chat launcher tests and AGENTS.md.
+Read P6 handoff; inspect frontend module/launcher registrations, legacy commands, direct AgentRunController start/grant and related focused tests.
 
 IMPLEMENT
 - Add left and right Work toolbar launcher access using the existing Chat launcher/view contribution pattern. Work panels must also open in center/bottom through command palette; all use one shared panel implementation and reusable Work state. Keep Chat launchers and their icon/activation behavior unchanged.
@@ -22,10 +22,10 @@ IMPLEMENT
 - Remove redundant user-facing Agent Run/Phase Stack navigation after aliases work. No independent UI authority path may remain.
 
 TESTS
-Focused launcher registration/placement, legacy command routing, deep-link selected Run, direct task grant/model readiness, Enter/Shift+Enter, close/toggle non-cancellation and no duplicate work tests.
+Focused launcher/composer tests: Work opens in the correct mode/area, legacy command redirects to saved Work, Enter/Shift+Enter, explicit grant before Start, and no Stop on navigation. Keep the existing direct-task authority tests as baseline.
 
 VALIDATION
-T2: extension build, affected launcher/panel/agent-run/phase-stack unit tests and git diff --check. Do not run full browser qualification until P9.
+T2 (workbench plus task initiation): build the changed extension package; run the new launcher/composer tests and directly affected `agent-run-ui.test.ts` cases, plus `git diff --check`. Defer four-area GUI verification, browser build and full Chat regressions to P9.
 
 DONE WHEN
 Chat and Work are first-class toolbar modes, old actions still reach the same records, and a direct Work starts only with explicit existing authority. Runner owns the commit.

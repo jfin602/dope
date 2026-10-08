@@ -11,7 +11,7 @@ GOAL
 Turn the P1-P3 durable transcript into the primary Work-detail content. Make command history minimized by default and meaningful status/validation visible without turning Work into a debug-log wall.
 
 PREFLIGHT
-Read P1-P5 results, inspect current shared panel Work slot, Chat safe Markdown renderer and scroll-follow helpers, agent-run-widget/controller and Work mode styling. Do not replace Chat's existing conversation presentation.
+Read P5 handoff; inspect the new Work view, existing Chat Markdown and scroll helpers, and its focused presentation tests.
 
 IMPLEMENT
 - Render sanitized provider-visible agent messages as readable formatted text, preserving chronological order and code blocks. Use existing Markdown sanitization; never render raw untrusted HTML.
@@ -22,10 +22,10 @@ IMPLEMENT
 - Keep header and relevant controls accessible in narrow left/right/bottom panels, with semantic colors, focus and reduced-motion support.
 
 TESTS
-Focused presentation tests for Markdown safety, collapsed/expanded commands, failed and missing output, long pagination, restore, scroll-away and newest-follow; keep current Chat presentation regression.
+Focused Work view tests for safe message formatting, default-collapsed/expanded command, missing/truncated output, paged history, and scroll-away/jump behavior. Reuse existing Chat markdown/scroll helpers rather than retesting their internals.
 
 VALIDATION
-T2: affected extension build and focused Work presentation, Chat presentation and agent-run UI tests, plus git diff --check. Full GUI is reserved for P9.
+T1: build the changed extension package; run the new Work presentation tests and `git diff --check`. Run a single directly affected Chat test only if shared code changed. No separate browser build or full chat/agent UI suites.
 
 DONE WHEN
 Work detail prioritizes agent text, commands are collapsed by default, history survives reload and metadata stays secondary. Runner creates the checkpoint.

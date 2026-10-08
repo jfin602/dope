@@ -50,6 +50,6 @@ No new provider sandbox permissions, network/secret access, project direct write
 
 ## Tier plan
 
-P1 T1 domain/store; P2 T1 adapter; P3 T2 runtime/persistence RPC; P4 T2 panel owner; P5 T1 selectors; P6 T2 transcript UI; P7 T2 navigation/composer; P8 T2 cross-component regression; P9 T3 real GUI, restart, full check and closeout.
+P1 T1 domain/store; P2 T1 adapter; P3 T2 narrowly scoped runtime/RPC integration; P4 T1 panel state/owner; P5 T1 selectors; P6 T1 transcript presentation; P7 T2 launcher and direct-task seam; P8 T2 cross-component regression; P9 T3 real GUI, restart, one final full check and closeout. P1-P8 build changed packages only when required for compiled-test freshness, run only changed/affected tests, and never stack redundant typecheck + browser + full build commands. P8 does not repeat P1-P7 focused suites wholesale; P9 avoids rerunning tests already covered by `npm run check`.
 
-No ordinary prompt should run full `npm run check` or full packaging. Each implementation prompt must report tested evidence and hand off to the next.
+No ordinary prompt should run full `npm run check`, full packaging, unrelated test suites or repetitive browser builds. Each implementation prompt should finish with the smallest defensible focused evidence and hand off to the next.

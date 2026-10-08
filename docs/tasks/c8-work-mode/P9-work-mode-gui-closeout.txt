@@ -25,7 +25,7 @@ DIRECT GUI QUALIFICATION
 9. Confirm no change to provider sandbox, candidate validation, authorized promotion, manual gate or checkpoint rules.
 
 VALIDATION
-T3: run npm run check, focused Work/Chat/AgentRun/Prompt Stack tests, directly inspect real GUI behavior, git diff --check, version coherence and root lockfile rules. Preserve actual failed evidence; do not weaken tests.
+T3 qualification gate: run `npm run check` exactly once on the final code candidate, then run only any new Work-mode tests not already covered by that aggregate command. Perform the required real GUI, restart and completed-sequence inspections; run `git diff --check`, version and root-lockfile checks. Do not repeat earlier focused suites merely for reassurance. If a repair invalidates an earlier passing gate, repeat only the affected check and any aggregate evidence that repair actually invalidated. Preserve every failed observation.
 
 CLOSEOUT
 Create docs/tasks/c8-work-mode/closeout.md with final HEAD, test counts, GUI/restart evidence, any gaps and Green/Not Green decision. If Green, commit only the bounded closeout/evidence documents as a manual checkpoint with exact subject:

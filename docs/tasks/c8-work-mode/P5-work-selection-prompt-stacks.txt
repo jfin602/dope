@@ -11,7 +11,7 @@ GOAL
 Make Select Work list saved tasks/runs and automatically discovered Prompt Stacks, and resolve stable Work titles without introducing another import lifecycle.
 
 PREFLIGHT
-Review P4 shared panel. Inspect `phase-stack-controller.ts`, `phase-stack-widget.ts`, `agent-run-controller.ts`, `agent-runtime-service.ts`, `agent-core/src/sequence.ts`, `frontend-module.ts` and source tests. Read ADR 0027 Work vocabulary amendment.
+Read P4 handoff; inspect PhaseStackController discovery/selection, AgentRunController title lookup and directly affected selection tests. Keep parser/sequence semantics untouched.
 
 IMPLEMENT
 - In Work mode, provide `Select Work` with Work history and `Prompt Stacks` discovered from configurable project-relative tasks root (default `docs/tasks/`, simple Refresh). Reuse existing `listTaskStacks`/`openTaskStack`, stored sequence and Run IDs. No user-facing `Import Stack`.
@@ -21,10 +21,10 @@ IMPLEMENT
 - Support current manual/browser gate, validation/grant/dirty acceptance and checkpoint controls by delegating to existing PhaseStackController/domain service rather than recreating its state machine. P6/P7 supply polished controls/entry points.
 
 TESTS
-Focused defaults, malformed/missing stack, existing completed sequence, stable run titles, sequence advance, duplicate same identity focus, different Work coexistence and project switch stale selection.
+Focused Work selection/title test for default discovery, existing completed stack, historic run title after sequence advances, and no task/run creation from selection. Existing parser/discovery tests need rerun only if the underlying parser changes.
 
 VALIDATION
-T1: affected package compile and focused phase-stack/agent-run selection tests, git diff --check. Do not run the whole test suite.
+T1: build only the changed extension package; run the focused Work selection test and affected `phase-stack-ui.test.ts` cases, plus `git diff --check`. Defer multi-panel/restart integration to P8 and GUI inspection to P9.
 
 DONE WHEN
 Work can browse the real existing completed c4-dope-phase-stack-smoke sequence without creating commits/runs or changing titles. The runner owns commits.

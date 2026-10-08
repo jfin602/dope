@@ -11,7 +11,7 @@ GOAL
 Integrate P1-P7 into one robust Work presentation without changing AgentTask or Prompt Stack execution semantics.
 
 PREFLIGHT
-Inspect P1-P7 output and focused tests, especially chat-panel, agent-run-ui, phase-stack-ui/discovery, agent-sequence-persistence, transcript-store, runtime and frontend module integration. Read ADR 0025/0028/0029.
+Read P1-P7 handoffs; inspect only affected Chat/Work state, transcript RPC, launcher and sequence integration code. Use prior focused results instead of retesting them all.
 
 IMPLEMENT
 - Add tests for the Chat | Work toggle, independent selections, panel placement, same-Work focus-on-collision, distinct Work in different panels, deterministic restoration and project-switch races.
@@ -22,7 +22,7 @@ IMPLEMENT
 - Repair only cross-component regressions revealed by the tests; no new authority or feature surface.
 
 VALIDATION
-T2: affected unit and integration suites, extension and browser build due workbench wiring, git diff --check, version coherence and no forbidden root npm lock. Full aggregate/native GUI proof remains P9.
+T2: add one compact cross-component test for ownership, mode/restoration, transcript re-page, old commands and unchanged completed sequence. Run that test and only existing tests affected by integration fixes. Build changed packages once if compiled output changed. Run `git diff --check` and version/root-lockfile checks. No full `npm run check`, Electron build or separate browser build; P9 owns those.
 
 DONE WHEN
 The combined Work and Chat panels, transcript history, saved sequences and command routes have focused Green integration evidence. Runner owns commit.

@@ -11,7 +11,7 @@ GOAL
 Connect P1 transcript storage and P2 provider observations to the real AgentRuntime service and paginated transcript reads.
 
 PREFLIGHT
-Review P1/P2 changes and focused test results. Inspect agent-execution-runtime.ts, agent-runtime-backend.ts, agent-runtime-service.ts, agent-store.ts and existing runtime/restart tests. Follow the approved Work mode and ADR 0029 contracts.
+Read P1/P2 results; inspect runtime observation projection, transcript store, backend/RPC contract and the directly affected unit tests. Preserve ADR 0029 required-validation ownership.
 
 IMPLEMENT
 - Project sanitized visible messages, correlated command start/completion and compact system milestones into ordered durable transcript records.
@@ -23,10 +23,10 @@ IMPLEMENT
 - Do not change provider permissions, execution grants, candidate promotion, checkpoint or manual gate logic.
 
 TESTS
-Add focused projection/order, command correlation, interrupted run, pagination, project isolation, legacy run, retry/reconnect and validation-independence tests.
+One focused runtime transcript test should exercise durable ordering/paging, paired and interrupted commands, a legacy run, and provider-command non-substitution. Existing isolated store/adapter edge cases remain P1/P2 evidence; defer UI/restart races to P8.
 
 VALIDATION
-T2 only: affected package builds, focused AgentRuntime/store/adapter tests, and git diff --check. Defer full browser/aggregate checks to P9.
+T2 (narrow runtime/RPC seam): build changed packages in dependency order, then run the new runtime transcript test plus `test/unit/agent-execution-runtime.test.ts` only if its existing contracts are affected, and `git diff --check`. No unrelated Codex/store suites or browser/electron/aggregate builds.
 
 DONE WHEN
 The AgentRuntime API reopens and pages all retained transcript entries reliably, without modifying execution authority. Runner owns implementation checkpoint.
