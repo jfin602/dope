@@ -16,6 +16,26 @@ const fail = (message: string, kind: ModelRuntimeFailure['failureClass'] = 'unsu
 const object = (value: unknown): Record<string, any> | undefined =>
     value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : undefined;
 
+const unsafeVisible = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]|<\/?think(?:\s[^>]*)?>|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|^\s*(?:hidden reasoning|chain of thought)\s*:|^\s*\{[^\n]{0,256}"(?:jsonrpc|method|params)"\s*:/imu;
+const sensitiveVisible = /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\b|\b(?:access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|authorization|password|secret)\s*[:=]\s*\S+|\b[A-Z][A-Z0-9_]*(?:API_KEY|TOKEN|PASSWORD|SECRET)\s*=\s*\S+|\bBearer\s+\S+|--(?:token|password|api-key)(?:=|\s+)\S+|(?:^|[\s"'(])(?:\/[A-Za-z0-9._~-]+\/[^\s"')]+|[A-Za-z]:\\Users\\[^\s"')]+)/giu;
+
+function visible(value: unknown, limit: number): { text: string; truncated: boolean; redacted: boolean } | undefined {
+    if (typeof value !== 'string' || value.length > limit * 16 || unsafeVisible.test(value) ||
+        (value.match(/^\s*[A-Za-z_][A-Za-z0-9_]*=\S+/gmu)?.length ?? 0) >= 3) return undefined;
+    const sanitized = value.replace(sensitiveVisible, match =>
+        (/^[\s"'(]/u.test(match) ? match[0] : '') + '[redacted]');
+    const encoder = new TextEncoder();
+    let text = '';
+    let bytes = 0;
+    for (const character of sanitized) {
+        const size = encoder.encode(character).length;
+        if (bytes + size > limit) break;
+        text += character;
+        bytes += size;
+    }
+    return { text, truncated: text.length !== sanitized.length, redacted: sanitized !== value };
+}
+
 /** The named profile is intentionally stronger than a bare workspace-write sandbox: it denies
  * reads outside the workspace, while inheriting Codex's .git/.codex write protection. */
 export function mutationConfig(root?: string, executablePath?: string, nodePath?: string): string {
@@ -306,7 +326,10 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
         let cancelled = false;
         let settled = false;
         let eventCount = 0;
-        const commands = new Map<string, string>();
+        const commands = new Map<string, { command?: ReturnType<typeof visible>; stdout?: ReturnType<typeof visible>;
+            stderr?: ReturnType<typeof visible>; commandDropped?: boolean; stdoutDropped?: boolean;
+            stderrDropped?: boolean }>();
+        const messages = new Map<string, string>();
         let finish!: (error?: Error) => void;
         const done = new Promise<void>((resolveDone, reject) => {
             finish = error => { if (settled) return; settled = true; error ? reject(error) : resolveDone(); };
@@ -335,7 +358,7 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
                 denied('Codex changed the selected model'); return;
             }
             if (params?.threadId !== threadId || (turnId && params?.turnId && params.turnId !== turnId)) return;
-            if (method === 'item/completed' || method === 'item/started') {
+            if (method === 'item/completed' || method === 'item/started' || method === 'item/updated') {
                 const item = object(params?.item);
                 if (!item) return;
                 if (['mcpToolCall', 'dynamicToolCall', 'collabAgentToolCall', 'subAgentActivity', 'webSearch'].includes(item.type)) {
@@ -344,19 +367,69 @@ export class CodexAgentExecutionAdapter implements AgentExecutionAdapter {
                 if (item.type === 'commandExecution') {
                     if (typeof item.cwd !== 'string' || resolve(item.cwd) !== root &&
                         !resolve(item.cwd).startsWith(root + sep)) { denied('Command cwd outside approved project'); return; }
-                    const commandId = typeof item.id === 'string' ? item.id : undefined;
-                    if (method === 'item/started' && commandId && typeof item.command === 'string')
-                        commands.set(commandId, item.command);
-                    const command = commandId ? commands.get(commandId) : undefined;
+                    const commandId = typeof item.id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/u.test(item.id) ?
+                        item.id : undefined;
+                    const observed = commandId ? commands.get(commandId) ?? {} : {};
+                    if (typeof item.command === 'string') {
+                        observed.command = visible(item.command, 2_000);
+                        observed.commandDropped = !observed.command?.text;
+                        if (!observed.command?.text) emit({ kind: 'warning', summary: 'Unsafe provider command dropped' });
+                        else if (observed.command.truncated || observed.command.redacted)
+                            emit({ kind: 'warning', summary: 'Provider command redacted or truncated' });
+                    }
+                    for (const stream of ['stdout', 'stderr'] as const) {
+                        if (item[stream] === undefined) continue;
+                        observed[stream] = visible(item[stream], 4_000);
+                        if (stream === 'stdout') observed.stdoutDropped = observed.stdout === undefined;
+                        else observed.stderrDropped = observed.stderr === undefined;
+                        if (!observed[stream]) emit({ kind: 'warning', summary: `Unsafe provider ${stream} dropped` });
+                        else if (observed[stream].truncated || observed[stream].redacted)
+                            emit({ kind: 'warning', summary: `Provider ${stream} redacted or truncated` });
+                    }
+                    if (commandId && (method === 'item/started' || commands.has(commandId))) {
+                        if (method === 'item/completed') commands.delete(commandId);
+                        else commands.set(commandId, observed);
+                    }
+                    if (method === 'item/updated') return;
+                    const status = method === 'item/started' ? 'running' :
+                        item.status === 'completed' ? (Number.isSafeInteger(item.exitCode) && item.exitCode !== 0 ?
+                            'failed' : 'completed') :
+                            item.status === 'failed' ? 'failed' : item.status === 'interrupted' ? 'interrupted' :
+                                item.status === 'cancelled' ? 'cancelled' : 'failed';
                     emit({ kind: method === 'item/started' ? 'command-started' : 'command-completed',
-                        summary: method === 'item/started' ? 'Project command started' :
-                            `Project command ${item.status === 'completed' ? 'completed' : 'stopped'}`,
-                        ...(commandId ? { commandId } : {}), ...(command ? { command } : {}),
-                        ...(Number.isSafeInteger(item.exitCode) ? { exitCode: item.exitCode } : {}) });
-                    if (method === 'item/completed' && commandId) commands.delete(commandId);
-                } else if (method === 'item/completed' && item.type === 'agentMessage') {
-                    // Provider text may contain secrets. The durable observation records only its occurrence.
-                    emit({ kind: 'agent-message', summary: 'Agent message received' });
+                        summary: method === 'item/started' ? 'Project command started' : `Project command ${status}`,
+                        status, ...(commandId ? { commandId } : {}),
+                        ...(observed.command?.text ? { command: observed.command.text,
+                            commandTruncated: observed.command.truncated, commandRedacted: observed.command.redacted } : {}),
+                        commandDropped: observed.commandDropped === true,
+                        cwd: relative(root, resolve(item.cwd)),
+                        ...(Number.isSafeInteger(item.exitCode) && item.exitCode >= 0 ? { exitCode: item.exitCode } : {}),
+                        ...(method === 'item/completed' ? {
+                            stdoutPresent: observed.stdout !== undefined, stderrPresent: observed.stderr !== undefined,
+                            stdoutDropped: observed.stdoutDropped === true, stderrDropped: observed.stderrDropped === true,
+                            ...(observed.stdout ? { stdout: observed.stdout.text, stdoutTruncated: observed.stdout.truncated } : {}),
+                            ...(observed.stderr ? { stderr: observed.stderr.text, stderrTruncated: observed.stderr.truncated } : {})
+                        } : {}) });
+                } else if (item.type === 'agentMessage') {
+                    const messageId = typeof item.id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/u.test(item.id) ?
+                        item.id : undefined;
+                    if (typeof item.text !== 'string') return;
+                    if (!messageId && method !== 'item/completed') return;
+                    const normalized = visible(item.text, 12_000);
+                    if (!normalized?.text) {
+                        if (item.text === '' && method !== 'item/completed') return;
+                        emit({ kind: 'warning', summary: 'Unsafe or oversized agent message dropped' }); return;
+                    }
+                    const previous = messageId ? messages.get(messageId) ?? '' : '';
+                    if (!normalized.text.startsWith(previous)) {
+                        emit({ kind: 'warning', summary: 'Changed provider message snapshot dropped' }); return;
+                    }
+                    if (messageId) messages.set(messageId, normalized.text);
+                    const delta = normalized.text.slice(previous.length);
+                    if (delta) emit({ kind: 'agent-message', summary: 'Agent message', text: delta,
+                        truncated: normalized.truncated, redacted: normalized.redacted });
+                    if (delta && (normalized.truncated || normalized.redacted))
+                        emit({ kind: 'warning', summary: 'Agent message redacted or truncated' });
                 } else if (method === 'item/completed' && item.type === 'fileChange' && Array.isArray(item.changes)) {
                     if (item.status !== 'completed') {
                         emit({ kind: 'warning', summary: 'Codex file change did not complete' });

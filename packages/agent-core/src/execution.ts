@@ -2,9 +2,12 @@ import type { ExecutionGrant } from './authority';
 
 /** Ephemeral provider observations. The runtime decides what bounded subset to persist. */
 export type AgentExecutionEvent =
-    | { kind: 'agent-message'; summary: string }
+    | { kind: 'agent-message'; summary: string; text: string; truncated: boolean; redacted: boolean }
     | { kind: 'command-started' | 'command-completed'; summary: string; commandId?: string;
-        command?: string; exitCode?: number }
+        command?: string; commandTruncated?: boolean; commandRedacted?: boolean; commandDropped?: boolean; cwd?: string;
+        status: 'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted'; exitCode?: number;
+        stdout?: string; stderr?: string; stdoutPresent?: boolean; stderrPresent?: boolean;
+        stdoutTruncated?: boolean; stderrTruncated?: boolean; stdoutDropped?: boolean; stderrDropped?: boolean }
     | { kind: 'file-changed'; summary: string; path: string }
     | { kind: 'status' | 'warning' | 'authority-denied' | 'provider-event'; summary: string };
 

@@ -102,13 +102,39 @@ class FakeChild extends EventEmitter {
             }
             if (this.scenario === 'flood') {
                 for (let index = 0; index < 1001; index++) this.send({ method: 'item/completed', params: {
-                    ...common, item: { type: 'agentMessage', text: 'secret', id: `item-${index}` }
+                    ...common, item: { type: 'agentMessage', text: 'Bearer secret123', id: `item-${index}` }
                 } });
                 return;
             }
             if (this.scenario === 'outside-file') {
                 this.send({ method: 'item/completed', params: { ...common,
                     item: { type: 'fileChange', status: 'completed', changes: [{ path: '../outside', diff: 'secret' }] } } });
+                return;
+            }
+            if (this.scenario === 'incremental') {
+                const notify = (method: string, item: object) =>
+                    this.send({ method, params: { ...common, item } });
+                notify('item/started', { type: 'reasoning', id: 'hidden-1', text: 'private reasoning' });
+                notify('item/completed', { type: 'reasoning', id: 'hidden-1', text: 'private reasoning' });
+                notify('item/started', { type: 'agentMessage', id: 'visible-1', text: '' });
+                notify('item/updated', { type: 'agentMessage', id: 'visible-1', text: 'Here is ' });
+                notify('item/updated', { type: 'agentMessage', id: 'visible-1', text: 'Here is the change.' });
+                notify('item/completed', { type: 'agentMessage', id: 'visible-1', text: 'Here is the change.' });
+                notify('item/completed', { type: 'agentMessage', id: 'visible-2', text: 'Ready Bearer secret123' });
+                notify('item/completed', { type: 'agentMessage', id: 'visible-3', text: '<think>hidden</think>' });
+                notify('item/completed', { type: 'agentMessage', id: 'visible-4', text: 'x'.repeat(200_000) });
+                notify('item/started', { type: 'commandExecution', id: 'cmd-1', cwd: message.params.cwd,
+                    command: 'echo ready', status: 'inProgress' });
+                notify('item/updated', { type: 'commandExecution', id: 'cmd-1', cwd: message.params.cwd,
+                    status: 'inProgress', stdout: 'ready\n' });
+                notify('item/completed', { type: 'commandExecution', id: 'cmd-1', cwd: message.params.cwd,
+                    status: 'completed', exitCode: 0, stderr: 'Bearer secret123' });
+                notify('item/started', { type: 'commandExecution', id: 'cmd-2', cwd: join(message.params.cwd, 'src'),
+                    command: 'cat /home/jfin/.ssh/id_rsa', status: 'inProgress' });
+                notify('item/completed', { type: 'commandExecution', id: 'cmd-2', cwd: join(message.params.cwd, 'src'),
+                    status: 'completed', exitCode: 1, stdout: 'z'.repeat(5_000),
+                    stderr: 'A=one\nB=two\nC=three' });
+                this.send({ method: 'turn/completed', params: { ...common, turn: { id: 'turn-1', status: 'completed' } } });
                 return;
             }
             this.send({ method: 'item/started', params: { ...common,
@@ -197,11 +223,51 @@ test('dedicated run uses approved root and exact model, normalizes bounded event
         assert.notEqual(thread.cwd, f.root);
         assert.deepEqual(turn.input, [{ type: 'text', text: 'Implement one task' }]);
         assert.deepEqual(f.events.map(e => e.kind), ['command-started', 'command-completed',
-            'file-changed', 'agent-message', 'status', 'status']);
+            'file-changed', 'agent-message', 'warning', 'status', 'status']);
         assert.equal(f.events[2].path, 'src/a.ts');
+        assert.equal(f.events[3].text, 'Done [redacted]');
+        assert.equal(f.events[1].stdoutPresent, false);
+        assert.equal(f.events[1].stderrPresent, false);
         assert.ok(!JSON.stringify(f.events).includes('secret123'));
         assert.ok(!JSON.stringify(f.events).includes('secret diff'));
         assert.deepEqual(spawned.child.kills, ['SIGTERM']);
+    } finally { await f.cleanup(); }
+});
+
+test('visible item snapshots retain incremental prose once and correlate bounded command observations', async () => {
+    const f = await fixture('incremental');
+    try {
+        await (await f.adapter.start(f.request)).result;
+        const messages = f.events.filter(event => event.kind === 'agent-message');
+        assert.deepEqual(messages.map(event => event.text), ['Here is ', 'the change.', 'Ready [redacted]']);
+        const started = f.events.find(event => event.kind === 'command-started');
+        const completed = f.events.find(event => event.kind === 'command-completed');
+        assert.equal(started.commandId, 'cmd-1');
+        assert.equal(started.command, 'echo ready');
+        assert.equal(started.cwd, '');
+        assert.equal(started.status, 'running');
+        assert.equal(completed.commandId, started.commandId);
+        assert.equal(completed.status, 'completed');
+        assert.equal(completed.exitCode, 0);
+        assert.equal(completed.stdout, 'ready\n');
+        assert.equal(completed.stdoutPresent, true);
+        assert.equal(completed.stderr, '[redacted]');
+        assert.equal(completed.stderrPresent, true);
+        const second = f.events.filter(event => event.kind === 'command-completed')[1];
+        assert.equal(second.commandId, 'cmd-2');
+        assert.equal(second.cwd, 'src');
+        assert.equal(second.status, 'failed');
+        assert.equal(second.exitCode, 1);
+        assert.equal(second.command, 'cat [redacted]');
+        assert.equal(second.commandRedacted, true);
+        assert.equal(second.stdout.length, 4_000);
+        assert.equal(second.stdoutTruncated, true);
+        assert.equal(second.stderrPresent, false);
+        assert.equal(second.stderrDropped, true);
+        assert.ok(f.events.some(event => event.summary === 'Unsafe or oversized agent message dropped'));
+        assert.ok(!JSON.stringify(f.events).includes('private reasoning'));
+        assert.ok(!JSON.stringify(f.events).includes('secret123'));
+        assert.ok(!JSON.stringify(f.events).includes('x'.repeat(100)));
     } finally { await f.cleanup(); }
 });
 
@@ -316,7 +382,7 @@ test('provider event flood stops the process without persisting raw message bodi
         await assert.rejects(handle.result, { failureClass: 'unsupported-capability' });
         assert.equal(fixtureRun.events.length, 1001);
         assert.equal(fixtureRun.events.at(-1).kind, 'warning');
-        assert.ok(!JSON.stringify(fixtureRun.events).includes('secret'));
+        assert.ok(!JSON.stringify(fixtureRun.events).includes('secret123'));
         assert.deepEqual(fixtureRun.spawns[0].child.kills, ['SIGTERM']);
     } finally { await fixtureRun.cleanup(); }
 });
