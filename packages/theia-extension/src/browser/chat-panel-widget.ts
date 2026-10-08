@@ -18,6 +18,7 @@ import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatT
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
 import { WorkSelectionController, workTitle } from './work-selection-controller';
+import { restoreWorkScroll, workCommandLabel, workCommandOutput } from './work-transcript-presentation';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
@@ -38,6 +39,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private settingsChatId?: string;
     private readonly scrollFollow = new ChatScrollFollow();
     private readonly transcriptDrag = new ChatTranscriptDrag();
+    private readonly workFollow = new ChatScrollFollow();
+    private readonly workDrag = new ChatTranscriptDrag();
+    private workPointerId?: number;
+    private workScrollKey?: string;
+    private workSelectionChanged = false;
+    private workScrollTop = 0;
+    private cancelWorkAnimation?: () => void;
+    private workAnimationUntil = 0;
     private dragPointerId?: number;
     private dragChatId?: string;
     private cancelScrollAnimation?: () => void;
@@ -176,10 +185,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private renderWork(): void {
         const work = this.panel.work, controller = this.workController;
+        const key = work && `${work.kind}:${work.id}`;
+        if (key !== this.workScrollKey) {
+            this.cancelWorkAnimation?.(); this.workAnimationUntil = 0;
+            this.workScrollKey = key; this.workFollow.select(key); this.workSelectionChanged = true;
+        }
         const header = document.createElement('header');
         const heading = document.createElement('h2');
-        heading.textContent = work && controller ? workTitle(work, controller.selectedRun, controller.selectedTask,
-            controller.phase.selected) : 'Select Work';
+        heading.textContent = work && controller ? workTitle(work,
+            work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedRun : undefined,
+            work.kind === 'task' && controller.selectedTask?.id === work.id ||
+                work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedTask : undefined,
+            work.kind === 'sequence' && controller.phase.selected?.id === work.id ? controller.phase.selected : undefined) : 'Select Work';
         header.append(heading);
         if (work) header.append(this.button('Select Work', () => this.selectWork()));
         if (work) header.append(this.button('Refresh Work', () => {
@@ -229,12 +246,57 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         const region = document.createElement('section'); region.className = 'dope-chat-transcript-region';
         region.setAttribute('aria-label', 'Selected Work');
-        const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll'; region.append(scroll);
+        const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll dope-work-scroll';
+        scroll.setAttribute('role', 'log'); scroll.setAttribute('aria-label', 'Work transcript');
+        const latest = this.button('Latest', () => {
+            this.workFollow.jump();
+            this.workAnimationUntil = performance.now() + 200;
+            this.cancelWorkAnimation?.();
+            this.cancelWorkAnimation = animateChatToLatest(scroll,
+                window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+            latest.hidden = true;
+        });
+        latest.className = 'dope-chat-latest dope-work-latest';
+        scroll.onscroll = () => {
+            this.workScrollTop = scroll.scrollTop;
+            if (performance.now() < this.workAnimationUntil) return;
+            this.workFollow.scrolled(scroll.scrollTop, scroll.scrollHeight, scroll.clientHeight);
+            latest.hidden = !this.workFollow.latestBelow;
+        };
+        scroll.onwheel = event => {
+            if (event.deltaY < 0) { this.cancelWorkAnimation?.(); this.workAnimationUntil = 0; }
+        };
+        scroll.onpointerdown = event => {
+            if (event.button !== 0 || !event.isPrimary || !canDragChatTranscript(event.target as Element)) return;
+            this.workPointerId = event.pointerId;
+            this.cancelWorkAnimation?.(); this.workAnimationUntil = 0;
+            this.workDrag.start(event.clientY, scroll.scrollTop, event.clientX);
+        };
+        scroll.onpointermove = event => {
+            if (event.pointerId !== this.workPointerId) return;
+            const top = this.workDrag.move(event.clientY, event.clientX, event.pointerType === 'touch');
+            if (top === undefined) return;
+            if (!scroll.hasPointerCapture(event.pointerId)) scroll.setPointerCapture(event.pointerId);
+            scroll.classList.add('dope-chat-scroll-dragging');
+            scroll.scrollTop = top;
+        };
+        scroll.onpointerup = scroll.onpointercancel = event => {
+            if (event.pointerId !== this.workPointerId) return;
+            if (scroll.hasPointerCapture(event.pointerId)) scroll.releasePointerCapture(event.pointerId);
+            this.workPointerId = undefined; this.workDrag.end();
+            scroll.classList.remove('dope-chat-scroll-dragging');
+        };
+        region.append(scroll, latest);
         const detail = (text: string) => { const paragraph = document.createElement('p'); paragraph.textContent = text; scroll.append(paragraph); };
         if (work.kind === 'sequence') {
-            const phase = controller.phase, sequence = phase.selected;
+            const phase = controller.phase, sequence = phase.selected?.id === work.id ? phase.selected : undefined;
             if (sequence) {
                 detail(`Prompt Stack · ${sequence.status}`);
+                if (sequence.checkpoints.length) {
+                    const checkpoint = document.createElement('small'); checkpoint.className = 'dope-work-system';
+                    checkpoint.textContent = `${sequence.checkpoints.length} checkpoint${sequence.checkpoints.length === 1 ? '' : 's'} recorded`;
+                    scroll.append(checkpoint);
+                }
                 const metadata = document.createElement('small');
                 metadata.textContent = `${sequence.stack.mode === 'correction' ? 'Correction' : 'Phase'} ${sequence.stack.phase} · ${sequence.stack.folderName}`;
                 scroll.append(metadata);
@@ -270,19 +332,68 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 if (phase.run) scroll.append(this.button('Open Run', () => this.selectWork({ kind: 'run', id: phase.run!.id })));
             } else detail('Prompt Stack could not be opened. Refresh and try again.');
         } else {
-            const run = controller.selectedRun;
+            const run = work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedRun : undefined;
             if (run) {
-                detail(`Run · ${run.status}`);
-                if (controller.selectedTask) detail(controller.selectedTask.instructions);
+                const state = document.createElement('small'); state.className = 'dope-work-system';
+                state.textContent = `Run · ${run.status}`; scroll.append(state);
                 if (controller.transcriptState === 'not-recorded') detail('Transcript not recorded.');
                 for (const entry of controller.transcript) {
-                    if (entry.kind === 'message') detail(entry.text);
-                    else if (entry.kind === 'command') detail(`${entry.command} · ${entry.status}`);
+                    if (entry.kind === 'message') {
+                        const item = document.createElement('article'); item.className = 'dope-work-message dope-chat-message-content';
+                        const rendered = this.markdown.render(new MarkdownStringImpl(entry.text,
+                            { supportHtml: false, isTrusted: false })).element;
+                        for (const link of rendered.querySelectorAll('a[href]')) {
+                            if (!safeChatLink(link.getAttribute('href')!, document.baseURI)) link.removeAttribute('href');
+                            else link.setAttribute('rel', 'noopener noreferrer');
+                        }
+                        item.append(rendered);
+                        if (entry.truncated) item.append(' [Message truncated]');
+                        scroll.append(item);
+                    } else if (entry.kind === 'command') {
+                        const item = document.createElement('details'); item.className = 'dope-work-command';
+                        const summary = document.createElement('summary'); summary.textContent = workCommandLabel(entry);
+                        item.append(summary);
+                        for (const output of workCommandOutput(entry)) {
+                            const pre = document.createElement('pre'); pre.textContent = output; item.append(pre);
+                        }
+                        scroll.append(item);
+                    } else if (entry.code === 'transcript-incomplete') detail('Transcript truncated: recording limit reached.');
                 }
-            } else if (controller.selectedTask) detail(controller.selectedTask.instructions);
+                if (controller.transcriptIncomplete && !controller.transcript.some(entry => entry.kind === 'marker' && entry.code === 'transcript-incomplete'))
+                    detail('Transcript truncated: recording limit reached.');
+                const diagnostics = document.createElement('details'); diagnostics.className = 'dope-work-diagnostics';
+                const summary = document.createElement('summary'); summary.textContent = 'Run diagnostics'; diagnostics.append(summary);
+                if (controller.selectedTask) { const instructions = document.createElement('p');
+                    instructions.textContent = controller.selectedTask.instructions; diagnostics.append(instructions); }
+                for (const path of run.changedFiles) {
+                    const item = document.createElement('p'); item.textContent = `Changed · ${path}`; diagnostics.append(item);
+                }
+                if (run.changedFiles.length) { const status = document.createElement('small'); status.className = 'dope-work-system';
+                    status.textContent = `${run.changedFiles.length} changed file${run.changedFiles.length === 1 ? '' : 's'}`; scroll.append(status); }
+                for (const result of run.validationResults) {
+                    const item = document.createElement('p'); item.textContent = `Candidate validation · ${result.label} · ${result.status}`;
+                    diagnostics.append(item);
+                    const status = document.createElement('small'); status.className = 'dope-work-system';
+                    if (result.status === 'failed') status.classList.add('dope-work-warning');
+                    status.textContent = item.textContent; scroll.append(status);
+                }
+                if (run.authorityDecision) { const item = document.createElement('p');
+                    item.textContent = `Authority · ${run.authorityDecision.allowed ? 'allowed' : 'blocked'}`; diagnostics.append(item);
+                    const status = document.createElement('small'); status.className = 'dope-work-system'; status.textContent = item.textContent; scroll.append(status); }
+                if (run.capacityRetries) { const item = document.createElement('p');
+                    item.textContent = `Retries · ${run.capacityRetries}`; diagnostics.append(item);
+                    const status = document.createElement('small'); status.className = 'dope-work-system'; status.textContent = item.textContent; scroll.append(status); }
+                if (run.outcome) { const item = document.createElement('p');
+                    item.textContent = `${run.outcome.code} · ${run.outcome.summary}`; diagnostics.append(item);
+                    const status = document.createElement('small'); status.className = 'dope-work-system dope-work-warning';
+                    status.textContent = item.textContent; scroll.append(status); }
+                if (diagnostics.children.length > 1) scroll.append(diagnostics);
+            } else if (work.kind === 'task' && controller.selectedTask?.id === work.id)
+                detail(controller.selectedTask.instructions);
             else detail('Work record could not be found.');
         }
         this.content.append(region);
+        latest.hidden = !this.workFollow.latestBelow;
     }
     private async name(title: string, value = ''): Promise<string | undefined> {
         const result = await new SingleTextInputDialog({ title, initialValue: value, confirmButtonLabel: 'Save' }).open();
@@ -545,6 +656,17 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         if (this.panel.mode === 'work') {
             this.renderWork();
+            const current = this.content.querySelector<HTMLElement>('.dope-work-scroll');
+            if (current) {
+                current.scrollTop = restoreWorkScroll(this.workFollow, this.workScrollTop,
+                    current.scrollHeight, current.clientHeight, this.workSelectionChanged);
+                const latest = this.content.querySelector<HTMLElement>('.dope-work-latest');
+                if (latest) latest.hidden = !this.workFollow.latestBelow;
+            }
+            this.workSelectionChanged = false;
+            if (focused) this.content.querySelectorAll<HTMLElement>('[aria-label]').forEach(element => {
+                if (element.getAttribute('aria-label') === focused) element.focus({ preventScroll: true });
+            });
             return;
         }
         if (!state.snapshot) {

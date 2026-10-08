@@ -22,6 +22,7 @@ export class WorkSelectionController {
     selectedTask?: AgentTask;
     transcript: AgentTranscriptEntry[] = [];
     transcriptState: 'recorded' | 'not-recorded' = 'not-recorded';
+    transcriptIncomplete = false;
     message = '';
     private serial = 0;
 
@@ -54,7 +55,7 @@ export class WorkSelectionController {
     }
     async select(selection: WorkSelection | undefined): Promise<void> {
         const handle = this.handle, serial = ++this.serial;
-        this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = [];
+        this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.transcriptIncomplete = false;
         this.message = ''; this.phase.message = ''; this.phase.selected = undefined; this.phase.run = undefined;
         if (!handle || !selection) { this.changed(); return; }
         if (selection.kind === 'sequence') {
@@ -74,13 +75,15 @@ export class WorkSelectionController {
             this.selectedRun = run; this.selectedTask = task;
             if (run) {
                 let cursor = 0;
-                for (let page = 0; page < 25; page++) {
+                while (true) {
                     const result = await this.runtime.readTranscript(handle, run.id, cursor, 100);
                     if (serial !== this.serial || handle !== this.handle) return;
                     this.transcriptState = result.state;
+                    this.transcriptIncomplete ||= result.incomplete;
                     this.transcript.push(...result.entries);
-                    cursor = result.nextSequence;
                     if (!result.hasMore) break;
+                    if (result.nextSequence <= cursor) throw new Error('Transcript pagination did not advance');
+                    cursor = result.nextSequence;
                 }
             }
             this.changed();
