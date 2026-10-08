@@ -32,6 +32,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     readonly directController?: AgentRunController;
     private composingWork = false;
     private promptStacksOnly = false;
+    private lastWorkSelection?: WorkSelection;
     private readonly rootsListener;
     private readonly modelsListener;
     private readonly status = document.createElement('p');
@@ -162,6 +163,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private async attach(): Promise<void> {
         const request = ++this.workspaceRequest;
         this.composingWork = false;
+        this.lastWorkSelection = undefined;
         // Invalidate the old project immediately while workspace roots resolve.
         this.panel.attach(undefined);
         await this.workController?.attach(undefined);
@@ -220,6 +222,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.composingWork = false;
         if (selection) this.promptStacksOnly = false;
         if (!this.panel.selectWork(selection)) return;
+        if (selection) this.lastWorkSelection = selection;
         void (async () => {
             await this.workController?.select(selection);
             if (!selection) await this.workController?.refresh();
@@ -256,14 +259,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         validation.oninput = () => { controller.setValidation(validation.value); start.disabled = !controller.canStart; };
         const grant = createDefaultExecutionGrant({ id: 'preview', revision: 1, taskId: 'preview',
             acceptedAt: new Date().toISOString() });
-        const review = document.createElement('details'); const summary = document.createElement('summary');
+        const review = document.createElement('details'); review.className = 'dope-work-diagnostics';
+        const summary = document.createElement('summary');
         summary.textContent = 'Review project execution grant'; review.append(summary);
         for (const kind of EFFECT_KINDS) { const item = document.createElement('div');
             item.textContent = `${grant.permissions[kind] ? 'Allowed' : 'Denied'} · ${kind}`; review.append(item); }
         const acceptLabel = document.createElement('label'); const accept = document.createElement('input');
         accept.type = 'checkbox'; accept.checked = controller.accepted;
         accept.onchange = () => { controller.acceptGrant(accept.checked); start.disabled = !controller.canStart; };
-        acceptLabel.append(accept, ' Accept Grant'); review.append(acceptLabel);
+        acceptLabel.className = 'dope-work-grant';
+        acceptLabel.append(accept, ' Accept project execution grant');
         const status = document.createElement('p'); status.setAttribute('role', 'status');
         status.textContent = controller.message || controller.targetMessage;
         const submit = async () => {
@@ -272,7 +277,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (run) { await this.workController?.refresh(); this.selectWork({ kind: 'run', id: run.id }); }
         };
         form.onsubmit = event => { event.preventDefault(); void submit(); };
-        form.append(prompt, model, validation, review, status, start);
+        form.append(prompt, model, validation, acceptLabel, review, status, start);
         this.content.append(form);
     }
     private renderWork(): void {
@@ -307,6 +312,27 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         if (!work) {
             const groups = workRows(controller.tasks, controller.runs, controller.phase.sequences);
+            const rowButton = (row: (typeof groups.running)[number]): HTMLButtonElement => {
+                const button = this.button('', () => this.selectWork(row.selection));
+                button.className = 'dope-work-row';
+                button.dataset.workKey = `${row.selection.kind}:${row.selection.id}`;
+                button.dataset.status = row.status;
+                button.setAttribute('aria-current', this.lastWorkSelection?.kind === row.selection.kind &&
+                    this.lastWorkSelection.id === row.selection.id ? 'true' : 'false');
+                const cue = document.createElement('span'); cue.className = 'dope-work-state-cue';
+                cue.setAttribute('aria-hidden', 'true');
+                const text = document.createElement('span'); text.className = 'dope-work-row-text';
+                const title = document.createElement('span'); title.className = 'dope-work-row-title'; title.textContent = row.title;
+                const meta = document.createElement('span'); meta.className = 'dope-work-row-meta';
+                const time = Number.isFinite(Date.parse(row.updatedAt)) ? new Date(row.updatedAt).toLocaleString() : '';
+                meta.textContent = [row.status, row.activity, row.elapsedMs === undefined ? time :
+                    `${Math.floor(row.elapsedMs / 60000)}m elapsed`].filter(Boolean).join(' · ');
+                text.append(title, meta);
+                if (row.stack) { const progress = document.createElement('span'); progress.className = 'dope-work-row-progress';
+                    progress.textContent = row.stack; text.append(progress); }
+                button.append(cue, text);
+                return button;
+            };
             if (!this.promptStacksOnly) for (const [heading, rows] of [['Running', groups.running],
                 ['History', groups.history]] as const) {
                 const section = document.createElement('section');
@@ -315,14 +341,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     const empty = document.createElement('p'); empty.textContent = 'No Work currently running.';
                     section.append(empty);
                 }
-                for (const row of rows) {
-                    const elapsed = row.elapsedMs === undefined ? '' : ` · ${Math.floor(row.elapsedMs / 60000)}m elapsed`;
-                    const label = `${row.running ? '● ' : ''}${row.title} · ${row.status}${row.stack ? ` · ${row.stack}` : ''}${elapsed}`;
-                    const button = this.button(label, () => this.selectWork(row.selection));
-                    section.append(button);
-                    const activity = document.createElement('small'); activity.textContent = row.activity;
-                    section.append(activity);
+                if (heading === 'History' && !rows.length) {
+                    const empty = document.createElement('p'); empty.textContent = 'No saved Work yet.';
+                    section.append(empty);
                 }
+                for (const row of rows) section.append(rowButton(row));
                 this.content.append(section);
             }
             const stacks = document.createElement('section');
@@ -330,14 +353,30 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const root = document.createElement('input'); root.type = 'text'; root.value = controller.phase.tasksRoot;
             root.setAttribute('aria-label', 'Tasks folder');
             root.onchange = () => controller.phase.setTasksRoot(root.value);
-            stacks.append(root, this.button('Refresh', () => { controller.phase.setTasksRoot(root.value); void controller.scan(); },
+            const scan = document.createElement('div'); scan.className = 'dope-work-stack-scan';
+            scan.append(root, this.button('Refresh', () => { controller.phase.setTasksRoot(root.value); void controller.scan(); },
                 controller.phase.busy));
+            stacks.append(scan);
+            if (!controller.phase.stacks.length && !controller.phase.busy) {
+                const empty = document.createElement('p'); empty.textContent = 'No Prompt Stacks found in this folder.';
+                stacks.append(empty);
+            }
             for (const stack of controller.phase.stacks) {
-                stacks.append(this.button(`${stack.folderName}${stack.sequenceStatus ? ` · ${stack.sequenceStatus}` : ''}`,
-                    () => this.selectWork({ kind: 'sequence', id: stack.sequenceId ?? stack.folderName }),
-                    controller.phase.busy || !stack.valid && !stack.sequenceId));
+                const button = this.button('', () => this.selectWork({ kind: 'sequence', id: stack.sequenceId ?? stack.folderName }),
+                    controller.phase.busy || !stack.valid && !stack.sequenceId);
+                button.className = 'dope-work-row'; button.dataset.status = stack.valid ? stack.sequenceStatus ?? 'discovered' : 'invalid';
+                button.dataset.workKey = `sequence:${stack.sequenceId ?? stack.folderName}`;
+                button.setAttribute('aria-current', this.lastWorkSelection?.kind === 'sequence' &&
+                    this.lastWorkSelection.id === (stack.sequenceId ?? stack.folderName) ? 'true' : 'false');
+                const cue = document.createElement('span'); cue.className = 'dope-work-state-cue'; cue.setAttribute('aria-hidden', 'true');
+                const text = document.createElement('span'); text.className = 'dope-work-row-text';
+                const title = document.createElement('span'); title.className = 'dope-work-row-title'; title.textContent = stack.folderName;
+                const meta = document.createElement('span'); meta.className = 'dope-work-row-meta';
+                meta.textContent = stack.valid ? stack.sequenceStatus ?? 'Discovered Prompt Stack' :
+                    `${stack.sequenceStatus ? `${stack.sequenceStatus} · ` : ''}Invalid Prompt Stack`;
+                text.append(title, meta); button.append(cue, text); stacks.append(button);
                 if (!stack.valid) { const error = document.createElement('p'); error.textContent = stack.error ?? 'Invalid Prompt Stack.';
-                    stacks.append(error); }
+                    error.className = 'dope-work-warning'; stacks.append(error); }
             }
             this.content.append(stacks);
             return;
@@ -385,24 +424,22 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             scroll.classList.remove('dope-chat-scroll-dragging');
         };
         region.append(scroll, latest);
-        const detail = (text: string) => { const paragraph = document.createElement('p'); paragraph.textContent = text; scroll.append(paragraph); };
+        const detail = (text: string, className = 'dope-work-detail') => {
+            const paragraph = document.createElement('p'); paragraph.className = className;
+            paragraph.textContent = text; scroll.append(paragraph);
+        };
         if (work.kind === 'sequence') {
             const phase = controller.phase, sequence = phase.selected?.id === work.id ? phase.selected : undefined;
             if (sequence) {
-                detail(`Prompt Stack: ${sequence.stack.folderName}`);
-                detail(`Status: ${sequence.status}${sequence.blockedReason ? ` · ${sequence.blockedReason}` : ''}`);
-                detail(`Current: P${Math.min(sequence.currentEntryNumber, sequence.stack.entries.length)} of ${sequence.stack.entries.length}`);
-                detail(`Model: Coding Agent`);
+                detail(`Status: ${sequence.status}${sequence.blockedReason ? ` · ${sequence.blockedReason}` : ''}`, 'dope-work-overview');
+                detail(`Current: P${Math.min(sequence.currentEntryNumber, sequence.stack.entries.length)} of ${sequence.stack.entries.length}`, 'dope-work-overview');
                 if (sequence.checkpoints.length) {
                     const checkpoint = document.createElement('small'); checkpoint.className = 'dope-work-system';
                     checkpoint.textContent = `${sequence.checkpoints.length} checkpoint${sequence.checkpoints.length === 1 ? '' : 's'} recorded`;
                     scroll.append(checkpoint);
                 }
-                const metadata = document.createElement('small');
-                metadata.textContent = `${sequence.stack.mode === 'correction' ? 'Correction' : 'Phase'} ${sequence.stack.phase} · ${sequence.stack.folderName}`;
-                scroll.append(metadata);
-                const progress = document.createElement('section');
-                const progressTitle = document.createElement('h3'); progressTitle.textContent = 'Progress'; progress.append(progressTitle);
+                const progress = document.createElement('details'); progress.className = 'dope-work-diagnostics';
+                const progressTitle = document.createElement('summary'); progressTitle.textContent = 'Progress'; progress.append(progressTitle);
                 const entries = document.createElement('ol');
                 for (const entry of sequence.stack.entries) {
                     const item = document.createElement('li');
@@ -415,20 +452,38 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     entries.append(item);
                 }
                 progress.append(entries); scroll.append(progress);
-                for (const runId of sequence.runIds ?? []) if (this.panel.workspace) {
-                    const run = controller.runs.find(candidate => candidate.id === runId);
-                    scroll.append(this.button(`${run ? `Run · ${run.status}` : 'Saved run'} · Open Transcript`, () =>
-                        void this.openTranscript?.(this.panel.workspace!, runId)));
+                const metadata = document.createElement('details'); metadata.className = 'dope-work-diagnostics';
+                const metadataTitle = document.createElement('summary'); metadataTitle.textContent = 'Prompt Stack details';
+                const metadataText = document.createElement('p');
+                metadataText.textContent = `${sequence.stack.mode === 'correction' ? 'Correction' : 'Phase'} ${sequence.stack.phase} · ${sequence.stack.folderName} · Model: Coding Agent`;
+                metadata.append(metadataTitle, metadataText); scroll.append(metadata);
+                if (sequence.runIds?.length && this.panel.workspace) {
+                    const previousRuns = document.createElement('details'); previousRuns.className = 'dope-work-diagnostics';
+                    const previousTitle = document.createElement('summary'); previousTitle.textContent = 'Saved run transcripts';
+                    previousRuns.append(previousTitle);
+                    for (const runId of sequence.runIds) {
+                        const run = controller.runs.find(candidate => candidate.id === runId);
+                        previousRuns.append(this.button(`${run ? `Run · ${run.status}` : 'Saved run'} · Open Transcript`, () =>
+                            void this.openTranscript?.(this.panel.workspace!, runId)));
+                    }
+                    scroll.append(previousRuns);
                 }
                 if (phase.run) {
-                    detail(`Current activity: ${phase.run.outcome?.summary ?? phase.run.changeSummary?.summary ?? phase.run.status}`);
-                    detail(`Validation: ${phase.run.validationResults.map(result => `${result.label} ${result.status}`).join(', ') || 'Pending'}`);
-                    detail(`Authority: ${phase.run.authorityDecision ? phase.run.authorityDecision.allowed ? 'Allowed' : 'Blocked' : 'Pending'}`);
-                    if (phase.run.changedFiles.length) detail(`Candidate changes: ${phase.run.changedFiles.join(', ')}`);
+                    detail(`Current activity: ${phase.run.outcome?.summary ?? phase.run.changeSummary?.summary ?? phase.run.status}`, 'dope-work-overview');
+                    detail(`Validation: ${phase.run.validationResults.map(result => `${result.label} ${result.status}`).join(', ') || 'Pending'}`,
+                        phase.run.validationResults.some(result => result.status === 'failed') ? 'dope-work-warning' : 'dope-work-detail');
+                    detail(`Authority: ${phase.run.authorityDecision ? phase.run.authorityDecision.allowed ? 'Allowed' : 'Blocked' : 'Pending'}`,
+                        phase.run.authorityDecision && !phase.run.authorityDecision.allowed ? 'dope-work-warning' : 'dope-work-detail');
+                    if (phase.run.changedFiles.length) {
+                        const files = document.createElement('details'); files.className = 'dope-work-diagnostics';
+                        const summary = document.createElement('summary'); summary.textContent = `${phase.run.changedFiles.length} candidate changed files`;
+                        const list = document.createElement('p'); list.textContent = phase.run.changedFiles.join(', ');
+                        files.append(summary, list); scroll.append(files);
+                    }
                 }
                 const entry = phase.current;
                 if (entry) {
-                    detail(`P${entry.number} · ${entry.execution === 'manual-gate' ? 'Manual/browser gate' : 'Agent task'}`);
+                    detail(`P${entry.number} · ${entry.execution === 'manual-gate' ? 'Manual/browser gate' : 'Agent task'}`, 'dope-work-overview');
                     if (entry.execution === 'manual-gate' && sequence.status !== 'completed') {
                         const prompt = document.createElement('pre'); prompt.textContent = entry.promptText; scroll.append(prompt);
                         scroll.append(this.button('Verify manual gate', () => void phase.reconcile(), phase.busy));
@@ -445,7 +500,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         if (phase.needsDirtyAcceptance && !phase.dirtyPromptDismissed)
                             scroll.append(this.button('Continue with dirty worktree', () => void phase.continueDirty(), phase.busy),
                                 this.button('Cancel dirty acceptance', () => phase.cancelDirty(), phase.busy));
-                        detail(phase.readinessMessage);
+                        detail(phase.readinessMessage, phase.canStart ? 'dope-work-detail' : 'dope-work-warning');
                         const start = this.button(sequence.status === 'ready' ? 'Start' : 'Resume', () => void phase.start(), !phase.canStart);
                         scroll.append(start, this.button('Stop', () => void phase.stop(), phase.busy || sequence.status !== 'running'));
                     }
@@ -454,7 +509,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     scroll.append(this.button('Verify checkpoint', () => void phase.checkpoint(), phase.busy));
                 else if (sequence.status !== 'running' && sequence.status !== 'completed')
                     scroll.append(this.button('Reconcile repository', () => void phase.reconcile(), phase.busy));
-                if (sequence.gateMessage) detail(sequence.gateMessage);
+                if (sequence.gateMessage) detail(sequence.gateMessage, 'dope-work-warning');
                 const transcriptRunId = phase.run?.id ?? sequence.runIds?.at(-1) ?? sequence.checkpoints.at(-1)?.runId;
                 if (transcriptRunId && this.panel.workspace) scroll.append(this.button('Open Transcript', () =>
                     void this.openTranscript?.(this.panel.workspace!, transcriptRunId)));
@@ -462,12 +517,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         } else {
             const run = work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedRun : undefined;
             if (run) {
-                const state = document.createElement('small'); state.className = 'dope-work-system';
+                const state = document.createElement('p'); state.className = 'dope-work-overview';
                 state.textContent = `Run · ${run.status}`; scroll.append(state);
-                detail(`Model: ${run.provenance ? `${run.provenance.providerId} · ${run.provenance.modelId}` : 'Coding Agent'}`);
+                const provenance = document.createElement('details'); provenance.className = 'dope-work-diagnostics';
+                const provenanceTitle = document.createElement('summary'); provenanceTitle.textContent = 'Model and provenance';
+                const provenanceText = document.createElement('p');
+                provenanceText.textContent = run.provenance ? `${run.provenance.providerId} · ${run.provenance.modelId}` : 'Coding Agent';
+                provenance.append(provenanceTitle, provenanceText); scroll.append(provenance);
                 const recent = [...controller.transcript].reverse().find(entry => entry.kind === 'message' || entry.kind === 'command');
                 detail(`Current activity: ${recent?.kind === 'message' ? recent.text.slice(0, 180) :
-                    recent?.kind === 'command' ? recent.command : run.outcome?.summary ?? run.status}`);
+                    recent?.kind === 'command' ? recent.command : run.outcome?.summary ?? run.status}`, 'dope-work-overview');
                 if (controller.selectedTask?.origin.kind === 'direct' &&
                     ['pending', 'running', 'blocked'].includes(run.status)) scroll.append(this.button('Stop Work', () => {
                     if (this.directController) { void this.directController.select(run.id).then(() => this.directController?.stop()); }
@@ -487,19 +546,26 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 for (const result of run.validationResults) {
                     const item = document.createElement('p'); item.textContent = `Candidate validation · ${result.label} · ${result.status}`;
                     diagnostics.append(item);
+                    if (result.status === 'failed') { const status = document.createElement('small');
+                        status.className = 'dope-work-system dope-work-warning'; status.textContent = item.textContent;
+                        scroll.append(status); }
+                }
+                if (run.validationResults.length && !run.validationResults.some(result => result.status === 'failed')) {
                     const status = document.createElement('small'); status.className = 'dope-work-system';
-                    if (result.status === 'failed') status.classList.add('dope-work-warning');
-                    status.textContent = item.textContent; scroll.append(status);
+                    status.textContent = `${run.validationResults.length} candidate validation result${run.validationResults.length === 1 ? '' : 's'}`;
+                    scroll.append(status);
                 }
                 if (run.authorityDecision) { const item = document.createElement('p');
                     item.textContent = `Authority · ${run.authorityDecision.allowed ? 'allowed' : 'blocked'}`; diagnostics.append(item);
-                    const status = document.createElement('small'); status.className = 'dope-work-system'; status.textContent = item.textContent; scroll.append(status); }
+                    const status = document.createElement('small'); status.className = run.authorityDecision.allowed ?
+                        'dope-work-system' : 'dope-work-system dope-work-warning';
+                    status.textContent = item.textContent; scroll.append(status); }
                 if (run.capacityRetries) { const item = document.createElement('p');
-                    item.textContent = `Retries · ${run.capacityRetries}`; diagnostics.append(item);
-                    const status = document.createElement('small'); status.className = 'dope-work-system'; status.textContent = item.textContent; scroll.append(status); }
+                    item.textContent = `Retries · ${run.capacityRetries}`; diagnostics.append(item); }
                 if (run.outcome) { const item = document.createElement('p');
                     item.textContent = `${run.outcome.code} · ${run.outcome.summary}`; diagnostics.append(item);
-                    const status = document.createElement('small'); status.className = 'dope-work-system dope-work-warning';
+                    const status = document.createElement('small'); status.className = run.status === 'completed' ?
+                        'dope-work-system' : 'dope-work-system dope-work-warning';
                     status.textContent = item.textContent; scroll.append(status); }
                 if (diagnostics.children.length > 1) scroll.append(diagnostics);
             } else if (work.kind === 'task' && controller.selectedTask?.id === work.id)
@@ -788,6 +854,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const scrollTop = oldScroll?.scrollTop ?? 0;
         const active = document.activeElement as HTMLElement | null;
         const focused = this.content.contains(active) ? active?.getAttribute('aria-label') : undefined;
+        const focusedWorkKey = this.content.contains(active) ? active?.dataset.workKey : undefined;
         const selection = active instanceof HTMLTextAreaElement ? [active.selectionStart, active.selectionEnd] : undefined;
         this.status.textContent = this.panel.mode === 'chat' ?
             state.error || (state.loading ? 'Loading Chats…' : !state.workspace ? 'Open one project to use Chats.' : '') :
@@ -812,6 +879,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             this.workSelectionChanged = false;
             if (focused) this.content.querySelectorAll<HTMLElement>('[aria-label]').forEach(element => {
                 if (element.getAttribute('aria-label') === focused) element.focus({ preventScroll: true });
+            });
+            if (focusedWorkKey) this.content.querySelectorAll<HTMLElement>('[data-work-key]').forEach(element => {
+                if (element.dataset.workKey === focusedWorkKey) element.focus({ preventScroll: true });
             });
             return;
         }
