@@ -1,0 +1,34 @@
+TASK: Correction 8 / P4 — Establish reusable Chat and Work panel states
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Reuse ChatPanel's workbench shell for a persistent Chat | Work mode switch, with independent state and single-owner Work selection. This step creates the shared presentation foundation; later prompts fill Work lists/details and toolbar launchers.
+
+PREFLIGHT
+Read P1-P3 results, ADR 0025 Work amendment, c8-work-mode plan, `chat-panel-widget.ts`, `chat-panel-controller.ts`, `chat-panel-presentation.ts`, `frontend-module.ts`, `chat-panel.test.ts`. Inspect existing Chat launcher IDs and StatefulWidget restore semantics.
+
+IMPLEMENT
+- Add shared panel mode and state helper with `chat`/`work`; keep each panel's selected Chat and Work independently and provide top-of-panel accessible `Chat | Work` switch.
+- Implement Work presentation-owner registry keyed by canonical project and stable Work selection identity. Opening same Work elsewhere focuses existing panel; distinct Work selections coexist.
+- Preserve ChatOpenOwners and backend chat lease ownership unchanged. Keep mode switching, disposal, workspace switching and restore generation-safe, with deterministic duplicate-owner restoration.
+- Work switching/closing cannot call AgentRuntime.stop or create a task/run. No free-form in-flight steering. Do not fork ChatPanelWidget into a full duplicate or merge ChatRepository with agent persistence.
+- Reuse Chat scroll/layout helpers and implement only a minimal Work placeholder/selection host. Keep left/right existing Chat launchers working; toolbar integration follows in P7.
+- Persist/restore mode and per-mode identities in versioned StatefulWidget layout state, migrating existing version-1 Chat-only state.
+
+TESTS
+Focused shared panel state, toggle, dual selection persistence, duplicate Work focus, simultaneous distinct Work items, disposal, late project switch, legacy restoration and preserved Chat owner tests.
+
+VALIDATION
+T2: affected extension build and focused `chat-panel.test.ts`, `chat-presentation.test.ts` and new shared panel unit tests, plus git diff --check. No full browser/Electron/aggregate run.
+
+DONE WHEN
+Chat works as before, Work can be selected in the same reusable shell, and no navigation action mutates an active run. Runner commits on success; no manual Git commit.
+
+FINAL RESPONSE
+Report state boundaries, compatibility, ownership and focused tests.

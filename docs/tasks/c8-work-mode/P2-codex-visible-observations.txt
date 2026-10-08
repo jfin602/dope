@@ -1,0 +1,33 @@
+TASK: Correction 8 / P2 — Normalize provider-visible messages and command observations
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Make the Codex reference AgentExecutionAdapter emit actual user-visible agent text and structured provider command observations instead of occurrence-only messages. Keep provider permissions and required validation separate.
+
+PREFLIGHT
+Read P1 result; inspect `packages/theia-extension/src/node/codex-agent-execution.ts`, adapter-level AgentExecutionEvent contracts, `test/unit/codex-agent-execution.test.ts`, existing Codex RPC item shapes and ADR 0028/0029. Do not guess hidden-reasoning shapes.
+
+IMPLEMENT
+- Emit only deliberately user-visible `agentMessage` content from supported Codex App Server `item/started`, `item/updated`, `item/completed` forms. Handle incremental updates without repeated final text; dedupe using provider item identity where present. Do not ingest reasoning/thought/debug items.
+- Preserve commandId, sanitized bounded command, cwd relative to isolated workspace, started/completed state, exitCode and bounded provider-exposed stdout/stderr if safely available. Missing outputs must be marked absent, not invented.
+- Keep generic agent-execution event vocabulary provider-neutral; Codex-specific RPC decoding remains in the adapter.
+- Sanitize or redact credential/private-path-shaped visible data without replacing ordinary agent messages with "Agent message received". Explicitly mark dropped/truncated unsafe or oversized material.
+- Keep existing provider event cap, cancellation/deny behavior, sandbox config, network/temp/Git restrictions and model-provenance checks unchanged. Provider command activity must NOT satisfy required CompletionPolicy validation.
+
+TESTS
+Extend fake Codex RPC tests for multi-message, update/final dedupe, command start/finish, failed/unfinished command, bounded output, secrets/hidden reasoning exclusion, malformed event and cancellation.
+
+VALIDATION
+T1 only: build affected adapter package after its dependencies and run `test/unit/codex-agent-execution.test.ts` plus affected direct adapter tests and `git diff --check`. Do not run live hosted tasks or the full suite.
+
+DONE WHEN
+Safe agent-visible text survives adapter normalization and structured command observations retain identities without granting any new permission. No manual commit; runner checkpoint only.
+
+FINAL RESPONSE
+Report exact supported Codex item shapes, sanitization, data emitted and focused tests.

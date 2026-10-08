@@ -1,0 +1,31 @@
+TASK: Correction 8 / P8 — Integrate Work navigation and restart regression tests
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Integrate P1-P7 into one robust Work presentation without changing AgentTask or Prompt Stack execution semantics.
+
+PREFLIGHT
+Inspect P1-P7 output and focused tests, especially chat-panel, agent-run-ui, phase-stack-ui/discovery, agent-sequence-persistence, transcript-store, runtime and frontend module integration. Read ADR 0025/0028/0029.
+
+IMPLEMENT
+- Add tests for the Chat | Work toggle, independent selections, panel placement, same-Work focus-on-collision, distinct Work in different panels, deterministic restoration and project-switch races.
+- Ensure closing/toggling/restoring the view never stops a running task, loses saved Chat state, starts a duplicate run, or creates an extra checkpoint.
+- Prove complete transcript paging after restart, command history correlation, long-history beginning, stable task titles after sequence advancement and legacy run fallback.
+- Verify old command IDs route to Work, Prompt Stack automatic discovery remains at docs/tasks/ by default, and prior completed sequences reopen without rewriting their state.
+- Preserve Chat's formatted transcript, ownership and model choices. Provider command history remains distinct from Dope-owned required candidate validation.
+- Repair only cross-component regressions revealed by the tests; no new authority or feature surface.
+
+VALIDATION
+T2: affected unit and integration suites, extension and browser build due workbench wiring, git diff --check, version coherence and no forbidden root npm lock. Full aggregate/native GUI proof remains P9.
+
+DONE WHEN
+The combined Work and Chat panels, transcript history, saved sequences and command routes have focused Green integration evidence. Runner owns commit.
+
+FINAL RESPONSE
+Report test counts, fixed integrations and P9 readiness.

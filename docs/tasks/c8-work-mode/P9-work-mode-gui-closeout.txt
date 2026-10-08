@@ -1,0 +1,37 @@
+TASK: Correction 8 / P9 — Work mode GUI qualification and closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Perform real GUI qualification of Work mode and record a truthful final correction disposition. This is the sole final closeout prompt, executed manually at the browser/GUI gate.
+
+PREFLIGHT
+Review P1-P8 evidence and current source. Read ADR 0025/0027/0028/0029 and c8-work-mode README. Confirm the package stays 0.8.20. Use a disposable local project for a new direct Work run and reopen the completed Adaptive SEO project only for read-only regression.
+
+DIRECT GUI QUALIFICATION
+1. In the real Electron or browser-hosted Theia UI, open the Chat | Work panel in left, right, center and bottom. Work must launch from the toolbar and command palette.
+2. Verify independent Chat/Work selections, same-Work focus to existing owner, distinct Work items in different panels, stable task-derived title and no duplicate run or sequence on selection.
+3. Start one small real direct Work in a disposable project with explicit grant. Verify agent-visible text (not generic event summaries), correct chronological transcript, collapsed command rows, expandable bounded details, safe formatted text and accurate validation/authority status.
+4. Scroll up during activity; confirm follow stops and jump-to-latest resumes. Narrow panels retain usable controls.
+5. Toggle, relocate or close the viewer without terminating Work. Explicit Stop remains an intentional action.
+6. Restart Dope. Reopen the saved Work and check its full retained transcript from the beginning, command identity/status/duration and no duplicate run.
+7. Reopen /home/jfin/dev/adaptive-seo-dope. Its completed c4-dope-phase-stack-smoke Prompt Stack must auto-discover under docs/tasks/, preserve all four P1-P4 checkpoint SHAs and task titles, and create no new run or commit. Historic runs without persisted message text must show an honest fallback.
+8. Verify saved Chat conversation, ownership, settings, model routing and formatted content are unchanged. Old Agent Run/Phase Stack commands still open the new Work views.
+9. Confirm no change to provider sandbox, candidate validation, authorized promotion, manual gate or checkpoint rules.
+
+VALIDATION
+T3: run npm run check, focused Work/Chat/AgentRun/Prompt Stack tests, directly inspect real GUI behavior, git diff --check, version coherence and root lockfile rules. Preserve actual failed evidence; do not weaken tests.
+
+CLOSEOUT
+Create docs/tasks/c8-work-mode/closeout.md with final HEAD, test counts, GUI/restart evidence, any gaps and Green/Not Green decision. If Green, commit only the bounded closeout/evidence documents as a manual checkpoint with exact subject:
+c8-work-mode/P9: Work mode GUI qualification and closeout
+
+Do not include implementation source fixes in a Green closeout. If a source defect remains, report NOT GREEN and plan an explicit repair. Do not change Adaptive SEO, deploy or run production services.
+
+FINAL RESPONSE
+Report qualification evidence, transcript, command, title, toolbar/panel, ownership, restart and preserved checkpoint results, final closeout SHA if created, and disposition.

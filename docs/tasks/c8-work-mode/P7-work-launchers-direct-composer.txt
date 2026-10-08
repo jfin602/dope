@@ -1,0 +1,34 @@
+TASK: Correction 8 / P7 — Wire Work toolbar access and direct task composer
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Make Work accessible alongside Chat from the left/right toolbar and command palette, preserving old command IDs, and allow initiating one direct bounded task via the Work composer.
+
+PREFLIGHT
+Read P1-P6 result. Inspect `frontend-module.ts`, `chat-panel-presentation.ts`, `chat-panel-widget.ts`, `agent-run-contribution.ts`, `phase-stack-contribution.ts`, `agent-run-controller.ts`, `phase-stack-controller.ts`, Chat launcher tests and AGENTS.md.
+
+IMPLEMENT
+- Add left and right Work toolbar launcher access using the existing Chat launcher/view contribution pattern. Work panels must also open in center/bottom through command palette; all use one shared panel implementation and reusable Work state. Keep Chat launchers and their icon/activation behavior unchanged.
+- Add `Dope: Open Work` and `Dope: Open Prompt Stack` (or coherent scoped commands) that reveal the appropriate Work mode/selection. Retain old `dope.agentRun.open` / `dope.phaseStack.open` commands and any existing deep links as forwarding aliases, not duplicate legacy panels.
+- Route existing Prompt Stack `Open Agent Run detail` behavior to the selected Work detail with correct task-derived tab title. Do not manufacture a new run or transcript.
+- Direct New Work uses a compact Chat-like composer: Enter submits, Shift+Enter newline, optional supported model control / Follow Coding Agent, explicit ExecutionGrant review and a bounded CompletionPolicy. It creates a direct AgentTask only after grant acceptance; idle composer is not an execution grant.
+- Stop is explicitly user-requested; mode toggle, panel close or new selection does not stop an active task. No free-form mid-run steering (Phase 8D).
+- Remove redundant user-facing Agent Run/Phase Stack navigation after aliases work. No independent UI authority path may remain.
+
+TESTS
+Focused launcher registration/placement, legacy command routing, deep-link selected Run, direct task grant/model readiness, Enter/Shift+Enter, close/toggle non-cancellation and no duplicate work tests.
+
+VALIDATION
+T2: extension build, affected launcher/panel/agent-run/phase-stack unit tests and git diff --check. Do not run full browser qualification until P9.
+
+DONE WHEN
+Chat and Work are first-class toolbar modes, old actions still reach the same records, and a direct Work starts only with explicit existing authority. Runner owns the commit.
+
+FINAL RESPONSE
+Report commands/aliases, composer constraints, no-steering guard and tests.

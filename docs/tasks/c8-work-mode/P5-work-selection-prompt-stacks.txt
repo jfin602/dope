@@ -1,0 +1,33 @@
+TASK: Correction 8 / P5 — Build Select Work and stable task titles
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Make Select Work list saved tasks/runs and automatically discovered Prompt Stacks, and resolve stable Work titles without introducing another import lifecycle.
+
+PREFLIGHT
+Review P4 shared panel. Inspect `phase-stack-controller.ts`, `phase-stack-widget.ts`, `agent-run-controller.ts`, `agent-runtime-service.ts`, `agent-core/src/sequence.ts`, `frontend-module.ts` and source tests. Read ADR 0027 Work vocabulary amendment.
+
+IMPLEMENT
+- In Work mode, provide `Select Work` with Work history and `Prompt Stacks` discovered from configurable project-relative tasks root (default `docs/tasks/`, simple Refresh). Reuse existing `listTaskStacks`/`openTaskStack`, stored sequence and Run IDs. No user-facing `Import Stack`.
+- Select one Work identity at a time; a Prompt Stack selection opens the existing AgentTaskSequence and its current gate. A run selection opens its actual AgentTask and transcript. Use explicit typed stable selection keys; do not create another sequence/run by selection or refreshing.
+- Provide pure title resolver: selected Prompt Stack entry uses its snapshotted `entry.title`; selected direct Run uses saved AgentTask objective; missing task gets `Work - <short runId>`. Prior run title must not change after sequence advances.
+- Preserve phase/correction metadata only as small secondary labels and user-facing Prompt Stack terminology everywhere in the new Work view.
+- Support current manual/browser gate, validation/grant/dirty acceptance and checkpoint controls by delegating to existing PhaseStackController/domain service rather than recreating its state machine. P6/P7 supply polished controls/entry points.
+
+TESTS
+Focused defaults, malformed/missing stack, existing completed sequence, stable run titles, sequence advance, duplicate same identity focus, different Work coexistence and project switch stale selection.
+
+VALIDATION
+T1: affected package compile and focused phase-stack/agent-run selection tests, git diff --check. Do not run the whole test suite.
+
+DONE WHEN
+Work can browse the real existing completed c4-dope-phase-stack-smoke sequence without creating commits/runs or changing titles. The runner owns commits.
+
+FINAL RESPONSE
+Report source reuse, selection/title semantics and test evidence.

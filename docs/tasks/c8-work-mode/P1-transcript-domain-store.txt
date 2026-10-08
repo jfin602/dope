@@ -1,0 +1,33 @@
+TASK: Correction 8 / P1 — Durable Agent Run transcript domain and storage
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Define the provider-neutral durable Work transcript contract and a safe paginated store beneath `.dope/agent/runs/<run-id>/transcript.jsonl`. Keep `AgentRun`, `AgentRunEvent`, existing run.json/events.jsonl, and execution authority intact.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0027/0028/0029, PRODUCT-MODEL Work section, c8-work-mode assessment/plan. Inspect current `packages/agent-core/src/contracts.ts`, `packages/agent-core/src/node/agent-store.ts`, relevant test/unit/agent-core.test.ts and agent-store.test.ts. Preserve existing v1 records.
+
+IMPLEMENT
+- Introduce versioned parsed `AgentTranscriptEntry` identities/order for visible agent text, structured provider command lifecycle and compact system markers. Use stable run-local sequence and command ID; ensure command start/completion can reconstruct one logical command without duplicating entries.
+- Sanitization/bounds: retain ordinary visible prose; redact/reject secret/private-path shaped spans before durable write. Never accept hidden reasoning, raw RPC payloads, arbitrary environment dumps, credentials or unbounded output. Preserve command relative cwd, terminal status/exit/duration and explicit stdout/stderr truncation when available.
+- Add append-only, atomic/serialized transcript persistence with total/per-entry ceilings and explicit incomplete/truncation marker when ceiling reached. Add paginated bounded read with cursor, strict parser, project/run containment, symlink rejection, corruption/future-schema fail-closed.
+- Legacy run dirs with no transcript.jsonl must still reopen. Return an explicit not-recorded state (do not fabricate historic transcript from occurrence-only activity events).
+- Expose a pure store read/write interface suitable for runtime/RPC wiring in P3; do not integrate the Codex adapter or GUI yet.
+
+TESTS
+Add focused parser, pagination/order, command correlation reconstruction, limits/truncation, sanitization, corruption, symlink/path containment, legacy absence and restart-read tests. Verify no regression in events.jsonl and run.json.
+
+VALIDATION
+T1 only: build `@dope/agent-core`, run affected agent-core/agent-store tests, and `git diff --check`. No full npm run check, browser, Electron or live agent calls.
+
+DONE WHEN
+A read/reopen returns every retained visible entry in order, safe bounds are explicit, historical runs are readable, and transcript is separate from operational event summaries. Do not commit manually; runner owns the correction checkpoint.
+
+FINAL RESPONSE
+Report types, store schema/bounds, legacy behavior and focused test evidence.

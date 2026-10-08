@@ -1,0 +1,35 @@
+TASK: Correction 8 / P3 — Persist ordered Work transcript through Agent Runtime
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Connect P1 transcript storage and P2 provider observations to the real AgentRuntime service and paginated transcript reads.
+
+PREFLIGHT
+Review P1/P2 changes and focused test results. Inspect agent-execution-runtime.ts, agent-runtime-backend.ts, agent-runtime-service.ts, agent-store.ts and existing runtime/restart tests. Follow the approved Work mode and ADR 0029 contracts.
+
+IMPLEMENT
+- Project sanitized visible messages, correlated command start/completion and compact system milestones into ordered durable transcript records.
+- Enforce ordered, bounded writes and stable item IDs; avoid duplicate final messages and mark incomplete commands truthfully.
+- Expose bounded readTranscript pagination through AgentRuntimeService and its backend; preserve old event history and historical run records.
+- Support reload/restart and project-switch isolation without discarding the beginning of a long transcript.
+- Make transcript read/update behavior efficient; avoid re-reading complete logs every poll.
+- Keep required Dope-owned candidate validation independent from provider-observed command entries.
+- Do not change provider permissions, execution grants, candidate promotion, checkpoint or manual gate logic.
+
+TESTS
+Add focused projection/order, command correlation, interrupted run, pagination, project isolation, legacy run, retry/reconnect and validation-independence tests.
+
+VALIDATION
+T2 only: affected package builds, focused AgentRuntime/store/adapter tests, and git diff --check. Defer full browser/aggregate checks to P9.
+
+DONE WHEN
+The AgentRuntime API reopens and pages all retained transcript entries reliably, without modifying execution authority. Runner owns implementation checkpoint.
+
+FINAL RESPONSE
+Report API, persistence, restart and focused test evidence.

@@ -1,0 +1,34 @@
+TASK: Correction 8 / P6 — Render readable Work transcript and compact commands
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Turn the P1-P3 durable transcript into the primary Work-detail content. Make command history minimized by default and meaningful status/validation visible without turning Work into a debug-log wall.
+
+PREFLIGHT
+Read P1-P5 results, inspect current shared panel Work slot, Chat safe Markdown renderer and scroll-follow helpers, agent-run-widget/controller and Work mode styling. Do not replace Chat's existing conversation presentation.
+
+IMPLEMENT
+- Render sanitized provider-visible agent messages as readable formatted text, preserving chronological order and code blocks. Use existing Markdown sanitization; never render raw untrusted HTML.
+- Correlate command start/completion into one compact collapsed row with command, exit/status and duration. Expand for bounded output, cwd and truncation status; do not claim output exists when adapter did not provide it.
+- Place file changes, durable CandidateValidation, authority, warnings, retries and checkpoint status as compact inline/system items with a secondary diagnostics disclosure.
+- Page complete saved Work transcript including the beginning of long runs; no arbitrary 300-event screen tail. Expose honest legacy transcript-not-recorded and explicit truncation markers.
+- Reuse Chat-style independent scroll/drag and follow only while at/near bottom; jump-to-latest and selection changes must not force scroll or duplicate lines.
+- Keep header and relevant controls accessible in narrow left/right/bottom panels, with semantic colors, focus and reduced-motion support.
+
+TESTS
+Focused presentation tests for Markdown safety, collapsed/expanded commands, failed and missing output, long pagination, restore, scroll-away and newest-follow; keep current Chat presentation regression.
+
+VALIDATION
+T2: affected extension build and focused Work presentation, Chat presentation and agent-run UI tests, plus git diff --check. Full GUI is reserved for P9.
+
+DONE WHEN
+Work detail prioritizes agent text, commands are collapsed by default, history survives reload and metadata stays secondary. Runner creates the checkpoint.
+
+FINAL RESPONSE
+Report transcript/command behaviors and focused validation.
