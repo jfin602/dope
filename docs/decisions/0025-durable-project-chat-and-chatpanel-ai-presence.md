@@ -290,3 +290,16 @@ The bounded `c7-chat-project-grounding` correction runs at unchanged `0.7.31` an
 - no mutation/process/Git/network authority.
 
 A successful correction supplements the completed Phase 7 evidence. It does not rewrite historical P12/P13 results or reopen the qualified 7B/7C routing decisions.
+
+
+## Amendment — Work mode in reusable Chat/Work panels (2026-10-08)
+
+The developer-facing **Work** mode follows the existing ChatPanel layout, ownership, restoration and scroll conventions. A reusable panel shell presents a persistent accessible **Chat | Work** toggle at the top, can open in left/right/center/bottom Theia workbench areas and may have multiple instances.
+
+Chat retains **Select Chat / Chat** with ChatService/ChatRepository and its own one-live-owner/lease rules. Work provides **Select Work / Work** over Agent Runtime, including durable Work history, Prompt Stack discovery and task/run detail. Each panel remembers its selections separately across toggles and restart; switching the mode does not create a new record, cancel running work or grant execution authority.
+
+A specific project/Work selection has at most one live owning panel: selecting it elsewhere reveals/focuses the existing owner. Different Work items may occupy different panels. Backend active mutation/run exclusion is separate from UI ownership. Closing/moving a panel releases only presentation ownership; Stop is the explicit action to cancel work. Restoration resolves duplicate owners deterministically and discards stale responses from another project.
+
+Work inherits Chat's fixed header, independently scrolling formatted transcript, near-bottom follow, jump-to-latest, compact metadata, drag scrolling and responsive layouts. It renders commands as collapsed compact rows rather than ordinary chat messages. Left and right toolbar launchers and commands provide both Chat and Work entry points.
+
+A Work composer may start direct tasks only through the Coding Agent/ExecutionGrant path; it does not acquire Chat's read-only Interactive role, model policy, tools, persistence or free-form live steering. Work state remains under `.dope/agent/`; Chat state remains under `.dope/chats/`. This UI extension is bounded by `c8-work-mode`, not a change in ADR 0025 Chat authority.

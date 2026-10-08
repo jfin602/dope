@@ -428,3 +428,19 @@ Dope stops at the gate and surfaces the exact imported prompt. Resume requires r
 ### Restart
 
 After restart, Dope reconciles stale AgentRun truth first, then sequence/Git/version/worktree/stack truth. It selects exactly one safe next action or blocks. It never recreates an already verified checkpoint.
+
+
+## Amendment — Work and Prompt Stack vocabulary (2026-10-08)
+
+Canonical **user-facing** product names:
+- **Work**, **New Work**, **Work history**, **Work detail** rather than Agent Run surface labels;
+- **Prompt Stack** for either a phase or correction stack;
+- **Prompt Stack runner** for sequential execution of Prompt Stacks.
+
+Phase/correction is retained as version/checkpoint metadata; existing prompt TASK grammar, file/folder names, stored snapshots, historic docs, checkpoint subjects and Git history remain unchanged.
+
+Canonical **internal** types remain `AgentTask`, `AgentRun`, `AgentTaskSequence`, `ExecutionGrant`, `WorkItem` and, until a separately approved refactor, `PhaseStackAdapter`. Work is a presentation mode, not a WorkItem or new execution-state domain.
+
+A Work tab/detail title follows the stable task identity: a Prompt Stack AgentTask uses its snapshotted `entry.title`; direct Work uses `AgentTask.objective`; unavailable historical metadata uses a bounded fallback with a short run ID. Advancing the sequence must not retitle a previously opened historical run. Existing Agent Run/Phase Stack commands and links should alias to Work/Prompt Stack views rather than breaking shortcuts.
+
+Work reuses the ChatPanel shell, placement, ownership and restoration rules, with a Chat | Work toggle and toolbar entry. It does not inherit Chat's Interactive model routing, permissions, Chat record state, or arbitrary mid-run steering. ADR 0028 mutation and ADR 0029 Dope-owned candidate validation remain intact. This correction is `c8-work-mode`, incorporating the earlier `c8-agent-run-transcript` scope.

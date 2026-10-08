@@ -141,7 +141,7 @@ Phase 8B is closed for its direct AgentTask scope. Phase 8C is authorized.
 
 ## 8C — Sequential task / phase-stack execution
 
-**CURRENT SLICE.** Starts from the qualified `0.8.13` 8B substrate. First implementation version: `0.8.14`.
+**HISTORICALLY GREEN / QUALIFIED / CLOSED** at the exact `0.8.20` 8C fixture; later real Adaptive SEO Prompt Stack Green in Cycle 2 of 5. First implementation version was `0.8.14`.
 
 PhaseStackAdapter imports `docs/tasks/<stack>/P*.txt` into a normalized immutable snapshot with a source fingerprint. It preserves prompt order, phase/correction mode, model/reasoning, browser/manual requirement, version policy, closeout classification and prompt text. The product must not shell out to the external `codex-phase.mjs` runner as runtime.
 
@@ -188,38 +188,29 @@ Qualification gate:
 - real Adaptive SEO P1 `npm run check` passes through CandidateValidationRunner;
 - resume `c4-dope-phase-stack-smoke` through P2, P3 browser/manual gate, restart, P4 closeout and completed reopen.
 
-Phase 8D remains blocked until this correction and resumed external qualification are Green.
+Those gates are now Green; c8-work-mode is the remaining pre-8D correction.
 
-## c8-agent-run-transcript — Complete Agent Run transcript correction
+## c8-work-mode — Unified Work UX, Prompt Stack naming and transcript correction
 
-Real Phase Stack qualification exposed a separate observability/usability gap in the Agent Run surface: provider-visible agent messages are currently collapsed to occurrence-only summaries and command activity is rendered as a flat event log. That is insufficient for a developer supervising an agent or diagnosing a failed run.
+The existing `c8-agent-run-transcript` scope is expanded and renamed prospectively to **`c8-work-mode`**. This is a bounded pre-8D presentation, persistence and terminology correction, not a new mutation/validation contract. Phase 8C historical fixture remains Green. The real Adaptive SEO `c4-dope-phase-stack-smoke` Prompt Stack also qualified **Green in Cycle 2 of 5**: P1/P2 Dope-owned validation and checkpoints, P3 browser/manual 48/48, P4 final closeout, pending-gate restart and completed reopen with no duplicates. Cycle 1 failure is historical; production integrations were outside the fixture-backed smoke test.
 
-This bounded correction does not change ADR 0028 authority or ADR 0029 candidate validation.
+Canonical user-facing vocabulary: **Work / New Work / Work history / Work detail**, **Prompt Stack** (both phase and correction), **Prompt Stack runner**. Internal AgentTask, AgentRun, AgentTaskSequence, ExecutionGrant, WorkItem and PhaseStackAdapter may retain their names. Existing prompt grammar, snapshots and Git subjects are not renamed.
 
 Deliver:
-- retain sanitized provider-visible agent message text as durable non-canonical AgentRun output;
-- add a Dope-owned ordered transcript that survives restart independently of provider-native session/thread state;
-- correlate command start/completion into one structured command-history entry;
-- show commands minimized/collapsed by default with command, status/exit and duration visible and bounded output expandable;
-- keep file/validation/authority/status events compact and subordinate to transcript content;
-- preserve raw operational events for diagnostics without making the flat event log the primary Agent Run experience;
-- explicitly mark transcript/output truncation at hard storage ceilings;
-- never persist hidden reasoning, raw provider RPC payloads, credentials or arbitrary environment state.
+- reusable Chat | Work panel in left/right/center/bottom with existing ChatPanel ownership/focus, restoration and presentation rules;
+- left/right toolbar Work entry and command aliases for older Agent Run / Phase Stack actions;
+- Select Work to browse existing Work and automatically discovered Prompt Stacks from a project-relative tasks root defaulting to `docs/tasks/`; Work to inspect a selected task/run/sequence;
+- dynamic tab/header title from snapshotted Prompt Stack task `entry.title` or direct AgentTask objective, stable for historical runs after sequence advancement;
+- durable ordered sanitized visible agent messages, and one structured command per start/completion pair with collapsed-by-default command/status/exit/duration and expandable bounded output;
+- Chat-like fixed header, independently scrolling formatted transcript, near-bottom live-follow, jump-to-latest, compact validation/files/authority/checkpoint events;
+- retained complete transcript and structured commands on restart from Dope-owned `transcript.jsonl`, independent from provider session survival;
+- a New Work composer only for explicit bounded AgentTask start under Coding Agent/ExecutionGrant. No automatic in-flight steering.
 
-Qualification gate:
-- multiple visible agent messages retain ordering and text across restart;
-- long runs reopen from the beginning rather than only an in-memory event tail;
-- one command start/completion pair becomes one durable command entry;
-- command status/exit/duration and bounded output survive restart;
-- transcript ordering between messages and commands is stable;
-- provider-run command history remains distinct from Dope-owned CandidateValidation;
-- Phase Stack "Open Agent Run detail" opens the same complete transcript.
+Safety: Chat conversation persistence, Interactive model role and single-Chat leases remain separate from Agent Runtime storage, Coding Agent model role, developer grants, ADR 0028 promotion, ADR 0029 required validation, Git/checkpoint and manual gates. No hidden reasoning, raw RPC payload, secrets or unbounded logs are stored. Keep existing completed Adaptive SEO sequence and historical 8B/8C evidence unchanged.
 
-Sequencing:
-- `c8-candidate-validation` remains the immediate execution-safety blocker;
-- land `c8-agent-run-transcript` after candidate validation is Green, or combine only the overlapping AgentRun schema/runtime work deliberately while preserving separate qualification claims;
-- then resume/finalize the Adaptive SEO `c4-dope-phase-stack-smoke` qualification;
-- Phase 8D remains blocked until both corrections and the external qualification are Green.
+Qualification: schema/persistence/sanitization/command correlation/full transcript replay; duplicate Work ownership and Chat/Work mode restoration; task-derived titles; toolbar and legacy command integration; safe multi-area direct GUI testing; completed Prompt Stack same SHAs after reopen; no Chat or execution authority regression.
+
+**Phase 8D remains gated on `c8-work-mode` Green.** Candidate validation and the external Adaptive SEO Prompt Stack are already Green.
 
 ## 8D — General Scoped Delegation
 
@@ -294,8 +285,8 @@ T3 Dope-on-Dope dogfood:
 - restart/resume;
 - direct GUI observability.
 
-### c8-agent-run-transcript
-Focused AgentRun transcript persistence, command correlation, restart reconstruction, storage-bound/security and UI presentation qualification.
+### c8-work-mode
+Focused Chat/Work panel, Prompt Stack navigation, AgentRun transcript/command persistence, ownership/restoration, titles, toolbar and direct GUI qualification.
 
 ### 8D
 Focused WorkItem delegation + direct review/steering qualification.

@@ -263,14 +263,12 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Immediate next action
 
-Plan and implement the bounded `c8-candidate-validation` correction:
+Plan and implement the bounded **`c8-work-mode`** correction:
 
-`/prompt-ass -> /prompt-plan -> /prompt-write c8-candidate-validation`
+`/prompt-ass -> /prompt-plan -> /prompt-write c8-work-mode`
 
-ADR 0029 requires Dope-owned required validation against a frozen candidate with bounded private temp and private-loopback capabilities. This remains the immediate execution-safety blocker.
+This expands the previously approved `c8-agent-run-transcript` scope into canonical **Work** / **Prompt Stack** terminology, a shared **Chat | Work** movable panel, left/right toolbar Work entry, stable task-derived titles, complete sanitized durable agent transcript and minimized command history. It preserves the internal AgentTask/AgentRun/AgentTaskSequence/ExecutionGrant model and Chat's separate identity, model routing and read-only authority.
 
-A second bounded pre-8D correction is now approved: `c8-agent-run-transcript`. It makes Agent Run retain the complete sanitized user-visible agent transcript, structured/minimized command history, and restart-stable execution presentation without persisting hidden reasoning or raw provider payloads. Land it after candidate validation is Green, or deliberately combine only overlapping AgentRun schema/runtime work while keeping the two qualification claims separate.
+`c8-candidate-validation` and the real Adaptive SEO `c4-dope-phase-stack-smoke` Prompt Stack qualification are **GREEN / QUALIFIED**. External qualification completed in Cycle 2 of 5: P1/P2 Dope-owned checkpoints, P3 browser/manual 48/48, P4 final closeout, pending-gate restart and completed reopen without duplicates. Cycle 1 remains historical Not Green evidence. The browser smoke used fixture API data; live analytics and production integrations were out of scope.
 
-Then resume/finalize the real Adaptive SEO `c4-dope-phase-stack-smoke` qualification. Phase 8D remains gated until `c8-candidate-validation`, `c8-agent-run-transcript`, and that external qualification are Green.
-
-Phase 8C sequential execution remains **GREEN / QUALIFIED / CLOSED** for its exact `0.8.20` qualified fixture; see `docs/tasks/p8c/closeout.md`. The later Adaptive SEO dogfood failure is preserved as a post-closeout project-generalization gap, not a rewrite of historical evidence.
+Phase 8B/8C historical closeout evidence stays intact. **Phase 8D remains gated** on qualifying `c8-work-mode`; WorkItem delegation, free-form mid-run steering and provider/authority widening are not part of the correction.

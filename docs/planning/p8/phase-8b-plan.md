@@ -338,3 +338,9 @@ Phase 8B is Green when one direct AgentTask can safely modify a clean disposable
 
 Phase 8B is Green / Qualified for the corrected direct AgentTask scope. Qualified product/test source is `bd0b6ff`; docs-only closeout is `c11756e`. Phase 8C is now the active slice.
 
+
+## Post-closeout amendment — Work presentation naming (2026-10-08)
+
+The previously approved `c8-agent-run-transcript` scope is now part of the broader **`c8-work-mode`** correction. Phase 8B remains historically GREEN / QUALIFIED for its exact direct AgentTask/AgentRun authority and recovery scope. Work is the user-facing execution panel over those same durable records, not an additional execution entity.
+
+The new correction adds complete sanitized agent-visible transcripts, correlated/minimized structured commands, Chat | Work panel reuse across shell areas, one-live-owner Work presentation rules, stable task-derived Work titles, toolbar access and restart restoration. It does not rewrite historical AgentRun records, Phase 8B test/closeout evidence, provider sandbox, ExecutionGrant, CandidateDelta or ADR 0029 validation authority.

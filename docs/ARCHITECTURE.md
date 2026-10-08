@@ -649,6 +649,16 @@ Owns AgentWorkingState, objective/current-step state, assumptions/questions/risk
 
 No provider or UI dependency.
 
+### Shared Chat / Work panel boundary
+
+One reusable workbench panel shell displays a persistent **Chat | Work** toggle and may be placed in left/right/center/bottom Theia areas. Chat remains Select Chat / Chat over ChatService, ChatRepository and Chat ownership. Work becomes Select Work / Work, projecting existing AgentTask/AgentRun/AgentTaskSequence state, complete sanitized transcript, command history, Prompt Stack discovery and execution status. They share panel mechanics, not storage, model roles or authority.
+
+Each panel separately remembers its Chat and Work selection. Same-project same-Work opening reveals/focuses the current owning panel instead of creating a duplicate; distinct Work items can occupy different panels. Close/switch/relocate/restoration changes only presentation ownership, not active runs, snapshots or permission grants. Backend execution concurrency, Git checkpoint and developer approval checks remain independent.
+
+Work inherits Chat's persistent header, fixed controls as appropriate, safe Markdown presentation, independently scrolling transcript, near-bottom follow, jump to latest and compact status. Commands render as minimized/collapsible structured records. Work titles resolve from the stable Prompt Stack entry snapshot or direct AgentTask objective, never mutable sequence position.
+
+Left/right toolbar Chat and Work launchers open their corresponding mode; legacy Agent Run/Phase Stack commands may delegate via aliases. Prompt Stack lists default to `docs/tasks/` and do not introduce a manual import lifecycle. A New Work composer may initiate a direct task only through Coding Agent, CompletionPolicy and ExecutionGrant, never Chat Interactive model authority or unapproved mid-run steering. Work state is stored under `.dope/agent/`, while Chat remains `.dope/chats/`.
+
 ### Agent Runtime
 
 Introduced with Scoped Delegation.
@@ -673,7 +683,7 @@ AgentTask/AgentRun persistence is project-local and presentation-independent:
   runs/<run-id>/transcript.jsonl
 ```
 
-`events.jsonl` remains bounded normalized operational evidence. `transcript.jsonl` is the ordered presentation-grade execution transcript used to reconstruct the developer-visible Agent Run across restart. AgentExecutionAdapter observations may supply sanitized provider-visible messages and command lifecycle data, but Agent Runtime owns the provider-independent transcript projection and persistence.
+`events.jsonl` remains bounded normalized operational evidence. `transcript.jsonl` is the ordered presentation-grade execution transcript used to reconstruct the developer-visible Agent Run across restart. AgentExecutionAdapter observations may supply sanitized provider-visible messages and command lifecycle data, but Agent Runtime owns the provider-independent transcript projection and persistence. Work renders this Dope-owned history in the shared panel shell without rewriting run truth.
 
 Visible agent messages are durable user-facing execution output, not canonical project truth. Hidden reasoning, raw provider payloads, arbitrary environment state and secrets remain forbidden. Structured command entries correlate start/completion into one logical command record with bounded output evidence; they remain distinct from ADR 0029 CandidateValidation.
 Phase 8C adds durable sequence orchestration:

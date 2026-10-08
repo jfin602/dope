@@ -168,3 +168,11 @@ historical Phase 8C closeout
 ```
 
 The failed external qualification loops remain retained evidence. No P1 checkpoint was created before this architecture stop, and P2-P4/manual-restart gates remain unqualified in that external project until the resumed smoke run clears them.
+
+## Post-closeout amendment — Prompt Stack and Work presentation (2026-10-08)
+
+The real Adaptive SEO `c4-dope-phase-stack-smoke` Prompt Stack qualified **GREEN in Cycle 2 of 5**, including Dope-owned P1/P2 checkpoints, P3 browser/manual 48/48, P4 closeout, restart and completed reopen. The earlier architecture-stop Cycle 1 remains Not Green evidence. The Phase 8C original fixture closeout also remains historically Green for its exact source.
+
+**Prompt Stack** is the canonical user-facing name for both phase and correction stacks; phase/correction remains version/checkpoint metadata. The former Phase Stack workflow is displayed under **Work** mode. Select Work auto-discovers project-local Prompt Stacks from `docs/tasks/` by default, without reintroducing a user-facing Import Stack lifecycle. Work detail projects existing AgentTaskSequence, task, run and manual-gate truth. It derives its title from the snapshotted entry title and must not rename historical runs when the sequence advances.
+
+No stack source grammar, fingerprint, durable sequence ID, checkpoint subject, accepted dirty basis, Git/version reconciliation, authority, manual gate or historical evidence changes. Legacy Phase Stack commands and links should route compatibly to Work. This post-closeout presentation correction is `c8-work-mode`, not a requalification/rewrite of the original 8C authority contract.
