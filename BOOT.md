@@ -261,12 +261,6 @@ New implementation prompts use GPT-6 Sol Medium by default, GPT-6 Sol High for m
 
 Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported runner has explicit Phase 0 support.
 
-## Immediate next action
+## Current routing
 
-**Approved documentation route as of 2026-10-08: `c8-chat-work-ui`, before `c8-work-mode` P9 requalification.** Apply the bounded Chat/Work/Select Chat/Select Work theme and layout correction plus centered AgentRun safe-Markdown presentation with no user bubbles. AI Center is the visual reference; `#336699` is the current primary accent under the October 8 amendment to ADR 0016. ADR 0030 owns shared presentation, without changing project-domain state, active agent authority, grants, or transcript persistence.
-
-Assessment, source-aware plan and five runner-compatible prompts have been written under `docs/tasks/c8-chat-work-ui/`. Validate first with `npm run codex:phase:validate -- c8-chat-work-ui`, then run `npm run codex:phase -- c8-chat-work-ui`. P1-P4 are bounded implementation checkpoints; the runner must hand off P5 for direct manual/browser qualification. Keep Dope package `0.8.20` unchanged.
-
-`c8-work-mode` P1-P8 implementation and the bounded renderer RPC repair already exist. The repaired P9 replay is still **NOT GREEN**, independently of the UI pass: an in-grant disposable command execution ended `authority-denied`, preventing real command expansion and candidate-validation/promotion evidence. Investigate and qualify that separate blocker without relaxing ADR 0028/0029 execution boundaries. Only then resume the remaining `c8-work-mode` P9 closeout and consider Phase 8D. The Adaptive SEO `c4-dope-phase-stack-smoke` completed Green in Cycle 2; historic failures and checkpoint SHAs are preserved.
-
-This is a documentation application, not a UI implementation or qualification claim.
+**`c8-chat-work-ui` and `c8-work-mode` P9 are GREEN / QUALIFIED at unchanged `0.8.20`.** The three-cycle P9 loop repaired execution-root command cwd normalization and captured Codex's real combined command output. Direct Work GUI replay proved an accepted grant, a live collapsed/expandable command transcript, separate Dope-owned candidate validation and authoritative promotion, scroll/restart behavior, and read-only Adaptive SEO historical preservation. Exact reviewed candidate `bc0be6fe787c254edd16ea3792072df9d0b449fc` passed the 474/474 aggregate tests, browser/Electron builds, 58/58 focused tests outside the aggregate and the `c8-work-mode` validator. See `docs/tasks/c8-work-mode/closeout.md` and `qualification-loop/` for current evidence and retained Not Green history. ADR 0028/0029 authority and isolation remain unchanged. Route any subsequent Phase 8 work through its own approved scope and gates; this qualification does not itself activate Phase 8D.

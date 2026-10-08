@@ -1,6 +1,6 @@
 # c8-work-mode - Work module and Prompt Stack presentation
 
-Status: P1–P8 implemented; P9 remains Not Green after bounded RPC repair/replay; c8-chat-work-ui P1-P5 prompt stack ready, implementation pending
+Status: P1–P8 implemented; P9 GREEN / QUALIFIED after the three-cycle repair and live GUI replay at unchanged `0.8.20`. Earlier Not Green observations remain in the closeout.
 Phase: 8
 Mode: Correction
 Required unchanged Dope version: `0.8.20`
@@ -38,7 +38,7 @@ P1-P8 target <=8 minutes each (15-minute hard limit), using one changed-package 
 - Opening/selecting Work in a sidebar leaves the center tab unchanged. Closing/relocating Work never cancels execution, creates a second run, or bypasses execution grant/validation.
 - Completed Adaptive SEO `c4-dope-phase-stack-smoke` sequence remains readable with P1-P4 SHAs unchanged.
 
-## Pre-qualification UI correction — c8-chat-work-ui
+## Pre-qualification UI correction — c8-chat-work-ui (historical route)
 
 Owner-approved October 8, 2026 documentation route: **before resuming P9 GUI qualification**, run a bounded UI-only correction at unchanged `0.8.20`. ADR 0030 and the October 8 ADR 0016 amendment govern the Chat/Work visual contract. The existing AI Center is the accepted reference for calm dark surfaces, compact neutral controls, restrained `#336699` selected/primary emphasis and semantic statuses. Avoid reproducing the historical orange-as-primary palette or proliferating one-off component hex values.
 
@@ -58,3 +58,7 @@ Follow-up workflow: `/prompt-ass -> /prompt-plan -> /prompt-write c8-chat-work-u
 Dope package/version stays `0.8.20`; no root npm lock is created. The runner owns P1-P8 implementation commits, and P9 requires its explicit manual/browser qualification and external closeout checkpoint before a final Green claim. Do not execute `scripts/codex-phase*.mjs` as the product Work runtime.
 
 P9 must report **GREEN / QUALIFIED** or **NOT GREEN** based on direct evidence. Do not reinterpret Phase 8B/8C qualification or the prior Adaptive SEO Green dogfood.
+
+## P9 qualification result
+
+The `c8-chat-work-ui` correction closed Green before this replay. The `c8-work-mode` qualification loop then repaired execution-root command cwd normalization and Codex's combined command-output observation without changing grants or sandbox rules. Three cycles produced real command, Dope-owned candidate validation/promotion, browser Work/restart and Adaptive SEO preservation evidence. The exact reviewed candidate `bc0be6fe787c254edd16ea3792072df9d0b449fc` passed `npm run check` (474/474 tests, browser and Electron builds), 58/58 affected tests outside the aggregate, and the correction-stack validator. See [closeout.md](closeout.md) and [qualification-loop/](qualification-loop/) for the retained historical failures and new evidence.
