@@ -5,6 +5,7 @@ import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, 
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureGitBasis, captureGitFinal } from '@dope/agent-core/lib/node/git-evidence';
 import { ExecutionWorkspace, PromotionFailure } from '@dope/agent-core/lib/node/execution-workspace';
+import { CandidateValidationRunner } from '@dope/agent-core/lib/node/candidate-validation';
 import { AcceptedDirtyBasis, assertDirtyBasis } from '@dope/agent-core/lib/node/dirty-basis';
 import type { AIInventoryController } from './ai-registry-backend';
 import type { AIRoleRoutingService } from './ai-role-routing';
@@ -17,6 +18,7 @@ interface Active {
     finished: Promise<void>; releaseFinished(): void;
     tail: Promise<unknown>; sequence: number; observations: number;
     stopping: boolean; denied: boolean; interruptionFailed: boolean;
+    validationAbort?: AbortController;
     wakeWait?: () => void;
     commands: Map<string, { command: string; started: number }>;
 }
@@ -38,7 +40,8 @@ export class AgentExecutionRuntime {
         private readonly routing: Pick<AIRoleRoutingService, 'resolve'>,
         private readonly inventory: Pick<AIInventoryController, 'inventory'>,
         private readonly adapters: ReadonlyMap<string, AgentExecutionAdapter>,
-        private readonly capacityRetryDelayMs = 20_000) {}
+        private readonly capacityRetryDelayMs = 20_000,
+        private readonly validationRunner = new CandidateValidationRunner()) {}
 
     activeRunId(root: string): string | undefined { return this.active.get(root)?.run?.id; }
     async waitForRun(root: string, runId: string): Promise<AgentRun> {
@@ -137,14 +140,6 @@ export class AgentExecutionRuntime {
                                 (matched[0].command ?? matched[0].label) : 'Other project command',
                                 durationMs, exitCode: observation.exitCode!, result: observation.exitCode === 0 ? 'passed' : 'failed',
                                 matchedTargets: matched.map(target => target.label) }] }));
-                    }
-                    for (const target of matched) {
-                        if (active.run.validationResults.length >= 24) break;
-                        await this.update(active, run => ({ ...run, validationResults: [...run.validationResults,
-                            { version: AGENT_SCHEMA_VERSION, kind: target.kind, label: target.label,
-                                status: observation.exitCode === 0 ? 'passed' : 'failed', durationMs,
-                                summary: `Observed command exited ${observation.exitCode}` }] }));
-                        await this.event(active, 'validation', `Observed ${target.kind} command ${observation.exitCode === 0 ? 'passed' : 'failed'}`);
                     }
                 }
             }
@@ -257,15 +252,11 @@ export class AgentExecutionRuntime {
                 provenance: selected.provenance }));
             await this.event(active, 'status', 'Agent run started', { status: 'running' });
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
-            const validationInstructions = task.origin.kind === 'phase-stack' && task.completion.requireValidationPass ?
-                `\n\nDOPE REQUIRED VALIDATION\nBefore finishing, run the following exact command(s) in the execution workspace. ` +
-                `Dope must observe their exit status before it can promote or checkpoint this task:\n` +
-                task.completion.validation.map(target => `- ${target.command ?? target.label}`).join('\n') : '';
             const request: AgentExecutionRequest = { projectRoot: root, executionRoot: active.workspace.root,
                 grant, taskId: task.id,
                 connectionId: selected.provenance.connectionId, registrationId: selected.registrationId,
                 modelId: selected.provenance.modelId,
-                prompt: `${task.objective}\n\n${task.instructions}${validationInstructions}`,
+                prompt: `${task.objective}\n\n${task.instructions}`,
                 ...(task.controls.reasoningEffort ? { reasoningEffort: task.controls.reasoningEffort } : {}),
                 onEvent: observation => this.observed(active, observation) };
             const handle = await selected.adapter.start(request);
@@ -336,22 +327,39 @@ export class AgentExecutionRuntime {
         if (active.interrupting) await active.interrupting;
         await active.tail;
         const task = active.run ? await this.store.readTask(active.root, active.run.taskId) : undefined;
-        const validationMissing = Boolean(!failed && !active.stopping && !active.denied &&
-            task?.completion.requireValidationPass &&
-            task.completion.validation.some(target => active.run?.validationResults.slice().reverse().find(result =>
-                result.kind === target.kind && result.label === target.label)?.status !== 'passed') ||
-            !failed && task?.origin.kind === 'phase-stack' && active.run?.validationResults.some(result =>
-                result.status === 'failed' && active.run?.validationResults.slice().reverse().find(last =>
-                    last.kind === result.kind && last.label === result.label)?.status === 'failed'));
+        let validationMissing = false;
         let promotionBlocked = false;
         let promotionError = false;
         let promotionSucceeded = false;
+        let candidateChanged = false;
         if (active.workspace && active.run) {
             try {
                 const delta = await active.workspace.delta();
+                const fingerprint = await active.workspace.fingerprint();
                 await this.serial(active, () => this.update(active, run => ({ ...run,
-                    validationBasis: 'execution-workspace', candidateDelta: delta })));
+                    validationBasis: 'execution-workspace', candidateDelta: delta, candidateFingerprint: fingerprint })));
+                if (!failed && !active.stopping && !active.denied && task?.completion.requireValidationPass) {
+                    active.validationAbort = new AbortController();
+                    for (const target of task.completion.validation) {
+                        if (active.stopping || active.validationAbort.signal.aborted) break;
+                        const result = await this.validationRunner.run({ candidateRoot: active.workspace.root,
+                            candidateFingerprint: fingerprint, target, signal: active.validationAbort.signal },
+                        async evidence => {
+                            await this.serial(active, async () => {
+                                await this.update(active, run => ({ ...run, validationResults: [...run.validationResults, evidence] }));
+                                await this.event(active, 'validation', `Dope validation ${evidence.status}`);
+                            });
+                        });
+                        if (result.status !== 'passed') break;
+                    }
+                    active.validationAbort = undefined;
+                }
+                validationMissing = Boolean(task?.completion.requireValidationPass && task.completion.validation.some(target =>
+                    active.run?.validationResults.find(result => result.owner === 'dope' &&
+                        result.kind === target.kind && result.label === target.label)?.status !== 'passed'));
                 if (!failed && !active.stopping && !active.denied && !validationMissing && active.grant) {
+                    if (await active.workspace.fingerprint() !== fingerprint)
+                        throw new Error('Frozen candidate changed after validation');
                     const result = await active.workspace.promote(active.grant, delta);
                     await this.serial(active, () => this.update(active, run => ({ ...run,
                         authorityDecision: result.decision, appliedFiles: result.applied })));
@@ -362,6 +370,10 @@ export class AgentExecutionRuntime {
             } catch (error) {
                 promotionBlocked = true;
                 promotionError = true;
+                if (error instanceof Error && error.message.includes('Frozen candidate')) {
+                    validationMissing = true;
+                    candidateChanged = true;
+                }
                 if (error instanceof PromotionFailure) await this.serial(active, () => this.update(active, run => ({ ...run,
                     authorityDecision: { allowed: true, blocked: [] }, appliedFiles: error.appliedFiles })));
                 await this.event(active, 'authority', 'Candidate classification or promotion failed');
@@ -369,9 +381,10 @@ export class AgentExecutionRuntime {
         }
         const status = active.denied || validationMissing || promotionBlocked ? 'failed' : promotionSucceeded ? 'completed' : active.stopping ?
             active.interruptionFailed ? 'interrupted' : 'cancelled' : failed ? 'failed' : 'completed';
-        const code = promotionError ? 'other' : active.denied || promotionBlocked ? 'authority-denied' : validationMissing ? 'validation-failed' : promotionSucceeded ? undefined : active.stopping ?
+        const code = active.denied ? 'authority-denied' : candidateChanged || validationMissing ? 'validation-failed' : promotionError ? 'other' : promotionBlocked ? 'authority-denied' : promotionSucceeded ? undefined : active.stopping ?
             active.interruptionFailed ? 'interrupted' : 'cancelled' : capacityExhausted ? 'capacity-exhausted' : failed ? 'provider-error' : undefined;
-        await this.finish(active, status, code, promotionError ? 'Candidate promotion failed; inspect applied files' :
+        await this.finish(active, status, code, candidateChanged ? 'Frozen candidate changed after validation' :
+            promotionError ? 'Candidate promotion failed; inspect applied files' :
             active.denied || promotionBlocked ? 'Execution authority denied' :
             validationMissing ? 'Required validation did not pass' :
             status === 'completed' ? 'Agent run completed' : active.stopping ? 'Agent run stopped' :
@@ -384,6 +397,16 @@ export class AgentExecutionRuntime {
         try {
             await this.serial(active, async () => {
                 if (!active.run || ['completed', 'cancelled', 'failed', 'interrupted'].includes(active.run.status)) return;
+                const task = await this.store.readTask(active.root, active.run.taskId);
+                if (task?.completion.requireValidationPass) for (const target of task.completion.validation) {
+                    if (active.run.validationResults.some(result => result.owner === 'dope' &&
+                        result.kind === target.kind && result.label === target.label)) continue;
+                    await this.update(active, run => ({ ...run, validationResults: [...run.validationResults,
+                        { version: AGENT_SCHEMA_VERSION, kind: target.kind, label: target.label,
+                            command: target.command ?? target.label, owner: 'dope',
+                            status: active.stopping ? 'cancelled' : 'not-started',
+                            reason: active.stopping ? 'Validation cancelled' : 'Provider or candidate did not reach validation' }] }));
+                }
                 let finalStatus = status, finalCode = code, finalSummary = summary;
                 let evidence: Awaited<ReturnType<typeof captureGitFinal>> | undefined;
                 try {
@@ -417,6 +440,7 @@ export class AgentExecutionRuntime {
         let transitionFailed = false;
         if (!active.stopping) {
             active.stopping = true;
+            active.validationAbort?.abort();
             active.wakeWait?.();
             try {
                 await this.serial(active, async () => {

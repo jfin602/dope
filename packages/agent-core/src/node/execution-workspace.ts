@@ -62,6 +62,15 @@ async function scan(root: string): Promise<Map<string, FileState>> {
     return files;
 }
 
+export async function fingerprintCandidate(root: string): Promise<string> {
+    const files = await scan(root);
+    const digest = createHash('sha256');
+    for (const [path, state] of [...files].sort(([a], [b]) => a.localeCompare(b))) {
+        digest.update(path).update('\0').update(state.hash).update('\0').update(String(state.size)).update('\0');
+    }
+    return digest.digest('hex');
+}
+
 async function ignoredNewPaths(root: string, paths: string[]): Promise<Set<string>> {
     const ignored = new Set<string>();
     const env = { PATH: process.env.PATH, GIT_CONFIG_NOSYSTEM: '1',
@@ -288,6 +297,11 @@ export class ExecutionWorkspace {
             effects.push({ kind: 'create', path, after: after.hash });
         // No path identity is inferred from matching bytes. Moves are create + delete.
         return { version: AGENT_SCHEMA_VERSION, effects: effects.sort((a, b) => a.path.localeCompare(b.path)) };
+    }
+
+    /** Identity of all non-dependency candidate bytes, including ignored output. */
+    async fingerprint(): Promise<string> {
+        return fingerprintCandidate(this.root);
     }
 
     /** Check the *whole* delta before applying any file. Model events are never consulted. */

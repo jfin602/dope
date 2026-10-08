@@ -39,17 +39,24 @@ export function verifyCheckpointScope(accepted: AcceptedDirtyBasis | undefined, 
 
 export async function versionCoherent(root: string, expected: string): Promise<void> {
     for (const lock of ['package-lock.json', 'npm-shrinkwrap.json']) {
-        try { await lstat(join(root, lock)); throw new Error(`Forbidden root ${lock}`); }
-        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+        try { await lstat(join(root, lock)); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue; throw error; }
+        // Existing, tracked npm shrinkwrap is project dependency authority. It may not be
+        // introduced or changed by a checkpoint; package-lock remains forbidden here.
+        if (lock === 'package-lock.json' ||
+            !(await safeGit(root, ['ls-files', '--error-unmatch', '--', lock]).catch(() => '')) ||
+            (await safeGit(root, ['diff', '--name-only', 'HEAD', '--', lock])).trim())
+            throw new Error(`Forbidden root ${lock}`);
     }
     const rootPackage = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as {
         version?: string; workspaces?: string[]; dependencies?: Record<string, string>;
         devDependencies?: Record<string, string>; peerDependencies?: Record<string, string> };
-    if (rootPackage.version !== expected || !Array.isArray(rootPackage.workspaces) || rootPackage.workspaces.length > 100)
+    if (rootPackage.version !== expected || rootPackage.workspaces !== undefined &&
+        (!Array.isArray(rootPackage.workspaces) || rootPackage.workspaces.length > 100))
         throw new Error('Checkpoint package version mismatch');
     const internal = new Set<string>();
     const manifests = [rootPackage];
-    for (const workspace of rootPackage.workspaces) {
+    for (const workspace of rootPackage.workspaces ?? []) {
         if (!/^(?:apps|packages)\/[a-z0-9-]+$/u.test(workspace)) throw new Error('Invalid workspace manifest path');
         const pkg = JSON.parse(await readFile(join(root, workspace, 'package.json'), 'utf8')) as {
             name?: string; version?: string; dependencies?: Record<string, string>;
@@ -70,10 +77,12 @@ export async function checkpointSequence(root: string, sequence: AgentTaskSequen
     task: AgentTask, run: AgentRun): Promise<string> {
     const entry = sequence.stack.entries[sequence.currentEntryNumber - 1];
     if (!entry || entry.execution !== 'agent-task' || sequence.status !== 'blocked' ||
-        sequence.blockedReason !== 'checkpoint-pending' || sequence.taskId !== task.id ||
+        !['checkpoint-pending', 'checkpoint-failed'].includes(sequence.blockedReason ?? '') ||
+        sequence.taskId !== task.id ||
         sequence.runIds?.at(-1) !== run.id || run.taskId !== task.id || run.status !== 'completed' ||
         run.authorityDecision?.allowed !== true || !run.appliedFiles || !run.candidateDelta ||
         run.validationBasis !== 'execution-workspace' || !run.executionWorkspace || !run.finalGit ||
+        !run.candidateFingerprint ||
         run.finalGit.headChanged || task.origin.kind !== 'phase-stack' ||
         task.phaseStack?.stackFingerprint !== sequence.stack.fingerprint ||
         task.phaseStack.versionPolicy.version !== entry.versionPolicy.version ||
@@ -83,10 +92,12 @@ export async function checkpointSequence(root: string, sequence: AgentTaskSequen
     if (!same(run.appliedFiles, run.candidateDelta.effects.map(item => item.path)) ||
         run.candidateDelta.effects.some(item => !['create', 'modify'].includes(item.kind)))
         throw new Error('Promotion evidence does not cover the complete candidate delta');
-    if (task.completion.validation.some(target => run.validationResults.slice().reverse().find(item =>
-        item.kind === target.kind && item.label === target.label)?.status !== 'passed') ||
-        run.validationResults.some(result => result.status === 'failed' &&
-            run.validationResults.slice().reverse().find(last => last.kind === result.kind && last.label === result.label)?.status === 'failed'))
+    if (task.completion.validation.some(target => {
+        const results = run.validationResults.filter(item => item.owner === 'dope' &&
+            item.kind === target.kind && item.label === target.label);
+        return results.length !== 1 || results[0].candidateFingerprint !== run.candidateFingerprint ||
+            results[0].status !== 'passed';
+    }))
         throw new Error('Required validation did not pass');
     const priorHead = run.basis.head;
     const head = (await safeGit(root, ['rev-parse', '--verify', 'HEAD'])).trim();
@@ -155,6 +166,55 @@ export async function checkpointSequence(root: string, sequence: AgentTaskSequen
     }
     await versionCoherent(root, expected);
     return committed;
+}
+
+/** Recover only the exact Dope-owned commit when Git committed before sequence state did. */
+export async function verifyCommittedCheckpoint(root: string, sequence: AgentTaskSequence,
+    task: AgentTask, run: AgentRun): Promise<string | undefined> {
+    const entry = sequence.stack.entries[sequence.currentEntryNumber - 1];
+    const prior = sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head;
+    if (!entry || entry.execution !== 'agent-task' || run.status !== 'completed' ||
+        task.id !== sequence.taskId || run.taskId !== task.id ||
+        sequence.runIds?.at(-1) !== run.id || task.origin.kind !== 'phase-stack' ||
+        task.phaseStack?.stackFingerprint !== sequence.stack.fingerprint ||
+        run.basis?.head !== prior || run.finalGit?.head !== prior || run.finalGit.headChanged ||
+        run.authorityDecision?.allowed !== true || !run.candidateFingerprint ||
+        !run.candidateDelta || !run.appliedFiles ||
+        !same(run.appliedFiles, run.candidateDelta.effects.map(item => item.path)) ||
+        run.candidateDelta.effects.some(item => !['create', 'modify'].includes(item.kind)) ||
+        task.completion.validation.some(target => {
+            const results = run.validationResults.filter(item => item.owner === 'dope' &&
+                item.kind === target.kind && item.label === target.label);
+            return results.length !== 1 || results[0].status !== 'passed' ||
+                results[0].candidateFingerprint !== run.candidateFingerprint;
+        })) return undefined;
+    const head = (await safeGit(root, ['rev-parse', '--verify', 'HEAD'])).trim();
+    if (head === prior || (await safeGit(root, ['rev-parse', 'HEAD^'])).trim() !== prior ||
+        (await captureDirtyBasis(root)).paths.length) return undefined;
+    const scope = [...new Set([...(sequence.acceptedDirty?.paths.map(item => item.path) ?? []),
+        ...run.appliedFiles])].sort();
+    const changed = names(await safeGit(root, ['diff-tree', '--no-commit-id', '--name-only', '-r', '-z', 'HEAD']));
+    if (!scope.length || !same(scope, changed) ||
+        (await safeGit(root, ['log', '-1', '--format=%s'])).trim() !== checkpointSubject(sequence)) return undefined;
+    const commit = await safeGit(root, ['cat-file', 'commit', head]);
+    const boundary = commit.indexOf('\n\n');
+    const message = boundary < 0 ? '' : commit.slice(boundary + 2).replace(/\n+$/u, '');
+    const validation = run.validationResults.filter(item => item.owner === 'dope' && item.status === 'passed')
+        .map(item => `${item.kind}: ${item.label}`).slice(0, 12);
+    const body = checkpointBody(task, run, sequence.acceptedDirty?.paths.map(item => item.path) ?? [], validation);
+    if (message !== `${checkpointSubject(sequence)}\n\n${body}`) return undefined;
+    for (const path of scope) {
+        const expected = run.candidateDelta.effects.find(effect => effect.path === path)?.after ??
+            sequence.acceptedDirty?.paths.find(item => item.path === path)?.hash;
+        const tree = (await safeGit(root, ['ls-tree', 'HEAD', '--', path])).trim();
+        if (expected === null) { if (tree) return undefined; continue; }
+        if (!expected || !/^100(?:644|755) blob [a-f0-9]{40,64}\t/u.test(tree)) return undefined;
+        const blob = await execute('git', ['--no-optional-locks', 'show', `HEAD:${path}`],
+            { cwd: root, encoding: 'buffer', maxBuffer: 33 * 1024 * 1024 });
+        if (createHash('sha256').update(blob.stdout).digest('hex') !== expected) return undefined;
+    }
+    await versionCoherent(root, entry.versionPolicy.version);
+    return head;
 }
 
 export function checkpointSubject(sequence: AgentTaskSequence): string {

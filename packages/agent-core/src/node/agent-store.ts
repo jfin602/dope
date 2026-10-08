@@ -301,7 +301,7 @@ export class AgentStore {
     async createRun(root: string, value: AgentRun): Promise<AgentRun> {
         const run = checked(value, parseAgentRun);
         if (run.status !== 'pending' || run.changedFiles.length || run.validationResults.length || run.changeSummary || run.outcome || run.finalGit || run.commandEvidence?.length ||
-            run.candidateDelta || run.authorityDecision || run.appliedFiles?.length || run.capacityRetries)
+            run.candidateDelta || run.candidateFingerprint || run.authorityDecision || run.appliedFiles?.length || run.capacityRetries)
             throw new Error('New agent run must be empty and pending');
         const task = await this.readTask(root, run.taskId);
         if (!task || task.projectId !== run.projectId || !same(task.modelPolicy, run.requestedPolicy)) throw new Error('Agent run does not match task');
@@ -335,6 +335,7 @@ export class AgentStore {
                 current.recovery && !same(current.recovery, next.recovery) || current.outcome && !same(current.outcome, next.outcome) ||
                 current.finalGit && !same(current.finalGit, next.finalGit) ||
                 current.candidateDelta && !same(current.candidateDelta, next.candidateDelta) ||
+                current.candidateFingerprint && current.candidateFingerprint !== next.candidateFingerprint ||
                 current.authorityDecision && !same(current.authorityDecision, next.authorityDecision) ||
                 current.appliedFiles && !same(current.appliedFiles, next.appliedFiles) ||
                 current.validationBasis && current.validationBasis !== next.validationBasis ||

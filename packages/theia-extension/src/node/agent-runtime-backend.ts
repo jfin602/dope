@@ -9,7 +9,7 @@ import { captureSequenceEvidence, checkedTasksRoot, snapshotTaskStack, readStack
     TaskStackSnapshotError, sequenceBlockReason, stackSourceDrift, verifyManualGate } from '@dope/agent-core/lib/node/sequence-reconciliation';
 import type { ManualGateReconciliation } from '@dope/agent-core/lib/node/sequence-reconciliation';
 import { assertDirtyBasis, captureDirtyBasis, safeGit } from '@dope/agent-core/lib/node/dirty-basis';
-import { checkpointSequence as commitCheckpoint } from '@dope/agent-core/lib/node/sequence-checkpoint';
+import { checkpointSequence as commitCheckpoint, verifyCommittedCheckpoint } from '@dope/agent-core/lib/node/sequence-checkpoint';
 import type { AgentRuntimeClient, AgentRuntimeService, DiscoveredTaskStack, OpenTaskStackResult } from '@dope/contracts/lib/agent-runtime-service';
 import type { AgentExecutionRuntime } from './agent-execution-runtime';
 
@@ -195,6 +195,16 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         } finally { checkpointProjects.delete(root); }
     }
     private async reconcileStoredSequence(root: string, sequence: AgentTaskSequence): Promise<AgentTaskSequence> {
+        if (checkpointProjects.has(root)) return sequence;
+        if (sequence.status === 'blocked' && sequence.taskId && sequence.runIds?.length &&
+            ['checkpoint-pending', 'checkpoint-failed', 'checkpoint-mismatch'].includes(sequence.blockedReason ?? '')) {
+            const [task, run] = await Promise.all([this.store.readTask(root, sequence.taskId),
+                this.store.readRun(root, sequence.runIds.at(-1)!)]);
+            if (task && run) {
+                const sha = await verifyCommittedCheckpoint(root, sequence, task, run).catch(() => undefined);
+                if (sha) return this.advanceCommittedCheckpoint(root, sequence, task, run, sha);
+            }
+        }
         const activeRunId = this.execution?.activeRunId(root);
         if (sequence.status === 'running' && activeRunId &&
             (sequence.runIds?.at(-1) === activeRunId ||
@@ -236,6 +246,21 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         changes: Partial<AgentTaskSequence>): Promise<AgentTaskSequence> {
         return this.store.updateSequence(root, sequence, { ...sequence, ...changes,
             updatedAt: new Date(Math.max(Date.now(), Date.parse(sequence.updatedAt) + 1)).toISOString() });
+    }
+    private async advanceCommittedCheckpoint(root: string, sequence: AgentTaskSequence,
+        task: AgentTask, run: AgentRun, sha: string): Promise<AgentTaskSequence> {
+        const nextNumber = sequence.currentEntryNumber + 1;
+        const next = sequence.stack.entries[nextNumber - 1];
+        const cleanBasis = await captureSequenceEvidence(root);
+        if (cleanBasis.head !== sha || !cleanBasis.clean)
+            throw new Error('Checkpoint changed before durable sequence advancement');
+        return this.setSequence(root, sequence, { checkpoints: [...sequence.checkpoints,
+            { entryNumber: sequence.currentEntryNumber, sha, taskId: task.id, runId: run.id }],
+            currentEntryNumber: nextNumber, status: next?.execution === 'manual-gate' ? 'waiting-manual' : 'ready',
+            blockedReason: undefined, taskId: undefined, runIds: undefined, acceptedDirty: undefined,
+            basis: { head: sha, clean: true,
+                packageVersion: sequence.stack.entries[sequence.currentEntryNumber - 1].versionPolicy.version,
+                worktreeFingerprint: cleanBasis.worktreeFingerprint } });
     }
     async prepareSequenceTask(handle: string, sequenceId: string, modelPolicy: AgentModelPolicy,
         completion: CompletionPolicy): Promise<AgentTask> {
@@ -349,7 +374,8 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         checkpointProjects.add(root);
         try {
             const sequence = await this.sequenceState(root, sequenceId);
-            if (sequence.status !== 'blocked' || sequence.blockedReason !== 'checkpoint-pending' ||
+            if (sequence.status !== 'blocked' ||
+                !['checkpoint-pending', 'checkpoint-failed'].includes(sequence.blockedReason ?? '') ||
                 !sequence.taskId || !sequence.runIds?.length || this.execution?.activeRunId(root))
                 throw new Error('Sequence has no pending checkpoint');
             const [task, run] = await Promise.all([this.store.readTask(root, sequence.taskId),
@@ -360,16 +386,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
                 (await safeGit(root, ['diff', '--cached', '--name-only', '-z'])).length ||
                 (await captureDirtyBasis(root)).paths.length)
                 throw new Error('Checkpoint changed before durable sequence advancement');
-            const nextNumber = sequence.currentEntryNumber + 1;
-            const next = sequence.stack.entries[nextNumber - 1];
-            const cleanBasis = await captureSequenceEvidence(root);
-            return this.setSequence(root, sequence, { checkpoints: [...sequence.checkpoints,
-                { entryNumber: sequence.currentEntryNumber, sha, taskId: task.id, runId: run.id }],
-                currentEntryNumber: nextNumber, status: next?.execution === 'manual-gate' ? 'waiting-manual' : 'ready',
-                blockedReason: undefined, taskId: undefined, runIds: undefined, acceptedDirty: undefined,
-                basis: { head: sha, clean: true,
-                    packageVersion: sequence.stack.entries[sequence.currentEntryNumber - 1].versionPolicy.version,
-                    worktreeFingerprint: cleanBasis.worktreeFingerprint } });
+            return this.advanceCommittedCheckpoint(root, sequence, task, run, sha);
         } catch (error) {
             const sequence = await this.store.readSequence(root, sequenceId);
             if (sequence?.status === 'blocked' && sequence.blockedReason === 'checkpoint-pending')

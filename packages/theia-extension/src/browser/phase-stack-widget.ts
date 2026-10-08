@@ -115,7 +115,9 @@ export class PhaseStackWidget extends BaseWidget {
                 resume.disabled = !c.canStart; };
             controls.append(readiness, resume);
             controls.append(button('Stop', () => void c.stop(), c.busy || s.status !== 'running'));
-            if (s.blockedReason === 'checkpoint-pending') controls.append(button('Create checkpoint', () => void c.checkpoint(), c.busy));
+            if (s.blockedReason === 'checkpoint-pending' || s.blockedReason === 'checkpoint-failed')
+                controls.append(button(s.blockedReason === 'checkpoint-failed' ? 'Retry checkpoint' :
+                    'Create checkpoint', () => void c.checkpoint(), c.busy));
             else if (s.status !== 'running') controls.append(button('Reconcile repository', () => void c.reconcile(), c.busy));
             detail.append(controls);
         }

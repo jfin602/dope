@@ -11,6 +11,7 @@ import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/index
 import { AgentExecutionRuntime } from '../../packages/theia-extension/lib/node/agent-execution-runtime.js';
 import { AgentRuntimeBackend } from '../../packages/theia-extension/lib/node/agent-runtime-backend.js';
 import { captureGitBasis } from '../../packages/agent-core/lib/node/git-evidence.js';
+import { checkpointSequence } from '../../packages/agent-core/lib/node/sequence-checkpoint.js';
 
 const now = '2026-10-05T12:00:00Z';
 const git = promisify(execFile);
@@ -38,7 +39,7 @@ class FakeAdapter {
 
 async function fixture(work: (f: {
     root: string; store: AgentStore; runtime: AgentExecutionRuntime; backend: AgentRuntimeBackend;
-    adapter: FakeAdapter; handle: string; registry: any; routing: any;
+    adapter: FakeAdapter; handle: string; registry: any; routing: any; validation: any;
 }) => Promise<void>, policy?: any, retryDelayMs = 0) {
     const root = await mkdtemp(join(tmpdir(), 'dope-agent-lifecycle-'));
     await git('git', ['clone', '--quiet', '--shared', resolve(import.meta.dirname, '../..'), root]);
@@ -65,15 +66,25 @@ async function fixture(work: (f: {
         return { resolution: { policyRevision: 7, candidates: [
             { target: { connectionId: 'codex', modelId: 'model-1' } } ] } };
     } };
+    const validation = { calls: [] as any[], nextStatus: 'passed', async run(input: any, persist: any) {
+        this.calls.push(input);
+        const result = { version: 1, kind: input.target.kind, label: input.target.label,
+            command: input.target.command ?? input.target.label, owner: 'dope',
+            candidateFingerprint: input.candidateFingerprint, workspaceId: 'validation-fixture',
+            durationMs: 1, exitCode: this.nextStatus === 'passed' ? 0 : 1,
+            stdout: '', stderr: '', stdoutTruncated: false, stderrTruncated: false,
+            status: this.nextStatus };
+        await persist(result); return result;
+    } };
     const runtime = new AgentExecutionRuntime(store, routing as any,
         { inventory: async () => ({ registry: { version: 1, revision: 1, connections: registry.connections,
             models: registry.models }, observations: registry.observations }) } as any,
-        new Map([['codex', adapter as any]]), retryDelayMs);
+        new Map([['codex', adapter as any]]), retryDelayMs, validation as any);
     const backend = new AgentRuntimeBackend(store, { notifyAgentStateChanged() {} }, runtime);
     const handle = (await backend.attach(pathToFileURL(root).href)).projectHandle;
     try {
         await backend.createTask(handle, baseTask(policy));
-        await work({ root, store, runtime, backend, adapter, handle, registry, routing });
+        await work({ root, store, runtime, backend, adapter, handle, registry, routing, validation });
     } finally { await runtime.dispose(); backend.dispose(); await rm(root, { recursive: true, force: true }); }
 }
 
@@ -139,7 +150,7 @@ test('dirty stack acceptance persists exact basis and starts P1 in its execution
         imported.sequence.id, accepted, true);
     assert.equal(run.status, 'running');
     assert.ok(f.adapter.starts[0].prompt.startsWith(`${task.objective}\n\n${task.instructions}`));
-    assert.match(f.adapter.starts[0].prompt, /DOPE REQUIRED VALIDATION[\s\S]*- \.\/validate\.sh/);
+    assert.doesNotMatch(f.adapter.starts[0].prompt, /DOPE REQUIRED VALIDATION/);
     assert.equal((await f.backend.readSequence(f.handle, imported.sequence.id))?.status, 'running');
     assert.equal(await readFile(join(f.adapter.starts[0].executionRoot, 'notes.txt'), 'utf8'), 'developer work\n');
     await f.backend.stopSequence(f.handle, imported.sequence.id);
@@ -200,6 +211,41 @@ test('sequence runs only current snapshot and retries capacity in one task/works
     assert.equal((await f.backend.reconcileSequence(f.handle, sequence.id)).blockedReason, 'checkpoint-pending');
 }));
 
+test('checkpoint failure with unchanged HEAD can be retried once after repair', async () => fixture(async f => {
+    const { sequence, accepted } = await preparedSequence(f);
+    const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'retry-checkpoint.txt'), 'candidate');
+    f.adapter.complete();
+    assert.equal((await terminal(f.store, f.root, run.id)).status, 'completed');
+    const pending = await sequenceTerminal(f.store, f.root, sequence.id);
+    assert.equal(pending.blockedReason, 'checkpoint-pending');
+    await f.store.updateSequence(f.root, pending, { ...pending, blockedReason: 'checkpoint-failed',
+        updatedAt: new Date(Date.parse(pending.updatedAt) + 1).toISOString() });
+    const next = await f.backend.checkpointSequence(f.handle, sequence.id);
+    assert.equal(next.currentEntryNumber, 2);
+    assert.equal(next.checkpoints.length, 1);
+    assert.equal((await git('git', ['-C', f.root, 'rev-parse', 'HEAD'])).stdout.trim(), next.checkpoints[0].sha);
+    assert.equal((await git('git', ['-C', f.root, 'log', '-1', '--format=%s'])).stdout.trim(),
+        'c8-lifecycle-test/P1: Lifecycle task');
+}));
+
+test('reconcile adopts only the exact completed Dope checkpoint after a commit/state gap', async () => fixture(async f => {
+    const { sequence, task, accepted } = await preparedSequence(f);
+    const started = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'gap-checkpoint.txt'), 'candidate');
+    f.adapter.complete();
+    const run = await terminal(f.store, f.root, started.id);
+    const pending = await sequenceTerminal(f.store, f.root, sequence.id);
+    assert.equal(pending.blockedReason, 'checkpoint-pending');
+    const sha = await checkpointSequence(f.root, pending, task, run);
+    assert.equal((await f.store.readSequence(f.root, sequence.id))?.checkpoints.length, 0);
+    const recovered = await f.backend.reconcileSequence(f.handle, sequence.id);
+    assert.equal(recovered.checkpoints[0].sha, sha);
+    assert.equal(recovered.currentEntryNumber, 2);
+    assert.equal(recovered.status, 'waiting-manual');
+    assert.equal((await git('git', ['-C', f.root, 'rev-list', '--count', 'HEAD^..HEAD'])).stdout.trim(), '1');
+}));
+
 test('capacity exhaustion is bounded and leaves authoritative bytes unchanged', async () => fixture(async f => {
     const { sequence, accepted } = await preparedSequence(f);
     const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
@@ -250,6 +296,7 @@ test('sequence stays on its entry after validation and authority failure', async
         acceptedAt: new Date().toISOString() });
     const first = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
     assert.equal(f.routing.calls.length, 0);
+    f.validation.nextStatus = 'failed';
     f.adapter.onEvent!({ kind: 'command-started', commandId: 'check', command: 'npm test', summary: 'start' });
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'check', exitCode: 1, summary: 'failed' });
     f.adapter.complete();
@@ -450,7 +497,7 @@ test('failed adapter interrupt invokes dedicated process termination', async () 
     assert.equal(stopped.status, 'interrupted');
 }));
 
-test('observed command exit and exact validation target determine validation truth', async () => fixture(async f => {
+test('provider command evidence never substitutes for Dope-owned required validation', async () => fixture(async f => {
     const task = { ...baseTask(), id: 'task-validation', completion: { validation: [
         { kind: 'test', label: 'unit', command: 'node --test' } ], requireValidationPass: true } };
     await f.backend.createTask(f.handle, task as any);
@@ -462,6 +509,8 @@ test('observed command exit and exact validation target determine validation tru
     const passed = await terminal(f.store, f.root, first.id);
     assert.equal(passed.status, 'completed');
     assert.equal(passed.validationResults[0].status, 'passed');
+    assert.equal(passed.validationResults[0].owner, 'dope');
+    assert.equal(f.validation.calls.length, 1);
     assert.deepEqual(passed.commandEvidence?.[0].matchedTargets, ['unit']);
     assert.equal(passed.commandEvidence?.[0].exitCode, 0);
     await released(f.runtime, f.root);
@@ -470,18 +519,21 @@ test('observed command exit and exact validation target determine validation tru
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'two', exitCode: 0, summary: 'completed' });
     f.adapter.complete();
     const unmatched = await terminal(f.store, f.root, second.id);
-    assert.equal(unmatched.status, 'failed');
-    assert.equal(unmatched.outcome?.code, 'validation-failed');
+    assert.equal(unmatched.status, 'completed');
+    assert.equal(f.validation.calls.length, 2);
     assert.deepEqual(unmatched.commandEvidence?.[0].matchedTargets, []);
     await released(f.runtime, f.root);
     const third = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
+    f.validation.nextStatus = 'failed';
     f.adapter.onEvent!({ kind: 'command-started', commandId: 'three', command: 'node --test', summary: 'started' });
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'three', exitCode: 1, summary: 'failed' });
     f.adapter.complete();
     const failed = await terminal(f.store, f.root, third.id);
     assert.equal(failed.validationResults[0].status, 'failed');
     assert.equal(failed.status, 'failed');
+    assert.deepEqual(failed.commandEvidence?.[0].matchedTargets, ['unit']);
     await released(f.runtime, f.root);
+    f.validation.nextStatus = 'passed';
     const fourth = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
     f.adapter.onEvent!({ kind: 'command-started', commandId: 'four', command: "/bin/bash -lc 'node --test'", summary: 'started' });
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'four', exitCode: 0, summary: 'completed' });
@@ -496,8 +548,30 @@ test('observed command exit and exact validation target determine validation tru
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'five', exitCode: 0, summary: 'completed' });
     f.adapter.complete();
     const extended = await terminal(f.store, f.root, fifth.id);
-    assert.equal(extended.status, 'failed');
+    assert.equal(extended.status, 'completed');
     assert.deepEqual(extended.commandEvidence?.[0].matchedTargets, []);
+}));
+
+test('frozen candidate mutation after Dope validation blocks authoritative promotion', async () => fixture(async f => {
+    const task = { ...baseTask(), id: 'task-frozen', completion: { validation: [
+        { kind: 'test', label: 'unit', command: 'npm run check' } ], requireValidationPass: true } };
+    await f.backend.createTask(f.handle, task as any);
+    const accepted = { ...grant(), id: 'grant-frozen', taskId: task.id };
+    const original = f.validation.run.bind(f.validation);
+    f.validation.run = async (input: any, persist: any) => {
+        const result = await original(input, persist);
+        await writeFile(join(input.candidateRoot, 'after-validation.txt'), 'changed');
+        return result;
+    };
+    const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'proposed.txt'), 'candidate');
+    f.adapter.complete();
+    const done = await terminal(f.store, f.root, run.id);
+    assert.equal(done.status, 'failed');
+    assert.equal(done.outcome?.code, 'validation-failed');
+    assert.equal(done.validationResults[0].status, 'passed');
+    assert.equal(done.authorityDecision, undefined);
+    await assert.rejects(readFile(join(f.root, 'proposed.txt')), { code: 'ENOENT' });
 }));
 
 test('fresh backend attach reconciles orphaned running and cancelling runs without resuming', async () => fixture(async f => {

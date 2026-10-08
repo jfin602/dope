@@ -3,6 +3,8 @@ import test from 'node:test';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { importPhaseStack } from '../../packages/agent-core/lib/sequence.js';
 import { assertDirtyBasis, captureDirtyBasis } from '../../packages/agent-core/lib/node/dirty-basis.js';
 import { checkpointBody, checkpointSubject, verifyCheckpointScope, versionCoherent } from
@@ -12,6 +14,7 @@ const hash = 'a'.repeat(64);
 const dirty = { head: 'b'.repeat(40), paths: [{ path: 'existing.txt', code: ' M', hash, size: 2, mode: 0o644 }] };
 const effect = { kind: 'create', path: 'task.txt', after: 'c'.repeat(64) };
 const run = { id: 'run-1', appliedFiles: ['task.txt'], candidateDelta: { effects: [effect] } } as any;
+const execute = promisify(execFile);
 
 test('checkpoint scope preserves accepted bytes and excludes ambient/runtime paths', () => {
     const current = [...dirty.paths, { path: 'task.txt', code: '??', hash: effect.after, size: 2, mode: 0o644 }];
@@ -68,6 +71,21 @@ test('version coherence blocks root lock, workspace version and internal referen
         await rm(join(root, 'package-lock.json'));
         await put('packages/a/package.json', { name: '@dope/a', version: '0.8.17', dependencies: { '@dope/b': '0.8.16' } });
         await assert.rejects(versionCoherent(root, '0.8.17'), /Internal reference mismatch/);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('single-package project keeps an unchanged tracked npm shrinkwrap', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-checkpoint-npm-'));
+    try {
+        await execute('git', ['init', '-q', root]);
+        await writeFile(join(root, 'package.json'), JSON.stringify({ version: '0.4.7' }));
+        await writeFile(join(root, 'npm-shrinkwrap.json'), '{}');
+        await execute('git', ['-C', root, 'add', 'package.json', 'npm-shrinkwrap.json']);
+        await execute('git', ['-C', root, '-c', 'user.name=Test', '-c', 'user.email=test@local',
+            'commit', '-qm', 'fixture']);
+        await versionCoherent(root, '0.4.7');
+        await writeFile(join(root, 'npm-shrinkwrap.json'), '{"changed":true}');
+        await assert.rejects(versionCoherent(root, '0.4.7'), /Forbidden root npm-shrinkwrap/);
     } finally { await rm(root, { recursive: true, force: true }); }
 });
 

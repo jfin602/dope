@@ -75,7 +75,7 @@ test('run, event, provenance and evidence records reject unbounded and private f
     assert.throws(() => parseAgentRunEvent({ ...event, path: '/etc/passwd' }));
     assert.throws(() => parseAgentRunEvent({ ...event, summary: 'x'.repeat(1001) }));
     assert.throws(() => parseExecutionProvenance({ ...running.provenance, accessToken: 'secret' }));
-    assert.throws(() => parseValidationResult({ ...running.validationResults[0], stdout: 'raw' }));
+    assert.throws(() => parseValidationResult({ ...running.validationResults[0], stdout: 'x'.repeat(8193) }));
     assert.throws(() => parseChangeSummary({ ...running.changeSummary, diff: 'raw' }));
 });
 

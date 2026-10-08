@@ -1,8 +1,9 @@
 # Adaptive SEO Phase Stack qualification — fresh loop
 
-Status: **NOT GREEN / architecture review required after Cycle 1 of 5**. The
-architecture stop rule in the task applies; no Cycle 2 is started. Target:
-`docs/tasks/c4-dope-phase-stack-smoke` at Adaptive SEO `0.4.7`.
+Status: **GREEN / QUALIFIED after Cycle 2 of 5**. The Cycle 1 architecture
+stop below is retained as historical evidence; ADR 0029 resolved that boundary
+before Cycle 2. Target: `docs/tasks/c4-dope-phase-stack-smoke` at Adaptive SEO
+`0.4.7`.
 
 ## Cycle 1 — isolated P1 validation
 
@@ -71,7 +72,7 @@ architecture stop rule in the task applies; no Cycle 2 is started. Target:
   ignored. Neither appears in the Adaptive SEO commit history, and no new
   Adaptive SEO commit was created.
 
-## Stop decision
+## Cycle 1 stop decision (historical)
 
 The task's architecture stop rule applies. The current provider mutation
 sandbox cannot run Adaptive SEO's required validation reproducibly while
@@ -82,3 +83,95 @@ execution boundary. Do not relabel the observed exit 1 as PASS, run the check
 against the authoritative project as a substitute, or broaden `dope_run` to
 force this stack through. The separate missing-terminal-result case and Agent
 Run output visibility also remain unresolved for that review.
+
+## Cycle 2 — Dope-owned candidate validation and complete real stack
+
+- Dope starting HEAD after a normal non-destructive merge of retained local
+  implementation with ADR 0029 on origin/main:
+  `61cb9c4e9ce444ebf3d1966dca2adf0c2e635db7`. The Cycle 1 Node/npm
+  repair at `f04a044ed762ad71e1caa587f69a42cba194690b` and ADR 0029
+  both remained in history. Adaptive SEO started at
+  `0b26a25107be7d8dfb2210bc7258ccac8603197e`, version `0.4.7`, with
+  the accepted `.gitignore` and untracked `MODULES.md` basis intact.
+- The repair adds provider-independent `CandidateValidationRunner` in
+  `@dope/agent-core`: a frozen non-dependency candidate fingerprint, a
+  candidate-derived disposable ValidationWorkspace, Node 24/npm resolution,
+  Linux bubblewrap namespaces, private bounded `/tmp` and home, private
+  loopback, no host network or private HOME/authoritative project access,
+  process-group termination, timeout/cancellation, bounded sanitized output,
+  durable terminal result, and post-validation candidate recheck. The
+  Codex/provider mutation sandbox was not widened. Provider command
+  observations remain command evidence and cannot fulfill CompletionPolicy.
+- The focused namespace test proved both `TMPDIR` and hard-coded `/tmp`
+  writable in the validation namespace, an in-namespace server/client over
+  `127.0.0.1`, and denial of a host-loopback fixture, LAN, Internet, ambient
+  host temp, private HOME sentinel and authoritative file path. It also
+  proved validation build output does not modify the frozen candidate.
+  Other focused tests proved pass/fail/cancel/not-started results, bounded
+  stdout/stderr with truncation flags, timeout, child cleanup, provider
+  command non-substitution, and fingerprint mismatch blocking promotion.
+- Real P1 AgentRun `8a32a4d0-05ef-41be-8d2c-e444e6ec46d0` completed in
+  isolated ExecutionWorkspace
+  `3de03a4e-a689-4b65-b146-c86da469df08`. Provider command evidence
+  did not satisfy the required target. Frozen fingerprint:
+  `7f62df80dc623968be59844a0fcf4284735da2ef98d7130ca38d8f6d4a6cfa67`.
+  Dope invoked `npm run check` in candidate-derived ValidationWorkspace
+  `3fc3629f-7d1b-4b5c-96af-a66aee5bab21`; durable `owner: dope` result
+  passed at exit 0 in 13,909 ms with bounded output and truthful stdout
+  truncation. The original candidate fingerprint remained unchanged.
+  Authority allowed exactly `src/client/app/application.tsx` and
+  `src/client/styles.css`; only those candidate files were promoted.
+  The P1 checkpoint is
+  `96fe8c9b5500e3dce6c9dc24cbc1bc19b978907a`, including the two
+  explicitly accepted pre-existing dirty files. A single-package/tracked
+  shrinkwrap version-coherence correction was required. The first checkpoint
+  attempt committed Git before sequence state advanced; exact commit
+  verification recovered the SHA without a duplicate commit, and a focused
+  regression guard now covers that commit/state gap.
+- Real P2 started from the exact P1 SHA. AgentRun
+  `3520990b-ea55-4302-81a3-ccf10001a2cf` froze fingerprint
+  `61e68599e84a55f6b1c9151154474a6494e5f288b5e0703896e3367d87ef99f2`.
+  Dope-owned `npm run check` passed at exit 0 in 14,335 ms in
+  ValidationWorkspace `78092dac-707c-4af7-8ac2-739db1c2ab98`;
+  Authority promoted only `test/browser/p5-shell.spec.ts`. Dope recorded
+  exact P2 checkpoint `d5c583b52abae24eb98fd2f28e4134ef61de93b4`
+  and advanced only to P3 waiting-manual.
+- An early P3 reconciliation did not advance. The snapshotted P3 prompt was
+  visible and no coding-agent run was created for the manual gate. The
+  serial desktop/mobile Playwright suite passed 48/48 after a focused
+  Project-switching regression addition; desktop/mobile scope, chart,
+  provenance and mobile no-overflow assertions passed. A separate browser
+  inspection showed the badge/charts and 14-to-7-day replacement on Project
+  switch. `npm run check` passed (120 unit passes, one existing PHP skip),
+  and `git diff --check` passed. P3 evidence:
+  `docs/validation/c4-dope-phase-stack-smoke.md`. Exact external P3 SHA:
+  `57980fe9cb86c48dc7e5b587a50a21f137a8045b`; Dope reconciled it
+  without duplicate commit.
+- Before P4, Dope was closed and relaunched. The same sequence and P1-P3
+  SHAs reopened, P4 remained waiting-manual with its exact prompt, and the
+  durable agent store still had one sequence and 12 historical runs. P4
+  static review found a data-driven badge from the existing Overview
+  response, preserved charts/provenance, and no new backend/API/provider
+  path or fixed-width overflow. `npm run check` passed; browser discovery
+  listed 48 tests; `git diff --check` passed. P4 closeout evidence:
+  `docs/validation/c4-dope-phase-stack-smoke-closeout.md`. Exact external
+  P4 SHA: `d4dfbf38628ba70726cf3b3610c2279643f500dc`; Dope reconciled
+  it to completed.
+- A second full Dope close/relaunch/reopen auto-discovered the existing
+  completed sequence with all four unchanged SHAs, coherent source
+  fingerprint, no Start/Resume control, no auto-run, and no Git change.
+  The agent store remained at one sequence and 12 historical runs.
+- Focused Dope tests passed 75/75 across candidate validation, AgentRun
+  contracts/store, runtime, execution workspace, Codex sandbox, sequence
+  persistence/checkpoint and manual-gate surfaces. `npm run build:browser`
+  passed, `git diff --check` passed, and `0.8.20` was coherent across all
+  12 Dope workspaces. No root Dope lockfile was created.
+- Adaptive SEO finished clean at `0.4.7`. Its four commits have the exact
+  required order/subjects and contain no local task-stack files,
+  `.dope/agent/**`, validation temp/build output, or root `package-lock.json`.
+  The pre-existing tracked `npm-shrinkwrap.json` was unchanged. Final
+  `npm run check` passed in P4. Browser evidence uses local fixture API
+  responses; production integrations and live analytics were outside this
+  smoke qualification.
+
+Decision: **GREEN / QUALIFIED, 2 cycles used of 5**. No Cycle 3 was needed.

@@ -203,7 +203,9 @@ export class PhaseStackController {
         });
     }
     async checkpoint(): Promise<void> {
-        if (!this.handle || this.selected?.blockedReason !== 'checkpoint-pending' || this.busy) return;
+        if (!this.handle || !this.selected ||
+            !['checkpoint-pending', 'checkpoint-failed'].includes(this.selected.blockedReason ?? '') ||
+            this.busy) return;
         const id = this.selected.id;
         await this.perform(async () => { await this.runtime.checkpointSequence(this.handle!, id);
             this.message = 'Checkpoint verified.'; });

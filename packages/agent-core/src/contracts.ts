@@ -29,7 +29,10 @@ export interface ExecutionProvenance {
 }
 export interface ValidationResult {
     version: typeof AGENT_SCHEMA_VERSION; kind: ValidationTarget['kind']; label: string;
-    status: 'passed' | 'failed' | 'skipped'; durationMs?: number; summary?: string;
+    status: 'passed' | 'failed' | 'skipped' | 'cancelled' | 'not-started'; durationMs?: number; summary?: string;
+    owner?: 'dope'; command?: string; candidateFingerprint?: string; workspaceId?: string;
+    exitCode?: number; stdout?: string; stderr?: string; stdoutTruncated?: boolean;
+    stderrTruncated?: boolean; reason?: string;
 }
 export interface ChangeSummary {
     version: typeof AGENT_SCHEMA_VERSION; filesChanged: number; insertions: number;
@@ -57,6 +60,7 @@ export interface AgentRun {
     commandEvidence?: CommandEvidence[];
     validationResults: ValidationResult[]; changeSummary?: ChangeSummary;
     validationBasis?: 'execution-workspace'; candidateDelta?: CandidateDelta;
+    candidateFingerprint?: string;
     authorityDecision?: AuthorityDecision; appliedFiles?: string[];
     recovery?: { adapterId: string; handle: string }; outcome?: { code: 'authority-denied' | 'provider-error' |
         'validation-failed' | 'capacity-exhausted' | 'cancelled' | 'interrupted' | 'other'; summary: string };
@@ -192,11 +196,36 @@ export function parseExecutionProvenance(value: unknown): ExecutionProvenance {
         ...(x.policyRevision === undefined ? {} : { policyRevision: integer(x.policyRevision) }) });
 }
 export function parseValidationResult(value: unknown): ValidationResult {
-    const x = record(value, ['version', 'kind', 'label', 'status', 'durationMs', 'summary']);
+    const x = record(value, ['version', 'kind', 'label', 'status', 'durationMs', 'summary', 'owner',
+        'command', 'candidateFingerprint', 'workspaceId', 'exitCode', 'stdout', 'stderr',
+        'stdoutTruncated', 'stderrTruncated', 'reason']);
+    if (x.owner === 'dope' &&
+        (x.command === undefined || x.status === 'skipped' ||
+        (['passed', 'failed'].includes(String(x.status)) &&
+            (x.candidateFingerprint === undefined || x.workspaceId === undefined ||
+                x.durationMs === undefined || x.exitCode === undefined || x.stdout === undefined ||
+                x.stderr === undefined || x.stdoutTruncated === undefined || x.stderrTruncated === undefined)) ||
+        (['cancelled', 'not-started'].includes(String(x.status)) && x.reason === undefined)))
+        throw new Error('Incomplete Dope-owned validation result');
     return freeze({ version: version(x.version), kind: select(x.kind, ['test', 'build', 'typecheck'] as const),
-        label: bounded(x.label, 160), status: select(x.status, ['passed', 'failed', 'skipped'] as const),
+        label: bounded(x.label, 160), status: select(x.status, ['passed', 'failed', 'skipped', 'cancelled', 'not-started'] as const),
         ...(x.durationMs === undefined ? {} : { durationMs: integer(x.durationMs, 86_400_000) }),
-        ...(x.summary === undefined ? {} : { summary: bounded(x.summary, 1000) }) });
+        ...(x.summary === undefined ? {} : { summary: bounded(x.summary, 1000) }),
+        ...(x.owner === undefined ? {} : { owner: select(x.owner, ['dope'] as const) }),
+        ...(x.command === undefined ? {} : { command: bounded(x.command, 1000) }),
+        ...(x.candidateFingerprint === undefined ? {} : { candidateFingerprint: hash(x.candidateFingerprint) }),
+        ...(x.workspaceId === undefined ? {} : { workspaceId: id(x.workspaceId) }),
+        ...(x.exitCode === undefined ? {} : { exitCode: integer(x.exitCode, 255) }),
+        ...(x.stdout === undefined ? {} : { stdout: output(x.stdout) }),
+        ...(x.stderr === undefined ? {} : { stderr: output(x.stderr) }),
+        ...(x.stdoutTruncated === undefined ? {} : { stdoutTruncated: bool(x.stdoutTruncated) }),
+        ...(x.stderrTruncated === undefined ? {} : { stderrTruncated: bool(x.stderrTruncated) }),
+        ...(x.reason === undefined ? {} : { reason: bounded(x.reason, 500) }) });
+}
+function output(value: unknown): string {
+    if (typeof value !== 'string' || value.length > 8192 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(value))
+        throw new Error('Invalid validation output');
+    return value;
 }
 export function parseChangeSummary(value: unknown): ChangeSummary {
     const x = record(value, ['version', 'filesChanged', 'insertions', 'deletions', 'summary', 'truncated']);
@@ -261,7 +290,7 @@ export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
         'projectRoot', 'projectId', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis',
         'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome',
-        'validationBasis', 'candidateDelta', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries']);
+        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
     const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
@@ -309,6 +338,7 @@ export function parseAgentRun(value: unknown): AgentRun {
         ...(x.changeSummary === undefined ? {} : { changeSummary: parseChangeSummary(x.changeSummary) }),
         ...(x.validationBasis === undefined ? {} : { validationBasis: select(x.validationBasis, ['execution-workspace'] as const) }),
         ...(candidateDelta === undefined ? {} : { candidateDelta }),
+        ...(x.candidateFingerprint === undefined ? {} : { candidateFingerprint: hash(x.candidateFingerprint) }),
         ...(authorityDecision === undefined ? {} : { authorityDecision }),
         ...(appliedFiles === undefined ? {} : { appliedFiles }),
         ...(recovery === undefined ? {} : { recovery: { adapterId: id(recovery.adapterId),
