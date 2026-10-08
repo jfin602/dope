@@ -37,6 +37,9 @@ import type { AICredentialClient } from '@dope/contracts/lib/ai-credential-servi
 import type { ModelConnectionsClient } from '@dope/contracts/lib/model-connections-service';
 import type { ChatClient } from '@dope/chat/lib/service';
 import { ChatPanelWidget } from './chat-panel-widget';
+import { AgentTranscriptWidget } from './agent-transcript-widget';
+import { AGENT_TRANSCRIPT_ID, openAgentTranscript, type AgentTranscriptOptions } from './work-transcript-presentation';
+import { bindSharedAgentRuntime } from './agent-runtime-connection';
 import { ChatOpenOwners } from './chat-panel-controller';
 import { WorkOpenOwners } from './shared-panel-state';
 import { AIRegistryService, aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
@@ -119,16 +122,16 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(FrontendApplicationContribution).toService(AICenterContribution);
     bind(AIRegistryService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AIRegistryService & RpcServer<AIRegistryClient>>(
         context.container, aiRegistryServicePath, {
-            notifyAIRegistryChanged: () => { void context.container.get(AICenterContribution).refresh();
+            notifyAIRegistryChanged: () => { modelInventoryChanged.fire(); void context.container.get(AICenterContribution).refresh();
                 void context.container.get(SoftwareMapController).refreshInventory(); },
-            notifyAIInventoryChanged: () => { void context.container.get(AICenterContribution).refresh();
+            notifyAIInventoryChanged: () => { modelInventoryChanged.fire(); void context.container.get(AICenterContribution).refresh();
                 void context.container.get(SoftwareMapController).refreshInventory(); }
         })).inSingletonScope();
     bind(AIRolePolicyService).toDynamicValue(context => {
         const changed = new Emitter<number>();
         const proxy = ServiceConnectionProvider.createProxy<AIRolePolicyService & RpcServer<AIRolePolicyClient>>(
             context.container, aiRolePolicyServicePath, { notifyAIRolePolicyChanged: (revision: number) => {
-                changed.fire(revision); void context.container.get(AICenterContribution).refresh();
+                changed.fire(revision); modelInventoryChanged.fire(); void context.container.get(AICenterContribution).refresh();
             } });
         return { list: () => proxy.list(), mutate: (request: AIRolePolicyMutationRequest) => proxy.mutate(request),
             onDidChange: changed.event };
@@ -183,7 +186,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             const widget = area === 'left' ? await context.container.get(LeftWorkLauncher).openLauncher() :
                 area === 'right' ? await context.container.get(RightWorkLauncher).openLauncher() :
                     await openChatPanel<ChatPanelWidget>(area, options => context.container.get(WidgetManager)
-                        .getOrCreateWidget<ChatPanelWidget>(CHAT_PANEL_ID, options), context.container.get(ApplicationShell));
+                        .getOrCreateWidget<ChatPanelWidget>(CHAT_PANEL_ID, options), context.container.get(ApplicationShell), 'work');
             if (promptStack) await widget.selectPromptStacks();
             else await widget.selectWorkLauncher();
             return widget;
@@ -200,14 +203,17 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     } })).inSingletonScope();
     bind(NoteService).toDynamicValue(context => ServiceConnectionProvider.createProxy<NoteService>(context.container, noteServicePath)).inSingletonScope();
     bind(ProjectMindService).toDynamicValue(context => ServiceConnectionProvider.createProxy<ProjectMindService & RpcServer<ProjectMindClient>>(context.container, projectMindServicePath));
-    bind(AgentRuntimeService).toDynamicValue(context => ServiceConnectionProvider.createProxy<AgentRuntimeService & RpcServer<AgentRuntimeClient>>(
-        context.container, agentRuntimeServicePath, { notifyAgentStateChanged: () => {
-            const widgets = context.container.get(WidgetManager);
+    bindSharedAgentRuntime(bind, (container, client) => ServiceConnectionProvider.createProxy<AgentRuntimeService & RpcServer<AgentRuntimeClient>>(
+        container, agentRuntimeServicePath, client), (container, change) => {
+            const widgets = container.get(WidgetManager);
             for (const widget of [...widgets.getWidgets(CHAT_PANEL_ID),
                 ...(['left', 'right'] as const).flatMap(side => [widgets.tryGetWidget(chatLauncherIds[side]),
                     widgets.tryGetWidget(workLauncherIds[side])])].filter(Boolean) as ChatPanelWidget[])
                 void widget.refreshWork();
-        } } satisfies AgentRuntimeClient));
+            for (const widget of widgets.getWidgets(AGENT_TRANSCRIPT_ID) as AgentTranscriptWidget[])
+                if ((change.kind === 'run' || change.kind === 'transcript') && widget.options.runId === change.id)
+                    void widget.refresh();
+        });
     bind(ChatOpenOwners).toSelf().inSingletonScope();
     bind(WorkOpenOwners).toSelf().inSingletonScope();
     bind(SoftwareMapService).toDynamicValue(context => ServiceConnectionProvider.createProxy<SoftwareMapService & RpcServer<SoftwareMapClient>>(context.container, softwareMapServicePath)).inSingletonScope();
@@ -246,6 +252,11 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         () => context.container.get(ProjectMindService) as ProjectMindService & RpcServer<ProjectMindClient>,
         context.container.get(WorkspaceService), context.container.get(FileService), context.container.get(OpenerService)
     ) })).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({ id: AGENT_TRANSCRIPT_ID,
+        createWidget: (options: AgentTranscriptOptions) => new AgentTranscriptWidget(
+            context.container.get(AgentRuntimeService), context.container.get<MarkdownRenderer>(CoreMarkdownRenderer),
+            context.container.get(WorkspaceService), options)
+    })).inSingletonScope();
     const createChatWidget = (context: { container: import('@theia/core/shared/inversify').interfaces.Context['container'] }, options: ChatPanelOptions) =>
         new ChatPanelWidget(() => ServiceConnectionProvider.createProxy<ChatService & RpcServer<ChatClient>>(
             context.container, `${chatServicePath}/${options.instanceId}`),
@@ -255,7 +266,11 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             context.container.get(ModelConnectionsService), context.container.get(EditorManager),
             context.container.get(SoftwareMapController), context.container.get(AICenterContribution), modelInventoryChanged.event,
             context.container.get(AgentRuntimeService), context.container.get(AIRegistryService),
-            context.container.get(AIRolePolicyService));
+            context.container.get(AIRolePolicyService), async (project: string, runId: string) => {
+                await openAgentTranscript({ project, runId }, options =>
+                    context.container.get(WidgetManager).getOrCreateWidget<AgentTranscriptWidget>(
+                        AGENT_TRANSCRIPT_ID, options), context.container.get(ApplicationShell));
+            });
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({

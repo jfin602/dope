@@ -1,6 +1,6 @@
-# c8-work-mode - Work mode and Prompt Stack presentation
+# c8-work-mode - Work module and Prompt Stack presentation
 
-Status: APPROVED DOCUMENTED CORRECTION / NOT EXECUTED
+Status: P1–P8 implemented; first P9 GUI attempt Not Green; bounded repair and requalification active
 Phase: 8
 Mode: Correction
 Required unchanged Dope version: `0.8.20`
@@ -8,7 +8,7 @@ Primary authorities: ADR 0025 (Chat panel), ADR 0027 (AgentTask/Sequence), ADR 0
 
 ## Goal
 
-Make **Work** the developer-facing agent execution mode inside the same reusable panel experience as Chat. The persistent **Chat | Work** switch should be available at the top, with Work launchers from left/right toolbars and panel placement in left/right/center/bottom. **Prompt Stack** is the common product name for phase and correction stacks.
+Make **Work** a separate developer-facing agent execution module, launched alongside Chat from left/right toolbars and placeable in left/right/center/bottom. Each module has its own selection and detail content; no Chat | Work toggle appears. Work panel detail is the control/observation plane. The center remains an independent editor/visualization workspace, with an optional read-only AgentRun transcript tab opened explicitly from Work. **Prompt Stack** is the common product name for phase and correction stacks.
 
 The correction retains the previously approved complete sanitized agent transcript and minimized, structured command history scope. The source-of-truth remains AgentTask, AgentRun and AgentTaskSequence, not a new Work domain or Chat records.
 
@@ -30,12 +30,12 @@ P1-P8 target <=8 minutes each (15-minute hard limit), using one changed-package 
 
 ## Expected outcome
 
-- User sees `Work`, `New Work`, `Work history`, `Prompt Stack`; legacy command IDs remain functional aliases.
-- Two panel modes share placement, scrolling and navigation mechanics but not execution authority or storage.
+- User sees `Work`, `New Work`, `Running`, `History`, `Prompt Stack`; legacy command IDs remain functional aliases.
+- Chat and Work modules reuse placement, scrolling and navigation conventions but not execution authority or storage.
 - Prompt Stack discovery defaults to `docs/tasks/`; no manual Import Stack step.
 - Selected Work title comes from the snapshotted prompt entry or direct task objective; prior run titles stay stable.
-- User-visible agent text and structured command history persist and fully reload under bounded, explicit truncation limits. Commands are collapsed by default.
-- Closing/toggling/relocating a panel never cancels work, creates a second run, or bypasses execution grant/validation.
+- User-visible agent text and structured command history persist and fully reload in the optional center transcript under bounded, explicit truncation limits. Commands are collapsed by default.
+- Opening/selecting Work in a sidebar leaves the center tab unchanged. Closing/relocating Work never cancels execution, creates a second run, or bypasses execution grant/validation.
 - Completed Adaptive SEO `c4-dope-phase-stack-smoke` sequence remains readable with P1-P4 SHAs unchanged.
 
 ## Completion / checkpoint rules

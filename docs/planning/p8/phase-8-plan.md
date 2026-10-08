@@ -190,25 +190,25 @@ Qualification gate:
 
 Those gates are now Green; c8-work-mode is the remaining pre-8D correction.
 
-## c8-work-mode — Unified Work UX, Prompt Stack naming and transcript correction
+## c8-work-mode — Work control plane, Prompt Stack naming and transcript correction
 
 The existing `c8-agent-run-transcript` scope is expanded and renamed prospectively to **`c8-work-mode`**. This is a bounded pre-8D presentation, persistence and terminology correction, not a new mutation/validation contract. Phase 8C historical fixture remains Green. The real Adaptive SEO `c4-dope-phase-stack-smoke` Prompt Stack also qualified **Green in Cycle 2 of 5**: P1/P2 Dope-owned validation and checkpoints, P3 browser/manual 48/48, P4 final closeout, pending-gate restart and completed reopen with no duplicates. Cycle 1 failure is historical; production integrations were outside the fixture-backed smoke test.
 
 Canonical user-facing vocabulary: **Work / New Work / Work history / Work detail**, **Prompt Stack** (both phase and correction), **Prompt Stack runner**. Internal AgentTask, AgentRun, AgentTaskSequence, ExecutionGrant, WorkItem and PhaseStackAdapter may retain their names. Existing prompt grammar, snapshots and Git subjects are not renamed.
 
 Deliver:
-- reusable Chat | Work panel in left/right/center/bottom with existing ChatPanel ownership/focus, restoration and presentation rules;
+- separate Chat and Work panel modules in left/right/center/bottom, reusing appropriate ownership/focus, restoration and presentation conventions without a mode toggle;
 - left/right toolbar Work entry and command aliases for older Agent Run / Phase Stack actions;
-- Select Work to browse existing Work and automatically discovered Prompt Stacks from a project-relative tasks root defaulting to `docs/tasks/`; Work to inspect a selected task/run/sequence;
+- Select Work with Running, History and automatically discovered Prompt Stacks from a project-relative tasks root defaulting to `docs/tasks/`; Work panel detail to control and observe a selected task/run/sequence;
 - dynamic tab/header title from snapshotted Prompt Stack task `entry.title` or direct AgentTask objective, stable for historical runs after sequence advancement;
 - durable ordered sanitized visible agent messages, and one structured command per start/completion pair with collapsed-by-default command/status/exit/duration and expandable bounded output;
-- Chat-like fixed header, independently scrolling formatted transcript, near-bottom live-follow, jump-to-latest, compact validation/files/authority/checkpoint events;
+- Work panel controls/progress/validation/files/authority/checkpoints and an optional read-only center transcript tab with formatted messages, near-bottom live-follow and jump-to-latest;
 - retained complete transcript and structured commands on restart from Dope-owned `transcript.jsonl`, independent from provider session survival;
 - a New Work composer only for explicit bounded AgentTask start under Coding Agent/ExecutionGrant. No automatic in-flight steering.
 
 Safety: Chat conversation persistence, Interactive model role and single-Chat leases remain separate from Agent Runtime storage, Coding Agent model role, developer grants, ADR 0028 promotion, ADR 0029 required validation, Git/checkpoint and manual gates. No hidden reasoning, raw RPC payload, secrets or unbounded logs are stored. Keep existing completed Adaptive SEO sequence and historical 8B/8C evidence unchanged.
 
-Qualification: schema/persistence/sanitization/command correlation/full transcript replay; duplicate Work ownership and Chat/Work mode restoration; task-derived titles; toolbar and legacy command integration; safe multi-area direct GUI testing; completed Prompt Stack same SHAs after reopen; no Chat or execution authority regression.
+Qualification: schema/persistence/sanitization/command correlation/full transcript replay; shared Agent Runtime channel, project reattachment, separate Chat/Work restoration and Work ownership; Running/History truth; independent center editor; task-derived titles; toolbar and legacy command integration; safe multi-area direct GUI testing; completed Prompt Stack same SHAs after reopen; no Chat or execution authority regression. The first P9 GUI attempt remains Not Green in `docs/tasks/c8-work-mode/closeout.md` until repair qualification is recorded.
 
 **Phase 8D remains gated on `c8-work-mode` Green.** Candidate validation and the external Adaptive SEO Prompt Stack are already Green.
 

@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { WorkSelectionController } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
-import { restoreWorkScroll, workCommandLabel, workCommandOutput } from '../../packages/theia-extension/lib/browser/work-transcript-presentation.js';
+import { agentTranscriptWidgetId, openAgentTranscript, restoreWorkScroll, workCommandLabel,
+    workCommandOutput } from '../../packages/theia-extension/lib/browser/work-transcript-presentation.js';
 import { ChatScrollFollow } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
 
@@ -40,13 +41,13 @@ test('Work reads every saved page from the beginning, including truncation state
 });
 
 test('Work keeps untrusted Markdown sanitized, commands collapsed and follow independent', async () => {
-    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/agent-transcript-widget.ts', import.meta.url), 'utf8');
     assert.match(widget, /new MarkdownStringImpl\(entry\.text,\s*\{ supportHtml: false, isTrusted: false \}\)/);
     assert.match(widget, /safeChatLink\(link\.getAttribute\('href'\)!/);
-    assert.match(widget, /document\.createElement\('details'\); item\.className = 'dope-work-command'/);
-    assert.match(widget, /private readonly workFollow = new ChatScrollFollow\(\)/);
-    assert.match(widget, /this\.workFollow\.scrolled\(scroll\.scrollTop, scroll\.scrollHeight, scroll\.clientHeight\)/);
-    assert.match(widget, /this\.workFollow\.jump\(\)/);
+    assert.match(widget, /document\.createElement\('details'\); details\.className = 'dope-work-command'/);
+    assert.match(widget, /private readonly follow = new ChatScrollFollow\(\)/);
+    assert.match(widget, /this\.follow\.scrolled\(scroll\.scrollTop, scroll\.scrollHeight, scroll\.clientHeight\)/);
+    assert.match(widget, /this\.follow\.jump\(\)/);
     const follow = new ChatScrollFollow();
     follow.select('run:one');
     assert.equal(restoreWorkScroll(follow, 0, 1000, 200, true), 0);
@@ -56,4 +57,24 @@ test('Work keeps untrusted Markdown sanitized, commands collapsed and follow ind
     assert.equal(restoreWorkScroll(follow, 100, 1200, 200, false), 1200);
     follow.select('run:two');
     assert.equal(restoreWorkScroll(follow, 1200, 1200, 200, true), 0);
+});
+
+test('explicit center transcript action reuses one tab for the same project and run', async () => {
+    const options = { project: 'file:///project', runId: 'saved-run' };
+    const widgets = new Map<string, { id: string; isAttached: boolean }>();
+    let added = 0, activated = 0;
+    const create = async (input: typeof options) => {
+        const id = agentTranscriptWidgetId(input);
+        if (!widgets.has(id)) widgets.set(id, { id, isAttached: false });
+        return widgets.get(id)!;
+    };
+    const shell = { async addWidget(widget: { id: string; isAttached: boolean }, location: { area: 'main' }) {
+        assert.equal(location.area, 'main'); added++; widget.isAttached = true;
+    }, async activateWidget(id: string) { assert.equal(id, agentTranscriptWidgetId(options)); activated++; } };
+    await openAgentTranscript(options, create, shell);
+    await openAgentTranscript(options, create, shell);
+    assert.equal(widgets.size, 1);
+    assert.equal(added, 1);
+    assert.equal(activated, 2);
+    assert.notEqual(agentTranscriptWidgetId({ ...options, project: 'file:///other' }), agentTranscriptWidgetId(options));
 });

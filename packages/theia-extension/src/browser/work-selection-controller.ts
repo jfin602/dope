@@ -12,6 +12,64 @@ export function workTitle(selection: WorkSelection, run?: AgentRun, task?: Agent
     return task?.objective ?? `Work - ${selection.id.slice(0, 8)}`;
 }
 
+export interface WorkRow {
+    selection: WorkSelection;
+    title: string;
+    status: string;
+    activity: string;
+    updatedAt: string;
+    running: boolean;
+    stack?: string;
+    elapsedMs?: number;
+}
+
+/** A sequence is one Work session; its child tasks and runs are details of that session. */
+export function workRows(tasks: AgentTask[], runs: AgentRun[], sequences: AgentTaskSequence[], now = Date.now()):
+    { running: WorkRow[]; history: WorkRow[] } {
+    const tasksById = new Map(tasks.map(task => [task.id, task]));
+    const runsById = new Map(runs.map(run => [run.id, run]));
+    const childTasks = new Set<string>();
+    const childRuns = new Set<string>();
+    const rows: WorkRow[] = [];
+    for (const sequence of sequences) {
+        if (sequence.taskId) childTasks.add(sequence.taskId);
+        for (const checkpoint of sequence.checkpoints) {
+            if (checkpoint.taskId) childTasks.add(checkpoint.taskId);
+            if (checkpoint.runId) childRuns.add(checkpoint.runId);
+        }
+        for (const id of sequence.runIds ?? []) childRuns.add(id);
+        const current = sequence.stack.entries[sequence.currentEntryNumber - 1];
+        const currentRunId = sequence.runIds?.at(-1);
+        const run = currentRunId ? runsById.get(currentRunId) : undefined;
+        const running = sequence.status === 'running' && run?.status === 'running';
+        rows.push({ selection: { kind: 'sequence', id: sequence.id },
+            title: sequence.stack.folderName,
+            status: sequence.status === 'running' && !running ? run?.status ?? 'pending' : sequence.status,
+            activity: current ? `P${current.number} · ${current.title}` :
+                sequence.status === 'completed' ? 'All prompt entries complete' : 'Prompt Stack',
+            updatedAt: sequence.updatedAt, running, stack: `${sequence.stack.folderName} · P${Math.min(sequence.currentEntryNumber,
+                sequence.stack.entries.length)} of ${sequence.stack.entries.length}`,
+            elapsedMs: running && run?.startedAt ? Math.max(0, now - Date.parse(run.startedAt)) : undefined });
+    }
+    for (const run of runs) {
+        if (childRuns.has(run.id)) continue;
+        const task = tasksById.get(run.taskId);
+        rows.push({ selection: { kind: 'run', id: run.id },
+            title: workTitle({ kind: 'run', id: run.id }, run, task), status: run.status,
+            activity: run.outcome?.summary ?? run.commandEvidence?.at(-1)?.commandSummary ??
+                run.changeSummary?.summary ?? (run.status === 'running' ? 'Agent working' : `Run ${run.status}`),
+            updatedAt: run.endedAt ?? run.startedAt ?? run.createdAt, running: run.status === 'running',
+            elapsedMs: run.status === 'running' && run.startedAt ? Math.max(0, now - Date.parse(run.startedAt)) : undefined });
+    }
+    for (const task of tasks) {
+        if (childTasks.has(task.id) || task.origin.kind === 'phase-stack' || runs.some(run => run.taskId === task.id)) continue;
+        rows.push({ selection: { kind: 'task', id: task.id }, title: task.objective, status: 'pending',
+            activity: 'Awaiting execution', updatedAt: task.createdAt, running: false });
+    }
+    rows.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt) || a.title.localeCompare(b.title));
+    return { running: rows.filter(row => row.running), history: rows.filter(row => !row.running) };
+}
+
 export class WorkSelectionController {
     readonly phase: PhaseStackController;
     project?: string;
@@ -37,6 +95,11 @@ export class WorkSelectionController {
         await this.phase.attach(project);
         if (serial !== this.serial || !project) return;
         this.handle = this.phase.handle;
+        if (!this.handle) {
+            this.message = this.phase.message || 'Work could not attach to this project.';
+            this.changed();
+            return;
+        }
         await this.refresh();
     }
     async refresh(): Promise<void> {

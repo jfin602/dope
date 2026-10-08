@@ -649,15 +649,15 @@ Owns AgentWorkingState, objective/current-step state, assumptions/questions/risk
 
 No provider or UI dependency.
 
-### Shared Chat / Work panel boundary
+### Separate Chat and Work panel boundary
 
-One reusable workbench panel shell displays a persistent **Chat | Work** toggle and may be placed in left/right/center/bottom Theia areas. Chat remains Select Chat / Chat over ChatService, ChatRepository and Chat ownership. Work becomes Select Work / Work, projecting existing AgentTask/AgentRun/AgentTaskSequence state, complete sanitized transcript, command history, Prompt Stack discovery and execution status. They share panel mechanics, not storage, model roles or authority.
+Chat and Work are separately launched workbench modules with no Chat | Work toggle. Chat remains Select Chat / Chat over ChatService, ChatRepository and Chat ownership. Work provides Select Work / Work detail over AgentTask/AgentRun/AgentTaskSequence, with Running, History and Prompt Stack discovery. They reuse panel mechanics, not storage, model roles or authority.
 
-Each panel separately remembers its Chat and Work selection. Same-project same-Work opening reveals/focuses the current owning panel instead of creating a duplicate; distinct Work items can occupy different panels. Close/switch/relocate/restoration changes only presentation ownership, not active runs, snapshots or permission grants. Backend execution concurrency, Git checkpoint and developer approval checks remain independent.
+Each module remembers its own selection. Same-project same-Work opening reveals/focuses the current owning Work panel instead of creating a duplicate; distinct Work items can occupy different panels. Close/relocate/restoration changes only presentation ownership, not active runs, snapshots or permission grants. Backend execution concurrency, Git checkpoint and developer approval checks remain independent.
 
-Work inherits Chat's persistent header, fixed controls as appropriate, safe Markdown presentation, independently scrolling transcript, near-bottom follow, jump to latest and compact status. Commands render as minimized/collapsible structured records. Work titles resolve from the stable Prompt Stack entry snapshot or direct AgentTask objective, never mutable sequence position.
+Work panel detail owns execution controls, ordered Prompt Stack progress, validation, candidate changes, authority, checkpoint and current activity. An explicit Open Transcript action opens a read-only AgentRun center editor tab with safe Markdown, scrolling, jump to latest and minimized/collapsible commands. Work titles resolve from the stable Prompt Stack entry snapshot or direct AgentTask objective, never mutable sequence position. Selecting Work in a sidebar does not activate or replace a center editor or visualization.
 
-Left/right toolbar Chat and Work launchers open their corresponding mode; legacy Agent Run/Phase Stack commands may delegate via aliases. Prompt Stack lists default to `docs/tasks/` and do not introduce a manual import lifecycle. A New Work composer may initiate a direct task only through Coding Agent, CompletionPolicy and ExecutionGrant, never Chat Interactive model authority or unapproved mid-run steering. Work state is stored under `.dope/agent/`, while Chat remains `.dope/chats/`.
+Left/right toolbar Chat and Work launchers open their corresponding module; legacy Agent Run/Phase Stack commands may delegate via aliases. Prompt Stack lists default to `docs/tasks/` and do not introduce a manual import lifecycle. A New Work composer may initiate a direct task only through Coding Agent, CompletionPolicy and ExecutionGrant, never Chat Interactive model authority or unapproved mid-run steering. Work state is stored under `.dope/agent/`, while Chat remains `.dope/chats/`.
 
 ### Agent Runtime
 

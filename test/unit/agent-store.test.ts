@@ -72,7 +72,10 @@ test('project isolation, canonical attach, handle isolation and move/copy portab
     assert.deepEqual(changed, ['task-1', 'run-1']);
     assert.deepEqual(await two.listTasks(other), []);
     assert.throws(() => two.readTask(handle, 'task-1'), /handle/);
-    await assert.rejects(one.attach(pathToFileURL(b).href), /different/);
+    const switched = (await one.attach(pathToFileURL(b).href)).projectHandle;
+    assert.notEqual(switched, handle);
+    assert.throws(() => one.readTask(handle, 'task-1'), /handle/);
+    assert.deepEqual(await one.listTasks(switched), []);
     await assert.rejects(one.attach('https://example.com/repo'), /local file/);
     await assert.rejects(one.attach('file:///../etc'), /traversal/);
     await assert.rejects(store.root('file:///%2e%2e/etc'), /traversal/);

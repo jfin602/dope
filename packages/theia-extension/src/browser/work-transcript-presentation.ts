@@ -1,6 +1,20 @@
 import type { AgentTranscriptEntry } from '@dope/agent-core';
 import { ChatScrollFollow } from './chat-panel-presentation';
 
+export const AGENT_TRANSCRIPT_ID = 'dope-agent-transcript';
+export interface AgentTranscriptOptions { project: string; runId: string }
+export function agentTranscriptWidgetId(options: AgentTranscriptOptions): string {
+    return `${AGENT_TRANSCRIPT_ID}:${encodeURIComponent(options.project)}:${options.runId}`;
+}
+export async function openAgentTranscript<W extends { id: string; isAttached: boolean }>(
+    options: AgentTranscriptOptions, create: (options: AgentTranscriptOptions) => Promise<W>,
+    shell: { addWidget(widget: W, options: { area: 'main' }): Promise<void>; activateWidget(id: string): Promise<unknown> }): Promise<W> {
+    const widget = await create(options);
+    if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
+    await shell.activateWidget(widget.id);
+    return widget;
+}
+
 export function restoreWorkScroll(follow: ChatScrollFollow, previousTop: number,
     height: number, viewport: number, selectionChanged: boolean): number {
     if (selectionChanged) {

@@ -1,7 +1,7 @@
 export const CHAT_PANEL_ID = 'dope-chat-panel';
 export const chatAreas = { left: 'left', right: 'right', center: 'main', bottom: 'bottom' } as const;
 export type ChatArea = keyof typeof chatAreas;
-export interface ChatPanelOptions { instanceId: string }
+export interface ChatPanelOptions { instanceId: string; module?: 'chat' | 'work' }
 export function resolveChatModel<T extends { selection: { connectionId: string; modelId: string } }>(
     usable: readonly T[], override?: T['selection'], defaultModel?: T['selection']): T['selection'] | undefined {
     const requested = override ?? defaultModel;
@@ -17,13 +17,21 @@ export const chatLauncherIds = {
     right: `${CHAT_PANEL_ID}:${chatLauncherOptions.right.instanceId}`,
 } as const;
 export const workLauncherOptions = {
-    left: { instanceId: '00000000-0000-4000-8000-000000000003' },
-    right: { instanceId: '00000000-0000-4000-8000-000000000004' },
+    left: { instanceId: '00000000-0000-4000-8000-000000000003', module: 'work' },
+    right: { instanceId: '00000000-0000-4000-8000-000000000004', module: 'work' },
 } as const;
 export const workLauncherIds = {
     left: `${CHAT_PANEL_ID}:${workLauncherOptions.left.instanceId}`,
     right: `${CHAT_PANEL_ID}:${workLauncherOptions.right.instanceId}`,
 } as const;
+/** Old combined-panel widgets have no module option; their saved mode selects the restored module. */
+export function panelModule(options: ChatPanelOptions, saved?: { panelMode: 'chat' | 'work' }): 'chat' | 'work' {
+    if (options.instanceId === workLauncherOptions.left.instanceId ||
+        options.instanceId === workLauncherOptions.right.instanceId) return 'work';
+    if (options.instanceId === chatLauncherOptions.left.instanceId ||
+        options.instanceId === chatLauncherOptions.right.instanceId) return 'chat';
+    return options.module ?? saved?.panelMode ?? 'chat';
+}
 export function shouldSendChatInput(event: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'isComposing' | 'keyCode'>): boolean {
     return event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229;
 }
@@ -93,7 +101,9 @@ export function safeChatLink(href: string, base: string): boolean {
     try { return ['http:', 'https:', 'mailto:'].includes(new URL(href, base).protocol); }
     catch { return false; }
 }
-export function chatPanelOptions(): ChatPanelOptions { return { instanceId: crypto.randomUUID() }; }
+export function chatPanelOptions(module: 'chat' | 'work' = 'chat'): ChatPanelOptions {
+    return { instanceId: crypto.randomUUID(), module };
+}
 export function chatPanelWidgetId(options: ChatPanelOptions): string {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(options?.instanceId))
         throw new Error('Invalid ChatPanel instance');
@@ -104,8 +114,8 @@ export interface ChatPanelShell<W extends { id: string }> {
     activateWidget(id: string): Promise<unknown>;
 }
 export async function openChatPanel<W extends { id: string }>(area: ChatArea,
-    create: (options: ChatPanelOptions) => Promise<W>, shell: ChatPanelShell<W>): Promise<W> {
-    const widget = await create(chatPanelOptions());
+    create: (options: ChatPanelOptions) => Promise<W>, shell: ChatPanelShell<W>, module: 'chat' | 'work' = 'chat'): Promise<W> {
+    const widget = await create(chatPanelOptions(module));
     await shell.addWidget(widget, { area: chatAreas[area] });
     await shell.activateWidget(widget.id);
     return widget;

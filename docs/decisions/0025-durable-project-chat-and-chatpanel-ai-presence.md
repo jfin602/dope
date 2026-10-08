@@ -303,3 +303,9 @@ A specific project/Work selection has at most one live owning panel: selecting i
 Work inherits Chat's fixed header, independently scrolling formatted transcript, near-bottom follow, jump-to-latest, compact metadata, drag scrolling and responsive layouts. It renders commands as collapsed compact rows rather than ordinary chat messages. Left and right toolbar launchers and commands provide both Chat and Work entry points.
 
 A Work composer may start direct tasks only through the Coding Agent/ExecutionGrant path; it does not acquire Chat's read-only Interactive role, model policy, tools, persistence or free-form live steering. Work state remains under `.dope/agent/`; Chat state remains under `.dope/chats/`. This UI extension is bounded by `c8-work-mode`, not a change in ADR 0025 Chat authority.
+
+## Amendment — separate Chat and Work modules (2026-10-08)
+
+Chat and Work have separate toolbar launchers and separate panel content. The Chat | Work header toggle is removed. Select Chat remains a Chat navigation surface; Select Work lists Running, History and discovered Prompt Stacks. A selected Work item opens a control/observation detail in its Work panel. Reuse of panel layout, scrolling and restoration conventions does not merge their state or authority.
+
+Opening or selecting Work in a sidebar leaves the center editor and visualizations as they are. The explicit Open Transcript action may open a read-only AgentRun center tab. Closing Work does not stop execution; Stop remains explicit. Legacy saved combined-panel layouts restore deterministically to their saved Chat or Work module.

@@ -8,7 +8,7 @@ import { importPhaseStack } from '../../packages/agent-core/lib/sequence.js';
 import { WorkSelectionController, workTitle } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from
     '../../packages/theia-extension/lib/browser/shared-panel-state.js';
-import { chatLauncherIds, openChatPanel, workLauncherIds } from
+import { chatLauncherIds, chatPanelOptions, openChatPanel, panelModule, workLauncherIds } from
     '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
 
@@ -74,6 +74,14 @@ test('Work navigation restores independent Chat and completed stack without muta
             async checkpointSequence() { mutations++; }, async cancel() { mutations++; }
         } as unknown as AgentRuntimeService;
         const owners = new WorkOpenOwners();
+        assert.equal(chatPanelOptions('work').module, 'work');
+        assert.equal(chatPanelOptions('chat').module, 'chat');
+        assert.equal(panelModule({ instanceId: '11111111-1111-4111-8111-111111111111' },
+            { panelMode: 'work' }), 'work');
+        assert.equal(panelModule({ instanceId: chatLauncherIds.left.split(':')[1] },
+            { panelMode: 'work' }), 'chat');
+        assert.equal(panelModule({ instanceId: workLauncherIds.left.split(':')[1] },
+            { panelMode: 'chat' }), 'work');
         let focused = 0;
         const first = new SharedPanelState(owners, 'panel-a', () => focused++, () => {});
         first.attach(project);

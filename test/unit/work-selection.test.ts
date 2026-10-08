@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { WorkSelectionController, workTitle } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
+import { WorkSelectionController, workRows, workTitle } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
 
 const head = 'a'.repeat(40);
@@ -11,6 +11,29 @@ const sequence: any = { id: 'stored-sequence', status: 'completed', currentEntry
     checkpoints: [], basis: { head, packageVersion: '0.8.20' }, runIds: ['historic-run'] };
 const task: any = { id: 'historic-task', objective: 'First implementation', completion: { validation: [] } };
 const run: any = { id: 'historic-run', taskId: task.id, status: 'completed' };
+
+test('Running contains only active execution, groups stack children, and History sorts by latest activity', () => {
+    const at = (minute: number) => `2026-10-08T12:${String(minute).padStart(2, '0')}:00Z`;
+    const stack = { ...sequence, status: 'running', currentEntryNumber: 1, updatedAt: at(10),
+        taskId: 'stack-task', runIds: ['stack-run'], checkpoints: [] } as any;
+    const tasks = [{ ...task, origin: { kind: 'direct' } },
+        { id: 'stack-task', objective: 'First implementation', origin: { kind: 'phase-stack' },
+        createdAt: at(0) }, { id: 'cancel-task', objective: 'Cancelled direct', origin: { kind: 'direct' },
+        createdAt: at(1) } ] as any;
+    const runs = [{ id: 'stack-run', taskId: 'stack-task', status: 'running', startedAt: at(8), createdAt: at(5) },
+        { id: 'historic-run', taskId: task.id, status: 'completed', endedAt: at(9), createdAt: at(0) },
+        { id: 'cancel-run', taskId: 'cancel-task', status: 'cancelled', endedAt: at(11), createdAt: at(1) },
+        { id: 'earlier-stack-attempt', taskId: 'stack-task', status: 'failed', endedAt: at(7), createdAt: at(4) }] as any;
+    const active = workRows(tasks, runs, [stack], Date.parse(at(12)));
+    assert.deepEqual(active.running.map(item => item.selection.id), ['stored-sequence']);
+    assert.deepEqual(active.history.map(item => item.selection.id), ['cancel-run', 'historic-run', 'earlier-stack-attempt']);
+    assert.equal(active.running[0].elapsedMs, 4 * 60_000);
+    assert.equal(active.running[0].stack, 'c4-dope-phase-stack-smoke · P1 of 2');
+    runs[0].status = 'blocked'; stack.status = 'blocked';
+    const blocked = workRows(tasks, runs, [stack]);
+    assert.equal(blocked.running.length, 0);
+    assert.equal(blocked.history.filter(item => item.selection.id === 'stored-sequence').length, 1);
+});
 
 test('Work discovers default Prompt Stacks and reopens completed history without creating records', async () => {
     let scans = 0, opens = 0, creates = 0;

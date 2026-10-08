@@ -621,7 +621,7 @@ AgentRun is durable enough to inspect and resume/reconcile work across applicati
 
 ### AgentRun transcript and command history
 
-Work detail presents one durable AgentRun execution transcript in chronological order.
+An explicitly opened center AgentRun transcript tab presents one durable execution transcript in chronological order. Work panel detail controls and observes the same run.
 
 The transcript may contain:
 - sanitized provider-visible agent messages exactly as exposed to the developer;
@@ -646,15 +646,15 @@ Provider command history is distinct from CandidateValidation. A provider-run co
 Durable transcript storage must never include hidden chain-of-thought, raw provider RPC payloads, credentials/tokens, arbitrary environment dumps or unbounded command output. Visible agent text is sanitized and bounded as user-facing output without reducing routine prose to generic summaries.
 
 
-### Work mode and Prompt Stack
+### Work module and Prompt Stack
 
 **Work** is the developer-facing execution environment: a presentation of existing AgentTask, AgentRun and AgentTaskSequence state rather than a new canonical task entity, WorkItem or Chat. **Prompt Stack** names both phase and correction stacks. Their classifications, original prompt grammar, immutable snapshots/fingerprints and version/checkpoint laws remain unchanged.
 
-**Select Work** lists durable Work history and automatically discovered Prompt Stacks under the configured project-relative tasks folder, default `docs/tasks/`, without a user-facing import lifecycle. **Work** shows a selected task/run/sequence, complete retained sanitized agent transcript, collapsed commands, validation, file changes, approvals and checkpoints.
+**Select Work** separates truly active runs into Running and retains prior, pending, manual and blocked work in History. It automatically discovers Prompt Stacks under the configured project-relative tasks folder, default `docs/tasks/`, without a user-facing import lifecycle. Selecting a task/run/sequence opens Work detail in the Work panel with controls, progress, validation, candidate changes, authority and checkpoints. The center AgentRun transcript is an optional read-only detail opened explicitly from Work; it retains sanitized agent messages and collapsed commands.
 
 A Work detail title uses the associated stable AgentTask: snapshotted Prompt Stack `entry.title` or direct `AgentTask.objective`, with a bounded fallback for historical missing records. The title never shifts when a Prompt Stack advances.
 
-A reusable Chat | Work panel preserves separate Chat and Work selections across toggles, relocation and restart. The same Work identity has at most one live presentation owner per project; selecting it elsewhere focuses the existing panel. Other Work items may appear in other panels. Closing or switching a panel never cancels a running task; backend execution exclusion and grants are independent from UI ownership.
+Chat and Work are separate toolbar-launched modules with no header mode toggle. They reuse panel conventions while preserving separate records, selections and authority. The same Work identity has at most one live Work panel owner per project; selecting it elsewhere focuses the existing panel. Other Work items may appear in other panels. Closing Work never cancels a running task; backend execution exclusion and grants are independent from UI ownership. Selecting Work leaves the independent center editor/visualization workspace unchanged.
 
 Work may start direct tasks through a Chat-like composer, but Coding Agent model role, explicit ExecutionGrant, CandidateValidation and promotion rules apply. Chat's Interactive role, read-only conversation tools, service/storage identity and automatic live steering do not carry into Work.
 

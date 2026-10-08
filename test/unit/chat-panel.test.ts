@@ -45,7 +45,8 @@ test('Chat delegates connection repair to AI Center and listens for live registr
     const center = await readFile(new URL('../../packages/theia-extension/src/browser/ai-center-contribution.ts', import.meta.url), 'utf8');
     const centerWidget = await readFile(new URL('../../packages/theia-extension/src/browser/ai-center-widget.ts', import.meta.url), 'utf8');
     assert.match(widget, /Manage AI connections.*openFromChat\(this\.id\)/);
-    assert.match(widget, /onModelsChanged\?\.\(\(\) => \{ void this\.loadModels\(\)/);
+    assert.match(widget, /onModelsChanged\?\.\(\(\) => \{ if \(this\.module === 'chat'\) void this\.loadModels\(\)/);
+    assert.match(widget, /void this\.directController\?\.resolveTarget\(\)/);
     assert.match(module, /notifyModelConnectionsChanged\(\) \{ modelInventoryChanged\.fire\(\)/);
     assert.match(module, /modelInventoryChanged\.event/);
     assert.match(center, /setReturnToChat\(chatPanelId \? \(\) =>/);

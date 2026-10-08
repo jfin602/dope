@@ -20,7 +20,8 @@ const openingTaskStacks = new Map<string, Promise<OpenTaskStackResult>>();
 /** One RPC connection attaches one canonical project root. The handle never enters durable state. */
 export class AgentRuntimeBackend implements AgentRuntimeService {
     private root: string | undefined;
-    private readonly handle = randomUUID();
+    private handle = randomUUID();
+    private attaching?: { root: string; promise: Promise<{ projectHandle: string }> };
     private disposed = false;
     private readonly unlisten: () => void;
     private readonly pendingStarts = new Map<string, Promise<AgentRun>>();
@@ -36,16 +37,31 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     async attach(folderUri: string): Promise<{ projectHandle: string }> {
         if (this.disposed) throw new Error('Disposed Agent Runtime connection');
         const root = await this.store.root(folderUri);
-        if (this.root && this.root !== root) throw new Error('A different Agent Runtime project is already attached');
-        await this.execution?.reconcile(root);
-        this.root = root;
-        try {
-            for (const sequence of await this.store.listSequences(root)) await this.reconcileStoredSequence(root, sequence);
-        } catch (error) {
-            this.root = undefined;
-            throw error;
+        while (this.attaching) {
+            if (this.attaching.root === root) return this.attaching.promise;
+            await this.attaching.promise.catch(() => undefined);
         }
-        return { projectHandle: this.handle };
+        if (this.disposed) throw new Error('Disposed Agent Runtime connection');
+        if (this.root === root) return { projectHandle: this.handle };
+        // A renderer has one channel, but its project can change. Retire the old
+        // handle before attaching the next root so delayed calls cannot cross it.
+        this.root = undefined;
+        this.handle = randomUUID();
+        const handle = this.handle;
+        const promise = (async () => {
+            await this.execution?.reconcile(root);
+            this.root = root;
+            try {
+                for (const sequence of await this.store.listSequences(root)) await this.reconcileStoredSequence(root, sequence);
+            } catch (error) {
+                this.root = undefined;
+                throw error;
+            }
+            return { projectHandle: handle };
+        })();
+        this.attaching = { root, promise };
+        try { return await promise; }
+        finally { if (this.attaching?.promise === promise) this.attaching = undefined; }
     }
 
     private active(handle: string): string {

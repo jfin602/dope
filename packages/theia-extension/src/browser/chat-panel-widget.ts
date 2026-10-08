@@ -14,11 +14,11 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, resizeChatInput, resolveChatModel, safeChatLink, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, resizeChatInput, resolveChatModel, safeChatLink, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
-import { WorkSelectionController, workTitle } from './work-selection-controller';
-import { restoreWorkScroll, workCommandLabel, workCommandOutput } from './work-transcript-presentation';
+import { WorkSelectionController, workRows, workTitle } from './work-selection-controller';
+import { restoreWorkScroll } from './work-transcript-presentation';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
 import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
@@ -35,7 +35,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private readonly rootsListener;
     private readonly modelsListener;
     private readonly status = document.createElement('p');
-    private readonly modeNav = document.createElement('nav');
+    private module: 'chat' | 'work';
     private readonly content = document.createElement('div');
     private workspaceRequest = 0;
     private modelsRequest = 0;
@@ -60,13 +60,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private scrollAnimationUntil = 0;
 
     constructor(connect: () => ChatConnection, private readonly workspaces: WorkspaceService,
-        private readonly shell: ApplicationShell, owners: ChatOpenOwners, workOwners: WorkOpenOwners, options: ChatPanelOptions,
+        private readonly shell: ApplicationShell, owners: ChatOpenOwners, workOwners: WorkOpenOwners,
+        private readonly options: ChatPanelOptions,
         private readonly markdown: MarkdownRenderer,
         private readonly modelConnections?: ModelConnectionsService,
         private readonly editors?: EditorManager, private readonly map?: SoftwareMapController,
         private readonly aiCenter?: AICenterContribution, onModelsChanged?: Event<void>,
-        runtime?: AgentRuntimeService, registry?: AIRegistryService, roles?: AIRolePolicyService) {
+        runtime?: AgentRuntimeService, registry?: AIRegistryService, roles?: AIRolePolicyService,
+        private readonly openTranscript?: (project: string, runId: string) => Promise<void>) {
         super();
+        this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
         this.title.label = this.title.caption = this.id === workLauncherIds.left || this.id === workLauncherIds.right ?
             'Work' : 'Chat';
@@ -79,18 +82,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             () => { void this.shell.activateWidget(this.id); });
         this.panel = new SharedPanelState(workOwners, this.id,
             () => { this.panel.setMode('work'); void this.shell.activateWidget(this.id); }, () => this.render());
-        if (this.id === workLauncherIds.left || this.id === workLauncherIds.right) this.panel.mode = 'work';
+        this.panel.mode = this.module;
         if (runtime) this.workController = new WorkSelectionController(runtime, () => this.render());
         if (runtime && registry && roles) this.directController = new AgentRunController(runtime, registry, roles, () => this.render());
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
-        this.modeNav.className = 'dope-chat-panel-modes';
-        this.modeNav.setAttribute('aria-label', 'Panel mode');
-        this.node.append(this.modeNav, this.status, this.content);
+        this.node.append(this.status, this.content);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.attach(); });
-        this.modelsListener = onModelsChanged?.(() => { void this.loadModels(); });
+        this.modelsListener = onModelsChanged?.(() => { if (this.module === 'chat') void this.loadModels();
+            void this.directController?.resolveTarget();
+            void this.workController?.phase.refresh(); });
         void this.attach();
-        void this.loadModels();
+        if (this.module === 'chat') void this.loadModels();
     }
     private scrollToLatest(): void {
         const scroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
@@ -144,13 +147,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
 
     storeState(): object {
-        return { ...this.panel.layout(this.controller.chatId), area: this.shell.getAreaFor(this) };
+        return { ...this.panel.layout(this.module === 'chat' ? this.controller.chatId : undefined),
+            module: this.module, area: this.shell.getAreaFor(this) };
     }
     restoreState(state: object): void {
         const layout = readSharedPanelLayout(state);
         if (!layout?.workspace) return;
+        this.module = panelModule(this.options, layout);
+        layout.panelMode = this.module;
         this.panel.restore(layout);
-        this.controller.restore(layout.workspace, layout.chatId ? 'chat' : 'select-chat', layout.chatId);
+        if (this.module === 'chat') this.controller.restore(layout.workspace, layout.chatId ? 'chat' : 'select-chat', layout.chatId);
     }
 
     private async attach(): Promise<void> {
@@ -165,28 +171,32 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (this.isDisposed || request !== this.workspaceRequest) return;
         const workspace = roots.length === 1 ? roots[0].resource.toString() : undefined;
         this.panel.attach(workspace);
+        this.panel.setMode(this.module);
         const workAttached = this.workController?.attach(workspace);
         void this.directController?.attach(workspace);
         void workAttached?.then(() => {
             if (!this.isDisposed && request === this.workspaceRequest && this.panel.work)
                 void this.workController?.select(this.panel.work);
         });
-        await this.controller.attach(workspace);
+        if (this.module === 'chat') await this.controller.attach(workspace);
     }
 
     async selectChatLauncher(): Promise<void> {
+        if (this.module !== 'chat') return;
         this.panel.setMode('chat');
         await this.controller.select(undefined);
     }
     async selectWorkLauncher(selection?: WorkSelection): Promise<void> {
         this.composingWork = false;
         this.promptStacksOnly = false;
+        if (this.module !== 'work') return;
         this.panel.setMode('work');
         if (selection) this.selectWork(selection);
         else this.render();
         void this.refreshWork();
     }
     async selectPromptStacks(): Promise<void> {
+        if (this.module !== 'work') return;
         this.panel.setMode('work');
         this.selectWork();
         this.promptStacksOnly = true;
@@ -280,8 +290,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedTask : undefined,
             work.kind === 'sequence' && controller.phase.selected?.id === work.id ? controller.phase.selected : undefined) : 'Select Work';
         header.append(heading);
-        header.append(this.button('New Work', () => { this.selectWork(); this.composingWork = true; this.render(); }));
-        if (work) header.append(this.button('Select Work', () => this.selectWork()));
+        if (!work) header.append(this.button('New Work', () => { this.selectWork(); this.composingWork = true; this.render(); }));
+        if (work) header.append(this.button('Back to Select Work', () => this.selectWork()));
         if (work) header.append(this.button('Refresh Work', () => {
             if (work.kind === 'sequence') {
                 void controller?.phase.refresh(); void controller?.refresh();
@@ -296,21 +306,25 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             this.content.append(status);
         }
         if (!work) {
-            const history = document.createElement('section');
-            const title = document.createElement('h3'); title.textContent = 'Work history'; history.append(title);
-            for (const sequence of this.promptStacksOnly ? [] : controller.phase.sequences) {
-                const item = this.button(`${workTitle({ kind: 'sequence', id: sequence.id }, undefined, undefined, sequence)} · ${sequence.status}`,
-                    () => this.selectWork({ kind: 'sequence', id: sequence.id }));
-                history.append(item);
+            const groups = workRows(controller.tasks, controller.runs, controller.phase.sequences);
+            if (!this.promptStacksOnly) for (const [heading, rows] of [['Running', groups.running],
+                ['History', groups.history]] as const) {
+                const section = document.createElement('section');
+                const title = document.createElement('h3'); title.textContent = heading; section.append(title);
+                if (heading === 'Running' && !rows.length) {
+                    const empty = document.createElement('p'); empty.textContent = 'No Work currently running.';
+                    section.append(empty);
+                }
+                for (const row of rows) {
+                    const elapsed = row.elapsedMs === undefined ? '' : ` · ${Math.floor(row.elapsedMs / 60000)}m elapsed`;
+                    const label = `${row.running ? '● ' : ''}${row.title} · ${row.status}${row.stack ? ` · ${row.stack}` : ''}${elapsed}`;
+                    const button = this.button(label, () => this.selectWork(row.selection));
+                    section.append(button);
+                    const activity = document.createElement('small'); activity.textContent = row.activity;
+                    section.append(activity);
+                }
+                this.content.append(section);
             }
-            for (const run of this.promptStacksOnly ? [] : controller.runs) {
-                const task = controller.tasks.find(item => item.id === run.taskId);
-                history.append(this.button(`${workTitle({ kind: 'run', id: run.id }, run, task)} · ${run.status}`,
-                    () => this.selectWork({ kind: 'run', id: run.id })));
-            }
-            for (const task of (this.promptStacksOnly ? [] : controller.tasks).filter(item => !controller.runs.some(run => run.taskId === item.id)))
-                history.append(this.button(task.objective, () => this.selectWork({ kind: 'task', id: task.id })));
-            if (!this.promptStacksOnly) this.content.append(history);
             const stacks = document.createElement('section');
             const label = document.createElement('h3'); label.textContent = 'Prompt Stacks'; stacks.append(label);
             const root = document.createElement('input'); root.type = 'text'; root.value = controller.phase.tasksRoot;
@@ -375,7 +389,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (work.kind === 'sequence') {
             const phase = controller.phase, sequence = phase.selected?.id === work.id ? phase.selected : undefined;
             if (sequence) {
-                detail(`Prompt Stack · ${sequence.status}`);
+                detail(`Prompt Stack: ${sequence.stack.folderName}`);
+                detail(`Status: ${sequence.status}${sequence.blockedReason ? ` · ${sequence.blockedReason}` : ''}`);
+                detail(`Current: P${Math.min(sequence.currentEntryNumber, sequence.stack.entries.length)} of ${sequence.stack.entries.length}`);
+                detail(`Model: Coding Agent`);
                 if (sequence.checkpoints.length) {
                     const checkpoint = document.createElement('small'); checkpoint.className = 'dope-work-system';
                     checkpoint.textContent = `${sequence.checkpoints.length} checkpoint${sequence.checkpoints.length === 1 ? '' : 's'} recorded`;
@@ -384,6 +401,31 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const metadata = document.createElement('small');
                 metadata.textContent = `${sequence.stack.mode === 'correction' ? 'Correction' : 'Phase'} ${sequence.stack.phase} · ${sequence.stack.folderName}`;
                 scroll.append(metadata);
+                const progress = document.createElement('section');
+                const progressTitle = document.createElement('h3'); progressTitle.textContent = 'Progress'; progress.append(progressTitle);
+                const entries = document.createElement('ol');
+                for (const entry of sequence.stack.entries) {
+                    const item = document.createElement('li');
+                    const checkpoint = sequence.checkpoints.find(value => value.entryNumber === entry.number);
+                    const current = entry.number === sequence.currentEntryNumber && sequence.status !== 'completed';
+                    const state = checkpoint ? 'Completed' : current ? sequence.status : 'Pending';
+                    item.textContent = `P${entry.number} - ${entry.title} · ${state}${checkpoint ? ` · ${checkpoint.sha}` : ''}`;
+                    if (checkpoint?.runId && this.panel.workspace) item.append(' ', this.button('Open Transcript', () =>
+                        void this.openTranscript?.(this.panel.workspace!, checkpoint.runId!)));
+                    entries.append(item);
+                }
+                progress.append(entries); scroll.append(progress);
+                for (const runId of sequence.runIds ?? []) if (this.panel.workspace) {
+                    const run = controller.runs.find(candidate => candidate.id === runId);
+                    scroll.append(this.button(`${run ? `Run · ${run.status}` : 'Saved run'} · Open Transcript`, () =>
+                        void this.openTranscript?.(this.panel.workspace!, runId)));
+                }
+                if (phase.run) {
+                    detail(`Current activity: ${phase.run.outcome?.summary ?? phase.run.changeSummary?.summary ?? phase.run.status}`);
+                    detail(`Validation: ${phase.run.validationResults.map(result => `${result.label} ${result.status}`).join(', ') || 'Pending'}`);
+                    detail(`Authority: ${phase.run.authorityDecision ? phase.run.authorityDecision.allowed ? 'Allowed' : 'Blocked' : 'Pending'}`);
+                    if (phase.run.changedFiles.length) detail(`Candidate changes: ${phase.run.changedFiles.join(', ')}`);
+                }
                 const entry = phase.current;
                 if (entry) {
                     detail(`P${entry.number} · ${entry.execution === 'manual-gate' ? 'Manual/browser gate' : 'Agent task'}`);
@@ -413,43 +455,26 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 else if (sequence.status !== 'running' && sequence.status !== 'completed')
                     scroll.append(this.button('Reconcile repository', () => void phase.reconcile(), phase.busy));
                 if (sequence.gateMessage) detail(sequence.gateMessage);
-                if (phase.run) scroll.append(this.button('Open Agent Run detail', () =>
-                    this.selectWork({ kind: 'run', id: phase.run!.id })));
+                const transcriptRunId = phase.run?.id ?? sequence.runIds?.at(-1) ?? sequence.checkpoints.at(-1)?.runId;
+                if (transcriptRunId && this.panel.workspace) scroll.append(this.button('Open Transcript', () =>
+                    void this.openTranscript?.(this.panel.workspace!, transcriptRunId)));
             } else detail('Prompt Stack could not be opened. Refresh and try again.');
         } else {
             const run = work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedRun : undefined;
             if (run) {
                 const state = document.createElement('small'); state.className = 'dope-work-system';
                 state.textContent = `Run · ${run.status}`; scroll.append(state);
+                detail(`Model: ${run.provenance ? `${run.provenance.providerId} · ${run.provenance.modelId}` : 'Coding Agent'}`);
+                const recent = [...controller.transcript].reverse().find(entry => entry.kind === 'message' || entry.kind === 'command');
+                detail(`Current activity: ${recent?.kind === 'message' ? recent.text.slice(0, 180) :
+                    recent?.kind === 'command' ? recent.command : run.outcome?.summary ?? run.status}`);
                 if (controller.selectedTask?.origin.kind === 'direct' &&
                     ['pending', 'running', 'blocked'].includes(run.status)) scroll.append(this.button('Stop Work', () => {
                     if (this.directController) { void this.directController.select(run.id).then(() => this.directController?.stop()); }
                 }));
-                if (controller.transcriptState === 'not-recorded') detail('Transcript not recorded.');
-                for (const entry of controller.transcript) {
-                    if (entry.kind === 'message') {
-                        const item = document.createElement('article'); item.className = 'dope-work-message dope-chat-message-content';
-                        const rendered = this.markdown.render(new MarkdownStringImpl(entry.text,
-                            { supportHtml: false, isTrusted: false })).element;
-                        for (const link of rendered.querySelectorAll('a[href]')) {
-                            if (!safeChatLink(link.getAttribute('href')!, document.baseURI)) link.removeAttribute('href');
-                            else link.setAttribute('rel', 'noopener noreferrer');
-                        }
-                        item.append(rendered);
-                        if (entry.truncated) item.append(' [Message truncated]');
-                        scroll.append(item);
-                    } else if (entry.kind === 'command') {
-                        const item = document.createElement('details'); item.className = 'dope-work-command';
-                        const summary = document.createElement('summary'); summary.textContent = workCommandLabel(entry);
-                        item.append(summary);
-                        for (const output of workCommandOutput(entry)) {
-                            const pre = document.createElement('pre'); pre.textContent = output; item.append(pre);
-                        }
-                        scroll.append(item);
-                    } else if (entry.code === 'transcript-incomplete') detail('Transcript truncated: recording limit reached.');
-                }
-                if (controller.transcriptIncomplete && !controller.transcript.some(entry => entry.kind === 'marker' && entry.code === 'transcript-incomplete'))
-                    detail('Transcript truncated: recording limit reached.');
+                if (this.panel.workspace) scroll.append(this.button('Open Transcript', () =>
+                    void this.openTranscript?.(this.panel.workspace!, run.id)));
+                if (controller.transcriptState === 'not-recorded') detail('Transcript not recorded for this historical run.');
                 const diagnostics = document.createElement('details'); diagnostics.className = 'dope-work-diagnostics';
                 const summary = document.createElement('summary'); summary.textContent = 'Run diagnostics'; diagnostics.append(summary);
                 if (controller.selectedTask) { const instructions = document.createElement('p');
@@ -735,6 +760,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.content.className = this.panel.mode === 'work' ? 'dope-chat-content dope-chat-content-work' :
             state.mode !== 'chat' ? 'dope-chat-content dope-chat-content-select' :
                 'dope-chat-content dope-chat-content-conversation';
+        if (this.panel.mode === 'work' && !this.panel.work) this.content.classList.add('dope-work-select');
         this.scrollFollow.select(this.panel.mode === 'chat' && state.mode === 'chat' ? state.chatId : undefined);
         const oldScroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
         const scrollTop = oldScroll?.scrollTop ?? 0;
@@ -743,22 +769,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const selection = active instanceof HTMLTextAreaElement ? [active.selectionStart, active.selectionEnd] : undefined;
         this.status.textContent = this.panel.mode === 'chat' ?
             state.error || (state.loading ? 'Loading Chats…' : !state.workspace ? 'Open one project to use Chats.' : '') :
-            !this.panel.workspace ? 'Open one project to use Work.' : !this.workController?.handle ? 'Loading Work…' : '';
+            !this.panel.workspace ? 'Open one project to use Work.' : !this.workController?.handle ?
+                this.workController?.message || 'Loading Work…' : '';
+        if (this.panel.mode === 'work' && this.panel.workspace && !this.workController?.handle &&
+            this.workController?.message) this.status.append(' ', this.button('Retry', () => {
+                void this.workController?.attach(this.panel.workspace).then(() => this.directController?.attach(this.panel.workspace));
+            }));
         if (this.panel.mode === 'chat' && state.error.includes('Interactive role')) this.status.append(' ',
             this.button('Configure Interactive in Roles', () => { void this.aiCenter?.openRole('interactive'); }));
         this.content.replaceChildren();
-        const focusedMode = this.modeNav.contains(document.activeElement) ?
-            document.activeElement?.textContent : undefined;
-        this.modeNav.replaceChildren();
-        for (const mode of ['chat', 'work'] as const) {
-            const button = this.button(mode === 'chat' ? 'Chat' : 'Work', () => {
-                this.panel.setMode(mode);
-                if (mode === 'work') void this.refreshWork();
-            });
-            button.setAttribute('aria-pressed', String(this.panel.mode === mode));
-            this.modeNav.append(button);
-            if (focusedMode === button.textContent) button.focus({ preventScroll: true });
-        }
         if (this.panel.mode === 'work') {
             this.renderWork();
             const current = this.content.querySelector<HTMLElement>('.dope-work-scroll');
