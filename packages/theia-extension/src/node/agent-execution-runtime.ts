@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { AGENT_SCHEMA_VERSION, isModelCapacityFailure, parseExecutionGrant, projectPath } from '@dope/agent-core';
 import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentModelPolicy, AgentRun,
-    AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance, AgentExecutionRequest } from '@dope/agent-core';
+    AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance, AgentExecutionRequest, AgentTranscriptInput } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureGitBasis, captureGitFinal } from '@dope/agent-core/lib/node/git-evidence';
 import { ExecutionWorkspace, PromotionFailure } from '@dope/agent-core/lib/node/execution-workspace';
@@ -21,6 +21,7 @@ interface Active {
     validationAbort?: AbortController;
     wakeWait?: () => void;
     commands: Map<string, { command: string; started: number }>;
+    transcriptCommands: Set<string>; lastMessage?: string; transcriptAt?: string; transcriptIncomplete?: boolean;
 }
 
 /** Codex reports the shell invocation, not only its argument. Keep the match exact so a
@@ -75,6 +76,15 @@ export class AgentExecutionRuntime {
         active.sequence = event.sequence;
     }
 
+    private async transcript(active: Active, input: AgentTranscriptInput): Promise<void> {
+        if (!active.run || active.transcriptIncomplete) return;
+        const at = new Date().toISOString();
+        const orderedAt = active.transcriptAt && at < active.transcriptAt ? active.transcriptAt : at;
+        const result = await this.store.appendTranscript(active.root, active.run.id, { ...input, at: orderedAt });
+        active.transcriptAt = orderedAt;
+        active.transcriptIncomplete = result.incomplete;
+    }
+
     private interrupt(active: Active): Promise<void> {
         if (!active.handle) return Promise.resolve();
         if (!active.interrupting) {
@@ -126,6 +136,30 @@ export class AgentExecutionRuntime {
                 observation.command : '', started: Date.now() });
         void this.serial(active, async () => {
             await this.event(active, kind, summary, path ? { path } : {});
+            if (observation.kind === 'agent-message' && observation.text && observation.text !== active.lastMessage) {
+                await this.transcript(active, { kind: 'message', at: '', text: observation.text });
+                active.lastMessage = observation.text;
+            } else if (observation.kind === 'command-started' && observation.commandId && observation.command &&
+                !active.transcriptCommands.has(observation.commandId)) {
+                await this.transcript(active, { kind: 'command-start', at: '', commandId: observation.commandId,
+                    command: observation.command, ...(observation.cwd === undefined ? {} : { cwd: observation.cwd }) });
+                active.transcriptCommands.add(observation.commandId);
+                active.lastMessage = undefined;
+            } else if (observation.kind === 'command-completed' && observation.commandId &&
+                active.transcriptCommands.has(observation.commandId)) {
+                const started = active.commands.get(observation.commandId);
+                await this.transcript(active, { kind: 'command-finish', at: '', commandId: observation.commandId,
+                    status: observation.status && observation.status !== 'running' ? observation.status :
+                        observation.exitCode === 0 ? 'completed' : observation.exitCode === undefined ? 'interrupted' : 'failed',
+                    ...(observation.exitCode === undefined ? {} : { exitCode: observation.exitCode }),
+                    ...(started ? { durationMs: Math.min(86_400_000, Math.max(0, Date.now() - started.started)) } : {}),
+                    ...(observation.stdout === undefined ? {} : { stdout: observation.stdout,
+                        stdoutTruncated: observation.stdoutTruncated ?? false }),
+                    ...(observation.stderr === undefined ? {} : { stderr: observation.stderr,
+                        stderrTruncated: observation.stderrTruncated ?? false }) });
+                active.transcriptCommands.delete(observation.commandId);
+                active.lastMessage = undefined;
+            }
             if (observation.kind === 'command-completed' && active.run) {
                 const started = observation.commandId ? active.commands.get(observation.commandId) : undefined;
                 if (observation.commandId) active.commands.delete(observation.commandId);
@@ -217,7 +251,7 @@ export class AgentExecutionRuntime {
         const active: Active = { root, ready: new Promise(resolve => { releaseReady = resolve; }), releaseReady: () => releaseReady(),
             finished: new Promise(resolve => { releaseFinished = resolve; }), releaseFinished: () => releaseFinished(),
             tail: Promise.resolve(), sequence: 0, observations: 0,
-            stopping: false, denied: false, interruptionFailed: false, commands: new Map() };
+            stopping: false, denied: false, interruptionFailed: false, commands: new Map(), transcriptCommands: new Set() };
         this.active.set(root, active);
         try {
             const existing = await this.store.listRuns(root);
@@ -251,6 +285,7 @@ export class AgentExecutionRuntime {
             await this.update(active, run => ({ ...run, status: 'running', startedAt: now,
                 provenance: selected.provenance }));
             await this.event(active, 'status', 'Agent run started', { status: 'running' });
+            await this.transcript(active, { kind: 'marker', at: '', code: 'run-started' });
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
             const request: AgentExecutionRequest = { projectRoot: root, executionRoot: active.workspace.root,
                 grant, taskId: task.id,
@@ -420,6 +455,11 @@ export class AgentExecutionRuntime {
                         error instanceof Error && error.message.includes('Git HEAD changed') ?
                             'Git HEAD changed during AgentRun evidence capture' : 'Git evidence could not be captured';
                 }
+                for (const commandId of active.transcriptCommands) {
+                    await this.transcript(active, { kind: 'command-finish', at: '', commandId, status: 'interrupted' });
+                }
+                active.transcriptCommands.clear();
+                await this.transcript(active, { kind: 'marker', at: '', code: 'run-ended' });
                 await this.update(active, run => ({ ...run, status: finalStatus, endedAt: new Date().toISOString(),
                     ...(evidence ? { finalGit: evidence.final, changedFiles: evidence.changedFiles,
                         changeSummary: evidence.changeSummary } : {}),
@@ -486,6 +526,26 @@ export class AgentExecutionRuntime {
                 sequence: cursor + 1, at: reconciledAt < lastAt ? lastAt : reconciledAt,
                 kind: 'status', status: 'interrupted',
                 summary: 'Agent run interrupted after backend restart' });
+            let transcriptCursor = 0;
+            let transcriptAt = run.startedAt ?? run.createdAt;
+            const unfinished: string[] = [];
+            for (;;) {
+                const page = await this.store.readTranscript(root, run.id, transcriptCursor, 100);
+                for (const entry of page.entries) {
+                    if (entry.kind === 'command' && entry.status === 'running') unfinished.push(entry.commandId);
+                    if (entry.at > transcriptAt) transcriptAt = entry.at;
+                }
+                transcriptCursor = page.nextSequence;
+                if (!page.hasMore) {
+                    if (page.state === 'recorded' && !page.incomplete) {
+                        const at = reconciledAt < transcriptAt ? transcriptAt : reconciledAt;
+                        for (const commandId of unfinished) await this.store.appendTranscript(root, run.id,
+                            { kind: 'command-finish', at, commandId, status: 'interrupted' });
+                        await this.store.appendTranscript(root, run.id, { kind: 'marker', at, code: 'run-ended' });
+                    }
+                    break;
+                }
+            }
         }
     }
 

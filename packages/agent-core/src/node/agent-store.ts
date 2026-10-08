@@ -35,14 +35,16 @@ function checked<T>(value: unknown, parse: (value: unknown) => T): T {
 }
 
 export class AgentStore implements AgentTranscriptStorage {
-    private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence'; id: string }) => void>();
+    private readonly transcriptCache = new Map<string, { identity: string; records: AgentTranscriptRecord[];
+        entries: AgentTranscriptEntry[]; text: string; recorded: boolean }>();
+    private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript'; id: string }) => void>();
 
-    onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence'; id: string }) => void): () => void {
+    onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript'; id: string }) => void): () => void {
         this.listeners.add(listener);
         return () => this.listeners.delete(listener);
     }
 
-    private notify(root: string, kind: 'task' | 'run' | 'event' | 'sequence', id: string): void {
+    private notify(root: string, kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript', id: string): void {
         for (const listener of this.listeners) try { listener(root, { kind, id }); } catch { /* Committed writes stay committed. */ }
     }
 
@@ -180,7 +182,15 @@ export class AgentStore implements AgentTranscriptStorage {
         entries: AgentTranscriptEntry[]; text: string; recorded: boolean }> {
         const dir = await this.runDir(root, runId, false);
         if (!dir || !await this.readRun(root, runId)) throw new Error('Agent run missing');
-        const text = await this.bytes(join(dir, 'transcript.jsonl'), AGENT_TRANSCRIPT_BYTES_LIMIT);
+        const file = join(dir, 'transcript.jsonl');
+        const exists = await this.file(file);
+        const info = exists ? await stat(file) : undefined;
+        if (info && info.size > AGENT_TRANSCRIPT_BYTES_LIMIT) throw new Error('Oversized agent file');
+        const identity = info && `${info.ino}:${info.size}:${info.mtimeMs}:${info.ctimeMs}`;
+        const cached = this.transcriptCache.get(file);
+        if (cached && identity && cached.identity === identity) return cached;
+        this.transcriptCache.delete(file);
+        const text = exists ? await this.bytes(file, AGENT_TRANSCRIPT_BYTES_LIMIT) : undefined;
         if (text === undefined) return { records: [], entries: [], text: '', recorded: false };
         try {
             if (text && !text.endsWith('\n')) throw new Error('Partial transcript');
@@ -214,7 +224,10 @@ export class AgentStore implements AgentTranscriptStorage {
                         ...(item.stderr === undefined ? {} : { stderr: item.stderr, stderrTruncated: item.stderrTruncated }) });
                 } else entries.push(item);
             }
-            return { records, entries, text, recorded: true };
+            const snapshot = { records, entries, text, recorded: true, identity: identity! };
+            this.transcriptCache.set(file, snapshot);
+            if (this.transcriptCache.size > 4) this.transcriptCache.delete(this.transcriptCache.keys().next().value!);
+            return snapshot;
         } catch { throw new Error('Corrupt or unsupported agent transcript'); }
     }
 
@@ -258,7 +271,28 @@ export class AgentStore implements AgentTranscriptStorage {
             const limited = records.length + 2 > AGENT_TRANSCRIPT_ENTRY_LIMIT ||
                 Buffer.byteLength(line) > AGENT_TRANSCRIPT_RECORD_BYTES_LIMIT ||
                 Buffer.byteLength(text) + Buffer.byteLength(line) + Buffer.byteLength(marker) > AGENT_TRANSCRIPT_BYTES_LIMIT;
-            await this.atomicTranscript(join(dir, 'transcript.jsonl'), text + (limited ? marker : line));
+            const file = join(dir, 'transcript.jsonl');
+            await this.atomicTranscript(file, text + (limited ? marker : line));
+            const storedRecord: AgentTranscriptRecord = limited ? { version: 1, runId,
+                sequence: records.length + 1, at: item.at, kind: 'marker', code: 'transcript-incomplete' } : item;
+            const nextEntries = [...(this.transcriptCache.get(file)?.entries ?? [])];
+            if (storedRecord.kind === 'command-finish') {
+                const index = nextEntries.findIndex(entry => entry.kind === 'command' && entry.commandId === storedRecord.commandId);
+                const start = nextEntries[index];
+                if (start?.kind === 'command') nextEntries[index] = Object.freeze({ ...start, status: storedRecord.status,
+                    completedSequence: storedRecord.sequence,
+                    ...(storedRecord.exitCode === undefined ? {} : { exitCode: storedRecord.exitCode }),
+                    ...(storedRecord.durationMs === undefined ? {} : { durationMs: storedRecord.durationMs }),
+                    ...(storedRecord.stdout === undefined ? {} : { stdout: storedRecord.stdout,
+                        stdoutTruncated: storedRecord.stdoutTruncated }),
+                    ...(storedRecord.stderr === undefined ? {} : { stderr: storedRecord.stderr,
+                        stderrTruncated: storedRecord.stderrTruncated }) });
+            } else nextEntries.push(storedRecord);
+            const info = await stat(file);
+            this.transcriptCache.set(file, { identity: `${info.ino}:${info.size}:${info.mtimeMs}:${info.ctimeMs}`,
+                records: [...records, storedRecord], entries: nextEntries, text: text + (limited ? marker : line), recorded: true });
+            if (this.transcriptCache.size > 4) this.transcriptCache.delete(this.transcriptCache.keys().next().value!);
+            this.notify(root, 'transcript', runId);
             return { recorded: !limited, incomplete: limited, sequence: records.length + 1 };
         });
     }

@@ -397,6 +397,9 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     readEvents(handle: string, runId: string, afterSequence: number, limit: number) {
         return this.store.readEvents(this.active(handle), runId, afterSequence, limit);
     }
+    readTranscript(handle: string, runId: string, afterSequence: number, limit: number) {
+        return this.store.readTranscript(this.active(handle), runId, afterSequence, limit);
+    }
     start(handle: string, folderUri: string, taskId: string, grant: ExecutionGrant,
         hostedProjectDataAuthorized: boolean): Promise<AgentRun> {
         if (!this.execution) throw new Error('Agent execution unavailable');

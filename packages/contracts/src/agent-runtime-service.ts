@@ -1,10 +1,10 @@
-import type { AgentModelPolicy, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence,
+import type { AgentModelPolicy, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence, AgentTranscriptEntry,
     CompletionPolicy, ExecutionGrant, StackMode, SequenceStatus } from '@dope/agent-core';
 
 export const agentRuntimeServicePath = '/services/dope/agent-runtime';
 export const AgentRuntimeService = Symbol('AgentRuntimeService');
 
-export interface AgentStoreChange { kind: 'task' | 'run' | 'event' | 'sequence'; id: string }
+export interface AgentStoreChange { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript'; id: string }
 export interface AgentRuntimeClient { notifyAgentStateChanged(change: AgentStoreChange): void }
 export interface DiscoveredTaskStack {
     folderName: string; path: string; mode: StackMode; phase: number;
@@ -37,6 +37,10 @@ export interface AgentRuntimeService {
     checkpointSequence(projectHandle: string, sequenceId: string): Promise<AgentTaskSequence>;
     readEvents(projectHandle: string, runId: string, afterSequence: number, limit: number): Promise<{
         events: AgentRunEvent[]; nextSequence: number; hasMore: boolean;
+    }>;
+    readTranscript(projectHandle: string, runId: string, afterSequence: number, limit: number): Promise<{
+        state: 'recorded' | 'not-recorded'; entries: AgentTranscriptEntry[];
+        nextSequence: number; hasMore: boolean; incomplete: boolean;
     }>;
     start(projectHandle: string, folderUri: string, taskId: string, grant: ExecutionGrant,
         hostedProjectDataAuthorized: boolean): Promise<AgentRun>;
