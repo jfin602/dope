@@ -32,7 +32,7 @@ DEFER
 Phase 8E local agent, Phase 9 sessions and Phase 10 background alignment. No production mutation.
 
 DONE WHEN
-The bounded P10 contract works with truthful focused evidence and the next prompt can build on stable outputs. Record exact changed files, tests and any unresolved risk. The P10 browser/manual gate records final evidence and explicit 8D Green/Not Green without fabricating qualification.
+The exact `0.8.30` candidate has truthful direct GUI, grant, candidate review/validation, restart and affected-map evidence; the final closeout records explicit 8D GREEN / NOT GREEN with every unresolved gap. No next prompt or Phase 8E work is implied.
 
 FINAL RESPONSE
 Report exact version, implemented contract boundaries, focused evidence and residuals.

@@ -6,7 +6,7 @@ MODEL / REASONING / USAGE
 
 VERSIONING
 - The assigned project version is `0.8.21`.
-- Phase 8 continuation from Pbaseline `0.8.20`; no unrelated package/lockfile churn.
+- Phase 8D continuation from baseline `0.8.20`; no unrelated package/lockfile churn.
 
 GOAL
 Define provider-independent Phase 8D WorkItem ownership/linkage and durable review/action/steering DTO contracts, with strict parser/migration rules before wiring execution.
