@@ -382,6 +382,8 @@ export class AgentExecutionRuntime {
                 throw new Error('A mutation run requires restart reconciliation before another start');
             const task = await this.store.readTask(root, taskId);
             if (!task) throw new Error('Persisted AgentTask required');
+            if (task.origin.kind === 'work-item' && existing.some(run => run.taskId === task.id))
+                throw new Error('WorkItem AgentTask already has an AgentRun; launch a new task for another attempt');
             if (!(sequence ? task.origin.kind === 'phase-stack' :
                 task.origin.kind === 'direct' || task.origin.kind === 'work-item') ||
                 task.authority.profile !== 'phase-8b-project')

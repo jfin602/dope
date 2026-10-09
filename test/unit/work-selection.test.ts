@@ -86,3 +86,67 @@ test('Work discovers default Prompt Stacks and reopens completed history without
     assert.equal(opens, 0);
     assert.equal(creates, 0);
 });
+
+test('selected saved WorkItem task starts once with its exact ID, accepted grant and hosted consent', async () => {
+    const saved: any = { id: 'saved-work', createdAt: '2026-10-09T12:00:00Z', objective: 'Implement',
+        projectId: 'planning-project', planningMapId: 'map', projectRoot: '.',
+        authority: { profile: 'phase-8b-project' }, reviewPolicy: { kind: 'required' },
+        origin: { kind: 'work-item', projectId: 'planning-project', planningMapId: 'map' },
+        completion: { validation: [{ kind: 'test', label: 'Required', command: 'npm test' }], requireValidationPass: true } };
+    const runs: any[] = [];
+    const starts: unknown[][] = [];
+    let creates = 0;
+    let resolveStart!: (run: any) => void;
+    const runtime = { async readTask(_handle: string, id: string) { return id === saved.id ? saved : undefined; },
+        async listRuns() { return [...runs]; }, async listTasks() { return [saved]; },
+        async codingAgentReady() { return true; },
+        async createTask() { creates++; },
+        async start(...args: unknown[]) { starts.push(args);
+            const run = await new Promise<any>(resolve => { resolveStart = resolve; });
+            runs.push(run); return run; },
+        async readRun(_handle: string, id: string) { return runs.find(run => run.id === id); },
+        async readSteering() { return undefined; }, async listActions() { return []; },
+        async readMapImpact() { return undefined; },
+        async readTranscript() { return { state: 'not-recorded', entries: [], nextSequence: 0,
+            hasMore: false, incomplete: false }; } } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {});
+    controller.project = 'file:///project'; controller.handle = 'handle'; controller.phase.codingAgentReady = true;
+    await controller.select({ kind: 'task', id: saved.id });
+    assert.match(controller.startBlockReason, /accept the fixed project execution grant/);
+    controller.acceptStartGrant(true);
+    assert.match(controller.startBlockReason, /Authorize sending this project data/);
+    controller.authorizeHostedProjectData(true);
+    assert.equal(controller.startBlockReason, '');
+    const starting = controller.startSelectedWorkItemTask();
+    await Promise.resolve();
+    assert.equal(controller.startBusy, true);
+    await controller.startSelectedWorkItemTask();
+    assert.equal(starts.length, 1);
+    const run = { id: 'run', taskId: saved.id, projectId: saved.projectId, status: 'running' };
+    resolveStart(run);
+    assert.equal((await starting)?.id, run.id);
+    assert.deepEqual(starts[0]?.slice(0, 3), ['handle', 'file:///project', saved.id]);
+    const grant = starts[0]?.[3] as { taskId: string; acceptedBy: string; permissions: Record<string, boolean> };
+    assert.equal(grant.taskId, saved.id); assert.equal(grant.acceptedBy, 'developer');
+    assert.equal(grant.permissions['project-modify'], true);
+    for (const denied of ['network', 'secrets', 'outside-root', 'git-write', 'project-delete', 'project-rename'])
+        assert.equal(grant.permissions[denied], false);
+    assert.equal(starts[0]?.[4], true); assert.equal(creates, 0);
+    assert.equal(controller.selectedRun?.id, run.id);
+    assert.equal(controller.selectedTask?.id, saved.id);
+    assert.equal(controller.acceptedStartGrant, false);
+    await controller.refresh();
+    await controller.select({ kind: 'task', id: saved.id });
+    controller.acceptStartGrant(true); controller.authorizeHostedProjectData(true);
+    assert.match(controller.startBlockReason, /already has a run/);
+    await controller.startSelectedWorkItemTask();
+    assert.equal(starts.length, 1);
+    runs.length = 0;
+    saved.completion = { validation: [], requireValidationPass: false };
+    await controller.refresh();
+    await controller.select({ kind: 'task', id: saved.id });
+    controller.acceptStartGrant(true); controller.authorizeHostedProjectData(true);
+    assert.match(controller.startBlockReason, /launch a new task with an approved validation command/);
+    await controller.startSelectedWorkItemTask();
+    assert.equal(starts.length, 1);
+});
