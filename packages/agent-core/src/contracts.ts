@@ -59,6 +59,10 @@ export interface CommandEvidence {
 export interface CandidateEffect { kind: 'create' | 'modify' | 'delete' | 'rename'; path: string;
     previousPath?: string; before?: string; after?: string }
 export interface CandidateDelta { version: typeof AGENT_SCHEMA_VERSION; effects: CandidateEffect[] }
+export interface CandidateReview {
+    state: 'ready'; candidateFingerprint: string; diff: string; diffTruncated: boolean;
+    changedPaths: string[]; validation: ValidationResult[];
+}
 export interface AuthorityDecision { allowed: boolean; blocked: { kind: CandidateEffect['kind']; path: string }[] }
 export interface AgentRun {
     version: typeof AGENT_SCHEMA_VERSION; id: string; taskId: string; status: AgentRunStatus;
@@ -70,6 +74,7 @@ export interface AgentRun {
     validationResults: ValidationResult[]; changeSummary?: ChangeSummary;
     validationBasis?: 'execution-workspace'; candidateDelta?: CandidateDelta;
     candidateFingerprint?: string;
+    candidateReview?: CandidateReview;
     authorityDecision?: AuthorityDecision; appliedFiles?: string[];
     recovery?: { adapterId: string; handle: string }; outcome?: { code: 'authority-denied' | 'provider-error' |
         'validation-failed' | 'capacity-exhausted' | 'cancelled' | 'interrupted' | 'other'; summary: string };
@@ -338,7 +343,7 @@ export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
         'projectRoot', 'projectId', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis',
         'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome',
-        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries']);
+        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'candidateReview', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
     const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
@@ -350,6 +355,17 @@ export function parseAgentRun(value: unknown): AgentRun {
     const changedFiles = array(x.changedFiles, 500, item => projectPath(item));
     if (new Set(changedFiles).size !== changedFiles.length) throw new Error('Duplicate changed file');
     const candidateDelta = x.candidateDelta === undefined ? undefined : parseCandidateDelta(x.candidateDelta);
+    const review = x.candidateReview === undefined ? undefined : record(x.candidateReview,
+        ['state', 'candidateFingerprint', 'diff', 'diffTruncated', 'changedPaths', 'validation']);
+    if (review && (review.state !== 'ready' || !candidateDelta || review.candidateFingerprint !== x.candidateFingerprint ||
+        status !== 'blocked' || x.authorityDecision !== undefined || x.appliedFiles !== undefined ||
+        !Array.isArray(review.changedPaths) ||
+        JSON.stringify(review.changedPaths) !== JSON.stringify(candidateDelta.effects.map(effect => effect.path)) ||
+        !Array.isArray(review.validation) || review.validation.some(item =>
+            !x.validationResults || !(x.validationResults as unknown[]).some(result => JSON.stringify(result) === JSON.stringify(item)) ||
+            (item as ValidationResult).status !== 'passed' || (item as ValidationResult).owner !== 'dope' ||
+            (item as ValidationResult).candidateFingerprint !== x.candidateFingerprint)))
+        throw new Error('Invalid candidate review hold');
     const authorityDecision = x.authorityDecision === undefined ? undefined : parseAuthorityDecision(x.authorityDecision);
     const appliedFiles = x.appliedFiles === undefined ? undefined : array(x.appliedFiles, 500, projectPath);
     if (authorityDecision && !candidateDelta || appliedFiles && !authorityDecision ||
@@ -387,6 +403,12 @@ export function parseAgentRun(value: unknown): AgentRun {
         ...(x.validationBasis === undefined ? {} : { validationBasis: select(x.validationBasis, ['execution-workspace'] as const) }),
         ...(candidateDelta === undefined ? {} : { candidateDelta }),
         ...(x.candidateFingerprint === undefined ? {} : { candidateFingerprint: hash(x.candidateFingerprint) }),
+        ...(review === undefined ? {} : { candidateReview: {
+            state: 'ready' as const, candidateFingerprint: hash(review.candidateFingerprint),
+            diff: typeof review.diff === 'string' && review.diff.length <= 48_000 ? review.diff : (() => { throw new Error('Invalid review diff'); })(),
+            diffTruncated: bool(review.diffTruncated),
+            changedPaths: array(review.changedPaths, 500, projectPath),
+            validation: array(review.validation, 24, parseValidationResult) } }),
         ...(authorityDecision === undefined ? {} : { authorityDecision }),
         ...(appliedFiles === undefined ? {} : { appliedFiles }),
         ...(recovery === undefined ? {} : { recovery: { adapterId: id(recovery.adapterId),

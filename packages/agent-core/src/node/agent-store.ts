@@ -1,9 +1,9 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import { lstat, mkdir, open, readdir, realpath, rename, rm, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AgentRun, AgentRunEvent, AgentTask, id, integer, parseAgentRun, parseAgentRunEvent, parseAgentTask } from '../contracts';
+import { AgentRun, AgentRunEvent, AgentTask, CandidateDelta, id, integer, parseAgentRun, parseAgentRunEvent, parseAgentTask, projectPath } from '../contracts';
 import { canTransitionAgentRun } from '../state';
 import { AgentTaskSequence, canTransitionSequence, parseAgentTaskSequence } from '../sequence';
 import { AGENT_TRANSCRIPT_BYTES_LIMIT, AGENT_TRANSCRIPT_ENTRY_LIMIT, AGENT_TRANSCRIPT_PAGE_LIMIT,
@@ -113,6 +113,49 @@ export class AgentStore implements AgentTranscriptStorage {
         if (!collection) return undefined;
         const path = join(collection, id(runId));
         return await this.directory(path, create) ? path : undefined;
+    }
+
+    /** Keep the frozen changed bytes beneath the run; a later review decision can verify them. */
+    async saveReviewCandidate(root: string, runId: string, candidateRoot: string, delta: CandidateDelta): Promise<void> {
+        const dir = await this.runDir(root, runId, false);
+        if (!dir) throw new Error('Agent run missing');
+        const target = join(dir, 'review-candidate');
+        if (await this.directory(target, false)) throw new Error('Review candidate already exists');
+        await this.directory(target, true);
+        let total = 0;
+        try {
+            for (const effect of delta.effects) {
+                if (effect.kind !== 'create' && effect.kind !== 'modify') continue;
+                const path = projectPath(effect.path);
+                await this.projectPath(candidateRoot, path);
+                const source = await open(join(candidateRoot, path), constants.O_RDONLY | constants.O_NOFOLLOW);
+                let bytes: Buffer;
+                try {
+                    const info = await source.stat();
+                    if (!info.isFile() || info.size > 32 * 1024 * 1024 || (total += info.size) > 64 * 1024 * 1024)
+                        throw new Error('Review candidate exceeds size limit');
+                    bytes = await source.readFile();
+                } finally { await source.close(); }
+                if (createHash('sha256').update(bytes).digest('hex') !== effect.after)
+                    throw new Error('Frozen review candidate changed');
+                const parts = path.split('/');
+                const leaf = parts.pop()!;
+                let parent = target;
+                for (const part of parts) {
+                    parent = join(parent, part);
+                    await this.directory(parent, true);
+                }
+                const file = await open(join(parent, leaf), constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+                try { await file.writeFile(bytes); await file.sync(); } finally { await file.close(); }
+            }
+        } catch (error) { await rm(target, { recursive: true, force: true }); throw error; }
+    }
+
+    async reviewCandidateRoot(root: string, runId: string): Promise<string | undefined> {
+        const dir = await this.runDir(root, runId, false);
+        if (!dir) return undefined;
+        const path = join(dir, 'review-candidate');
+        return await this.directory(path, false) ? path : undefined;
     }
 
     private async file(file: string): Promise<boolean> {
@@ -481,6 +524,7 @@ export class AgentStore implements AgentTranscriptStorage {
                 current.finalGit && !same(current.finalGit, next.finalGit) ||
                 current.candidateDelta && !same(current.candidateDelta, next.candidateDelta) ||
                 current.candidateFingerprint && current.candidateFingerprint !== next.candidateFingerprint ||
+                current.candidateReview && !same(current.candidateReview, next.candidateReview) ||
                 current.authorityDecision && !same(current.authorityDecision, next.authorityDecision) ||
                 current.appliedFiles && !same(current.appliedFiles, next.appliedFiles) ||
                 current.validationBasis && current.validationBasis !== next.validationBasis ||

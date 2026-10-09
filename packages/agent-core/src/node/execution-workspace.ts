@@ -304,6 +304,51 @@ export class ExecutionWorkspace {
         return fingerprintCandidate(this.root);
     }
 
+    /** Bounded source-backed preview. Full changed bytes are stored separately for review. */
+    async reviewDiff(delta: CandidateDelta): Promise<{ diff: string; diffTruncated: boolean }> {
+        let diff = '';
+        let diffTruncated = false;
+        const read = async (root: string, path: string): Promise<string | undefined> => {
+            const target = await safeTarget(root, path, 'file', true);
+            const handle = await open(target, constants.O_RDONLY | constants.O_NOFOLLOW);
+            try {
+                const info = await handle.stat();
+                if (!info.isFile() || info.size > 8_000) return undefined;
+                const bytes = await handle.readFile();
+                if (bytes.includes(0)) return undefined;
+                return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+            } catch { return undefined; }
+            finally { await handle.close(); }
+        };
+        for (const effect of delta.effects) {
+            const before = effect.before ? await read(this.projectRoot, effect.path) : '';
+            const after = effect.after ? await read(this.root, effect.path) : '';
+            let entry = `diff --git a/${effect.path} b/${effect.path}\n`;
+            if (before === undefined || after === undefined) {
+                entry += 'Binary or large file; inspect the changed path and hashes.\n';
+                diffTruncated = true;
+            } else {
+                const oldLines = before ? before.replace(/\n$/u, '').split('\n') : [];
+                const newLines = after ? after.replace(/\n$/u, '').split('\n') : [];
+                let prefix = 0;
+                while (prefix < oldLines.length && prefix < newLines.length && oldLines[prefix] === newLines[prefix]) prefix++;
+                let suffix = 0;
+                while (suffix < oldLines.length - prefix && suffix < newLines.length - prefix &&
+                    oldLines[oldLines.length - suffix - 1] === newLines[newLines.length - suffix - 1]) suffix++;
+                const removed = oldLines.slice(prefix, oldLines.length - suffix);
+                const added = newLines.slice(prefix, newLines.length - suffix);
+                entry += `--- ${effect.before ? `a/${effect.path}` : '(absent)'}\n` +
+                    `+++ ${effect.after ? `b/${effect.path}` : '(absent)'}\n` +
+                    `@@ -${prefix + 1},${removed.length} +${prefix + 1},${added.length} @@\n` +
+                    removed.map(line => `-${line}\n`).join('') + added.map(line => `+${line}\n`).join('');
+                if (!removed.length && !added.length && before !== after) entry += 'Final newline changed.\n';
+            }
+            if (diff.length + entry.length > 40_000) { diffTruncated = true; break; }
+            diff += entry;
+        }
+        return { diff, diffTruncated };
+    }
+
     /** Check the *whole* delta before applying any file. Model events are never consulted. */
     async promote(grant: ExecutionGrant, delta: CandidateDelta): Promise<{
         decision: AuthorityDecision; applied: string[] }> {

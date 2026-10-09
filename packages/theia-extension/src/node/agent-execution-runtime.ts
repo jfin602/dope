@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { AGENT_SCHEMA_VERSION, isModelCapacityFailure, parseExecutionGrant, projectPath } from '@dope/agent-core';
+import { AGENT_SCHEMA_VERSION, checkEffect, isModelCapacityFailure, parseExecutionGrant, projectPath } from '@dope/agent-core';
 import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentModelPolicy, AgentRun,
     AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance, AgentExecutionRequest, AgentTranscriptInput } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
@@ -49,8 +49,9 @@ export class AgentExecutionRuntime {
         const active = this.active.get(root);
         if (active?.run?.id === runId) await active.finished;
         const run = await this.store.readRun(root, runId);
-        if (!run || !['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status))
-            throw new Error('Agent run did not reach a durable terminal state');
+        if (!run || !(['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status) ||
+            run.status === 'blocked' && run.candidateReview?.state === 'ready'))
+            throw new Error('Agent run did not reach a durable terminal state or review hold');
         return run;
     }
 
@@ -261,7 +262,9 @@ export class AgentExecutionRuntime {
                 throw new Error('A mutation run requires restart reconciliation before another start');
             const task = await this.store.readTask(root, taskId);
             if (!task) throw new Error('Persisted AgentTask required');
-            if (task.origin.kind !== (sequence ? 'phase-stack' : 'direct') || task.authority.profile !== 'phase-8b-project')
+            if (!(sequence ? task.origin.kind === 'phase-stack' :
+                task.origin.kind === 'direct' || task.origin.kind === 'work-item') ||
+                task.authority.profile !== 'phase-8b-project')
                 throw new Error('AgentTask origin does not match execution path');
             const grant = parseExecutionGrant(offeredGrant);
             if (grant.taskId !== task.id || grant.projectRoot !== task.projectRoot ||
@@ -369,13 +372,17 @@ export class AgentExecutionRuntime {
         let promotionError = false;
         let promotionSucceeded = false;
         let candidateChanged = false;
+        let reviewHoldError = false;
+        let reviewScopeDenied = false;
         if (active.workspace && active.run) {
             try {
                 const delta = await active.workspace.delta();
                 const fingerprint = await active.workspace.fingerprint();
                 await this.serial(active, () => this.update(active, run => ({ ...run,
                     validationBasis: 'execution-workspace', candidateDelta: delta, candidateFingerprint: fingerprint })));
-                if (!failed && !active.stopping && !active.denied && task?.completion.requireValidationPass) {
+                const reviewRequired = task?.origin.kind === 'work-item' && task.reviewPolicy?.kind === 'required';
+                if (!failed && !active.stopping && !active.denied &&
+                    (task?.completion.requireValidationPass || reviewRequired)) {
                     active.validationAbort = new AbortController();
                     for (const target of task.completion.validation) {
                         if (active.stopping || active.validationAbort.signal.aborted) break;
@@ -391,12 +398,47 @@ export class AgentExecutionRuntime {
                     }
                     active.validationAbort = undefined;
                 }
-                validationMissing = Boolean(task?.completion.requireValidationPass && task.completion.validation.some(target =>
+                validationMissing = Boolean((task?.completion.requireValidationPass || reviewRequired) && task?.completion.validation.some(target =>
                     active.run?.validationResults.find(result => result.owner === 'dope' &&
                         result.kind === target.kind && result.label === target.label)?.status !== 'passed'));
                 if (!failed && !active.stopping && !active.denied && !validationMissing && active.grant) {
                     if (await active.workspace.fingerprint() !== fingerprint)
                         throw new Error('Frozen candidate changed after validation');
+                    if (reviewRequired) {
+                        const authoritative = await captureGitBasis(active.root);
+                        if (!authoritative.clean || authoritative.head !== active.workspace.head)
+                            throw new Error('Authoritative project changed before review hold');
+                        const scope = task.origin.kind === 'work-item' ? task.origin.scope : undefined;
+                        const within = (parent: string, child: string): boolean =>
+                            child === parent || child.startsWith(`${parent}/`);
+                        if (!scope || delta.effects.some(effect =>
+                            !['create', 'modify'].includes(effect.kind) ||
+                            effect.path.split('/').some(part => ['.git', '.dope', '.codex', '.ssh', '.aws', '.npmrc', '.yarnrc', '.env'].includes(part) ||
+                                part.startsWith('.env.') || part.endsWith('.pem') || part.endsWith('.key')) ||
+                            !scope.delegablePaths.some(path => within(path, effect.path)) ||
+                            scope.humanReservedPaths.some(path => within(path, effect.path) || within(effect.path, path)) ||
+                            !checkEffect(active.grant!, { kind: `project-${effect.kind}`, scope: 'project', path: effect.path }).allowed))
+                            throw new Error('Review candidate exceeds delegation or execution authority');
+                        const preview = await active.workspace.reviewDiff(delta);
+                        await this.store.saveReviewCandidate(active.root, active.run.id, active.workspace.root, delta);
+                        if (await active.workspace.fingerprint() !== fingerprint)
+                            throw new Error('Frozen candidate changed after validation');
+                        const afterSnapshot = await captureGitBasis(active.root);
+                        if (!afterSnapshot.clean || afterSnapshot.head !== active.workspace.head)
+                            throw new Error('Authoritative project changed before review hold');
+                        await this.serial(active, async () => {
+                            await this.update(active, run => ({ ...run, status: 'blocked',
+                                candidateReview: { state: 'ready', candidateFingerprint: fingerprint,
+                                    ...preview, changedPaths: delta.effects.map(effect => effect.path),
+                                    validation: run.validationResults.filter(result => result.owner === 'dope') } }));
+                            await this.event(active, 'status', 'Candidate ready for developer review', { status: 'blocked' });
+                            await this.transcript(active, { kind: 'marker', at: '', code: 'run-ended' });
+                        });
+                        if (this.active.get(active.root) === active) this.active.delete(active.root);
+                        await active.workspace.dispose();
+                        active.releaseFinished();
+                        return;
+                    }
                     const result = await active.workspace.promote(active.grant, delta);
                     await this.serial(active, () => this.update(active, run => ({ ...run,
                         authorityDecision: result.decision, appliedFiles: result.applied })));
@@ -406,21 +448,27 @@ export class AgentExecutionRuntime {
                 }
             } catch (error) {
                 promotionBlocked = true;
-                promotionError = true;
+                reviewHoldError = task?.origin.kind === 'work-item' && task.reviewPolicy?.kind === 'required';
+                reviewScopeDenied = reviewHoldError && error instanceof Error &&
+                    error.message.includes('delegation or execution authority');
+                promotionError = !reviewScopeDenied;
                 if (error instanceof Error && error.message.includes('Frozen candidate')) {
                     validationMissing = true;
                     candidateChanged = true;
                 }
                 if (error instanceof PromotionFailure) await this.serial(active, () => this.update(active, run => ({ ...run,
                     authorityDecision: { allowed: true, blocked: [] }, appliedFiles: error.appliedFiles })));
-                await this.event(active, 'authority', 'Candidate classification or promotion failed');
+                await this.event(active, 'authority', reviewHoldError ? 'Candidate review hold failed' :
+                    'Candidate classification or promotion failed');
             }
         }
         const status = active.denied || validationMissing || promotionBlocked ? 'failed' : promotionSucceeded ? 'completed' : active.stopping ?
             active.interruptionFailed ? 'interrupted' : 'cancelled' : failed ? 'failed' : 'completed';
-        const code = active.denied ? 'authority-denied' : candidateChanged || validationMissing ? 'validation-failed' : promotionError ? 'other' : promotionBlocked ? 'authority-denied' : promotionSucceeded ? undefined : active.stopping ?
+        const code = active.denied || reviewScopeDenied ? 'authority-denied' : candidateChanged || validationMissing ? 'validation-failed' : promotionError ? 'other' : promotionBlocked ? 'authority-denied' : promotionSucceeded ? undefined : active.stopping ?
             active.interruptionFailed ? 'interrupted' : 'cancelled' : capacityExhausted ? 'capacity-exhausted' : failed ? 'provider-error' : undefined;
         await this.finish(active, status, code, candidateChanged ? 'Frozen candidate changed after validation' :
+            reviewHoldError ? reviewScopeDenied ? 'Candidate exceeds delegation or execution authority' :
+                'Candidate review hold failed; inspect run evidence' :
             promotionError ? 'Candidate promotion failed; inspect applied files' :
             active.denied || promotionBlocked ? 'Execution authority denied' :
             validationMissing ? 'Required validation did not pass' :
@@ -507,7 +555,9 @@ export class AgentExecutionRuntime {
     async reconcile(root: string): Promise<void> {
         if (this.active.has(root)) return;
         for (const run of await this.store.listRuns(root)) {
-            if (!['running', 'cancelling', 'blocked'].includes(run.status)) continue;
+            if (!['running', 'cancelling', 'blocked'].includes(run.status) ||
+                run.status === 'blocked' && run.candidateReview?.state === 'ready' &&
+                await this.store.reviewCandidateRoot(root, run.id)) continue;
             const evidence = run.basis ? await captureGitFinal(root, run.basis).catch(() => undefined) : undefined;
             const reconciledAt = new Date().toISOString();
             const next = await this.store.updateRun(root, run, { ...run, status: 'interrupted',
