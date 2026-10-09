@@ -8,6 +8,7 @@ import { canTransitionAgentRun } from '../state';
 import { AgentTaskSequence, canTransitionSequence, parseAgentTaskSequence } from '../sequence';
 import { ProposedAction, parseProposedAction } from '../proposed-action';
 import { AgentSteeringRequest, AgentSteeringState, parseAgentSteeringRequest, parseAgentSteeringState } from '../steering';
+import { AgentMapImpact, parseAgentMapImpact } from '../map-impact';
 import { AGENT_TRANSCRIPT_BYTES_LIMIT, AGENT_TRANSCRIPT_ENTRY_LIMIT, AGENT_TRANSCRIPT_PAGE_LIMIT,
     AGENT_TRANSCRIPT_RECORD_BYTES_LIMIT, AgentTranscriptEntry, AgentTranscriptInput, AgentTranscriptRecord, AgentTranscriptStorage,
     parseAgentTranscriptRecord, prepareAgentTranscriptRecord } from '../transcript';
@@ -39,14 +40,14 @@ function checked<T>(value: unknown, parse: (value: unknown) => T): T {
 export class AgentStore implements AgentTranscriptStorage {
     private readonly transcriptCache = new Map<string, { identity: string; records: AgentTranscriptRecord[];
         entries: AgentTranscriptEntry[]; text: string; recorded: boolean }>();
-    private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering'; id: string }) => void>();
+    private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact'; id: string }) => void>();
 
-    onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering'; id: string }) => void): () => void {
+    onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact'; id: string }) => void): () => void {
         this.listeners.add(listener);
         return () => this.listeners.delete(listener);
     }
 
-    private notify(root: string, kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering', id: string): void {
+    private notify(root: string, kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact', id: string): void {
         for (const listener of this.listeners) try { listener(root, { kind, id }); } catch { /* Committed writes stay committed. */ }
     }
 
@@ -526,6 +527,45 @@ export class AgentStore implements AgentTranscriptStorage {
                 throw new Error('Corrupt agent run/task relationship');
         }
         return run;
+    }
+
+    async readMapImpact(root: string, runId: string): Promise<AgentMapImpact | undefined> {
+        const dir = await this.runDir(root, runId, false);
+        const impact = dir ? await this.json(join(dir, 'map-impact.json'), parseAgentMapImpact) : undefined;
+        if (impact) {
+            const run = await this.readRun(root, runId);
+            if (!run || impact.runId !== run.id || impact.taskId !== run.taskId ||
+                impact.projectId !== run.projectId || impact.decisionFingerprint !== run.candidateFingerprint ||
+                !same(impact.reviewDecision, run.reviewDecision && { kind: run.reviewDecision.kind, revision: run.reviewDecision.revision }) ||
+                !run.authorityDecision?.allowed || !run.appliedFiles ||
+                !same(impact.paths.map(item => item.path), run.appliedFiles) ||
+                impact.paths.some(item => run.candidateDelta?.effects.find(effect => effect.path === item.path)?.after !== item.sourceFingerprint))
+                throw new Error('Corrupt map impact source identity');
+        }
+        return impact;
+    }
+
+    async writeMapImpact(root: string, value: AgentMapImpact): Promise<AgentMapImpact> {
+        const impact = checked(value, parseAgentMapImpact);
+        const dir = await this.runDir(root, impact.runId, false);
+        if (!dir) throw new Error('Map impact run missing');
+        await this.locked(dir, async () => {
+            const existing = await this.readMapImpact(root, impact.runId);
+            if (existing) {
+                if (!same(existing, impact)) throw new Error('Map impact already recorded');
+                return;
+            }
+            const run = await this.readRun(root, impact.runId);
+            if (!run || run.taskId !== impact.taskId || run.projectId !== impact.projectId ||
+                run.candidateFingerprint !== impact.decisionFingerprint || !run.authorityDecision?.allowed ||
+                !same(impact.reviewDecision, run.reviewDecision && { kind: run.reviewDecision.kind, revision: run.reviewDecision.revision }) ||
+                !run.appliedFiles || !same(run.appliedFiles, impact.paths.map(item => item.path)) ||
+                impact.paths.some(item => run.candidateDelta?.effects.find(effect => effect.path === item.path)?.after !== item.sourceFingerprint))
+                throw new Error('Map impact requires authoritative promotion');
+            await this.atomic(join(dir, 'map-impact.json'), impact);
+        });
+        this.notify(root, 'map-impact', impact.runId);
+        return impact;
     }
 
     async readSteering(root: string, runId: string): Promise<AgentSteeringState | undefined> {

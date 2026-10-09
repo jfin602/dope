@@ -150,6 +150,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     readTask(handle: string, taskId: string): Promise<AgentTask | undefined> { return this.store.readTask(this.active(handle), taskId); }
     listTasks(handle: string): Promise<AgentTask[]> { return this.store.listTasks(this.active(handle)); }
     readRun(handle: string, runId: string): Promise<AgentRun | undefined> { return this.store.readRun(this.active(handle), runId); }
+    readMapImpact(handle: string, runId: string) { return this.store.readMapImpact(this.active(handle), runId); }
     readSteering(handle: string, runId: string): Promise<AgentSteeringState | undefined> {
         return this.store.readSteering(this.active(handle), runId);
     }

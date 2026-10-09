@@ -7,3 +7,4 @@ export * from './execution';
 export * from './sequence';
 export * from './capacity';
 export * from './transcript';
+export * from './map-impact';

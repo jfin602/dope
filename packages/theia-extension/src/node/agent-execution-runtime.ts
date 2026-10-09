@@ -10,6 +10,8 @@ import { AcceptedDirtyBasis, assertDirtyBasis } from '@dope/agent-core/lib/node/
 import type { AIInventoryController } from './ai-registry-backend';
 import type { AIRoleRoutingService } from './ai-role-routing';
 import { futureFeatureRoleRequest } from '@dope/ai';
+import type { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
+import { appliedMapImpact } from './agent-map-impact';
 
 interface Active {
     root: string; run?: AgentRun; handle?: AgentExecutionHandle; workspace?: ExecutionWorkspace; grant?: ExecutionGrant;
@@ -43,7 +45,13 @@ export class AgentExecutionRuntime {
         private readonly inventory: Pick<AIInventoryController, 'inventory'>,
         private readonly adapters: ReadonlyMap<string, AgentExecutionAdapter>,
         private readonly capacityRetryDelayMs = 20_000,
-        private readonly validationRunner = new CandidateValidationRunner()) {}
+        private readonly validationRunner = new CandidateValidationRunner(),
+        private readonly mapIndex?: Pick<SoftwareMapIndex, 'status' | 'snapshot'>) {}
+
+    private async recordMapImpact(root: string, run: AgentRun): Promise<void> {
+        if (run.authorityDecision?.allowed && run.appliedFiles?.length && !await this.store.readMapImpact(root, run.id))
+            await this.store.writeMapImpact(root, appliedMapImpact(run, this.mapIndex, root));
+    }
 
     activeRunId(root: string): string | undefined { return this.active.get(root)?.run?.id; }
     private async recordBlockedEffects(active: Active, effects: { kind: 'create' | 'modify' | 'delete' | 'rename'; path: string }[],
@@ -152,13 +160,15 @@ export class AgentExecutionRuntime {
                 outcome = { code: 'other', summary: 'Git evidence changed or could not be captured after review' };
             }
             const endedAt = new Date().toISOString();
-            return this.store.updateRun(root, claimed, { ...claimed, status,
+            const decided = await this.store.updateRun(root, claimed, { ...claimed, status,
                 endedAt: endedAt < run.startedAt! ? run.startedAt : endedAt,
                 ...(authorityDecision ? { authorityDecision } : {}),
                 ...(appliedFiles ? { appliedFiles } : {}),
                 ...(evidence ? { finalGit: evidence.final, changedFiles: evidence.changedFiles,
                     changeSummary: evidence.changeSummary } : {}),
                 ...(outcome ? { outcome } : {}) });
+            await this.recordMapImpact(root, decided);
+            return decided;
         } finally {
             await workspace?.dispose();
             this.reviewDecisions.delete(root);
@@ -633,6 +643,7 @@ export class AgentExecutionRuntime {
                     ...(evidence ? { finalGit: evidence.final, changedFiles: evidence.changedFiles,
                         changeSummary: evidence.changeSummary } : {}),
                     ...(finalCode ? { outcome: { code: finalCode, summary: finalSummary } } : {}) }));
+                await this.recordMapImpact(active.root, active.run!);
                 if (this.active.get(active.root) === active) this.active.delete(active.root);
                 await this.event(active, 'status', finalSummary, { status: finalStatus });
             });

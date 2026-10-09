@@ -51,7 +51,8 @@ export default new ContainerModule(bind => {
     bind(AgentExecutionRuntime).toDynamicValue(context => new AgentExecutionRuntime(
         context.container.get(AgentStore), context.container.get(AIRoleRoutingService),
         context.container.get(AIInventoryController),
-        new Map([['codex', context.container.get(CodexAgentExecutionAdapter)]]))).inSingletonScope();
+        new Map([['codex', context.container.get(CodexAgentExecutionAdapter)]]), undefined, undefined,
+        context.container.get(SoftwareMapIndex))).inSingletonScope();
     bind(BackendApplicationContribution).toDynamicValue(context => ({
         onStop: () => context.container.get(AgentExecutionRuntime).dispose()
     })).inSingletonScope();

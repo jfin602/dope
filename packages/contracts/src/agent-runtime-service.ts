@@ -1,11 +1,11 @@
-import type { AgentModelPolicy, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence, AgentTranscriptEntry, ProposedAction,
+import type { AgentModelPolicy, AgentMapImpact, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence, AgentTranscriptEntry, ProposedAction,
     AgentSteeringRequest, AgentSteeringState,
     CompletionPolicy, ExecutionControls, ExecutionGrant, StackMode, SequenceStatus } from '@dope/agent-core';
 
 export const agentRuntimeServicePath = '/services/dope/agent-runtime';
 export const AgentRuntimeService = Symbol('AgentRuntimeService');
 
-export interface AgentStoreChange { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering'; id: string }
+export interface AgentStoreChange { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact'; id: string }
 export interface AgentRuntimeClient { notifyAgentStateChanged(change: AgentStoreChange): void }
 export interface DiscoveredTaskStack {
     folderName: string; path: string; mode: StackMode; phase: number;
@@ -27,6 +27,7 @@ export interface AgentRuntimeService {
     readTask(projectHandle: string, taskId: string): Promise<AgentTask | undefined>;
     listTasks(projectHandle: string): Promise<AgentTask[]>;
     readRun(projectHandle: string, runId: string): Promise<AgentRun | undefined>;
+    readMapImpact(projectHandle: string, runId: string): Promise<AgentMapImpact | undefined>;
     readSteering(projectHandle: string, runId: string): Promise<AgentSteeringState | undefined>;
     requestSteering(projectHandle: string, taskId: string, runId: string, expectedRevision: number,
         request: AgentSteeringRequest): Promise<AgentSteeringState>;
