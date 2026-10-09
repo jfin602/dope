@@ -300,6 +300,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (work) header.append(this.button('Refresh Work', () => {
             if (work.kind === 'sequence') {
                 void controller?.phase.refresh(); void controller?.refresh();
+            } else if (work.kind === 'task') {
+                void controller?.phase.refresh().then(() => controller.select(work));
             } else void controller?.select(work);
         }));
         this.content.append(header);
@@ -674,8 +676,52 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         'dope-work-system' : 'dope-work-system dope-work-warning';
                     status.textContent = item.textContent; scroll.append(status); }
                 if (diagnostics.children.length > 1) scroll.append(diagnostics);
-            } else if (work.kind === 'task' && controller.selectedTask?.id === work.id)
-                detail(controller.selectedTask.instructions);
+            } else if (work.kind === 'task' && controller.selectedTask?.id === work.id) {
+                const task = controller.selectedTask;
+                detail(task.instructions);
+                if (task.origin.kind === 'work-item') {
+                    const section = document.createElement('section'); section.className = 'dope-work-start';
+                    const title = document.createElement('h3'); title.textContent = 'Pending WorkItem task'; section.append(title);
+                    const info = (value: string) => { const item = document.createElement('p');
+                        item.className = 'dope-work-detail'; item.textContent = value; section.append(item); };
+                    info(`Objective: ${task.objective}`);
+                    info(`Origin: WorkItem ${task.origin.workItemId} · Planning Map ${task.origin.planningMapId}`);
+                    info(`Delegated paths: ${task.origin.scope.delegablePaths.join(', ')}`);
+                    if (task.origin.scope.humanReservedPaths.length)
+                        info(`Human reserved: ${task.origin.scope.humanReservedPaths.join(', ')}`);
+                    info(`Required Dope validation: ${task.completion.requireValidationPass && task.completion.validation.length ?
+                        task.completion.validation.map(target => `${target.label}: ${target.command ?? 'no command'}`).join('; ') :
+                        'Missing from this saved task'}`);
+                    info(`Coding Agent: ${controller.phase.codingAgentReady ? 'eligible and ready' :
+                        'unavailable; configure and test an eligible Coding Agent in AI Center'}`);
+                    info('Starting sends project data to the hosted Coding Agent. Candidate changes remain held for Dope validation and developer review.');
+                    const grant = createDefaultExecutionGrant({ id: 'preview', revision: 1, taskId: task.id,
+                        acceptedAt: new Date().toISOString() });
+                    const review = document.createElement('details'); review.className = 'dope-work-diagnostics';
+                    const summary = document.createElement('summary'); summary.textContent = 'Review fixed project execution grant';
+                    review.append(summary);
+                    for (const kind of EFFECT_KINDS) { const item = document.createElement('div');
+                        item.textContent = `${grant.permissions[kind] ? 'Allowed' : 'Denied'} · ${kind}`; review.append(item); }
+                    section.append(review);
+                    const acceptLabel = document.createElement('label'); acceptLabel.className = 'dope-work-grant';
+                    const accept = document.createElement('input'); accept.type = 'checkbox';
+                    accept.checked = controller.acceptedStartGrant && controller.hostedProjectDataAuthorized;
+                    accept.setAttribute('aria-label', 'Accept execution grant and hosted project data transfer');
+                    accept.onchange = () => controller.acceptStartApproval(accept.checked);
+                    acceptLabel.append(accept, ' I accept this project execution grant and authorize hosted project data transfer for this task.');
+                    section.append(acceptLabel);
+                    const reason = controller.startBlockReason;
+                    if (reason) { const status = document.createElement('p'); status.className = 'dope-work-warning';
+                        status.setAttribute('role', 'status'); status.textContent = reason; section.append(status); }
+                    section.append(this.button('Start WorkItem task', () => {
+                        void controller.startSelectedWorkItemTask().then(run => {
+                            if (run && this.panel.work?.kind === 'task' && this.panel.work.id === task.id)
+                                this.selectWork({ kind: 'run', id: run.id });
+                        });
+                    }, Boolean(reason)));
+                    scroll.append(section);
+                }
+            }
             else detail('Work record could not be found.');
         }
         this.content.append(region);

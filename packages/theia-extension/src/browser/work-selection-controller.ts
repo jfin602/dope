@@ -208,6 +208,11 @@ export class WorkSelectionController {
     authorizeHostedProjectData(authorized: boolean): void {
         this.hostedProjectDataAuthorized = authorized; this.changed();
     }
+    acceptStartApproval(accepted: boolean): void {
+        this.acceptedStartGrant = accepted;
+        this.hostedProjectDataAuthorized = accepted;
+        this.changed();
+    }
     get startBlockReason(): string {
         const task = this.selectedTask;
         if (!this.handle || !this.project || !this.selectedTaskId || !task || task.id !== this.selectedTaskId)

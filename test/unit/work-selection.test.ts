@@ -113,6 +113,11 @@ test('selected saved WorkItem task starts once with its exact ID, accepted grant
     controller.project = 'file:///project'; controller.handle = 'handle'; controller.phase.codingAgentReady = true;
     await controller.select({ kind: 'task', id: saved.id });
     assert.match(controller.startBlockReason, /accept the fixed project execution grant/);
+    controller.acceptStartApproval(true);
+    assert.equal(controller.startBlockReason, '');
+    controller.acceptStartApproval(false);
+    assert.equal(controller.acceptedStartGrant, false);
+    assert.equal(controller.hostedProjectDataAuthorized, false);
     controller.acceptStartGrant(true);
     assert.match(controller.startBlockReason, /Authorize sending this project data/);
     controller.authorizeHostedProjectData(true);

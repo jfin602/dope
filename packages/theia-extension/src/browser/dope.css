@@ -459,6 +459,9 @@
 .dope-work-scroll :is(input[type="text"], pre) { box-sizing: border-box; max-width: 100%; }
 .dope-work-scroll button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .dope-work-scroll label { display: block; margin: 7px 0; overflow-wrap: anywhere; }
+.dope-work-scroll .dope-work-start { min-width: 0; overflow-wrap: anywhere; }
+.dope-work-scroll .dope-work-start .dope-work-grant { display: flex; align-items: flex-start; gap: 6px; }
+.dope-work-scroll .dope-work-start .dope-work-grant input { flex: none; margin-top: 2px; }
 .dope-work-controls :is(textarea, select) { box-sizing: border-box; display: block; width: 100%; max-width: 100%; margin: 6px 0; padding: 5px; background: var(--theia-input-background); color: var(--theia-input-foreground); border: 1px solid var(--theia-widget-border); }
 .dope-work-controls textarea { min-height: 58px; resize: vertical; }
 .dope-work-controls :is(textarea, select):focus-visible { outline: 2px solid var(--theia-focusBorder); }
