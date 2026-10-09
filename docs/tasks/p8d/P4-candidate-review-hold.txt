@@ -1,0 +1,30 @@
+TASK: Phase 8 / P4 — WorkItem frozen candidate review hold
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.24`.
+
+GOAL / IMPLEMENT
+Only for WorkItem-origin review-required tasks, insert a durable review-ready hold between the existing frozen CandidateDelta plus ADR 0029 validation and ADR 0028 promotion. Persist bounded diff/fingerprint/validation evidence; failed validation never yields executable review. Keep direct Work/Prompt Stack auto-promotion unchanged.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031 and the Phase 8D plan; inspect only affected source and nearest tests. Preserve the qualified 8B/8C and c8-work-mode contracts, not their historical implementation details.
+
+PRESERVE
+WorkItem remains Planning intent; AgentTask remains execution. Keep fixed grants, ADR 0028/0029 isolated candidate validation/promotion, direct Work and Prompt Stack behavior, separate Chat/Work modules and Dope-owned Git checkpoints. No automatic WorkItem completion, hidden reasoning, unapproved write, 8E/9/10 features.
+
+VALIDATION — T2
+Compile affected agent/runtime packages only if test imports compiled code. Run one `test/unit/agent-delegation-review.test.ts` with hold, validation failure and direct-origin unaffected. Defer restart/adversarial matrix.
+Aim for <=8 minutes including essential focused testing, 15-minute maximum. Run `git diff --check`. Do not run blanket `build:extension`, `npm test`, `npm run check`, browser/Electron builds or packaging. Compile only changed package outputs once if focused tests import their `lib`; defer broader tests to P12/P13.
+
+DEFER
+Remaining features in later p8d prompts; no unrequested cross-cutting refactor or broad validation.
+
+DONE WHEN
+Complete this single bounded seam with narrow truthful test evidence; runner owns implementation checkpoint, do not manually commit.
+
+FINAL RESPONSE
+Report changed files, evidence, residual risks and actual version.

@@ -1,89 +1,68 @@
-# Phase 8D Implementation Plan — General Scoped Delegation
+# Phase 8D Implementation Plan — focused slices
 
-Status: **READY FOR EXECUTION (documentation/planning only; no implementation claim)**
-Execution folder: `docs/tasks/p8d`; starting version `0.8.20`; P1–P10 `0.8.21`–`0.8.30`.
+Status: READY FOR EXECUTION; implementation not yet attempted
+Baseline `0.8.20`; continuation P1-P13 `0.8.21`–`0.8.33`.
 
-## Current source and affected boundaries
+## Source ownership
+Visual Planning: `packages/visual-planning/src/index.ts`, `work.ts`, `service.ts`, `node/planning-store.ts`; Theia `visual-planning-backend.ts`, `planning-map-controller.ts`, `planning-work-projection.ts`. Agent: `packages/agent-core/src/contracts.ts`, `authority.ts`, `execution.ts`, `node/agent-store.ts`, `node/candidate-validation.ts`; RPC `packages/contracts/src/agent-runtime-service.ts`; Theia `agent-runtime-backend.ts`, `agent-execution-runtime.ts`, `agent-run-controller.ts`, `work-selection-controller.ts`. Software Map identity uses existing deterministic evidence, no new synthesis.
 
-**Visual Planning producer:** `packages/visual-planning/src/index.ts` (`WorkItem`, strict parser, schema), `work.ts` (put/split/merge/status), `service.ts` (revisioned Planning operations), `node/planning-store.ts` (project-local store). `packages/theia-extension/src/node/visual-planning-backend.ts` and `browser/planning-map-controller.ts` plus `planning-work-projection.ts` consume it. Tests: `planning-work.test.ts`, `visual-planning-storage.test.ts`, `planning-map-ui.test.ts`.
+## Ordered scope and exact focused validation
+### P1 — 0.8.21 — WorkItem ownership schema and legacy defaults (T1)
+Extend only Visual Planning `WorkItem` types, parser and defaults with HUMAN/AI/SHARED assignment plus bounded delegable/human-reserved paths. Preserve existing WorkItem status/identity, PlanningMap basis and old serialized maps; reject contradictory scopes/path escapes. Do not add runtime/service/UI.
+Validation: Compile only changed `@dope/visual-planning` once for tests importing `lib`, then `node --test test/unit/planning-work.test.ts` with focused old-map/ownership assertions. No extension build or storage/restart suite.
 
-**Agent Runtime producer:** `packages/agent-core/src/contracts.ts` (task origin, run and candidate), `authority.ts` (fixed ExecutionGrant), `execution.ts` (provider start/cancel), `node/agent-store.ts`, `node/candidate-validation.ts`, `node/execution-workspace.ts`. `packages/contracts/src/agent-runtime-service.ts` is RPC; `packages/theia-extension/src/node/agent-execution-runtime.ts` and `agent-runtime-backend.ts` own orchestration; `codex-agent-execution.ts` adapts reference agent. Tests: `agent-core.test.ts`, `agent-store.test.ts`, `agent-execution-runtime.test.ts`, `agent-execution-workspace.test.ts`, `work-integration.test.ts`.
+### P2 — 0.8.22 — AgentTask WorkItem origin and review metadata (T1)
+In `packages/agent-core/src/contracts.ts`, add strict portable WorkItem origin snapshot (project/map/WorkItem/revision/basis/scope) and opt-in review-required task policy. Preserve legacy direct/phase-stack Task parsing. Do not add ProposedAction or steering models yet.
+Validation: Compile changed `@dope/agent-core` once, then `node --test test/unit/agent-core.test.ts` for origin/review/legacy parser. No broader build.
 
-**Presentation:** `packages/theia-extension/src/browser/agent-run-controller.ts`, `work-selection-controller.ts`, `agent-transcript-widget.ts`, `planning-map-controller.ts` and `dope.css`; preserve the Green ADR 0030 semantic theme and separate Chat/Work module identity.
+### P3 — 0.8.23 — Revision-safe WorkItem to AgentTask launch service (T2)
+At existing Planning/Agent Runtime typed backend boundary, derive a bounded AgentTask from a developer-selected WorkItem with expected project/map revision. Enforce HUMAN denial and SHARED human-reserved paths; same request key cannot create duplicate task. Persist source link on AgentTask, derive reverse link by querying AgentStore; no second mutable link store or auto-execution.
+Validation: Compile only changed dependencies if needed for `lib` tests; run one new focused `test/unit/workitem-delegation.test.ts` for valid, duplicate, stale and reserved-scope cases. Leave restart/cross-project matrix to P12.
 
-**Software Map consumer:** existing `packages/software-map` Physical Map/evidence queries and `packages/theia-extension/src/node/software-map-backend.ts` own observed identities; PlanningMap rebase/reconciliation uses separate developer authority. Do not mutate either based on unqualified candidate work.
+### P4 — 0.8.24 — WorkItem frozen candidate review hold (T2)
+Only for WorkItem-origin review-required tasks, insert a durable review-ready hold between the existing frozen CandidateDelta plus ADR 0029 validation and ADR 0028 promotion. Persist bounded diff/fingerprint/validation evidence; failed validation never yields executable review. Keep direct Work/Prompt Stack auto-promotion unchanged.
+Validation: Compile affected agent/runtime packages only if test imports compiled code. Run one `test/unit/agent-delegation-review.test.ts` with hold, validation failure and direct-origin unaffected. Defer restart/adversarial matrix.
 
-## Implementation order / acceptance by prompt
+### P5 — 0.8.25 — Explicit safe candidate accept or reject (T2)
+Expose one revision-checked developer decision on P4 held candidate. Accept re-verifies candidate hash, required validation, grant, delegated scope, authoritative path and Git basis before existing Dope-owned all-or-blocked promotion. Reject applies nothing. Decisions persist idempotently; no WorkItem auto-completion or Git stage.
+Validation: Extend and run only `test/unit/agent-delegation-review.test.ts` for accept/reject/stale/double accept. Build changed compiled packages once as necessary. P12 covers broad races/path escape.
 
-### P1 — 0.8.21 — T1 — WorkItem ownership and portable delegation contracts
-Define provider-independent Phase 8D WorkItem ownership/linkage and durable review/action/steering DTO contracts, with strict parser/migration rules before wiring execution.
+### P6 — 0.8.26 — Blocked ProposedAction records without new permission (T1)
+Persist a small versioned blocked/consequential ProposedAction with source task, target/effect, required authority, rationale and developer acknowledgement/rejection. Fixed initial ExecutionGrant remains untouched; acknowledgement cannot execute delete/rename/Git/network/secret/outside-root. Do not create approval spam for routine in-grant changes.
+Validation: One focused action parser/denied-effect test (`test/unit/agent-proposed-action.test.ts`), build only changed compiled package as necessary. No repeat of candidate acceptance tests.
 
-Ownership: Visual Planning contracts/services with minimal typed Agent link.
-Tests: T1: build only touched domain/contracts packages and add focused parser/migration/transition tests for legacy maps, invalid scopes, cross-project IDs, duplicate links, owner state and strict unknown/future schema. `git diff --check`; no broad aggregate.
+### P7 — 0.8.27 — Durable steering with truthful acknowledgement (T2)
+Add version-checked developer steering request and persisted acknowledgement to Agent Runtime service/store. If adapter lacks active-turn steering, report queued/unsupported and require explicit stop/new task; never silently restart provider, alter grant or frozen candidate. Scope request to project/task/run.
+Validation: One focused `test/unit/agent-steering.test.ts` for unsupported turn, stale revision, terminal-run block. Build only changed compiled package(s) if needed. P12 covers cancel/restart races.
 
-### P2 — 0.8.22 — T2 — Revision-safe WorkItem to AgentTask delegation
-Create explicit Planning -> Agent Runtime delegation with durable, idempotent task links and no new execution primitive.
+### P8 — 0.8.28 — Bounded applied-change Software Map impact (T2)
+After *authoritative promotion only*, link actual changed project paths and current deterministic evidence to affected Software Map IDs, or mark unknown. Persist bounded project/generation/decision-scoped impact receipt. No background synthesis, PlanningMap rebase, canonical edits or local model calls.
+Validation: One focused `test/unit/agent-map-impact.test.ts` for resolved, unknown and stale generation. Compile only changed compiled package(s) when needed. P12 owns broader regressions.
 
-Ownership: Visual Planning contracts/services with minimal typed Agent link.
-Tests: T2: one focused backend/service integration suite covering accepted derivation, one WorkItem -> multiple distinct tasks over time, duplicate request, interrupted partial linkage, stale map revision, missing WorkItem, cross-project and HUMAN/SHARED denial; affected package builds and `git diff --check`.
+### P9 — 0.8.29 — Planning WorkItem ownership and launch UI (T1)
+In existing Planning WorkItem controller/projection, show ownership/reserved scope and developer Launch Work action through typed P3 service; navigate to linked AgentTask. Disable for HUMAN, stale or invalid scope. No canvas redesign or review UI.
+Validation: One changed extension build if compiled test requires it; run only `test/unit/planning-map-ui.test.ts` or a narrower changed controller test. No browser/packaging.
 
-### P3 — 0.8.23 — T2 — Frozen candidate review hold after validation
-For WorkItem-origin tasks only, persist a review-ready candidate hold between qualified ADR 0029 validation and ADR 0028 promotion.
+### P10 — 0.8.30 — Work candidate review diff and accept/reject UI (T1)
+Reuse existing Work detail, transcript and validation summary; add held candidate diff disclosure plus explicit Accept/Reject and truthful pending/stale/terminal control eligibility. Preserve Stop vs Close and separate Chat/Work. Do not add steering/actions/map view yet.
+Validation: One changed extension build if compiled tests require it; run `test/unit/agent-run-ui.test.ts` or a narrower Work review test, not both by default. No broad UI matrix.
 
-Ownership: Agent Runtime and typed service boundary.
-Tests: T2: focused runtime integration tests for valid review hold, required validation failure, provider no-change, denied delete/rename, frozen candidate mutation, interruption/restart and direct/sequence unchanged auto-promotion; one affected runtime build and `git diff --check`.
+### P11 — 0.8.31 — Work steering, blocked action and map impact UI (T1)
+Expose existing steering request/acknowledgement, blocked ProposedAction and affected/unknown map IDs in compact Work detail controls. Avoid fake live steering or permission escalation; preserve candidate review and alternative themes. No new backend authority.
+Validation: One changed extension build if required by compiled tests; run `test/unit/work-integration.test.ts` or one focused new controls test. Browser/manual multi-panel proof belongs to P13.
 
-### P4 — 0.8.24 — T2 — Accept or reject reviewed candidate safely
-Finish review-required WorkItem execution with explicit durable developer accept/reject and exact-basis Dope-owned promotion.
+### P12 — 0.8.32 — Focused delegation integration and legacy regression (T2)
+Run a bounded set of new/changed delegation/review/steering/map tests plus directly affected existing direct-Work/Prompt Stack suite. Check narrow scoped safety, frozen review, stale basis and idempotency; fix actual defects only. Register any new test files exactly once in root `test:product` so final aggregate covers them.
+Validation: One targeted `node --test` invocation of changed test files and at most one existing directly affected regression suite. No unconditional build; only compile if changed source requires it. No `npm test`, `npm run check`, browser/Electron build, packaging or restart suite.
 
-Ownership: Agent Runtime and typed service boundary.
-Tests: T2: real isolated candidate fixture for accept, reject, concurrent/double accept, stale Git/HEAD, changed frozen bytes, denied path/human-owned file, required validation failure and backend restart. Verify untouched project on rejected/blocked paths; affected integration tests and `git diff --check`.
-
-### P5 — 0.8.25 — T1/T2 — Consequential ProposedAction without privilege escalation
-Make blocked consequential changes inspectable and developer-reviewable without widening the fixed Phase 8B ExecutionGrant.
-
-Ownership: Agent Runtime and typed service boundary.
-Tests: T1/T2: focused pure state tests plus narrow integration for denied delete/rename, human-reserved file, replay and unchanged in-grant promotion. Prove a model/provider cannot approve or execute an action via stored proposal; `git diff --check`.
-
-### P6 — 0.8.26 — T2 — Durable steering with safe runtime acknowledgement
-Allow developers to steer delegated work while reporting actual applied/pending/unsupported state rather than pretending every provider can change a live turn.
-
-Ownership: Agent Runtime and typed service boundary.
-Tests: T2: focused lifecycle tests for supported safe-boundary apply, unsupported in-flight steer, cancellation races, restart pending state, stale revision, cross-project/run isolation, no automatic rerun; affected tests/build and `git diff --check`.
-
-### P7 — 0.8.27 — T2 — Bounded post-promotion Software Map impact
-Link applied WorkItem candidate effects to existing Software Map identities and localized staleness without Phase 10 background alignment.
-
-Ownership: Software Map impact adapter and planning link.
-Tests: T2: focused impact tests for matched file/branch, unrelated change, missing/unknown nodes, stale project/map generation, restart receipt, double promotion and cross-project isolation. Regressions for PlanningMap staleness source of truth; affected packages/tests and `git diff --check`.
-
-### P8 — 0.8.28 — T1/T2 — Planning and Work delegation, review and steering UI
-Surface explicit WorkItem delegation/ownership, held candidate review, ProposedAction, steering and bounded map impact in the existing GUI without new canonical UI state.
-
-Ownership: Theia presentation adapters.
-Tests: T1/T2: focused controller/presentation tests for HUMAN/AI/SHARED, disabled actions, real held review and validation, stale basis, Stop versus close, unsupported steering, narrow panel accessibility and saved-state reopening. Build only affected frontend packages; defer direct GUI/T3 to P10.
-
-### P9 — 0.8.29 — T2 — Delegation and legacy execution integration regressions
-Exercise end-to-end backend seam failures and preserve the qualified direct Work and Prompt Stack behavior on the final implementation candidate.
-
-Ownership: Integrated backend/frontend fixture tests.
-Tests: T2: bounded changed-package build, focused cross-package integration/regression suites over affected files, `git diff --check`, package-version/internal-reference/root-lock checks. Do not run full `npm run check` or live GUI; reserve those for P10.
-
-### P10 — 0.8.30 — T3 — Phase 8D live delegation GUI qualification and closeout
-Directly qualify Phase 8D with real Dope GUI/reference-Codex delegated work, exact-candidate safety and historical non-regression; close 8D only.
-
-Ownership: Evidence-only manual qualification.
-Tests: T3 only: real qualified Coding Agent and GUI, disposable project, one final exact-candidate aggregate and prompt validator, relevant restart/security evidence. If failed, record NOT GREEN; no invented success. Do not manually commit implementation source; closeout uses a separately reviewed manual evidence checkpoint.
+### P13 — 0.8.33 — Phase 8D live GUI qualification and closeout (T3)
+On exact 0.8.33 source, use real Dope GUI/Codex and disposable Git workspace. Launch two WorkItem-derived tasks, accept one frozen validated candidate and reject another; verify project writes and separate WorkItem completion. Exercise HUMAN/SHARED scope, denied ProposedAction, truthful steering, map impact and held-review restart. Read-only reopen old direct Work and Adaptive SEO Prompt Stack. Record exact IDs, SHAs, evidence and 8D GREEN/NOT GREEN; do not activate 8E.
+Validation: Run `npm run check` exactly once (already includes full typecheck, product tests and browser/Electron builds), then only missing focused tests if any; no separate `npm test` or repeated build. Run `npm run codex:phase:validate -- p8d` once, plus cheap diff/version/no-lock checks.
 
 
-## Non-negotiable risk controls
+## Efficiency / qualification
+P1–P11: <=8-minute implementation + necessary focused validation target, 15-minute maximum. Run only tests added/changed and directly affected existing tests. Unit tests commonly import compiled `lib/`, so one build of **changed** packages is necessary when tests otherwise run stale output. No unconditional `build:extension`, root tests/typecheck, browser/Electron builds, packaging or restart suite. P12: bounded cross-package integration, register new test files in the existing `test:product` list. P13: manual T3 and **one** exact-candidate `npm run check` (already builds and tests); no additional `npm test` or repeated build. `git diff --check` remains cheap. All failures remain truthful.
 
-- Exact WorkItem/map expected revision and project identity; human-reserved scope narrowing at both task derivation and promotion, without provider-only enforcement.
-- Frozen candidate and required validation pass before review-ready, then unchanged frozen candidate, grant, Git/worktree basis and path checks before promotion. Reject never touches authoritative project.
-- WorkItem-origin review-only policy must not change direct Work or Prompt Stack promotion/Dope-owned checkpoints. Automatic completion and architecture adoption are prohibited.
-- ProposedAction denied effects stay denied under fixed 8B profile; steering acknowledges actual capability and preserves cancellation/restart truth.
-- Map impact uses changed paths and validated evidence for deterministic identity matches only; unknown/unmapped state explicit; no background model or Phase 10 drift engine.
+WorkItem-origin snapshot on AgentTask is the canonical linkage; inverse WorkItem->task query is derived from AgentStore rather than duplicated mutable cross-store state.
 
-## Qualification and exit
-
-P9 integrated test must retain old direct/sequence behavior. P10 is manual T3; require live hosted Codex agent, disposable repository, real WorkItem two runs with accepted/rejected candidates, HUMAN/AI/SHARED evidence, steering truth, denied escalation, restart and map effects, one final complete `npm run check` and p8d validator. Record final GREEN or NOT GREEN without upgrading Phase 8/8E status. Prompt files are executed by the external runner but Dope product must not import that runner lifecycle.
+Maintain project/root basis checks, human-reserved working-set constraints, frozen-candidate validation and unchanged grant at accept, idempotent decisions and no automatic WorkItem/architecture completion. T3 live provider/GUI evidence stays P13, with explicit Green/Not Green and no 8E activation.

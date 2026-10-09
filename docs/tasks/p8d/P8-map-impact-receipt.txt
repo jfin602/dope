@@ -1,0 +1,30 @@
+TASK: Phase 8 / P8 — Bounded applied-change Software Map impact
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.28`.
+
+GOAL / IMPLEMENT
+After *authoritative promotion only*, link actual changed project paths and current deterministic evidence to affected Software Map IDs, or mark unknown. Persist bounded project/generation/decision-scoped impact receipt. No background synthesis, PlanningMap rebase, canonical edits or local model calls.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031 and the Phase 8D plan; inspect only affected source and nearest tests. Preserve the qualified 8B/8C and c8-work-mode contracts, not their historical implementation details.
+
+PRESERVE
+WorkItem remains Planning intent; AgentTask remains execution. Keep fixed grants, ADR 0028/0029 isolated candidate validation/promotion, direct Work and Prompt Stack behavior, separate Chat/Work modules and Dope-owned Git checkpoints. No automatic WorkItem completion, hidden reasoning, unapproved write, 8E/9/10 features.
+
+VALIDATION — T2
+One focused `test/unit/agent-map-impact.test.ts` for resolved, unknown and stale generation. Compile only changed compiled package(s) when needed. P12 owns broader regressions.
+Aim for <=8 minutes including essential focused testing, 15-minute maximum. Run `git diff --check`. Do not run blanket `build:extension`, `npm test`, `npm run check`, browser/Electron builds or packaging. Compile only changed package outputs once if focused tests import their `lib`; defer broader tests to P12/P13.
+
+DEFER
+Remaining features in later p8d prompts; no unrequested cross-cutting refactor or broad validation.
+
+DONE WHEN
+Complete this single bounded seam with narrow truthful test evidence; runner owns implementation checkpoint, do not manually commit.
+
+FINAL RESPONSE
+Report changed files, evidence, residual risks and actual version.

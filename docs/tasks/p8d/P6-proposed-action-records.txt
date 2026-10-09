@@ -1,0 +1,30 @@
+TASK: Phase 8 / P6 — Blocked ProposedAction records without new permission
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.26`.
+
+GOAL / IMPLEMENT
+Persist a small versioned blocked/consequential ProposedAction with source task, target/effect, required authority, rationale and developer acknowledgement/rejection. Fixed initial ExecutionGrant remains untouched; acknowledgement cannot execute delete/rename/Git/network/secret/outside-root. Do not create approval spam for routine in-grant changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031 and the Phase 8D plan; inspect only affected source and nearest tests. Preserve the qualified 8B/8C and c8-work-mode contracts, not their historical implementation details.
+
+PRESERVE
+WorkItem remains Planning intent; AgentTask remains execution. Keep fixed grants, ADR 0028/0029 isolated candidate validation/promotion, direct Work and Prompt Stack behavior, separate Chat/Work modules and Dope-owned Git checkpoints. No automatic WorkItem completion, hidden reasoning, unapproved write, 8E/9/10 features.
+
+VALIDATION — T1
+One focused action parser/denied-effect test (`test/unit/agent-proposed-action.test.ts`), build only changed compiled package as necessary. No repeat of candidate acceptance tests.
+Aim for <=8 minutes including essential focused testing, 15-minute maximum. Run `git diff --check`. Do not run blanket `build:extension`, `npm test`, `npm run check`, browser/Electron builds or packaging. Compile only changed package outputs once if focused tests import their `lib`; defer broader tests to P12/P13.
+
+DEFER
+Remaining features in later p8d prompts; no unrequested cross-cutting refactor or broad validation.
+
+DONE WHEN
+Complete this single bounded seam with narrow truthful test evidence; runner owns implementation checkpoint, do not manually commit.
+
+FINAL RESPONSE
+Report changed files, evidence, residual risks and actual version.

@@ -1,0 +1,30 @@
+TASK: Phase 8 / P13 — Phase 8D live GUI qualification and closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- The assigned project version is `0.8.33`.
+
+GOAL / IMPLEMENT
+On exact 0.8.33 source, use real Dope GUI/Codex and disposable Git workspace. Launch two WorkItem-derived tasks, accept one frozen validated candidate and reject another; verify project writes and separate WorkItem completion. Exercise HUMAN/SHARED scope, denied ProposedAction, truthful steering, map impact and held-review restart. Read-only reopen old direct Work and Adaptive SEO Prompt Stack. Record exact IDs, SHAs, evidence and 8D GREEN/NOT GREEN; do not activate 8E.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031 and the Phase 8D plan; inspect only affected source and nearest tests. Preserve the qualified 8B/8C and c8-work-mode contracts, not their historical implementation details.
+
+PRESERVE
+WorkItem remains Planning intent; AgentTask remains execution. Keep fixed grants, ADR 0028/0029 isolated candidate validation/promotion, direct Work and Prompt Stack behavior, separate Chat/Work modules and Dope-owned Git checkpoints. No automatic WorkItem completion, hidden reasoning, unapproved write, 8E/9/10 features.
+
+VALIDATION — T3
+Run `npm run check` exactly once (already includes full typecheck, product tests and browser/Electron builds), then only missing focused tests if any; no separate `npm test` or repeated build. Run `npm run codex:phase:validate -- p8d` once, plus cheap diff/version/no-lock checks.
+P13 is a manual T3 evidence closeout; preserve every failed observation and do not invent Green.
+
+DEFER
+No Phase 8E local coding model, Phase 9 DevelopmentSession or Phase 10 background alignment.
+
+DONE WHEN
+Write `docs/tasks/p8d/closeout.md` with exact evidence and explicit 8D GREEN/NOT GREEN; no automatic Phase 8E or full Phase 8 closure.
+
+FINAL RESPONSE
+Report changed files, evidence, residual risks and actual version.
