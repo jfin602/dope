@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "p6-fixture-human-reserved",
+  "revision": 1,
+  "taskId": "work-19ceb4ea3e64b0aec6a9fd871e469428",
+  "runId": "10d4980e-9f78-4fca-9696-8bf04fedba19",
+  "createdAt": "2026-10-09T20:48:57.865Z",
+  "effect": {
+    "kind": "project-modify",
+    "scope": "project",
+    "path": "p13-qualification/human.txt"
+  },
+  "requiredAuthority": "human-reserved-scope",
+  "rationale": "Deterministic fixture: human-reserved path is outside delegated scope",
+  "decision": {
+    "kind": "acknowledged",
+    "at": "2026-10-09T20:49:08.788Z",
+    "by": "developer"
+  }
+}

@@ -1,6 +1,6 @@
 # Phase 8D — General Scoped Delegation Plan
 
-Status: **ACTIVE / P13 NOT GREEN — IMPLEMENTATION COMMITTED THROUGH P12; FINAL QUALIFICATION FAILED**
+Status: **8D GREEN / QUALIFIED at `0.8.33` source `8748cb4` through `c8-fix` P6; Product Phase 8 remains active, 8E inactive**
 Owner activation: 2026-10-09
 Baseline: `0.8.20`; continuation: `0.8.21` through `0.8.33`
 Execution folder: `docs/tasks/p8d/`
@@ -8,13 +8,15 @@ Authority: ADR 0031 and 0017/0027/0028/0029/0030; Product Model, Architecture, S
 
 ## Purpose and entry
 
-Generalize qualified 8A–8C and Green c8-work-mode direct Work/Prompt Stack execution to developer-controlled WorkItem delegation, scoped HUMAN/AI/SHARED ownership, safe review/steering and bounded Software Map impact. Real Adaptive SEO Prompt Stack Green and c8-work-mode P9 Green at unchanged 0.8.20 clear the prerequisite; historical failures remain in their closeouts. Owner activation alone did not qualify 8D. P1–P12 implementation later landed in committed source at `0.8.32`; the reported P13 GUI/aggregate gate remained Not Green. See current status and outstanding gates below.
+Generalize qualified 8A–8C and Green c8-work-mode direct Work/Prompt Stack execution to developer-controlled WorkItem delegation, scoped HUMAN/AI/SHARED ownership, safe review/steering and bounded Software Map impact. Real Adaptive SEO Prompt Stack Green and c8-work-mode P9 Green at unchanged 0.8.20 clear the prerequisite; historical failures remain in their closeouts. Owner activation alone did not qualify 8D. P1–P12 implementation landed in committed source at `0.8.32`; original P13 `0.8.33` was Not Green. The separate `c8-fix` P6 correction later qualified 8D on exact source `8748cb4`; see `docs/tasks/c8-fix/closeout.md`.
 
-## Current implemented-versus-qualified status (2026-10-09)
+## Historical P13 gap and later qualification (2026-10-09)
 
-P13 (2026-10-09) is **NOT GREEN**, based on the owner's uncommitted local `0.8.33` qualification report. The committed GitHub code reaches P12 at `0.8.32` (`09fe3bcd`). Task creation/reopen is observed; no existing-task Start action or WorkItem-approved validation policy is wired end to end, so real Codex execution and downstream acceptance, review, steering, ProposedAction, map impact and held-review restart are unqualified. `npm run check` did not pass on the P13 candidate. Local `docs/tasks/p8d/closeout.md` and its logs/snapshots are **not present in the reviewed GitHub tree**; do not infer their hashes, commit their contents, or treat the doc alignment as P13 repair.
+Original P13 (2026-10-09) remains **NOT GREEN** as recorded in `docs/tasks/p8d/closeout.md`: two tasks were created/reopened but lacked exact saved-task Start and required validation, and its aggregate failed. That report described a dirty local `0.8.33` tree after P12 `0.8.32` (`09fe3bcd`); the P13 manifests, tests and original evidence are now preserved in commit `cd9133b`. Correction P1–P5 repaired the implementation seam, and P6 cycle 2 qualified the real GUI, Codex, review, authority, steering, map, restart and passing aggregate on committed `0.8.33` source `8748cb4`. The earlier failure is not relabeled Green. Product Phase 8 remains active, and 8E is not activated.
 
-### Explicit outstanding P13 qualification gates
+### Historical P13 gaps (closed by the separate c8-fix P6 qualification)
+
+The five items below describe the original P13 failure at the time it was recorded. The [c8-fix closeout](../../tasks/c8-fix/closeout.md) documents their later resolution and the exact evidence; they are no longer current open gates.
 
 1. **Launch existing AgentTask:** Planning `Launch Work` currently calls `launchWorkItem` to persist an AgentTask. Its Work detail presents pending-task instructions but has no explicit **Start task** control; the New Work composer creates a *different direct* AgentTask. Wire a developer-controlled accepted ExecutionGrant and real `AgentRuntimeService.start` to the **persisted WorkItem-origin task ID**, preserving the fixed authority ceiling and existing direct Work/Prompt Stack paths.
 2. **Validation contract:** Planning `launchWork()` currently supplies `completion: { validation: [], requireValidationPass: false }`. `workReviewCanAccept` and backend acceptance require at least one matching passed Dope-owned validation target. Add explicit developer-approved validation configuration at WorkItem task start or earlier, enforce nonempty required validation without weakening the review gate; do not silently turn acceptance into a no-validation operation.
@@ -63,6 +65,6 @@ Steering is versioned/persisted with pending/applied/rejected/unsupported acknow
 
 ## Evidence and exclusions
 
-P1/P2 targeted contract tests, P3 bounded delegation service test, P4/P5 frozen validation and accept/reject tests, P6 blocked action test, P7 steering test, P8 map impact test, P9–P11 focused UI/controller tests. P12 covers bounded cross-system, restart/scope/authority and direct Work/Prompt Stack regressions and registers new tests in `test:product`. P13 alone owns direct hosted Codex/Dope GUI qualification, two WorkItem-derived tasks with accepted/rejected candidates, HUMAN/AI/SHARED, denied escalation, steering, map impact/restart, one exact-candidate `npm run check` and one `npm run codex:phase:validate -- p8d`. Failed prerequisites are Not Green; no fabricated live evidence.
+P1/P2 targeted contract tests, P3 bounded delegation service test, P4/P5 frozen validation and accept/reject tests, P6 blocked action test, P7 steering test, P8 map impact test, P9–P11 focused UI/controller tests. P12 covers bounded cross-system, restart/scope/authority and direct Work/Prompt Stack regressions and registers new tests in `test:product`. Original P13 owned the first direct hosted Codex/Dope GUI qualification attempt and its Not Green result. The approved `c8-fix` P6 manual T3 correction supplied the later two-WorkItem-task, accept/reject, HUMAN/AI/SHARED, denied escalation, steering, map impact/restart and exact-source aggregate evidence. Failed prerequisites remain historical Not Green evidence; no fabricated live evidence.
 
 Ordinary prompts target <=8 minutes and a 15-minute maximum, use one appropriate affected test/build group and `git diff --check`, not repeated aggregate tests. No extra session/local-model/multi-agent/Phase-10 work; Phase 8E and full Phase 8 closure are separate owner decisions.

@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "id": "work-9495bd42c7939a1bd0cabe7d2b29dc19",
+  "createdAt": "2026-10-09T19:30:16.265Z",
+  "objective": "Create p13-qualification/accepted.txt containing exactly accepted from P6 qualification followed by newline. Change no other project files.",
+  "instructions": "{\"title\":\"add: p13-qualification\",\"requirements\":[],\"constraints\":[],\"acceptanceCriteria\":[],\"validationTargets\":[],\"transformationIds\":[\"change-09d8d698-fb0a-403d-9911-f71cde5bfadb\"],\"delegatedPaths\":[\"p13-qualification/accepted.txt\"],\"humanReservedPaths\":[]}",
+  "projectRoot": ".",
+  "projectId": "project-48bc8ba6-e9ba-475d-a2bc-15d659331eab",
+  "modelPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "controls": {},
+  "authority": {
+    "profile": "phase-8b-project"
+  },
+  "completion": {
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required WorkItem validation",
+        "command": "test \"$(cat p13-qualification/accepted.txt)\" = \"accepted from P6 qualification\""
+      }
+    ],
+    "requireValidationPass": true
+  },
+  "origin": {
+    "kind": "work-item",
+    "projectId": "project-48bc8ba6-e9ba-475d-a2bc-15d659331eab",
+    "planningMapId": "map-e83dccae-745d-4463-ba56-5cbe2f428dc7",
+    "workItemId": "work-b5c9c4fb-3d4e-4413-b242-9c683e12e79c",
+    "mapRevision": 12,
+    "basis": {
+      "architectureRevision": 0,
+      "architectureFingerprint": "b5a09a50397149f589a80c2f9987ec66c0023a85c75ad98b4a973ebd1d370208",
+      "physicalInputFingerprint": "5e05f4e4e4b347648eb7143f502b7428459f141befe699f7550f46e77e4bc5bd",
+      "physicalGeneration": 1
+    },
+    "scope": {
+      "assignment": "AI",
+      "workingSet": [
+        "p13-qualification"
+      ],
+      "delegablePaths": [
+        "p13-qualification/accepted.txt"
+      ],
+      "humanReservedPaths": []
+    }
+  },
+  "planningMapId": "map-e83dccae-745d-4463-ba56-5cbe2f428dc7",
+  "reviewPolicy": {
+    "kind": "required"
+  }
+}

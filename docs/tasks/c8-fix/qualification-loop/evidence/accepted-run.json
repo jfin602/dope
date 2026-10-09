@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "id": "a45bdf7f-2f0c-4c24-9081-711f3a85068c",
+  "taskId": "work-9495bd42c7939a1bd0cabe7d2b29dc19",
+  "status": "completed",
+  "grantId": "16ae152a-87d7-48e8-abdc-8eca6c617743",
+  "grantRevision": 1,
+  "requestedPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "projectRoot": ".",
+  "projectId": "project-48bc8ba6-e9ba-475d-a2bc-15d659331eab",
+  "createdAt": "2026-10-09T19:31:41.893Z",
+  "startedAt": "2026-10-09T19:31:41.893Z",
+  "endedAt": "2026-10-09T19:33:30.918Z",
+  "executionWorkspace": {
+    "id": "00e68c40-65e2-426e-953a-3d37b10532bb",
+    "basisHead": "d4dfbf38628ba70726cf3b3610c2279643f500dc"
+  },
+  "provenance": {
+    "version": 1,
+    "connectionId": "6bb256ca-64fd-4054-a0c7-65da754acd68",
+    "modelId": "gpt-5.6-sol",
+    "providerId": "codex",
+    "runtimeKind": "hosted",
+    "adapterId": "codex-app-server-execution",
+    "policyRevision": 9
+  },
+  "basis": {
+    "head": "d4dfbf38628ba70726cf3b3610c2279643f500dc",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [
+    "p13-qualification/accepted.txt"
+  ],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required WorkItem validation",
+      "status": "passed",
+      "durationMs": 14,
+      "owner": "dope",
+      "command": "test \"$(cat p13-qualification/accepted.txt)\" = \"accepted from P6 qualification\"",
+      "candidateFingerprint": "aca007293cd53653fcfb7a85d364ce5ff48b4730d08dd7be4c7c9b6e758357a9",
+      "workspaceId": "3a86f3f9-2ab7-48af-b571-2d08257db38b",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "stdoutTruncated": false,
+      "stderrTruncated": false
+    }
+  ],
+  "commandEvidence": [
+    {
+      "version": 1,
+      "commandSummary": "Other project command",
+      "durationMs": 16,
+      "exitCode": 0,
+      "result": "passed",
+      "matchedTargets": []
+    }
+  ],
+  "finalGit": {
+    "head": "d4dfbf38628ba70726cf3b3610c2279643f500dc",
+    "clean": false,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [
+      {
+        "code": "??",
+        "path": "p13-qualification/accepted.txt"
+      }
+    ],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 1,
+    "insertions": 1,
+    "deletions": 0,
+    "summary": "1 task files changed; 1 bounded text insertions, 0 deletions; 31 untracked bytes",
+    "truncated": false
+  },
+  "validationBasis": "execution-workspace",
+  "candidateDelta": {
+    "version": 1,
+    "effects": [
+      {
+        "kind": "create",
+        "path": "p13-qualification/accepted.txt",
+        "after": "719f1faa6a3af429fcbb1193a013cf429ac1e3e79bec14b8eb98e249410713a0"
+      }
+    ]
+  },
+  "candidateFingerprint": "aca007293cd53653fcfb7a85d364ce5ff48b4730d08dd7be4c7c9b6e758357a9",
+  "candidateReview": {
+    "state": "ready",
+    "revision": 0,
+    "candidateFingerprint": "aca007293cd53653fcfb7a85d364ce5ff48b4730d08dd7be4c7c9b6e758357a9",
+    "diff": "diff --git a/p13-qualification/accepted.txt b/p13-qualification/accepted.txt\n--- (absent)\n+++ b/p13-qualification/accepted.txt\n@@ -1,0 +1,1 @@\n+accepted from P6 qualification\n",
+    "diffTruncated": false,
+    "changedPaths": [
+      "p13-qualification/accepted.txt"
+    ],
+    "validation": [
+      {
+        "version": 1,
+        "kind": "test",
+        "label": "Required WorkItem validation",
+        "status": "passed",
+        "durationMs": 14,
+        "owner": "dope",
+        "command": "test \"$(cat p13-qualification/accepted.txt)\" = \"accepted from P6 qualification\"",
+        "candidateFingerprint": "aca007293cd53653fcfb7a85d364ce5ff48b4730d08dd7be4c7c9b6e758357a9",
+        "workspaceId": "3a86f3f9-2ab7-48af-b571-2d08257db38b",
+        "exitCode": 0,
+        "stdout": "",
+        "stderr": "",
+        "stdoutTruncated": false,
+        "stderrTruncated": false
+      }
+    ]
+  },
+  "reviewDecision": {
+    "kind": "accept",
+    "revision": 1,
+    "at": "2026-10-09T19:33:30.515Z",
+    "candidateFingerprint": "aca007293cd53653fcfb7a85d364ce5ff48b4730d08dd7be4c7c9b6e758357a9"
+  },
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [
+    "p13-qualification/accepted.txt"
+  ],
+  "recovery": {
+    "adapterId": "codex-app-server-execution",
+    "handle": "01a12226-6021-7f30-a730-c0687df2d6d0"
+  }
+}
