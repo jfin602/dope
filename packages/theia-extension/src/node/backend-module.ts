@@ -128,7 +128,7 @@ export default new ContainerModule(bind => {
     })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<AgentRuntimeClient>(agentRuntimeServicePath, client => {
         const backend = new AgentRuntimeBackend(context.container.get(AgentStore), client,
-            context.container.get(AgentExecutionRuntime));
+            context.container.get(AgentExecutionRuntime), context.container.get(PlanningStore));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

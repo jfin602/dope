@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readdir } from 'node:fs/promises';
-import { AGENT_SCHEMA_VERSION, parseAgentTask, parseExecutionGrant,
+import { AGENT_SCHEMA_VERSION, parseAgentTask, parseExecutionGrant, projectPath,
     phaseStackFolder, phaseStackTaskMetadata, sequenceNeedsDirtyAcceptance, importPhaseStack } from '@dope/agent-core';
 import type { AgentModelPolicy, AgentRun, AgentTask, AgentTaskSequence, CompletionPolicy,
     ExecutionGrant, SequenceBlockReason } from '@dope/agent-core';
@@ -11,6 +11,8 @@ import type { ManualGateReconciliation } from '@dope/agent-core/lib/node/sequenc
 import { assertDirtyBasis, captureDirtyBasis, safeGit } from '@dope/agent-core/lib/node/dirty-basis';
 import { checkpointSequence as commitCheckpoint, verifyCommittedCheckpoint } from '@dope/agent-core/lib/node/sequence-checkpoint';
 import type { AgentRuntimeClient, AgentRuntimeService, DiscoveredTaskStack, OpenTaskStackResult } from '@dope/contracts/lib/agent-runtime-service';
+import type { WorkItemLaunchRequest } from '@dope/contracts/lib/agent-runtime-service';
+import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import type { AgentExecutionRuntime } from './agent-execution-runtime';
 
 // Shared by RPC backend instances in this process; persisted HEAD/checkpoint evidence owns restart safety.
@@ -28,7 +30,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     private readonly sequenceObservers = new Map<string, Promise<void>>();
 
     constructor(private readonly store: AgentStore, client: AgentRuntimeClient,
-        private readonly execution?: AgentExecutionRuntime) {
+        private readonly execution?: AgentExecutionRuntime, private readonly planning?: PlanningStore) {
         this.unlisten = store.onChange((root, change) => {
             if (!this.disposed && root === this.root) client.notifyAgentStateChanged(change);
         });
@@ -69,7 +71,81 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         return this.root;
     }
 
-    createTask(handle: string, task: AgentTask): Promise<AgentTask> { return this.store.createTask(this.active(handle), task); }
+    createTask(handle: string, task: AgentTask): Promise<AgentTask> {
+        if (task.origin.kind === 'work-item') throw new Error('WorkItem tasks require revision-checked launch');
+        return this.store.createTask(this.active(handle), task);
+    }
+    async launchWorkItem(handle: string, request: WorkItemLaunchRequest): Promise<AgentTask> {
+        const root = this.active(handle);
+        if (!this.planning) throw new Error('Planning service unavailable');
+        if (typeof request.requestKey !== 'string' || !/^[A-Za-z0-9._-]{1,128}$/.test(request.requestKey) ||
+            !Number.isSafeInteger(request.expectedProjectRevision) || request.expectedProjectRevision < 1 ||
+            !Number.isSafeInteger(request.expectedMapRevision) || request.expectedMapRevision < 0 ||
+            typeof request.planningMapId !== 'string' || typeof request.workItemId !== 'string' ||
+            !Array.isArray(request.delegablePaths) || !request.delegablePaths.length || request.delegablePaths.length > 100)
+            throw new Error('Invalid WorkItem launch request');
+        const paths = request.delegablePaths.map(path => projectPath(path));
+        if (new Set(paths).size !== paths.length) throw new Error('Duplicate delegated path');
+        const id = `work-${createHash('sha256').update(request.requestKey).digest('hex').slice(0, 32)}`;
+        const snapshot = await this.planning.read(root);
+        const sameRequest = (task: AgentTask): boolean => task.origin.kind === 'work-item' &&
+            task.projectId === snapshot.projectId &&
+            task.origin.planningMapId === request.planningMapId && task.origin.workItemId === request.workItemId &&
+            task.origin.mapRevision === request.expectedMapRevision &&
+            JSON.stringify(task.origin.scope.delegablePaths) === JSON.stringify(paths) &&
+            JSON.stringify(task.modelPolicy) === JSON.stringify(request.modelPolicy) &&
+            JSON.stringify(task.controls) === JSON.stringify(request.controls) &&
+            JSON.stringify(task.completion) === JSON.stringify(request.completion);
+        const existing = await this.store.readTask(root, id);
+        if (existing) {
+            if (!sameRequest(existing)) throw new Error('WorkItem request key already used for a different launch');
+            return existing;
+        }
+        if (snapshot.revision !== request.expectedProjectRevision) throw new Error('Stale Planning project revision');
+        const map = snapshot.maps.find(item => item.id === request.planningMapId);
+        if (!map || map.revision !== request.expectedMapRevision) throw new Error('Stale or missing Planning map revision');
+        if (map.status !== 'active') throw new Error('Planning map is not active');
+        const work = map.workItems.find(item => item.id === request.workItemId);
+        if (!work || !['ready', 'in-progress'].includes(work.status)) throw new Error('WorkItem is not ready for delegation');
+        if (work.assignment === 'HUMAN' || !work.assignment) throw new Error('Human-owned WorkItem cannot be delegated');
+        const contains = (parent: string, child: string): boolean => child === parent || child.startsWith(`${parent}/`);
+        if (paths.some(path => !work.delegablePaths?.some(allowed => contains(allowed, path)) ||
+            work.humanReservedPaths?.some(reserved => contains(path, reserved) || contains(reserved, path))))
+            throw new Error('Requested path is human-reserved or outside delegable scope');
+        const task = parseAgentTask({ version: AGENT_SCHEMA_VERSION, id, createdAt: new Date().toISOString(),
+            objective: work.objective, instructions: JSON.stringify({ title: work.title, requirements: work.requirements,
+                constraints: work.constraints, acceptanceCriteria: work.acceptanceCriteria,
+                validationTargets: work.validationTargets, transformationIds: work.transformationIds,
+                delegatedPaths: paths, humanReservedPaths: work.humanReservedPaths ?? [] }),
+            projectRoot: '.', projectId: snapshot.projectId,
+            modelPolicy: request.modelPolicy, controls: request.controls,
+            authority: { profile: 'phase-8b-project' }, completion: request.completion,
+            planningMapId: map.id, reviewPolicy: { kind: 'required' },
+            origin: { kind: 'work-item', projectId: snapshot.projectId, planningMapId: map.id,
+                workItemId: work.id, mapRevision: map.revision, basis: map.basis,
+                scope: { assignment: work.assignment, workingSet: work.workingSet,
+                    delegablePaths: paths, humanReservedPaths: work.humanReservedPaths ?? [] } } });
+        if ((await this.planning.read(root)).revision !== request.expectedProjectRevision)
+            throw new Error('Stale Planning project revision');
+        for (let attempt = 0; attempt < 8; attempt++) {
+            try { return await this.store.createTask(root, task); }
+            catch (error) {
+                const raced = await this.store.readTask(root, id);
+                if (raced) {
+                    if (!sameRequest(raced)) throw new Error('WorkItem request key already used for a different launch');
+                    return raced;
+                }
+                if (!(error instanceof Error) || !error.message.includes('Agent state locked by another writer') || attempt === 7)
+                    throw error;
+                await new Promise(resolve => setTimeout(resolve, 20));
+            }
+        }
+        throw new Error('WorkItem launch could not acquire AgentStore');
+    }
+    async listWorkItemTasks(handle: string, planningMapId: string, workItemId: string): Promise<AgentTask[]> {
+        return (await this.store.listTasks(this.active(handle))).filter(task => task.origin.kind === 'work-item' &&
+            task.origin.planningMapId === planningMapId && task.origin.workItemId === workItemId);
+    }
     readTask(handle: string, taskId: string): Promise<AgentTask | undefined> { return this.store.readTask(this.active(handle), taskId); }
     listTasks(handle: string): Promise<AgentTask[]> { return this.store.listTasks(this.active(handle)); }
     readRun(handle: string, runId: string): Promise<AgentRun | undefined> { return this.store.readRun(this.active(handle), runId); }

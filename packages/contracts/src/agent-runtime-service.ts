@@ -1,5 +1,5 @@
 import type { AgentModelPolicy, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence, AgentTranscriptEntry,
-    CompletionPolicy, ExecutionGrant, StackMode, SequenceStatus } from '@dope/agent-core';
+    CompletionPolicy, ExecutionControls, ExecutionGrant, StackMode, SequenceStatus } from '@dope/agent-core';
 
 export const agentRuntimeServicePath = '/services/dope/agent-runtime';
 export const AgentRuntimeService = Symbol('AgentRuntimeService');
@@ -13,9 +13,16 @@ export interface DiscoveredTaskStack {
 }
 export type OpenTaskStackResult = { kind: 'opened'; sequence: AgentTaskSequence } |
     { kind: 'invalid-stack' | 'version-mismatch' | 'unsafe-source' | 'source-changed' | 'checkpoint-mismatch' };
+export interface WorkItemLaunchRequest {
+    requestKey: string; expectedProjectRevision: number; expectedMapRevision: number;
+    planningMapId: string; workItemId: string; delegablePaths: string[];
+    modelPolicy: AgentModelPolicy; controls: ExecutionControls; completion: CompletionPolicy;
+}
 export interface AgentRuntimeService {
     attach(folderUri: string): Promise<{ projectHandle: string }>;
     createTask(projectHandle: string, task: AgentTask): Promise<AgentTask>;
+    launchWorkItem(projectHandle: string, request: WorkItemLaunchRequest): Promise<AgentTask>;
+    listWorkItemTasks(projectHandle: string, planningMapId: string, workItemId: string): Promise<AgentTask[]>;
     readTask(projectHandle: string, taskId: string): Promise<AgentTask | undefined>;
     listTasks(projectHandle: string): Promise<AgentTask[]>;
     readRun(projectHandle: string, runId: string): Promise<AgentRun | undefined>;
