@@ -244,6 +244,8 @@ Implementation:
 -> /prompt-plan
 -> /prompt-write <folder>
 
+Before `/prompt-write` is complete, run the **mandatory Prompt Efficiency Gate** in `docs/workflow.md` over every newly authored prompt. Split overloaded responsibilities for the <=8-minute implementation-and-focused-validation target; inspect actual compiled-output/test dependencies, prevent redundant builds and nested aggregate commands, concentrate expensive T2/T3 gates, select the lowest suitable Sol effort and record necessary deferrals. Preserve security, authority, regression evidence and truthful results. This is a documentation-authoring audit, not an extra executable prompt.
+
 New executable task stacks use explicit GPT-6 Sol labels:
 - GPT-6 Sol Medium by default;
 - GPT-6 Sol High for materially harder, architecture-sensitive, risky, or broad work;

@@ -257,6 +257,8 @@ Implementation:
 
 > Plan richly; prompt sparsely; validate rigorously.
 
+Before declaring `/prompt-write` complete, apply the **mandatory Prompt Efficiency Gate** in `docs/workflow.md`: one coherent responsibility per ordinary implementation prompt, <=8-minute target including focused checks, minimal changed-package builds/tests, expensive evidence concentrated in justified T2/T3 gates, no duplicated aggregate commands, and no safety shortcuts. This is part of the existing workflow, not a new command.
+
 New implementation prompts use GPT-6 Sol Medium by default, GPT-6 Sol High for materially harder/riskier work, and GPT-6 Sol XHigh only exceptionally.
 
 Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported runner has explicit Phase 0 support.

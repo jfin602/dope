@@ -65,21 +65,38 @@ Do not jump from a substantial idea directly to implementation prompts.
 
 Owns task decomposition, preserved behavior, dependencies, prompt order, deferred work, risks, model routing, and required evidence.
 
-For every executable prompt, classify validation as T1, T2 or T3. Design stacks so expensive evidence is concentrated into explicit integration/qualification gates rather than repeated after every implementation step. Ordinary implementation prompts should target <=8 minutes and be split when coherent implementation plus T1 validation is unlikely to fit inside 15 minutes.
+For every executable prompt, classify validation as T1, T2 or T3. Decompose for an **<=8-minute implementation-and-focused-validation target**, not merely the 15-minute hard limit. Assign one primary coherent implementation responsibility per ordinary prompt; split mixed domain contracts, persistence, runtime, UI and qualification when they cross independent ownership boundaries. Map dependencies and explicit deferrals. Reserve shared integration, browser/native, restart and aggregate evidence for dedicated T2/T3 gates unless an earlier security/compatibility check is necessary for safe continuation. An ordinary task predicted to miss the 8-minute target must be narrowed or explicitly justified before writing.
 
 ### /prompt-plan
 
 Inspects actual source/tests and traces producers/consumers, state ownership, framework adapters, authority boundaries, persistence, UI/domain seams, likely files, failure modes, and validation.
 
-Identify the smallest affected test surface from actual producers, consumers and package boundaries. Separate focused implementation evidence from evidence that can only be established at integration/qualification. Identify expensive commands and justify any required T2/T3 execution.
+Identify the smallest affected test surface from actual producers, consumers and package boundaries. Inspect how tests consume code (source versus compiled output), the actual changed-package dependency order, and existing command composition to avoid stale `lib/` tests, redundant compilation or nested aggregate runs. For each prompt plan only the smallest tests covering its change and the minimum required typecheck/build; do not schedule unrelated checks merely because a package or shared type is present. Separate focused evidence from integration/qualification and justify any expensive T2/T3 work.
 
 ### /prompt-write
 
 Distills the accepted plan into the smallest precise execution brief.
 
-Include only validation commands justified by the accepted tier. Do not append `npm run check`, `npm test`, restart, packaging or all-build commands as boilerplate. State deferred qualification evidence when relevant, and keep ordinary executable prompts small enough for the <=8-minute target / 15-minute budget.
+Include only validation commands justified by the accepted tier. Do not append `npm run check`, `npm test`, restart, packaging or all-build commands as boilerplate. A normal prompt states one bounded goal, its smallest source/authority scope, applicable preserved behavior, minimal tests/build prerequisites, explicit non-goals/deferred work and a concrete done condition. Keep ordinary implementation and essential checks within the <=8-minute target, 10-minute soft ceiling and 15-minute hard budget.
 
-Do not copy planning analysis wholesale.
+After authoring **all** prompts, perform the mandatory **Prompt Efficiency Gate** below and revise the stack before reporting `/prompt-write` complete. Do not copy planning analysis wholesale.
+
+### Mandatory Prompt Efficiency Gate (before /prompt-write completion)
+
+The efficiency audit is part of `/prompt-ass -> /prompt-plan -> /prompt-write`, not a new command, extra product phase, or a reason to rewrite completed work. Examine **every** newly written implementation, integration and closeout prompt together; revise an unexecuted draft stack until all checks pass or an exception is explicit.
+
+1. **Single responsibility:** each ordinary implementation prompt has one coherent deliverable and the narrowest practical owner/boundary. Split overloaded combinations (e.g. unrelated data contracts, backend lifecycle, UI and qualification). Prefer small dependency-ordered slices, not arbitrary fixed prompt counts or splits that create unnecessary interfaces.
+2. **Runtime feasibility:** estimate time for inspection, coding, necessary tests/build and reporting. Target <=8 minutes, retain the 10-minute soft ceiling and 15-minute hard limit. Mark and narrow unjustifiably large ordinary prompts before writing; dedicated T2 integration, T3 GUI/native/release and manual closeout gates may legitimately take longer. Estimated feasibility is **not** proof of measured execution time.
+3. **Test precision:** identify the actual tests added/changed and directly affected existing behavior. Prefer one focused test invocation when sufficient; include additional safety/compatibility tests at the earliest gate required to avoid unsafe intermediate state. Do not repeat an entire already-passing test matrix in each prompt.
+4. **Build precision:** identify whether tests import source or compiled outputs, and if `lib/` or declarations are required, compile **only changed package outputs** in dependency order, normally once. Do not use unconditional all-package builds/typechecks, browser/Electron packaging or full app builds when they are unrelated to the changed boundary. Never run tests against stale compiled code.
+5. **Evidence distribution:** place bounded cross-package/adversarial/regression tests in an explicit T2 gate and final aggregate, restart, browser/native and real-world proof in the appropriate T3 gate. A T2 change crossing an existing security/authority boundary must still validate the critical invariant *before* unsafe work could advance.
+6. **Command deduplication:** inspect nested scripts before prescribing them. If the final aggregate already runs typecheck, package builds and product tests, do not separately rerun those commands on the same unchanged candidate. Register new focused tests in the relevant aggregate when appropriate. If a subsequent repair invalidates previous evidence, rerun only affected checks, including the aggregate when genuinely invalidated.
+7. **Model economy and deferral:** use the lowest suitable approved model effort (Sol Medium for ordinary narrow work; High for genuinely demanding architecture, authority, security, cross-boundary or debugging work; XHigh exceptionally). Explicitly defer unrelated functionality, tests and broad qualification without deferring mandatory correctness or authority checks.
+8. **Runnable/traceable contract:** preserve task grammar, contiguous prompt/version rules, exactly one final closeout, Browser-required flags, stable provider/model recommendations, immutable historical evidence and honest Green/Not Green decisions. Confirm no prompt contradicts a preceding task, existing granted authority, or the stack's planned tests.
+
+The audit outcome should be concise in the stack assessment/plan: describe meaningful splits, chosen narrow validation/build commands, shared expensive gates and any accepted exceptions. It does not require a second worksheet, exhaustive file inventory, speculative tests, automatic test execution during documentation authoring, or a separate audit prompt.
+
+**Safety and truth override speed.** Do not delete tests, widen permissions, suppress errors, hide failed evidence, omit required validation, claim unrun checks or defer a safety gate needed before continuing merely to meet a runtime target.
 
 ## Repository implementation model routing
 
