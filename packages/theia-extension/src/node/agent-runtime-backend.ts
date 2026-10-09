@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { readdir } from 'node:fs/promises';
-import { AGENT_SCHEMA_VERSION, parseAgentTask, parseExecutionGrant, projectPath,
+import { AGENT_SCHEMA_VERSION, decideProposedAction, parseAgentTask, parseExecutionGrant, projectPath,
     phaseStackFolder, phaseStackTaskMetadata, sequenceNeedsDirtyAcceptance, importPhaseStack } from '@dope/agent-core';
-import type { AgentModelPolicy, AgentRun, AgentTask, AgentTaskSequence, CompletionPolicy,
+import type { AgentModelPolicy, AgentRun, AgentTask, AgentTaskSequence, ProposedAction, CompletionPolicy,
     ExecutionGrant, SequenceBlockReason } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureSequenceEvidence, checkedTasksRoot, snapshotTaskStack, readStackSources,
@@ -157,6 +157,21 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         return this.execution.decideCandidate(root, runId, expectedRevision, candidateFingerprint, decision, grant);
     }
     listRuns(handle: string): Promise<AgentRun[]> { return this.store.listRuns(this.active(handle)); }
+    listActions(handle: string, taskId?: string): Promise<ProposedAction[]> {
+        return this.store.listActions(this.active(handle), taskId);
+    }
+    readAction(handle: string, actionId: string): Promise<ProposedAction | undefined> {
+        return this.store.readAction(this.active(handle), actionId);
+    }
+    async decideAction(handle: string, actionId: string, expectedRevision: number,
+        decision: 'acknowledged' | 'rejected'): Promise<ProposedAction> {
+        const root = this.active(handle);
+        const current = await this.store.readAction(root, actionId);
+        if (!current) throw new Error('ProposedAction missing');
+        // Acknowledgement is inspection only; it never feeds the promotion path or grant.
+        return this.store.decideAction(root, current,
+            decideProposedAction(current, decision, new Date().toISOString(), expectedRevision));
+    }
     async listTaskStacks(handle: string, tasksRoot: string): Promise<DiscoveredTaskStack[]> {
         const root = this.active(handle);
         const directory = await checkedTasksRoot(root, tasksRoot);

@@ -1,10 +1,10 @@
-import type { AgentModelPolicy, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence, AgentTranscriptEntry,
+import type { AgentModelPolicy, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence, AgentTranscriptEntry, ProposedAction,
     CompletionPolicy, ExecutionControls, ExecutionGrant, StackMode, SequenceStatus } from '@dope/agent-core';
 
 export const agentRuntimeServicePath = '/services/dope/agent-runtime';
 export const AgentRuntimeService = Symbol('AgentRuntimeService');
 
-export interface AgentStoreChange { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript'; id: string }
+export interface AgentStoreChange { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action'; id: string }
 export interface AgentRuntimeClient { notifyAgentStateChanged(change: AgentStoreChange): void }
 export interface DiscoveredTaskStack {
     folderName: string; path: string; mode: StackMode; phase: number;
@@ -29,6 +29,10 @@ export interface AgentRuntimeService {
     decideCandidate(projectHandle: string, runId: string, expectedRevision: number,
         candidateFingerprint: string, decision: 'accept' | 'reject', grant?: ExecutionGrant): Promise<AgentRun>;
     listRuns(projectHandle: string): Promise<AgentRun[]>;
+    listActions(projectHandle: string, taskId?: string): Promise<ProposedAction[]>;
+    readAction(projectHandle: string, actionId: string): Promise<ProposedAction | undefined>;
+    decideAction(projectHandle: string, actionId: string, expectedRevision: number,
+        decision: 'acknowledged' | 'rejected'): Promise<ProposedAction>;
     listTaskStacks(projectHandle: string, tasksRoot: string): Promise<DiscoveredTaskStack[]>;
     openTaskStack(projectHandle: string, tasksRoot: string, folderName: string): Promise<OpenTaskStackResult>;
     acceptSequenceDirtyBasis(projectHandle: string, sequenceId: string, worktreeFingerprint: string): Promise<AgentTaskSequence>;

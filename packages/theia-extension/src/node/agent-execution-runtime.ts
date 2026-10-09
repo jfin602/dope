@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { AGENT_SCHEMA_VERSION, checkEffect, isModelCapacityFailure, parseExecutionGrant, projectPath } from '@dope/agent-core';
+import { AGENT_SCHEMA_VERSION, checkEffect, createBlockedProposedAction, isModelCapacityFailure, parseExecutionGrant, projectPath } from '@dope/agent-core';
 import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentModelPolicy, AgentRun,
     AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance, AgentExecutionRequest, AgentTranscriptInput } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
@@ -46,6 +46,20 @@ export class AgentExecutionRuntime {
         private readonly validationRunner = new CandidateValidationRunner()) {}
 
     activeRunId(root: string): string | undefined { return this.active.get(root)?.run?.id; }
+    private async recordBlockedEffects(active: Active, effects: { kind: 'create' | 'modify' | 'delete' | 'rename'; path: string }[],
+        scopeBlock?: 'delegation-scope' | 'human-reserved-scope'): Promise<void> {
+        if (!active.run || !active.grant) return;
+        for (const effect of effects) {
+            const proposed = { kind: `project-${effect.kind}` as const, scope: 'project' as const, path: effect.path };
+            if (checkEffect(active.grant, proposed).allowed && !scopeBlock) continue;
+            const action = createBlockedProposedAction({ id: `action-${randomUUID()}`,
+                taskId: active.run.taskId, runId: active.run.id, createdAt: new Date().toISOString(),
+                effect: proposed, grant: active.grant, scopeBlock,
+                rationale: scopeBlock ? 'Candidate exceeds delegated or human-reserved scope' :
+                    'Candidate effect is denied by the fixed execution grant' });
+            await this.store.createAction(active.root, action);
+        }
+    }
     async waitForRun(root: string, runId: string): Promise<AgentRun> {
         const active = this.active.get(root);
         if (active?.run?.id === runId) await active.finished;
@@ -507,14 +521,19 @@ export class AgentExecutionRuntime {
                         const scope = task.origin.kind === 'work-item' ? task.origin.scope : undefined;
                         const within = (parent: string, child: string): boolean =>
                             child === parent || child.startsWith(`${parent}/`);
-                        if (!scope || delta.effects.some(effect =>
+                        const scopeBlocked = delta.effects.filter(effect =>
                             !['create', 'modify'].includes(effect.kind) ||
                             effect.path.split('/').some(part => ['.git', '.dope', '.codex', '.ssh', '.aws', '.npmrc', '.yarnrc', '.env'].includes(part) ||
                                 part.startsWith('.env.') || part.endsWith('.pem') || part.endsWith('.key')) ||
-                            !scope.delegablePaths.some(path => within(path, effect.path)) ||
+                            !scope?.delegablePaths.some(path => within(path, effect.path)) ||
                             scope.humanReservedPaths.some(path => within(path, effect.path) || within(effect.path, path)) ||
-                            !checkEffect(active.grant!, { kind: `project-${effect.kind}`, scope: 'project', path: effect.path }).allowed))
+                            !checkEffect(active.grant!, { kind: `project-${effect.kind}`, scope: 'project', path: effect.path }).allowed);
+                        if (scopeBlocked.length) {
+                            for (const effect of scopeBlocked) await this.recordBlockedEffects(active, [effect],
+                                scope?.humanReservedPaths.some(path => within(path, effect.path) || within(effect.path, path)) ?
+                                    'human-reserved-scope' : 'delegation-scope');
                             throw new Error('Review candidate exceeds delegation or execution authority');
+                        }
                         const preview = await active.workspace.reviewDiff(delta);
                         await this.store.saveReviewCandidate(active.root, active.run.id, active.workspace.root, delta);
                         if (await active.workspace.fingerprint() !== fingerprint)
@@ -540,7 +559,11 @@ export class AgentExecutionRuntime {
                         authorityDecision: result.decision, appliedFiles: result.applied })));
                     promotionBlocked = !result.decision.allowed;
                     promotionSucceeded = result.decision.allowed;
-                    if (promotionBlocked) await this.event(active, 'authority', 'Candidate changes blocked by execution grant');
+                    if (promotionBlocked) {
+                        await this.recordBlockedEffects(active, delta.effects.filter(effect =>
+                            result.decision.blocked.some(blocked => blocked.kind === effect.kind && blocked.path === effect.path)));
+                        await this.event(active, 'authority', 'Candidate changes blocked by execution grant');
+                    }
                 }
             } catch (error) {
                 promotionBlocked = true;

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { AgentRun, AgentRunEvent, AgentTask, CandidateDelta, id, integer, parseAgentRun, parseAgentRunEvent, parseAgentTask, projectPath } from '../contracts';
 import { canTransitionAgentRun } from '../state';
 import { AgentTaskSequence, canTransitionSequence, parseAgentTaskSequence } from '../sequence';
+import { ProposedAction, parseProposedAction } from '../proposed-action';
 import { AGENT_TRANSCRIPT_BYTES_LIMIT, AGENT_TRANSCRIPT_ENTRY_LIMIT, AGENT_TRANSCRIPT_PAGE_LIMIT,
     AGENT_TRANSCRIPT_RECORD_BYTES_LIMIT, AgentTranscriptEntry, AgentTranscriptInput, AgentTranscriptRecord, AgentTranscriptStorage,
     parseAgentTranscriptRecord, prepareAgentTranscriptRecord } from '../transcript';
@@ -37,14 +38,14 @@ function checked<T>(value: unknown, parse: (value: unknown) => T): T {
 export class AgentStore implements AgentTranscriptStorage {
     private readonly transcriptCache = new Map<string, { identity: string; records: AgentTranscriptRecord[];
         entries: AgentTranscriptEntry[]; text: string; recorded: boolean }>();
-    private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript'; id: string }) => void>();
+    private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action'; id: string }) => void>();
 
-    onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript'; id: string }) => void): () => void {
+    onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action'; id: string }) => void): () => void {
         this.listeners.add(listener);
         return () => this.listeners.delete(listener);
     }
 
-    private notify(root: string, kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript', id: string): void {
+    private notify(root: string, kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action', id: string): void {
         for (const listener of this.listeners) try { listener(root, { kind, id }); } catch { /* Committed writes stay committed. */ }
     }
 
@@ -101,7 +102,7 @@ export class AgentStore implements AgentTranscriptStorage {
         return path;
     }
 
-    private async collection(root: string, name: 'tasks' | 'runs' | 'sequences', create: boolean): Promise<string | undefined> {
+    private async collection(root: string, name: 'tasks' | 'runs' | 'sequences' | 'actions', create: boolean): Promise<string | undefined> {
         const base = await this.base(root, create);
         if (!base) return undefined;
         const path = join(base, name);
@@ -457,6 +458,61 @@ export class AgentStore implements AgentTranscriptStorage {
         });
         this.notify(root, 'task', task.id);
         return task;
+    }
+
+    async readAction(root: string, actionId: string): Promise<ProposedAction | undefined> {
+        const dir = await this.collection(root, 'actions', false);
+        const action = dir ? await this.json(join(dir, `${id(actionId)}.json`), parseProposedAction) : undefined;
+        if (action && action.id !== actionId) throw new Error('Corrupt ProposedAction identity');
+        return action;
+    }
+
+    async listActions(root: string, taskId?: string): Promise<ProposedAction[]> {
+        if (taskId !== undefined) id(taskId);
+        const dir = await this.collection(root, 'actions', false);
+        if (!dir) return [];
+        const names = (await readdir(dir)).filter(name => name.endsWith('.json')).sort();
+        if (names.length > 1000) throw new Error('Too many ProposedActions');
+        const actions: ProposedAction[] = [];
+        for (const name of names) {
+            const action = await this.readAction(root, name.slice(0, -5));
+            if (!action || `${action.id}.json` !== name) throw new Error('Corrupt ProposedAction identity');
+            if (taskId === undefined || action.taskId === taskId) actions.push(action);
+        }
+        return actions;
+    }
+
+    async createAction(root: string, value: ProposedAction): Promise<ProposedAction> {
+        const action = checked(value, parseProposedAction);
+        if (action.revision !== 0) throw new Error('ProposedAction must begin blocked');
+        const dir = (await this.collection(root, 'actions', true))!;
+        await this.locked(dir, async () => {
+            const task = await this.readTask(root, action.taskId);
+            const run = await this.readRun(root, action.runId);
+            if (!task || !run || run.taskId !== task.id) throw new Error('ProposedAction source task/run missing');
+            if (await this.readAction(root, action.id)) throw new Error('ProposedAction already exists');
+            await this.atomic(join(dir, `${action.id}.json`), action);
+        });
+        this.notify(root, 'action', action.id);
+        return action;
+    }
+
+    async decideAction(root: string, expected: ProposedAction, value: ProposedAction): Promise<ProposedAction> {
+        const old = checked(expected, parseProposedAction), next = checked(value, parseProposedAction);
+        if (old.id !== next.id || old.taskId !== next.taskId || old.runId !== next.runId ||
+            !same(old.effect, next.effect) || old.requiredAuthority !== next.requiredAuthority ||
+            old.rationale !== next.rationale || old.createdAt !== next.createdAt ||
+            old.decision || !next.decision || next.revision !== old.revision + 1)
+            throw new Error('Invalid ProposedAction decision');
+        const dir = await this.collection(root, 'actions', false);
+        if (!dir) throw new Error('ProposedAction missing');
+        await this.locked(dir, async () => {
+            const current = await this.readAction(root, old.id);
+            if (!current || !same(current, old)) throw new Error('Stale ProposedAction revision');
+            await this.atomic(join(dir, `${old.id}.json`), next);
+        });
+        this.notify(root, 'action', old.id);
+        return next;
     }
 
     async readRun(root: string, runId: string): Promise<AgentRun | undefined> {
