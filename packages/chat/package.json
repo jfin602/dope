@@ -1,6 +1,6 @@
 {
   "name": "@dope/chat",
-  "version": "0.8.20",
+  "version": "0.8.21",
   "private": true,
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -8,6 +8,6 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@dope/ai": "0.8.20"
+    "@dope/ai": "0.8.21"
   }
 }

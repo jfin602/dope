@@ -27,10 +27,13 @@ export interface PlannedTransformation {
   redirect?: RelationshipRedirect; resolution?: Resolution; deferredTo?: { mapId: string; transformationId: string }; adopted?: boolean;
 }
 export type WorkStatus = 'proposed' | 'ready' | 'in-progress' | 'completed' | 'cancelled';
+export type WorkAssignment = 'HUMAN' | 'AI' | 'SHARED';
 export interface WorkItem {
   id: string; title: string; objective: string; transformationIds: string[]; dependsOn: string[];
   requirements: string[]; constraints: string[]; acceptanceCriteria: string[]; validationTargets: string[];
   workingSet: string[]; status: WorkStatus; completionNotes?: string;
+  /** Missing fields in legacy maps mean human ownership with no delegation. */
+  assignment?: WorkAssignment; delegablePaths?: string[]; humanReservedPaths?: string[];
 }
 export interface HistoryEntry { revision: number; action: string; at: string }
 export interface PlanningMap {
@@ -141,15 +144,30 @@ function transformation(v: unknown, at: string): PlannedTransformation {
     ...(x.adopted === undefined ? {} : { adopted: bool(x.adopted, `${at}.adopted`) }) };
 }
 function work(v: unknown, at: string): WorkItem {
-  const x = obj(v, at); fields(x, ['id', 'title', 'objective', 'transformationIds', 'dependsOn', 'requirements', 'constraints', 'acceptanceCriteria', 'validationTargets', 'workingSet', 'status'], ['completionNotes'], at);
+  const x = obj(v, at); fields(x, ['id', 'title', 'objective', 'transformationIds', 'dependsOn', 'requirements', 'constraints', 'acceptanceCriteria', 'validationTargets', 'workingSet', 'status'], ['completionNotes', 'assignment', 'delegablePaths', 'humanReservedPaths'], at);
   const status = choice(x.status, ['proposed', 'ready', 'in-progress', 'completed', 'cancelled'] as const, `${at}.status`);
   if ((status === 'completed') !== (x.completionNotes !== undefined)) fail(`${at}.completionNotes`);
   const transformationIds = ids(x.transformationIds, `${at}.transformationIds`);
   if (!transformationIds.length) fail(`${at}.transformationIds`);
+  const workingSet = paths(x.workingSet, `${at}.workingSet`);
+  const assignment = x.assignment === undefined ? 'HUMAN' : choice(x.assignment, ['HUMAN', 'AI', 'SHARED'] as const, `${at}.assignment`);
+  const delegablePaths = x.delegablePaths === undefined ? [] : paths(x.delegablePaths, `${at}.delegablePaths`);
+  const humanReservedPaths = x.humanReservedPaths === undefined && assignment === 'HUMAN'
+    ? [...workingSet] : x.humanReservedPaths === undefined ? [] : paths(x.humanReservedPaths, `${at}.humanReservedPaths`);
+  const contains = (parent: string, child: string) => child === parent || child.startsWith(`${parent}/`);
+  for (const scope of [...delegablePaths, ...humanReservedPaths])
+    if (!workingSet.some(root => contains(root, scope))) fail(`${at}.ownership scope outside workingSet`);
+  if (delegablePaths.some(delegated => humanReservedPaths.some(reserved => contains(delegated, reserved) || contains(reserved, delegated))))
+    fail(`${at}.ownership overlapping scopes`);
+  if ((assignment === 'HUMAN' && delegablePaths.length > 0) ||
+      (assignment === 'AI' && (delegablePaths.length === 0 || humanReservedPaths.length > 0)) ||
+      (assignment === 'SHARED' && (delegablePaths.length === 0 || humanReservedPaths.length === 0)))
+    fail(`${at}.ownership assignment scope`);
   return { id: id(x.id, `${at}.id`), title: str(x.title, `${at}.title`), objective: str(x.objective, `${at}.objective`), transformationIds,
     dependsOn: ids(x.dependsOn, `${at}.dependsOn`), requirements: strings(x.requirements, `${at}.requirements`),
     constraints: strings(x.constraints, `${at}.constraints`), acceptanceCriteria: strings(x.acceptanceCriteria, `${at}.acceptanceCriteria`),
-    validationTargets: strings(x.validationTargets, `${at}.validationTargets`), workingSet: paths(x.workingSet, `${at}.workingSet`), status,
+    validationTargets: strings(x.validationTargets, `${at}.validationTargets`), workingSet, status,
+    assignment, delegablePaths, humanReservedPaths,
     ...(x.completionNotes === undefined ? {} : { completionNotes: str(x.completionNotes, `${at}.completionNotes`) }) };
 }
 function byId(a: { id: string }, b: { id: string }): number { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; }

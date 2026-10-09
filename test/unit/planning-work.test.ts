@@ -20,6 +20,40 @@ const map = (): PlanningMap => parsePlanningMap({ schemaVersion: 1, id: 'plan', 
 const item = (id: string, refs: string[]): WorkItem => ({ id, title: id, objective: id, transformationIds: refs, dependsOn: [],
   requirements: [], constraints: [], acceptanceCriteria: [], validationTargets: [], workingSet: [], status: 'proposed' });
 
+test('legacy WorkItems default to human ownership without changing identity, status or basis', () => {
+  const original = map();
+  const legacy = { ...item('legacy', ['add']), workingSet: ['src/legacy'] };
+  const parsed = parsePlanningMap({ ...original, workItems: [legacy] });
+  assert.deepEqual(parsed.basis, original.basis);
+  assert.equal(parsed.workItems[0].id, 'legacy');
+  assert.equal(parsed.workItems[0].status, 'proposed');
+  assert.equal(parsed.workItems[0].assignment, 'HUMAN');
+  assert.deepEqual(parsed.workItems[0].delegablePaths, []);
+  assert.deepEqual(parsed.workItems[0].humanReservedPaths, ['src/legacy']);
+  assert.deepEqual(parsePlanningMap(parsed).workItems, parsed.workItems);
+  assert.equal(acceptSuggestion(original, suggestWorkItems(original)[0], 'suggested').assignment, 'HUMAN');
+});
+
+test('ownership scopes must be bounded, disjoint and consistent with assignment', () => {
+  const original = map();
+  const scoped = { ...item('scoped', ['add']), workingSet: ['src'], assignment: 'SHARED' as const,
+    delegablePaths: ['src/agent'], humanReservedPaths: ['src/human'] };
+  const parsed = parsePlanningMap({ ...original, workItems: [scoped] });
+  assert.deepEqual(parsed.workItems[0].delegablePaths, ['src/agent']);
+  assert.deepEqual(parsePlanningMap({ ...original, workItems: [{ ...scoped, assignment: 'AI', humanReservedPaths: [] }] }).workItems[0].humanReservedPaths, []);
+  const rejects = [
+    { ...scoped, assignment: 'HUMAN' },
+    { ...scoped, assignment: 'AI' },
+    { ...scoped, delegablePaths: [] },
+    { ...scoped, delegablePaths: ['elsewhere'] },
+    { ...scoped, delegablePaths: ['src/human/nested'] },
+    { ...scoped, humanReservedPaths: ['src'] },
+    { ...scoped, delegablePaths: ['../escape'] },
+    { ...scoped, humanReservedPaths: ['/absolute'] }
+  ];
+  for (const invalid of rejects) assert.throws(() => parsePlanningMap({ ...original, workItems: [invalid] }));
+});
+
 test('suggestions are stable proposals, explicit acceptance and many-to-many references remain separate from architecture truth', () => {
   const original = map(), suggestions = suggestWorkItems(original);
   assert.deepEqual(suggestWorkItems(parsePlanningMap({ ...original, transformations: [...original.transformations].reverse() })), suggestions);

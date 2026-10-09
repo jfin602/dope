@@ -10,7 +10,8 @@ export function acceptSuggestion(map: PlanningMap, suggestion: WorkItemSuggestio
   const refs = suggestion.transformationIds;
   if (!refs.length || refs.some(ref => !map.transformations.some(item => item.id === ref))) throw new Error('Unknown suggestion transformation');
   return { id, title: suggestion.objective, objective: suggestion.objective, transformationIds: refs,
-    dependsOn: [], requirements: [], constraints: [], acceptanceCriteria: [], validationTargets: [], workingSet: [], status: 'proposed' };
+    dependsOn: [], requirements: [], constraints: [], acceptanceCriteria: [], validationTargets: [], workingSet: [], status: 'proposed',
+    assignment: 'HUMAN', delegablePaths: [], humanReservedPaths: [] };
 }
 
 export function putWorkItem(map: PlanningMap, item: WorkItem): PlanningMap {
