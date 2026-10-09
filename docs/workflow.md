@@ -653,3 +653,7 @@ Routing:
 
 After this correction is qualified, continue bounded Phase 7B AI Center and Phase 7C role-routing work, integrated qualification and a later final closeout.
 
+
+## October 9, 2026 — Phase 8D active
+
+`c8-chat-work-ui` and `c8-work-mode` closed Green at unchanged `0.8.20`. The owner independently activated **Phase 8D — General Scoped Delegation** on 2026-10-09. Current authority: ADR 0031, `docs/planning/p8/phase-8d-plan.md`, the current Phase 8 roadmap and stability contract. Use `/prompt-ass -> /prompt-plan -> /prompt-write p8d`; continue the Phase 8 patch family from `0.8.21`, with a browser/manual final closeout. Earlier c8-work-mode Not Green attempts remain historical. Keep direct Work/Prompt Stacks, separate Chat and Work modules, fixed grants, candidate validation and existing checkpoint semantics unchanged. Local coding-model parity, Development Sessions and continuous map alignment remain later phases.

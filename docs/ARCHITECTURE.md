@@ -705,6 +705,18 @@ This is Dope work state and is excluded from generic Physical Map input just lik
 
 No direct Theia dependency.
 
+### Phase 8D — WorkItem delegation and review integration
+
+Visual Planning continues owning PlanningMap/WorkItem identity, state and revision beneath `.dope/planning-maps.json`. Agent Runtime owns AgentTask, AgentRun, review, steering and consequential action records beneath `.dope/agent/`. A thin typed application orchestration boundary links stable project/map/WorkItem/task/run IDs without copying canonical WorkItems into Agent Runtime or assuming an atomic cross-store transaction. Idempotent link reconciliation and optimistic map/project revision checks prevent orphaned, duplicate, stale or cross-project execution.
+
+For WorkItem-origin **review-required** tasks, add a persisted hold after ADR 0029 frozen-candidate validation and before ADR 0028 authoritative promotion. Show exact classified CandidateDelta, bounded diff/provenance and required validation. Developer accept rechecks the frozen candidate, authoritative Git/path basis, scope/grant and validation before only Dope-owned promotion. Reject applies no authoritative effects and does not silently reset existing independent developer changes. Existing direct Work and Prompt Stack workflows retain their qualified already-granted effects, Dope-owned checkpoints and manual gates.
+
+HUMAN / SHARED ownership is assignment rather than permission. Human-reserved paths and any out-of-delegation effects must be rejected at task derivation and promotion, even when a coarse provider sandbox or standing project grant would permit the write. ProposedAction may make an unsafe request visible, but cannot turn a denied class into an executable grant merely by changing its review state. No provider/repository text controls enforcement.
+
+Steering is a typed persisted request/acknowledgement at a safe runtime boundary. Do not assume Codex or future agents can alter a live turn: if unsupported, display pending/unsupported and require an explicit stop/restart/new-task handoff. Do not silently mutate a frozen candidate, grant, or historical event. Applied candidate provenance and changed-path evidence can create bounded affected Software Map identity and staleness links, with uncertainty explicit. Targeted re-analysis requires developer action; Phase 10 background alignment and canonical architecture rewrites are out of scope.
+
+See ADR 0031 and `docs/planning/p8/phase-8d-plan.md`. No Theia, graph-renderer, provider-native or Codex types belong in these domain contracts.
+
 ### Model Runtime
 
 Provider-independent model interface and capability discovery.

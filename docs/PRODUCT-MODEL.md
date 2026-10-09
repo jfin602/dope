@@ -569,6 +569,18 @@ A WorkItem may later produce one or more AgentTasks, but the WorkItem is not the
 
 WorkItems are implementation planning state, not architecture authority. Editing or completing one does not silently alter the PlanningMap target, canonical architecture or Physical Map.
 
+### Phase 8D — WorkItem delegation and developer review
+
+Owner-activated 2026-10-09. WorkItems remain Visual Planning artifacts, not AgentTasks, provider conversations or blanket grants. One WorkItem may explicitly create multiple AgentTasks with immutable origin references and durable project/map/WorkItem/task/run links. Existing direct Work and Prompt Stacks do not require WorkItems. WorkItem requirements, working set, acceptance and validation constrain delegated tasks; they never widen an ExecutionGrant. WorkItem completion is an explicit developer transition, never inferred from AgentRun completion, promotion or validation.
+
+Ownership is HUMAN / AI / SHARED with explicit delegated and human-reserved portions in SHARED. Assignment is *not* filesystem/process/Git/network authority. Human-reserved paths cannot be delegated or promoted even when an existing broad grant permits project create/modify; enforce the stricter scoped intersection at derivation and promotion. Stale PlanningMap/WorkItem revision, project basis or transformation references block or demand developer reconciliation instead of silently retargeting the task.
+
+WorkItem-origin tasks add a **review-required candidate policy**: after provider execution, freeze CandidateDelta, perform ADR 0029 required validation against that frozen basis, then present the real diff/results for explicit developer accept/reject before ADR 0028 promotion. Accept re-verifies candidate fingerprint, project/Git/path basis, approved grant, narrowed delegated scope and required validation. Reject applies nothing and preserves inspectable evidence. Both are idempotent/restart-safe; accepting a candidate does not complete the WorkItem. Direct Work and Prompt Stack promotion/checkpoint semantics remain unchanged.
+
+Consequential ProposedActions carry stable origin, actor, intent, effect/target, expected impact, requested authority, evidence and durable decision. A developer's review/approval is not an executable grant by itself: the fixed initial denial of delete/rename, Git history/writes, network, secrets and outside-root effects stays enforced until a separately approved and qualified policy can represent those permissions. No one-ProposedAction-per-authorized-file approval spam.
+
+Typed steering is versioned state with durable request and applied/rejected/pending/unsupported acknowledgement. Unsupported mid-turn steering must be displayed truthfully and handled at an explicit safe task boundary. Steering never changes an accepted grant, frozen candidate or previously recorded run. Applied changes may produce scoped Software Map identity/staleness evidence, with unknown identities labeled unresolved and developer-invoked targeted refresh. Continuous automated alignment remains Phase 10.
+
 ### AgentTask
 
 A provider-independent bounded unit of delegated execution.

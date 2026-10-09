@@ -337,6 +337,14 @@ Before calling full Phase 8 qualified, additionally prove:
 - developer can steer/cancel/review and accept/reject the resulting change;
 - accepted work leaves bounded affected-map provenance/staleness without implementing Phase 10 continuous alignment.
 
+### Phase 8D explicit general-delegation qualification
+
+Require one real GUI/developer-facing disposable-project WorkItem to launch multiple linked AgentTasks across its lifetime, with stable project/map/task/run identity and restart recovery. Exercise HUMAN-only (no AI delegation), AI-delegated and SHARED human-reserved versus delegable portions. A narrow delegated working set must be enforced in Dope-owned promotion, even where the standing project grant is broader. Stale/cross-project planning basis, changed referenced transformation and duplicate request must fail closed.
+
+For a real WorkItem-origin run, inspect actual frozen candidate diff and Dope-owned validation; explicitly accept one valid candidate and reject a different one without unauthorized files applied. Acceptance must recheck candidate fingerprint, Git/path basis, grant, human-reserved scope and required validation; repeated/restarted accept cannot double-apply. Exercise failed validation, out-of-grant delete/rename, Git/network/secrets escalation, symlink/path escape, external HEAD change and interrupted review. Consequential ProposedAction must remain reviewable but unexecutable when fixed grant cannot enforce requested effect.
+
+Prove typed steering acknowledgement (applied at supported safe boundary or honestly pending/unsupported), cancellation and restoration without hidden resubmission. Accepted changes yield project-bound affected Software Map IDs/changed paths and bounded staleness, or explicit unknown; no continuous alignment. Regression: existing direct Work auto-promotion, Prompt Stack validation/Dope-owned Git checkpoints, manual gates, transcript, restart, Chat isolation and provider security remain qualified. Final p8d T3 requires real UI/hosted Codex exercise, one final exact-candidate `npm run check`, validated prompt stack and truthful Green/Not Green closeout; P1–P9 use focused T1/T2 evidence.
+
 ### Local coding-model gate
 
 Local coding-agent support follows the qualified reference harness. Test the same representative AgentTasks through the same authority/tool/validation contracts. Failures attributable to local model capability must not force provider-specific canonical task/run state.
