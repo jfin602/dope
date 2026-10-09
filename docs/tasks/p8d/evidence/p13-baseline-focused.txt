@@ -1,0 +1,12 @@
+✔ current production and package wiring stays free of Phase 3 Planning instruments (29.052898ms)
+✔ Theia stays on the qualified baseline and package versions stay coherent (0.817652ms)
+✔ both applications carry the required IDE composition (4.782807ms)
+✔ packaged entrypoint passes bundled plugins before starting Theia (1.165357ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 147.327418

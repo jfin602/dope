@@ -9,7 +9,7 @@ const entries = [{ number: 1, title: 'First implementation', execution: 'agent-t
 const sequence: any = { id: 'stored-sequence', status: 'completed', currentEntryNumber: 3,
     stack: { folderName: 'c4-dope-phase-stack-smoke', mode: 'correction', phase: 4, entries },
     checkpoints: [], basis: { head, packageVersion: '0.8.20' }, runIds: ['historic-run'] };
-const task: any = { id: 'historic-task', objective: 'First implementation', completion: { validation: [] } };
+const task: any = { id: 'historic-task', objective: 'First implementation', origin: { kind: 'phase-stack' }, completion: { validation: [] } };
 const run: any = { id: 'historic-run', taskId: task.id, status: 'completed' };
 
 test('Running contains only active execution, groups stack children, and History sorts by latest activity', () => {
@@ -48,6 +48,7 @@ test('Work discovers default Prompt Stacks and reopens completed history without
         async listTasks() { return [task]; }, async listRuns() { return [run]; },
         async readTask(_handle: string, id: string) { return id === task.id ? task : undefined; },
         async readRun(_handle: string, id: string) { return id === run.id ? run : undefined; },
+        async readSteering() { return undefined; }, async listActions() { return []; }, async readMapImpact() { return undefined; },
         async readTranscript() { return { state: 'recorded', entries: [{ kind: 'message', text: 'Done' }],
             nextSequence: 1, hasMore: false, incomplete: false }; },
         async sequenceEvidence() { return { head, packageVersion: '0.8.20', clean: true, worktreeFingerprint: 'basis' }; },

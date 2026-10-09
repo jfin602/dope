@@ -1,0 +1,51 @@
+✔ WorkItem validated candidate is held with durable diff, fingerprint and bytes (1833.882514ms)
+✔ failed WorkItem validation cannot create a review hold (1429.477828ms)
+✔ direct task still promotes automatically after validation (1590.070035ms)
+✔ accept promotes the exact validated WorkItem candidate once and persists the decision (2953.583095ms)
+✔ reject persists without applying and repeated rejection is idempotent (1556.602988ms)
+✔ stale revision, fingerprint and authoritative Git basis block accept (1572.423825ms)
+✔ tampered frozen bytes and failed validation never promote (3940.621309ms)
+✔ review hold survives backend restart and accepted candidate is applied once (2858.737944ms)
+✔ human-reserved SHARED path fails review and records a blocked action without promotion (1459.201166ms)
+✔ applied paths resolve bounded physical IDs or remain unknown, with stale source evidence explicit (2.94127ms)
+✔ generation change never publishes IDs from an obsolete snapshot (0.494601ms)
+✔ impact receipt persists under its run and rejects a second decision (52.745984ms)
+✔ only blocked effects produce ProposedActions; acknowledgement never expands authority (9.749438ms)
+✔ parser rejects executable approvals, private targets and untrusted decision fields (0.87018ms)
+✔ project-local action survives restart and decision is revision checked (49.643397ms)
+✔ unsupported active turn persists a scoped, truthful acknowledgement without executing it (53.858205ms)
+✔ stale steering revision cannot overwrite acknowledged intent (23.345689ms)
+✔ terminal run rejects steering (24.161001ms)
+✔ legacy WorkItems default to human ownership without changing identity, status or basis (4.346163ms)
+✔ ownership scopes must be bounded, disjoint and consistent with assignment (2.021611ms)
+✔ suggestions are stable proposals, explicit acceptance and many-to-many references remain separate from architecture truth (2.187447ms)
+✔ split preserves references; merge preserves union; dependencies and transitions are checked (1.98183ms)
+✔ work projection links transformations and architecture in both directions (1.125716ms)
+✔ controller shares WorkItem identity across projections and clears it on project switch (10.044644ms)
+✔ split suggestions retain source refs and expose both predecessor dependencies (2.128923ms)
+✔ Work navigation restores independent Chat and completed stack without mutation; reopened transcript starts at the beginning (379.494839ms)
+✔ project switch cannot let an old Prompt Stack scan suppress the new project (0.483091ms)
+✔ Work detail records unsupported steering and review-only action decisions with map impact evidence (0.747893ms)
+✔ Running contains only active execution, groups stack children, and History sorts by latest activity (1.881843ms)
+✖ Work discovers default Prompt Stacks and reopens completed history without creating records (1.095411ms)
+✔ launch derives a bounded immutable WorkItem task and inverse links from AgentStore (74.76523ms)
+✔ same request key is idempotent, including concurrent retries; conflicting reuse fails (54.765452ms)
+✔ stale project or map revision cannot launch (42.048998ms)
+✔ human ownership and SHARED human-reserved paths deny launch (47.864007ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 33
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19417.751036
+
+✖ failing tests:
+
+test at test/unit/work-selection.test.ts:38:1
+✖ Work discovers default Prompt Stacks and reopens completed history without creating records (1.095411ms)
+  TypeError: Cannot read properties of undefined (reading 'kind')
+      at TestContext.<anonymous> (file:///home/jfin/dev/dope/test/unit/work-selection.test.ts:71:43)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)

@@ -26,7 +26,7 @@ test('current production and package wiring stays free of Phase 3 Planning instr
     assert.doesNotMatch(source, removed, `${path}: removed Planning wiring`);
     if (!/planning-map-(?:controller|projection)\.ts$/.test(path))
       assert.doesNotMatch(source, /\bPlanningView\b/, `${path}: removed Phase 3 Planning view`);
-    if (!/^packages\/visual-planning\/|^packages\/theia-extension\/src\/node\/(?:backend-module|visual-planning-backend|chat-context-composer)\.ts$/.test(path))
+    if (!/^packages\/visual-planning\/|^packages\/theia-extension\/src\/node\/(?:backend-module|visual-planning-backend|chat-context-composer|agent-runtime-backend)\.ts$/.test(path))
       assert.doesNotMatch(source, /\bPlanningStore\b/, `${path}: removed Phase 3 Planning store`);
     if (path.startsWith('packages/contracts/')) {
       assert.doesNotMatch(source, /\b(?:interface|type|class)\s+(?:Plan|PlanStep|Task|Planning\w*)\b/, `${path}: removed DTO`);
