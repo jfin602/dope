@@ -14,7 +14,7 @@ Dope is a fresh project. It is not George v2 and has no compatibility requiremen
 
 Foundation Spike 0 qualified Eclipse Theia 1.75.0 as Dope's initial IDE substrate at package `0.0.6`.
 
-The active engineering slice is **Product Phase 8D — General Scoped Delegation**, owner-activated 2026-10-09 from `0.8.20`. 8A–8C, real Adaptive SEO Prompt Stack, `c8-chat-work-ui` and `c8-work-mode` are Green; 8D implementation and qualification remain pending. See [8D plan](docs/planning/p8/phase-8d-plan.md), [roadmap](docs/roadmap/mvp-roadmap.md) and [c8-work-mode closeout](docs/tasks/c8-work-mode/closeout.md). Historical qualification gaps remain preserved.
+The current engineering gate is **Phase 8D — NOT GREEN**. P1–P12 implementation is committed through `0.8.32`; the owner-reported P13 GUI closeout concerns an **uncommitted local `0.8.33`** candidate, not a qualified or released version. WorkItem tasks were created and reopened, but could not be started from Work; no Codex run or validated candidate was produced, and the final `npm run check` did not pass. **Phase 8E is not active.** Phase 8A–8C, the real Adaptive SEO Prompt Stack and `c8-work-mode` retain their separate Green evidence. See the [roadmap](docs/roadmap/mvp-roadmap.md), [8D plan](docs/planning/p8/phase-8d-plan.md) and [8D task folder](docs/tasks/p8d/). Do not equate written contracts or committed implementation with qualified behavior.
 
 Dope prefers a dark default presentation while preserving persistent user theme choice.
 

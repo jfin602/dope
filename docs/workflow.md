@@ -365,6 +365,21 @@ The existence of an aggregate command does not make it the default validation co
 
 Phase 4 prompts must add software-map/code-analysis suites to the real aggregate commands as capabilities land. Do not treat unit/build success as direct GUI or packaged-native qualification.
 
+## Documentation state reconciliation at qualification/repair closeout
+
+This is a **mandatory part of the existing closeout workflow**, not a new command, an automatic product-source edit, a separate model evaluation, or another full test pass. It prevents qualification/repair loops from leaving the product's current documentation behind the actual source and evidence.
+
+1. **Source and evidence identity:** collect the exact committed Git SHA, package version and recorded qualification disposition. If evidence/source is still in a dirty or uncommitted working tree, distinguish *verified committed*, *reported local/uncommitted*, and *not independently inspected*; do not publish an invented SHA or claim the local evidence exists remotely. Name the final aggregate outcome and which stages actually ran.
+2. **Four separate states:** distinguish **planned/accepted contract**, **implemented code**, **directly observed/qualified behavior**, and **Not Green/unqualified requirements**. Completion of an implementation prompt, existence of an RPC/UI button or saved task, unit tests, browser build, or phase validator cannot substitute for required live end-to-end or final-aggregate evidence.
+3. **Focused documentation comparison:** at terminal qualification and each final correction-loop disposition, compare the active phase row/top line in `docs/roadmap/mvp-roadmap.md`, the BOOT/AGENTS/README current-state routing, current `docs/project-overview.md`, active phase plan, stack README/closeout and only affected Product Model/Architecture/Stability/ADR contracts. An accepted ADR remains a design decision, not a runtime qualification claim.
+4. **Historical records and edits:** preserve original closeout failures, repair-cycle evidence, commit IDs, prompt snapshots and previous qualified scopes. Update *current* status and add narrow dated applicability notes rather than rewriting historical facts or requalifying old candidates by documentation. A documentation-only change does not fix product behavior or upgrade Green status.
+5. **Repair-loop cadence:** preserve detailed per-cycle evidence in its own work/closeout. Do **one bounded current-documentation reconciliation when the qualification/repair loop reaches its terminal Green/Not Green disposition**, not a full documentation sweep or update after every retry. A newly approved architectural contract change follows ordinary `/docs-review -> explicit approval -> /docs-apply`, rather than sneaking through qualification logs.
+6. **Advancement rule:** do not promote a phase, change the qualified baseline, or activate a successor phase merely because focused repair tests passed when a required GUI, authority, security, restart or final aggregate gate is Not Green. An owner waiver must be explicit and recorded without relabeling the failed gate Green.
+7. **Local preservation:** do not overwrite or silently stage/commit a developer's uncommitted implementation, evidence files, manifests or local closeout. If documenting remote committed code while local qualification remains dirty, mark that difference and provide a safe reconciliation handoff before asking the developer to sync. Keep edits documentation-only and scoped.
+8. **Closure record:** identify remaining failed/unqualified gates and current repair entry point. Record whether docs are aligned, pending local evidence, or blocked on inaccessible files. Do not claim `/docs-apply` verified bytes unavailable to the current tooling.
+
+Documentation reconciliation itself uses repository text/source inspection; it **does not rerun `npm run check`, full builds or GUI qualification** just to synchronize wording. The resulting current-state change should be concise and link the authoritative roadmap/closeout rather than copy lengthy qualification histories across multiple docs. Detailed implementation fixes belong to a separately approved prompt/correction workflow.
+
 ## Closeout truth
 
 A closeout audits evidence and decides whether the bounded gate qualifies.

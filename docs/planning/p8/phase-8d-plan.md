@@ -1,6 +1,6 @@
 # Phase 8D — General Scoped Delegation Plan
 
-Status: **ACTIVE / APPROVED FOR IMPLEMENTATION; NOT QUALIFIED**
+Status: **ACTIVE / P13 NOT GREEN — IMPLEMENTATION COMMITTED THROUGH P12; FINAL QUALIFICATION FAILED**
 Owner activation: 2026-10-09
 Baseline: `0.8.20`; continuation: `0.8.21` through `0.8.33`
 Execution folder: `docs/tasks/p8d/`
@@ -8,9 +8,21 @@ Authority: ADR 0031 and 0017/0027/0028/0029/0030; Product Model, Architecture, S
 
 ## Purpose and entry
 
-Generalize qualified 8A–8C and Green c8-work-mode direct Work/Prompt Stack execution to developer-controlled WorkItem delegation, scoped HUMAN/AI/SHARED ownership, safe review/steering and bounded Software Map impact. Real Adaptive SEO Prompt Stack Green and c8-work-mode P9 Green at unchanged 0.8.20 clear the prerequisite; historical failures remain in their closeouts. Phase 8D is active but not implemented/qualified by that decision.
+Generalize qualified 8A–8C and Green c8-work-mode direct Work/Prompt Stack execution to developer-controlled WorkItem delegation, scoped HUMAN/AI/SHARED ownership, safe review/steering and bounded Software Map impact. Real Adaptive SEO Prompt Stack Green and c8-work-mode P9 Green at unchanged 0.8.20 clear the prerequisite; historical failures remain in their closeouts. Owner activation alone did not qualify 8D. P1–P12 implementation later landed in committed source at `0.8.32`; the reported P13 GUI/aggregate gate remained Not Green. See current status and outstanding gates below.
 
-## Existing source boundaries (inspected 2026-10-09)
+## Current implemented-versus-qualified status (2026-10-09)
+
+P13 (2026-10-09) is **NOT GREEN**, based on the owner's uncommitted local `0.8.33` qualification report. The committed GitHub code reaches P12 at `0.8.32` (`09fe3bcd`). Task creation/reopen is observed; no existing-task Start action or WorkItem-approved validation policy is wired end to end, so real Codex execution and downstream acceptance, review, steering, ProposedAction, map impact and held-review restart are unqualified. `npm run check` did not pass on the P13 candidate. Local `docs/tasks/p8d/closeout.md` and its logs/snapshots are **not present in the reviewed GitHub tree**; do not infer their hashes, commit their contents, or treat the doc alignment as P13 repair.
+
+### Explicit outstanding P13 qualification gates
+
+1. **Launch existing AgentTask:** Planning `Launch Work` currently calls `launchWorkItem` to persist an AgentTask. Its Work detail presents pending-task instructions but has no explicit **Start task** control; the New Work composer creates a *different direct* AgentTask. Wire a developer-controlled accepted ExecutionGrant and real `AgentRuntimeService.start` to the **persisted WorkItem-origin task ID**, preserving the fixed authority ceiling and existing direct Work/Prompt Stack paths.
+2. **Validation contract:** Planning `launchWork()` currently supplies `completion: { validation: [], requireValidationPass: false }`. `workReviewCanAccept` and backend acceptance require at least one matching passed Dope-owned validation target. Add explicit developer-approved validation configuration at WorkItem task start or earlier, enforce nonempty required validation without weakening the review gate; do not silently turn acceptance into a no-validation operation.
+3. **Real execution and review:** Qualify real Codex AgentRun, sandboxed candidate creation, frozen fingerprint, Dope-owned validation, held review, explicit accepted and rejected candidates, authoritative project-scope effects, restart/reopen, ProposedAction denial, steering truth and affected-map receipt using a disposable Git project. A persisted task is not a run.
+4. **Exact-candidate aggregate:** Repair the reported baseline test blocker without suppressing tests, then achieve one passing `npm run check` on the final exact source candidate (including product and Electron stages). Preserve failed observations and avoid claiming passing aggregate from focused tests or browser build. Final P13 closeout must establish exact source SHA/diff identity; local `0.8.33` is not yet committed.
+5. **Historical preservation / progression:** Preserve 8A–8C, `c8-work-mode`, the completed Adaptive SEO Prompt Stack and the developer's local P13 evidence. Do not activate 8E or relabel 8D Green until *all* required P13 gates are verified.
+
+## Historical starting-source boundaries (pre-P1, inspected 2026-10-09)
 
 - `packages/visual-planning/src/index.ts` defines strict WorkItem and PlanningMap schema; `work.ts` owns WorkItem transition/split/merge, `service.ts` revisioned planning operations. WorkItem lacks delegated ownership/task links and review lifecycle.
 - `packages/agent-core/src/contracts.ts` already accepts `AgentOrigin.kind: work-item` and optional `planningMapId` but has no complete WorkItem orchestration, typed steering or review hold. `authority.ts` enforces the fixed Phase 8B grant. `execution.ts` offers start/cancel/terminate, not guaranteed in-flight steering.

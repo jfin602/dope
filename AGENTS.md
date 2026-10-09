@@ -27,7 +27,7 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-**Current roadmap scope:** Product Phase 5 remains owner-closed for sequencing with P11 Not Green and P12 unexecuted. Product Phase 6 — Flow is OWNER-CLOSED FOR SEQUENCING at `0.6.8`, while its P8 audit remains Not Qualified. Product Phase 7 is OWNER APPROVED / QUALIFIED / CLOSED at actual `0.7.31`; historical Phase 7 and `c7-chat-project-grounding` evidence remains preserved. Product Phase 8 is ACTIVE under ADR 0027. Phase 8A Codex reference connection is **GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`; `bc151cb` is docs-only qualification. **Phase 8D — General Scoped Delegation is current**, owner-activated 2026-10-09 at baseline `0.8.20`; 8A/8B/8C, real Adaptive SEO Prompt Stack and `c8-work-mode` are Green. 8D adds WorkItem-derived AgentTasks, HUMAN/AI/SHARED ownership, review-before-promotion, consequential ProposedActions, capability-aware steering and bounded Software Map impact. Existing direct Work/Prompt Stacks, ADR 0028/0029 authority/validation, Git/checkpoints and separate Chat/Work modules remain unchanged. Read ADR 0031 and `docs/planning/p8/phase-8d-plan.md`.
+**Current roadmap scope:** Product Phase 8D is **ACTIVE / NOT GREEN**, based on the 2026-10-09 owner-reported P13 qualification. GitHub `main` commits P12 at `0.8.32` (`09fe3bcd`); the reported P13 `0.8.33` manifest, three test changes and closeout/evidence remain **uncommitted locally**. WorkItem-derived tasks persist but cannot be started from their Work detail, and their launch currently lacks a required Dope-owned validation policy; no real WorkItem Codex run or candidate was qualified. The required final aggregate check did not pass. Do not infer Green from focused tests, browser build or the phase validator; no 8E activation. 8A/8B/8C, real Adaptive SEO Prompt Stack and `c8-work-mode` remain separately Green for their exact historical scopes. Preserve ADR 0028/0029 authority, existing direct Work/Prompt Stack behavior and local P13 evidence. See current status in the roadmap and gaps in `docs/planning/p8/phase-8d-plan.md`.
 
 Product Phase 5 — Visual Software Planning is **OWNER-CLOSED FOR SEQUENCING**. Its retained P11 result is Not Green and P12 was not executed; see `docs/tasks/p5/closeout.md`. Product Phase 6 — Flow is owner-closed for sequencing at `0.6.8`; P8 remains Not Qualified. Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved core scope. Architecture-discovery follow-ons remain historical evidence; `c4-smap-storage` and `c4-color-theme` remain GREEN / QUALIFIED at unchanged `0.4.6`.
 
@@ -62,6 +62,10 @@ Only the narrow provider-independent sMap synthesis boundary and reference adapt
 
 
 ### Phase 8D implementation laws
+
+- Current P13 Not Green is an **integration/qualification** result, not retroactive disproof of every P1–P12 domain test. Record *implemented*, *observed*, *failed* and *unqualified* separately.
+- The existing WorkItem `launchWorkItem` backend creates AgentTask records, not AgentRuns. A developer-visible Start/accepted ExecutionGrant path must operate on those exact persisted task IDs; creating a new direct Work task is not equivalent.
+- WorkItem-origin review requires nonempty developer-approved Dope validation targets. An empty completion-policy target set must not be labeled review-acceptable or bypass validation.
 
 - WorkItem remains Visual Planning intent and AgentTask remains execution; WorkItem is never mandatory for direct Work or Prompt Stacks.
 - Ownership does not grant permission. HUMAN / human-reserved SHARED scope must block delegation and promotion even under a broad accepted project grant.

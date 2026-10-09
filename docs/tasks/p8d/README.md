@@ -1,7 +1,9 @@
 # Phase 8D — General Scoped Delegation
 
-Status: ACTIVE / REVISED UNEXECUTED PROMPT STACK / NOT YET QUALIFIED
+Status: **P1–P12 IMPLEMENTED / COMMITTED AT `0.8.32`; P13 NOT GREEN (owner-reported local `0.8.33`, uncommitted).**
 Starting version `0.8.20`; P1-P13 `0.8.21`–`0.8.33`; final P13 manual browser/T3.
+
+**Latest disposition (2026-10-09):** Two WorkItem-derived AgentTasks were created and survived reopen, but the Work GUI provided no Start action for the saved task IDs. Neither started Codex or produced a frozen/validated candidate. The Planning GUI currently derives an AgentTask with an empty required-validation policy; review acceptance also requires a nonempty passing Dope validation target. Consequently acceptance/rejection, project promotion, steering, ProposedAction, map impact and held-review restoration remain **unqualified**. WorkItem remained `ready`, which does not itself imply failure. Historical direct Work and completed Adaptive SEO Prompt Stack reopened read-only. The owner's P13 `0.8.33` uncommitted local work includes manifest/test changes and a closeout with evidence snapshots/logs; this remote docs correction does **not** copy or overwrite those files. `npm run check` failed at baseline before product/Electron; focused repairs, browser build and phase validator passed, but no passing final aggregate exists. See the phase plan and roadmap; Phase 8E remains inactive.
 
 | Prompt | Target version | Scope | Tier | Model | Browser |
 | --- | --- | --- | --- | --- | --- |
@@ -24,6 +26,5 @@ P1–P11: <=8-minute implementation + necessary focused validation target, 15-mi
 
 WorkItem-origin snapshot on AgentTask is the canonical linkage; inverse WorkItem->task query is derived from AgentStore rather than duplicated mutable cross-store state.
 
-Validate: `npm run codex:phase:validate -- p8d`
-Run: `npm run codex:phase -- p8d`
+Historical execution entry points: `npm run codex:phase:validate -- p8d` and `npm run codex:phase -- p8d`. **Do not rerun the original completed P1–P12 as if unexecuted.** Plan a bounded P13 qualification repair, preserve the uncommitted local artifacts and rerun only invalidated gates before seeking Green.
 Authority: ADR 0031, Phase 8D plan, ADR 0028/0029. Direct Work/Prompt Stack and c8-work-mode Green remain preserved.

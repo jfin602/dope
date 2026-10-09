@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 8 is **ACTIVE**. Phase 8A is GREEN / QUALIFIED at `0.8.6`, Phase 8B direct AgentTask authority is GREEN / QUALIFIED at `0.8.13`, and Phase 8C is GREEN / QUALIFIED / CLOSED for its exact `0.8.20` fixture. Real Adaptive SEO `c4-dope-phase-stack-smoke` **Prompt Stack** qualification is GREEN in Cycle 2 of 5: Dope-owned P1/P2 checkpoints, P3 browser/manual gate, P4 closeout and completed reopen. **`c8-work-mode` is GREEN / QUALIFIED / CLOSED** at unchanged `0.8.20`; the owner separately activated **Phase 8D — General Scoped Delegation** on 2026-10-09. Its implementation and qualification are pending.
+Current stage: **Product Phase 8D — NOT GREEN** as of the owner's October 9 P13 GUI/aggregate disposition. 8A (0.8.6), 8B (0.8.13), 8C (0.8.20 fixture), real Adaptive SEO Prompt Stack and c8-work-mode are separately Green/Qualified. GitHub's last committed P12 source is **`0.8.32` at `09fe3bcdaaeaed5ffe267e783c63f84bbaea999b`**; the owner-reported P13 `0.8.33` package manifests, failed closeout and evidence are **uncommitted locally**, not a Green or committed release. Two WorkItem-origin tasks were persisted/reopened but the GUI could not Start either; no real WorkItem Codex run or validated candidate was observed. The required final `npm run check` failed in baseline tests before the product suite/Electron build; focused fixes and the browser build are not a passing aggregate. **Phase 8E is inactive.** See `docs/planning/p8/phase-8d-plan.md` for current unmet gates; do not modify historical qualification claims.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
@@ -64,7 +64,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
 | Product Phase 6 — Flow | **OWNER-CLOSED FOR SEQUENCING / P8 NOT QUALIFIED.** Evidence-backed provider-free Static Flow over the Physical Map is retained. The P8 exact-candidate direct restart/isolation and chosen-path provenance gaps remain in `docs/tasks/p6/closeout.md`; historical P7/map-canvas Not Green results remain intact. |
 | Product Phase 7 — AI Presence / AI Center / Roles | **OWNER APPROVED / QUALIFIED / CLOSED at actual `0.7.31`.** Durable Chat, AI Center and deterministic role routing are complete; the planned `0.7.32` closeout version did not materialize. Post-closeout `c7-chat-project-grounding` strengthens read-only repository/map evidence before Phase 8 without changing explicit model choice, Software Map evidence-egress authority or Phase 10 local-only background constraints. |
-| Product Phase 8 — Coding Agent / Scoped Delegation | **ACTIVE — PHASE 8D / GENERAL SCOPED DELEGATION.** 8A–8C, the real Adaptive SEO Prompt Stack and `c8-work-mode` are Green. 8D implementation/qualification pending. |
+| Product Phase 8 — Coding Agent / Scoped Delegation | **ACTIVE — PHASE 8D NOT GREEN (P13).** Implemented/committed through P12 `0.8.32`; reported local uncommitted `0.8.33` P13 cannot start WorkItem tasks and lacks final passing aggregate. Earlier slices/Adaptive SEO/c8-work-mode remain Green on their own scopes. 8E inactive. |
 | Correction c8 — Agent Authority Boundary | **GREEN / INCORPORATED INTO QUALIFIED 8B.** Isolated ExecutionWorkspace -> CandidateDelta -> Dope Authority/ToolExecutor promotion is the canonical mutation boundary. |
 | Correction c8-candidate-validation — Dope-owned Candidate Validation | **GREEN / QUALIFIED.** Dope-owned frozen-candidate validation supports private temp/loopback without host/private/network authority; real Adaptive SEO Prompt Stack completed in Cycle 2 of 5. |
 | Correction c8-work-mode — Work / Prompt Stack UI | **GREEN / QUALIFIED / CLOSED at `0.8.20`.** Separate Chat and Work panels, Work toolbar, stable titles, durable agent transcript and collapsed command detail, live GUI/restart evidence. |
@@ -856,7 +856,7 @@ Existing Local and Gemini sMap paths still execute through provider-neutral runt
 
 ## Product Phase 7 — AI Presence
 
-Status: **ACTIVE / PHASE 7A IMPLEMENTED + EVIDENCED / P13 NOT QUALIFIED / c7 CHAT UX QUALIFIED / PHASE 7B NEXT**
+Status: **HISTORICAL PHASE 7 PLANNING SNAPSHOT**. Phase 7 ultimately closed Green at actual `0.7.31` (see phase-status table); the original P13 and intermediate 7B-next state below are preserved as then-current planning and are not present-day activation guidance.
 Activation baseline: coherent `0.7.0` at `59c7f72a29dcdecdf9b908176754bfd02179b004`
 Authority: ADR 0004, ADR 0006, ADR 0022, ADR 0025, ADR 0026 and `docs/planning/p7/phase-7-plan.md`
 
@@ -967,14 +967,14 @@ Phase 8 uses the existing phase runner as a **behavioral reference**, not as pro
    - durable sanitized agent transcript and minimized command rows;
    - preserve Chat/Work identity and execution authority separation.
 
-6. **8D — General Scoped Delegation (ACTIVE / PLANNING, 2026-10-09)**
+6. **8D — General Scoped Delegation (ACTIVE / P13 NOT GREEN, 2026-10-09)**
    - a WorkItem may create one or more AgentTasks but is not itself the execution primitive;
    - HUMAN / AI / SHARED ownership;
    - ProposedAction / authority review where required;
    - richer steering, diff/review/accept/reject and validation evidence;
    - affected Software Map identities and bounded post-edit staleness/re-analysis bridge.
    - preserve qualified direct Work / Prompt Stack execution while WorkItem-origin runs add explicit frozen-candidate review before promotion.
-   - ADR 0031 and `docs/planning/p8/phase-8d-plan.md` govern implementation; package `0.8.21` onward, not yet Green.
+   - ADR 0031 and `docs/planning/p8/phase-8d-plan.md` govern the accepted architecture; P1–P12 committed through `0.8.32`. Reported P13 `0.8.33` remains local/uncommitted and Not Green; do not activate 8E.
 
 7. **8E — Local coding-agent compatibility**
    - reuse the same AgentTask/AgentRun/Authority contracts against a local agent/model adapter;

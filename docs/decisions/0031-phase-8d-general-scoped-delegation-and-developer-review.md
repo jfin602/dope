@@ -1,8 +1,10 @@
 # ADR 0031 — Phase 8D General Scoped Delegation and Developer Review
 
-Status: **Accepted / Owner activated (implementation and qualification pending)**
+Status: **Accepted design / P1–P12 implemented; P13 NOT GREEN (2026-10-09)**
 Date: 2026-10-09
 Complements: ADR 0017, 0027, 0028, 0029 and 0030
+
+**Applicability / evidence note (not an ADR reversal):** GitHub commits 8D implementation through P12 `0.8.32` (`09fe3bcd`), while the owner reports P13 `0.8.33` and its Not Green closeout in an uncommitted local worktree. The accepted architecture below remains the intended contract, **not proof of live end-to-end operation**. Two WorkItem tasks were created/reopened but never started; review and downstream capabilities remain unqualified. Final `npm run check` did not pass, and 8E has not been activated. Current qualification details belong to the roadmap and 8D phase plan, not to reinterpretation of the accepted ADR.
 
 ## Context and decision
 

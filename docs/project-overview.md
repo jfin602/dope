@@ -238,16 +238,11 @@ Desired completion feeling:
 
 ## Current gate
 
-**Product Phase 6 — Flow is owner-closed for sequencing at package `0.6.8`; P8 remains Not Qualified.** Historical gaps remain in `docs/tasks/p6/closeout.md`.
+**Phase 8D — NOT GREEN (October 9, 2026).** The [roadmap](roadmap/mvp-roadmap.md) owns the phase's current disposition. Phase 8A is Green at `0.8.6`, 8B at `0.8.13`, 8C at its `0.8.20` fixture, and the real Adaptive SEO Prompt Stack plus `c8-work-mode` have their separate Green qualification records. **8E has not been activated.**
 
-**Product Phase 7 is OWNER APPROVED / QUALIFIED / CLOSED at actual `0.7.31`.** Historical P12/P13 and post-closeout grounding evidence remain preserved.
+Committed GitHub source is **P12 `0.8.32`** (`09fe3bcd`). The P13 `0.8.33` version and its Not Green closeout/evidence were reported from an **uncommitted local worktree**; they are not part of that committed baseline. Two WorkItem-origin AgentTasks were created/reopened, but no GUI action started them, so there was no Codex AgentRun, frozen candidate, validation, review/accept/reject or applied Software Map impact. The final aggregate check failed in baseline tests before product/Electron checks. Focused evidence and one browser build do not qualify the phase. See [8D planning/status](planning/p8/phase-8d-plan.md).
 
-**Product Phase 8 is ACTIVE. Phase 8A is GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`. The later `bc151cb` commit records qualification/docs only.
-
-**Current gate: Phase 8B — Agent execution core.** 8B introduces one bounded mutation-capable AgentTask under an explicit ExecutionGrant, durable AgentRun/event state and a minimal Agent Run surface. It may write inside the approved project and run local validation commands, but cannot write Git history, use network/secrets, escape the project root or implement the sequential phase-stack workflow.
-
-Phase 8C remains the first Dope-in-Dope phase-runner replacement: AgentTaskSequence, prompt/version progression, dirty-tree continuation, manual/browser gates, restart sequence resume and Dope-owned checkpoint commits.
-
+Earlier Phase 5/6 owner sequencing waivers and Phase 7 historical qualification retain their original exact-candidate meaning. Do not equate a developer-approved product contract, a stored AgentTask, an AgentRun or completion of a WorkItem with one another.
 
 ## Phase 3 result — live human-first Planning
 

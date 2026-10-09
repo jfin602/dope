@@ -1,7 +1,9 @@
 # Phase 8D Prompt Assessment — Eight-minute optimization
 
-Status: APPROVED REVISION BEFORE EXECUTION
+Status: **HISTORICAL PRE-EXECUTION OPTIMIZATION REVIEW; P13 NOW NOT GREEN**
 Date: 2026-10-09. Baseline `0.8.20`; P1-P13: `0.8.21`–`0.8.33`.
+
+This assessment is the original prompt-efficiency plan; it is not a current qualification result. P1–P12 are committed at `0.8.32` (`09fe3bcd`). The owner reports P13 at an uncommitted local `0.8.33` as Not Green due to missing saved-WorkItem-task Start control, missing nonempty Dope validation policy, and no passing full aggregate. Preserve the original assessment as planning history and refer to the roadmap/8D plan for current truth.
 
 The original P1 overloaded WorkItem migration with Action/Steering/Review contracts; the old P8 overloaded Planning launch, Work candidate review and steering/action/impact UI. Split those into P1/P2 and P9/P10/P11. No capability removed and no new permission granted. P12 owns integration; P13 owns real reference-agent GUI and aggregate.
 

@@ -1,7 +1,9 @@
 # Phase 8D Implementation Plan — focused slices
 
-Status: READY FOR EXECUTION; implementation not yet attempted
+Status: **HISTORICAL P1–P13 EXECUTION PLAN; P1–P12 COMMITTED / P13 NOT GREEN (UNCOMMITTED LOCAL EVIDENCE)**
 Baseline `0.8.20`; continuation P1-P13 `0.8.21`–`0.8.33`.
+
+This document records the **approved implementation plan, not a new run request or a Green claim**. GitHub commits P12 at `0.8.32` (`09fe3bcd`); the owner reports a P13 `0.8.33` uncommitted local worktree and Not Green closeout. Domain/runtime services exist, but WorkItem-created tasks cannot be started from the Work GUI; Planning launch passes an empty required-validation list, preventing developer acceptance under existing review rules. The final aggregate did not pass. Consult `docs/planning/p8/phase-8d-plan.md` for current repair gates; do not regenerate or rerun P1–P12.
 
 ## Source ownership
 Visual Planning: `packages/visual-planning/src/index.ts`, `work.ts`, `service.ts`, `node/planning-store.ts`; Theia `visual-planning-backend.ts`, `planning-map-controller.ts`, `planning-work-projection.ts`. Agent: `packages/agent-core/src/contracts.ts`, `authority.ts`, `execution.ts`, `node/agent-store.ts`, `node/candidate-validation.ts`; RPC `packages/contracts/src/agent-runtime-service.ts`; Theia `agent-runtime-backend.ts`, `agent-execution-runtime.ts`, `agent-run-controller.ts`, `work-selection-controller.ts`. Software Map identity uses existing deterministic evidence, no new synthesis.

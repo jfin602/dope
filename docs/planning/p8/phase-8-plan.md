@@ -1,6 +1,6 @@
 # Product Phase 8 — Coding Agent / Scoped Delegation Plan
 
-Status: **PHASE 8 ACTIVE / PHASE 8D OWNER-ACTIVATED 2026-10-09; NOT YET QUALIFIED**. 8A–8C and `c8-work-mode` Green.
+Status: **PHASE 8 ACTIVE / PHASE 8D P13 NOT GREEN (2026-10-09).** P1–P12 committed at `0.8.32`; P13 `0.8.33` local/uncommitted, no passing aggregate; 8A–8C and `c8-work-mode` remain Green, 8E inactive.
 Date: 2026-10-05
 Expected package family after activation: `0.8.x`
 Activation baseline: coherent `0.8.0` from owner sequencing waiver after retained `c7-chat-project-grounding` Not Green
@@ -220,7 +220,7 @@ Route: `/prompt-ass -> /prompt-plan -> /prompt-write c8-chat-work-ui`; prefer bo
 
 ## 8D — General Scoped Delegation
 
-**ACTIVE / PLANNING (2026-10-09), baseline `0.8.20`.** Current authority is ADR 0031 plus `docs/planning/p8/phase-8d-plan.md`; `docs/tasks/p8d/` is the next stack. The 2026-10-08 c8-chat-work-ui and prior P9 blocker notes below are preserved as historical planning, not current blockers. Existing direct Work and Prompt Stack promotion remain qualified, while WorkItem-origin execution adds separate review-before-promotion.
+**ACTIVE / P13 NOT GREEN (2026-10-09).** ADR 0031 remains the accepted design. P1–P12 executed and committed through `0.8.32`; reported P13 `0.8.33` is an uncommitted local failed qualification, not a verified release. The WorkItem task-creation service exists, but existing tasks cannot be started through Work and launch provides no required validation targets; `npm run check` has no passing final result. The dedicated `docs/planning/p8/phase-8d-plan.md` records the unmet gates. Earlier c8-chat-work-ui and P9 failure notes are historical, while direct Work and Prompt Stack promotion remain qualified on their earlier exact candidates. Phase 8E is not activated.
 
 After phase-stack execution is reliable, generalize the same substrate.
 
