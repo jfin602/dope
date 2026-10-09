@@ -1,0 +1,37 @@
+TASK: Phase 8 / P3 — Frozen candidate review hold after validation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.23`.
+- Phase 8 continuation from P2 version `0.8.22`; no unrelated package/lockfile churn.
+
+GOAL
+For WorkItem-origin tasks only, persist a review-ready candidate hold between qualified ADR 0029 validation and ADR 0028 promotion.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031, the Phase 8D plan and p8d README. Inspect the exact affected source and tests before editing. Preserve ADR 0028/0029 and previously Green 8B/8C/direct Work/c8-work-mode; do not re-implement prior phases.
+
+IMPLEMENT
+- Inspect `agent-execution-runtime.ts`, `agent-core/node/candidate-validation.ts`, execution-workspace/CandidateDelta and persistence. Introduce a task-level reviewRequired switch gated by origin/policy; leave existing direct Work and Prompt Stack tasks on their qualified promotion path.
+- After provider turn: freeze exact candidate identity, run required Dope-owned validation, classify CandidateDelta and persist bounded diff/effect evidence. If validation fails or authority/scope is denied, do not expose an executable approval. On valid WorkItem-origin work, enter durable review-ready hold without authoritative file writes or provider Git effects.
+- Ensure restart/reopen reports the same held candidate and basis; interruption before hold is not review-ready. Persist only bounded sanitized data; provider thread/reasoning remains noncanonical.
+
+PRESERVE
+- ExecutionWorkspace -> frozen CandidateDelta -> Dope-owned CandidateValidation -> Authority/ToolExecutor, stable agent provenance and developer-controlled approval.
+- Direct Work/Prompt Stack semantics and separate Chat/Work modules. No provider self-grants, unapproved project writes, hidden reasoning persistence, auto WorkItem completion or Phase 9/10 work.
+- Follow current project/source tests; no speculative framework/provider-specific domain coupling.
+
+VALIDATION
+T2: focused runtime integration tests for valid review hold, required validation failure, provider no-change, denied delete/rename, frozen candidate mutation, interruption/restart and direct/sequence unchanged auto-promotion; one affected runtime build and `git diff --check`.
+
+DEFER
+Actual accept/reject promotion belongs to P4; no UI changes.
+
+DONE WHEN
+The bounded P3 contract works with truthful focused evidence and the next prompt can build on stable outputs. Record exact changed files, tests and any unresolved risk. Do not commit manually; the Prompt Stack runner owns its implementation checkpoint.
+
+FINAL RESPONSE
+Report exact version, implemented contract boundaries, focused evidence and residuals.

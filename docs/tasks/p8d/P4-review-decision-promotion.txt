@@ -1,0 +1,37 @@
+TASK: Phase 8 / P4 — Accept or reject reviewed candidate safely
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.24`.
+- Phase 8 continuation from P3 version `0.8.23`; no unrelated package/lockfile churn.
+
+GOAL
+Finish review-required WorkItem execution with explicit durable developer accept/reject and exact-basis Dope-owned promotion.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031, the Phase 8D plan and p8d README. Inspect the exact affected source and tests before editing. Preserve ADR 0028/0029 and previously Green 8B/8C/direct Work/c8-work-mode; do not re-implement prior phases.
+
+IMPLEMENT
+- Add typed RPC/backend review decision operations and single-use revision/idempotency guard on the P3 held candidate; project/map/WorkItem/task/run identities must agree. Read and preserve ADR 0028/0029 promotion/checkpoint semantics.
+- Acceptance must immediately re-verify frozen candidate fingerprint, Dope-owned required validation result, approved grant, delegated working set/human-reserved scope, authoritative path/symlink containment and Git/worktree basis. Then use existing Dope Authority/ToolExecutor for all-or-blocked approved effects, record applied IDs and durable terminal decision; never stage/commit provider changes.
+- Rejection records a terminal review outcome, changes no authoritative files and retains bounded candidate evidence. Repeat/restart/competing decision cannot promote twice. Applied work never automatically completes WorkItem or adopts Planning target. Keep direct Work and Prompt Stack paths intact.
+
+PRESERVE
+- ExecutionWorkspace -> frozen CandidateDelta -> Dope-owned CandidateValidation -> Authority/ToolExecutor, stable agent provenance and developer-controlled approval.
+- Direct Work/Prompt Stack semantics and separate Chat/Work modules. No provider self-grants, unapproved project writes, hidden reasoning persistence, auto WorkItem completion or Phase 9/10 work.
+- Follow current project/source tests; no speculative framework/provider-specific domain coupling.
+
+VALIDATION
+T2: real isolated candidate fixture for accept, reject, concurrent/double accept, stale Git/HEAD, changed frozen bytes, denied path/human-owned file, required validation failure and backend restart. Verify untouched project on rejected/blocked paths; affected integration tests and `git diff --check`.
+
+DEFER
+Consequential ProposedAction approval and GUI controls to P5/P8.
+
+DONE WHEN
+The bounded P4 contract works with truthful focused evidence and the next prompt can build on stable outputs. Record exact changed files, tests and any unresolved risk. Do not commit manually; the Prompt Stack runner owns its implementation checkpoint.
+
+FINAL RESPONSE
+Report exact version, implemented contract boundaries, focused evidence and residuals.

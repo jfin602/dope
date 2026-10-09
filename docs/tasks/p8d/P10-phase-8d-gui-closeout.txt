@@ -1,0 +1,38 @@
+TASK: Phase 8 / P10 — Phase 8D live delegation GUI qualification and closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- The assigned project version is `0.8.30`.
+- Phase 8 continuation from P9 version `0.8.29`; no unrelated package/lockfile churn.
+
+GOAL
+Directly qualify Phase 8D with real Dope GUI/reference-Codex delegated work, exact-candidate safety and historical non-regression; close 8D only.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031, the Phase 8D plan and p8d README. Inspect the exact affected source and tests before editing. Preserve ADR 0028/0029 and previously Green 8B/8C/direct Work/c8-work-mode; do not re-implement prior phases.
+
+IMPLEMENT
+- Read all P1-P9 handoffs, ADR 0031, 0028/0029, Phase 8D plan and current stability contract; identify exact source HEAD, package 0.8.30 and approved disposable Git fixture. Do not mutate Dope source, real Adaptive SEO workspace or production systems merely to fabricate evidence.
+- In real browser-hosted Theia or Electron UI, create/use a Planning WorkItem with real transformation links and explicit AI ownership; launch AgentTask, inspect actual provider messages, command activity and frozen CandidateDelta. Require a real Dope-owned validation PASS, review diff and Accept, then verify only approved project files were promoted and WorkItem stayed open until developer explicitly completed it. Launch a second linked task and Reject its actual candidate: no authoritative changes. Prove HUMAN disallows delegation and SHARED preserves a human-reserved scope.
+- Exercise real denied consequential effect/ProposedAction without privilege escalation, one supported or honestly unsupported in-flight steering request, stale basis review block, bounded map impact/unknowns and restart/reopen in held-review/terminal states. Reopen historical direct Work and completed Adaptive SEO Prompt Stack read-only to confirm no duplicate runs/commits and preserved checkpoint SHAs.
+- Run one exact-candidate `npm run check`, `npm run codex:phase:validate -- p8d`, only focused tests omitted by aggregate, `git diff --check` and manifest/version/no-root-lock verification. Test failure/denial/cancel/restart via real or independently observable fixtures; preserve all Not Green evidence if unable to prove. Write `docs/tasks/p8d/closeout.md` with exact HEAD, command counts, test/GUI/validation/review/run IDs, before/after Git truth and explicit GREEN/NOT GREEN. Do not silently activate 8E or full Phase 8 closure.
+
+PRESERVE
+- ExecutionWorkspace -> frozen CandidateDelta -> Dope-owned CandidateValidation -> Authority/ToolExecutor, stable agent provenance and developer-controlled approval.
+- Direct Work/Prompt Stack semantics and separate Chat/Work modules. No provider self-grants, unapproved project writes, hidden reasoning persistence, auto WorkItem completion or Phase 9/10 work.
+- Follow current project/source tests; no speculative framework/provider-specific domain coupling.
+
+VALIDATION
+T3 only: real qualified Coding Agent and GUI, disposable project, one final exact-candidate aggregate and prompt validator, relevant restart/security evidence. If failed, record NOT GREEN; no invented success. Do not manually commit implementation source; closeout uses a separately reviewed manual evidence checkpoint.
+
+DEFER
+Phase 8E local agent, Phase 9 sessions and Phase 10 background alignment. No production mutation.
+
+DONE WHEN
+The bounded P10 contract works with truthful focused evidence and the next prompt can build on stable outputs. Record exact changed files, tests and any unresolved risk. The P10 browser/manual gate records final evidence and explicit 8D Green/Not Green without fabricating qualification.
+
+FINAL RESPONSE
+Report exact version, implemented contract boundaries, focused evidence and residuals.

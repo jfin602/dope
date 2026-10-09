@@ -1,0 +1,37 @@
+TASK: Phase 8 / P7 — Bounded post-promotion Software Map impact
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.27`.
+- Phase 8 continuation from P6 version `0.8.26`; no unrelated package/lockfile churn.
+
+GOAL
+Link applied WorkItem candidate effects to existing Software Map identities and localized staleness without Phase 10 background alignment.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031, the Phase 8D plan and p8d README. Inspect the exact affected source and tests before editing. Preserve ADR 0028/0029 and previously Green 8B/8C/direct Work/c8-work-mode; do not re-implement prior phases.
+
+IMPLEMENT
+- Inspect `packages/software-map` physical map evidence/provenance, Visual Planning basis/staleness and the qualified `SoftwareMap` service. Run after successful Dope-owned promotion, not after provider candidate or mere review acceptance.
+- Compute bounded deterministic impact from applied project-relative file changes, stable implementation evidence links and referenced Planning transformations; retain matched System/Subsystem/Component/Code IDs, source basis and explicit unknown/unresolved impact. Never infer missing identities; guard against a map generation/project change.
+- Persist a scoped impact receipt linked to WorkItem/AgentTask/AgentRun/review decision. Expose an explicit request-targeted-reanalysis seam if already supported; do not automatically run synthesis, rebase/adopt a Planning Map, change canonical architecture or schedule background model calls.
+
+PRESERVE
+- ExecutionWorkspace -> frozen CandidateDelta -> Dope-owned CandidateValidation -> Authority/ToolExecutor, stable agent provenance and developer-controlled approval.
+- Direct Work/Prompt Stack semantics and separate Chat/Work modules. No provider self-grants, unapproved project writes, hidden reasoning persistence, auto WorkItem completion or Phase 9/10 work.
+- Follow current project/source tests; no speculative framework/provider-specific domain coupling.
+
+VALIDATION
+T2: focused impact tests for matched file/branch, unrelated change, missing/unknown nodes, stale project/map generation, restart receipt, double promotion and cross-project isolation. Regressions for PlanningMap staleness source of truth; affected packages/tests and `git diff --check`.
+
+DEFER
+No Phase 10 source-doc-map continuous alignment, local model background scheduling or autonomous canonical editing.
+
+DONE WHEN
+The bounded P7 contract works with truthful focused evidence and the next prompt can build on stable outputs. Record exact changed files, tests and any unresolved risk. Do not commit manually; the Prompt Stack runner owns its implementation checkpoint.
+
+FINAL RESPONSE
+Report exact version, implemented contract boundaries, focused evidence and residuals.

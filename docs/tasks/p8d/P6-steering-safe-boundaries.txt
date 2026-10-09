@@ -1,0 +1,37 @@
+TASK: Phase 8 / P6 — Durable steering with safe runtime acknowledgement
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.26`.
+- Phase 8 continuation from P5 version `0.8.25`; no unrelated package/lockfile churn.
+
+GOAL
+Allow developers to steer delegated work while reporting actual applied/pending/unsupported state rather than pretending every provider can change a live turn.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031, the Phase 8D plan and p8d README. Inspect the exact affected source and tests before editing. Preserve ADR 0028/0029 and previously Green 8B/8C/direct Work/c8-work-mode; do not re-implement prior phases.
+
+IMPLEMENT
+- Inspect `packages/agent-core/src/execution.ts`, `packages/theia-extension/src/node/codex-agent-execution.ts`, Agent Runtime controller/RPC and cancellation/restart tests. Define bounded versioned steering intents (objective/constraints/cancel/pause/resume/replan) referencing exact WorkItem/task/run and expected revisions.
+- Implement durable request/acknowledgement and capability-safe apply points. If adapter cannot change an active turn, preserve request as pending/unsupported and require explicit Stop plus next task/restart; do not mutate accepted grant, already-frozen candidate or historical AgentRun. No hidden second agent invocation.
+- Make delivery idempotent, reject late/wrong-project/terminal-run steering, and record only user-visible intent/observable acknowledgement. Stop and cancellation must retain prior candidate changes per ADR 0028.
+
+PRESERVE
+- ExecutionWorkspace -> frozen CandidateDelta -> Dope-owned CandidateValidation -> Authority/ToolExecutor, stable agent provenance and developer-controlled approval.
+- Direct Work/Prompt Stack semantics and separate Chat/Work modules. No provider self-grants, unapproved project writes, hidden reasoning persistence, auto WorkItem completion or Phase 9/10 work.
+- Follow current project/source tests; no speculative framework/provider-specific domain coupling.
+
+VALIDATION
+T2: focused lifecycle tests for supported safe-boundary apply, unsupported in-flight steer, cancellation races, restart pending state, stale revision, cross-project/run isolation, no automatic rerun; affected tests/build and `git diff --check`.
+
+DEFER
+UI interactions to P8; local coding-agent parity to 8E.
+
+DONE WHEN
+The bounded P6 contract works with truthful focused evidence and the next prompt can build on stable outputs. Record exact changed files, tests and any unresolved risk. Do not commit manually; the Prompt Stack runner owns its implementation checkpoint.
+
+FINAL RESPONSE
+Report exact version, implemented contract boundaries, focused evidence and residuals.

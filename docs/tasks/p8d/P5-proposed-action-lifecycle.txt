@@ -1,0 +1,37 @@
+TASK: Phase 8 / P5 — Consequential ProposedAction without privilege escalation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.25`.
+- Phase 8 continuation from P4 version `0.8.24`; no unrelated package/lockfile churn.
+
+GOAL
+Make blocked consequential changes inspectable and developer-reviewable without widening the fixed Phase 8B ExecutionGrant.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031, the Phase 8D plan and p8d README. Inspect the exact affected source and tests before editing. Preserve ADR 0028/0029 and previously Green 8B/8C/direct Work/c8-work-mode; do not re-implement prior phases.
+
+IMPLEMENT
+- Inspect `packages/agent-core/src/authority.ts` fixed profile, blocked CandidateDelta evidence, WorkItem review service and typed RPC. Persist proposed/rejected/acknowledged states with immutable actor, originating task/run, target, effect class, expected effect, rationale, required authority and safe bounded evidence.
+- Only create ProposedAction when a consequential effect is outside grant/delegated scope or explicitly requires review. Routine allowed create/modify actions must not create one-per-file approval spam.
+- Expose developer review decision but **do not** convert approval of unsupported delete/rename, Git writes/history, network, secrets/private state, outside-root or destructive/system classes into effective permission. Display blocked/needs-separate-policy status; any later broadened grant requires separately designed enforceable policy and qualification. Keep candidate all-or-blocked law.
+
+PRESERVE
+- ExecutionWorkspace -> frozen CandidateDelta -> Dope-owned CandidateValidation -> Authority/ToolExecutor, stable agent provenance and developer-controlled approval.
+- Direct Work/Prompt Stack semantics and separate Chat/Work modules. No provider self-grants, unapproved project writes, hidden reasoning persistence, auto WorkItem completion or Phase 9/10 work.
+- Follow current project/source tests; no speculative framework/provider-specific domain coupling.
+
+VALIDATION
+T1/T2: focused pure state tests plus narrow integration for denied delete/rename, human-reserved file, replay and unchanged in-grant promotion. Prove a model/provider cannot approve or execute an action via stored proposal; `git diff --check`.
+
+DEFER
+No generic per-effect partial candidate acceptance, arbitrary grant expansion or new Git/secret authority.
+
+DONE WHEN
+The bounded P5 contract works with truthful focused evidence and the next prompt can build on stable outputs. Record exact changed files, tests and any unresolved risk. Do not commit manually; the Prompt Stack runner owns its implementation checkpoint.
+
+FINAL RESPONSE
+Report exact version, implemented contract boundaries, focused evidence and residuals.

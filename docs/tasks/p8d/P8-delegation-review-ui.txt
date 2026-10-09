@@ -1,0 +1,37 @@
+TASK: Phase 8 / P8 — Planning and Work delegation, review and steering UI
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.28`.
+- Phase 8 continuation from P7 version `0.8.27`; no unrelated package/lockfile churn.
+
+GOAL
+Surface explicit WorkItem delegation/ownership, held candidate review, ProposedAction, steering and bounded map impact in the existing GUI without new canonical UI state.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031, the Phase 8D plan and p8d README. Inspect the exact affected source and tests before editing. Preserve ADR 0028/0029 and previously Green 8B/8C/direct Work/c8-work-mode; do not re-implement prior phases.
+
+IMPLEMENT
+- Inspect `planning-map-controller.ts`, `planning-work-projection.ts`, `agent-run-controller.ts`, `work-selection-controller.ts`, `agent-transcript-widget.ts` and existing workbench/theme seams. Present WorkItem ownership and working-set constraints, launch a WorkItem-derived AgentTask through the new typed operation, and navigate to the linked Work detail; keep WorkItem in Planning rather than Select Work as a new entity.
+- On Work detail show review-ready actual CandidateDelta and Dope-owned validation, explicit Accept/Reject with confirmation where consequential, ProposedActions/denials, effective steering/pending/unsupported state and post-accept affected Software Map IDs/unknowns. Accessible keyboard/focus and narrow movable panel layout must follow ADR 0030/#336699 semantic theme tokens.
+- Do not reuse Chat authority or create a Chat | Work toggle; closing/selecting panel must not cancel or apply work. Persist only domain decisions, not visual selection. Keep pending reviews distinguishable from already applied runs; no false Green/Applied badges.
+
+PRESERVE
+- ExecutionWorkspace -> frozen CandidateDelta -> Dope-owned CandidateValidation -> Authority/ToolExecutor, stable agent provenance and developer-controlled approval.
+- Direct Work/Prompt Stack semantics and separate Chat/Work modules. No provider self-grants, unapproved project writes, hidden reasoning persistence, auto WorkItem completion or Phase 9/10 work.
+- Follow current project/source tests; no speculative framework/provider-specific domain coupling.
+
+VALIDATION
+T1/T2: focused controller/presentation tests for HUMAN/AI/SHARED, disabled actions, real held review and validation, stale basis, Stop versus close, unsupported steering, narrow panel accessibility and saved-state reopening. Build only affected frontend packages; defer direct GUI/T3 to P10.
+
+DEFER
+No new Session workspace, broad theme redesign or manual gate redesign.
+
+DONE WHEN
+The bounded P8 contract works with truthful focused evidence and the next prompt can build on stable outputs. Record exact changed files, tests and any unresolved risk. Do not commit manually; the Prompt Stack runner owns its implementation checkpoint.
+
+FINAL RESPONSE
+Report exact version, implemented contract boundaries, focused evidence and residuals.

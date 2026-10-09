@@ -1,0 +1,37 @@
+TASK: Phase 8 / P2 — Revision-safe WorkItem to AgentTask delegation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.22`.
+- Phase 8 continuation from P1 version `0.8.21`; no unrelated package/lockfile churn.
+
+GOAL
+Create explicit Planning -> Agent Runtime delegation with durable, idempotent task links and no new execution primitive.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031, the Phase 8D plan and p8d README. Inspect the exact affected source and tests before editing. Preserve ADR 0028/0029 and previously Green 8B/8C/direct Work/c8-work-mode; do not re-implement prior phases.
+
+IMPLEMENT
+- Inspect current `packages/theia-extension/src/node/visual-planning-backend.ts`, `agent-runtime-backend.ts`, `agent-execution-runtime.ts`, RPC contracts and project-isolation tests. Add a typed service operation requiring existing project/map/WorkItem IDs, expected Planning revision/basis and an explicit developer initiation.
+- Resolve accepted WorkItem objective/working set/acceptance/validation into one bounded work-item-origin AgentTask snapshot with Coding Agent role policy. Enforce HUMAN-only no delegation, SHARED human-reserved exclusion, real project path containment and effective working-set narrowing; refuse unsupported constraints rather than relying on prompt text.
+- Store durable bi-directional linkage with deterministic idempotency key and reconcile partial cross-store writes/restart. A duplicate request cannot create duplicate AgentTasks; a stale/missing/cross-project WorkItem cannot start. Do not start execution or alter direct/stack paths in P2.
+
+PRESERVE
+- ExecutionWorkspace -> frozen CandidateDelta -> Dope-owned CandidateValidation -> Authority/ToolExecutor, stable agent provenance and developer-controlled approval.
+- Direct Work/Prompt Stack semantics and separate Chat/Work modules. No provider self-grants, unapproved project writes, hidden reasoning persistence, auto WorkItem completion or Phase 9/10 work.
+- Follow current project/source tests; no speculative framework/provider-specific domain coupling.
+
+VALIDATION
+T2: one focused backend/service integration suite covering accepted derivation, one WorkItem -> multiple distinct tasks over time, duplicate request, interrupted partial linkage, stale map revision, missing WorkItem, cross-project and HUMAN/SHARED denial; affected package builds and `git diff --check`.
+
+DEFER
+Candidate review and mutation, user UI, consequential actions, steering and Software Map impact.
+
+DONE WHEN
+The bounded P2 contract works with truthful focused evidence and the next prompt can build on stable outputs. Record exact changed files, tests and any unresolved risk. Do not commit manually; the Prompt Stack runner owns its implementation checkpoint.
+
+FINAL RESPONSE
+Report exact version, implemented contract boundaries, focused evidence and residuals.
