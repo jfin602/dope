@@ -597,6 +597,70 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     }
                     scroll.append(section);
                 }
+                if (controller.selectedTask?.id === run.taskId) {
+                    const steering = document.createElement('details'); steering.className = 'dope-work-diagnostics dope-work-controls';
+                    const title = document.createElement('summary'); title.textContent = `Steering · ${controller.steering?.entries.length ?? 0} requests`;
+                    steering.append(title);
+                    for (const entry of controller.steering?.entries ?? []) {
+                        const item = document.createElement('p'); item.className = 'dope-work-detail';
+                        item.textContent = `#${entry.revision} ${entry.request.kind}: ${entry.request.text} · ${entry.acknowledgement.status}. ` +
+                            'Active-turn steering unavailable; explicitly stop and start a new task to change instructions.';
+                        steering.append(item);
+                    }
+                    if (run.status === 'running' && !run.candidateReview && !run.candidateDelta) {
+                        const kind = document.createElement('select'); kind.setAttribute('aria-label', 'Steering request kind');
+                        for (const value of ['instruction', 'focus'] as const) {
+                            const option = document.createElement('option'); option.value = value; option.textContent = value;
+                            kind.append(option);
+                        }
+                        kind.value = controller.steeringKind;
+                        kind.onchange = () => { controller.steeringKind = kind.value as 'instruction' | 'focus'; };
+                        const input = document.createElement('textarea'); input.setAttribute('aria-label', 'Steering request');
+                        input.maxLength = 4000; input.value = controller.steeringText;
+                        const send = this.button('Record steering request', () => void controller.requestSteering(),
+                            controller.steeringBusy || !controller.steeringText.trim());
+                        input.oninput = () => { controller.steeringText = input.value; send.disabled = controller.steeringBusy || !input.value.trim(); };
+                        const notice = document.createElement('p'); notice.className = 'dope-work-detail';
+                        notice.textContent = 'This records a request and an unsupported acknowledgement. It does not change the active turn.';
+                        steering.append(notice, kind, input, send);
+                    }
+                    scroll.append(steering);
+                }
+                if (controller.actions.length) {
+                    const actions = document.createElement('details'); actions.className = 'dope-work-diagnostics';
+                    const title = document.createElement('summary');
+                    title.textContent = `Blocked actions · ${controller.actions.filter(action => !action.decision).length} open`;
+                    actions.append(title);
+                    for (const action of controller.actions) {
+                        const item = document.createElement('p'); item.className = 'dope-work-detail';
+                        item.textContent = `${action.effect.kind} · ${action.effect.path ?? action.effect.scope} · ` +
+                            `${action.requiredAuthority} · ${action.rationale} · ${action.decision?.kind ?? 'blocked'}`;
+                        actions.append(item);
+                        if (!action.decision) actions.append(
+                            this.button('Acknowledge blocked action', () => void controller.decideAction(action.id, 'acknowledged'), controller.actionBusy),
+                            this.button('Reject blocked action', () => void controller.decideAction(action.id, 'rejected'), controller.actionBusy));
+                    }
+                    const notice = document.createElement('p'); notice.className = 'dope-work-warning';
+                    notice.textContent = 'Decisions record review only. They do not grant permission or execute the blocked effect.';
+                    actions.append(notice); scroll.append(actions);
+                }
+                if (controller.mapImpact) {
+                    const impact = controller.mapImpact;
+                    const section = document.createElement('details'); section.className = 'dope-work-diagnostics';
+                    const title = document.createElement('summary'); title.textContent = `Map impact · ${impact.paths.length} changed paths`;
+                    section.append(title);
+                    const notice = document.createElement('p'); notice.className = 'dope-work-detail';
+                    notice.textContent = 'Recorded after candidate promotion. Re-analysis needed; canonical Architecture is unchanged.';
+                    section.append(notice);
+                    for (const path of impact.paths) {
+                        const item = document.createElement('p'); item.className = 'dope-work-detail';
+                        item.textContent = path.status === 'resolved' ?
+                            `${path.path} · affected map IDs: ${path.nodeIds.join(', ')} · evidence IDs: ${path.evidenceIds.join(', ') || 'none'} · stale` :
+                            `${path.path} · unknown map impact (${path.reason})`;
+                        section.append(item);
+                    }
+                    scroll.append(section);
+                }
                 if (run.authorityDecision) { const item = document.createElement('p');
                     item.textContent = `Authority · ${run.authorityDecision.allowed ? 'allowed' : 'blocked'}`; diagnostics.append(item);
                     const status = document.createElement('small'); status.className = run.authorityDecision.allowed ?

@@ -63,6 +63,8 @@ test('Work navigation restores independent Chat and completed stack without muta
             listRuns: () => reopened.listRuns(root),
             readTask: (_handle: string, id: string) => reopened.readTask(root, id),
             readRun: (_handle: string, id: string) => reopened.readRun(root, id),
+            async readSteering() { return undefined; }, async listActions() { return []; },
+            async readMapImpact() { return undefined; },
             readTranscript: (_handle: string, id: string, cursor: number, limit: number) => {
                 cursors.push(cursor); return reopened.readTranscript(root, id, cursor, limit);
             },
@@ -165,4 +167,54 @@ test('project switch cannot let an old Prompt Stack scan suppress the new projec
     assert.equal(controller.project, 'new');
     assert.equal(controller.phase.handle, 'new');
     assert.equal(controller.phase.busy, false);
+});
+
+test('Work detail records unsupported steering and review-only action decisions with map impact evidence', async () => {
+    const task = { id: 'task-1', objective: 'Scoped work', origin: { kind: 'work-item' } };
+    const run = { id: 'run-1', taskId: task.id, status: 'running', changedFiles: [], validationResults: [] };
+    const action = { id: 'action-1', runId: run.id, taskId: task.id, revision: 0,
+        effect: { kind: 'project-delete', scope: 'project', path: 'src/owned.ts' },
+        requiredAuthority: 'expanded-grant', rationale: 'Requested deletion' };
+    const impact = { runId: run.id, reanalysisNeeded: true, paths: [
+        { path: 'src/owned.ts', status: 'resolved', nodeIds: ['node-1'], evidenceIds: ['evidence-1'] },
+        { path: 'src/new.ts', status: 'unknown', nodeIds: [], evidenceIds: [], reason: 'unmapped-path' }] };
+    const calls: string[] = [];
+    let steering: any;
+    let decided: any;
+    const runtime = {
+        async attach() { return { projectHandle: 'project-1' }; },
+        async listTaskStacks() { return []; }, async listSequences() { return []; },
+        async listTasks() { return [task]; }, async listRuns() { return [run]; },
+        async readTask() { return task; }, async readRun() { return run; },
+        async readTranscript() { return { state: 'recorded', entries: [], hasMore: false, incomplete: false }; },
+        async readSteering() { return steering; }, async listActions() { return [decided ?? action]; },
+        async readMapImpact() { return impact; },
+        async requestSteering(_handle: string, taskId: string, runId: string, revision: number, request: any) {
+            calls.push(`steer:${taskId}:${runId}:${revision}:${request.kind}:${request.text}`);
+            return steering = { revision: 1, entries: [{ revision: 1, request,
+                acknowledgement: { status: 'unsupported', reason: 'active-turn-steering-unavailable',
+                    nextStep: 'explicit-stop-and-new-task' } }] };
+        },
+        async readAction() { return decided ?? action; },
+        async decideAction(_handle: string, id: string, revision: number, decision: string) {
+            calls.push(`action:${id}:${revision}:${decision}`);
+            return decided = { ...action, revision: 1, decision: { kind: decision } };
+        },
+        async codingAgentReady() { return false; }
+    } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {});
+    await controller.attach(project);
+    await controller.select({ kind: 'run', id: run.id });
+    assert.deepEqual(controller.mapImpact?.paths.map(path => path.status), ['resolved', 'unknown']);
+    assert.equal(controller.actions.length, 1);
+    controller.steeringText = 'Focus on the parser';
+    await controller.requestSteering();
+    assert.deepEqual(calls, ['steer:task-1:run-1:0:instruction:Focus on the parser']);
+    assert.equal(controller.steering?.entries[0].acknowledgement.status, 'unsupported');
+    assert.equal(controller.steeringText, '');
+    await controller.decideAction(action.id, 'acknowledged');
+    assert.equal(controller.actions[0].decision?.kind, 'acknowledged');
+    await controller.decideAction(action.id, 'rejected');
+    assert.deepEqual(calls, ['steer:task-1:run-1:0:instruction:Focus on the parser',
+        'action:action-1:0:acknowledged']);
 });

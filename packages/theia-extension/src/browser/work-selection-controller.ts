@@ -1,4 +1,5 @@
-import type { AgentRun, AgentTask, AgentTranscriptEntry, AgentTaskSequence } from '@dope/agent-core';
+import type { AgentMapImpact, AgentRun, AgentSteeringRequest, AgentSteeringState, AgentTask,
+    AgentTranscriptEntry, AgentTaskSequence, ProposedAction } from '@dope/agent-core';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import { createDefaultExecutionGrant } from '@dope/agent-core';
 import { PhaseStackController } from './phase-stack-controller';
@@ -104,6 +105,13 @@ export class WorkSelectionController {
     transcriptIncomplete = false;
     message = '';
     reviewBusy = false;
+    steering?: AgentSteeringState;
+    steeringKind: AgentSteeringRequest['kind'] = 'instruction';
+    steeringText = '';
+    steeringBusy = false;
+    actions: ProposedAction[] = [];
+    actionBusy = false;
+    mapImpact?: AgentMapImpact;
     private serial = 0;
 
     constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void) {
@@ -113,6 +121,7 @@ export class WorkSelectionController {
         const serial = ++this.serial;
         this.project = project; this.handle = undefined; this.tasks = []; this.runs = [];
         this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.message = '';
+        this.steering = undefined; this.actions = []; this.mapImpact = undefined; this.steeringText = '';
         this.changed();
         await this.phase.attach(project);
         if (serial !== this.serial || !project) return;
@@ -141,6 +150,7 @@ export class WorkSelectionController {
     async select(selection: WorkSelection | undefined): Promise<void> {
         const handle = this.handle, serial = ++this.serial;
         this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.transcriptIncomplete = false;
+        this.steering = undefined; this.actions = []; this.mapImpact = undefined; this.steeringText = '';
         this.message = ''; this.phase.message = ''; this.phase.selected = undefined; this.phase.run = undefined;
         if (!handle || !selection) { this.changed(); return; }
         if (selection.kind === 'sequence') {
@@ -159,6 +169,14 @@ export class WorkSelectionController {
             if (serial !== this.serial || handle !== this.handle) return;
             this.selectedRun = run; this.selectedTask = task;
             if (run) {
+                const [steering, actions, impact] = await Promise.all([
+                    this.runtime.readSteering(handle, run.id), this.runtime.listActions(handle, run.taskId),
+                    this.runtime.readMapImpact(handle, run.id)
+                ]);
+                if (serial !== this.serial || handle !== this.handle) return;
+                this.steering = steering;
+                this.actions = actions.filter(action => action.runId === run.id);
+                this.mapImpact = impact;
                 let cursor = 0;
                 while (true) {
                     const result = await this.runtime.readTranscript(handle, run.id, cursor, 100);
@@ -175,6 +193,44 @@ export class WorkSelectionController {
         } catch {
             if (serial === this.serial) { this.message = 'Work detail could not be read.'; this.changed(); }
         }
+    }
+    async requestSteering(): Promise<void> {
+        const handle = this.handle, run = this.selectedRun, task = this.selectedTask;
+        const text = this.steeringText.trim();
+        if (!handle || !run || !task || run.taskId !== task.id || run.status !== 'running' ||
+            run.candidateReview || run.candidateDelta || !text || this.steeringBusy) return;
+        this.steeringBusy = true; this.message = ''; this.changed();
+        try {
+            const state = await this.runtime.requestSteering(handle, task.id, run.id,
+                this.steering?.revision ?? 0, { kind: this.steeringKind, text });
+            if (handle === this.handle && this.selectedRun?.id === run.id) {
+                this.steering = state; this.steeringText = '';
+            }
+        } catch (error) {
+            if (handle === this.handle && this.selectedRun?.id === run.id) {
+                this.message = `Steering request failed: ${error instanceof Error ? error.message : 'State could not be verified'}`;
+                this.steering = await this.runtime.readSteering(handle, run.id).catch(() => this.steering);
+            }
+        } finally { this.steeringBusy = false; this.changed(); }
+    }
+    async decideAction(actionId: string, decision: 'acknowledged' | 'rejected'): Promise<void> {
+        const handle = this.handle, run = this.selectedRun, shown = this.actions.find(item => item.id === actionId);
+        if (!handle || !run || !shown || shown.runId !== run.id || shown.decision || this.actionBusy) return;
+        this.actionBusy = true; this.message = ''; this.changed();
+        try {
+            const current = await this.runtime.readAction(handle, actionId);
+            if (handle !== this.handle || this.selectedRun?.id !== run.id) return;
+            if (!current || current.revision !== shown.revision || current.decision || current.runId !== run.id) {
+                this.message = 'Blocked action changed. Refresh Work before deciding.';
+                return;
+            }
+            const next = await this.runtime.decideAction(handle, actionId, current.revision, decision);
+            if (handle === this.handle && this.selectedRun?.id === run.id)
+                this.actions = this.actions.map(item => item.id === actionId ? next : item);
+        } catch (error) {
+            if (handle === this.handle && this.selectedRun?.id === run.id)
+                this.message = `Action decision failed: ${error instanceof Error ? error.message : 'State could not be verified'}`;
+        } finally { this.actionBusy = false; this.changed(); }
     }
     async decideCandidate(decision: 'accept' | 'reject'): Promise<void> {
         const handle = this.handle, shown = this.selectedRun, task = this.selectedTask;
