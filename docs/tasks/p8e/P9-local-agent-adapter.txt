@@ -1,0 +1,32 @@
+TASK: Phase 8 / P9 — Provide Local AgentExecutionAdapter start and cancel lifecycle
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.42`.
+
+GOAL / IMPLEMENT
+Implement one Local LM Studio AgentExecutionAdapter implementing existing AgentExecutionAdapter.start(request): Promise<AgentExecutionHandle>. Pull selected connection/model from trusted AI Center registry, use P8 loop and P2/P3–P5 broker with request.executionRoot and request.grant, require enforceable sandbox and fresh known loaded capacity, and emit existing AgentExecutionEvent records. Expose faithful result Promise/cancel/optional terminate, abort transport and descendant sandboxed children, bounded cleanup/dispose; never keep native provider identity as canonical task/run. Keep adapter installed but **ineligible** until P10 capability proof. Do not change AgentExecutionRuntime, backend DI or Work controls yet.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0032 and docs/planning/p8/phase-8e-plan.md; inspect affected source/tests. Verify explicit owner activation and coherent prior 0.8.33 source; drafted task files do not authorize execution. Preserve all 8D/c8-fix evidence and current project worktrees.
+
+PRESERVE
+Preserve provider-independent task/run/sequence and AI Center model identity, fixed developer ExecutionGrant, real OS-enforced sandbox (P2), brokered workspace-only tools (P3–P5), frozen CandidateDelta, Dope-owned required validation and Authority/ToolExecutor promotion, WorkItem review, Git/checkpoints, cancellation/restart and prior Codex/direct Work/Prompt Stack Green. Local requests cannot access real project root, private home/secrets, Git write/history, network/host loopback or outside roots. Never silently fall back to hosted inference or forge granted consent.
+
+VALIDATION — T2
+One fake-model and fake-OS-launch adapter test for startup denial without sandbox, correct executionRoot/grant, actual turn events and cancel/timeout/dispose, sanitized output and no orphan; compile changed extension once if needed, node --test that file, git diff --check. No end-to-end GUI or whole suite.
+
+EFFICIENCY
+Target <=8 minutes including essential focused tests (10-minute soft, 15-minute hard budget), except justified broader T2 security/integration evidence. Compile only touched package lib if test imports require it. Do not rerun npm test, npm run check, all extension/browser/Electron builds or packaging as boilerplate. The runner owns implementation commits; do not manually commit.
+
+DEFER
+P10 capability evidence, P11 runtime registration/selection, P14 real execution.
+
+DONE WHEN
+The bounded seam is covered by direct focused evidence with honest unavailable/failed reports; no early Local agentExecution, widened grant or source-independent Green claim.
+
+FINAL RESPONSE
+Report changed files, focused proof, actual version and residual risks.

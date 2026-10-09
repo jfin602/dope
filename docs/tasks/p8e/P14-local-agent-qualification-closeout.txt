@@ -1,0 +1,33 @@
+TASK: Phase 8 / P14 — Real local coding agent qualification and closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- The assigned project version is `0.8.47`.
+
+GOAL
+Qualify Phase 8E through REAL Dope GUI execution with a genuinely tool-capable LOCAL LM Studio model (prefer an available Qwen3-Coder model, but never invent local model availability), actual enforced local-tool OS sandbox, developer-granted source editing, Dope-owned candidate validation and review, preserved hosted Codex behavior, and one passing full aggregate on the final exact candidate. Record GREEN / NOT GREEN, without automatically closing Phase 8 or activating Phase 9.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0032, docs/planning/p8/phase-8e-plan.md, docs/stability-contract.md and P1–P13 implementation evidence. Confirm actual 0.8.47 manifests, coherent Git HEAD/dirty basis, Linux host permissions/sandbox installation and REAL running LM Studio Local connection with a loaded tool-capable model and measured context. Verify P2 broker OS denial proof before any model-issued tools. Use a disposable clean Git project with trivial executable tests, not the developer's Dope or Adaptive SEO source for mutation. Historical 8D Green qualified source 8748cb4 and original p8d P13 Not Green must remain preserved.
+
+QUALIFICATION — T3
+1. In real Dope GUI/AI Center, discover/retest current loaded Local connection. Run zero-project-data tool-loop probe and verify readiness and adapter-known agentExecution, model identity, loaded-context reserve and Coding Agent role/exact target. Plain Chat success cannot substitute. Check unavailable/unloaded/unsupported model remains ineligible; no silent hosted fallback or unexpected project-data egress.
+2. In a disposable Git repo start one REAL local AgentTask from Direct Work and one WorkItem-derived task (or two representative tasks covering both surfaces); receive genuine model-requested read/write/process tool calls through P2 OS sandbox and P3–P5 broker. Observe sanitized user-facing messages/commands, correct project/candidate identity, termination/error truth, actual local model provenance and no provider-native state promoted to AgentTask. At least one local task performs a small real code change and test.
+3. Inspect actual isolated CandidateDelta and required Dope-owned ValidationWorkspace: developer-approved test passes against frozen fingerprint; for WorkItem task hold/restart and explicit developer Accept or Reject with only grant/scope-authorized bytes applied. Preserve WorkItem independent completion and canonical Architecture. Qualify saved task continuity, project switching, cancellation/interrupt and no duplicated execution upon restart.
+4. Denial matrix: OS process probe proves no outside-root/private HOME/secret/env/.git/.dope read-write, symlink/path traversal, unauthorized Git history/write, package administration, external network or 127.0.0.1 host loopback, denied effects and malformed tool calls; show that trusted localhost inference remains separate from model-issued tools. If OS sandbox controls cannot be enforced, STOP NOT GREEN, never enable an unconfined fallback.
+5. Check capability invalidation on LM Studio unload/reconnect, actual context shortage, model selection change, unresponsive transport, cancel, process timeout and unexpected tool result. Record observed behavior versus deterministic fixture tests. Do not leak hidden reasoning, credentials or unbounded raw responses into transcripts.
+6. Preserve existing Codex reference: compare a representative equal task/validation input with the earlier Codex evidence (and perform a bounded new Codex run only if necessary for comparable observations), recording correctness, tool turns, context, elapsed time, Dope validation, failures and provider differences. Read-only reopen already completed Adaptive SEO Prompt Stack and direct Work history; no new checkpoints, credential/billing fallback or source changes in that project. Distinguish limitations of the local model from adapter/security defects; no requirement for Qwen to match Codex quality at complex tasks.
+7. **Exact source aggregate:** run `npm run check` ONCE on the stable final candidate (already includes typecheck, npm test, browser build and Electron build). Run only focused tests genuinely omitted from that aggregate and any separate necessary OS sandbox/restart/native evidence, never duplicate nested commands. If the aggregate fails and source is repaired, rerun the INVALIDATED checks and a new aggregate on the changed final candidate before Green. Run `npm run codex:phase:validate -- p8e` once, plus `git diff --check`, version/prompt-number consistency and no accidental lockfile. Record exact test counts/command outcomes, HEAD, timestamps and true GUI/local provider evidence.
+8. Write `docs/tasks/p8e/closeout.md` with product version, exact source/dirty patch identity, real model/connection/adapter, tool requests and denials, sandbox preflight, AgentTask/AgentRun/grant/candidate fingerprints, validation, review/restart, comparative measurements, aggregate/validator and all PASS/FAIL/UNQUALIFIED gates. Record Phase 8E GREEN only if required real Local + OS-safety + validation + UI + aggregate evidence all pass; otherwise NOT GREEN without inventing evidence. Add one bounded terminal docs state reconciliation under docs/workflow.md. Never rewrite original P13 Not Green or c8-fix qualified history.
+
+PRESERVE
+Preserve provider-independent task/run/sequence and AI Center model identity, fixed developer ExecutionGrant, real OS-enforced sandbox (P2), brokered workspace-only tools (P3–P5), frozen CandidateDelta, Dope-owned required validation and Authority/ToolExecutor promotion, WorkItem review, Git/checkpoints, cancellation/restart and prior Codex/direct Work/Prompt Stack Green. Local requests cannot access real project root, private home/secrets, Git write/history, network/host loopback or outside roots. Never silently fall back to hosted inference or forge granted consent.
+
+NON-GOALS
+No Phase 9 DevelopmentSession, Phase 10 continuous alignment, multi-agent swarm, provider-native task DB, arbitrary source permission expansion, insecure local subprocess fallback, package/production deployment, or silent hosted Codex fallback.
+
+FINAL RESPONSE
+Report GREEN / NOT GREEN on exact candidate, real Local model+host/sandbox readiness, provider-neutral task/run identities, candidate/review and denied effects, aggregate counts, remaining gaps and the separately pending owner decision about Product Phase 8 closure/Phase 9. Manual T3 closeout is the only end of this stack.

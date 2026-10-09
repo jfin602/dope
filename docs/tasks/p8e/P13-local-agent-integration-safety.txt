@@ -1,0 +1,32 @@
+TASK: Phase 8 / P13 — Integrate and regress local-agent security and legacy Codex paths
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.46`.
+
+GOAL / IMPLEMENT
+Run the smallest **meaningful cross-boundary** path through P1–P12 with a deterministic Local tool-calling fixture: AI Center loaded model + synthetic probe -> Coding Agent role/exact selection -> accepted grant -> isolated ExecutionWorkspace + real OS tool broker -> candidate file change -> Dope-owned required frozen validation -> existing review or direct promotion. Include explicit negatives for private/secret, .git/.dope, symlink/traversal, network/loopback, process descendants, malformed/repeated tool calls, token budget/context unload, canceled run, restart, provider/target switching and hosted fallback refusal. Preserve earlier 8D WorkItem review and Codex direct/Prompt Stack snapshots; run only directly affected prior suites, not the whole product matrix. Register each new focused test file exactly once in root test:product, do not delete/skip baseline assertions to pass. If real OS isolation unavailable on supported reference host, record Not Green blocker for P14 and do not advertise Local capability.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0032 and docs/planning/p8/phase-8e-plan.md; inspect affected source/tests. Verify explicit owner activation and coherent prior 0.8.33 source; drafted task files do not authorize execution. Preserve all 8D/c8-fix evidence and current project worktrees.
+
+PRESERVE
+Preserve provider-independent task/run/sequence and AI Center model identity, fixed developer ExecutionGrant, real OS-enforced sandbox (P2), brokered workspace-only tools (P3–P5), frozen CandidateDelta, Dope-owned required validation and Authority/ToolExecutor promotion, WorkItem review, Git/checkpoints, cancellation/restart and prior Codex/direct Work/Prompt Stack Green. Local requests cannot access real project root, private home/secrets, Git write/history, network/host loopback or outside roots. Never silently fall back to hosted inference or forge granted consent.
+
+VALIDATION — T2
+T2: one targeted node --test invocation of newly added local transport/broker/adapter/capability/runtime/Work integration tests plus at most one directly affected existing Codex/8D suite; build changed lib dependencies once if tests import them, git diff --check. Confirm no duplicate test:product registrations and coherent manifests. No unconditional npm test, npm run check, browser/Electron packaging or full restart suite here.
+
+EFFICIENCY
+Target <=8 minutes including essential focused tests (10-minute soft, 15-minute hard budget), except justified broader T2 security/integration evidence. Compile only touched package lib if test imports require it. Do not rerun npm test, npm run check, all extension/browser/Electron builds or packaging as boilerplate. The runner owns implementation commits; do not manually commit.
+
+DEFER
+Exact-source full product aggregate, real LM Studio/Qwen, real GUI, comparison and closeout only P14.
+
+DONE WHEN
+The bounded seam is covered by direct focused evidence with honest unavailable/failed reports; no early Local agentExecution, widened grant or source-independent Green claim.
+
+FINAL RESPONSE
+Report changed files, focused proof, actual version and residual risks.
