@@ -3,6 +3,7 @@ import { readdir } from 'node:fs/promises';
 import { AGENT_SCHEMA_VERSION, decideProposedAction, parseAgentTask, parseExecutionGrant, projectPath,
     phaseStackFolder, phaseStackTaskMetadata, sequenceNeedsDirtyAcceptance, importPhaseStack } from '@dope/agent-core';
 import type { AgentModelPolicy, AgentRun, AgentTask, AgentTaskSequence, ProposedAction, CompletionPolicy,
+    AgentSteeringRequest, AgentSteeringState,
     ExecutionGrant, SequenceBlockReason } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureSequenceEvidence, checkedTasksRoot, snapshotTaskStack, readStackSources,
@@ -149,6 +150,15 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     readTask(handle: string, taskId: string): Promise<AgentTask | undefined> { return this.store.readTask(this.active(handle), taskId); }
     listTasks(handle: string): Promise<AgentTask[]> { return this.store.listTasks(this.active(handle)); }
     readRun(handle: string, runId: string): Promise<AgentRun | undefined> { return this.store.readRun(this.active(handle), runId); }
+    readSteering(handle: string, runId: string): Promise<AgentSteeringState | undefined> {
+        return this.store.readSteering(this.active(handle), runId);
+    }
+    requestSteering(handle: string, taskId: string, runId: string, expectedRevision: number,
+        request: AgentSteeringRequest): Promise<AgentSteeringState> {
+        const root = this.active(handle);
+        if (this.execution?.activeRunId(root) !== runId) throw new Error('Agent run has no active turn');
+        return this.store.requestSteering(root, taskId, runId, expectedRevision, request);
+    }
     decideCandidate(handle: string, runId: string, expectedRevision: number,
         candidateFingerprint: string, decision: 'accept' | 'reject', grant?: ExecutionGrant): Promise<AgentRun> {
         if (!this.execution) throw new Error('Agent execution unavailable');

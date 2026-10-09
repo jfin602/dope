@@ -7,6 +7,7 @@ import { AgentRun, AgentRunEvent, AgentTask, CandidateDelta, id, integer, parseA
 import { canTransitionAgentRun } from '../state';
 import { AgentTaskSequence, canTransitionSequence, parseAgentTaskSequence } from '../sequence';
 import { ProposedAction, parseProposedAction } from '../proposed-action';
+import { AgentSteeringRequest, AgentSteeringState, parseAgentSteeringRequest, parseAgentSteeringState } from '../steering';
 import { AGENT_TRANSCRIPT_BYTES_LIMIT, AGENT_TRANSCRIPT_ENTRY_LIMIT, AGENT_TRANSCRIPT_PAGE_LIMIT,
     AGENT_TRANSCRIPT_RECORD_BYTES_LIMIT, AgentTranscriptEntry, AgentTranscriptInput, AgentTranscriptRecord, AgentTranscriptStorage,
     parseAgentTranscriptRecord, prepareAgentTranscriptRecord } from '../transcript';
@@ -38,14 +39,14 @@ function checked<T>(value: unknown, parse: (value: unknown) => T): T {
 export class AgentStore implements AgentTranscriptStorage {
     private readonly transcriptCache = new Map<string, { identity: string; records: AgentTranscriptRecord[];
         entries: AgentTranscriptEntry[]; text: string; recorded: boolean }>();
-    private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action'; id: string }) => void>();
+    private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering'; id: string }) => void>();
 
-    onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action'; id: string }) => void): () => void {
+    onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering'; id: string }) => void): () => void {
         this.listeners.add(listener);
         return () => this.listeners.delete(listener);
     }
 
-    private notify(root: string, kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action', id: string): void {
+    private notify(root: string, kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering', id: string): void {
         for (const listener of this.listeners) try { listener(root, { kind, id }); } catch { /* Committed writes stay committed. */ }
     }
 
@@ -525,6 +526,50 @@ export class AgentStore implements AgentTranscriptStorage {
                 throw new Error('Corrupt agent run/task relationship');
         }
         return run;
+    }
+
+    async readSteering(root: string, runId: string): Promise<AgentSteeringState | undefined> {
+        const dir = await this.runDir(root, runId, false);
+        const state = dir ? await this.json(join(dir, 'steering.json'), parseAgentSteeringState) : undefined;
+        if (state) {
+            const run = await this.readRun(root, runId);
+            if (!run || state.runId !== runId || state.taskId !== run.taskId ||
+                state.projectId !== run.projectId) throw new Error('Corrupt steering source identity');
+        }
+        return state;
+    }
+
+    /** Persist the request and truthful unsupported acknowledgement as one revisioned write. */
+    async requestSteering(root: string, taskId: string, runId: string, expectedRevision: number,
+        input: AgentSteeringRequest): Promise<AgentSteeringState> {
+        const request = checked(input, parseAgentSteeringRequest);
+        if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0)
+            throw new Error('Invalid steering revision');
+        const dir = await this.runDir(root, runId, false);
+        if (!dir) throw new Error('Agent run missing');
+        let next!: AgentSteeringState;
+        await this.locked(dir, async () => {
+            const run = await this.readRun(root, runId);
+            const task = await this.readTask(root, taskId);
+            if (!run || !task || run.taskId !== task.id || run.projectId !== task.projectId)
+                throw new Error('Steering project/task/run mismatch');
+            if (run.status !== 'running' || run.candidateReview || run.candidateDelta)
+                throw new Error('Agent run has no steerable active turn');
+            const current = await this.readSteering(root, runId);
+            if ((current?.revision ?? 0) !== expectedRevision) throw new Error('Stale steering revision');
+            if (current && (current.taskId !== task.id || current.projectId !== task.projectId))
+                throw new Error('Steering project/task/run mismatch');
+            const at = new Date().toISOString();
+            next = checked({ version: 1, projectId: task.projectId, taskId: task.id, runId,
+                revision: expectedRevision + 1, entries: [...(current?.entries ?? []), {
+                    revision: expectedRevision + 1, requestedAt: at, request,
+                    acknowledgement: { status: 'unsupported', at,
+                        reason: 'active-turn-steering-unavailable', nextStep: 'explicit-stop-and-new-task' }
+                }] }, parseAgentSteeringState);
+            await this.atomic(join(dir, 'steering.json'), next);
+        });
+        this.notify(root, 'steering', runId);
+        return next;
     }
 
     async listRuns(root: string): Promise<AgentRun[]> {
