@@ -1,0 +1,32 @@
+TASK: Phase 8 / P5 — Constrain local test and build process tools
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.38`.
+
+GOAL / IMPLEMENT
+Add the process/test/build handler to P3/P4 broker with per-invocation grant and supported command-kind checks. Require P2 real OS sandbox for every spawned process, sterile environment (no inherited secrets/tokens/private HOME), executionRoot cwd with no path override, bounded argv/time/memory/output and forced child/process-group cleanup on timeout/cancel. Deny shell metacharacter expansion and unapproved direct shell invocation; accept only explicitly supported developer/adapter allowlisted executable+argv forms. Commands must be unable to use Git writes, outside-root, internet, local model HTTP endpoint or local host loopback even if a script attempts those operations. Do not promote output to Dope candidate validation; provider command success is evidence only.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0032 and docs/planning/p8/phase-8e-plan.md; inspect only affected source, related tests and package scripts before changes. Confirm explicitly owner-activated p8e from coherent committed 0.8.33; an authored prompt stack does not itself authorize execution. Preserve accepted 8D source/evidence and existing files/dirty state.
+
+PRESERVE
+Preserve provider-neutral AgentTask/AgentRun/AgentTaskSequence and WorkItem semantics, the developer-accepted fixed ExecutionGrant, ADR 0028 isolated ExecutionWorkspace -> CandidateDelta -> authoritative promotion, ADR 0029 Dope-owned required validation, ADR 0031 held candidate review, and direct Work/Prompt Stack/Codex behavior. Model tool requests grant no authority. Deny network, secrets, private home, outside-root, Git writes/history, destructive/system and unapproved effects; no unsandboxed fallback, direct authoritative writes, hidden reasoning, hosted egress or model-initiated privilege escalation. No 8E qualification before the final T3 gate.
+
+VALIDATION — T2
+One focused isolated-process test using disposable allowed local Node test command and adversarial Git, private read, symlink, external write, network/127.0.0.1, env injection, process descendants and cancel/timeout denial. Ensure no host/authoritative effect and no orphan. Build only changed lib if necessary; one test invocation, cheap diff. Missing containment = fail closed. No full check.
+
+EFFICIENCY
+Aim for <=8 minutes including essential focused checks (10-minute soft, 15-minute hard limit); P2's mandatory OS-security feasibility proof may exceed the ordinary budget rather than compromising isolation. Build only changed package outputs if tests require compiled lib. Do not run npm test, npm run check, build:extension, browser/Electron or packaging by default. The runner owns checkpoint commits; do not manually commit.
+
+DEFER
+Tool loop P8, adapter P9, integration P13, real UI P14.
+
+DONE WHEN
+The bounded seam and its negative safety cases are evidenced by the specified minimal test; record any unavailable prerequisite/failure and stop rather than claiming a false pass.
+
+FINAL RESPONSE
+Report touched files, focused tests, run-time if observed, safety/failure evidence and any remaining prerequisites.

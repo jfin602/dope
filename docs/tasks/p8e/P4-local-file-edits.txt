@@ -1,0 +1,32 @@
+TASK: Phase 8 / P4 — Broker candidate-only file create and modify tools
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.37`.
+
+GOAL / IMPLEMENT
+Implement bounded create/modify in the local broker: P1 strict request, per-call ExecutionGrant workspace-write check, P2 active OS containment, P3 secure relative path resolution, explicit max bytes, protected .git/.dope/secret/symlink denial. Operate exclusively on the disposable ExecutionWorkspace with race-aware no-follow file handles or safe atomic temp+rename; do not write the authoritative project root, accept delete/rename, or bypass existing final frozen CandidateDelta/Authority classification. Reject unsafe symlink substitution and changed basis without partial host effects. Leave command/process out.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0032 and docs/planning/p8/phase-8e-plan.md; inspect only affected source, related tests and package scripts before changes. Confirm explicitly owner-activated p8e from coherent committed 0.8.33; an authored prompt stack does not itself authorize execution. Preserve accepted 8D source/evidence and existing files/dirty state.
+
+PRESERVE
+Preserve provider-neutral AgentTask/AgentRun/AgentTaskSequence and WorkItem semantics, the developer-accepted fixed ExecutionGrant, ADR 0028 isolated ExecutionWorkspace -> CandidateDelta -> authoritative promotion, ADR 0029 Dope-owned required validation, ADR 0031 held candidate review, and direct Work/Prompt Stack/Codex behavior. Model tool requests grant no authority. Deny network, secrets, private home, outside-root, Git writes/history, destructive/system and unapproved effects; no unsandboxed fallback, direct authoritative writes, hidden reasoning, hosted egress or model-initiated privilege escalation. No 8E qualification before the final T3 gate.
+
+VALIDATION — T2
+One focused candidate-file-tool test: bounded create+modify happy case, forbidden .git/.env/.dope, symlink/traversal, wrong project/grant, oversized data and canceled op. Verify only candidate bytes changed and authoritative fixture/Git HEAD unchanged; build changed lib if needed, one node --test invocation; git diff --check.
+
+EFFICIENCY
+Aim for <=8 minutes including essential focused checks (10-minute soft, 15-minute hard limit); P2's mandatory OS-security feasibility proof may exceed the ordinary budget rather than compromising isolation. Build only changed package outputs if tests require compiled lib. Do not run npm test, npm run check, build:extension, browser/Electron or packaging by default. The runner owns checkpoint commits; do not manually commit.
+
+DEFER
+Process P5; provider/validation/acceptance P8-P14.
+
+DONE WHEN
+The bounded seam and its negative safety cases are evidenced by the specified minimal test; record any unavailable prerequisite/failure and stop rather than claiming a false pass.
+
+FINAL RESPONSE
+Report touched files, focused tests, run-time if observed, safety/failure evidence and any remaining prerequisites.

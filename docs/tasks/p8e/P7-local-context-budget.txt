@@ -1,0 +1,32 @@
+TASK: Phase 8 / P7 — Budget observed local model context and tool results
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.40`.
+
+GOAL / IMPLEMENT
+Add a compact deterministic per-run budget for the Local transport/turn loop. Read observed loaded-model context capacity from AI Center inventory at execution, reserve bounded output/system/tool-result headroom, enforce finite history/tool-result size and caps on total tokens/bytes/turns. Reject unknown, unloaded, changed or insufficient context rather than assuming configured 65536 or blindly truncating essential tool state; clip only explicitly nonessential bounded output with visible truncation markers. Detect model unload/context revision change between readiness and execution and fail closed. No new persistent context ontology or background summarization.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0032 and docs/planning/p8/phase-8e-plan.md; inspect only affected source, related tests and package scripts before changes. Confirm explicitly owner-activated p8e from coherent committed 0.8.33; an authored prompt stack does not itself authorize execution. Preserve accepted 8D source/evidence and existing files/dirty state.
+
+PRESERVE
+Preserve provider-neutral AgentTask/AgentRun/AgentTaskSequence and WorkItem semantics, the developer-accepted fixed ExecutionGrant, ADR 0028 isolated ExecutionWorkspace -> CandidateDelta -> authoritative promotion, ADR 0029 Dope-owned required validation, ADR 0031 held candidate review, and direct Work/Prompt Stack/Codex behavior. Model tool requests grant no authority. Deny network, secrets, private home, outside-root, Git writes/history, destructive/system and unapproved effects; no unsandboxed fallback, direct authoritative writes, hidden reasoning, hosted egress or model-initiated privilege escalation. No 8E qualification before the final T3 gate.
+
+VALIDATION — T1
+One pure context-budget test for loaded 4096/65536, unknown/unloaded capacity, reserve, output/result clipping, overflow, context change, finite turn/tool limit. Compile only changed package once if required, node --test only file; git diff --check.
+
+EFFICIENCY
+Aim for <=8 minutes including essential focused checks (10-minute soft, 15-minute hard limit); P2's mandatory OS-security feasibility proof may exceed the ordinary budget rather than compromising isolation. Build only changed package outputs if tests require compiled lib. Do not run npm test, npm run check, build:extension, browser/Electron or packaging by default. The runner owns checkpoint commits; do not manually commit.
+
+DEFER
+Coordinator P8; eligibility P10; runtime integration P11.
+
+DONE WHEN
+The bounded seam and its negative safety cases are evidenced by the specified minimal test; record any unavailable prerequisite/failure and stop rather than claiming a false pass.
+
+FINAL RESPONSE
+Report touched files, focused tests, run-time if observed, safety/failure evidence and any remaining prerequisites.

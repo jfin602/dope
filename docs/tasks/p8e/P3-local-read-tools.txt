@@ -1,0 +1,32 @@
+TASK: Phase 8 / P3 — Broker scoped local read and list tool requests
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.36`.
+
+GOAL / IMPLEMENT
+Implement only list/read tool handlers under a Dope-owned local broker using P1 validated requests and P2 verified sandbox/context; check fixed ExecutionGrant workspace-read for every request and bind root to AgentExecutionRequest.executionRoot, not projectRoot or arbitrary path. Resolve project-relative paths safely, reject absolute/parent traversal, symlink/proc-fd bypass, .git/.dope and secret/private paths; return bounded directory listings and file contents with truncation flags. Apply actual OS isolation rather than trusting path normalization alone. Return explicit structured denied result without dumping private content. Do not add edit/process handlers.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0032 and docs/planning/p8/phase-8e-plan.md; inspect only affected source, related tests and package scripts before changes. Confirm explicitly owner-activated p8e from coherent committed 0.8.33; an authored prompt stack does not itself authorize execution. Preserve accepted 8D source/evidence and existing files/dirty state.
+
+PRESERVE
+Preserve provider-neutral AgentTask/AgentRun/AgentTaskSequence and WorkItem semantics, the developer-accepted fixed ExecutionGrant, ADR 0028 isolated ExecutionWorkspace -> CandidateDelta -> authoritative promotion, ADR 0029 Dope-owned required validation, ADR 0031 held candidate review, and direct Work/Prompt Stack/Codex behavior. Model tool requests grant no authority. Deny network, secrets, private home, outside-root, Git writes/history, destructive/system and unapproved effects; no unsandboxed fallback, direct authoritative writes, hidden reasoning, hosted egress or model-initiated privilege escalation. No 8E qualification before the final T3 gate.
+
+VALIDATION — T2
+One focused broker-read test with allowed files, root escape, symlink, protected files, wrong grant, oversized result, cancellation/disposed root. Compile only changed lib when necessary, run only new test and cheap diff; no broad matrix or live LM model.
+
+EFFICIENCY
+Aim for <=8 minutes including essential focused checks (10-minute soft, 15-minute hard limit); P2's mandatory OS-security feasibility proof may exceed the ordinary budget rather than compromising isolation. Build only changed package outputs if tests require compiled lib. Do not run npm test, npm run check, build:extension, browser/Electron or packaging by default. The runner owns checkpoint commits; do not manually commit.
+
+DEFER
+Write P4; sandboxed process P5; iterative harness P8.
+
+DONE WHEN
+The bounded seam and its negative safety cases are evidenced by the specified minimal test; record any unavailable prerequisite/failure and stop rather than claiming a false pass.
+
+FINAL RESPONSE
+Report touched files, focused tests, run-time if observed, safety/failure evidence and any remaining prerequisites.

@@ -1,0 +1,32 @@
+TASK: Phase 8 / P6 — Implement one bounded LM Studio tool-call turn
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.39`.
+
+GOAL / IMPLEMENT
+Create a minimal Local tool-turn HTTP transport behind the AI Center-configured Local LM Studio localhost endpoint (reuse validated provider config/credential transport where practical). Request one chat-completions turn with declared P1 supported tools, explicitly selected loaded model, bounded timeout/output and AbortSignal; parse a supported assistant tool-call envelope OR final assistant text, never both ambiguously. Validate returned IDs/name/JSON args with P1; sanitize provider errors and prohibit raw provider payload persistence, hidden reasoning or arbitrary endpoint/SSRF rewriting. Do not execute requests in this transport. If actual selected runtime does not support compatible tool calls, return a truthful unsupported capability. No streaming requirement until needed for correctness.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0032 and docs/planning/p8/phase-8e-plan.md; inspect only affected source, related tests and package scripts before changes. Confirm explicitly owner-activated p8e from coherent committed 0.8.33; an authored prompt stack does not itself authorize execution. Preserve accepted 8D source/evidence and existing files/dirty state.
+
+PRESERVE
+Preserve provider-neutral AgentTask/AgentRun/AgentTaskSequence and WorkItem semantics, the developer-accepted fixed ExecutionGrant, ADR 0028 isolated ExecutionWorkspace -> CandidateDelta -> authoritative promotion, ADR 0029 Dope-owned required validation, ADR 0031 held candidate review, and direct Work/Prompt Stack/Codex behavior. Model tool requests grant no authority. Deny network, secrets, private home, outside-root, Git writes/history, destructive/system and unapproved effects; no unsandboxed fallback, direct authoritative writes, hidden reasoning, hosted egress or model-initiated privilege escalation. No 8E qualification before the final T3 gate.
+
+VALIDATION — T1
+One mock-fetch transport test for final text, valid tool call, malformed JSON/unknown tool, timeout/Abort, endpoint misconfiguration, oversized output and provider unavailable. Compile changed extension lib only when test imports it; node --test targeted file; git diff --check. No live LM Studio required here, no broad tests.
+
+EFFICIENCY
+Aim for <=8 minutes including essential focused checks (10-minute soft, 15-minute hard limit); P2's mandatory OS-security feasibility proof may exceed the ordinary budget rather than compromising isolation. Build only changed package outputs if tests require compiled lib. Do not run npm test, npm run check, build:extension, browser/Electron or packaging by default. The runner owns checkpoint commits; do not manually commit.
+
+DEFER
+Context/reserve P7; multi-turn P8; probe AI Center P10; live real-model proof P14.
+
+DONE WHEN
+The bounded seam and its negative safety cases are evidenced by the specified minimal test; record any unavailable prerequisite/failure and stop rather than claiming a false pass.
+
+FINAL RESPONSE
+Report touched files, focused tests, run-time if observed, safety/failure evidence and any remaining prerequisites.
