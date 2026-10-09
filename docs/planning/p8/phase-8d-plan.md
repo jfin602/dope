@@ -2,7 +2,7 @@
 
 Status: **ACTIVE / APPROVED FOR IMPLEMENTATION; NOT QUALIFIED**
 Owner activation: 2026-10-09
-Baseline: `0.8.20`; continuation: `0.8.21` through `0.8.30`
+Baseline: `0.8.20`; continuation: `0.8.21` through `0.8.33`
 Execution folder: `docs/tasks/p8d/`
 Authority: ADR 0031 and 0017/0027/0028/0029/0030; Product Model, Architecture, Stability, roadmap.
 
@@ -17,20 +17,29 @@ Generalize qualified 8A–8C and Green c8-work-mode direct Work/Prompt Stack exe
 - `packages/contracts/src/agent-runtime-service.ts` exposes createTask/start/read/list/stop and Prompt Stack sequence operations but not WorkItem delegation/accept/reject/steering service operations. `packages/visual-planning/src/service.ts` remains a separate project-revisioned service.
 - Theia backend Agent Runtime and Visual Planning adapters must be re-inspected for exact methods/tests before implementation. Keep Dope-owned frozen candidate validation, Promotion, Git/dirty state, provider-neutral transcripts and frontend project binding intact.
 
-## Approved ordered stack
+## Approved ordered stack — 8-minute optimization (2026-10-09)
 
-| Prompt | Version | Boundary | Tier | Model | Browser |
+The original P1 combined too many contracts and P8 combined several GUI workflows; they were split into separate coherent implementation seams. P1–P11 target <=8 minutes including their necessary focused testing (15-minute maximum); P12 is the bounded T2 integration gate; P13 is the sole manual T3 GUI/real-Codex qualification gate.
+
+| Prompt | Version | Scope | Tier | Model | Browser |
 | --- | --- | --- | --- | --- | --- |
-| P1 | 0.8.21 | WorkItem ownership/link plus review/action/steering portable contracts and migrations | T1 | GPT-6 Sol High | no |
-| P2 | 0.8.22 | Planning WorkItem -> AgentTask delegation service; durable bidirectional linkage | T2 | GPT-6 Sol High | no |
-| P3 | 0.8.23 | WorkItem candidate review hold after frozen Dope-owned validation | T2 | GPT-6 Sol High | no |
-| P4 | 0.8.24 | Accept/reject; rechecks, Dope-owned promotion and replay safety | T2 | GPT-6 Sol High | no |
-| P5 | 0.8.25 | Consequential ProposedAction lifecycle with fail-closed fixed grant | T1/T2 | GPT-6 Sol High | no |
-| P6 | 0.8.26 | Typed steering and capability-aware acknowledgement/recovery | T2 | GPT-6 Sol High | no |
-| P7 | 0.8.27 | Bounded Software Map impact and post-accept staleness | T2 | GPT-6 Sol High | no |
-| P8 | 0.8.28 | Planning/Work delegation, ownership, review, steering and map-impact UI | T1/T2 | GPT-6 Sol High | no |
-| P9 | 0.8.29 | Cross-package adverse-case/restart/direct-Work/Prompt-Stack regression | T2 | GPT-6 Sol High | no |
-| P10 | 0.8.30 | Direct GUI/reference-Codex qualification, final evidence and closeout | T3 | GPT-6 Sol High | yes |
+| P1 | 0.8.21 | WorkItem ownership and migration | T1 | GPT-6 Sol Medium | no |
+| P2 | 0.8.22 | AgentTask delegation metadata | T1 | GPT-6 Sol High | no |
+| P3 | 0.8.23 | Revision-safe task creation and derived inverse links | T2 | GPT-6 Sol High | no |
+| P4 | 0.8.24 | Validated candidate review hold | T2 | GPT-6 Sol High | no |
+| P5 | 0.8.25 | Review accept/reject and promotion | T2 | GPT-6 Sol High | no |
+| P6 | 0.8.26 | Blocked ProposedAction records | T1 | GPT-6 Sol High | no |
+| P7 | 0.8.27 | Durable safe steering acknowledgement | T2 | GPT-6 Sol High | no |
+| P8 | 0.8.28 | Bounded Software Map impact receipt | T2 | GPT-6 Sol High | no |
+| P9 | 0.8.29 | Planning delegation UI | T1 | GPT-6 Sol Medium | no |
+| P10 | 0.8.30 | Work candidate review UI | T1 | GPT-6 Sol Medium | no |
+| P11 | 0.8.31 | Work steering/action/impact UI | T1 | GPT-6 Sol Medium | no |
+| P12 | 0.8.32 | Focused integration/regression and test registration | T2 | GPT-6 Sol High | no |
+| P13 | 0.8.33 | Real GUI/agent closeout | T3 | GPT-6 Sol High | yes |
+
+Changed-package build only when compiled `lib/` is required by focused tests; no blanket `build:extension`, root `npm test`, `npm run check`, browser/Electron build, package/install or broad restart suite in P1–P12. P12 adds new test files to existing `test:product` once. P13 runs one exact-candidate `npm run check` which already builds/types/checks and tests, with only tests omitted from that command separately (ideally none). Cheap `git diff --check` stays. No security checks may be skipped merely to fit a time budget.
+
+The AgentTask WorkItem origin/snapshot is the canonical persisted link; query AgentStore for inverse WorkItem task lists to avoid duplicate mutable cross-store pointers.
 
 ## Boundary laws
 
@@ -42,6 +51,6 @@ Steering is versioned/persisted with pending/applied/rejected/unsupported acknow
 
 ## Evidence and exclusions
 
-P1 pure parsing/migration tests; P2 linkage stale revision/project isolation/duplicates/partial write recovery; P3-P4 frozen validation, negative reviews, intervening HEAD, denial, atomic promotion and restart; P5 denied consequential actions; P6 steering lifecycle and missing adapter capability; P7 changed-path/evidence and unknown IDs; P8 narrow panels, keyboard/focus, provenance and restart; P9 full affected integrations and legacy direct/Prompt Stack regression. P10 alone owns real GUI/T3 with reference hosted Codex, actual candidate/validation, at least two WorkItem-derived tasks, accept/reject, HUMAN/AI/SHARED, escalation-denied, steering truth, map impact and restart, plus one exact-candidate `npm run check` and `npm run codex:phase:validate -- p8d`. Failed prerequisites are Not Green; no fabricated live evidence.
+P1/P2 targeted contract tests, P3 bounded delegation service test, P4/P5 frozen validation and accept/reject tests, P6 blocked action test, P7 steering test, P8 map impact test, P9–P11 focused UI/controller tests. P12 covers bounded cross-system, restart/scope/authority and direct Work/Prompt Stack regressions and registers new tests in `test:product`. P13 alone owns direct hosted Codex/Dope GUI qualification, two WorkItem-derived tasks with accepted/rejected candidates, HUMAN/AI/SHARED, denied escalation, steering, map impact/restart, one exact-candidate `npm run check` and one `npm run codex:phase:validate -- p8d`. Failed prerequisites are Not Green; no fabricated live evidence.
 
 Ordinary prompts target <=8 minutes and a 15-minute maximum, use one appropriate affected test/build group and `git diff --check`, not repeated aggregate tests. No extra session/local-model/multi-agent/Phase-10 work; Phase 8E and full Phase 8 closure are separate owner decisions.
