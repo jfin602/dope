@@ -60,8 +60,11 @@ export interface CandidateEffect { kind: 'create' | 'modify' | 'delete' | 'renam
     previousPath?: string; before?: string; after?: string }
 export interface CandidateDelta { version: typeof AGENT_SCHEMA_VERSION; effects: CandidateEffect[] }
 export interface CandidateReview {
-    state: 'ready'; candidateFingerprint: string; diff: string; diffTruncated: boolean;
+    state: 'ready'; revision: number; candidateFingerprint: string; diff: string; diffTruncated: boolean;
     changedPaths: string[]; validation: ValidationResult[];
+}
+export interface CandidateReviewDecision {
+    kind: 'accept' | 'reject'; revision: number; at: string; candidateFingerprint: string;
 }
 export interface AuthorityDecision { allowed: boolean; blocked: { kind: CandidateEffect['kind']; path: string }[] }
 export interface AgentRun {
@@ -75,6 +78,7 @@ export interface AgentRun {
     validationBasis?: 'execution-workspace'; candidateDelta?: CandidateDelta;
     candidateFingerprint?: string;
     candidateReview?: CandidateReview;
+    reviewDecision?: CandidateReviewDecision;
     authorityDecision?: AuthorityDecision; appliedFiles?: string[];
     recovery?: { adapterId: string; handle: string }; outcome?: { code: 'authority-denied' | 'provider-error' |
         'validation-failed' | 'capacity-exhausted' | 'cancelled' | 'interrupted' | 'other'; summary: string };
@@ -343,7 +347,7 @@ export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
         'projectRoot', 'projectId', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis',
         'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome',
-        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'candidateReview', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries']);
+        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
     const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
@@ -356,9 +360,13 @@ export function parseAgentRun(value: unknown): AgentRun {
     if (new Set(changedFiles).size !== changedFiles.length) throw new Error('Duplicate changed file');
     const candidateDelta = x.candidateDelta === undefined ? undefined : parseCandidateDelta(x.candidateDelta);
     const review = x.candidateReview === undefined ? undefined : record(x.candidateReview,
-        ['state', 'candidateFingerprint', 'diff', 'diffTruncated', 'changedPaths', 'validation']);
-    if (review && (review.state !== 'ready' || !candidateDelta || review.candidateFingerprint !== x.candidateFingerprint ||
-        status !== 'blocked' || x.authorityDecision !== undefined || x.appliedFiles !== undefined ||
+        ['state', 'revision', 'candidateFingerprint', 'diff', 'diffTruncated', 'changedPaths', 'validation']);
+    const reviewDecision = x.reviewDecision === undefined ? undefined : record(x.reviewDecision,
+        ['kind', 'revision', 'at', 'candidateFingerprint']);
+    if (review && (review.state !== 'ready' || integer(review.revision) !== 0 || !candidateDelta ||
+        review.candidateFingerprint !== x.candidateFingerprint ||
+        (!reviewDecision && status !== 'blocked') ||
+        (!reviewDecision && (x.authorityDecision !== undefined || x.appliedFiles !== undefined)) ||
         !Array.isArray(review.changedPaths) ||
         JSON.stringify(review.changedPaths) !== JSON.stringify(candidateDelta.effects.map(effect => effect.path)) ||
         !Array.isArray(review.validation) || review.validation.some(item =>
@@ -366,8 +374,21 @@ export function parseAgentRun(value: unknown): AgentRun {
             (item as ValidationResult).status !== 'passed' || (item as ValidationResult).owner !== 'dope' ||
             (item as ValidationResult).candidateFingerprint !== x.candidateFingerprint)))
         throw new Error('Invalid candidate review hold');
+    if (reviewDecision && (!review || integer(reviewDecision.revision) !== 1 ||
+        reviewDecision.candidateFingerprint !== review.candidateFingerprint ||
+        !['accept', 'reject'].includes(reviewDecision.kind as string) ||
+        (reviewDecision.kind === 'reject' ? status !== 'cancelled' || x.appliedFiles !== undefined :
+            !['blocked', 'completed', 'failed', 'interrupted'].includes(status))))
+        throw new Error('Invalid candidate review decision');
     const authorityDecision = x.authorityDecision === undefined ? undefined : parseAuthorityDecision(x.authorityDecision);
     const appliedFiles = x.appliedFiles === undefined ? undefined : array(x.appliedFiles, 500, projectPath);
+    if (reviewDecision?.kind === 'accept' && status === 'completed' &&
+        (!authorityDecision?.allowed || !appliedFiles || !candidateDelta ||
+            JSON.stringify(appliedFiles) !== JSON.stringify(candidateDelta.effects.map(effect => effect.path))))
+        throw new Error('Completed review lacks complete promotion evidence');
+    if (reviewDecision?.kind === 'reject' && (x.authorityDecision !== undefined ||
+        x.outcome === undefined || (x.outcome as { code?: unknown }).code !== 'cancelled'))
+        throw new Error('Rejected review has invalid outcome');
     if (authorityDecision && !candidateDelta || appliedFiles && !authorityDecision ||
         appliedFiles && new Set(appliedFiles).size !== appliedFiles.length ||
         authorityDecision && authorityDecision.blocked.some(blocked => !candidateDelta?.effects.some(effect =>
@@ -404,11 +425,15 @@ export function parseAgentRun(value: unknown): AgentRun {
         ...(candidateDelta === undefined ? {} : { candidateDelta }),
         ...(x.candidateFingerprint === undefined ? {} : { candidateFingerprint: hash(x.candidateFingerprint) }),
         ...(review === undefined ? {} : { candidateReview: {
-            state: 'ready' as const, candidateFingerprint: hash(review.candidateFingerprint),
+            state: 'ready' as const, revision: integer(review.revision), candidateFingerprint: hash(review.candidateFingerprint),
             diff: typeof review.diff === 'string' && review.diff.length <= 48_000 ? review.diff : (() => { throw new Error('Invalid review diff'); })(),
             diffTruncated: bool(review.diffTruncated),
             changedPaths: array(review.changedPaths, 500, projectPath),
             validation: array(review.validation, 24, parseValidationResult) } }),
+        ...(reviewDecision === undefined ? {} : { reviewDecision: {
+            kind: select(reviewDecision.kind, ['accept', 'reject'] as const),
+            revision: integer(reviewDecision.revision), at: timestamp(reviewDecision.at),
+            candidateFingerprint: hash(reviewDecision.candidateFingerprint) } }),
         ...(authorityDecision === undefined ? {} : { authorityDecision }),
         ...(appliedFiles === undefined ? {} : { appliedFiles }),
         ...(recovery === undefined ? {} : { recovery: { adapterId: id(recovery.adapterId),

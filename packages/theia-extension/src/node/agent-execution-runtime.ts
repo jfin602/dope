@@ -35,6 +35,7 @@ function matchesValidationCommand(observed: string, target: string): boolean {
 /** Owns mutation lifecycle and restart reconciliation across RPC connections. */
 export class AgentExecutionRuntime {
     private readonly active = new Map<string, Active>();
+    private readonly reviewDecisions = new Set<string>();
     private disposed = false;
 
     constructor(private readonly store: AgentStore,
@@ -53,6 +54,101 @@ export class AgentExecutionRuntime {
             run.status === 'blocked' && run.candidateReview?.state === 'ready'))
             throw new Error('Agent run did not reach a durable terminal state or review hold');
         return run;
+    }
+
+    async decideCandidate(root: string, runId: string, expectedRevision: number,
+        candidateFingerprint: string, decision: 'accept' | 'reject', offeredGrant?: ExecutionGrant): Promise<AgentRun> {
+        if (!Number.isSafeInteger(expectedRevision) || expectedRevision !== 0 ||
+            !/^[a-f0-9]{64}$/u.test(candidateFingerprint) || !['accept', 'reject'].includes(decision))
+            throw new Error('Invalid candidate review decision');
+        if (this.active.has(root) || this.reviewDecisions.has(root)) throw new Error('Project execution or review is active');
+        this.reviewDecisions.add(root);
+        let workspace: ExecutionWorkspace | undefined;
+        try {
+            const run = await this.store.readRun(root, runId);
+            if (!run?.candidateReview || run.candidateReview.revision !== expectedRevision ||
+                run.candidateReview.candidateFingerprint !== candidateFingerprint)
+                throw new Error('Stale candidate review revision or fingerprint');
+            if (run.reviewDecision) {
+                if (run.reviewDecision.kind !== decision) throw new Error('Candidate review already decided');
+                return run;
+            }
+            if (run.status !== 'blocked' || !run.basis?.head || !run.candidateDelta ||
+                !run.executionWorkspace || run.executionWorkspace.basisHead !== run.basis.head)
+                throw new Error('Candidate review is not ready');
+            const task = await this.store.readTask(root, run.taskId);
+            if (task?.origin.kind !== 'work-item' || task.reviewPolicy?.kind !== 'required' ||
+                task.projectId !== run.projectId || task.origin.projectId !== run.projectId)
+                throw new Error('Review task identity changed');
+            const at = new Date().toISOString();
+            const reviewDecision = { kind: decision, revision: expectedRevision + 1, at,
+                candidateFingerprint } as const;
+            if (decision === 'reject') return this.store.updateRun(root, run, { ...run,
+                reviewDecision, status: 'cancelled', endedAt: at < run.startedAt! ? run.startedAt : at,
+                outcome: { code: 'cancelled', summary: 'Developer rejected candidate' } });
+
+            const grant = parseExecutionGrant(offeredGrant);
+            if (grant.id !== run.grantId || grant.revision !== run.grantRevision ||
+                grant.taskId !== task.id || grant.projectRoot !== task.projectRoot ||
+                grant.acceptedAt < task.createdAt)
+                throw new Error('Execution grant changed since candidate review');
+            if (!task.completion.validation.length || task.completion.validation.some(target =>
+                !run.candidateReview!.validation.some(result => result.owner === 'dope' &&
+                    result.kind === target.kind && result.label === target.label &&
+                    result.status === 'passed' && result.candidateFingerprint === candidateFingerprint)))
+                throw new Error('Required candidate validation is missing or stale');
+            const authoritative = await captureGitBasis(root);
+            if (!authoritative.clean || authoritative.head !== run.basis.head)
+                throw new Error('Authoritative Git basis changed before review decision');
+            const savedRoot = await this.store.reviewCandidateRoot(root, run.id);
+            if (!savedRoot) throw new Error('Frozen review candidate missing');
+            workspace = await ExecutionWorkspace.restoreReview(root, savedRoot, run.candidateDelta, candidateFingerprint);
+            const within = (parent: string, child: string): boolean => child === parent || child.startsWith(`${parent}/`);
+            const scope = task.origin.scope;
+            if (run.candidateDelta.effects.some(effect => !['create', 'modify'].includes(effect.kind) ||
+                !scope.delegablePaths.some(path => within(path, effect.path)) ||
+                scope.humanReservedPaths.some(path => within(path, effect.path) || within(effect.path, path)) ||
+                !checkEffect(grant, { kind: `project-${effect.kind}`, scope: 'project', path: effect.path }).allowed))
+                throw new Error('Review candidate exceeds delegation or execution authority');
+            // The durable decision claim prevents a retry after a crash from applying twice.
+            const claimed = await this.store.updateRun(root, run, { ...run, reviewDecision });
+            let status: AgentRun['status'] = 'completed';
+            let outcome: AgentRun['outcome'];
+            let authorityDecision: AgentRun['authorityDecision'];
+            let appliedFiles: string[] | undefined;
+            try {
+                const promoted = await workspace.promote(grant, run.candidateDelta);
+                authorityDecision = promoted.decision;
+                appliedFiles = promoted.applied;
+                if (!promoted.decision.allowed) {
+                    status = 'failed';
+                    outcome = { code: 'authority-denied', summary: 'Candidate promotion denied by execution grant' };
+                }
+            } catch (error) {
+                status = 'failed';
+                if (error instanceof PromotionFailure) {
+                    authorityDecision = { allowed: true, blocked: [] };
+                    appliedFiles = error.appliedFiles;
+                }
+                outcome = { code: 'other', summary: 'Candidate promotion failed; inspect applied files' };
+            }
+            const evidence = await captureGitFinal(root, run.basis).catch(() => undefined);
+            if (!evidence || evidence.final.headChanged) {
+                status = 'failed';
+                outcome = { code: 'other', summary: 'Git evidence changed or could not be captured after review' };
+            }
+            const endedAt = new Date().toISOString();
+            return this.store.updateRun(root, claimed, { ...claimed, status,
+                endedAt: endedAt < run.startedAt! ? run.startedAt : endedAt,
+                ...(authorityDecision ? { authorityDecision } : {}),
+                ...(appliedFiles ? { appliedFiles } : {}),
+                ...(evidence ? { finalGit: evidence.final, changedFiles: evidence.changedFiles,
+                    changeSummary: evidence.changeSummary } : {}),
+                ...(outcome ? { outcome } : {}) });
+        } finally {
+            await workspace?.dispose();
+            this.reviewDecisions.delete(root);
+        }
     }
 
     private serial<T>(active: Active, action: () => Promise<T>): Promise<T> {
@@ -428,7 +524,7 @@ export class AgentExecutionRuntime {
                             throw new Error('Authoritative project changed before review hold');
                         await this.serial(active, async () => {
                             await this.update(active, run => ({ ...run, status: 'blocked',
-                                candidateReview: { state: 'ready', candidateFingerprint: fingerprint,
+                                candidateReview: { state: 'ready', revision: 0, candidateFingerprint: fingerprint,
                                     ...preview, changedPaths: delta.effects.map(effect => effect.path),
                                     validation: run.validationResults.filter(result => result.owner === 'dope') } }));
                             await this.event(active, 'status', 'Candidate ready for developer review', { status: 'blocked' });
@@ -556,7 +652,7 @@ export class AgentExecutionRuntime {
         if (this.active.has(root)) return;
         for (const run of await this.store.listRuns(root)) {
             if (!['running', 'cancelling', 'blocked'].includes(run.status) ||
-                run.status === 'blocked' && run.candidateReview?.state === 'ready' &&
+                run.status === 'blocked' && !run.reviewDecision && run.candidateReview?.state === 'ready' &&
                 await this.store.reviewCandidateRoot(root, run.id)) continue;
             const evidence = run.basis ? await captureGitFinal(root, run.basis).catch(() => undefined) : undefined;
             const reconciledAt = new Date().toISOString();

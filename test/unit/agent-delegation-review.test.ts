@@ -109,3 +109,78 @@ test('direct task still promotes automatically after validation', async () =>
         assert.equal(done.candidateReview, undefined);
         assert.equal(await readFile(join(f.root, 'review.txt'), 'utf8'), 'candidate\n');
     }));
+
+async function hold(f: { root: string; backend: AgentRuntimeBackend; handle: string;
+    runtime: AgentExecutionRuntime; adapter: { request?: any; complete(): void } }) {
+    const grant = createDefaultExecutionGrant({ id: 'grant-review', revision: 0,
+        taskId: 'task-review', acceptedAt: now });
+    const started = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-review', grant, true);
+    await writeFile(join(f.adapter.request!.executionRoot, 'review.txt'), 'candidate\n');
+    f.adapter.complete();
+    const held = await f.runtime.waitForRun(f.root, started.id);
+    assert.equal(held.candidateReview?.state, 'ready');
+    return { held, grant };
+}
+
+test('accept promotes the exact validated WorkItem candidate once and persists the decision', async () =>
+    fixture('work-item', 'passed', async f => {
+        const { held, grant } = await hold(f);
+        const fingerprint = held.candidateReview!.candidateFingerprint;
+        const accepted = await f.backend.decideCandidate(f.handle, held.id, 0, fingerprint, 'accept', grant);
+        assert.equal(accepted.status, 'completed');
+        assert.equal(accepted.reviewDecision?.kind, 'accept');
+        assert.deepEqual(accepted.appliedFiles, ['review.txt']);
+        assert.equal(await readFile(join(f.root, 'review.txt'), 'utf8'), 'candidate\n');
+        assert.deepEqual((await f.backend.decideCandidate(f.handle, held.id, 0, fingerprint, 'accept', grant)).appliedFiles,
+            ['review.txt']);
+        assert.equal((await new AgentStore().readRun(f.root, held.id))?.reviewDecision?.kind, 'accept');
+    }));
+
+test('reject persists without applying and repeated rejection is idempotent', async () =>
+    fixture('work-item', 'passed', async f => {
+        const { held } = await hold(f);
+        const fingerprint = held.candidateReview!.candidateFingerprint;
+        const rejected = await f.backend.decideCandidate(f.handle, held.id, 0, fingerprint, 'reject');
+        assert.equal(rejected.status, 'cancelled');
+        assert.equal(rejected.reviewDecision?.kind, 'reject');
+        assert.equal((await f.backend.decideCandidate(f.handle, held.id, 0, fingerprint, 'reject')).status, 'cancelled');
+        await assert.rejects(readFile(join(f.root, 'review.txt')), { code: 'ENOENT' });
+        await assert.rejects(f.backend.decideCandidate(f.handle, held.id, 0, fingerprint, 'accept',
+            createDefaultExecutionGrant({ id: 'grant-review', revision: 0, taskId: 'task-review', acceptedAt: now })));
+    }));
+
+test('stale revision, fingerprint and authoritative Git basis block accept', async () =>
+    fixture('work-item', 'passed', async f => {
+        const { held, grant } = await hold(f);
+        const fingerprint = held.candidateReview!.candidateFingerprint;
+        await assert.rejects(f.backend.decideCandidate(f.handle, held.id, 1, fingerprint, 'accept', grant));
+        await assert.rejects(f.backend.decideCandidate(f.handle, held.id, 0, '0'.repeat(64), 'accept', grant));
+        await assert.rejects(f.backend.decideCandidate(f.handle, held.id, 0, fingerprint, 'accept',
+            createDefaultExecutionGrant({ id: 'different-grant', revision: 0,
+                taskId: 'task-review', acceptedAt: now })), /grant changed/);
+        await writeFile(join(f.root, 'external.txt'), 'external\n');
+        await assert.rejects(f.backend.decideCandidate(f.handle, held.id, 0, fingerprint, 'accept', grant),
+            /Git basis changed/);
+        assert.equal((await f.store.readRun(f.root, held.id))?.reviewDecision, undefined);
+        await assert.rejects(readFile(join(f.root, 'review.txt')), { code: 'ENOENT' });
+    }));
+
+test('tampered frozen bytes and failed validation never promote', async () => {
+    await fixture('work-item', 'passed', async f => {
+        const { held, grant } = await hold(f);
+        const saved = await f.store.reviewCandidateRoot(f.root, held.id);
+        await writeFile(join(saved!, 'review.txt'), 'tampered\n');
+        await assert.rejects(f.backend.decideCandidate(f.handle, held.id, 0,
+            held.candidateReview!.candidateFingerprint, 'accept', grant), /Frozen review candidate changed/);
+        await assert.rejects(readFile(join(f.root, 'review.txt')), { code: 'ENOENT' });
+    });
+    await fixture('work-item', 'failed', async f => {
+        const grant = createDefaultExecutionGrant({ id: 'grant-review', revision: 0,
+            taskId: 'task-review', acceptedAt: now });
+        const started = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-review', grant, true);
+        await writeFile(join(f.adapter.request!.executionRoot, 'review.txt'), 'candidate\n');
+        f.adapter.complete();
+        const failed = await f.runtime.waitForRun(f.root, started.id);
+        await assert.rejects(f.backend.decideCandidate(f.handle, failed.id, 0, '0'.repeat(64), 'accept', grant));
+    });
+});

@@ -149,6 +149,13 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     readTask(handle: string, taskId: string): Promise<AgentTask | undefined> { return this.store.readTask(this.active(handle), taskId); }
     listTasks(handle: string): Promise<AgentTask[]> { return this.store.listTasks(this.active(handle)); }
     readRun(handle: string, runId: string): Promise<AgentRun | undefined> { return this.store.readRun(this.active(handle), runId); }
+    decideCandidate(handle: string, runId: string, expectedRevision: number,
+        candidateFingerprint: string, decision: 'accept' | 'reject', grant?: ExecutionGrant): Promise<AgentRun> {
+        if (!this.execution) throw new Error('Agent execution unavailable');
+        const root = this.active(handle);
+        if (checkpointProjects.has(root)) throw new Error('Project checkpoint in progress');
+        return this.execution.decideCandidate(root, runId, expectedRevision, candidateFingerprint, decision, grant);
+    }
     listRuns(handle: string): Promise<AgentRun[]> { return this.store.listRuns(this.active(handle)); }
     async listTaskStacks(handle: string, tasksRoot: string): Promise<DiscoveredTaskStack[]> {
         const root = this.active(handle);

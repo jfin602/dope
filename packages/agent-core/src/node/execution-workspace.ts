@@ -283,6 +283,29 @@ export class ExecutionWorkspace {
         } catch (error) { await rm(parent, { recursive: true, force: true }); throw error; }
     }
 
+    /** Rebuild the held candidate on an independent clone. The saved files are checked
+     * against the frozen delta before the complete workspace fingerprint is compared. */
+    static async restoreReview(projectRoot: string, savedRoot: string, delta: CandidateDelta,
+        fingerprint: string): Promise<ExecutionWorkspace> {
+        const workspace = await ExecutionWorkspace.create(projectRoot);
+        try {
+            for (const effect of delta.effects) {
+                if (effect.kind !== 'create' && effect.kind !== 'modify' || !effect.after)
+                    throw new Error('Review candidate contains an unsupported effect');
+                const source = await safeTarget(savedRoot, effect.path, 'file');
+                if (await fileHash(source) !== effect.after) throw new Error('Frozen review candidate changed');
+                const target = await safeTarget(workspace.root, effect.path,
+                    effect.kind === 'create' ? 'absent' : 'file');
+                await mkdir(join(target, '..'), { recursive: true });
+                await cp(source, target);
+            }
+            if (JSON.stringify(await workspace.delta()) !== JSON.stringify(delta) ||
+                await workspace.fingerprint() !== fingerprint)
+                throw new Error('Frozen review candidate fingerprint changed');
+            return workspace;
+        } catch (error) { await workspace.dispose(); throw error; }
+    }
+
     async delta(): Promise<CandidateDelta> {
         const current = await scan(this.root);
         const ignored = await ignoredNewPaths(this.root, [...current.keys()].filter(path =>

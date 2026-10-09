@@ -4,7 +4,7 @@ import { AgentRunStatus, parseAgentRunStatus } from './contracts';
 const transitions: Readonly<Record<AgentRunStatus, readonly AgentRunStatus[]>> = {
     pending: ['running'],
     running: ['blocked', 'cancelling', 'failed', 'completed', 'interrupted'],
-    blocked: ['running', 'cancelling', 'failed', 'interrupted'],
+    blocked: ['running', 'cancelling', 'cancelled', 'completed', 'failed', 'interrupted'],
     // A turn may complete before an in-flight interrupt takes effect.
     cancelling: ['cancelled', 'interrupted', 'failed', 'completed'],
     cancelled: [], failed: [], completed: [], interrupted: []

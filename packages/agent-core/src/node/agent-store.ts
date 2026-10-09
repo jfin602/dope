@@ -516,6 +516,10 @@ export class AgentStore implements AgentTranscriptStorage {
             if (!current || !same(current, old)) throw new Error('Stale agent run; re-read before updating');
             if (!canTransitionAgentRun(current.status, next.status) && (current.status !== next.status ||
                 ['completed', 'cancelled', 'failed', 'interrupted'].includes(current.status))) throw new Error('Illegal AgentRun transition');
+            if (current.status === 'blocked' && ['completed', 'cancelled'].includes(next.status) &&
+                (!current.candidateReview || next.reviewDecision?.kind !==
+                    (next.status === 'completed' ? 'accept' : 'reject')))
+                throw new Error('Blocked run requires an explicit candidate review decision');
             for (const key of ['version', 'id', 'taskId', 'grantId', 'grantRevision', 'requestedPolicy', 'projectRoot', 'projectId', 'createdAt', 'executionWorkspace'] as const)
                 if (!same(current[key], next[key])) throw new Error('Immutable AgentRun field changed');
             if (current.startedAt && current.startedAt !== next.startedAt || current.endedAt && current.endedAt !== next.endedAt ||
@@ -525,6 +529,7 @@ export class AgentStore implements AgentTranscriptStorage {
                 current.candidateDelta && !same(current.candidateDelta, next.candidateDelta) ||
                 current.candidateFingerprint && current.candidateFingerprint !== next.candidateFingerprint ||
                 current.candidateReview && !same(current.candidateReview, next.candidateReview) ||
+                current.reviewDecision && !same(current.reviewDecision, next.reviewDecision) ||
                 current.authorityDecision && !same(current.authorityDecision, next.authorityDecision) ||
                 current.appliedFiles && !same(current.appliedFiles, next.appliedFiles) ||
                 current.validationBasis && current.validationBasis !== next.validationBasis ||
