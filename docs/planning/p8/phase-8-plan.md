@@ -1,6 +1,6 @@
 # Product Phase 8 — Coding Agent / Scoped Delegation Plan
 
-Status: **OWNER-ACTIVATED AT `0.8.0` / 8A GREEN / QUALIFIED AT EXACT `0.8.6` SOURCE / 8B DOCS REVIEW NEXT**
+Status: **PHASE 8 ACTIVE / PHASE 8D OWNER-ACTIVATED 2026-10-09; NOT YET QUALIFIED**. 8A–8C and `c8-work-mode` Green.
 Date: 2026-10-05
 Expected package family after activation: `0.8.x`
 Activation baseline: coherent `0.8.0` from owner sequencing waiver after retained `c7-chat-project-grounding` Not Green
@@ -210,15 +210,17 @@ Safety: Chat conversation persistence, Interactive model role and single-Chat le
 
 Qualification: schema/persistence/sanitization/command correlation/full transcript replay; shared Agent Runtime channel, project reattachment, separate Chat/Work restoration and Work ownership; Running/History truth; independent center editor; task-derived titles; toolbar and legacy command integration; safe multi-area direct GUI testing; completed Prompt Stack same SHAs after reopen; no Chat or execution authority regression. The first P9 GUI attempt remains Not Green in `docs/tasks/c8-work-mode/closeout.md` until repair qualification is recorded.
 
-**Phase 8D remains gated on `c8-work-mode` Green.** Candidate validation and the external Adaptive SEO Prompt Stack are already Green.
+**Gate cleared:** `c8-work-mode` P9 has qualified Green at unchanged `0.8.20` after the Green `c8-chat-work-ui` correction. Owner activates 8D on 2026-10-09; retained Not Green attempts remain historical.
 
-### Pre-qualification visual correction — c8-chat-work-ui (approved documentation; unimplemented)
+### Historical pre-qualification visual correction — c8-chat-work-ui (now Green)
 
 October 8, 2026: before another `c8-work-mode` P9 qualification replay, apply a bounded **UI-only** correction to Chat, Work, Select Chat, Select Work and the read-only center AgentRun transcript using AI Center's visual grammar and the current amended Dope Dark primary accent `#336699`. See ADR 0016 (October 8 amendment) and ADR 0030. Align compact selection/navigation, subdued Work diagnostics, and centered safe-Markdown agent prose with Chat assistant messages (without user bubbles), while preserving pagination, command disclosures, scroll follow, restoration, alternative user themes and accessibility.
 
 Route: `/prompt-ass -> /prompt-plan -> /prompt-write c8-chat-work-ui`; prefer bounded selector/controls and transcript presentation implementation slices, followed by one direct UI/T3 qualification gate. Do not run the existing Work P9 as if it were Green. Its October 8 repaired replay remains **Not Green**: a live command expansion was not observed because a disposable reference run ended `authority-denied`, also leaving required validation/promotion unqualified. That **separate execution-adapter/authority investigation** must be repaired and tested without widening ADR 0028/0029 boundaries before P9 can close Green. The UI correction does not change AgentTask, AgentRun, AgentTaskSequence, grants, checkpoint identities, historical evidence or package version.
 
 ## 8D — General Scoped Delegation
+
+**ACTIVE / PLANNING (2026-10-09), baseline `0.8.20`.** Current authority is ADR 0031 plus `docs/planning/p8/phase-8d-plan.md`; `docs/tasks/p8d/` is the next stack. The 2026-10-08 c8-chat-work-ui and prior P9 blocker notes below are preserved as historical planning, not current blockers. Existing direct Work and Prompt Stack promotion remain qualified, while WorkItem-origin execution adds separate review-before-promotion.
 
 After phase-stack execution is reliable, generalize the same substrate.
 

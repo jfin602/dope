@@ -27,7 +27,7 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-**Current roadmap scope:** Product Phase 5 remains owner-closed for sequencing with P11 Not Green and P12 unexecuted. Product Phase 6 — Flow is OWNER-CLOSED FOR SEQUENCING at `0.6.8`, while its P8 audit remains Not Qualified. Product Phase 7 is OWNER APPROVED / QUALIFIED / CLOSED at actual `0.7.31`; historical Phase 7 and `c7-chat-project-grounding` evidence remains preserved. Product Phase 8 is ACTIVE under ADR 0027. Phase 8A Codex reference connection is **GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`; `bc151cb` is docs-only qualification. **Phase 8B Agent execution core is current.** It may add one bounded mutation-capable AgentTask/AgentRun/ExecutionGrant path and minimal Agent Run UI. It must not add AgentTaskSequence/phase-stack execution, dirty-tree continuation or Git checkpoint commits; those belong to 8C.
+**Current roadmap scope:** Product Phase 5 remains owner-closed for sequencing with P11 Not Green and P12 unexecuted. Product Phase 6 — Flow is OWNER-CLOSED FOR SEQUENCING at `0.6.8`, while its P8 audit remains Not Qualified. Product Phase 7 is OWNER APPROVED / QUALIFIED / CLOSED at actual `0.7.31`; historical Phase 7 and `c7-chat-project-grounding` evidence remains preserved. Product Phase 8 is ACTIVE under ADR 0027. Phase 8A Codex reference connection is **GREEN / QUALIFIED** at exact `0.8.6` source `17806d3050cd6e3d4c793bc8856af8daeaaef63f`; `bc151cb` is docs-only qualification. **Phase 8D — General Scoped Delegation is current**, owner-activated 2026-10-09 at baseline `0.8.20`; 8A/8B/8C, real Adaptive SEO Prompt Stack and `c8-work-mode` are Green. 8D adds WorkItem-derived AgentTasks, HUMAN/AI/SHARED ownership, review-before-promotion, consequential ProposedActions, capability-aware steering and bounded Software Map impact. Existing direct Work/Prompt Stacks, ADR 0028/0029 authority/validation, Git/checkpoints and separate Chat/Work modules remain unchanged. Read ADR 0031 and `docs/planning/p8/phase-8d-plan.md`.
 
 Product Phase 5 — Visual Software Planning is **OWNER-CLOSED FOR SEQUENCING**. Its retained P11 result is Not Green and P12 was not executed; see `docs/tasks/p5/closeout.md`. Product Phase 6 — Flow is owner-closed for sequencing at `0.6.8`; P8 remains Not Qualified. Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved core scope. Architecture-discovery follow-ons remain historical evidence; `c4-smap-storage` and `c4-color-theme` remain GREEN / QUALIFIED at unchanged `0.4.6`.
 
@@ -60,6 +60,15 @@ Only the narrow provider-independent sMap synthesis boundary and reference adapt
 - Cancellation preserves existing modifications; it does not auto-revert.
 - Phase 8C owns AgentTaskSequence, runner-style prompt/version progression, dirty-tree continuation, capacity retries and Dope-owned checkpoint commits.
 
+
+### Phase 8D implementation laws
+
+- WorkItem remains Visual Planning intent and AgentTask remains execution; WorkItem is never mandatory for direct Work or Prompt Stacks.
+- Ownership does not grant permission. HUMAN / human-reserved SHARED scope must block delegation and promotion even under a broad accepted project grant.
+- WorkItem-origin candidate review must validate the exact frozen candidate before developer acceptance; unchanged direct Work and Prompt Stacks retain qualified semantics.
+- ProposedAction cannot self-approve or enlarge the fixed 8B grant; denied delete/rename, Git writes, network, secrets and outside-root remain denied absent separately approved enforceable policy.
+- Typed steering is durable, revision checked and truthfully acknowledged; never pretend unsupported mid-turn changes were applied.
+- Bounded map impact is evidence only, never automatic canonical architecture mutation or Phase 10 background alignment.
 
 ### Phase 6 Flow laws
 

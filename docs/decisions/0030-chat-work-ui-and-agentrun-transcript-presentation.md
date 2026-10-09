@@ -1,6 +1,6 @@
 # ADR 0030 — Shared Chat/Work UI and AgentRun transcript presentation
 
-Status: **Accepted for documentation / implementation pending**
+Status: **Accepted / implemented / qualified** (`c8-chat-work-ui` and `c8-work-mode` Green at `0.8.20`). Historical preliminary blockers below remain historical.
 Date: 2026-10-08
 Correction: `c8-chat-work-ui` (pre-`c8-work-mode` P9 requalification, version `0.8.20` unchanged)
 
@@ -45,3 +45,7 @@ A shared small presentation seam prevents Chat and AgentRun styling from driftin
 A bounded `c8-chat-work-ui` correction should split selector/control presentation from center transcript presentation, then perform one focused direct GUI qualification pass. Verify narrow left/right panels and center/bottom placement, Chat folder/actions/color identity, Work group/status truth, agent Markdown/code/table/command readability, keyboard/focus/accessibility, default/alternate themes, scroll restoration/Latest, restart, ownership and no execution regressions. Add focused permanent regression guards without broad authority or storage rewrites.
 
 **Document approval is not implementation evidence.** After UI correction qualification, investigate/replay the independent command/validation blocker and resume the original `c8-work-mode` P9 closeout. Revisit this ADR if a future unified presentation framework or user theme system replaces Theia's current semantic token boundary.
+
+## Qualification follow-up (2026-10-09)
+
+The earlier command/validation blocker was repaired and the final `c8-work-mode` P9 closeout is GREEN / QUALIFIED at unchanged `0.8.20`. Real command expansion, Dope-owned candidate validation/promotion, Work GUI/restart and preserved Adaptive SEO history were directly evidenced; see `docs/tasks/c8-work-mode/closeout.md`. Earlier Not Green attempts remain preserved; ADR 0031 governs the independently activated 8D scope.

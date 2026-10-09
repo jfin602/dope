@@ -14,7 +14,7 @@ Dope is a fresh project. It is not George v2 and has no compatibility requiremen
 
 Foundation Spike 0 qualified Eclipse Theia 1.75.0 as Dope's initial IDE substrate at package `0.0.6`.
 
-The active engineering gate is **Product Phase 7 — AI Presence**. The project is at the `0.7.13` evidence closeout transition. Its Phase 7A Chat and read-only AI Presence slice has direct GUI, Local model, restart and package evidence, but Phase 7 is **Not Qualified**: AI Center and role routing remain to be implemented and qualified. See [Phase 7 closeout](docs/tasks/p7/closeout.md). Phase 5 and Phase 6 remain owner-closed for sequencing with their qualification gaps preserved.
+The active engineering slice is **Product Phase 8D — General Scoped Delegation**, owner-activated 2026-10-09 from `0.8.20`. 8A–8C, real Adaptive SEO Prompt Stack, `c8-chat-work-ui` and `c8-work-mode` are Green; 8D implementation and qualification remain pending. See [8D plan](docs/planning/p8/phase-8d-plan.md), [roadmap](docs/roadmap/mvp-roadmap.md) and [c8-work-mode closeout](docs/tasks/c8-work-mode/closeout.md). Historical qualification gaps remain preserved.
 
 Dope prefers a dark default presentation while preserving persistent user theme choice.
 

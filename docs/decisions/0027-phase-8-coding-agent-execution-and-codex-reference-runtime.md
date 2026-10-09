@@ -443,7 +443,7 @@ Canonical **internal** types remain `AgentTask`, `AgentRun`, `AgentTaskSequence`
 
 A Work tab/detail title follows the stable task identity: a Prompt Stack AgentTask uses its snapshotted `entry.title`; direct Work uses `AgentTask.objective`; unavailable historical metadata uses a bounded fallback with a short run ID. Advancing the sequence must not retitle a previously opened historical run. Existing Agent Run/Phase Stack commands and links should alias to Work/Prompt Stack views rather than breaking shortcuts.
 
-Work reuses the ChatPanel shell, placement, ownership and restoration rules, with a Chat | Work toggle and toolbar entry. It does not inherit Chat's Interactive model routing, permissions, Chat record state, or arbitrary mid-run steering. ADR 0028 mutation and ADR 0029 Dope-owned candidate validation remain intact. This correction is `c8-work-mode`, incorporating the earlier `c8-agent-run-transcript` scope.
+Work reuses Chat panel placement, ownership and restoration conventions as a separate movable Work module with its own toolbar entry and **no Chat | Work mode toggle** (ADR 0030 amends the initial UI proposal). It does not inherit Chat's Interactive model routing, permissions, Chat record state, or arbitrary mid-run steering. ADR 0028 mutation and ADR 0029 Dope-owned candidate validation remain intact. This correction is `c8-work-mode`, incorporating the earlier `c8-agent-run-transcript` scope.
 
 ## Amendment — Work control plane (2026-10-08)
 

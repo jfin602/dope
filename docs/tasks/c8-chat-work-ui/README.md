@@ -1,6 +1,6 @@
 # c8-chat-work-ui - Chat and Work presentation alignment
 
-Status: **GREEN / QUALIFIED for UI only** at P1–P4 source `21c49546a08320be140a8764cf50735c19cb5758`; see `closeout.md`. The separate `c8-work-mode` P9 remains **NOT GREEN**.
+Status: **GREEN / QUALIFIED for UI only** at P1–P4 source `21c49546a08320be140a8764cf50735c19cb5758`; see `closeout.md`. The separate `c8-work-mode` P9 has **subsequently qualified GREEN / CLOSED** (original Not Green evidence retained).
 Mode: Correction
 Phase: 8
 Required unchanged project version: `0.8.20`
@@ -59,3 +59,7 @@ Validate: `npm run codex:phase:validate -- c8-chat-work-ui`
 Run: `npm run codex:phase -- c8-chat-work-ui`
 
 The runner executes P1-P4 and stops for the P5 browser/manual gate. P5 records `closeout.md` with exact source/evidence and **Green or Not Green**. A Green UI closeout only returns to the **separate command/validation blocker** then `c8-work-mode` P9; it is not itself Phase 8D authorization.
+
+## Current follow-up (2026-10-09)
+
+The historical P9 command/validation blocker was repaired and the final c8-work-mode P9 qualified Green at unchanged `0.8.20`; see its final closeout. The owner separately activated Phase 8D; the old next-step instructions above are preserved historical sequencing, not current blockers.

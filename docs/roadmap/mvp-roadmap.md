@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: Product Phase 8 is **ACTIVE**. Phase 8A is GREEN / QUALIFIED at `0.8.6`, Phase 8B direct AgentTask authority is GREEN / QUALIFIED at `0.8.13`, and Phase 8C is GREEN / QUALIFIED / CLOSED for its exact `0.8.20` fixture. Real Adaptive SEO `c4-dope-phase-stack-smoke` **Prompt Stack** qualification is GREEN in Cycle 2 of 5: Dope-owned P1/P2 checkpoints, P3 browser/manual gate, P4 closeout and completed reopen. The remaining pre-8D correction is **`c8-work-mode`**, unifying Work/Prompt Stack vocabulary, shared Chat | Work panels, toolbar access and durable visible agent transcripts.
+Current stage: Product Phase 8 is **ACTIVE**. Phase 8A is GREEN / QUALIFIED at `0.8.6`, Phase 8B direct AgentTask authority is GREEN / QUALIFIED at `0.8.13`, and Phase 8C is GREEN / QUALIFIED / CLOSED for its exact `0.8.20` fixture. Real Adaptive SEO `c4-dope-phase-stack-smoke` **Prompt Stack** qualification is GREEN in Cycle 2 of 5: Dope-owned P1/P2 checkpoints, P3 browser/manual gate, P4 closeout and completed reopen. **`c8-work-mode` is GREEN / QUALIFIED / CLOSED** at unchanged `0.8.20`; the owner separately activated **Phase 8D — General Scoped Delegation** on 2026-10-09. Its implementation and qualification are pending.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
@@ -64,10 +64,10 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
 | Product Phase 6 — Flow | **OWNER-CLOSED FOR SEQUENCING / P8 NOT QUALIFIED.** Evidence-backed provider-free Static Flow over the Physical Map is retained. The P8 exact-candidate direct restart/isolation and chosen-path provenance gaps remain in `docs/tasks/p6/closeout.md`; historical P7/map-canvas Not Green results remain intact. |
 | Product Phase 7 — AI Presence / AI Center / Roles | **OWNER APPROVED / QUALIFIED / CLOSED at actual `0.7.31`.** Durable Chat, AI Center and deterministic role routing are complete; the planned `0.7.32` closeout version did not materialize. Post-closeout `c7-chat-project-grounding` strengthens read-only repository/map evidence before Phase 8 without changing explicit model choice, Software Map evidence-egress authority or Phase 10 local-only background constraints. |
-| Product Phase 8 — Coding Agent / Scoped Delegation | **ACTIVE; 8B/8C GREEN; REAL ADAPTIVE SEO PROMPT STACK GREEN.** `c8-work-mode` is the remaining pre-8D UX and observability gate. |
+| Product Phase 8 — Coding Agent / Scoped Delegation | **ACTIVE — PHASE 8D / GENERAL SCOPED DELEGATION.** 8A–8C, the real Adaptive SEO Prompt Stack and `c8-work-mode` are Green. 8D implementation/qualification pending. |
 | Correction c8 — Agent Authority Boundary | **GREEN / INCORPORATED INTO QUALIFIED 8B.** Isolated ExecutionWorkspace -> CandidateDelta -> Dope Authority/ToolExecutor promotion is the canonical mutation boundary. |
 | Correction c8-candidate-validation — Dope-owned Candidate Validation | **GREEN / QUALIFIED.** Dope-owned frozen-candidate validation supports private temp/loopback without host/private/network authority; real Adaptive SEO Prompt Stack completed in Cycle 2 of 5. |
-| Correction c8-work-mode — Work / Prompt Stack UI | **APPROVED / PENDING IMPLEMENTATION.** Chat | Work shared panel, toolbar Work entry, task-derived title, durable user-visible transcript and minimized commands. |
+| Correction c8-work-mode — Work / Prompt Stack UI | **GREEN / QUALIFIED / CLOSED at `0.8.20`.** Separate Chat and Work panels, Work toolbar, stable titles, durable agent transcript and collapsed command detail, live GUI/restart evidence. |
 | Product Phase 9 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable intent, plans, WorkItems, agent runs, validation, decisions, review and session closeout inside Dope. |
 | Product Phase 10 — Living Software Knowledge Model | Dope continuously checks whether source/runtime evidence, canonical Software Map state, documentation and formal contracts still describe the same software. It can also use Phase 8 WorkItem and Phase 9 session provenance to explain why state changed. Deterministic impact analysis narrows work first; bounded local-model semantic checks maintain alignment in the background without silently mutating project truth. |
 
@@ -962,17 +962,19 @@ Phase 8 uses the existing phase runner as a **behavioral reference**, not as pro
    - resume the real Adaptive SEO phase-stack smoke qualification before advancing.
 
 5. **Correction c8-work-mode — Work presentation and Prompt Stack consolidation**
-   - reuse Chat panel shell with Chat | Work toggle across left/right/center/bottom;
+   - reuse Chat panel conventions for separate movable Chat and Work modules; no Chat | Work mode toggle;
    - Work toolbar entry, Prompt Stack discovery, stable task-derived titles;
    - durable sanitized agent transcript and minimized command rows;
    - preserve Chat/Work identity and execution authority separation.
 
-6. **8D — General Scoped Delegation**
+6. **8D — General Scoped Delegation (ACTIVE / PLANNING, 2026-10-09)**
    - a WorkItem may create one or more AgentTasks but is not itself the execution primitive;
    - HUMAN / AI / SHARED ownership;
    - ProposedAction / authority review where required;
    - richer steering, diff/review/accept/reject and validation evidence;
    - affected Software Map identities and bounded post-edit staleness/re-analysis bridge.
+   - preserve qualified direct Work / Prompt Stack execution while WorkItem-origin runs add explicit frozen-candidate review before promotion.
+   - ADR 0031 and `docs/planning/p8/phase-8d-plan.md` govern implementation; package `0.8.21` onward, not yet Green.
 
 7. **8E — Local coding-agent compatibility**
    - reuse the same AgentTask/AgentRun/Authority contracts against a local agent/model adapter;
@@ -998,9 +1000,9 @@ The corrected initial 8B grant allows authoritative create/modify and denies del
 
 The first phase-stack workflow keeps the existing runner principle that **Dope owns checkpoint commits**. The coding agent leaves the authoritative commit boundary to Dope unless a later explicit task policy says otherwise.
 
-### Post-8C Work mode gate (2026-10-08)
+### Post-8C Work mode gate (GREEN / CLOSED by 2026-10-09)
 
-The real Adaptive SEO Prompt Stack is Green in Cycle 2 of 5. Before Phase 8D, `c8-work-mode` must unify Work/Prompt Stack vocabulary, Chat | Work movable panels, toolbar Work access, stable prompt-derived titles, durable complete sanitized agent transcripts and collapsed command history without changing any underlying run, checkpoint or mutation authority.
+The real Adaptive SEO Prompt Stack is Green in Cycle 2 of 5. `c8-work-mode` **has qualified Green** with separate movable Chat and Work panels (no mode toggle), toolbar Work access, stable titles, sanitized transcripts, expandable command evidence, Dope-owned candidate validation/promotion and restart. Earlier P9 Not Green attempts remain historical. The owner's separate 2026-10-09 instruction activates 8D, but does not qualify it.
 
 ### First major dogfood gate
 
