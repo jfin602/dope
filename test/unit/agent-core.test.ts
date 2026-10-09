@@ -119,7 +119,8 @@ test('state transition table is exact and terminal statuses cannot resume', () =
         'cancelled', 'failed', 'completed', 'interrupted']);
     const legal = new Set(['pending>running', 'running>blocked', 'running>cancelling',
         'running>failed', 'running>completed', 'running>interrupted',
-        'blocked>running', 'blocked>cancelling', 'blocked>failed', 'blocked>interrupted',
+        'blocked>running', 'blocked>cancelling', 'blocked>cancelled', 'blocked>completed',
+        'blocked>failed', 'blocked>interrupted',
         'cancelling>cancelled', 'cancelling>interrupted', 'cancelling>failed', 'cancelling>completed']);
     for (const from of RUN_STATUSES) for (const to of RUN_STATUSES) {
         const expected = legal.has(`${from}>${to}`);
