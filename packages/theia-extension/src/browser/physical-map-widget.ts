@@ -4,7 +4,7 @@ import { ReactFlow, Background, Handle, Position, type ReactFlowInstance, type E
 import '@xyflow/react/dist/style.css';
 import { BaseWidget, Message, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { OpenerService, open } from '@theia/core/lib/browser';
-import { SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
+import { ConfirmDialog, SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
 import URI from '@theia/core/lib/common/uri';
 import { PhysicalMapController, physicalMapTabId, type PhysicalMapTabOptions } from './physical-map-controller';
 import type { CanvasNode } from './physical-map-projection';
@@ -837,12 +837,35 @@ export class PhysicalMapWidget extends BaseWidget {
                 delegablePaths: delegable, humanReservedPaths: reserved });
         });
         button('Launch Work', async () => {
-            const task = await this.planning.launchWork();
+            const projectId = this.planning.collection?.projectId, projectRevision = this.planning.collection?.revision;
+            const mapId = this.planning.selected?.id, mapRevision = this.planning.selected?.revision;
+            const workItemId = this.planning.selectedWorkItem?.id;
+            const answer = await new SingleTextInputDialog({ title: 'Required local test command for this WorkItem',
+                confirmButtonLabel: 'Review validation' }).open();
+            if (answer === undefined) { this.status.textContent = 'Work launch cancelled; no task was created.'; return; }
+            const command = answer.trim();
+            if (!command || command.length > 160 || /[\r\n\0]/u.test(command)) {
+                this.status.textContent = 'Enter one local required test command (1–160 characters, one line); no task was created.';
+                return;
+            }
+            const approved = await new ConfirmDialog({ title: 'Approve WorkItem validation',
+                msg: `Create a new WorkItem task with required test command “${command}”? Dope will run it in a Dope-owned ValidationWorkspace against the frozen candidate before developer review and authorized promotion. This does not start an AgentRun.`,
+                ok: 'Approve and create task', cancel: 'Cancel' }).open();
+            if (!approved) { this.status.textContent = 'Work launch cancelled; no task was created.'; return; }
+            if (this.planning.collection?.projectId !== projectId || this.planning.collection?.revision !== projectRevision ||
+                this.planning.selected?.id !== mapId || this.planning.selected?.revision !== mapRevision ||
+                this.planning.selectedWorkItem?.id !== workItemId) {
+                this.status.textContent = 'Work selection or revision changed; no task was created. Review the current WorkItem and launch again.';
+                return;
+            }
+            const task = await this.planning.launchWork(command, true);
             if (task) await this.openWorkTask?.(task.id);
         }, !this.planning.canLaunchWork || !this.openWorkTask);
-        for (const task of this.planning.linkedTasks) button(`Open Work: ${task.objective}`, () => {
-            void this.openWorkTask?.(task.id);
-        }, !this.openWorkTask);
+        for (const task of this.planning.linkedTasks) {
+            button(`Open Work: ${task.objective}`, () => { void this.openWorkTask?.(task.id); }, !this.openWorkTask);
+            if (!task.completion.requireValidationPass || !task.completion.validation.some(target => !!target.command?.trim()))
+                line('This older task has no required validation. To review a validated candidate, launch a new task and approve its test command; this task will not be changed or started automatically.');
+        }
         for (const field of ['title', 'objective', 'requirements', 'constraints', 'acceptanceCriteria', 'validationTargets', 'workingSet',
             'transformationIds', 'dependsOn'] as const) {
             const value = item[field];

@@ -157,12 +157,22 @@ test('Planning Work launch uses revisioned service and blocks human, stale and r
   h.controller.selectWorkItem('work');
   await tick();
   assert.equal(h.controller.canLaunchWork, true);
-  assert.equal((await h.controller.launchWork())?.id, 'agent-task');
+  assert.equal(await h.controller.launchWork(), undefined);
+  assert.match(h.controller.error, /explicit approval/);
+  assert.equal(await h.controller.launchWork('', true), undefined);
+  assert.equal(await h.controller.launchWork('npm test', false), undefined);
+  assert.equal(await h.controller.launchWork('npm test\nother', true), undefined);
+  assert.equal(await h.controller.launchWork('x'.repeat(161), true), undefined);
+  assert.equal(launches.length, 0);
+  assert.equal(h.controller.selectedWorkItem?.id, 'work');
+  assert.equal((await h.controller.launchWork(' npm test ', true))?.id, 'agent-task');
   assert.deepEqual(launches[0], { requestKey: (launches[0] as { requestKey: string }).requestKey,
     expectedProjectRevision: 4, expectedMapRevision: 2, planningMapId: 'plan', workItemId: 'work',
     delegablePaths: ['src'], modelPolicy: { kind: 'follow-coding-agent' }, controls: {},
-    completion: { validation: [], requireValidationPass: false } });
+    completion: { validation: [{ kind: 'test', label: 'Required WorkItem validation', command: 'npm test' }],
+      requireValidationPass: true }, validationApproved: true });
   assert.equal(launches.length, 1);
+  assert.equal(h.controller.selectedWorkItem?.id, 'work');
   h.collection.maps[0].workItems[0] = { ...work, assignment: 'HUMAN', delegablePaths: [], humanReservedPaths: ['src', 'docs'] };
   assert.equal(h.controller.canLaunchWork, false);
   h.collection.maps[0].workItems[0] = { ...work, delegablePaths: ['src'], humanReservedPaths: ['src'] };

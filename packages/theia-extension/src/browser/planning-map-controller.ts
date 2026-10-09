@@ -151,10 +151,16 @@ export class PlanningMapController {
         } catch (error) { if (this.workspace === workspace && this.selectedWorkItemId === item.id) {
             this.error = String(error); this.notify(); } }
     }
-    async launchWork(): Promise<AgentTask | undefined> {
+    async launchWork(validationCommand?: string, validationApproved = false): Promise<AgentTask | undefined> {
         if (!this.canLaunchWork || !this.agent) return;
+        const command = validationCommand?.trim();
+        if (!validationApproved || !command || command.length > 160 || /[\r\n\0]/u.test(command)) {
+            this.error = 'Launch Work requires explicit approval of one local required test command (1–160 characters).';
+            this.notify();
+            return;
+        }
         const item = this.selectedWorkItem!, map = this.selected!, collection = this.collection!, workspace = this.workspace!;
-        const basis = `${workspace}\0${collection.revision}\0${map.id}\0${map.revision}\0${item.id}\0${item.delegablePaths!.join('\0')}`;
+        const basis = `${workspace}\0${collection.revision}\0${map.id}\0${map.revision}\0${item.id}\0${item.delegablePaths!.join('\0')}\0${command}`;
         if (this.launchRequest?.basis !== basis) this.launchRequest = { basis, key: crypto.randomUUID() };
         const requestKey = this.launchRequest.key;
         this.launchingWork = true; this.error = ''; this.notify();
@@ -167,7 +173,8 @@ export class PlanningMapController {
                 expectedProjectRevision: collection.revision, expectedMapRevision: map.revision,
                 planningMapId: map.id, workItemId: item.id, delegablePaths: [...item.delegablePaths!],
                 modelPolicy: { kind: 'follow-coding-agent' }, controls: {},
-                completion: { validation: [], requireValidationPass: false } });
+                completion: { validation: [{ kind: 'test', label: 'Required WorkItem validation', command }], requireValidationPass: true },
+                validationApproved: true });
             if (this.disposed || this.workspace !== workspace || this.selected?.id !== map.id || this.selectedWorkItemId !== item.id) return;
             if (this.launchRequest?.key === requestKey) this.launchRequest = undefined;
             await this.refreshLinkedTasks();
