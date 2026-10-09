@@ -227,7 +227,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         () => {}, context.container.get(StorageService), context.container.get(AIRegistryService),
         context.container.get(AICredentialService), context.container.get(AIRolePolicyService))).inSingletonScope();
     bind(PlanningMapController).toDynamicValue(context => new PlanningMapController(context.container.get(SoftwareMapController),
-        () => ServiceConnectionProvider.createProxy<VisualPlanningService>(context.container, visualPlanningServicePath))).inSingletonScope();
+        () => ServiceConnectionProvider.createProxy<VisualPlanningService>(context.container, visualPlanningServicePath),
+        context.container.get(AgentRuntimeService))).inSingletonScope();
     bind(SmapPresentationState).toDynamicValue(context => new SmapPresentationState(context.container.get(StorageService))).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_ID, createWidget: () => new SoftwareMapWidget(
         context.container.get(SoftwareMapController), context.container.get(WorkspaceService), context.container.get(OpenerService),
@@ -244,7 +245,12 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         new PhysicalMapWidget(context.container.get(SoftwareMapController),
             context.container.get(OpenerService), id => openFocusedMap(context.container.get(WidgetManager),
                 context.container.get(ApplicationShell), context.container.get(SoftwareMapController), id),
-            context.container.get(PlanningMapController), context.container.get(SmapPresentationState), options) })).inSingletonScope();
+            context.container.get(PlanningMapController), context.container.get(SmapPresentationState), options,
+            async taskId => {
+                const widget = await openChatPanel<ChatPanelWidget>('center', panelOptions => context.container.get(WidgetManager)
+                    .getOrCreateWidget<ChatPanelWidget>(CHAT_PANEL_ID, panelOptions), context.container.get(ApplicationShell), 'work');
+                await widget.selectWorkLauncher({ kind: 'task', id: taskId });
+            }) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_REVIEW_ID, createWidget: () =>
         new SoftwareMapReviewWidget(context.container.get(SoftwareMapController), context.container.get(WorkspaceService),
             context.container.get(OpenerService), () => context.container.get(AICenterContribution).openFromSoftwareMapReview()) })).inSingletonScope();

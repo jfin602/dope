@@ -8,6 +8,8 @@ import type { PlanningCollection, PlanningOperation, VisualPlanningService } fro
 import type { AdoptionPreview, AdoptionScope } from '@dope/visual-planning/lib/adoption';
 import type { SoftwareMapController } from './software-map-controller';
 import type { PlanningView } from './planning-map-projection';
+import type { AgentTask } from '@dope/agent-core';
+import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 
 const transitions: Record<MapStatus, MapStatus[]> = {
     draft: ['active', 'archived'], active: ['superseded', 'archived'],
@@ -21,10 +23,13 @@ export class PlanningMapController {
     private workspace?: string;
     private request = 0;
     private staleRequest = 0;
+    private launchRequest?: { basis: string; key: string };
     private disposed = false;
     collection?: PlanningCollection;
     selectedMapId?: string;
     selectedWorkItemId?: string;
+    linkedTasks: AgentTask[] = [];
+    launchingWork = false;
     selectedTransformationId?: string;
     suggestions?: WorkItemSuggestion[];
     private acceptedSuggestionIds = new Map<number, string>();
@@ -38,7 +43,8 @@ export class PlanningMapController {
     stale?: StaleResult;
     rebasePreview?: { result: RebaseResult; mapId: string; collectionRevision: number; mapRevision: number; decisions: RebaseDecision[] };
 
-    constructor(private readonly map: SoftwareMapController, private readonly connect: () => VisualPlanningService) {
+    constructor(private readonly map: SoftwareMapController, private readonly connect: () => VisualPlanningService,
+        private readonly agent?: AgentRuntimeService) {
         this.mapListener = map.onChange(() => { if (this.workspace !== map.workspace) void this.attach(); else void this.refreshStale(); });
         void this.attach();
     }
@@ -69,7 +75,7 @@ export class PlanningMapController {
         this.notify();
     }
     select(id: string): void { if (this.collection?.maps.some(map => map.id === id)) { this.preview = undefined; this.adoptionPreview = undefined; this.rebasePreview = undefined; this.stale = undefined; this.selectedMapId = id;
-        this.selectedWorkItemId = undefined; this.selectedTransformationId = undefined; this.suggestions = undefined; this.notify(); void this.refreshStale(); } }
+        this.selectedWorkItemId = undefined; this.linkedTasks = []; this.selectedTransformationId = undefined; this.suggestions = undefined; this.notify(); void this.refreshStale(); } }
     async refreshStale(): Promise<void> {
         const connection = this.connection, handle = this.handle, workspace = this.workspace, map = this.selected, request = ++this.staleRequest;
         if (!connection || !handle || !workspace || !map || this.map.status?.state !== 'ready') { this.stale = undefined; this.notify(); return; }
@@ -121,6 +127,55 @@ export class PlanningMapController {
         finally { if (request === this.request && !this.disposed) { this.loading = false; this.notify(); } }
     }
     get selectedWorkItem(): WorkItem | undefined { return this.selected?.workItems.find(item => item.id === this.selectedWorkItemId); }
+    get canLaunchWork(): boolean {
+        const item = this.selectedWorkItem, map = this.selected;
+        const contains = (parent: string, child: string) => child === parent || child.startsWith(`${parent}/`);
+        return !!(this.agent && item && map?.status === 'active' && ['ready', 'in-progress'].includes(item.status) &&
+            (item.assignment === 'AI' || item.assignment === 'SHARED') && item.delegablePaths?.length &&
+            item.delegablePaths.every(path => item.workingSet.some(root => contains(root, path)) &&
+                !item.humanReservedPaths?.some(reserved => contains(path, reserved) || contains(reserved, path))) &&
+            (item.assignment === 'AI' ? !item.humanReservedPaths?.length : !!item.humanReservedPaths?.length) &&
+            !this.stale?.stale && this.stale && this.basisMatches(map) && this.collection && this.handle &&
+            this.workspace === this.map.workspace && !this.loading && !this.launchingWork);
+    }
+    async refreshLinkedTasks(): Promise<void> {
+        const item = this.selectedWorkItem, map = this.selected, workspace = this.workspace;
+        this.linkedTasks = []; this.notify();
+        if (!item || !map || !workspace || !this.agent) return;
+        try {
+            const { projectHandle } = await this.agent.attach(workspace);
+            const tasks = await this.agent.listWorkItemTasks(projectHandle, map.id, item.id);
+            if (!this.disposed && this.workspace === workspace && this.selected?.id === map.id && this.selectedWorkItemId === item.id) {
+                this.linkedTasks = tasks; this.notify();
+            }
+        } catch (error) { if (this.workspace === workspace && this.selectedWorkItemId === item.id) {
+            this.error = String(error); this.notify(); } }
+    }
+    async launchWork(): Promise<AgentTask | undefined> {
+        if (!this.canLaunchWork || !this.agent) return;
+        const item = this.selectedWorkItem!, map = this.selected!, collection = this.collection!, workspace = this.workspace!;
+        const basis = `${workspace}\0${collection.revision}\0${map.id}\0${map.revision}\0${item.id}\0${item.delegablePaths!.join('\0')}`;
+        if (this.launchRequest?.basis !== basis) this.launchRequest = { basis, key: crypto.randomUUID() };
+        const requestKey = this.launchRequest.key;
+        this.launchingWork = true; this.error = ''; this.notify();
+        try {
+            const { projectHandle } = await this.agent.attach(workspace);
+            if (this.disposed || this.workspace !== workspace || this.selected?.id !== map.id ||
+                this.selectedWorkItemId !== item.id || this.collection?.revision !== collection.revision ||
+                this.selected.revision !== map.revision || !this.canLaunchBasis(map)) return;
+            const task = await this.agent.launchWorkItem(projectHandle, { requestKey,
+                expectedProjectRevision: collection.revision, expectedMapRevision: map.revision,
+                planningMapId: map.id, workItemId: item.id, delegablePaths: [...item.delegablePaths!],
+                modelPolicy: { kind: 'follow-coding-agent' }, controls: {},
+                completion: { validation: [], requireValidationPass: false } });
+            if (this.disposed || this.workspace !== workspace || this.selected?.id !== map.id || this.selectedWorkItemId !== item.id) return;
+            if (this.launchRequest?.key === requestKey) this.launchRequest = undefined;
+            await this.refreshLinkedTasks();
+            return task;
+        } catch (error) { if (this.workspace === workspace && !this.disposed) { this.error = String(error); this.notify(); } }
+        finally { this.launchingWork = false; this.notify(); }
+    }
+    private canLaunchBasis(map: PlanningMap): boolean { return !!(this.stale && !this.stale.stale && this.basisMatches(map)); }
     requestSuggestions(): void { this.suggestions = this.selected ? suggestWorkItems(this.selected) : [];
         this.acceptedSuggestionIds.clear(); this.notify(); }
     splitSuggestion(index: number, parts: [string[], string[]]): void {
@@ -135,7 +190,7 @@ export class PlanningMapController {
         this.notify();
     }
     selectWorkItem(id?: string): void { this.selectedWorkItemId = this.selected?.workItems.some(item => item.id === id) ? id : undefined;
-        this.selectedTransformationId = undefined; this.notify(); }
+        this.selectedTransformationId = undefined; this.linkedTasks = []; this.notify(); void this.refreshLinkedTasks(); }
     selectTransformation(id?: string): void { this.selectedTransformationId = this.selected?.transformations.some(item => item.id === id) ? id : undefined;
         this.selectedWorkItemId = undefined; this.notify(); }
     get linkedWorkItems(): WorkItem[] { return this.selected?.workItems.filter(item => item.transformationIds.includes(this.selectedTransformationId ?? '')) ?? []; }
@@ -254,6 +309,8 @@ export class PlanningMapController {
         this.rebasePreview = undefined;
         this.selectedMapId = undefined;
         this.selectedWorkItemId = undefined;
+        this.launchRequest = undefined;
+        this.linkedTasks = [];
         this.selectedTransformationId = undefined;
         this.suggestions = undefined;
         this.acceptedSuggestionIds.clear();
@@ -293,6 +350,7 @@ export class PlanningMapController {
             this.rebasePreview = undefined;
             if (!snapshot.maps.some(map => map.id === this.selectedMapId)) this.selectedMapId = snapshot.maps.find(map => map.status === 'active')?.id ?? snapshot.maps[0]?.id;
             if (!this.selected?.workItems.some(item => item.id === this.selectedWorkItemId)) this.selectedWorkItemId = undefined;
+            void this.refreshLinkedTasks();
             if (!this.selected?.transformations.some(item => item.id === this.selectedTransformationId)) this.selectedTransformationId = undefined;
             this.suggestions = undefined;
             this.acceptedSuggestionIds.clear();

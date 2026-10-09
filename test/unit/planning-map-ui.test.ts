@@ -9,6 +9,8 @@ import type { PlanningMap, PlannedTransformation, RebaseResult, StaleResult } fr
 import type { AdoptionAcceptance, AdoptionRequest, PlanningCollection, PlanningOperation, RebaseAcceptance, RebaseRequest, VisualPlanningService } from '../../packages/visual-planning/src/service.ts';
 import type { AdoptionPreview } from '../../packages/visual-planning/src/adoption.ts';
 import type { SoftwareMapController } from '../../packages/theia-extension/src/browser/software-map-controller.ts';
+import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
+import type { WorkItem } from '../../packages/visual-planning/src/index.ts';
 const require = createRequire(import.meta.url);
 const { PlanningMapController } = require('../../packages/theia-extension/lib/browser/planning-map-controller.js') as
   typeof import('../../packages/theia-extension/src/browser/planning-map-controller.ts');
@@ -92,7 +94,7 @@ test('adopted target remains visible without claiming Physical Map realization',
   assert.match(diff.nodes.find(node => node.id === 'b')!.badge, /Adopted removal/);
 });
 
-function harness() {
+function harness(agent?: AgentRuntimeService) {
   const listeners = new Set<() => void>();
   const physical = { workspace: 'file:///A', status: { state: 'ready', generation: 1, publishedGeneration: 1, inputFingerprint: 'source' },
     initialization: { declarationFingerprint: 'arch' }, async attach() {}, onChange(listener: () => void) {
@@ -135,9 +137,43 @@ function harness() {
       collection = { ...collection, revision: collection.revision + 1, maps };
       return collection;
     } };
-  const controller = new PlanningMapController(physical as unknown as SoftwareMapController, () => service as VisualPlanningService);
+  const controller = new PlanningMapController(physical as unknown as SoftwareMapController, () => service as VisualPlanningService, agent);
   return { controller, physical, listeners, service, get collection() { return collection; }, set collection(value: PlanningCollection) { collection = value; } };
 }
+
+test('Planning Work launch uses revisioned service and blocks human, stale and reserved scope', async () => {
+  const launches: unknown[] = [];
+  const agent = { async attach() { return { projectHandle: 'agent-handle' }; },
+    async listWorkItemTasks() { return []; }, async launchWorkItem(_handle: string, request: unknown) {
+      launches.push(request); return { id: 'agent-task' };
+    } } as unknown as AgentRuntimeService;
+  const h = harness(agent); await tick();
+  const work: WorkItem = { id: 'work', title: 'Work', objective: 'Implement', transformationIds: [], dependsOn: [],
+    requirements: [], constraints: [], acceptanceCriteria: [], validationTargets: [], workingSet: ['src', 'docs'], status: 'ready',
+    assignment: 'SHARED', delegablePaths: ['src'], humanReservedPaths: ['docs'] };
+  h.collection = { schemaVersion: 1, projectId: 'project', revision: 4,
+    maps: [{ ...map('plan', 'active'), revision: 2, workItems: [work] }] };
+  await h.controller.refresh();
+  h.controller.selectWorkItem('work');
+  await tick();
+  assert.equal(h.controller.canLaunchWork, true);
+  assert.equal((await h.controller.launchWork())?.id, 'agent-task');
+  assert.deepEqual(launches[0], { requestKey: (launches[0] as { requestKey: string }).requestKey,
+    expectedProjectRevision: 4, expectedMapRevision: 2, planningMapId: 'plan', workItemId: 'work',
+    delegablePaths: ['src'], modelPolicy: { kind: 'follow-coding-agent' }, controls: {},
+    completion: { validation: [], requireValidationPass: false } });
+  assert.equal(launches.length, 1);
+  h.collection.maps[0].workItems[0] = { ...work, assignment: 'HUMAN', delegablePaths: [], humanReservedPaths: ['src', 'docs'] };
+  assert.equal(h.controller.canLaunchWork, false);
+  h.collection.maps[0].workItems[0] = { ...work, delegablePaths: ['src'], humanReservedPaths: ['src'] };
+  assert.equal(h.controller.canLaunchWork, false);
+  h.collection.maps[0].workItems[0] = work;
+  h.controller.stale = { ...h.controller.stale!, stale: true };
+  assert.equal(h.controller.canLaunchWork, false);
+  assert.equal(await h.controller.launchWork(), undefined);
+  assert.equal(launches.length, 1);
+  h.controller.dispose();
+});
 
 test('Adopt Target requires displayed diff acceptance and clears the preview after commit', async () => {
   const h = harness(); await tick();

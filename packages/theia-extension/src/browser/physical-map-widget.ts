@@ -101,7 +101,7 @@ export class PhysicalMapWidget extends BaseWidget {
     constructor(map: ConstructorParameters<typeof PhysicalMapController>[0],
         private readonly opener: OpenerService, private readonly openTab: (id: string) => Promise<void>,
         private readonly planning: PlanningMapController, private readonly colors: SmapPresentationState,
-        options?: PhysicalMapTabOptions) {
+        options?: PhysicalMapTabOptions, private readonly openWorkTask?: (taskId: string) => Promise<void>) {
         super();
         this.focusedTab = !!options;
         this.id = options ? physicalMapTabId(options) : PHYSICAL_MAP_ID;
@@ -822,6 +822,27 @@ export class PhysicalMapWidget extends BaseWidget {
         const item = this.planning.selectedWorkItem;
         if (!item) return;
         line(`Selected ${item.id} · ${item.status} · transformations ${item.transformationIds.join(', ')}`);
+        line(`Ownership: ${item.assignment ?? 'HUMAN'} · delegable: ${item.delegablePaths?.join(', ') || 'none'} · human reserved: ${item.humanReservedPaths?.join(', ') || 'none'}`);
+        button('Edit ownership and scope', async () => {
+            const assignment = await this.ask('Assignment: HUMAN, AI, or SHARED', item.assignment ?? 'HUMAN');
+            if (assignment === undefined) return;
+            if (!['HUMAN', 'AI', 'SHARED'].includes(assignment)) { this.status.textContent = 'Assignment must be HUMAN, AI, or SHARED'; return; }
+            const delegatedAnswer = assignment === 'HUMAN' ? '' : await this.ask('Delegable project paths, comma separated', item.delegablePaths?.join(', ') ?? '');
+            if (delegatedAnswer === undefined) return;
+            const reservedAnswer = assignment === 'SHARED' ? await this.ask('Human-reserved project paths, comma separated', item.humanReservedPaths?.join(', ') ?? '') : '';
+            if (reservedAnswer === undefined) return;
+            const delegable = csv(delegatedAnswer);
+            const reserved = assignment === 'HUMAN' ? [...item.workingSet] : csv(reservedAnswer);
+            void this.planning.putWorkItem({ ...item, assignment: assignment as WorkItem['assignment'],
+                delegablePaths: delegable, humanReservedPaths: reserved });
+        });
+        button('Launch Work', async () => {
+            const task = await this.planning.launchWork();
+            if (task) await this.openWorkTask?.(task.id);
+        }, !this.planning.canLaunchWork || !this.openWorkTask);
+        for (const task of this.planning.linkedTasks) button(`Open Work: ${task.objective}`, () => {
+            void this.openWorkTask?.(task.id);
+        }, !this.openWorkTask);
         for (const field of ['title', 'objective', 'requirements', 'constraints', 'acceptanceCriteria', 'validationTargets', 'workingSet',
             'transformationIds', 'dependsOn'] as const) {
             const value = item[field];
