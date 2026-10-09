@@ -1,9 +1,9 @@
 # Phase 8E Plan — Local Coding Agent Compatibility
 
-Status: **APPROVED DESIGN / READY FOR PROMPT ASSESSMENT; NOT OWNER-ACTIVATED, NOT IMPLEMENTED**
+Status: **APPROVED DESIGN / P8E PROMPT STACK AUTHORED; NOT OWNER-ACTIVATED, NOT IMPLEMENTED**
 Date: 2026-10-09
 Prerequisite: Phase 8D **GREEN / QUALIFIED** at exact source `8748cb4870e8cac3d2a5aca4a05623b5f3d747ec`, package `0.8.33`, through `docs/tasks/c8-fix/closeout.md` (cycle 2 of 5).
-Expected first *implementation* version after separate activation: `0.8.34` (provisional; no manifest bump or task stack is authorized by this planning document).
+Expected first *implementation* version after separate activation: `0.8.34` (provisional; no manifest bump or execution authorized by this planning document). The prospective P1–P14 `0.8.34`–`0.8.47` prompt stack is authored under `docs/tasks/p8e/` and awaits separate activation.
 Authorities: ADR 0004, ADR 0026, ADR 0027, ADR 0028, ADR 0029, ADR 0031 and **ADR 0032**; `docs/ARCHITECTURE.md`, `docs/PRODUCT-MODEL.md`, `docs/stability-contract.md`.
 
 ## Goal and boundary
