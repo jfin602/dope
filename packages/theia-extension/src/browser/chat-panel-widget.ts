@@ -17,7 +17,7 @@ import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatT
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
-import { WorkSelectionController, workRows, workTitle } from './work-selection-controller';
+import { WorkSelectionController, workReviewCanAccept, workReviewState, workRows, workTitle } from './work-selection-controller';
 import { restoreWorkScroll } from './work-transcript-presentation';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
@@ -554,6 +554,48 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     const status = document.createElement('small'); status.className = 'dope-work-system';
                     status.textContent = `${run.validationResults.length} candidate validation result${run.validationResults.length === 1 ? '' : 's'}`;
                     scroll.append(status);
+                }
+                if (run.candidateReview && controller.selectedTask?.origin.kind === 'work-item') {
+                    const review = run.candidateReview;
+                    const state = workReviewState(run, controller.selectedTask, controller.reviewBusy);
+                    const section = document.createElement('section'); section.className = 'dope-work-review';
+                    const title = document.createElement('h3'); title.textContent = 'Work candidate review'; section.append(title);
+                    const status = document.createElement('p'); status.setAttribute('role', 'status');
+                    status.textContent = state === 'pending' ? 'Candidate held for developer review. No changes applied.' :
+                        state === 'busy' ? 'Review decision in progress.' :
+                        state === 'stale' ? 'Review is stale or no longer eligible. Refresh Work.' :
+                        state === 'accepted' ? `Accepted · ${run.status}${run.status === 'completed' ? ' · candidate applied' : ' · inspect outcome'}` :
+                        state === 'rejected' ? 'Rejected · candidate not applied' : 'Review is unavailable.';
+                    section.append(status);
+                    const scope = document.createElement('p'); scope.className = 'dope-work-detail';
+                    scope.textContent = `Delegated paths: ${controller.selectedTask.origin.scope.delegablePaths.join(', ')} · ` +
+                        `Human reserved: ${controller.selectedTask.origin.scope.humanReservedPaths.join(', ') || 'none'}`;
+                    section.append(scope);
+                    const paths = document.createElement('p'); paths.className = 'dope-work-detail';
+                    paths.textContent = `Changed paths: ${review.changedPaths.join(', ') || 'none'}`; section.append(paths);
+                    for (const result of review.validation) {
+                        const item = document.createElement('p'); item.className = 'dope-work-detail';
+                        item.textContent = `Dope validation · ${result.label} · ${result.status}${result.summary ? ` · ${result.summary}` : ''}`;
+                        section.append(item);
+                    }
+                    const diff = document.createElement('details'); diff.className = 'dope-work-diagnostics';
+                    const diffTitle = document.createElement('summary'); diffTitle.textContent = 'Candidate diff';
+                    const pre = document.createElement('pre'); pre.textContent = review.diff;
+                    diff.append(diffTitle, pre);
+                    if (review.diffTruncated) { const truncated = document.createElement('p');
+                        truncated.textContent = 'Diff preview truncated. Review the changed paths before deciding.'; diff.append(truncated); }
+                    section.append(diff);
+                    if (state === 'pending' && !workReviewCanAccept(run, controller.selectedTask)) {
+                        const unavailable = document.createElement('p'); unavailable.className = 'dope-work-warning';
+                        unavailable.textContent = 'Required Dope validation is missing or stale. Candidate cannot be accepted.';
+                        section.append(unavailable);
+                    }
+                    if (state === 'pending' || state === 'busy') {
+                        section.append(this.button('Accept candidate', () => void controller.decideCandidate('accept'),
+                            state !== 'pending' || !workReviewCanAccept(run, controller.selectedTask)),
+                            this.button('Reject candidate', () => void controller.decideCandidate('reject'), state !== 'pending'));
+                    }
+                    scroll.append(section);
                 }
                 if (run.authorityDecision) { const item = document.createElement('p');
                     item.textContent = `Authority · ${run.authorityDecision.allowed ? 'allowed' : 'blocked'}`; diagnostics.append(item);

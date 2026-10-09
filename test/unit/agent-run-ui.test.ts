@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { AgentRunController } from '../../packages/theia-extension/lib/browser/agent-run-controller.js';
+import { WorkSelectionController, workReviewCanAccept, workReviewState } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import type { AgentRun } from '../../packages/agent-core/src/contracts.ts';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
 import type { AIRegistryService } from '../../packages/contracts/src/ai-registry-service.ts';
@@ -115,8 +116,60 @@ test('Work uses the direct authority controller and aliases without a standalone
     assert.match(module, /id: 'dope\.agentRun\.open'/); assert.doesNotMatch(module, /AgentRunWidget/);
     for (const label of ['Work instructions', 'Coding Agent model', 'Accept project execution grant', 'Stop Work'])
         assert.ok(widget.includes(label));
+    for (const label of ['Candidate diff', 'Accept candidate', 'Reject candidate', 'Changed paths:'])
+        assert.ok(widget.includes(label));
     assert.match(widget, /this\.directController\.select\(run\.id\)/);
     assert.match(controller, /runtime\.stop\(/); assert.match(controller, /createDefaultExecutionGrant/);
     assert.doesNotMatch(widget.slice(widget.indexOf('private renderWorkComposer'), widget.indexOf('private async name')),
         /hiddenReasoning|rawPayload|process\.env/i);
+});
+
+test('Work candidate review preserves held evidence and submits only a fresh explicit decision', async () => {
+    const fingerprint = 'b'.repeat(64);
+    const task = { id: 'task', projectId: 'project', origin: { kind: 'work-item', projectId: 'project',
+        scope: { delegablePaths: ['src'], humanReservedPaths: [] } }, reviewPolicy: { kind: 'required' },
+        completion: { validation: [{ kind: 'test', label: 'Unit' }] } };
+    let run = { id: 'run', taskId: 'task', projectId: 'project', status: 'blocked', grantId: 'grant',
+        grantRevision: 1, basis: { head: 'a'.repeat(40) }, candidateFingerprint: fingerprint,
+        candidateDelta: { effects: [{ kind: 'modify', path: 'src/a.ts' }] },
+        candidateReview: { state: 'ready', revision: 0, candidateFingerprint: fingerprint,
+            diff: 'diff --git a/src/a.ts b/src/a.ts', diffTruncated: false, changedPaths: ['src/a.ts'],
+            validation: [{ owner: 'dope', kind: 'test', label: 'Unit', status: 'passed', candidateFingerprint: fingerprint }] } } as any;
+    const calls: unknown[][] = [];
+    const runtime = { async readRun() { return run; }, async readTask() { return task; },
+        async readTranscript() { return { state: 'recorded', entries: [], hasMore: false, incomplete: false }; },
+        async listTasks() { return [task]; }, async listRuns() { return [run]; },
+        async decideCandidate(...args: unknown[]) { calls.push(args); const decision = args[4];
+            run = { ...run, status: decision === 'reject' ? 'cancelled' : 'completed',
+                reviewDecision: { kind: decision } } as any; return run; } };
+    const controller = new WorkSelectionController(runtime as unknown as AgentRuntimeService, () => {});
+    controller.handle = 'handle'; await controller.select({ kind: 'run', id: 'run' });
+    assert.equal(workReviewState(controller.selectedRun, controller.selectedTask), 'pending');
+    assert.equal(workReviewCanAccept(controller.selectedRun, controller.selectedTask), true);
+    await controller.decideCandidate('accept');
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0]?.slice(0, 5), ['handle', 'run', 0, fingerprint, 'accept']);
+    assert.equal((calls[0]?.[5] as { id: string }).id, 'grant');
+    assert.equal(workReviewState(controller.selectedRun, controller.selectedTask), 'accepted');
+    await controller.decideCandidate('accept'); assert.equal(calls.length, 1);
+    run = { ...run, status: 'blocked', reviewDecision: undefined } as any;
+    await controller.select({ kind: 'run', id: 'run' });
+    const shown = controller.selectedRun;
+    run = { ...run, candidateReview: { ...run.candidateReview, revision: 1 } };
+    await controller.decideCandidate('reject');
+    assert.equal(calls.length, 1);
+    assert.match(controller.message, /changed/);
+    assert.notEqual(controller.selectedRun, shown);
+    assert.equal(workReviewState({ ...run, status: 'completed' } as AgentRun, task as any), 'stale');
+    assert.equal(workReviewState({ ...run, reviewDecision: { kind: 'reject' } } as AgentRun, task as any), 'rejected');
+    assert.equal(workReviewState(run as AgentRun, { ...task, origin: { kind: 'direct' } } as any), 'unavailable');
+    assert.equal(workReviewCanAccept({ ...run, reviewDecision: undefined } as AgentRun,
+        { ...task, completion: { validation: [] } } as any), false);
+    run = { ...run, status: 'blocked', reviewDecision: undefined,
+        candidateReview: { ...run.candidateReview, revision: 0 } } as any;
+    await controller.select({ kind: 'run', id: 'run' });
+    await controller.decideCandidate('reject');
+    assert.deepEqual(calls[1]?.slice(0, 5), ['handle', 'run', 0, fingerprint, 'reject']);
+    assert.equal(calls[1]?.[5], undefined);
+    assert.equal(workReviewState(controller.selectedRun, controller.selectedTask), 'rejected');
 });
