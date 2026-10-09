@@ -3,8 +3,17 @@ export const AGENT_SCHEMA_VERSION = 1 as const;
 export type AgentOrigin =
     | { kind: 'direct' }
     | { kind: 'phase-stack'; promptId: string }
-    | { kind: 'work-item'; workItemId: string }
+    | { kind: 'work-item'; projectId: string; planningMapId: string; workItemId: string;
+        mapRevision: number; basis: WorkItemBasis; scope: WorkItemScope }
     | { kind: 'future-session'; sessionId: string };
+export interface WorkItemBasis {
+    architectureRevision: number; architectureFingerprint: string;
+    physicalInputFingerprint: string; physicalGeneration: number;
+}
+export interface WorkItemScope {
+    assignment: 'AI' | 'SHARED'; workingSet: string[];
+    delegablePaths: string[]; humanReservedPaths: string[];
+}
 export type AgentModelPolicy =
     | { kind: 'follow-coding-agent' }
     | { kind: 'exact'; connectionId: string; modelId: string };
@@ -17,7 +26,7 @@ export interface AgentTask {
     objective: string; instructions: string; projectRoot: '.';
     projectId?: string; modelPolicy: AgentModelPolicy; controls: ExecutionControls;
     authority: { profile: 'phase-8b-project' }; completion: CompletionPolicy;
-    origin: AgentOrigin; planningMapId?: string;
+    origin: AgentOrigin; planningMapId?: string; reviewPolicy?: { kind: 'required' };
     phaseStack?: { stackFingerprint: string; recommendedModel: 'gpt-6-sol';
         versionPolicy: { kind: 'target' | 'unchanged'; version: string } };
 }
@@ -150,18 +159,27 @@ export function parseAgentModelPolicy(value: unknown): AgentModelPolicy {
 }
 export function parseAgentTask(value: unknown): AgentTask {
     const x = record(value, ['version', 'id', 'createdAt', 'objective', 'instructions', 'projectRoot',
-        'projectId', 'modelPolicy', 'controls', 'authority', 'completion', 'origin', 'planningMapId', 'phaseStack']);
+        'projectId', 'modelPolicy', 'controls', 'authority', 'completion', 'origin', 'planningMapId', 'phaseStack', 'reviewPolicy']);
     const controls = record(x.controls, ['reasoningEffort']);
     const authority = record(x.authority, ['profile']);
     const completion = record(x.completion, ['validation', 'requireValidationPass']);
-    const origin = record(x.origin, ['kind', 'promptId', 'workItemId', 'sessionId']);
+    const origin = record(x.origin, ['kind', 'promptId', 'projectId', 'planningMapId', 'workItemId',
+        'mapRevision', 'basis', 'scope', 'sessionId']);
     const kind = select(origin.kind, ['direct', 'phase-stack', 'work-item', 'future-session'] as const);
     const originKeys = { direct: ['kind'], 'phase-stack': ['kind', 'promptId'],
-        'work-item': ['kind', 'workItemId'], 'future-session': ['kind', 'sessionId'] } as const;
+        'work-item': ['kind', 'projectId', 'planningMapId', 'workItemId', 'mapRevision', 'basis', 'scope'],
+        'future-session': ['kind', 'sessionId'] } as const;
     record(x.origin, originKeys[kind]);
     const parsedOrigin: AgentOrigin = kind === 'direct' ? { kind } : kind === 'phase-stack' ?
         { kind, promptId: id(origin.promptId) } : kind === 'work-item' ?
-            { kind, workItemId: id(origin.workItemId) } : { kind, sessionId: id(origin.sessionId) };
+            parseWorkItemOrigin(origin) : { kind, sessionId: id(origin.sessionId) };
+    if ((x.reviewPolicy !== undefined) !== (kind === 'work-item'))
+        throw new Error('Review policy required only for WorkItem tasks');
+    const reviewPolicy = x.reviewPolicy === undefined ? undefined : record(x.reviewPolicy, ['kind']);
+    if (reviewPolicy && reviewPolicy.kind !== 'required') throw new Error('Invalid review policy');
+    if (parsedOrigin.kind === 'work-item' && (x.projectId !== parsedOrigin.projectId ||
+        x.planningMapId !== parsedOrigin.planningMapId))
+        throw new Error('WorkItem origin identity mismatch');
     if (kind === 'phase-stack' !== (x.phaseStack !== undefined)) throw new Error('Phase-stack snapshot required only for phase-stack tasks');
     const phaseStack = x.phaseStack === undefined ? undefined : record(x.phaseStack,
         ['stackFingerprint', 'recommendedModel', 'versionPolicy']);
@@ -185,9 +203,39 @@ export function parseAgentTask(value: unknown): AgentTask {
         authority: { profile: 'phase-8b-project' },
         completion: { validation, requireValidationPass: bool(completion.requireValidationPass) },
         origin: parsedOrigin, ...(x.planningMapId === undefined ? {} : { planningMapId: id(x.planningMapId) }),
+        ...(reviewPolicy ? { reviewPolicy: { kind: 'required' as const } } : {}),
         ...(phaseStack && versionPolicy ? { phaseStack: { stackFingerprint: phaseStack.stackFingerprint as string,
             recommendedModel: 'gpt-6-sol', versionPolicy: {
                 kind: select(versionPolicy.kind, ['target', 'unchanged'] as const), version: versionPolicy.version as string } } } : {}) });
+}
+function parseWorkItemOrigin(origin: Record<string, unknown>): Extract<AgentOrigin, { kind: 'work-item' }> {
+    const basis = record(origin.basis, ['architectureRevision', 'architectureFingerprint',
+        'physicalInputFingerprint', 'physicalGeneration']);
+    const scope = record(origin.scope, ['assignment', 'workingSet', 'delegablePaths', 'humanReservedPaths']);
+    const paths = (value: unknown): string[] => {
+        const result = array(value, 100, item => projectPath(item));
+        if (new Set(result).size !== result.length) throw new Error('Duplicate WorkItem scope path');
+        return result;
+    };
+    const workingSet = paths(scope.workingSet);
+    const delegablePaths = paths(scope.delegablePaths);
+    const humanReservedPaths = paths(scope.humanReservedPaths);
+    const assignment = select(scope.assignment, ['AI', 'SHARED'] as const);
+    const contains = (parent: string, child: string): boolean => child === parent || child.startsWith(`${parent}/`);
+    if (!workingSet.length || !delegablePaths.length ||
+        (assignment === 'AI' && humanReservedPaths.length > 0) ||
+        (assignment === 'SHARED' && humanReservedPaths.length === 0) ||
+        [...delegablePaths, ...humanReservedPaths].some(path => !workingSet.some(root => contains(root, path))) ||
+        delegablePaths.some(delegated => humanReservedPaths.some(reserved =>
+            contains(delegated, reserved) || contains(reserved, delegated))))
+        throw new Error('Invalid WorkItem delegation scope');
+    return { kind: 'work-item', projectId: id(origin.projectId), planningMapId: id(origin.planningMapId),
+        workItemId: id(origin.workItemId), mapRevision: integer(origin.mapRevision),
+        basis: { architectureRevision: integer(basis.architectureRevision),
+            architectureFingerprint: bounded(basis.architectureFingerprint, 128),
+            physicalInputFingerprint: bounded(basis.physicalInputFingerprint, 128),
+            physicalGeneration: integer(basis.physicalGeneration) },
+        scope: { assignment, workingSet, delegablePaths, humanReservedPaths } };
 }
 export function parseExecutionProvenance(value: unknown): ExecutionProvenance {
     const x = record(value, ['version', 'connectionId', 'modelId', 'providerId', 'runtimeKind', 'adapterId', 'policyRevision']);

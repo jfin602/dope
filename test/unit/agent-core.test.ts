@@ -33,7 +33,7 @@ test('task parsing is versioned, strict, portable and supports all origins', () 
     assert.deepEqual(parsed, task());
     assert.equal(Object.isFrozen(parsed.completion.validation), true);
     for (const origin of [{ kind: 'direct' }, { kind: 'phase-stack', promptId: 'P1' },
-        { kind: 'work-item', workItemId: 'work-1' }, { kind: 'future-session', sessionId: 'session-1' }])
+        { kind: 'future-session', sessionId: 'session-1' }])
         assert.deepEqual(parseAgentTask({ ...task(), origin, ...(origin.kind === 'phase-stack' ? {
             phaseStack: { stackFingerprint: 'a'.repeat(64), recommendedModel: 'gpt-6-sol',
                 versionPolicy: { kind: 'target', version: '0.8.16' } } } : {}) }).origin, origin);
@@ -48,6 +48,41 @@ test('task parsing is versioned, strict, portable and supports all origins', () 
         { instructions: 'x'.repeat(20_001) }, { token: 'secret' }, { env: { HOME: '/private' } },
         { hiddenReasoning: 'private' }, { providerPayload: {} }
     ]) assert.throws(() => parseAgentTask({ ...task(), ...change }));
+});
+
+test('WorkItem task freezes project, map, basis and delegated scope with required review', () => {
+    const origin = { kind: 'work-item', projectId: 'project-1', planningMapId: 'map-1',
+        workItemId: 'work-1', mapRevision: 2,
+        basis: { architectureRevision: 1, architectureFingerprint: 'arch',
+            physicalInputFingerprint: 'source', physicalGeneration: 3 },
+        scope: { assignment: 'SHARED', workingSet: ['src'], delegablePaths: ['src/agent'],
+            humanReservedPaths: ['src/human'] } };
+    const derived = { ...task(), projectId: 'project-1', planningMapId: 'map-1', origin,
+        reviewPolicy: { kind: 'required' } };
+    const parsed = parseAgentTask(derived);
+    assert.deepEqual(parsed, derived);
+    if (parsed.origin.kind !== 'work-item') throw new Error('Expected WorkItem origin');
+    assert.equal(Object.isFrozen(parsed.origin), true);
+    assert.equal(Object.isFrozen(parsed.origin.scope.delegablePaths), true);
+    assert.equal(Object.isFrozen(parsed.origin.basis), true);
+    for (const change of [
+        { projectId: 'other-project' }, { planningMapId: 'other-map' },
+        { reviewPolicy: undefined }, { reviewPolicy: { kind: 'automatic' } },
+        { reviewPolicy: { kind: 'required', approvedBy: 'model' } },
+        { origin: { ...origin, mapRevision: -1 } },
+        { origin: { ...origin, basis: { ...origin.basis, physicalGeneration: -1 } } },
+        { origin: { ...origin, basis: { ...origin.basis, providerSession: 'private' } } },
+        { origin: { ...origin, scope: { ...origin.scope, delegablePaths: ['../outside'] } } },
+        { origin: { ...origin, scope: { ...origin.scope, delegablePaths: ['src/human'] } } },
+        { origin: { ...origin, scope: { ...origin.scope, assignment: 'HUMAN' } } },
+        { origin: { ...origin, scope: { ...origin.scope, delegablePaths: ['src/agent', 'src/agent'] } } },
+        { origin: { ...origin, scope: { ...origin.scope, rawPrompt: 'private' } } }
+    ]) assert.throws(() => parseAgentTask({ ...derived, ...change }));
+    assert.deepEqual(parseAgentTask({ ...derived, origin: { ...origin,
+        scope: { assignment: 'AI', workingSet: ['src'], delegablePaths: ['src/agent'],
+            humanReservedPaths: [] } } }).reviewPolicy, { kind: 'required' });
+    assert.throws(() => parseAgentTask({ ...task(), reviewPolicy: { kind: 'required' } }));
+    assert.throws(() => parseAgentTask({ ...task(), origin: { kind: 'work-item', workItemId: 'legacy' } }));
 });
 
 test('run, event, provenance and evidence records reject unbounded and private fields', () => {
