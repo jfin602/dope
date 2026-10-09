@@ -349,9 +349,21 @@ For a real WorkItem-origin run, inspect actual frozen candidate diff and Dope-ow
 
 Prove typed steering acknowledgement (applied at supported safe boundary or honestly pending/unsupported), cancellation and restoration without hidden resubmission. Accepted changes yield project-bound affected Software Map IDs/changed paths and bounded staleness, or explicit unknown; no continuous alignment. Regression: existing direct Work auto-promotion, Prompt Stack validation/Dope-owned Git checkpoints, manual gates, transcript, restart, Chat isolation and provider security remain qualified. Final p8d T3 requires real UI/hosted Codex exercise, one final exact-candidate `npm run check`, validated prompt stack and truthful Green/Not Green closeout; P1–P11 use focused T1/T2 implementation checks, P12 owns bounded integrated regressions, and P13 owns the sole real GUI/reference-Codex T3 qualification and one exact-candidate aggregate.
 
-### Local coding-model gate
+### Phase 8E — Local coding-model qualification gate (not activated)
 
-Local coding-agent support follows the qualified reference harness. Test the same representative AgentTasks through the same authority/tool/validation contracts. Failures attributable to local model capability must not force provider-specific canonical task/run state.
+Prerequisite: `c8-fix` P6 qualified Phase 8D on clean `0.8.33` source `8748cb4` with a passing exact-candidate aggregate and real saved-WorkItem Codex execution; the original P13 failure remains historical. 8E remains planned pending separate owner activation. Reuse the same source/validation/authority contracts; no new canonical LocalAgent task/run types.
+
+Before 8E Green, **directly prove**:
+- AI Center discovers and selects an actually loaded Local LM Studio connection/model with measured context limit, bounded output/tool-result reserve and a safe no-project-data synthetic **agent tool-loop** capability probe; models lacking `agentExecution` remain ineligible even when conversational text works;
+- one real local model completes a bounded source edit involving a genuine brokered file/process tool request inside an **isolated ExecutionWorkspace**, with sanitized message/command observations in the same durable AgentRun transcript;
+- untrusted/malformed/unsupported/out-of-bounds tool requests and excess turn/context capacity fail explicitly. No arbitrary host shell, symlink/traversal/outside-root, private files/secrets, Git history/write, unapproved process, network or prohibited host-loopback effects are possible under the fixed grant; OS-enforceable isolation is demonstrated, not assumed from model locality;
+- frozen CandidateDelta, Dope-owned required CandidateValidation, fingerprint/basis verification, developer accept/reject (WorkItem) and Authority/ToolExecutor promotion remain owned by Dope; no local-model direct authoritative writes or weaker validation;
+- Direct Work, WorkItem and representative Prompt Stack paths use the same AgentTask/AgentRun/sequence semantics, checkpoints/manual gates and real project isolation; no hidden local task duplication on restart;
+- cancellation/interruption/model unload/endpoint change/insufficient loaded context/recovery failure is truthful and does not silently rerun, widen grants or switch to hosted inference. Explicit model policy and local-versus-hosted provenance remain inspectable; hosted fallback requires independent consent and is not required for 8E;
+- representative matching tasks compare local model and previously qualified Codex by correctness, tool-call reliability, context, latency, validation and recovery; model capability deficiencies are reported, not used to weaken Dope's security or quality gates;
+- real Dope GUI/local inference, denial/restart evidence and a **passing final exact-candidate `npm run check`** plus only separate materially required T3 evidence. No claim of native installer production qualification unless actual native evidence is collected.
+
+The earliest local qualifying task may be small and achievable; matching Codex quality on difficult tasks is not necessary. The adapter and security architecture, not benchmark supremacy, are the gating objectives. This gate does not activate 8E or close Product Phase 8. See ADR 0032 and `docs/planning/p8/phase-8e-plan.md`.
 
 ## Product Phase 5 — Visual Software Planning qualification
 

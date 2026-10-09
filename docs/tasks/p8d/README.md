@@ -1,9 +1,9 @@
 # Phase 8D — General Scoped Delegation
 
-Status: **P1–P12 IMPLEMENTED / COMMITTED AT `0.8.32`; P13 NOT GREEN (owner-reported local `0.8.33`, uncommitted).**
+Status: **PHASE 8D GREEN / QUALIFIED at `0.8.33` source `8748cb4` through `c8-fix` P6 cycle 2; original P13 NOT GREEN preserved.**
 Starting version `0.8.20`; P1-P13 `0.8.21`–`0.8.33`; final P13 manual browser/T3.
 
-**Latest disposition (2026-10-09):** Two WorkItem-derived AgentTasks were created and survived reopen, but the Work GUI provided no Start action for the saved task IDs. Neither started Codex or produced a frozen/validated candidate. The Planning GUI currently derives an AgentTask with an empty required-validation policy; review acceptance also requires a nonempty passing Dope validation target. Consequently acceptance/rejection, project promotion, steering, ProposedAction, map impact and held-review restoration remain **unqualified**. WorkItem remained `ready`, which does not itself imply failure. Historical direct Work and completed Adaptive SEO Prompt Stack reopened read-only. The owner's P13 `0.8.33` uncommitted local work includes manifest/test changes and a closeout with evidence snapshots/logs; this remote docs correction does **not** copy or overwrite those files. `npm run check` failed at baseline before product/Electron; focused repairs, browser build and phase validator passed, but no passing final aggregate exists. See the phase plan and roadmap; Phase 8E remains inactive.
+**Qualification update (2026-10-09):** The original P13 NOT GREEN closeout and failed aggregate remain unchanged in `docs/tasks/p8d/closeout.md` (historical source committed later as `cd9133b`). The separately executed `docs/tasks/c8-fix/closeout.md` qualified 8D in cycle 2 of 5 on clean `0.8.33` source `8748cb4870e8cac3d2a5aca4a05623b5f3d747ec`: two real Codex WorkItem tasks, developer-approved Dope-owned candidate validation, one accepted/one rejected, authority/steering/map/restart evidence and a passing full `npm run check`. **This is a later candidate, not a rewrite of P13's failure.** The original P1–P13 prompts below are historical execution instructions, not an invitation to rerun the completed stack. 8E is planned but not activated; Phase 8 not closed.
 
 | Prompt | Target version | Scope | Tier | Model | Browser |
 | --- | --- | --- | --- | --- | --- |

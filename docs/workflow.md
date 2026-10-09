@@ -686,6 +686,8 @@ Routing:
 After this correction is qualified, continue bounded Phase 7B AI Center and Phase 7C role-routing work, integrated qualification and a later final closeout.
 
 
-## October 9, 2026 — Phase 8D active
+## October 9, 2026 — Historical Phase 8D activation (later qualified)
 
 `c8-chat-work-ui` and `c8-work-mode` closed Green at unchanged `0.8.20`. The owner independently activated **Phase 8D — General Scoped Delegation** on 2026-10-09. Current authority: ADR 0031, `docs/planning/p8/phase-8d-plan.md`, the current Phase 8 roadmap and stability contract. Use `/prompt-ass -> /prompt-plan -> /prompt-write p8d`; continue the Phase 8 patch family from `0.8.21`, with a browser/manual final closeout. Earlier c8-work-mode Not Green attempts remain historical. Keep direct Work/Prompt Stacks, separate Chat and Work modules, fixed grants, candidate validation and existing checkpoint semantics unchanged. Local coding-model parity, Development Sessions and continuous map alignment remain later phases.
+
+**Later qualification and forward routing (2026-10-09):** Phase 8D qualified GREEN via `docs/tasks/c8-fix/closeout.md` cycle 2 on committed `0.8.33` / `8748cb4`; the original `docs/tasks/p8d/closeout.md` P13 remains Not Green history. Phase 8E local coding-agent design is accepted in ADR 0032 and `docs/planning/p8/phase-8e-plan.md` but requires separate owner activation and prompt-stack authoring. No `0.8.34` manifest/version advance is authorized by docs alignment alone.

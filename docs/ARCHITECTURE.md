@@ -717,6 +717,18 @@ Steering is a typed persisted request/acknowledgement at a safe runtime boundary
 
 See ADR 0031 and `docs/planning/p8/phase-8d-plan.md`. No Theia, graph-renderer, provider-native or Codex types belong in these domain contracts.
 
+### Phase 8E — Local agent execution and tool mediation (planned, not activated)
+
+The existing AI Center supports Local LM Studio connections and context-aware conversational/synthesis providers. That does **not** mean Local Coding Agent execution works: in the `0.8.33` reference source `AgentExecutionRuntime.select()` and `backend-module.ts` register/authorize only a Codex App Server `AgentExecutionAdapter`, and local models lack a proved `agentExecution` capability.
+
+8E adds a narrow local model-transport/agent-loop adapter behind the **existing AgentExecutionAdapter** abstraction. The transport makes bounded requests to a configured Local endpoint; a Dope-owned harness manages tool-call/result turns, usable loaded-context capacity, output reserve, tool/turn count, timeouts and cancellation. Only sanitized provider-neutral observations become AgentRun/transcript evidence. Provider message/tool IDs remain adapter state, never canonical Project Mind, AgentTask, AgentRun, WorkItem or grant identity.
+
+A **Dope-owned Tool Broker** mediates every untrusted model-requested file/process tool. It checks task, project, accepted ExecutionGrant, current candidate root, path/symlink/cwd containment, command/environment restrictions and bounded results. Tools operate inside the isolated **ExecutionWorkspace**, never directly on the authoritative Git checkout; model output cannot grant itself shell/network/secrets/Git/history permissions. Trusted Local model inference transport to its configured localhost endpoint does not grant the candidate process any host-loopback/LAN/Internet capability. If OS sandboxing cannot enforce this boundary, local agent execution is unavailable (fail closed). The final candidate goes through the unchanged Dope-owned ADR 0029 frozen ValidationWorkspace and ADR 0028 Authority/ToolExecutor promotion. For WorkItem-origin tasks, ADR 0031 mandatory review still holds; Prompt Stacks retain Dope-owned checkpoints.
+
+A Local model becomes `agentExecution` eligible only after a safe zero-project-data tool-loop probe plus enforceable tool mediation and observed loaded context readiness. `conversationalText`, claimed `toolCalling` or a preferred model name is insufficient. AI Center keeps global connection identity and Coding Agent role eligibility; feature-level per-task grant and selected model/egress authority remain distinct. Local model failure must never silently switch to hosted Codex. No new LocalAgentTask/Run, alternative project DB, provider-specific authority or separate Local review UI is authorized.
+
+See **ADR 0032** and `docs/planning/p8/phase-8e-plan.md`. Design approved, **8E not yet owner-activated**; `0.8.33` remains the last qualified source.
+
 ### Model Runtime
 
 Provider-independent model interface and capability discovery.

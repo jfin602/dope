@@ -64,7 +64,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c5 — sMap Readability | OWNER-CLOSED WITH PHASE 5. Readability implementation is retained; no standalone Green claim is inferred from the final commit subject without its own closeout record. |
 | Product Phase 6 — Flow | **OWNER-CLOSED FOR SEQUENCING / P8 NOT QUALIFIED.** Evidence-backed provider-free Static Flow over the Physical Map is retained. The P8 exact-candidate direct restart/isolation and chosen-path provenance gaps remain in `docs/tasks/p6/closeout.md`; historical P7/map-canvas Not Green results remain intact. |
 | Product Phase 7 — AI Presence / AI Center / Roles | **OWNER APPROVED / QUALIFIED / CLOSED at actual `0.7.31`.** Durable Chat, AI Center and deterministic role routing are complete; the planned `0.7.32` closeout version did not materialize. Post-closeout `c7-chat-project-grounding` strengthens read-only repository/map evidence before Phase 8 without changing explicit model choice, Software Map evidence-egress authority or Phase 10 local-only background constraints. |
-| Product Phase 8 — Coding Agent / Scoped Delegation | **ACTIVE — PHASE 8D GREEN / QUALIFIED at `0.8.33` source `8748cb4` through c8-fix P6.** Original P13 remains historically Not Green; correction cycle 2 passed real GUI/Codex, required validation/review, authority/restart and exact-source aggregate. Earlier slices/Adaptive SEO/c8-work-mode retain their separate Green scopes. 8E inactive; Phase 8 not closed. |
+| Product Phase 8 — Coding Agent / Scoped Delegation | **ACTIVE — PHASE 8D GREEN / QUALIFIED at `0.8.33` source `8748cb4` through c8-fix P6.** Original P13 remains historically Not Green; correction cycle 2 passed real GUI/Codex, required validation/review, authority/restart and exact-source aggregate. Earlier slices/Adaptive SEO/c8-work-mode retain their separate Green scopes. 8E design planned under ADR 0032 / `docs/planning/p8/phase-8e-plan.md` but not activated; Phase 8 not closed. |
 | Correction c8 — Agent Authority Boundary | **GREEN / INCORPORATED INTO QUALIFIED 8B.** Isolated ExecutionWorkspace -> CandidateDelta -> Dope Authority/ToolExecutor promotion is the canonical mutation boundary. |
 | Correction c8-candidate-validation — Dope-owned Candidate Validation | **GREEN / QUALIFIED.** Dope-owned frozen-candidate validation supports private temp/loopback without host/private/network authority; real Adaptive SEO Prompt Stack completed in Cycle 2 of 5. |
 | Correction c8-work-mode — Work / Prompt Stack UI | **GREEN / QUALIFIED / CLOSED at `0.8.20`.** Separate Chat and Work panels, Work toolbar, stable titles, durable agent transcript and collapsed command detail, live GUI/restart evidence. |
@@ -976,10 +976,12 @@ Phase 8 uses the existing phase runner as a **behavioral reference**, not as pro
    - preserve qualified direct Work / Prompt Stack execution while WorkItem-origin runs add explicit frozen-candidate review before promotion.
    - ADR 0031 and `docs/planning/p8/phase-8d-plan.md` govern the accepted architecture. P12 was committed at `0.8.32`; original P13 `0.8.33` remains historically Not Green. The separate `c8-fix` P6 closeout qualifies 8D on source `8748cb4` at unchanged `0.8.33`; do not activate 8E from this result alone.
 
-7. **8E — Local coding-agent compatibility**
-   - reuse the same AgentTask/AgentRun/Authority contracts against a local agent/model adapter;
-   - benchmark identical representative tasks against the qualified reference harness;
-   - diagnose model/context/tool capability differences without redesigning the product domain.
+7. **8E — Local coding-agent compatibility (PLANNED / DESIGN APPROVED; NOT ACTIVATED)**
+   - build a real local model tool-use harness and provider-neutral AgentExecutionAdapter, beginning with the existing AI Center LM Studio connection, not merely a Chat-model selector;
+   - broker model-requested filesystem/process tools through the existing accepted ExecutionGrant and isolated ExecutionWorkspace; retain Dope-owned CandidateDelta, validation, review and Authority/ToolExecutor promotion;
+   - verify loaded context/capability eligibility before marking a local model `agentExecution`, with truthful unsupported results and no silent hosted Codex fallback;
+   - reuse Direct Work, WorkItem and representative Prompt Stack paths; compare actual task correctness, tool reliability, context, latency, cancellation/restart and validation with the qualified reference harness;
+   - ADR 0032 and `docs/planning/p8/phase-8e-plan.md` govern the approved design. Target the next patch `0.8.34` **only after separate owner activation**; current source remains `0.8.33` and Phase 8 is not closed.
 
 ### Authority law
 

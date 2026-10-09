@@ -1,10 +1,10 @@
 # ADR 0031 — Phase 8D General Scoped Delegation and Developer Review
 
-Status: **Accepted design / P1–P12 implemented; P13 NOT GREEN (2026-10-09)**
+Status: **Accepted design / Phase 8D GREEN at `0.8.33` source `8748cb4` through c8-fix P6; original P13 Not Green retained**
 Date: 2026-10-09
 Complements: ADR 0017, 0027, 0028, 0029 and 0030
 
-**Applicability / evidence note (not an ADR reversal):** GitHub commits 8D implementation through P12 `0.8.32` (`09fe3bcd`), while the owner reports P13 `0.8.33` and its Not Green closeout in an uncommitted local worktree. The accepted architecture below remains the intended contract, **not proof of live end-to-end operation**. Two WorkItem tasks were created/reopened but never started; review and downstream capabilities remain unqualified. Final `npm run check` did not pass, and 8E has not been activated. Current qualification details belong to the roadmap and 8D phase plan, not to reinterpretation of the accepted ADR.
+**Applicability / evidence note (not an ADR reversal):** Owner-activated design was implemented through P12 at `0.8.32`. Original `docs/tasks/p8d/closeout.md` P13 was **NOT GREEN** because saved WorkItem tasks could not Start, had no usable required validation policy and its aggregate failed; that record remains historical. Correction P1–P5 repaired this seam. The later `docs/tasks/c8-fix/closeout.md` P6 cycle 2 achieved **GREEN / QUALIFIED Phase 8D** on clean `0.8.33` source `8748cb4870e8cac3d2a5aca4a05623b5f3d747ec`, with real Codex WorkItem GUI runs, candidate accept/reject, authority/restart and a passing full aggregate. Acceptance of this ADR alone was not evidence. Local-agent compatibility remains **Phase 8E, planned/not activated**; no automatic Phase 8 closure.
 
 ## Context and decision
 
@@ -23,4 +23,4 @@ Complements: ADR 0017, 0027, 0028, 0029 and 0030
 
 Prove two WorkItem-derived tasks, HUMAN/AI/SHARED boundaries, candidate accept/reject and failed validation/denied effects, steering truth, stale-basis/restart/idempotency, affected-map staleness and legacy direct/Prompt Stack non-regression using real Codex/Dope GUI evidence. Qualification details: `docs/stability-contract.md`; execution plan: `docs/planning/p8/phase-8d-plan.md`.
 
-Do not introduce arbitrary partial-file promotion, automatic self-escalation, multi-agent swarms, 8E local-model parity, Phase 9 DevelopmentSession or Phase 10 background alignment. The owner activation is not an 8D Green claim.
+Do not introduce arbitrary partial-file promotion, automatic self-escalation, multi-agent swarms, 8E local-model parity, Phase 9 DevelopmentSession or Phase 10 background alignment **inside Phase 8D**. The original owner activation was not a Green claim; the separate later c8-fix qualification established the 8D Green claim.
