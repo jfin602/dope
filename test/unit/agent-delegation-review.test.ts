@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -13,7 +13,9 @@ import { AgentRuntimeBackend } from '../../packages/theia-extension/lib/node/age
 
 const git = promisify(execFile);
 const now = '2026-10-09T12:00:00Z';
-const task = (kind: 'direct' | 'work-item', id: string) => ({ version: 1, id, createdAt: now,
+const task = (kind: 'direct' | 'work-item', id: string, scope?: {
+    assignment: 'SHARED'; workingSet: string[]; delegablePaths: string[]; humanReservedPaths: string[]
+}) => ({ version: 1, id, createdAt: now,
     objective: 'Create review.txt', instructions: 'Write candidate bytes', projectRoot: '.', projectId: 'project',
     modelPolicy: { kind: 'follow-coding-agent' }, controls: {}, authority: { profile: 'phase-8b-project' },
     completion: { validation: [{ kind: 'test', label: 'focused', command: 'true' }], requireValidationPass: true },
@@ -21,12 +23,13 @@ const task = (kind: 'direct' | 'work-item', id: string) => ({ version: 1, id, cr
         planningMapId: 'map', workItemId: 'work', mapRevision: 1,
         basis: { architectureRevision: 1, architectureFingerprint: 'architecture',
             physicalInputFingerprint: 'physical', physicalGeneration: 1 },
-        scope: { assignment: 'AI', workingSet: ['review.txt'], delegablePaths: ['review.txt'], humanReservedPaths: [] } },
+        scope: scope ?? { assignment: 'AI', workingSet: ['review.txt'], delegablePaths: ['review.txt'], humanReservedPaths: [] } },
     ...(kind === 'work-item' ? { planningMapId: 'map', reviewPolicy: { kind: 'required' } } : {}) });
 
 async function fixture(kind: 'direct' | 'work-item', validationStatus: 'passed' | 'failed',
     runTest: (f: { root: string; store: AgentStore; runtime: AgentExecutionRuntime;
-        backend: AgentRuntimeBackend; handle: string; adapter: { request?: any; complete(): void } }) => Promise<void>) {
+        backend: AgentRuntimeBackend; handle: string; adapter: { request?: any; complete(): void } }) => Promise<void>,
+    scope?: { assignment: 'SHARED'; workingSet: string[]; delegablePaths: string[]; humanReservedPaths: string[] }) {
     const root = await mkdtemp(join(tmpdir(), 'dope-delegation-review-'));
     await git('git', ['clone', '--quiet', '--shared', resolve(import.meta.dirname, '../..'), root]);
     const store = new AgentStore();
@@ -57,7 +60,7 @@ async function fixture(kind: 'direct' | 'work-item', validationStatus: 'passed' 
     try {
         const handle = (await backend.attach(pathToFileURL(root).href)).projectHandle;
         if (kind === 'direct') await backend.createTask(handle, task(kind, 'task-review') as any);
-        else await store.createTask(root, task(kind, 'task-review') as any);
+        else await store.createTask(root, task(kind, 'task-review', scope) as any);
         await runTest({ root, store, runtime, backend, handle, adapter });
     } finally { await runtime.dispose(); backend.dispose(); await rm(root, { recursive: true, force: true }); }
 }
@@ -184,3 +187,37 @@ test('tampered frozen bytes and failed validation never promote', async () => {
         await assert.rejects(f.backend.decideCandidate(f.handle, failed.id, 0, '0'.repeat(64), 'accept', grant));
     });
 });
+
+test('review hold survives backend restart and accepted candidate is applied once', async () =>
+    fixture('work-item', 'passed', async f => {
+        const { held, grant } = await hold(f);
+        const store = new AgentStore();
+        const runtime = new AgentExecutionRuntime(store, {} as any, {} as any, new Map());
+        const backend = new AgentRuntimeBackend(store, { notifyAgentStateChanged() {} }, runtime);
+        try {
+            const handle = (await backend.attach(pathToFileURL(f.root).href)).projectHandle;
+            assert.equal((await backend.readRun(handle, held.id))?.candidateReview?.state, 'ready');
+            const fingerprint = held.candidateReview!.candidateFingerprint;
+            const accepted = await backend.decideCandidate(handle, held.id, 0, fingerprint, 'accept', grant);
+            assert.equal(accepted.status, 'completed');
+            assert.equal(await readFile(join(f.root, 'review.txt'), 'utf8'), 'candidate\n');
+            assert.deepEqual(await backend.decideCandidate(handle, held.id, 0, fingerprint, 'accept', grant), accepted);
+            assert.equal((await new AgentStore().readRun(f.root, held.id))?.reviewDecision?.kind, 'accept');
+        } finally { backend.dispose(); await runtime.dispose(); }
+    }));
+
+test('human-reserved SHARED path fails review and records a blocked action without promotion', async () =>
+    fixture('work-item', 'passed', async f => {
+        const grant = createDefaultExecutionGrant({ id: 'grant-review', revision: 0,
+            taskId: 'task-review', acceptedAt: now });
+        const started = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-review', grant, true);
+        await mkdir(join(f.adapter.request!.executionRoot, 'src'), { recursive: true });
+        await writeFile(join(f.adapter.request!.executionRoot, 'src/human.txt'), 'reserved\n');
+        f.adapter.complete();
+        const failed = await f.runtime.waitForRun(f.root, started.id);
+        assert.equal(failed.status, 'failed');
+        assert.equal(failed.outcome?.code, 'authority-denied');
+        assert.equal(failed.candidateReview, undefined);
+        assert.equal((await f.store.listActions(f.root, started.taskId))[0]?.requiredAuthority, 'human-reserved-scope');
+        await assert.rejects(readFile(join(f.root, 'src/human.txt')), { code: 'ENOENT' });
+    }, { assignment: 'SHARED', workingSet: ['src'], delegablePaths: ['src/agent'], humanReservedPaths: ['src/human.txt'] }));
