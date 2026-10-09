@@ -79,6 +79,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     async launchWorkItem(handle: string, request: WorkItemLaunchRequest): Promise<AgentTask> {
         const root = this.active(handle);
         if (!this.planning) throw new Error('Planning service unavailable');
+        if (request.validationApproved !== true) throw new Error('WorkItem validation requires developer approval');
         if (typeof request.requestKey !== 'string' || !/^[A-Za-z0-9._-]{1,128}$/.test(request.requestKey) ||
             !Number.isSafeInteger(request.expectedProjectRevision) || request.expectedProjectRevision < 1 ||
             !Number.isSafeInteger(request.expectedMapRevision) || request.expectedMapRevision < 0 ||
@@ -126,6 +127,9 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
                 workItemId: work.id, mapRevision: map.revision, basis: map.basis,
                 scope: { assignment: work.assignment, workingSet: work.workingSet,
                     delegablePaths: paths, humanReservedPaths: work.humanReservedPaths ?? [] } } });
+        if (!task.completion.requireValidationPass || !task.completion.validation.length ||
+            task.completion.validation.some(target => !target.command))
+            throw new Error('WorkItem review requires nonempty Dope validation commands and requireValidationPass');
         if ((await this.planning.read(root)).revision !== request.expectedProjectRevision)
             throw new Error('Stale Planning project revision');
         for (let attempt = 0; attempt < 8; attempt++) {

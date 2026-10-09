@@ -386,6 +386,10 @@ export class AgentExecutionRuntime {
                 task.origin.kind === 'direct' || task.origin.kind === 'work-item') ||
                 task.authority.profile !== 'phase-8b-project')
                 throw new Error('AgentTask origin does not match execution path');
+            if (task.origin.kind === 'work-item' &&
+                (!task.completion.requireValidationPass || !task.completion.validation.length ||
+                    task.completion.validation.some(target => !target.command)))
+                throw new Error('WorkItem task requires approved Dope validation before Start');
             const grant = parseExecutionGrant(offeredGrant);
             if (grant.taskId !== task.id || grant.projectRoot !== task.projectRoot ||
                 grant.acceptedAt < task.createdAt)

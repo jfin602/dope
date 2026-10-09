@@ -18,6 +18,8 @@ export interface WorkItemLaunchRequest {
     requestKey: string; expectedProjectRevision: number; expectedMapRevision: number;
     planningMapId: string; workItemId: string; delegablePaths: string[];
     modelPolicy: AgentModelPolicy; controls: ExecutionControls; completion: CompletionPolicy;
+    /** Set only after the developer explicitly approves the supplied validation commands. */
+    validationApproved?: boolean;
 }
 export interface AgentRuntimeService {
     attach(folderUri: string): Promise<{ projectHandle: string }>;
