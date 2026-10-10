@@ -90,8 +90,9 @@ function processCommand(executable: string, args: string[], signal: AbortSignal,
     });
 }
 
-function sandboxArgs(work: string, installation: string, command: string[]): string[] {
-    return ['--unshare-user', '--unshare-net', '--unshare-pid', '--unshare-ipc', '--unshare-uts',
+function sandboxArgs(work: string, installation: string, bwrapExecutable: string, command: string[]): string[] {
+    return ['--user', '--map-root-user', '--net', '--', bwrapExecutable,
+        '--unshare-user', '--unshare-pid', '--unshare-ipc', '--unshare-uts',
         '--die-with-parent', '--ro-bind', '/usr', '/usr', '--symlink', 'usr/bin', '/bin',
         '--symlink', 'usr/lib', '/lib', '--symlink', 'usr/lib64', '/lib64',
         '--ro-bind', installation, '/node', '--bind', work, '/work',
@@ -127,13 +128,13 @@ export class CandidateValidationRunner {
                 throw new Error('Validation copy differs from frozen candidate');
             if (input.signal.aborted) throw new Error('cancelled');
             const workspaceId = randomUUID();
-            const probe = await processCommand(this.bwrapExecutable, sandboxArgs(work, installation,
-                ['/node/bin/node', '-e', 'const fs=require("node:fs");const net=require("node:net");fs.writeFileSync("/tmp/dope-probe","ok");const s=net.createServer();s.listen(0,"127.0.0.1",()=>s.close())']),
+            const probe = await processCommand('/usr/bin/unshare', sandboxArgs(work, installation, this.bwrapExecutable,
+                ['/node/bin/node', '-e', 'require("node:fs").writeFileSync("/tmp/dope-probe","ok")']),
             input.signal, 5000);
             if (probe.cancelled) throw new Error('cancelled');
             if (probe.exitCode !== 0 || probe.timedOut) throw new Error('validation namespace unavailable');
             const started = Date.now();
-            const execution = await processCommand(this.bwrapExecutable, sandboxArgs(work, installation,
+            const execution = await processCommand('/usr/bin/unshare', sandboxArgs(work, installation, this.bwrapExecutable,
                 ['/bin/sh', '-c', command]), input.signal,
             Math.min(MAX_DURATION_MS, Math.max(1000, input.timeoutMs ?? MAX_DURATION_MS)));
             const durationMs = Math.min(86_400_000, Date.now() - started);
