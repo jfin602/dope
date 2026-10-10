@@ -237,6 +237,17 @@ export class ExecutionWorkspace {
             const tracked = await execute('git', ['ls-files', '-z'], { cwd: root, env, maxBuffer: 16 * 1024 * 1024 });
             if (tracked.stdout.split('\0').some(path => path.split('/').includes('node_modules')))
                 throw new Error('Tracked node_modules cannot be excluded from candidate comparison');
+            // The local OS sandbox masks this directory. A fresh Git project may have no
+            // project metadata yet, so create the empty mount target in the disposable clone.
+            const dopeMount = join(root, '.dope');
+            try {
+                const info = await lstat(dopeMount);
+                if (!info.isDirectory() || info.isSymbolicLink())
+                    throw new Error('Unsafe candidate .dope mount target');
+            } catch (error) {
+                if (!missing(error)) throw error;
+                await mkdir(dopeMount);
+            }
             const alternates = join(root, '.git/objects/info/alternates');
             try { await lstat(alternates); throw new Error('Execution Git shares authoritative objects'); }
             catch (error) { if (!missing(error)) throw error; }

@@ -501,6 +501,11 @@ export class AgentExecutionRuntime {
                 active.handle.result.catch(() => {});
                 await this.interrupt(active);
             }
+            if (active.run?.status === 'pending') {
+                await this.update(active, run => ({ ...run, status: 'failed', endedAt: new Date().toISOString(),
+                    outcome: { code: 'provider-error', summary: 'Agent start failed before execution' } }))
+                    .catch(() => {});
+            }
             if (active.run && ['running', 'cancelling'].includes(active.run.status))
                 await this.finish(active, active.stopping && !active.interruptionFailed ? 'cancelled' :
                     active.interruptionFailed ? 'interrupted' : 'failed',
@@ -583,7 +588,7 @@ export class AgentExecutionRuntime {
                     }
                     active.validationAbort = undefined;
                 }
-                validationMissing = Boolean((task?.completion.requireValidationPass || reviewRequired) && task?.completion.validation.some(target =>
+                validationMissing = !failed && !active.stopping && !active.denied && Boolean((task?.completion.requireValidationPass || reviewRequired) && task?.completion.validation.some(target =>
                     active.run?.validationResults.find(result => result.owner === 'dope' &&
                         result.kind === target.kind && result.label === target.label)?.status !== 'passed'));
                 if (!failed && !active.stopping && !active.denied && !validationMissing && active.grant) {
@@ -750,6 +755,15 @@ export class AgentExecutionRuntime {
     async reconcile(root: string): Promise<void> {
         if (this.active.has(root)) return;
         for (const run of await this.store.listRuns(root)) {
+            if (run.status === 'pending') {
+                const endedAt = new Date().toISOString();
+                await this.store.updateRun(root, run, { ...run, status: 'interrupted', endedAt,
+                    outcome: { code: 'interrupted', summary: 'Agent start abandoned before execution' } });
+                await this.store.appendEvent(root, { version: AGENT_SCHEMA_VERSION, runId: run.id,
+                    sequence: 1, at: endedAt, kind: 'status', status: 'interrupted',
+                    summary: 'Agent run interrupted before execution after backend restart' });
+                continue;
+            }
             if (!['running', 'cancelling', 'blocked'].includes(run.status) ||
                 run.status === 'blocked' && !run.reviewDecision && run.candidateReview?.state === 'ready' &&
                 await this.store.reviewCandidateRoot(root, run.id)) continue;

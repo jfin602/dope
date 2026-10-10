@@ -49,7 +49,9 @@ function harness() {
 }
 
 test('direct task displays eligible target and requires explicit grant before starting; Stop requests backend cancellation', async () => {
-    const h = harness(); await h.controller.attach('file:///project');
+    const h = harness();
+    h.inventory.registry.models[0].limits.contextWindowTokens = { source: 'unknown' } as typeof h.inventory.registry.models[0]['limits']['contextWindowTokens'];
+    await h.controller.attach('file:///project');
     assert.match(h.controller.targetMessage, /Coding · GPT/);
     assert.equal(h.controller.exactTargets.length, 1);
     h.controller.setPolicy({ kind: 'exact', connectionId: 'codex', modelId: 'gpt' });

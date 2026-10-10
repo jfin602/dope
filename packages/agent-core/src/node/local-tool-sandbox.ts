@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { lstat, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile, mkdir } from 'node:fs/promises';
+import { lstat, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile, mkdir, open } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join, relative, sep } from 'node:path';
 
@@ -29,6 +29,27 @@ const privateFile = (name: string): boolean => ['.npmrc', '.yarnrc', '.yarnrc.ym
     name === '.env' || name.startsWith('.env.') || name.startsWith('secret.') ||
     name.startsWith('token.') || name.startsWith('credential.') ||
     ['.pem', '.key', '.p12', '.pfx'].some(suffix => name.endsWith(suffix));
+
+// A fresh network namespace alone still permits creating and binding loopback sockets.
+// Bubblewrap loads this cBPF filter before exec: reject other ABIs/x32 and every
+// socket(2) request, including IPv4, IPv6 and packet sockets. No network socket
+// descriptor is inherited by the sandboxed process.
+function noNetworkSocketsFilter(): Buffer {
+    const instructions: Array<[number, number, number, number]> = [
+        [0x20, 0, 0, 4], [0x15, 1, 0, 0xc000003e], [0x06, 0, 0, 0x80000000],
+        [0x20, 0, 0, 0], [0x35, 0, 1, 0x40000000], [0x06, 0, 0, 0x80000000],
+        [0x15, 0, 1, 41], [0x06, 0, 0, 0x00050001], [0x06, 0, 0, 0x7fff0000]
+    ];
+    const buffer = Buffer.alloc(instructions.length * 8);
+    instructions.forEach(([code, jt, jf, value], index) => {
+        const offset = index * 8;
+        buffer.writeUInt16LE(code, offset);
+        buffer.writeUInt8(jt, offset + 2);
+        buffer.writeUInt8(jf, offset + 3);
+        buffer.writeUInt32LE(value, offset + 4);
+    });
+    return buffer;
+}
 
 async function protectedEntries(root: string): Promise<string[]> {
     const masks: string[] = [];
@@ -72,7 +93,8 @@ async function executable(value: string, expected: string): Promise<string> {
 /** Runs only after checking mount targets and binaries. No raw-spawn fallback exists. */
 export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, command: readonly string[],
     timeoutMs = 5000, signal?: AbortSignal): Promise<LocalSandboxResult> {
-    if (process.platform !== 'linux') throw new LocalSandboxUnavailable('Linux is the only supported platform');
+    if (process.platform !== 'linux' || process.arch !== 'x64')
+        throw new LocalSandboxUnavailable('Linux x86-64 is the only supported platform');
     if (!policy || typeof policy.workspaceRoot !== 'string' || !isAbsolute(policy.workspaceRoot) ||
         !Array.isArray(command) || command.length === 0 || command.some(arg => typeof arg !== 'string' || arg.includes('\0')) ||
         !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000)
@@ -103,11 +125,30 @@ export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, comma
         args.push(...(mask.endsWith('/') ? ['--tmpfs', destination, '--remount-ro', destination] :
             ['--ro-bind', '/dev/null', destination]));
     }
-    args.push('--chdir', '/work', '--clearenv');
+    args.push('--seccomp', '3', '--new-session', '--chdir', '/work', '--clearenv');
     for (const [name, value] of Object.entries(SAFE_ENV)) args.push('--setenv', name, value);
     args.push('--', ...command);
+    const filterDirectory = await mkdtemp(join(tmpdir(), 'dope-local-seccomp-'));
+    const filterPath = join(filterDirectory, 'filter.bpf');
+    let filter: Awaited<ReturnType<typeof open>>;
+    try {
+        await writeFile(filterPath, noNetworkSocketsFilter(), { mode: 0o600 });
+        filter = await open(filterPath, 'r');
+    } catch {
+        await rm(filterDirectory, { recursive: true, force: true });
+        throw new LocalSandboxUnavailable('network seccomp filter unavailable');
+    }
     return new Promise((resolve, reject) => {
-        const child = spawn(unshare, args, { env: SAFE_ENV, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+        let child: ReturnType<typeof spawn>;
+        try {
+            child = spawn(unshare, args, { env: SAFE_ENV,
+                stdio: ['ignore', 'pipe', 'pipe', filter.fd], detached: true });
+        } catch {
+            void filter.close().finally(() => rm(filterDirectory, { recursive: true, force: true }));
+            reject(new LocalSandboxUnavailable('sandbox process could not start'));
+            return;
+        }
+        void filter.close().finally(() => rm(filterDirectory, { recursive: true, force: true }));
         let stdout = '', stderr = '', settled = false, timedOut = false, cancelled = false;
         const kill = () => { if (child.pid) try { process.kill(-child.pid, 'SIGKILL'); } catch { /* exited */ } };
         const abort = () => { cancelled = true; kill(); };
@@ -120,8 +161,8 @@ export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, comma
             if (error) reject(new LocalSandboxUnavailable('sandbox process could not start'));
             else resolve({ exitCode: code ?? 1, stdout, stderr, timedOut, cancelled });
         };
-        child.stdout.on('data', chunk => { stdout = (stdout + chunk).slice(0, MAX_OUTPUT); });
-        child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(0, MAX_OUTPUT); });
+        child.stdout!.on('data', chunk => { stdout = (stdout + chunk).slice(0, MAX_OUTPUT); });
+        child.stderr!.on('data', chunk => { stderr = (stderr + chunk).slice(0, MAX_OUTPUT); });
         child.on('error', error => done(error));
         child.on('close', code => done(undefined, code));
     });

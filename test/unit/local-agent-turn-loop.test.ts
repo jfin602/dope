@@ -54,6 +54,36 @@ test('two turns correlate tool call and result, sanitize result and final transc
     assert.doesNotMatch(JSON.stringify(h.events), /secret raw/);
 });
 
+test('repeated completed process is redirected once without duplicate execution', async () => {
+    const process = (id: string) => ({ id, name: 'process' as const,
+        arguments: { kind: 'test' as const, commandId: 'validation-1' } });
+    let executions = 0;
+    const h = harness([{ kind: 'tools', calls: [process('first')] },
+        { kind: 'tools', calls: [process('repeat')] },
+        { kind: 'final', text: 'Test passed; task complete.' }], async call => {
+        executions++;
+        return { id: call.id, name: call.name, status: 'completed', output: 'test passed', truncated: false };
+    });
+    assert.equal(await h.loop.run(h.input), 'Test passed; task complete.');
+    assert.equal(executions, 1);
+    assert.equal(h.sent.length, 3);
+    assert.match(h.sent[2].at(-1).content, /already completed successfully/);
+});
+
+test('completion prose on a redundant completed process ends without another effect', async () => {
+    let executions = 0;
+    const process = (id: string) => ({ id, name: 'process' as const,
+        arguments: { kind: 'test' as const, commandId: 'validation-1' } });
+    const h = harness([{ kind: 'tools', calls: [process('first')] },
+        { kind: 'tools', calls: [process('repeat')], text: 'I fixed the file and the test passed.' }], async call => {
+        executions++;
+        return { id: call.id, name: call.name, status: 'completed', output: 'test passed', truncated: false };
+    });
+    assert.equal(await h.loop.run(h.input), 'I fixed the file and the test passed.');
+    assert.equal(executions, 1);
+    assert.equal(h.sent.length, 2);
+});
+
 test('unknown, duplicate, missing IDs and mismatched terminal results fail closed', async () => {
     for (const bad of [
         [{ kind: 'tools', calls: [{ id: 'a', name: 'shell', arguments: {} }] }],

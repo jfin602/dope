@@ -14,7 +14,7 @@ const MAX_TIMEOUT_MS = 120_000;
 
 export type LocalToolTurn =
     | { kind: 'final'; text: string }
-    | { kind: 'tools'; calls: readonly LocalToolRequest[] };
+    | { kind: 'tools'; calls: readonly LocalToolRequest[]; text?: string };
 
 export type LocalTurnMessage = { role: 'system' | 'user' | 'assistant' | 'tool'; content: string;
     tool_call_id?: string; tool_calls?: readonly { id: string; type: 'function';
@@ -44,7 +44,7 @@ const parameters = {
         kind: { type: 'string', enum: ['test', 'build'] }, commandId: { type: 'string' } } },
 } as const;
 const tools = Object.entries(parameters).map(([name, schema]) => ({ type: 'function', function: {
-    name, description: `Request the bounded ${name} operation; Dope checks authority independently.`, parameters: schema } }));
+    name, description: `Request the bounded ${name} operation; Dope checks authority independently. File paths are project-relative with no leading slash; list uses "." for the project root.`, parameters: schema } }));
 
 function failure(message: string, kind: ConstructorParameters<typeof ModelRuntimeFailure>[1]): ModelRuntimeFailure {
     return new ModelRuntimeFailure(message, kind);
@@ -134,7 +134,11 @@ export class LocalToolTurnTransport {
         if (message.refusal || message.reasoning || message.reasoning_content)
             throw failure('Unsupported Local assistant response', 'unsupported-capability');
         if (Array.isArray(message.tool_calls) && message.tool_calls.length) {
-            if (choice.finish_reason !== 'tool_calls' || (message.content !== null && message.content !== undefined && message.content !== ''))
+            // LM Studio can return explanatory assistant text with a tool-call turn. It
+            // grants no authority; only the bounded typed calls can request effects.
+            if (choice.finish_reason !== 'tool_calls' ||
+                (message.content !== null && message.content !== undefined &&
+                    (typeof message.content !== 'string' || Buffer.byteLength(message.content, 'utf8') > MAX_TEXT_BYTES)))
                 throw failure('Ambiguous Local assistant response', 'invalid-json');
             const normalized = message.tool_calls.map((call: any) => {
                 if (call?.type !== 'function' || typeof call.id !== 'string' ||
@@ -150,9 +154,11 @@ export class LocalToolTurnTransport {
             catch { throw failure('Unsupported or invalid Local tool request', 'unsupported-capability'); }
             request.budget.recordToolCalls(calls.length);
             request.budget.recordOutput(JSON.stringify(calls));
-            return { kind: 'tools', calls };
+            return { kind: 'tools', calls,
+                ...(typeof message.content === 'string' && message.content.trim() ? { text: message.content } : {}) };
         }
-        if (message.tool_calls !== undefined && message.tool_calls !== null || choice.finish_reason === 'tool_calls')
+        if (message.tool_calls != null && (!Array.isArray(message.tool_calls) || message.tool_calls.length !== 0) ||
+            choice.finish_reason === 'tool_calls')
             throw failure('Local runtime returned incompatible tool calls', 'unsupported-capability');
         if (choice.finish_reason !== 'stop' || typeof message.content !== 'string' ||
             Buffer.byteLength(message.content, 'utf8') > MAX_TEXT_BYTES)

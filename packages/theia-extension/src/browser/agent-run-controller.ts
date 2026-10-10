@@ -59,13 +59,14 @@ export class AgentRunController {
     async resolvePolicyTarget(policy: AgentModelPolicy): Promise<{ target?: AgentTarget; targets: AgentTarget[]; reason: string }> {
         const inventory = await this.registry.inventory();
         const eligible = findEligibleModels(inventory.registry, { capabilities: ['agentExecution'],
-            enabledOnly: true, usableOnly: true, loadedLocalModels: inventory.loadedLocalModels,
-            minimumKnownContextTokens: 2304 }, inventory.observations);
+            enabledOnly: true, usableOnly: true, loadedLocalModels: inventory.loadedLocalModels }, inventory.observations);
         const targets = eligible.models.filter(model => {
             const connection = inventory.registry.connections.find(item => item.id === model.connectionId);
             return model.capabilities.agentExecution?.source === 'adapter-known' &&
                 (model.locality === 'local' ? connection?.config.type === 'local' && connection.config.runtime === 'lm-studio' &&
-                    this.localEndpointReady(connection.config.endpoint) :
+                    this.localEndpointReady(connection.config.endpoint) &&
+                    (inventory.loadedLocalModels?.find(item => item.connectionId === model.connectionId &&
+                        item.providerModelKey === model.providerModelKey)?.contextWindowTokens ?? 0) >= 2304 :
                     connection?.config.type === 'codex' && connection.config.runtime === 'app-server' &&
                     connection.codexAccount?.status === 'signed-in' && connection.codexAccount.planUsage === 'available' &&
                     Boolean(connection.codexAccount.accountId));

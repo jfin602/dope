@@ -12,7 +12,7 @@ export type LocalCapabilityResult = 'supported' | 'unsupported' | 'unavailable' 
 /** No project root or broker is passed to this probe. Its only tool result is synthetic. */
 export class LocalAgentCapabilityProbe {
     constructor(private readonly transport: Pick<LocalToolTurnTransport, 'turn'> = new LocalToolTurnTransport(),
-        private readonly sandbox = preflightLocalToolSandbox, private readonly timeoutMs = 15_000) {}
+        private readonly sandbox = preflightLocalToolSandbox, private readonly timeoutMs = 120_000) {}
 
     async probe(connection: AIConnection, modelId: string, inventory: () => Promise<AIInventoryState>,
         credential?: string, signal?: AbortSignal): Promise<LocalCapabilityResult> {

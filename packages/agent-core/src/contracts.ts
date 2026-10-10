@@ -112,7 +112,7 @@ export function id(value: unknown): string {
 }
 export function modelKey(value: unknown): string {
     const result = bounded(value, 200, 'model key');
-    if (!/^[A-Za-z0-9][A-Za-z0-9._:/+-]*$/u.test(result) || result.includes('://'))
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:/+@-]*$/u.test(result) || result.includes('://'))
         throw new Error('Invalid model key');
     return result;
 }
@@ -402,9 +402,11 @@ export function parseAgentRun(value: unknown): AgentRun {
     const terminal = ['cancelled', 'failed', 'completed', 'interrupted'].includes(status);
     if (x.finalGit !== undefined && !terminal) throw new Error('Final Git evidence requires terminal run');
     if ((status === 'pending' && (startedAt || endedAt)) ||
-        (status !== 'pending' && !startedAt) || terminal !== Boolean(endedAt))
+        (!['pending', 'failed', 'interrupted'].includes(status) && !startedAt) ||
+        terminal !== Boolean(endedAt))
         throw new Error('Invalid run lifecycle timestamps');
-    if (startedAt && startedAt < timestamp(x.createdAt) || endedAt && startedAt && endedAt < startedAt)
+    if (startedAt && startedAt < timestamp(x.createdAt) ||
+        endedAt && endedAt < (startedAt ?? timestamp(x.createdAt)))
         throw new Error('Invalid run timestamp order');
     return freeze({ version: version(x.version), id: id(x.id), taskId: id(x.taskId), status,
         grantId: id(x.grantId), grantRevision: integer(x.grantRevision),

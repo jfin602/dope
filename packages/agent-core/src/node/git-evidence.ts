@@ -6,10 +6,9 @@ import { AGENT_SCHEMA_VERSION, projectPath } from '../contracts';
 import type { ChangeSummary, GitBasis, GitFinal } from '../contracts';
 
 const execute = promisify(execFile);
-// Planning Map intent is project-local Dope state, excluded from agent candidate work.
-// Its presence must not make a newly launched WorkItem task look like a dirty source tree.
-const metadata = (path: string): boolean => path === '.dope/agent' || path.startsWith('.dope/agent/') ||
-    path === '.dope/planning-maps.json';
+// Project-local Dope state is not agent candidate source. Architecture, Software Map,
+// Planning Maps and AgentTask records may all exist before a WorkItem run starts.
+const metadata = (path: string): boolean => path === '.dope' || path.startsWith('.dope/');
 const MAX_OUTPUT = 2 * 1024 * 1024;
 
 async function git(root: string, args: string[]): Promise<string> {

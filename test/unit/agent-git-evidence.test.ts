@@ -25,6 +25,10 @@ test('clean basis precedes run metadata; metadata remains visible but is exclude
     assert.match(basis.head!, /^[a-f0-9]{40}$/);
     await mkdir(join(root, '.dope/agent/runs/run-1'), { recursive: true });
     await writeFile(join(root, '.dope/agent/runs/run-1/run.json'), '{}');
+    await writeFile(join(root, '.dope/architecture.json'), '{}');
+    await writeFile(join(root, '.dope/smap.json'), '{}');
+    await writeFile(join(root, '.dope/planning-maps.json'), '{}');
+    assert.equal((await captureGitBasis(root)).clean, true);
     const final = await captureGitFinal(root, basis);
     assert.equal(final.final.clean, true);
     assert.equal(final.final.metadataChanged, true);

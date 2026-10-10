@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { AgentStore } from '../../packages/agent-core/lib/node/agent-store.js';
@@ -24,12 +24,12 @@ const hosted: any = { version: 1, id: 'hosted', alias: 'Hosted', lifecycle: 'ena
 const contextWindowTokens = 65536;
 function inventory(eligible: boolean): any {
     return { registry: { version: 1, revision: 1, connections: [connection, hosted], models: [{
-        connectionId: 'local', providerModelKey: 'fixture-model', enabled: true, state: 'ready', locality: 'local',
+        connectionId: 'local', providerModelKey: 'fixture-model@q3_k_l', enabled: true, state: 'ready', locality: 'local',
         capabilities: { agentExecution: eligible ? { source: 'adapter-known', value: true } : { source: 'unknown' } }
     }, { connectionId: 'hosted', providerModelKey: 'hosted-model', enabled: true, state: 'ready',
         locality: 'hosted', capabilities: { agentExecution: { source: 'adapter-known', value: true } }
     }] }, observations: [{ connectionId: 'local', health: 'ready' }, { connectionId: 'hosted', health: 'ready' }],
-    loadedLocalModels: [{ connectionId: 'local', providerModelKey: 'fixture-model', contextWindowTokens }] };
+    loadedLocalModels: [{ connectionId: 'local', providerModelKey: 'fixture-model@q3_k_l', contextWindowTokens }] };
 }
 
 test('synthetic Local probe gates exact routing; real broker edit reaches Dope validation and direct promotion',
@@ -38,7 +38,6 @@ test('synthetic Local probe gates exact routing; real broker edit reaches Dope v
         assert.equal(sandbox.available, true, `P14 Not Green: Local OS isolation unavailable: ${sandbox.reason}`);
         const parent = await mkdtemp(join(tmpdir(), 'dope-local-p13-'));
         const root = join(parent, 'project');
-        const source = resolve(import.meta.dirname, '../..');
         const store = new AgentStore();
         let eligible = false;
         let target: 'local' | 'hosted' = 'local';
@@ -68,7 +67,7 @@ test('synthetic Local probe gates exact routing; real broker edit reaches Dope v
             workspace: async request => runtime.localWorkspace(request),
             commands: request => runtime.localCommands(request), transport });
         const routing = { async resolve() { return { resolution: { policyRevision: 7,
-            candidates: [{ target: target === 'local' ? { connectionId: 'local', modelId: 'fixture-model' } :
+            candidates: [{ target: target === 'local' ? { connectionId: 'local', modelId: 'fixture-model@q3_k_l' } :
                 { connectionId: 'hosted', modelId: 'hosted-model' } }] } }; } };
         const hostedAdapter: any = { id: 'hosted-fixture', async start() { hostedStarts++;
             throw new Error('Hosted execution must not start'); }, dispose() {} };
@@ -77,7 +76,12 @@ test('synthetic Local probe gates exact routing; real broker edit reaches Dope v
             new Map([['local', adapter], ['codex', hostedAdapter]]));
         const backend = new AgentRuntimeBackend(store, { notifyAgentStateChanged() {} }, runtime);
         try {
-            await git('git', ['clone', '--quiet', '--shared', source, root]);
+            await mkdir(root);
+            await git('git', ['init', '--quiet', root]);
+            await writeFile(join(root, 'base.txt'), 'clean fixture\n');
+            await git('git', ['-C', root, 'add', 'base.txt']);
+            await git('git', ['-C', root, '-c', 'user.name=Dope Test', '-c', 'user.email=dope@example.invalid',
+                'commit', '--quiet', '-m', 'baseline']);
             const uri = pathToFileURL(root).href;
             const handle = (await backend.attach(uri)).projectHandle;
             const createdAt = new Date(Date.now() - 2000).toISOString();
@@ -87,7 +91,7 @@ test('synthetic Local probe gates exact routing; real broker edit reaches Dope v
                 projectRoot: '.', modelPolicy: { kind: 'follow-coding-agent' }, controls: {},
                 authority: { profile: 'phase-8b-project' }, origin: { kind: 'direct' },
                 completion: { validation: [{ kind: 'test', label: 'candidate contents',
-                    command: 'test "$(cat local-p13.txt)" = changed && ! python3 -c "import socket; socket.socket()"' }],
+                    command: 'test "$(cat local-p13.txt)" = changed && python3 -c "import socket; s=socket.socket(); s.bind((\'127.0.0.1\',0))"' }],
                 requireValidationPass: true } } as any);
             const grant = createDefaultExecutionGrant({ id: 'accepted-p13', revision: 0, taskId,
                 acceptedAt: new Date().toISOString() });
@@ -95,7 +99,7 @@ test('synthetic Local probe gates exact routing; real broker edit reaches Dope v
             assert.deepEqual(await backend.listRuns(handle), []);
             assert.equal(hostedStarts, 0, 'ineligible Local target did not fall back to hosted');
             const probe = new LocalAgentCapabilityProbe(transport as any);
-            assert.equal(await probe.probe(connection, 'fixture-model', async () => inventory(false)), 'supported');
+            assert.equal(await probe.probe(connection, 'fixture-model@q3_k_l', async () => inventory(false)), 'supported');
             assert.equal(projectDataInProbe, false);
             eligible = true;
             target = 'hosted';
@@ -104,7 +108,7 @@ test('synthetic Local probe gates exact routing; real broker edit reaches Dope v
             target = 'local';
             const started = await backend.start(handle, uri, taskId, grant, false);
             assert.equal(started.provenance?.connectionId, 'local');
-            assert.equal(started.provenance?.modelId, 'fixture-model');
+            assert.equal(started.provenance?.modelId, 'fixture-model@q3_k_l');
             assert.equal(started.provenance?.runtimeKind, 'local');
             assert.equal(started.provenance?.adapterId, 'local-lm-studio');
             const done = await runtime.waitForRun(root, started.id);
@@ -117,6 +121,15 @@ test('synthetic Local probe gates exact routing; real broker edit reaches Dope v
             assert.equal(await readFile(join(root, 'local-p13.txt'), 'utf8'), 'changed\n');
             await runtime.reconcile(root);
             assert.equal((await new AgentStore().readRun(root, started.id))?.status, 'completed');
+            await store.createRun(root, { version: 1, id: 'abandoned-before-start', taskId,
+                status: 'pending', grantId: grant.id, grantRevision: grant.revision,
+                requestedPolicy: { kind: 'follow-coding-agent' }, projectRoot: '.',
+                createdAt: new Date().toISOString(), changedFiles: [], validationResults: [] });
+            await runtime.reconcile(root);
+            const abandoned = await new AgentStore().readRun(root, 'abandoned-before-start');
+            assert.equal(abandoned?.status, 'interrupted');
+            assert.equal(abandoned?.startedAt, undefined);
+            assert.equal(abandoned?.outcome?.summary, 'Agent start abandoned before execution');
         } finally {
             await runtime.dispose(); backend.dispose(); await rm(parent, { recursive: true, force: true });
         }

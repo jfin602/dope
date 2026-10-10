@@ -316,6 +316,19 @@ test('sequence stays on its entry after validation and authority failure', async
     assert.deepEqual(stopped.runIds, [first.id, second.id]);
 }));
 
+test('provider failure before required validation retains provider-error truth', async () => fixture(async f => {
+    const task = { ...baseTask(), id: 'task-provider-before-validation', completion: {
+        validation: [{ kind: 'test', label: 'unit', command: 'npm run check' }], requireValidationPass: true } };
+    await f.backend.createTask(f.handle, task as any);
+    const accepted = { ...grant(), id: 'grant-provider-before-validation', taskId: task.id };
+    const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
+    f.adapter.fail('rate limit exceeded');
+    const done = await terminal(f.store, f.root, run.id);
+    assert.equal(done.status, 'failed');
+    assert.equal(done.outcome?.code, 'provider-error');
+    assert.equal(done.validationResults[0].status, 'not-started');
+}));
+
 test('direct execution holds the project slot and Stop interrupts a sequence provider attempt', async () => fixture(async f => {
     const { sequence, accepted } = await preparedSequence(f);
     const direct = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true);

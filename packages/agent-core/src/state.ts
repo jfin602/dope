@@ -2,7 +2,7 @@ import { AgentRunStatus, parseAgentRunStatus } from './contracts';
 
 /** Blocked work can resume only through an explicit runtime decision; terminal attempts never resume. */
 const transitions: Readonly<Record<AgentRunStatus, readonly AgentRunStatus[]>> = {
-    pending: ['running'],
+    pending: ['running', 'failed', 'interrupted'],
     running: ['blocked', 'cancelling', 'failed', 'completed', 'interrupted'],
     blocked: ['running', 'cancelling', 'cancelled', 'completed', 'failed', 'interrupted'],
     // A turn may complete before an in-flight interrupt takes effect.

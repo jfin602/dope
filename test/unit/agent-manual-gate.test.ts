@@ -103,9 +103,9 @@ test('backend verifies an existing external Git checkpoint, persists its SHA and
             return; // Pure gate tests still run after this repository moves to its next version.
         const prior = (await git('git', ['rev-parse', 'HEAD^'], { cwd: root })).stdout.trim();
         const previousPackage = JSON.parse((await git('git', ['show', 'HEAD^:package.json'], { cwd: root })).stdout);
-        const folder = join(root, 'docs/tasks/p8d');
+        const folder = join(root, 'qualification-gates/p8d');
         await mkdir(folder, { recursive: true });
-        await appendFile(join(root, '.git/info/exclude'), '\n/docs/tasks/p8d/\n');
+        await appendFile(join(root, '.git/info/exclude'), '\n/qualification-gates/\n');
         const sources = [
             { filename: 'P1-browser.txt', text: 'TASK: Phase 8 / P1 — Browser work\n' +
                 '- Recommended configuration: `GPT-6 Sol High`.\n- Browser required: yes.\n' +
@@ -115,7 +115,7 @@ test('backend verifies an existing external Git checkpoint, persists its SHA and
                 `The assigned project version is \`0.8.${Number(version[1]) + 1}\`.\n` }
         ];
         for (const source of sources) await writeFile(join(folder, source.filename), source.text);
-        const stack = await importPhaseStack('p8d', sources);
+        const stack = await importPhaseStack('p8d', sources, 'qualification-gates/p8d');
         const sequence = { version: 1, id: 'external-checkpoint', createdAt: now, updatedAt: now,
             status: 'waiting-manual', currentEntryNumber: 1, stack, checkpoints: [],
             basis: { head: prior, packageVersion: previousPackage.version,
@@ -125,7 +125,8 @@ test('backend verifies an existing external Git checkpoint, persists its SHA and
         const backend = new AgentRuntimeBackend(store, { notifyAgentStateChanged() {} });
         const handle = (await backend.attach(pathToFileURL(root).href)).projectHandle;
         const advanced = await backend.reconcileManualGate(handle, sequence.id);
-        assert.equal(advanced.status, 'waiting-manual');
+        assert.equal(advanced.status, 'waiting-manual', JSON.stringify({
+            reason: advanced.blockedReason, message: advanced.gateMessage }));
         assert.equal(advanced.currentEntryNumber, 2);
         assert.equal(advanced.checkpoints[0].sha, current.head);
         assert.deepEqual(advanced.checkpoints[0].preGateBasis, sequence.basis);
@@ -137,15 +138,14 @@ test('backend verifies an existing external Git checkpoint, persists its SHA and
             { kind: 'follow-coding-agent' }, { validation: [], requireValidationPass: false }),
         /not an executable|not ready/);
         backend.dispose();
-        const closeoutFolder = join(root, 'docs/tasks/p8e');
+        const closeoutFolder = join(root, 'qualification-gates/p8e');
         await mkdir(closeoutFolder, { recursive: true });
-        await appendFile(join(root, '.git/info/exclude'), '\n/docs/tasks/p8e/\n');
         const closeoutSource = { filename: 'P1-closeout.txt', text: 'TASK: Phase 8 / P1 — Closeout\n' +
             '- Recommended configuration: `GPT-6 Sol High`.\n- Browser required: no.\n' +
             `The assigned project version is \`${current.packageVersion}\`.\n` };
         await writeFile(join(closeoutFolder, closeoutSource.filename), closeoutSource.text);
         const closeout = { ...sequence, id: 'external-closeout',
-            stack: await importPhaseStack('p8e', [closeoutSource]) };
+            stack: await importPhaseStack('p8e', [closeoutSource], 'qualification-gates/p8e') };
         await store.createSequence(root, closeout);
         const reopened = new AgentRuntimeBackend(store, { notifyAgentStateChanged() {} });
         const reopenedHandle = (await reopened.attach(pathToFileURL(root).href)).projectHandle;

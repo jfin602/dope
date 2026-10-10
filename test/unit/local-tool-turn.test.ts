@@ -34,6 +34,11 @@ test('one LM Studio turn declares bounded tools and returns final text', async (
     assert.equal(sent.stream, false);
 });
 
+test('LM Studio empty tool-call array is a valid final response', async () => {
+    const transport = mock(() => completion({ content: 'Done', tool_calls: [] }));
+    assert.deepEqual(await transport.turn(request()), { kind: 'final', text: 'Done' });
+});
+
 test('valid call is normalized through the P1 tool parser, never executed', async () => {
     const transport = mock(() => completion({ content: null, tool_calls: [{ id: 'call_1', type: 'function',
         function: { name: 'read', arguments: '{"path":"src/main.ts","maxBytes":100}' } }] }, 'tool_calls'));
@@ -41,14 +46,21 @@ test('valid call is normalized through the P1 tool parser, never executed', asyn
         arguments: { path: 'src/main.ts', maxBytes: 100 } }] });
 });
 
-test('malformed JSON, unknown tool, mixed final text and unsupported envelope fail closed', async () => {
+test('LM Studio explanatory content on a tool turn remains inert text', async () => {
+    const transport = mock(() => completion({ content: 'I will inspect the file.', tool_calls: [{ id: 'call_1', type: 'function',
+        function: { name: 'read', arguments: '{"path":"x","maxBytes":1}' } }] }, 'tool_calls'));
+    assert.deepEqual(await transport.turn(request()), { kind: 'tools', calls: [{ id: 'call_1', name: 'read',
+        arguments: { path: 'x', maxBytes: 1 } }], text: 'I will inspect the file.' });
+});
+
+test('malformed JSON, unknown tool and unsupported envelope fail closed', async () => {
     for (const [name, args, kind] of [['read', '{oops', 'invalid-json'],
         ['shell', '{}', 'unsupported-capability']] as const) {
         const transport = mock(() => completion({ content: null, tool_calls: [{ id: 'call_1', type: 'function',
             function: { name, arguments: args } }] }, 'tool_calls'));
         await expectClass(transport.turn(request()), kind);
     }
-    const mixed = mock(() => completion({ content: 'also done', tool_calls: [{ id: 'call_1', type: 'function',
+    const mixed = mock(() => completion({ content: 'x'.repeat(33_000), tool_calls: [{ id: 'call_1', type: 'function',
         function: { name: 'read', arguments: '{"path":"x","maxBytes":1}' } }] }, 'tool_calls'));
     await expectClass(mixed.turn(request()), 'invalid-json');
     await expectClass(mock(() => completion({ content: null }, 'tool_calls')).turn(request()), 'unsupported-capability');

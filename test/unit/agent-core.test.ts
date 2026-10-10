@@ -95,6 +95,12 @@ test('run, event, provenance and evidence records reject unbounded and private f
         changeSummary: { version: 1, filesChanged: 1, insertions: 2, deletions: 1,
             summary: 'One file edited', truncated: false } };
     assert.deepEqual(parseAgentRun(running), running);
+    assert.equal(parseExecutionProvenance({ ...running.provenance,
+        modelId: 'qwen3-coder-30b-a3b-instruct@q3_k_l' }).modelId,
+    'qwen3-coder-30b-a3b-instruct@q3_k_l');
+    const abandoned = { ...run(), status: 'interrupted', endedAt: now,
+        outcome: { code: 'interrupted', summary: 'Agent start abandoned before execution' } };
+    assert.deepEqual(parseAgentRun(abandoned), abandoned);
     assert.equal(Object.isFrozen(parseAgentRun(running).provenance), true);
     for (const change of [{ changedFiles: ['/etc/passwd'] }, { changedFiles: ['../out'] },
         { changedFiles: ['src/a.ts', 'src/a.ts'] }, { changedFiles: ['.git/config'] },
@@ -117,7 +123,8 @@ test('run, event, provenance and evidence records reject unbounded and private f
 test('state transition table is exact and terminal statuses cannot resume', () => {
     assert.deepEqual(RUN_STATUSES, ['pending', 'running', 'blocked', 'cancelling',
         'cancelled', 'failed', 'completed', 'interrupted']);
-    const legal = new Set(['pending>running', 'running>blocked', 'running>cancelling',
+    const legal = new Set(['pending>running', 'pending>failed', 'pending>interrupted',
+        'running>blocked', 'running>cancelling',
         'running>failed', 'running>completed', 'running>interrupted',
         'blocked>running', 'blocked>cancelling', 'blocked>cancelled', 'blocked>completed',
         'blocked>failed', 'blocked>interrupted',
