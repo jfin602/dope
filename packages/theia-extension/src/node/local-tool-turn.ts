@@ -16,6 +16,10 @@ export type LocalToolTurn =
     | { kind: 'final'; text: string }
     | { kind: 'tools'; calls: readonly LocalToolRequest[] };
 
+export type LocalTurnMessage = { role: 'system' | 'user' | 'assistant' | 'tool'; content: string;
+    tool_call_id?: string; tool_calls?: readonly { id: string; type: 'function';
+        function: { name: string; arguments: string } }[] };
+
 export interface LocalToolTurnRequest {
     connection: AIConnection;
     credential?: string;
@@ -23,7 +27,7 @@ export interface LocalToolTurnRequest {
     loadedModelIds: readonly string[];
     budget: LocalContextBudget;
     inventory: () => Promise<AIInventoryState>;
-    messages: readonly { role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }[];
+    messages: readonly LocalTurnMessage[];
     signal?: AbortSignal;
     timeoutMs?: number;
     maxOutputTokens?: number;
@@ -73,7 +77,9 @@ export class LocalToolTurnTransport {
             throw failure('Invalid Local turn limits', 'nonretryable-provider');
         if (!Array.isArray(request.messages) || request.messages.length < 1 ||
             !request.messages.every(item => ['system', 'user', 'assistant', 'tool'].includes(item.role) &&
-                typeof item.content === 'string' && (!item.tool_call_id || typeof item.tool_call_id === 'string')))
+                typeof item.content === 'string' && (!item.tool_call_id ||
+                    item.role === 'tool' && typeof item.tool_call_id === 'string') &&
+                (!item.tool_calls || item.role === 'assistant' && Array.isArray(item.tool_calls))))
             throw failure('Invalid Local turn messages', 'nonretryable-provider');
         if (!(request.budget instanceof LocalContextBudget) || typeof request.inventory !== 'function')
             throw failure('Local context budget unavailable', 'nonretryable-provider');
