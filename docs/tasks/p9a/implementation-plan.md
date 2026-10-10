@@ -2,7 +2,7 @@
 
 Date: 2026-10-10
 Status: **PLANNED / NOT ACTIVATED**
-Qualified source: Phase 8 `0.8.47`; separate owner activation must establish coherent `0.9.0` before P1. P1–P6 targets `0.9.1`–`0.9.6`.
+Qualified product source: Phase 8 `0.8.47` / `bcc5cb8`; the owner separately established coherent `0.9.0` baseline at `e250a07` (see `docs/planning/p9/baseline.md`). **Implementation activation remains pending** before P1. P1–P6 targets `0.9.1`–`0.9.6`.
 
 ## Concrete code ownership
 
@@ -20,7 +20,7 @@ Qualified source: Phase 8 `0.8.47`; separate owner activation must establish coh
 
 ## Efficiency and version policy
 
-Each P1–P5 prompt owns its target patch and must coherently update all 13 root/app/package manifests and pinned internal `@dope/*` dependency versions. Runner does not bump versions. Never pre-bump from `0.8.47`: a separately owner-approved coherent `0.9.0` transition is mandatory before execution. Preserve unrelated dependencies, `yarn.lock`, user worktree and historical evidence; no `package-lock.json`.
+Each P1–P5 prompt owns its target patch and must coherently update all 13 root/app/package manifests and pinned internal `@dope/*` dependency versions. Runner does not bump versions. The separately owner-approved coherent `0.9.0` transition has been committed; P1 must start only after a further explicit Phase 9 implementation activation and then advance to `0.9.1` during implementation. Preserve unrelated dependencies, `yarn.lock`, user worktree and historical evidence; no `package-lock.json`.
 
 P1–P4 are narrow <=8-minute implementation-plus-focused-test targets, 10-minute soft/15-minute hard. P2 security may justify longer rather than weaker enforcement. P5 T2 integration and P6 manual evidence audit may exceed ordinary budget. `npm run check` already nests typecheck, product tests and browser/Electron builds, so reserve it and real GUI Dope Builds Dope for 9E. No repeated full build, broad tests or model calls in 9A. Tests import compiled `lib`; compile only changed packages when needed.
 
