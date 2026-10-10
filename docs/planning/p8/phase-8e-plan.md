@@ -1,6 +1,6 @@
 # Phase 8E Plan — Local Coding Agent Compatibility
 
-Status: **GREEN / QUALIFIED 2026-10-10 at committed `0.8.47` source `bcc5cb8`; Product Phase 8 remains open.** The approved plan and activation history below are retained; see `docs/tasks/p8e/closeout.md` for observed scope and limits.
+Status: **GREEN / QUALIFIED 2026-10-10 at committed `0.8.47` source `bcc5cb8`; Product Phase 8 subsequently OWNER-CLOSED / GREEN for approved scope (2026-10-10).** This plan and its activation history are retained; see `docs/tasks/p8e/closeout.md` for observed scope and `docs/planning/p8/phase-8-closeout.md` for owner disposition. Phase 9 not activated.
 Date: 2026-10-09
 Prerequisite: Phase 8D **GREEN / QUALIFIED** at exact source `8748cb4870e8cac3d2a5aca4a05623b5f3d747ec`, package `0.8.33`, through `docs/tasks/c8-fix/closeout.md` (cycle 2 of 5).
 Owner-authorized version continuation: P1 moves `0.8.33` to `0.8.34` during implementation; P2–P13 through `0.8.46`, manual P14 qualifies `0.8.47`. P1–P14 authored in `docs/tasks/p8e/` are activated by the 2026-10-10 owner instruction; this documentation does not bump manifests. See `docs/planning/p8/phase-8e-activation.md`.

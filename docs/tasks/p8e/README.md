@@ -1,6 +1,6 @@
 # Phase 8E — Local Coding Agent Compatibility
 
-Status: **GREEN / QUALIFIED 2026-10-10 at committed `0.8.47` source `bcc5cb8`**; see [P14 closeout](closeout.md). Product Phase 8 remains open pending owner closure.
+Status: **GREEN / QUALIFIED 2026-10-10 at committed `0.8.47` source `bcc5cb8`**; see [P14 closeout](closeout.md). Product Phase 8 was subsequently **OWNER-CLOSED / GREEN** for approved scope (see [owner closeout](../../planning/p8/phase-8-closeout.md)); Phase 9 not activated.
 Mode: Product Phase 8 continuation slice E. Previous qualified source: clean `0.8.33`, `8748cb4870e8cac3d2a5aca4a05623b5f3d747ec` (8D Green via `c8-fix` P6 cycle 2). Exact Phase 8D history remains in `docs/tasks/c8-fix/closeout.md`; original `docs/tasks/p8d/closeout.md` Not Green remains historical.
 Owner-authorized P1–P14 continuation reached `0.8.47` across all 13 manifests/internal references. The earlier P1 zero-change preflight stop remains historical.
 Authority: ADR 0032, ADR 0004/0026/0027/0028/0029/0031, `docs/planning/p8/phase-8e-plan.md` and `docs/stability-contract.md`.
@@ -35,6 +35,8 @@ AI Center's LM Studio connection now qualifies a loaded local model for Coding A
 P1 and P3–P12 are each a narrow <=8-minute implementation-plus-focused-validation target (10-minute soft ceiling, 15-minute hard budget); avoid crosscutting refactors. P2 has a justified security feasibility gate that may exceed normal timing if the host sandbox requires diagnosis; never reduce isolation to meet a budget. P13 is dedicated T2 integration and P14 is the sole browser/manual T3 closeout. No blanket `npm test`, `npm run check`, browser/Electron build or package/install after individual implementation prompts. Tests import compiled `lib/` from changed packages: compile only affected outputs once when necessary; do not test stale output. P13 registers newly added focused tests once in `test:product`; P14 runs one final exact-candidate `npm run check` (already includes typecheck, test suite, browser and Electron builds), plus only truly omitted suites/security/native gates when required. Cheap `git diff --check` per source change.
 
 ## Execution gate / limits
+
+**Historical execution instructions below:** P1–P14 and the P14 closeout have completed. Do not rerun this stack or infer Phase 9 activation from these earlier instructions. Product Phase 8 is owner-closed on `0.8.47`.
 
 This stack was **OWNER-ACTIVATED on 2026-10-10**, recorded at `docs/planning/p8/phase-8e-activation.md`. Verify coherent `0.8.33` local source and preserve dirty work; P1 must advance versions during implementation. The earlier P1 zero-change preflight stop is not a completed checkpoint. Activation does not prove a local model or OS sandbox ready.
 

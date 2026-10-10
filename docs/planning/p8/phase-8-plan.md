@@ -1,6 +1,6 @@
 # Product Phase 8 — Coding Agent / Scoped Delegation Plan
 
-Status: **PHASE 8 ACTIVE / PHASE 8D GREEN / QUALIFIED at `0.8.33` (`8748cb4`), c8-fix P6 cycle 2 (2026-10-09).** Original p8d P13 Not Green is historical; Phase 8E is OWNER-ACTIVATED for implementation (2026-10-10), NOT QUALIFIED. Phase 8 is not closed.
+Status: **PRODUCT PHASE 8 OWNER-CLOSED / GREEN / QUALIFIED for approved 8A–8E scope at `0.8.47` source `bcc5cb8` (2026-10-10).** Original 8D P13 Not Green remains historical; c8-fix later qualified 8D at `0.8.33`. Phase 8E P14 qualified local coding-agent execution at `0.8.47`. See `docs/planning/p8/phase-8-closeout.md`. Phase 9 remains NOT ACTIVATED.
 Date: 2026-10-05
 Expected package family after activation: `0.8.x`
 Activation baseline: coherent `0.8.0` from owner sequencing waiver after retained `c7-chat-project-grounding` Not Green
@@ -220,7 +220,7 @@ Route: `/prompt-ass -> /prompt-plan -> /prompt-write c8-chat-work-ui`; prefer bo
 
 ## 8D — General Scoped Delegation
 
-**GREEN / QUALIFIED at `0.8.33` source `8748cb4`, c8-fix P6 cycle 2 (2026-10-09).** ADR 0031 is the accepted authority. Original p8d P13 remained Not Green on its exact earlier candidate and is preserved in `docs/tasks/p8d/closeout.md`; the later correction `docs/tasks/c8-fix/closeout.md` separately proved two real saved WorkItem/Codex executions, required Dope-owned frozen validation, accepted/rejected review, authority, steering, map impact and restart, plus a passing exact-source `npm run check`. Historical 8A–8C and c8-work-mode Green records remain independent. **8E requires separate activation; no Phase 8 closure.**
+**GREEN / QUALIFIED at `0.8.33` source `8748cb4`, c8-fix P6 cycle 2 (2026-10-09).** ADR 0031 is the accepted authority. Original p8d P13 remained Not Green on its exact earlier candidate and is preserved in `docs/tasks/p8d/closeout.md`; the later correction `docs/tasks/c8-fix/closeout.md` separately proved two real saved WorkItem/Codex executions, required Dope-owned frozen validation, accepted/rejected review, authority, steering, map impact and restart, plus a passing exact-source `npm run check`. Historical 8A–8C and c8-work-mode Green records remain independent. **8E was subsequently activated and qualified, and the owner closed Phase 8 for approved scope on 2026-10-10.**
 
 After phase-stack execution is reliable, generalize the same substrate.
 
@@ -242,7 +242,7 @@ Do not implement continuous state alignment; that remains Phase 10.
 
 ## 8E — Local coding-agent compatibility
 
-**OWNER-ACTIVATED FOR IMPLEMENTATION ON 2026-10-10; NOT QUALIFIED.** The owner approved the authored P1–P14 stack after the 8D Green prerequisite at `0.8.33` source `8748cb4`. An earlier P1 attempt stopped at the now-satisfied activation preflight with no changed files or checkpoint. P1 must advance all 13 manifests and pinned internal versions from `0.8.33` to `0.8.34` during implementation; P2–P14 follow through manual `0.8.47`. See `docs/planning/p8/phase-8e-activation.md`, ADR 0032 and the 8E plan. LM Studio Chat/synthesis does not itself provide an `AgentExecutionAdapter`.
+**HISTORICAL 8E ACTIVATION / LATER GREEN / QUALIFIED at `0.8.47` source `bcc5cb8` (2026-10-10).** The owner activated P1–P14 after the 8D Green prerequisite. The initial P1 zero-change preflight stop was resolved, and implementation progressed to the real P14 GUI local Qwen/OS sandbox/Dope validation and hosted comparison with a passing exact-source aggregate. See `docs/tasks/p8e/closeout.md` for observed scope/limits. The owner subsequently closed Product Phase 8 at unchanged `0.8.47`; Phase 9 remains inactive (`docs/planning/p8/phase-8-closeout.md`).
 
 Use representative identical AgentTasks/Sequences to compare:
 - completion correctness;

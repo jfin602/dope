@@ -197,11 +197,11 @@ Foundation Spike 0 — qualify Theia
 -> Phase 7A — AI Presence
 -> Phase 7B — AI Center
 -> Phase 7C — AI Roles & Routing
--> Phase 8 — Living Software Knowledge Model
--> Phase 9 — Scoped Delegation
--> Phase 10 — Development Sessions
+-> Phase 8 — Coding Agent / Scoped Delegation (owner-closed Green at 0.8.47)
+-> Phase 9 — Development Sessions (next; not activated)
+-> Phase 10 — Living Software Knowledge Model
 
-Phase 8 turns the accepted Software Map into a continuously checked Living Software Knowledge Model before mutation-capable delegation begins. Source/runtime evidence, canonical map state, documentation and formal contracts become linked knowledge evidence; deterministic impact analysis runs first, while compact local-model semantic checks maintain alignment in the background and surface durable drift findings. Continuous monitoring is local-first and resource-aware; hosted inference is explicit escalation only and never a silent paid/background fallback.
+Phase 8 establishes Dope-owned Coding Agent execution, bounded delegation from WorkItems, Prompt Stack recovery, explicit developer authority, frozen-candidate validation/review, and provider-independent hosted and local agent adapters. Phase 9 will integrate those capabilities into durable Development Sessions after separate owner activation. Phase 10 will then build the Living Software Knowledge Model: continuous source/runtime, canonical map, documentation and contract alignment using deterministic-first evidence and resource-aware local semantic checks, with hosted escalation only by explicit approval.
 
 Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map core remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The later architecture-synthesis corrections remain truthful owner-closed Not Qualified history with useful implementation retained; `c4-smap-storage` and `c4-color-theme` closed Green. Owner closeout advanced only the package baseline to `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 5 — Visual Software Planning was subsequently owner-closed for sequencing with P11 still Not Green and P12 unexecuted; the retained implementation remains available without a retroactive Green claim. The owner-close transition established coherent `0.6.0` for Product Phase 6 — Flow under ADR 0020. The fresh provider comparison remains deferred; general AI Presence is Product Phase 7.
 
@@ -238,7 +238,7 @@ Desired completion feeling:
 
 ## Current gate
 
-**Phase 8E — GREEN / QUALIFIED (October 10, 2026) on committed `0.8.47` source `bcc5cb8`.** The [P14 closeout](tasks/p8e/closeout.md) records real GUI local Qwen3-Coder Direct Work and saved WorkItem runs, OS-enforced tool containment, Dope-owned frozen-candidate validation/review, reconnect and cancellation checks, an equal hosted Codex comparison and a passing exact-source aggregate. Product Phase 8 remains open pending owner closure. Phase 8D remains separately Green at committed `0.8.33` source `8748cb4` through the [c8-fix P6 closeout](tasks/c8-fix/closeout.md). Phase 8A–8C, the real Adaptive SEO Prompt Stack and `c8-work-mode` retain their separate Green records; conversational/synthesis support alone remains insufficient for coding-agent execution.
+**Product Phase 8 — OWNER-CLOSED / GREEN / QUALIFIED for approved scope (2026-10-10), committed `0.8.47` source `bcc5cb8`.** The [owner closeout](planning/p8/phase-8-closeout.md) consolidates 8A–8E. The [P14 closeout](tasks/p8e/closeout.md) records real local Qwen GUI Direct Work and saved WorkItem runs, OS-enforced containment, Dope-owned frozen validation/review, cancellation/reconnect, hosted Codex comparison and passing aggregate. Phase 8D remains separately Green at `0.8.33` source `8748cb4` through [c8-fix](tasks/c8-fix/closeout.md); original P13 Not Green remains historical. **Phase 9 is next, NOT ACTIVATED.**
 
 P12 `0.8.32` was `09fe3bcd`. The originally local P13 `0.8.33` manifests, three test changes and Not Green evidence are now preserved in commit `cd9133b`; its failed closeout remains historical. Correction P1–P5 then repaired the disconnected saved WorkItem Start and required validation path. P6 cycle 2 observed two real hosted Codex AgentRuns from exact persisted WorkItem tasks, Dope-owned frozen-candidate validation, one accepted and one rejected review, and explicit map-impact/restart/authority/steering evidence; the full aggregate passed on `8748cb4`. This later result qualifies 8D without rewriting the earlier P13 failure. See [8D planning/status](planning/p8/phase-8d-plan.md).
 

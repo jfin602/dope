@@ -262,6 +262,8 @@ If future autonomous process execution claims containment, that claim requires a
 
 ## Product Phase 8 — Coding Agent / Scoped Delegation qualification
 
+**Owner closeout (2026-10-10): Phase 8 is OWNER-CLOSED / GREEN / QUALIFIED for its approved 8A–8E scope** at committed `0.8.47` source `bcc5cb8`, supported by the exact-source P14 evidence. See `docs/planning/p8/phase-8-closeout.md`. This does not qualify unobserved live local-model failure variants, packaged-native deployment, Phase 9 sessions or Phase 10 alignment.
+
 Phase 8 is not Green merely because a model can edit files. Qualification must prove Dope-owned execution, authority, sequence recovery and review semantics.
 
 ### Codex AI Center / reference adapter gate
@@ -363,7 +365,7 @@ Before 8E Green, **directly prove**:
 - representative matching tasks compare local model and previously qualified Codex by correctness, tool-call reliability, context, latency, validation and recovery; model capability deficiencies are reported, not used to weaken Dope's security or quality gates;
 - real Dope GUI/local inference, denial/restart evidence and a **passing final exact-candidate `npm run check`** plus only separate materially required T3 evidence. No claim of native installer production qualification unless actual native evidence is collected.
 
-The earliest local qualifying task may be small and achievable; matching Codex quality on difficult tasks is not necessary. The adapter and security architecture, not benchmark supremacy, are the gating objectives. P14 qualified the observed 8E scope on 2026-10-10; this does not close Product Phase 8 or activate Phase 9. See ADR 0032, `docs/planning/p8/phase-8e-plan.md` and `docs/tasks/p8e/closeout.md`.
+The earliest local qualifying task may be small and achievable; matching Codex quality on difficult tasks is not necessary. The adapter and security architecture, not benchmark supremacy, are the gating objectives. P14 qualified the observed 8E scope on 2026-10-10; the owner subsequently closed Product Phase 8 for approved scope on the same date (`docs/planning/p8/phase-8-closeout.md`). This does not activate Phase 9. See ADR 0032, `docs/planning/p8/phase-8e-plan.md` and `docs/tasks/p8e/closeout.md`.
 
 ## Product Phase 5 — Visual Software Planning qualification
 
