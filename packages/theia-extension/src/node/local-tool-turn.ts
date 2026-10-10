@@ -1,8 +1,10 @@
 import type { AIConnection } from '@dope/ai';
+import type { AIInventoryState } from '@dope/contracts/lib/ai-registry-service';
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import { LOCAL_TOOL_LIMITS, parseLocalToolRequests } from '@dope/agent-core/lib/node/local-tool-contracts';
 import type { LocalToolRequest } from '@dope/agent-core/lib/node/local-tool-contracts';
 import { providerSetup } from './provider-setup';
+import { LocalContextBudget } from './local-context-budget';
 
 const MAX_RESPONSE_BYTES = 131_072;
 const MAX_TEXT_BYTES = 32_768;
@@ -19,6 +21,8 @@ export interface LocalToolTurnRequest {
     credential?: string;
     modelId: string;
     loadedModelIds: readonly string[];
+    budget: LocalContextBudget;
+    inventory: () => Promise<AIInventoryState>;
     messages: readonly { role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }[];
     signal?: AbortSignal;
     timeoutMs?: number;
@@ -63,7 +67,7 @@ export class LocalToolTurnTransport {
         if (request.credential !== undefined && (!request.credential || /[\r\n]/u.test(request.credential)))
             throw failure('Invalid Local credential', 'connection-unavailable');
         const timeoutMs = request.timeoutMs ?? 30_000;
-        const maxOutputTokens = request.maxOutputTokens ?? MAX_OUTPUT_TOKENS;
+        const maxOutputTokens = request.maxOutputTokens ?? request.budget?.maxOutputTokens;
         if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_TIMEOUT_MS ||
             !Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1 || maxOutputTokens > MAX_OUTPUT_TOKENS)
             throw failure('Invalid Local turn limits', 'nonretryable-provider');
@@ -71,9 +75,14 @@ export class LocalToolTurnTransport {
             !request.messages.every(item => ['system', 'user', 'assistant', 'tool'].includes(item.role) &&
                 typeof item.content === 'string' && (!item.tool_call_id || typeof item.tool_call_id === 'string')))
             throw failure('Invalid Local turn messages', 'nonretryable-provider');
+        if (!(request.budget instanceof LocalContextBudget) || typeof request.inventory !== 'function')
+            throw failure('Local context budget unavailable', 'nonretryable-provider');
+        if (maxOutputTokens > request.budget.maxOutputTokens)
+            throw failure('Local output reserve exceeded', 'nonretryable-provider');
         const body = JSON.stringify({ model: request.modelId, messages: request.messages, tools,
             tool_choice: 'auto', stream: false, temperature: 0, max_tokens: maxOutputTokens });
         if (Buffer.byteLength(body) > MAX_INPUT_BYTES) throw failure('Local turn input too large', 'nonretryable-provider');
+        request.budget.prepareTurn(await request.inventory(), request.messages, 0, Buffer.byteLength(body));
         const signal = AbortSignal.any([request.signal ?? new AbortController().signal, AbortSignal.timeout(timeoutMs)]);
         if (signal.aborted) throw failure('Local turn cancelled or timed out', 'cancelled');
         let response: Response;
@@ -130,14 +139,18 @@ export class LocalToolTurnTransport {
                 catch { throw failure('Invalid Local tool arguments', 'invalid-json'); }
                 return { id: call.id, name: call.function.name, arguments: args };
             });
-            try { return { kind: 'tools', calls: parseLocalToolRequests(JSON.stringify(normalized)) }; }
+            let calls: readonly LocalToolRequest[];
+            try { calls = parseLocalToolRequests(JSON.stringify(normalized)); }
             catch { throw failure('Unsupported or invalid Local tool request', 'unsupported-capability'); }
+            request.budget.recordToolCalls(calls.length);
+            request.budget.recordOutput(JSON.stringify(calls));
+            return { kind: 'tools', calls };
         }
         if (message.tool_calls !== undefined && message.tool_calls !== null || choice.finish_reason === 'tool_calls')
             throw failure('Local runtime returned incompatible tool calls', 'unsupported-capability');
         if (choice.finish_reason !== 'stop' || typeof message.content !== 'string' ||
             Buffer.byteLength(message.content, 'utf8') > MAX_TEXT_BYTES)
             throw failure('Invalid or oversized Local final text', 'invalid-json');
-        return { kind: 'final', text: message.content };
+        return { kind: 'final', text: request.budget.recordOutput(message.content, true) };
     }
 }

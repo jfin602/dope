@@ -1,6 +1,6 @@
 {
   "name": "@dope/project-intelligence",
-  "version": "0.8.39",
+  "version": "0.8.40",
   "private": true,
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -8,6 +8,6 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@dope/contracts": "0.8.39"
+    "@dope/contracts": "0.8.40"
   }
 }

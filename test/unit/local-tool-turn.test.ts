@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LocalToolTurnTransport } from '../../packages/theia-extension/lib/node/local-tool-turn.js';
+import { LocalContextBudget } from '../../packages/theia-extension/lib/node/local-context-budget.js';
 
 const connection = (endpoint = 'http://127.0.0.1:1234/v1') => ({ version: 1 as const, id: 'local', alias: 'Local',
     lifecycle: 'enabled' as const, config: { type: 'local' as const, runtime: 'lm-studio' as const, endpoint } });
+const inventory = (endpoint?: string): any => ({ registry: { revision: 1,
+    connections: [connection(endpoint)], models: [{ connectionId: 'local', providerModelKey: 'loaded-model',
+        enabled: true, state: 'ready' }] }, loadedLocalModels: [{ connectionId: 'local',
+        providerModelKey: 'loaded-model', contextWindowTokens: 65536 }] });
 const request = (endpoint?: string) => ({ connection: connection(endpoint), modelId: 'loaded-model',
-    loadedModelIds: ['loaded-model'], messages: [{ role: 'user' as const, content: 'Do work' }] });
+    loadedModelIds: ['loaded-model'], budget: new LocalContextBudget('local', 'loaded-model', inventory(endpoint)),
+    inventory: async () => inventory(endpoint), messages: [{ role: 'user' as const, content: 'Do work' }] });
 const completion = (message: object, finish_reason = 'stop') =>
     new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', ...message }, finish_reason }] }), { status: 200 });
 const mock = (reply: (url: string, init: RequestInit) => Promise<Response> | Response) =>
@@ -23,7 +29,7 @@ test('one LM Studio turn declares bounded tools and returns final text', async (
     });
     assert.deepEqual(await transport.turn(request()), { kind: 'final', text: 'Done' });
     assert.equal(sent.model, 'loaded-model');
-    assert.equal(sent.max_tokens, 1024);
+    assert.equal(sent.max_tokens, 512);
     assert.deepEqual(sent.tools.map((tool: any) => tool.function.name), ['read', 'list', 'edit', 'process']);
     assert.equal(sent.stream, false);
 });
