@@ -249,7 +249,7 @@ React Flow/browser presentation does not own Flow discovery, aggregation, eviden
 Phase 6 requires no model provider, AI Presence, mutation authority, mandatory live tracing, Planning Map Flow editing or new durable Flow store.
 
 
-## Phase 9 — Development Sessions boundary (design approved; not activated)
+## Phase 9 — Development Sessions boundary (9A owner-activated; not qualified)
 
 A `DeveloperSession` is a **Dope-owned, optional organizational workspace**, not a new Agent Runtime, Chat, Planning Map, Project Mind artifact owner or source of authority. It binds to the canonical attached project and references existing stable identities: Chat IDs; Planning Map IDs; WorkItem (`mapId`, `workItemId`); AgentTask/AgentRun/AgentTaskSequence IDs; optional Project Mind decision/idea and Software Map IDs. Multiple references of each kind and shared membership across sessions are allowed. No transcripts, graph data, candidate diffs, validation records or accepted decisions are copied into session persistence.
 
@@ -261,7 +261,7 @@ Session progress distinguishes developer-completed WorkItems, AgentRun terminal 
 
 The retained Phase 5 P11 Not Green/P12 unexecuted end-to-end Planning qualification requires **one targeted PlanningMap -> WorkItem -> authorized AgentTask -> Dope-owned validation/review replay** before Phase 9 claims full continuity. This does not retroactively qualify Phase 5 or authorize a map redesign. Final T3 must demonstrate a real Dope Builds Dope session with restart/resume and non-session regressions.
 
-Authority: **ADR 0033** and `docs/planning/p9/phase-9-plan.md`. Phase 9 is **NEXT / NOT OWNER-ACTIVATED**; current qualified source remains `0.8.47`. No `0.9.0` manifest or session runtime is created by this documentation.
+Authority: **ADR 0033** and `docs/planning/p9/phase-9-plan.md`. Phase 9 is **ACTIVE for 9A P1–P6 only / NOT QUALIFIED**, owner-activated on 2026-10-10 (`docs/planning/p9/activation.md`). A coherent `0.9.0` baseline exists at `e250a07` and P1 must advance it to `0.9.1` during implementation; this documentation does not create a session runtime or alter manifests. Last qualified product source remains Phase 8 `0.8.47` / `bcc5cb8`.
 
 ## Model and provider boundary
 
