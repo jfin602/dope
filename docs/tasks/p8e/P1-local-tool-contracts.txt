@@ -7,11 +7,14 @@ MODEL / REASONING / USAGE
 VERSIONING
 - The assigned project version is `0.8.34`.
 
+VERSION TRANSITION — REQUIRED
+Implement on the Git-proven prior version `0.8.33` (or explicitly preserved interrupted same-prompt work already at `0.8.34`). DURING P1, update all 13 root/app/package `package.json` version fields and every pinned internal `@dope/*` dependency reference to `0.8.34` in lockstep. The runner checks the target before its successful checkpoint but DOES NOT bump versions. Preserve unrelated dependency versions, yarn.lock, evidence and dirty work; do not create package-lock.json or manually commit. Verify coherence in cheap checks before final reporting; do not run a broad build solely for this version transition.
+
 GOAL / IMPLEMENT
 Define small, adapter-internal typed Local tool-call/request/result contracts (read/list/edit/process, IDs, bounded argument sizes, terminal status) in the agent adapter layer. Strictly parse only explicitly supported tool names/arguments/IDs, reject malformed/mixed/truncated/unknown JSON, duplicate tool IDs, nested unbounded structures, absolute/traversal paths and unsupported effect kinds. Never allow model text to name new tools or change permissions. Keep provider wire-format translation at the boundary; do not change canonical AgentTask/AgentRun schemas. This P1 parses requests only; it executes zero tools.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, ADR 0032 and docs/planning/p8/phase-8e-plan.md; inspect only affected source, related tests and package scripts before changes. Confirm explicitly owner-activated p8e from coherent committed 0.8.33; an authored prompt stack does not itself authorize execution. Preserve accepted 8D source/evidence and existing files/dirty state.
+Read BOOT.md, AGENTS.md, ADR 0032 and docs/planning/p8/phase-8e-plan.md; inspect only affected source, related tests and package scripts before changes. The owner explicitly activated 8E on 2026-10-10 in docs/planning/p8/phase-8e-activation.md. Verify this file is present, preserve the actual prior prompt Git/version basis (P1 predecessor `0.8.33`) and any dirty work; earlier 'not activated' planning snapshots are historical. Preserve accepted 8D source/evidence and existing files/dirty state.
 
 PRESERVE
 Preserve provider-neutral AgentTask/AgentRun/AgentTaskSequence and WorkItem semantics, the developer-accepted fixed ExecutionGrant, ADR 0028 isolated ExecutionWorkspace -> CandidateDelta -> authoritative promotion, ADR 0029 Dope-owned required validation, ADR 0031 held candidate review, and direct Work/Prompt Stack/Codex behavior. Model tool requests grant no authority. Deny network, secrets, private home, outside-root, Git writes/history, destructive/system and unapproved effects; no unsandboxed fallback, direct authoritative writes, hidden reasoning, hosted egress or model-initiated privilege escalation. No 8E qualification before the final T3 gate.

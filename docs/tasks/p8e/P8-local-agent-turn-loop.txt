@@ -7,11 +7,14 @@ MODEL / REASONING / USAGE
 VERSIONING
 - The assigned project version is `0.8.41`.
 
+VERSION TRANSITION — REQUIRED
+Implement on the Git-proven prior version `0.8.40` (or explicitly preserved interrupted same-prompt work already at `0.8.41`). DURING P8, update all 13 root/app/package `package.json` version fields and every pinned internal `@dope/*` dependency reference to `0.8.41` in lockstep. The runner checks the target before its successful checkpoint but DOES NOT bump versions. Preserve unrelated dependency versions, yarn.lock, evidence and dirty work; do not create package-lock.json or manually commit. Verify coherence in cheap checks before final reporting; do not run a broad build solely for this version transition.
+
 GOAL / IMPLEMENT
 Join P6 one-turn Local transport, P7 observed context limits and P1 tool contracts into one provider-specific but Dope-owned bounded loop: send selected model prompt/tools, normalize assistant final output OR tool calls, call P3–P5 broker only under the accepted ExecutionGrant and P2 sandbox, return bounded tool results to the same selected model, repeat up to strict finite turn/tool/byte/token limits. Correlate stable tool-call IDs and terminal results; emit sanitized existing agent-message/command/file/status/authority-denied observations, not raw provider messages or hidden reasoning. Reject invalid/missing/duplicate tool IDs, unknown handlers, contradictory finishes, repeated no-progress, context overflow and revoked/disposed run; stop immediately on AbortSignal. Do not introduce provider-native AgentTask/AgentRun or direct project writes.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, ADR 0032 and docs/planning/p8/phase-8e-plan.md; inspect affected source/tests. Verify explicit owner activation and coherent prior 0.8.33 source; drafted task files do not authorize execution. Preserve all 8D/c8-fix evidence and current project worktrees.
+Read BOOT.md, AGENTS.md, ADR 0032 and docs/planning/p8/phase-8e-plan.md; inspect affected source/tests. The owner explicitly activated 8E on 2026-10-10 (docs/planning/p8/phase-8e-activation.md). Verify that record, predecessor P7 checkpoint/version `0.8.40` and any intentional dirty continuation; do not require all later prompts to begin from 0.8.33. Preserve all 8D/c8-fix evidence and current project worktrees.
 
 PRESERVE
 Preserve provider-independent task/run/sequence and AI Center model identity, fixed developer ExecutionGrant, real OS-enforced sandbox (P2), brokered workspace-only tools (P3–P5), frozen CandidateDelta, Dope-owned required validation and Authority/ToolExecutor promotion, WorkItem review, Git/checkpoints, cancellation/restart and prior Codex/direct Work/Prompt Stack Green. Local requests cannot access real project root, private home/secrets, Git write/history, network/host loopback or outside roots. Never silently fall back to hosted inference or forge granted consent.

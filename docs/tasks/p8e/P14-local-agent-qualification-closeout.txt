@@ -7,11 +7,14 @@ MODEL / REASONING / USAGE
 VERSIONING
 - The assigned project version is `0.8.47`.
 
+VERSION TRANSITION — REQUIRED
+P14 is the SOLE manual T3 closeout. After P13 is verified at `0.8.46`, advance all 13 root/app/package versions and pinned internal `@dope/*` references to `0.8.47` BEFORE exact-candidate GUI/model qualification and npm run check. Create a legitimate separate source/version checkpoint before the evidence-only final Green closeout. Re-run invalidated checks if repairs change source. Never claim Green on `0.8.46`, fabricate a checkpoint, create package-lock.json or automatically close Product Phase 8.
+
 GOAL
 Qualify Phase 8E through REAL Dope GUI execution with a genuinely tool-capable LOCAL LM Studio model (prefer an available Qwen3-Coder model, but never invent local model availability), actual enforced local-tool OS sandbox, developer-granted source editing, Dope-owned candidate validation and review, preserved hosted Codex behavior, and one passing full aggregate on the final exact candidate. Record GREEN / NOT GREEN, without automatically closing Phase 8 or activating Phase 9.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, ADR 0032, docs/planning/p8/phase-8e-plan.md, docs/stability-contract.md and P1–P13 implementation evidence. Confirm actual 0.8.47 manifests, coherent Git HEAD/dirty basis, Linux host permissions/sandbox installation and REAL running LM Studio Local connection with a loaded tool-capable model and measured context. Verify P2 broker OS denial proof before any model-issued tools. Use a disposable clean Git project with trivial executable tests, not the developer's Dope or Adaptive SEO source for mutation. Historical 8D Green qualified source 8748cb4 and original p8d P13 Not Green must remain preserved.
+Read BOOT.md, AGENTS.md, the 2026-10-10 activation record docs/planning/p8/phase-8e-activation.md, ADR 0032, docs/planning/p8/phase-8e-plan.md, docs/stability-contract.md and P1–P13 implementation evidence. Confirm actual 0.8.47 manifests, coherent Git HEAD/dirty basis, Linux host permissions/sandbox installation and REAL running LM Studio Local connection with a loaded tool-capable model and measured context. Verify P2 broker OS denial proof before any model-issued tools. Use a disposable clean Git project with trivial executable tests, not the developer's Dope or Adaptive SEO source for mutation. Historical 8D Green qualified source 8748cb4 and original p8d P13 Not Green must remain preserved.
 
 QUALIFICATION — T3
 1. In real Dope GUI/AI Center, discover/retest current loaded Local connection. Run zero-project-data tool-loop probe and verify readiness and adapter-known agentExecution, model identity, loaded-context reserve and Coding Agent role/exact target. Plain Chat success cannot substitute. Check unavailable/unloaded/unsupported model remains ineligible; no silent hosted fallback or unexpected project-data egress.
