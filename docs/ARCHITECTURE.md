@@ -249,6 +249,20 @@ React Flow/browser presentation does not own Flow discovery, aggregation, eviden
 Phase 6 requires no model provider, AI Presence, mutation authority, mandatory live tracing, Planning Map Flow editing or new durable Flow store.
 
 
+## Phase 9 — Development Sessions boundary (design approved; not activated)
+
+A `DeveloperSession` is a **Dope-owned, optional organizational workspace**, not a new Agent Runtime, Chat, Planning Map, Project Mind artifact owner or source of authority. It binds to the canonical attached project and references existing stable identities: Chat IDs; Planning Map IDs; WorkItem (`mapId`, `workItemId`); AgentTask/AgentRun/AgentTaskSequence IDs; optional Project Mind decision/idea and Software Map IDs. Multiple references of each kind and shared membership across sessions are allowed. No transcripts, graph data, candidate diffs, validation records or accepted decisions are copied into session persistence.
+
+The proposed provider-free domain/application boundary is a typed `DeveloperSession` parser, project-local `SessionStore` and `SessionService` with optimistic revision checks, atomic writes and recovery in versioned `.dope/development-sessions.json`. Session-owned state is limited to identity, project binding, title/objective, lifecycle, timestamps, bounded notes/next actions, typed membership and explicit closeout. Do not add a mutable inverse-link registry in Chat/Planning/Agent stores; derive it from session membership. Never revive historical Phase 3 `Plan/PlanStep/Task` or `.dope/planning.json`.
+
+The Session workspace is a **projection/navigation boundary**. Resolve linked status and provenance through owning services, display missing/deleted/stale references without silent retargeting, and enforce same-project identity at both mutation and resolution. Opening linked Chats/Work must focus their existing panel owners; the session does not clone editors or steal the independent center map workspace. Session selection/open/restart never automatically invokes AI, starts/cancels AgentRuns, grants permissions, completes WorkItems, adopts architecture or modifies Git.
+
+Session progress distinguishes developer-completed WorkItems, AgentRun terminal state and Dope-owned validation results. A session closeout can record unresolved/deferred work while leaving linked records untouched. Attaching an artifact does not automatically include its content in a model prompt; any later session-aware context must be explicit, bounded, project-scoped and subject to existing provider/egress policy.
+
+The retained Phase 5 P11 Not Green/P12 unexecuted end-to-end Planning qualification requires **one targeted PlanningMap -> WorkItem -> authorized AgentTask -> Dope-owned validation/review replay** before Phase 9 claims full continuity. This does not retroactively qualify Phase 5 or authorize a map redesign. Final T3 must demonstrate a real Dope Builds Dope session with restart/resume and non-session regressions.
+
+Authority: **ADR 0033** and `docs/planning/p9/phase-9-plan.md`. Phase 9 is **NEXT / NOT OWNER-ACTIVATED**; current qualified source remains `0.8.47`. No `0.9.0` manifest or session runtime is created by this documentation.
+
 ## Model and provider boundary
 
 Dope must not depend architecturally on one model, model family, provider, API, hosted service, local runtime, or provider-native chat/session ontology.

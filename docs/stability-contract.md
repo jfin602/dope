@@ -399,6 +399,23 @@ Require executable evidence for:
 
 Broad browser/Electron/native/package evidence belongs in the designated T3 qualification/closeout gate rather than ordinary implementation prompts.
 
+## Product Phase 9 — Development Sessions qualification (planned; not activated)
+
+Phase 9 is **NEXT / DESIGN APPROVED / NOT OWNER-ACTIVATED**. Entry is Phase 8 owner-closed Green at committed `0.8.47`; the provisional `0.9.0` version requires separate owner authorization. ADR 0033 and `docs/planning/p9/phase-9-plan.md` govern the optional session contract.
+
+Before any Phase 9 Green claim, prove:
+- provider-free session creation, rename, pause/resume, close/reopen and multiple sessions per project, with no model required and unchanged independent non-session Chat/Planning/Work;
+- versioned atomic project-local session storage, optimistic revision conflict handling, canonical project isolation, malformed/foreign ID denial and restart/project-switch recovery without duplicate work;
+- typed attach/detach and live resolution of multiple Chats, Planning Maps, WorkItems (map ID + WorkItem ID), AgentTasks/AgentRuns/sequences and relevant decisions, with one artifact linked into multiple sessions without cloning it;
+- missing/deleted/stale references remain visibly unresolved, not silently retargeted, removed from history or treated as completed;
+- existing Chat/Work panel owner/focus semantics, independent center workspace, truthful activity/validation provenance, and clear distinction among WorkItem completion, AgentRun completion and passed Dope-owned validation;
+- session selection, pause, close and reopening do not invoke models, cancel/start tasks, expand ExecutionGrant, mutate source/Git, complete WorkItems, adopt architecture or rewrite accepted Project Mind decisions;
+- a **bounded real PlanningMap -> WorkItem -> AgentTask -> frozen Dope-owned validation/review** replay on the affected Phase 5 seam. Its original P11 Not Green/P12 unexecuted disposition remains historical even if this narrower Phase 9 replay passes;
+- a real Dope Builds Dope feature in a disposable Git worktree, through Session -> Chat -> Planning -> authorized Work -> validation/review -> restart/resume -> explicit closeout, with unresolved/deferred work preserved;
+- one passing final exact-candidate `npm run check`, plus genuinely separate required GUI/restart/security proof. Focused implementation tests and aggregate builds should not be redundantly repeated.
+
+Sessions never become a new source of authority or automatically feed linked project data to models. Session-aware AI context, if added later, requires explicit bounded project-scoped selection and existing hosted-egress consent. Phase 10 background knowledge alignment is out of scope.
+
 ## Planning Maps and WorkItems
 
 PlanningMap/WorkItem completion is application truth, not model assertion.
