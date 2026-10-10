@@ -1,0 +1,35 @@
+TASK: Phase 9 / P1 — Define provider-free DeveloperSession domain and service contracts
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.1`.
+
+VERSION TRANSITION — REQUIRED
+After verifying Git-proven predecessor `0.9.0`, update all 13 root/app/package package.json version fields and pinned internal @dope/* dependency references to `0.9.1` during THIS prompt. The runner checks but does not bump versions. Preserve unrelated dependency versions and yarn.lock; never create package-lock.json or manually commit. Do not pre-bump before the prompt.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, docs/planning/p9/phase-9-plan.md and docs/tasks/p9a/implementation-plan.md. Verify the owner has separately ACTIVATED Phase 9 and a coherent Git-proven 0.9.0 baseline exists before P1; authored docs are not activation. For subsequent prompts, verify preceding Pn checkpoint/version and preserve intentional dirty work. Do not infer activation from the existence of this stack.
+
+GOAL / IMPLEMENT
+Add a strict DeveloperSession/SessionCollection parser and typed SessionService request/operation definitions under packages/contracts/src/developer-session.ts and developer-session-service.ts. Session owns stable ID, canonical project binding, schema/revision, bounded title/objective, created/updated timestamps, active/paused/closed lifecycle, developer notes/next actions and explicit closeout. Reject extra/malformed fields, duplicate IDs, invalid status/timestamps/oversized strings and arbitrary path-like identifiers. Determine and document project identity using canonical attached root plus an existing authoritative ID when available: Project Mind may be uninitialized, Planning ID may differ; never allocate a competing project ID or create Project Mind artifacts just to make a session. A new manual session must be possible in a project without AI/Project Mind content. Do not implement persistence, RPC or artifact links beyond a minimal empty schema placeholder if required.
+
+PRESERVE
+Preserve optional non-session Chat, Planning and Work; no AI/provider calls, automatic execution, WorkItem completion, architecture adoption, Git writes, model-context sharing or new ExecutionGrant. Do not mutate other .dope stores, revive historical Phase 3 Plan/Task, change AgentTask origin, or rewrite Phase 5 Not Green/Phase 8 Green evidence. No 9B linking, 9C UI, 9D rich projections or 9E GUI/aggregate.
+
+VALIDATION — T1
+Add test/unit/developer-session-contracts.test.ts with valid round-trip, empty project identity, malformed/duplicate/oversize rejection and status shape. Build only @dope/contracts if the test imports compiled lib; run node --test test/unit/developer-session-contracts.test.ts and git diff --check.
+
+EFFICIENCY
+Target <=8 minutes including essential focused checks (10-minute soft, 15-minute hard). P2 security proof may take longer rather than relaxing filesystem checks. Compile only changed packages if tests import lib. No npm test, npm run check, browser/Electron build, GUI or packaging. Runner owns checkpoint commits.
+
+DEFER
+P2 store; P3 mutations; P4 RPC; P5 integration; P6 scoped closeout.
+
+DONE WHEN
+Assigned seam works with direct focused evidence, coherent `0.9.1` manifests, no widened authority, and failures reported honestly.
+
+FINAL RESPONSE
+Changed files, focused tests, version, source identity and remaining blockers.

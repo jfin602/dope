@@ -1,0 +1,35 @@
+TASK: Phase 9 / P3 — Implement revision-checked session lifecycle operations
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.3`.
+
+VERSION TRANSITION — REQUIRED
+After verifying Git-proven predecessor `0.9.2`, update all 13 root/app/package package.json version fields and pinned internal @dope/* dependency references to `0.9.3` during THIS prompt. The runner checks but does not bump versions. Preserve unrelated dependency versions and yarn.lock; never create package-lock.json or manually commit. Do not pre-bump before the prompt.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, docs/planning/p9/phase-9-plan.md and docs/tasks/p9a/implementation-plan.md. Verify the owner has separately ACTIVATED Phase 9 and a coherent Git-proven 0.9.0 baseline exists before P1; authored docs are not activation. For subsequent prompts, verify preceding Pn checkpoint/version and preserve intentional dirty work. Do not infer activation from the existence of this stack.
+
+GOAL / IMPLEMENT
+Implement create, rename, update objective, pause, resume, close and reopen, bounded developer notes/next actions and explicit closeout using P1 typed operations and P2 revision-safe store. Require expected collection revision and stable per-session identity/revision, monotonic timestamps and clear permitted transitions; closed sessions are immutable except explicit reopen. Reject duplicate IDs, invalid/oversized fields, stale writes, unknown sessions and inconsistent project binding before commit. Closing/pausing is metadata only: do not start/cancel agent runs, complete WorkItems, change Chat/Planning, grant authority or delete session. Keep artifact membership out of 9A.
+
+PRESERVE
+Preserve optional non-session Chat, Planning and Work; no AI/provider calls, automatic execution, WorkItem completion, architecture adoption, Git writes, model-context sharing or new ExecutionGrant. Do not mutate other .dope stores, revive historical Phase 3 Plan/Task, change AgentTask origin, or rewrite Phase 5 Not Green/Phase 8 Green evidence. No 9B linking, 9C UI, 9D rich projections or 9E GUI/aggregate.
+
+VALIDATION — T1
+Extend test/unit/developer-session-store.test.ts (or a focused new lifecycle test) for two sessions, create/rename/close/reopen, stale revision, illegal transitions and zero side effects. Build changed extension only if compiled lib tests require; run one directly changed test and git diff --check.
+
+EFFICIENCY
+Target <=8 minutes including essential focused checks (10-minute soft, 15-minute hard). P2 security proof may take longer rather than relaxing filesystem checks. Compile only changed packages if tests import lib. No npm test, npm run check, browser/Electron build, GUI or packaging. Runner owns checkpoint commits.
+
+DEFER
+P4 service/RPC, P5 cross-project/restart, P6 closeout.
+
+DONE WHEN
+Assigned seam works with direct focused evidence, coherent `0.9.3` manifests, no widened authority, and failures reported honestly.
+
+FINAL RESPONSE
+Changed files, focused tests, version, source identity and remaining blockers.
