@@ -31,6 +31,8 @@ Resolve links through existing owning stores; foreign-project/stale revisions fa
 ### 9A — Identity and persistence
 Provider-free parser/service/store; create, rename, pause, resume, close/reopen, revision-checked writes, project isolation and restart recovery. Demonstrate two sessions and ordinary no-session use.
 
+**Prompt authoring update (2026-10-10):** The bounded `docs/tasks/p9a/` P1–P6 stack has been assessed, planned and written for this workstream, targeting `0.9.1`–`0.9.6` only **after** a separate owner-approved coherent `0.9.0` Phase 9 activation baseline. Its P6 is a headless 9A-scoped closeout, not full Phase 9 GUI/aggregate qualification. This update does not activate Phase 9, create any session, or bump `0.8.47`.
+
 ### 9B — Typed membership and resolution
 Attach/detach Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks and decisions by typed ID. Resolve live status and missing/stale links without copying truth or executing work. Include **one targeted Planning-to-Work replay**: real Planning Map/WorkItem -> authorized existing AgentTask -> frozen Dope validation/review -> session projection. Repair only a directly evidenced seam; do not reopen all Phase 5 or rewrite its historical Not Green closeout.
 
