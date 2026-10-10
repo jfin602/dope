@@ -8,6 +8,8 @@ import { AICredentialManager } from './ai-credential-manager';
 import { ModelConnectionsRegistry } from './model-connections';
 import { detectLocalRuntime, providerSetup, providerSetupDescriptions, useDetectedRuntime } from './provider-setup';
 import { CodexAppServer } from './codex-app-server';
+import { LocalAgentCapabilityProbe } from './local-agent-capability';
+import type { LocalCapabilityResult } from './local-agent-capability';
 
 const unknown = <Value>(): { source: 'unknown'; value?: Value } => ({ source: 'unknown' });
 const known = <Value>(value: Value | undefined, source: 'adapter-known' | 'provider-reported' | 'configured') =>
@@ -31,6 +33,8 @@ export class AIInventoryController {
     private readonly health = new Map<string, AIConnectionHealth>();
     private readonly tested = new Map<string, AITestConnectionResult>();
     private readonly loadedLocalModels = new Map<string, number>();
+    private readonly localExecution = new Map<string, number>();
+    private probeGeneration = 0;
     private readonly fingerprints = new Map<string, string>();
     private readonly inFlight = new Set<string>();
     private readonly changes = new Map<string, number>();
@@ -39,8 +43,10 @@ export class AIInventoryController {
     private readonly unlisten: (() => void)[];
 
     constructor(private readonly store: AIRegistryStore, private readonly runtimes: ModelConnectionsRegistry,
-        private readonly credentials: AICredentialManager, private readonly codex?: CodexAppServer) {
+        private readonly credentials: AICredentialManager, private readonly codex?: CodexAppServer,
+        private readonly localProbe = new LocalAgentCapabilityProbe()) {
         this.unlisten = [store.onChange(snapshot => {
+            this.invalidateProbes();
             for (const connection of snapshot.connections) {
                 const fingerprint = JSON.stringify([connection.config, connection.lifecycle,
                     connection.credential, connection.codexAccount, connection.preferredModelId]);
@@ -59,18 +65,20 @@ export class AIInventoryController {
             this.tested.clear();
             this.changed();
         }), credentials.onChange(id => {
+            this.invalidateProbes();
             this.health.delete(id); this.tested.delete(id); this.clearLoaded(id);
             this.changes.set(id, (this.changes.get(id) ?? 0) + 1);
             this.credentialChanges.set(id, (this.credentialChanges.get(id) ?? 0) + 1);
             this.changed();
-        }), runtimes.onChange(() => this.changed()), runtimes.onExecutionFailure((id, error) => {
+        }), runtimes.onChange(() => { this.invalidateProbes(); this.loadedLocalModels.clear(); this.changed(); }), runtimes.onExecutionFailure((id, error) => {
             if (error instanceof ModelRuntimeFailure && error.failureClass === 'authentication') {
+                this.invalidateProbes();
                 this.health.set(id, 'needs-authentication'); this.tested.delete(id);
                 this.changed();
             }
         })];
     }
-    dispose(): void { this.unlisten.forEach(unlisten => unlisten()); }
+    dispose(): void { this.invalidateProbes(); this.unlisten.forEach(unlisten => unlisten()); }
     onChange(listener: () => void): () => void {
         this.listeners.add(listener);
         return () => this.listeners.delete(listener);
@@ -78,6 +86,7 @@ export class AIInventoryController {
     private changed(): void {
         for (const listener of this.listeners) { try { listener(); } catch {} }
     }
+    private invalidateProbes(): void { this.probeGeneration++; this.localExecution.clear(); }
     private clearLoaded(id: string): void {
         for (const key of this.loadedLocalModels.keys()) if (JSON.parse(key)[0] === id) this.loadedLocalModels.delete(key);
     }
@@ -103,7 +112,13 @@ export class AIInventoryController {
             const state = !model.enabled || connection.lifecycle === 'disabled' ? 'disabled' :
                 model.state === 'unavailable' ? 'unavailable' :
                     health(connection) === 'ready' ? 'ready' : 'unknown';
-            return { ...model, state };
+            const key = JSON.stringify([model.connectionId, model.providerModelKey]);
+            const context = this.loadedLocalModels.get(key);
+            const verified = connection.config.type === 'local' && state === 'ready' &&
+                model.enabled && context !== undefined && this.localExecution.get(key) === context;
+            return { ...model, state, ...(connection.config.type === 'local' ? {
+                capabilities: { ...model.capabilities, agentExecution: verified ? known(true, 'adapter-known') : unknown<boolean>() }
+            } : {}) };
         }) }, observations: registry.connections.map(connection => ({ connectionId: connection.id,
             health: health(connection) })),
             loadedLocalModels: this.loadedLocalModelsSnapshot(), tests: [...this.tested.values()] };
@@ -128,6 +143,7 @@ export class AIInventoryController {
         if (this.inFlight.has(id)) throw new Error('Connection check already in progress');
         const connection = await this.connection(id);
         if (connection.lifecycle === 'disabled') throw new ModelRuntimeFailure('Connection disabled', 'connection-unavailable');
+        this.invalidateProbes();
         this.inFlight.add(id);
         this.health.set(id, 'checking'); this.tested.delete(id); this.clearLoaded(id); this.changed();
         const startingCredentialGeneration = this.credentialChanges.get(id);
@@ -199,6 +215,30 @@ export class AIInventoryController {
             this.changed();
             throw error;
         } finally { this.inFlight.delete(id); }
+    }
+    async verifyLocalAgentExecution(id: string, modelId: string, signal?: AbortSignal): Promise<LocalCapabilityResult> {
+        this.invalidateProbes(); this.changed();
+        const generation = this.probeGeneration;
+        const current = await this.inventory();
+        const connection = current.registry.connections.find(item => item.id === id);
+        const model = current.registry.models.find(item => item.connectionId === id && item.providerModelKey === modelId);
+        const loaded = current.loadedLocalModels?.find(item => item.connectionId === id && item.providerModelKey === modelId);
+        if (!connection || connection.lifecycle !== 'enabled' || connection.config.type !== 'local' ||
+            !model?.enabled || model.state !== 'ready' || !loaded) return 'unavailable';
+        const credential = await this.credentials.readForExecution(id).catch(() => undefined);
+        if (connection.credential && !credential) return 'unavailable';
+        if (generation !== this.probeGeneration) return 'unavailable';
+        const result = await this.localProbe.probe(connection, modelId, () => this.inventory(), credential, signal);
+        if (generation !== this.probeGeneration || signal?.aborted) return 'cancelled';
+        const latest = await this.inventory();
+        if (generation !== this.probeGeneration || latest.registry.revision !== current.registry.revision ||
+            JSON.stringify(latest.registry.connections.find(item => item.id === id)) !== JSON.stringify(connection) ||
+            latest.registry.models.find(item => item.connectionId === id && item.providerModelKey === modelId)?.state !== 'ready' ||
+            latest.loadedLocalModels?.find(item => item.connectionId === id && item.providerModelKey === modelId)?.contextWindowTokens !==
+                loaded.contextWindowTokens) return 'unavailable';
+        if (result === 'supported') this.localExecution.set(JSON.stringify([id, modelId]), loaded.contextWindowTokens);
+        this.changed();
+        return result;
     }
     async testConnection(id: string): Promise<AITestConnectionResult> {
         await this.refreshModels(id);
@@ -315,6 +355,10 @@ export class AIRegistryBackend implements AIRegistryService {
     refreshModels(id: string) { if (!this.inventoryController) throw new Error('AI inventory unavailable'); return this.inventoryController.refreshModels(id); }
     reconnect(id: string) { if (!this.inventoryController) throw new Error('AI inventory unavailable'); return this.inventoryController.refreshModels(id, true); }
     testConnection(id: string) { if (!this.inventoryController) throw new Error('AI inventory unavailable'); return this.inventoryController.testConnection(id); }
+    verifyLocalAgentExecution(id: string, modelId: string) {
+        if (!this.inventoryController) throw new Error('AI inventory unavailable');
+        return this.inventoryController.verifyLocalAgentExecution(id, modelId);
+    }
     testConnectionDisclosure(id: string) { if (!this.inventoryController) throw new Error('AI inventory unavailable'); return this.inventoryController.testConnectionDisclosure(id); }
     dispose(): void { this.unlisten.forEach(unlisten => unlisten()); }
 }

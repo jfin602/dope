@@ -179,6 +179,18 @@ export class AICenterController {
         }, 'Connection check failed. Review its configuration and credentials.');
     }
 
+    async verifyLocalAgentExecution(connectionId: string, modelId: string): Promise<boolean> {
+        let result: Awaited<ReturnType<AIRegistryService['verifyLocalAgentExecution']>> = 'unavailable';
+        const completed = await this.run(async () => {
+            result = await this.registry.verifyLocalAgentExecution(connectionId, modelId);
+        }, 'Local tool capability probe failed.');
+        if (completed) {
+            this.message = `Local tool capability: ${result}. Only a successful synthetic tool loop enables Coding Agent eligibility.`;
+            this.changed();
+        }
+        return completed;
+    }
+
     async toggleModel(connectionId: string, providerModelKey: string, enabled: boolean): Promise<boolean> {
         return this.run(() => this.mutate({ type: 'set-model-enabled', connectionId, providerModelKey, enabled }),
             'Model state could not be changed. Try again.');

@@ -411,12 +411,19 @@ export class AICenterWidget extends BaseWidget {
         disclosure.setAttribute('aria-expanded', String(this.modelsOpen)); detail.append(disclosure);
         if (this.modelsOpen) for (const model of models) {
             const row = element('div', undefined, 'dope-ai-model');
+            const loadedContext = state.loadedLocalModels?.find(item => item.connectionId === connection.id &&
+                item.providerModelKey === model.providerModelKey)?.contextWindowTokens;
             const capabilities = Object.entries(model.capabilities).map(([name, item]) =>
                 `${name}: ${item.value === undefined ? 'unknown' : item.value ? 'yes' : 'no'} (${item.source})`).join(', ');
             row.append(element('span', `${model.label} · ${connection.config.type === 'codex' ? 'Agent Runtime (not general Chat) · ' : ''}${model.state} · ${capabilities} · context ${
-                model.limits.contextWindowTokens.value ?? 'unknown'} (${model.limits.contextWindowTokens.source})`),
+                model.locality === 'local' ? loadedContext ?? 'unknown' : model.limits.contextWindowTokens.value ?? 'unknown'} (${
+                model.locality === 'local' ? loadedContext ? 'loaded' : 'unknown' : model.limits.contextWindowTokens.source})`),
                 button(model.enabled ? 'Disable model' : 'Enable model', () => void controller.toggleModel(
                     connection.id, model.providerModelKey, !model.enabled), controller.busy));
+            if (connection.config.type === 'local') row.append(button('Verify Coding Agent tools', () =>
+                void controller.verifyLocalAgentExecution(connection.id, model.providerModelKey),
+                controller.busy || !model.enabled || model.state !== 'ready' ||
+                loadedContext === undefined));
             detail.append(row);
         }
         const tested = state.tests.find(item => item.connectionId === connection.id);

@@ -41,6 +41,8 @@ export interface AIRegistryService {
     refreshModels(connectionId: string): Promise<AIInventoryState>;
     reconnect(connectionId: string): Promise<AIInventoryState>;
     testConnection(connectionId: string): Promise<AITestConnectionResult>;
+    verifyLocalAgentExecution(connectionId: string, modelId: string): Promise<
+        'supported' | 'unsupported' | 'unavailable' | 'cancelled' | 'timed-out' | 'failed'>;
     testConnectionDisclosure(connectionId: string): Promise<{ hostedCostPossible: boolean }>;
 }
 export interface AIRegistryClient {

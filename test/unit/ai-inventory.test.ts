@@ -8,6 +8,7 @@ import { AIRegistryStore } from '../../packages/theia-extension/lib/node/ai-regi
 import { AIInventoryController, AIRegistryBackend } from '../../packages/theia-extension/lib/node/ai-registry-backend.js';
 import { AICredentialManager } from '../../packages/theia-extension/lib/node/ai-credential-manager.js';
 import { ModelConnectionsRegistry } from '../../packages/theia-extension/lib/node/model-connections.js';
+import { LocalAgentCapabilityProbe } from '../../packages/theia-extension/lib/node/local-agent-capability.js';
 
 const local = (id: string) => ({ version: 1 as const, id, alias: id, lifecycle: 'enabled' as const,
     config: { type: 'local' as const, runtime: 'lm-studio' as const, endpoint: 'http://127.0.0.1:1234/v1' } });
@@ -20,12 +21,13 @@ async function fixture(run: (state: { store: AIRegistryStore; controller: AIInve
     connectFake: () => Promise<void>;
     change: (models: ReturnType<typeof loaded>[]) => void;
     calls: { messages: unknown; maxOutputTokens?: number }[];
-    fail: (error?: Error) => void; generationFail: (error?: Error) => void }) => Promise<void>) {
+    fail: (error?: Error) => void; generationFail: (error?: Error) => void }) => Promise<void>,
+    probe?: LocalAgentCapabilityProbe) {
     const directory = await mkdtemp(join(tmpdir(), 'dope-ai-inventory-'));
     const store = new AIRegistryStore(directory);
     const credentials = new AICredentialManager(store, async () => undefined, {});
     const runtime = new ModelConnectionsRegistry(undefined, store, credentials);
-    const controller = new AIInventoryController(store, runtime, credentials);
+    const controller = new AIInventoryController(store, runtime, credentials, undefined, probe);
     let models = [loaded('alpha', 4096), loaded('beta', 8192)];
     let error: Error | undefined;
     let generationError: Error | undefined;
@@ -47,6 +49,94 @@ async function fixture(run: (state: { store: AIRegistryStore; controller: AIInve
             fail(next) { error = next; }, generationFail(next) { generationError = next; } });
     } finally { controller.dispose(); store.dispose(); await rm(directory, { recursive: true, force: true }); }
 }
+
+test('Local Coding Agent eligibility requires synthetic tool continuation and live sandbox/context', async () => {
+    let sandbox = true;
+    let mode: 'tools' | 'no-tool' | 'deferred' = 'tools';
+    let release: (() => void) | undefined;
+    const transport = { async turn(request: { messages: { role: string; content: string }[] }) {
+        if (request.messages.some(message => message.role === 'tool')) {
+            const result = JSON.parse(request.messages.at(-1)!.content);
+            return { kind: 'final' as const, text: `Value: ${result.output}` };
+        }
+        if (mode === 'deferred') await new Promise<void>(resolve => { release = resolve; });
+        if (mode === 'no-tool') return { kind: 'final' as const, text: 'OK' };
+        return { kind: 'tools' as const, calls: [{ id: 'probe-call', name: 'read' as const,
+            arguments: { path: 'dope-synthetic-capability-probe.txt', maxBytes: 128 } }] };
+    } };
+    const probe = new LocalAgentCapabilityProbe(transport as any, async () => ({ available: sandbox }));
+    await fixture(async ({ store, controller, runtime, change }) => {
+        await controller.refreshModels('desk');
+        let snapshot = await store.read();
+        await store.mutate({ version: 1, expectedRevision: snapshot.revision, mutation: { type: 'create-connection',
+            connection: { version: 1, id: 'codex', alias: 'Codex', lifecycle: 'enabled',
+                config: { type: 'codex', runtime: 'app-server' } } } });
+        snapshot = await store.read();
+        await store.mutate({ version: 1, expectedRevision: snapshot.revision, mutation: { type: 'upsert-model',
+            model: { ...snapshot.models.find(item => item.connectionId === 'desk')!, connectionId: 'codex',
+                providerModelKey: 'hosted', locality: 'hosted', capabilities: {
+                    conversationalText: { source: 'unknown' }, streaming: { source: 'unknown' },
+                    structuredOutput: { source: 'unknown' }, toolCalling: { source: 'unknown' },
+                    agentExecution: { source: 'adapter-known', value: true } } } } });
+        await controller.refreshModels('desk');
+        assert.deepEqual((await controller.inventory()).registry.models.find(item => item.connectionId === 'codex')?.capabilities.agentExecution, { source: 'adapter-known', value: true });
+        const capability = async (id = 'alpha') => (await controller.inventory()).registry.models.find(item =>
+            item.connectionId === 'desk' && item.providerModelKey === id)?.capabilities.agentExecution;
+        assert.equal((await capability())?.source, 'unknown');
+        assert.deepEqual((await controller.findEligibleModels({ usableOnly: true,
+            capabilities: ['agentExecution'] })).models, []);
+        mode = 'no-tool';
+        assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'unsupported');
+        assert.equal((await capability())?.source, 'unknown');
+        mode = 'tools'; sandbox = false;
+        assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'unavailable');
+        sandbox = true;
+        assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'supported');
+        assert.deepEqual(await capability(), { source: 'adapter-known', value: true });
+        assert.deepEqual((await controller.findEligibleModels({ usableOnly: true,
+            capabilities: ['agentExecution'] })).models.map(item => item.providerModelKey), ['alpha']);
+        assert.equal((await store.read()).models.find(item => item.providerModelKey === 'alpha')?.capabilities
+            .agentExecution?.source, 'unknown');
+        sandbox = false;
+        assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'unavailable');
+        assert.equal((await capability())?.source, 'unknown');
+        sandbox = true;
+        assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'supported');
+        mode = 'deferred';
+        const timeoutProbe = new LocalAgentCapabilityProbe(transport as any,
+            async () => ({ available: true }), 10);
+        assert.equal(await timeoutProbe.probe((await store.read()).connections.find(item => item.id === 'desk')!,
+            'alpha', () => controller.inventory()), 'timed-out');
+        release?.();
+        const cancel = new AbortController();
+        const cancelled = controller.verifyLocalAgentExecution('desk', 'alpha', cancel.signal);
+        await new Promise(resolve => setImmediate(resolve));
+        cancel.abort();
+        assert.equal(await cancelled, 'cancelled');
+        release?.();
+        assert.equal((await capability())?.source, 'unknown');
+        const stale = controller.verifyLocalAgentExecution('desk', 'alpha');
+        await new Promise(resolve => setImmediate(resolve));
+        await controller.refreshModels('desk');
+        release?.();
+        assert.notEqual(await stale, 'supported');
+        assert.equal((await capability())?.source, 'unknown');
+        mode = 'tools';
+        change([loaded('alpha'), loaded('beta', 8192)]);
+        await controller.refreshModels('desk');
+        assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'unavailable');
+        assert.equal((await capability())?.source, 'unknown');
+        assert.equal(await controller.verifyLocalAgentExecution('desk', 'beta'), 'supported');
+        snapshot = await store.read();
+        await store.mutate({ version: 1, expectedRevision: snapshot.revision, mutation: { type: 'update-connection',
+            id: 'desk', changes: { alias: 'desk', lifecycle: 'enabled',
+                config: { type: 'local', runtime: 'lm-studio', endpoint: 'http://localhost:1234/v1' } } } });
+        assert.equal((await capability('beta'))?.source, 'unknown');
+        assert.deepEqual((await controller.inventory()).registry.models.find(item => item.connectionId === 'codex')?.capabilities.agentExecution, { source: 'adapter-known', value: true });
+        runtime.disconnect('desk');
+        assert.equal((await capability('beta'))?.source, 'unknown');
+    }, probe);
+});
 
 test('inventory reconciles scoped identities without losing disabled preferences or known missing models', async () => {
     await fixture(async ({ store, controller, runtime, change }) => {
