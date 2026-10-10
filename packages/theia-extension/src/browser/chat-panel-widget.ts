@@ -84,15 +84,17 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.panel = new SharedPanelState(workOwners, this.id,
             () => { this.panel.setMode('work'); void this.shell.activateWidget(this.id); }, () => this.render());
         this.panel.mode = this.module;
-        if (runtime) this.workController = new WorkSelectionController(runtime, () => this.render());
         if (runtime && registry && roles) this.directController = new AgentRunController(runtime, registry, roles, () => this.render());
+        if (runtime) this.workController = new WorkSelectionController(runtime, () => this.render(),
+            policy => this.directController!.resolvePolicyTarget(policy));
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.node.append(this.status, this.content);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.attach(); });
         this.modelsListener = onModelsChanged?.(() => { if (this.module === 'chat') void this.loadModels();
             void this.directController?.resolveTarget();
-            void this.workController?.phase.refresh(); });
+            void this.workController?.phase.refresh();
+            if (this.panel.work?.kind === 'task') void this.workController?.select(this.panel.work); });
         void this.attach();
         if (this.module === 'chat') void this.loadModels();
     }
@@ -269,6 +271,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         accept.onchange = () => { controller.acceptGrant(accept.checked); start.disabled = !controller.canStart; };
         acceptLabel.className = 'dope-work-grant';
         acceptLabel.append(accept, ' Accept project execution grant');
+        const hostedLabel = document.createElement('label'); hostedLabel.className = 'dope-work-grant';
+        const hosted = document.createElement('input'); hosted.type = 'checkbox';
+        hosted.checked = controller.hostedProjectDataAuthorized;
+        hosted.onchange = () => { controller.authorizeHostedProjectData(hosted.checked); start.disabled = !controller.canStart; };
+        hostedLabel.append(hosted, ' Authorize sending project data to the hosted Coding Agent');
         const status = document.createElement('p'); status.setAttribute('role', 'status');
         status.textContent = controller.message || controller.targetMessage;
         const submit = async () => {
@@ -277,7 +284,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (run) { await this.workController?.refresh(); this.selectWork({ kind: 'run', id: run.id }); }
         };
         form.onsubmit = event => { event.preventDefault(); void submit(); };
-        form.append(prompt, model, validation, acceptLabel, review, status, start);
+        form.append(prompt, model, validation, acceptLabel, ...(controller.resolved?.locality === 'hosted' ? [hostedLabel] : []), review, status, start);
         this.content.append(form);
     }
     private renderWork(): void {
@@ -692,9 +699,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     info(`Required Dope validation: ${task.completion.requireValidationPass && task.completion.validation.length ?
                         task.completion.validation.map(target => `${target.label}: ${target.command ?? 'no command'}`).join('; ') :
                         'Missing from this saved task'}`);
-                    info(`Coding Agent: ${controller.phase.codingAgentReady ? 'eligible and ready' :
-                        'unavailable; configure and test an eligible Coding Agent in AI Center'}`);
-                    info('Starting sends project data to the hosted Coding Agent. Candidate changes remain held for Dope validation and developer review.');
+                    info(`Coding Agent: ${controller.startTarget ? `${controller.startTarget.label} (${controller.startTarget.locality}${
+                        controller.startTarget.context ? `, observed context ${controller.startTarget.context} tokens` : ''})` :
+                        controller.startTargetReason}`);
+                    info('Candidate changes remain held for Dope validation and developer review.');
                     const grant = createDefaultExecutionGrant({ id: 'preview', revision: 1, taskId: task.id,
                         acceptedAt: new Date().toISOString() });
                     const review = document.createElement('details'); review.className = 'dope-work-diagnostics';
@@ -705,11 +713,19 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     section.append(review);
                     const acceptLabel = document.createElement('label'); acceptLabel.className = 'dope-work-grant';
                     const accept = document.createElement('input'); accept.type = 'checkbox';
-                    accept.checked = controller.acceptedStartGrant && controller.hostedProjectDataAuthorized;
-                    accept.setAttribute('aria-label', 'Accept execution grant and hosted project data transfer');
-                    accept.onchange = () => controller.acceptStartApproval(accept.checked);
-                    acceptLabel.append(accept, ' I accept this project execution grant and authorize hosted project data transfer for this task.');
+                    accept.checked = controller.acceptedStartGrant;
+                    accept.setAttribute('aria-label', 'Accept project execution grant');
+                    accept.onchange = () => controller.acceptStartGrant(accept.checked);
+                    acceptLabel.append(accept, ' Accept project execution grant');
                     section.append(acceptLabel);
+                    if (controller.startTarget?.locality === 'hosted') {
+                        const hostedLabel = document.createElement('label'); hostedLabel.className = 'dope-work-grant';
+                        const hosted = document.createElement('input'); hosted.type = 'checkbox';
+                        hosted.checked = controller.hostedProjectDataAuthorized;
+                        hosted.onchange = () => controller.authorizeHostedProjectData(hosted.checked);
+                        hostedLabel.append(hosted, ' Authorize sending project data to the hosted Coding Agent');
+                        section.append(hostedLabel);
+                    }
                     const reason = controller.startBlockReason;
                     if (reason) { const status = document.createElement('p'); status.className = 'dope-work-warning';
                         status.setAttribute('role', 'status'); status.textContent = reason; section.append(status); }

@@ -4,6 +4,7 @@ import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-serv
 import { createDefaultExecutionGrant } from '@dope/agent-core';
 import { PhaseStackController } from './phase-stack-controller';
 import type { WorkSelection } from './shared-panel-state';
+import type { AgentTarget } from './agent-run-controller';
 
 export function workTitle(selection: WorkSelection, run?: AgentRun, task?: AgentTask,
     sequence?: AgentTaskSequence): string {
@@ -115,11 +116,14 @@ export class WorkSelectionController {
     startBusy = false;
     acceptedStartGrant = false;
     hostedProjectDataAuthorized = false;
+    startTarget?: AgentTarget;
+    startTargetReason = 'Coding Agent target is loading.';
     private selectedTaskId?: string;
     private startEpoch = 0;
     private serial = 0;
 
-    constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void) {
+    constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void,
+        private readonly resolveTarget?: (policy: AgentTask['modelPolicy']) => Promise<{ target?: AgentTarget; reason: string }>) {
         this.phase = new PhaseStackController(runtime, changed);
     }
     async attach(project?: string): Promise<void> {
@@ -127,7 +131,7 @@ export class WorkSelectionController {
         ++this.startEpoch;
         this.project = project; this.handle = undefined; this.tasks = []; this.runs = [];
         this.startBusy = false; this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false;
-        this.selectedTaskId = undefined;
+        this.selectedTaskId = undefined; this.startTarget = undefined;
         this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.message = '';
         this.steering = undefined; this.actions = []; this.mapImpact = undefined; this.steeringText = '';
         this.changed();
@@ -158,7 +162,7 @@ export class WorkSelectionController {
     async select(selection: WorkSelection | undefined): Promise<void> {
         const handle = this.handle, serial = ++this.serial;
         this.selectedTaskId = selection?.kind === 'task' ? selection.id : undefined;
-        this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false;
+        this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false; this.startTarget = undefined;
         this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.transcriptIncomplete = false;
         this.steering = undefined; this.actions = []; this.mapImpact = undefined; this.steeringText = '';
         this.message = ''; this.phase.message = ''; this.phase.selected = undefined; this.phase.run = undefined;
@@ -178,6 +182,13 @@ export class WorkSelectionController {
                 selection.kind === 'task' ? await this.runtime.readTask(handle, selection.id) : undefined;
             if (serial !== this.serial || handle !== this.handle) return;
             this.selectedRun = run; this.selectedTask = task;
+            if (selection.kind === 'task' && task?.origin.kind === 'work-item' && this.resolveTarget) {
+                try {
+                    const result = await this.resolveTarget(task.modelPolicy);
+                    if (serial !== this.serial || handle !== this.handle) return;
+                    this.startTarget = result.target; this.startTargetReason = result.reason;
+                } catch { this.startTargetReason = 'Coding Agent target could not be resolved.'; }
+            }
             if (run) {
                 const [steering, actions, impact] = await Promise.all([
                     this.runtime.readSteering(handle, run.id), this.runtime.listActions(handle, run.taskId),
@@ -208,11 +219,6 @@ export class WorkSelectionController {
     authorizeHostedProjectData(authorized: boolean): void {
         this.hostedProjectDataAuthorized = authorized; this.changed();
     }
-    acceptStartApproval(accepted: boolean): void {
-        this.acceptedStartGrant = accepted;
-        this.hostedProjectDataAuthorized = accepted;
-        this.changed();
-    }
     get startBlockReason(): string {
         const task = this.selectedTask;
         if (!this.handle || !this.project || !this.selectedTaskId || !task || task.id !== this.selectedTaskId)
@@ -229,11 +235,10 @@ export class WorkSelectionController {
         if (!task.completion.requireValidationPass || !task.completion.validation.length ||
             task.completion.validation.some(target => !target.command?.trim()))
             return 'This saved task has no required Dope validation. Return to its Planning Map and launch a new task with an approved validation command.';
-        if (!this.phase.codingAgentReady)
-            return 'Configure and test an eligible Coding Agent in AI Center.';
+        if (!this.startTarget) return this.startTargetReason;
         if (!this.acceptedStartGrant)
             return 'Review and accept the fixed project execution grant for this task.';
-        if (!this.hostedProjectDataAuthorized)
+        if (this.startTarget?.locality === 'hosted' && !this.hostedProjectDataAuthorized)
             return 'Authorize sending this project data to the hosted Coding Agent for this start.';
         return '';
     }
@@ -241,16 +246,18 @@ export class WorkSelectionController {
         const reason = this.startBlockReason;
         if (reason) { this.message = reason; this.changed(); return; }
         const handle = this.handle!, project = this.project!, shown = this.selectedTask!;
-        const serial = this.serial;
+        const serial = this.serial, shownTarget = this.startTarget!;
         const startEpoch = ++this.startEpoch;
         this.startBusy = true; this.message = ''; this.changed();
         try {
-            const [task, runs, ready] = await Promise.all([
+            const [task, runs, ready, freshTarget] = await Promise.all([
                 this.runtime.readTask(handle, shown.id), this.runtime.listRuns(handle),
-                this.runtime.codingAgentReady(handle)
+                this.runtime.codingAgentReady(handle),
+                this.resolveTarget?.(shown.modelPolicy)
             ]);
             if (serial !== this.serial || handle !== this.handle || project !== this.project ||
-                this.selectedTaskId !== shown.id || !this.acceptedStartGrant || !this.hostedProjectDataAuthorized)
+                this.selectedTaskId !== shown.id || !this.acceptedStartGrant ||
+                (shownTarget.locality === 'hosted' && !this.hostedProjectDataAuthorized))
                 throw new Error('Selection or project changed. Review and accept Start again.');
             if (!task || JSON.stringify(task) !== JSON.stringify(shown))
                 throw new Error('Saved task changed. Refresh Work and select the task again.');
@@ -258,7 +265,9 @@ export class WorkSelectionController {
                 throw new Error('This WorkItem task already has a run. Select its run to inspect it.');
             if (runs.some(run => ['pending', 'running', 'blocked', 'cancelling'].includes(run.status)))
                 throw new Error('Another AgentRun is active. Stop or resolve it before starting this task.');
-            if (!ready) throw new Error('Configure and test an eligible Coding Agent in AI Center.');
+            if ((task.modelPolicy.kind === 'follow-coding-agent' && !ready) || !freshTarget?.target || freshTarget.target.connectionId !== shownTarget.connectionId ||
+                freshTarget.target.modelId !== shownTarget.modelId || freshTarget.target.locality !== shownTarget.locality)
+                throw new Error('Coding Agent selection changed or became unavailable. Review Start again.');
             // Recheck the fresh persisted snapshot, including its immutable validation policy.
             if (task.origin.kind !== 'work-item' || task.projectId !== task.origin.projectId ||
                 task.planningMapId !== task.origin.planningMapId || task.reviewPolicy?.kind !== 'required' ||
@@ -268,8 +277,9 @@ export class WorkSelectionController {
             const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1, taskId: task.id,
                 acceptedAt: new Date().toISOString() });
             // Consume acceptance before the RPC; a failed attempt requires a fresh review.
+            const hostedAuthorized = shownTarget.locality === 'hosted' && this.hostedProjectDataAuthorized;
             this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false;
-            const run = await this.runtime.start(handle, project, task.id, grant, true);
+            const run = await this.runtime.start(handle, project, task.id, grant, hostedAuthorized);
             if (run.taskId !== task.id || run.projectId !== task.projectId)
                 throw new Error('AgentRun identity did not match the selected saved task. Refresh Work.');
             if (serial !== this.serial || handle !== this.handle || project !== this.project) return run;

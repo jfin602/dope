@@ -40,7 +40,7 @@ function harness() {
     const controller = new AgentRunController(runtime as unknown as AgentRuntimeService,
         { inventory: async () => inventory } as unknown as AIRegistryService,
         { list: async () => policy } as unknown as AIRolePolicyService, () => {});
-    return { controller, runtime, get task() { return task; }, get grant() { return grant; },
+    return { controller, runtime, inventory, policy, get task() { return task; }, get grant() { return grant; },
         get authorized() { return authorized; }, get stopped() { return stopped; },
         get reconciliations() { return reconciliations; }, setGate(value: unknown) { gate = value; },
         finish(status: AgentRun['status']) { run = { ...run!, status, changedFiles: ['src/a.ts'],
@@ -56,7 +56,8 @@ test('direct task displays eligible target and requires explicit grant before st
     await h.controller.resolveTarget(); assert.match(h.controller.targetMessage, /Coding · GPT/);
     h.controller.setPolicy({ kind: 'follow-coding-agent' }); await h.controller.resolveTarget();
     h.controller.edit('Objective', 'Instructions'); assert.equal(h.controller.canStart, false);
-    h.controller.acceptGrant(true); assert.equal(h.controller.canStart, true);
+    h.controller.acceptGrant(true); assert.equal(h.controller.canStart, false);
+    h.controller.authorizeHostedProjectData(true); assert.equal(h.controller.canStart, true);
     await h.controller.start(); assert.equal((h.task as { origin: { kind: string } }).origin.kind, 'direct');
     assert.equal((h.task as { modelPolicy: { kind: string } }).modelPolicy.kind, 'follow-coding-agent');
     assert.equal((h.grant as { permissions: { network: boolean; 'project-modify': boolean } }).permissions.network, false);
@@ -71,7 +72,7 @@ test('direct task keeps validation bounded and requires a fresh grant after edit
     h.controller.acceptGrant(true);
     h.controller.setValidation('npm test');
     assert.equal(h.controller.canStart, false);
-    h.controller.acceptGrant(true); await h.controller.start();
+    h.controller.acceptGrant(true); h.controller.authorizeHostedProjectData(true); await h.controller.start();
     assert.deepEqual((h.task as { completion: unknown }).completion, { validation: [
         { kind: 'test', label: 'Required validation', command: 'npm test' }], requireValidationPass: true });
 });
@@ -97,7 +98,7 @@ test('Resume requests backend gate reconciliation and restart keeps the same pen
 
 test('persisted terminal run is inspectable after attach with change and validation evidence', async () => {
     const h = harness(); await h.controller.attach('file:///project'); h.controller.edit('Objective', 'Instructions');
-    h.controller.acceptGrant(true); await h.controller.start(); h.finish('interrupted');
+    h.controller.acceptGrant(true); h.controller.authorizeHostedProjectData(true); await h.controller.start(); h.finish('interrupted');
     const reopened = new AgentRunController(h.runtime as unknown as AgentRuntimeService,
         { inventory: async () => { throw new Error('offline'); } } as unknown as AIRegistryService,
         { list: async () => { throw new Error('offline'); } } as unknown as AIRolePolicyService, () => {});
@@ -172,4 +173,44 @@ test('Work candidate review preserves held evidence and submits only a fresh exp
     assert.deepEqual(calls[1]?.slice(0, 5), ['handle', 'run', 0, fingerprint, 'reject']);
     assert.equal(calls[1]?.[5], undefined);
     assert.equal(workReviewState(controller.selectedRun, controller.selectedTask), 'rejected');
+});
+
+test('Local exact and role targets require observed readiness and never grant hosted egress', async () => {
+    const h = harness();
+    const local = { ...h.inventory.registry.models[0], connectionId: 'local', providerModelKey: 'qwen',
+        label: 'Qwen', locality: 'local' };
+    h.inventory.registry.connections.push({ version: 1, id: 'local', alias: 'LM Studio', lifecycle: 'enabled',
+        config: { type: 'local', runtime: 'lm-studio', endpoint: 'http://127.0.0.1:1234' } } as any);
+    h.inventory.registry.models.push(local as any);
+    h.inventory.observations.push({ connectionId: 'local', health: 'ready' });
+    const role = h.policy.policies.find(item => item.roleId === 'coding-agent')!;
+    role.preferred = { type: 'exact', target: { connectionId: 'local', modelId: 'qwen' } };
+    await h.controller.attach('file:///project');
+    assert.equal(h.controller.resolved, undefined);
+    assert.match(h.controller.targetMessage, /unavailable|context/);
+    (h.inventory as any).loadedLocalModels = [{ connectionId: 'local', providerModelKey: 'qwen', contextWindowTokens: 4096 }];
+    await h.controller.resolveTarget();
+    assert.equal(h.controller.resolved?.locality, 'local');
+    assert.match(h.controller.targetMessage, /observed context 4096/);
+    h.controller.setPolicy({ kind: 'exact', connectionId: 'local', modelId: 'qwen' });
+    await h.controller.resolveTarget();
+    h.controller.edit('Local change', 'Modify the candidate'); h.controller.acceptGrant(true);
+    assert.equal(h.controller.canStart, true);
+    await h.controller.start();
+    assert.equal(h.authorized, false);
+    assert.deepEqual((h.task as any).modelPolicy, { kind: 'exact', connectionId: 'local', modelId: 'qwen' });
+    h.controller.acceptGrant(true);
+    h.controller.setPolicy({ kind: 'exact', connectionId: 'codex', modelId: 'gpt' });
+    await h.controller.resolveTarget();
+    assert.equal(h.controller.accepted, false);
+    h.controller.acceptGrant(true);
+    assert.equal(h.controller.canStart, false);
+    h.controller.authorizeHostedProjectData(true);
+    assert.equal(h.controller.canStart, false); // the prior run is still active
+    h.controller.setPolicy({ kind: 'exact', connectionId: 'local', modelId: 'qwen' });
+    await h.controller.resolveTarget();
+    local.capabilities.agentExecution = { source: 'unknown' } as any;
+    await h.controller.resolveTarget();
+    assert.equal(h.controller.resolved, undefined);
+    assert.equal(h.controller.canStart, false);
 });

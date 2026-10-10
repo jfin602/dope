@@ -92,6 +92,7 @@ test('selected saved WorkItem task starts once with its exact ID, accepted grant
         projectId: 'planning-project', planningMapId: 'map', projectRoot: '.',
         authority: { profile: 'phase-8b-project' }, reviewPolicy: { kind: 'required' },
         origin: { kind: 'work-item', projectId: 'planning-project', planningMapId: 'map' },
+        modelPolicy: { kind: 'follow-coding-agent' },
         completion: { validation: [{ kind: 'test', label: 'Required', command: 'npm test' }], requireValidationPass: true } };
     const runs: any[] = [];
     const starts: unknown[][] = [];
@@ -109,13 +110,17 @@ test('selected saved WorkItem task starts once with its exact ID, accepted grant
         async readMapImpact() { return undefined; },
         async readTranscript() { return { state: 'not-recorded', entries: [], nextSequence: 0,
             hasMore: false, incomplete: false }; } } as unknown as AgentRuntimeService;
-    const controller = new WorkSelectionController(runtime, () => {});
+    const controller = new WorkSelectionController(runtime, () => {}, async () => ({
+        target: { connectionId: 'codex', modelId: 'gpt', label: 'Coding · GPT', locality: 'hosted' }, reason: '' }));
     controller.project = 'file:///project'; controller.handle = 'handle'; controller.phase.codingAgentReady = true;
     await controller.select({ kind: 'task', id: saved.id });
     assert.match(controller.startBlockReason, /accept the fixed project execution grant/);
-    controller.acceptStartApproval(true);
+    controller.acceptStartGrant(true);
+    assert.match(controller.startBlockReason, /Authorize sending/);
+    controller.authorizeHostedProjectData(true);
     assert.equal(controller.startBlockReason, '');
-    controller.acceptStartApproval(false);
+    controller.acceptStartGrant(false);
+    controller.authorizeHostedProjectData(false);
     assert.equal(controller.acceptedStartGrant, false);
     assert.equal(controller.hostedProjectDataAuthorized, false);
     controller.acceptStartGrant(true);
@@ -154,4 +159,36 @@ test('selected saved WorkItem task starts once with its exact ID, accepted grant
     assert.match(controller.startBlockReason, /launch a new task with an approved validation command/);
     await controller.startSelectedWorkItemTask();
     assert.equal(starts.length, 1);
+});
+
+test('saved WorkItem Local start uses its persisted task ID and separate grant without hosted consent', async () => {
+    const saved: any = { id: 'local-work', objective: 'Local edit', projectId: 'project', planningMapId: 'map',
+        projectRoot: '.', authority: { profile: 'phase-8b-project' }, reviewPolicy: { kind: 'required' },
+        origin: { kind: 'work-item', projectId: 'project', planningMapId: 'map' },
+        modelPolicy: { kind: 'exact', connectionId: 'local', modelId: 'qwen' },
+        completion: { validation: [{ kind: 'test', label: 'Required', command: 'npm test' }], requireValidationPass: true } };
+    let starts = 0, authorized: boolean | undefined, target = { connectionId: 'local', modelId: 'qwen',
+        label: 'LM Studio · Qwen', locality: 'local' as const, context: 4096 };
+    const runtime = { async readTask() { return saved; }, async listTasks() { return [saved]; }, async listRuns() { return []; },
+        async codingAgentReady() { return true; }, async start(_handle: string, _project: string, taskId: string,
+            _grant: unknown, hosted: boolean) {
+            assert.equal(taskId, saved.id); starts++; authorized = hosted;
+            return { id: 'local-run', taskId, projectId: saved.projectId, status: 'running' };
+        }, async readRun() { return { id: 'local-run', taskId: saved.id, projectId: saved.projectId, status: 'running' }; },
+        async readSteering() { return undefined; }, async listActions() { return []; }, async readMapImpact() { return undefined; },
+        async readTranscript() { return { state: 'not-recorded', entries: [], nextSequence: 0, hasMore: false, incomplete: false }; }
+    } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {}, async () => ({ target, reason: '' }));
+    controller.project = 'file:///project'; controller.handle = 'handle'; controller.phase.codingAgentReady = true;
+    await controller.select({ kind: 'task', id: saved.id });
+    controller.acceptStartGrant(true);
+    assert.equal(controller.startBlockReason, '');
+    await controller.startSelectedWorkItemTask();
+    assert.equal(starts, 1); assert.equal(authorized, false);
+    await controller.select({ kind: 'task', id: saved.id });
+    controller.acceptStartGrant(true);
+    target = { ...target, connectionId: 'codex', locality: 'hosted' as any };
+    await controller.startSelectedWorkItemTask();
+    assert.equal(starts, 1);
+    assert.match(controller.message, /selection changed/);
 });
