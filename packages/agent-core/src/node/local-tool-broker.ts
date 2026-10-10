@@ -118,8 +118,56 @@ function result(call: LocalToolRequest, status: LocalToolResult['status'], outpu
     return parseLocalToolResult({ id: call.id, name: call.name, status, output, truncated });
 }
 
-/** Only P3 read/list calls are executable. The adapter passes the runtime's execution request,
- * never a model-selected root; no process or edit handler is registered here. */
+/** Trusted developer/adapter configuration. A model supplies only commandId; it cannot supply
+ * executable, arguments, cwd, environment, limits, or an effect classification. */
+export interface LocalProcessCommand {
+    id: string;
+    kind: 'test' | 'build';
+    executable: 'node';
+    argv: readonly string[];
+    timeoutMs?: number;
+}
+
+const COMMAND_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u;
+// In the PID namespace this Node build classifies inherited pipes as unknown and creates
+// no-op stdio streams. A fixed prelude writes to the inherited descriptors synchronously.
+const NODE_STDIO = 'data:text/javascript,' + encodeURIComponent(
+    "import { writeSync } from 'node:fs'; for (const [stream, fd] of [[process.stdout, 1], [process.stderr, 2]]) stream._write = (chunk, encoding, callback) => { try { writeSync(fd, chunk); callback(); } catch (error) { callback(error); } };"
+);
+// Node's test harness creates its reporter stream before the prelude above. Redirect its TAP
+// report into sandbox-private tmpfs and relay bounded bytes through a fixed, shell-free wrapper.
+const TEST_REPORT = `import json,os,subprocess,sys
+command=json.loads(sys.argv[1])
+status=subprocess.run(command).returncode
+try:
+ with open('/tmp/dope-test-report','rb') as report:
+  os.write(1,report.read(65536))
+except OSError: pass
+sys.exit(status)
+`;
+const SCRIPT_PATH = /^(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.(?:c|m)?js$/u;
+const PROJECT_PATH = /^(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.json$/u;
+function supportedCommand(value: LocalProcessCommand): boolean {
+    if (!value || Object.keys(value).some(key => !['argv', 'executable', 'id', 'kind', 'timeoutMs'].includes(key)) ||
+        (value.timeoutMs !== undefined && (!Number.isSafeInteger(value.timeoutMs) ||
+            value.timeoutMs < 100 || value.timeoutMs > 30_000)) ||
+        !COMMAND_ID.test(value.id) || value.executable !== 'node' ||
+        !Array.isArray(value.argv) || value.argv.length < 1 || value.argv.length > 3 ||
+        value.argv.some(arg => typeof arg !== 'string' || Buffer.byteLength(arg, 'utf8') > 512 ||
+            /[;&|`$<>*?{}()[\]\\\s\u0000-\u001f]/u.test(arg))) return false;
+    const safePath = (path: string, pattern: RegExp) => pattern.test(path) &&
+        path.split('/').every(part => part !== '.' && part !== '..' && !privatePart(part));
+    if (value.kind === 'test')
+        return value.argv.length === 2 && value.argv[0] === '--test' &&
+            safePath(value.argv[1], SCRIPT_PATH) && /\.test\.(?:c|m)?js$/u.test(value.argv[1]);
+    if (value.kind === 'build')
+        return (value.argv.length === 1 && safePath(value.argv[0], SCRIPT_PATH)) ||
+            (value.argv.length === 3 && value.argv[0] === 'node_modules/typescript/bin/tsc' &&
+                value.argv[1] === '-p' && safePath(value.argv[2], PROJECT_PATH));
+    return false;
+}
+
+/** The adapter passes the runtime's execution request, never a model-selected root. */
 export async function brokerLocalRead(request: AgentExecutionRequest, untrusted: LocalToolRequest,
     signal?: AbortSignal): Promise<LocalToolResult> {
     let call: LocalToolRequest;
@@ -205,5 +253,54 @@ export async function brokerLocalEdit(request: AgentExecutionRequest,
         const status = (response as Record<string, unknown>).status;
         if (status !== 'completed' && status !== 'denied') return result(call, 'failed');
         return result(call, status);
+    } catch { return result(call, signal?.aborted ? 'cancelled' : 'denied'); }
+}
+
+/** Runs one explicitly allowed test/build command inside P2 containment. Its output is provider
+ * evidence only; Dope-owned candidate validation remains a separate authoritative path. */
+export async function brokerLocalProcess(request: AgentExecutionRequest,
+    workspace: ExecutionWorkspace, untrusted: LocalToolRequest,
+    commands: readonly LocalProcessCommand[], signal?: AbortSignal): Promise<LocalToolResult> {
+    let call: LocalToolRequest;
+    try { [call] = parseLocalToolRequests(JSON.stringify([untrusted])); }
+    catch { return result({ id: 'invalid', name: 'process', arguments:
+        { kind: 'test', commandId: 'invalid' } }, 'denied'); }
+    if (call.name !== 'process' || !(workspace instanceof ExecutionWorkspace) ||
+        !Array.isArray(commands)) return result(call, 'denied');
+    if (signal?.aborted) return result(call, 'cancelled');
+    const selected = commands.filter(command => command?.id === call.arguments.commandId);
+    if (selected.length !== 1 || !Array.isArray(selected[0].argv)) return result(call, 'denied');
+    const approved = { ...selected[0], argv: [...selected[0].argv] };
+    if (approved.kind !== call.arguments.kind || !supportedCommand(approved))
+        return result(call, 'denied');
+    try {
+        const grant = parseExecutionGrant(request.grant);
+        if (grant.taskId !== request.taskId || request.projectRoot !== workspace.projectRoot ||
+            request.executionRoot !== workspace.root ||
+            !checkEffect(grant, { kind: 'workspace-process', scope: 'workspace', path: '.' }).allowed ||
+            !checkEffect(grant, { kind: call.arguments.kind === 'test' ? 'workspace-test' : 'workspace-build',
+                scope: 'workspace', path: '.' }).allowed) return result(call, 'denied');
+        await workspace.assertActiveBasis(request.projectRoot, request.executionRoot);
+        if (signal?.aborted) return result(call, 'cancelled');
+        // RLIMIT_AS and CPU/fd/process limits are inherited by descendants. P2 owns the sterile
+        // environment, fixed /work cwd, network namespace, private mounts and process group kill.
+        const nodeCommand = ['/dope-node', '--max-old-space-size=256',
+            '--import=' + NODE_STDIO, ...approved.argv];
+        if (approved.kind === 'test')
+            nodeCommand.splice(4, 0, '--test-reporter=tap',
+                '--test-reporter-destination=/tmp/dope-test-report');
+        const command = approved.kind === 'test' ?
+            ['/usr/bin/python3', '-c', TEST_REPORT, JSON.stringify(nodeCommand)] : nodeCommand;
+        const sandbox = await launchLocalSandboxedTool({ workspaceRoot: workspace.root },
+            ['/usr/bin/prlimit', '--as=4294967296', '--cpu=30', '--nofile=128', '--nproc=64',
+                '--fsize=67108864', '--', ...command],
+            approved.timeoutMs ?? 30_000, signal);
+        const combined = [sandbox.stdout, sandbox.stderr].filter(Boolean).join('\n');
+        const bytes = Buffer.from(combined, 'utf8');
+        const truncated = bytes.length > LOCAL_TOOL_LIMITS.resultBytes;
+        const output = (truncated ? bytes.subarray(0, LOCAL_TOOL_LIMITS.resultBytes - 4) : bytes).toString('utf8');
+        return result(call, signal?.aborted || sandbox.cancelled ? 'cancelled' :
+            sandbox.timedOut || sandbox.exitCode !== 0 ? 'failed' : 'completed', output,
+        truncated || sandbox.timedOut);
     } catch { return result(call, signal?.aborted ? 'cancelled' : 'denied'); }
 }

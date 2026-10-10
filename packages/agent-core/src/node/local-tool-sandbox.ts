@@ -10,7 +10,9 @@ export interface LocalSandboxPolicy {
     unshareExecutable?: string;
 }
 
-export interface LocalSandboxResult { exitCode: number; stdout: string; stderr: string }
+export interface LocalSandboxResult {
+    exitCode: number; stdout: string; stderr: string; timedOut: boolean; cancelled: boolean;
+}
 export class LocalSandboxUnavailable extends Error {
     constructor(reason: string) { super(`Local tool sandbox unavailable: ${reason}`); }
 }
@@ -20,6 +22,13 @@ const MAX_OUTPUT = 65_536;
 const MAX_ENTRIES = 100_000;
 const SAFE_ENV = { PATH: '/usr/bin:/bin', HOME: '/home/local', TMPDIR: '/tmp',
     XDG_CACHE_HOME: '/tmp/cache', LC_ALL: 'C' };
+const PRIVATE_NAMES = new Set(['.git', '.dope', '.codex', '.agents', '.ssh', '.aws', '.config',
+    '.gnupg', '.kube', '.docker', '.azure', 'secrets', 'secret', 'credentials']);
+const privateFile = (name: string): boolean => ['.npmrc', '.yarnrc', '.yarnrc.yml', '.netrc',
+    '.pypirc', '.gitconfig', '.git-credentials', 'id_rsa', 'id_ed25519', 'credentials.json'].includes(name) ||
+    name === '.env' || name.startsWith('.env.') || name.startsWith('secret.') ||
+    name.startsWith('token.') || name.startsWith('credential.') ||
+    ['.pem', '.key', '.p12', '.pfx'].some(suffix => name.endsWith(suffix));
 
 async function protectedEntries(root: string): Promise<string[]> {
     const masks: string[] = [];
@@ -29,12 +38,12 @@ async function protectedEntries(root: string): Promise<string[]> {
             if (++count > MAX_ENTRIES) throw new LocalSandboxUnavailable('workspace scan limit exceeded');
             const path = join(directory, entry.name);
             const name = entry.name.toLowerCase();
-            if (name === '.git' || name === '.dope') {
+            if (PRIVATE_NAMES.has(name)) {
                 // The mount targets must already exist. Never create a mount target in the candidate.
                 if (!entry.isDirectory() || entry.isSymbolicLink())
                     throw new LocalSandboxUnavailable('protected directory is not a real directory');
                 masks.push(path + '/');
-            } else if (name === '.env' || name.startsWith('.env.')) {
+            } else if (privateFile(name)) {
                 if (!entry.isFile() || entry.isSymbolicLink())
                     throw new LocalSandboxUnavailable('environment file is not a regular file');
                 masks.push(path);
@@ -74,6 +83,12 @@ export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, comma
     const bwrap = await executable(policy.bwrapExecutable ?? '/usr/bin/bwrap', '/usr/bin/bwrap');
     const unshare = await executable(policy.unshareExecutable ?? '/usr/bin/unshare', '/usr/bin/unshare');
     const masks = await protectedEntries(root);
+    // The current Node runtime is a trusted executable, mounted read-only at a fixed path.
+    // No caller-selected host executable or private home is exposed to the namespace.
+    const node = command.some(arg => arg.includes('/dope-node')) ?
+        await realpath(process.execPath) : undefined;
+    if (node && !(await lstat(node)).isFile())
+        throw new LocalSandboxUnavailable('Node executable unavailable');
     if (signal?.aborted) throw new LocalSandboxUnavailable('cancelled');
     const args = ['--user', '--map-root-user', '--net', '--', bwrap,
         '--unshare-user', '--unshare-pid', '--unshare-ipc', '--unshare-uts', '--die-with-parent',
@@ -82,6 +97,7 @@ export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, comma
         '--bind', root, '/work', '--size', String(64 * 1024 * 1024), '--tmpfs', '/tmp',
         '--size', String(16 * 1024 * 1024), '--tmpfs', '/home', '--dir', '/home/local',
         '--proc', '/proc', '--dev', '/dev'];
+    if (node) args.push('--ro-bind', node, '/dope-node');
     for (const mask of masks) {
         const destination = '/work/' + relative(root, mask.replace(/\/$/u, '')).split(sep).join('/');
         args.push(...(mask.endsWith('/') ? ['--tmpfs', destination, '--remount-ro', destination] :
@@ -92,17 +108,17 @@ export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, comma
     args.push('--', ...command);
     return new Promise((resolve, reject) => {
         const child = spawn(unshare, args, { env: SAFE_ENV, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
-        let stdout = '', stderr = '', settled = false;
+        let stdout = '', stderr = '', settled = false, timedOut = false, cancelled = false;
         const kill = () => { if (child.pid) try { process.kill(-child.pid, 'SIGKILL'); } catch { /* exited */ } };
-        const abort = () => kill();
+        const abort = () => { cancelled = true; kill(); };
         signal?.addEventListener('abort', abort, { once: true });
         if (signal?.aborted) abort();
-        const timer = setTimeout(kill, timeoutMs);
+        const timer = setTimeout(() => { timedOut = true; kill(); }, timeoutMs);
         const done = (error?: Error, code?: number | null) => {
             if (settled) return;
             settled = true; clearTimeout(timer); signal?.removeEventListener('abort', abort);
             if (error) reject(new LocalSandboxUnavailable('sandbox process could not start'));
-            else resolve({ exitCode: code ?? 1, stdout, stderr });
+            else resolve({ exitCode: code ?? 1, stdout, stderr, timedOut, cancelled });
         };
         child.stdout.on('data', chunk => { stdout = (stdout + chunk).slice(0, MAX_OUTPUT); });
         child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(0, MAX_OUTPUT); });
