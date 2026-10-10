@@ -581,13 +581,13 @@ Consequential ProposedActions carry stable origin, actor, intent, effect/target,
 
 Typed steering is versioned state with durable request and applied/rejected/pending/unsupported acknowledgement. Unsupported mid-turn steering must be displayed truthfully and handled at an explicit safe task boundary. Steering never changes an accepted grant, frozen candidate or previously recorded run. Applied changes may produce scoped Software Map identity/staleness evidence, with unknown identities labeled unresolved and developer-invoked targeted refresh. Continuous automated alignment remains Phase 10.
 
-### Phase 8E — Local coding-agent execution compatibility (planned, not activated)
+### Phase 8E — Local coding-agent execution compatibility (owner-activated; not qualified)
 
-The existing Local Model connection in AI Center supports inference for Chat/synthesis, but is **not** itself an eligible coding-agent harness. When 8E is separately activated, a real Local Coding Agent adapter may execute an ordinary `AgentTask` only after observed `agentExecution` capability, sufficient loaded-context capacity and a Dope-owned isolated tool-broker contract have been qualified. Local and hosted runs share the same AgentTask, AgentRun, WorkItem, AgentTaskSequence, ExecutionGrant, frozen CandidateDelta, required Dope-owned validation, developer review, authority, source provenance and restart rules.
+The existing Local Model connection in AI Center supports inference for Chat/synthesis, but is **not** itself an eligible coding-agent harness. With 8E now owner-activated for implementation (2026-10-10), a real Local Coding Agent adapter may execute an ordinary `AgentTask` only after observed `agentExecution` capability, sufficient loaded-context capacity and a Dope-owned isolated tool-broker contract have been qualified. Local and hosted runs share the same AgentTask, AgentRun, WorkItem, AgentTaskSequence, ExecutionGrant, frozen CandidateDelta, required Dope-owned validation, developer review, authority, source provenance and restart rules.
 
 Local provider names, model IDs, native sessions, tool schemas and context buffers are adapter/application state, not new canonical Project Mind or Agent Mind objects. Model tool-call requests do not confer filesystem, process, network, Git, private-state or approval authority. The local adapter can refuse unsupported operations and report capacity/turn/tool limits truthfully; it must not silently change model/provider, upload project code, forge consent or modify authoritative project files outside existing Authority/ToolExecutor.
 
-This is an **approved future design**, not evidence that 8E, local tool execution or local-model parity is implemented or qualified. See ADR 0032 and `docs/planning/p8/phase-8e-plan.md`.
+This is an **owner-activated but unqualified design**, not evidence that 8E, local tool execution or local-model parity is implemented or qualified. See ADR 0032 and `docs/planning/p8/phase-8e-plan.md`.
 
 ### AgentTask
 

@@ -1,6 +1,6 @@
 # Phase 8D — General Scoped Delegation Plan
 
-Status: **8D GREEN / QUALIFIED at `0.8.33` source `8748cb4` through `c8-fix` P6; Product Phase 8 remains active, 8E inactive**
+Status: **8D GREEN / QUALIFIED at `0.8.33` source `8748cb4` through `c8-fix` P6; Product Phase 8 remains active; 8E subsequently owner-activated 2026-10-10**
 Owner activation: 2026-10-09
 Baseline: `0.8.20`; continuation: `0.8.21` through `0.8.33`
 Execution folder: `docs/tasks/p8d/`
@@ -67,4 +67,4 @@ Steering is versioned/persisted with pending/applied/rejected/unsupported acknow
 
 P1/P2 targeted contract tests, P3 bounded delegation service test, P4/P5 frozen validation and accept/reject tests, P6 blocked action test, P7 steering test, P8 map impact test, P9–P11 focused UI/controller tests. P12 covers bounded cross-system, restart/scope/authority and direct Work/Prompt Stack regressions and registers new tests in `test:product`. Original P13 owned the first direct hosted Codex/Dope GUI qualification attempt and its Not Green result. The approved `c8-fix` P6 manual T3 correction supplied the later two-WorkItem-task, accept/reject, HUMAN/AI/SHARED, denied escalation, steering, map impact/restart and exact-source aggregate evidence. Failed prerequisites remain historical Not Green evidence; no fabricated live evidence.
 
-Ordinary prompts target <=8 minutes and a 15-minute maximum, use one appropriate affected test/build group and `git diff --check`, not repeated aggregate tests. No extra session/local-model/multi-agent/Phase-10 work; Phase 8E and full Phase 8 closure are separate owner decisions.
+Ordinary prompts target <=8 minutes and a 15-minute maximum, use one appropriate affected test/build group and `git diff --check`, not repeated aggregate tests. No extra session/local-model/multi-agent/Phase-10 work within 8D; Phase 8E was subsequently activated by a separate owner decision on 2026-10-10. Full Phase 8 closure remains a future decision.

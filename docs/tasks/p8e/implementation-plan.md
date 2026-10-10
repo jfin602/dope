@@ -1,8 +1,8 @@
 # /prompt-plan — Phase 8E implementation plan
 
 Date: 2026-10-09
-Status: **SOURCE REVIEWED / PROMPT PLAN READY; OWNER ACTIVATION STILL REQUIRED**
-Version policy: baseline 0.8.33, proposed P1–P14 sequential 0.8.34–0.8.47.
+Status: **OWNER-ACTIVATED 2026-10-10 / P1 IMPLEMENTATION READY; NO 8E QUALIFICATION**
+Version policy: qualified baseline 0.8.33; owner-activated P1–P14 sequential 0.8.34–0.8.47, each prompt responsible for coherent updates to 13 manifests and pinned internal `@dope/*` dependency versions. Docs leave actual manifests at 0.8.33.
 Source reviewed: GitHub main at 0a46fb4b906b0306e1cb7074919d115831a03afe, source manifests 0.8.33. Reinspect actual local checkout and inherited repairs at execution.
 
 ## Concrete code ownership
@@ -47,4 +47,4 @@ Source reviewed: GitHub main at 0a46fb4b906b0306e1cb7074919d115831a03afe, source
 
 ## Closure / activation
 
-This stack has not changed root manifests or been executed. User's `/prompt-ass + /prompt-plan + /prompt-write p8e` authorizes writing docs but does not independently claim a Phase 8E activation or package transition. Product Phase 8 is still active, 8D Green. A separate explicit owner decision activates p8e from coherent 0.8.33 and permits P1 patch 0.8.34. After P14 final truthful evidence, reconcile current docs once and separately decide Phase 8 closeout / Phase 9 activation.
+The owner separately activated p8e on 2026-10-10 in `docs/planning/p8/phase-8e-activation.md`. The first P1 attempt stopped at missing activation preflight, changed no source files and created no checkpoint. P1 now must advance all 13 manifests and internal dependency references from `0.8.33` to `0.8.34` during implementation; later prompts own their assigned transitions through manual P14 `0.8.47`. No version or 8E qualification is established by these documentation commits. P14 final evidence triggers one docs reconciliation and a later separate Phase 8 closeout/Phase 9 decision.

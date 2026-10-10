@@ -717,7 +717,7 @@ Steering is a typed persisted request/acknowledgement at a safe runtime boundary
 
 See ADR 0031 and `docs/planning/p8/phase-8d-plan.md`. No Theia, graph-renderer, provider-native or Codex types belong in these domain contracts.
 
-### Phase 8E — Local agent execution and tool mediation (planned, not activated)
+### Phase 8E — Local agent execution and tool mediation (owner-activated; not qualified)
 
 The existing AI Center supports Local LM Studio connections and context-aware conversational/synthesis providers. That does **not** mean Local Coding Agent execution works: in the `0.8.33` reference source `AgentExecutionRuntime.select()` and `backend-module.ts` register/authorize only a Codex App Server `AgentExecutionAdapter`, and local models lack a proved `agentExecution` capability.
 
@@ -727,7 +727,7 @@ A **Dope-owned Tool Broker** mediates every untrusted model-requested file/proce
 
 A Local model becomes `agentExecution` eligible only after a safe zero-project-data tool-loop probe plus enforceable tool mediation and observed loaded context readiness. `conversationalText`, claimed `toolCalling` or a preferred model name is insufficient. AI Center keeps global connection identity and Coding Agent role eligibility; feature-level per-task grant and selected model/egress authority remain distinct. Local model failure must never silently switch to hosted Codex. No new LocalAgentTask/Run, alternative project DB, provider-specific authority or separate Local review UI is authorized.
 
-See **ADR 0032** and `docs/planning/p8/phase-8e-plan.md`. Design approved, **8E not yet owner-activated**; `0.8.33` remains the last qualified source.
+See **ADR 0032** and `docs/planning/p8/phase-8e-plan.md`. Design approved and **8E owner-activated 2026-10-10** (see `docs/planning/p8/phase-8e-activation.md`); `0.8.33` remains the last qualified source. No Local agent implementation or capability is qualified by activation.
 
 ### Model Runtime
 
