@@ -78,7 +78,7 @@ export function checkEffect(grant: ExecutionGrant, proposed: unknown): EffectDec
         effect.kind === 'git-inspect' && effect.scope !== 'workspace')
         return { ...base, allowed: false, reason: 'invalid-target' };
     if (effect.path !== undefined) {
-        try { projectPath(effect.path, ['workspace-process', 'workspace-test', 'workspace-build', 'git-inspect'].includes(effect.kind)); }
+        try { projectPath(effect.path, ['workspace-read', 'workspace-process', 'workspace-test', 'workspace-build', 'git-inspect'].includes(effect.kind)); }
         catch { return { ...base, allowed: false, reason: 'invalid-target' }; }
     }
     if (approved.permissions[effect.kind] && !effect.path)

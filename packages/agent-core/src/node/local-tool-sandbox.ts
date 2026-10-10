@@ -15,7 +15,8 @@ export class LocalSandboxUnavailable extends Error {
     constructor(reason: string) { super(`Local tool sandbox unavailable: ${reason}`); }
 }
 
-const MAX_OUTPUT = 16_384;
+// Read results are base64 encoded inside the sandbox; 32 KiB of file data needs over 43 KiB.
+const MAX_OUTPUT = 65_536;
 const MAX_ENTRIES = 100_000;
 const SAFE_ENV = { PATH: '/usr/bin:/bin', HOME: '/home/local', TMPDIR: '/tmp',
     XDG_CACHE_HOME: '/tmp/cache', LC_ALL: 'C' };
@@ -61,7 +62,7 @@ async function executable(value: string, expected: string): Promise<string> {
 
 /** Runs only after checking mount targets and binaries. No raw-spawn fallback exists. */
 export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, command: readonly string[],
-    timeoutMs = 5000): Promise<LocalSandboxResult> {
+    timeoutMs = 5000, signal?: AbortSignal): Promise<LocalSandboxResult> {
     if (process.platform !== 'linux') throw new LocalSandboxUnavailable('Linux is the only supported platform');
     if (!policy || typeof policy.workspaceRoot !== 'string' || !isAbsolute(policy.workspaceRoot) ||
         !Array.isArray(command) || command.length === 0 || command.some(arg => typeof arg !== 'string' || arg.includes('\0')) ||
@@ -73,6 +74,7 @@ export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, comma
     const bwrap = await executable(policy.bwrapExecutable ?? '/usr/bin/bwrap', '/usr/bin/bwrap');
     const unshare = await executable(policy.unshareExecutable ?? '/usr/bin/unshare', '/usr/bin/unshare');
     const masks = await protectedEntries(root);
+    if (signal?.aborted) throw new LocalSandboxUnavailable('cancelled');
     const args = ['--user', '--map-root-user', '--net', '--', bwrap,
         '--unshare-user', '--unshare-pid', '--unshare-ipc', '--unshare-uts', '--die-with-parent',
         '--ro-bind', '/usr', '/usr', '--symlink', 'usr/bin', '/bin',
@@ -92,10 +94,13 @@ export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, comma
         const child = spawn(unshare, args, { env: SAFE_ENV, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
         let stdout = '', stderr = '', settled = false;
         const kill = () => { if (child.pid) try { process.kill(-child.pid, 'SIGKILL'); } catch { /* exited */ } };
+        const abort = () => kill();
+        signal?.addEventListener('abort', abort, { once: true });
+        if (signal?.aborted) abort();
         const timer = setTimeout(kill, timeoutMs);
         const done = (error?: Error, code?: number | null) => {
             if (settled) return;
-            settled = true; clearTimeout(timer);
+            settled = true; clearTimeout(timer); signal?.removeEventListener('abort', abort);
             if (error) reject(new LocalSandboxUnavailable('sandbox process could not start'));
             else resolve({ exitCode: code ?? 1, stdout, stderr });
         };
