@@ -1,6 +1,6 @@
 # Phase 9 — Clean 0.9.0 Baseline
 
-**Status: VERSION BASELINE ESTABLISHED / PHASE 9 IMPLEMENTATION NOT ACTIVATED**
+**Status: VERSION BASELINE ESTABLISHED / PHASE 9A SUBSEQUENTLY OWNER-ACTIVATED (2026-10-10)**
 **Date:** 2026-10-10
 **Baseline commit:** `e250a07c9b4b7ec29fd178a22036094307237b23`
 **Qualified predecessor:** Phase 8 Green / owner-closed on exact `0.8.47` product source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06`; evidence closeout `304d429f866976307a70559cf29c98d8c0276ce5`.
@@ -22,3 +22,5 @@ The baseline commit changes exactly **13** root/app/package `package.json` manif
 ## Evidence limits
 
 The version-only commit was checked for consistent manifests/internal references and unrelated data preservation. It did not run `npm run check`, GUI qualification, tests or a build. The last qualified product source remains `0.8.47` / `bcc5cb8`; historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green remain unchanged.
+
+**Subsequent owner decision (2026-10-10):** The owner explicitly activated Phase 9 for 9A P1–P6 only after the baseline was created; see `docs/planning/p9/activation.md`. The original baseline-only approval above remains historical context. No manifest change is made by the activation, and 9B–9E are not authorized.

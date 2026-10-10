@@ -1,6 +1,6 @@
 # ADR 0033 — Optional Development Sessions and Linked Work
 
-Status: **Accepted for Phase 9 design; implementation and activation pending**
+Status: **Accepted design / Phase 9A subsequently owner-activated 2026-10-10; implementation and qualification pending**
 Date: 2026-10-10
 Depends on: ADR 0005, 0017, 0025, 0028–0032
 Entry: Phase 8 owner-closed Green at committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06`.
@@ -29,3 +29,5 @@ Phase 9 introduces one small Dope-owned session domain/service/store and a navig
 Rejected: mandatory sessions, copying authoritative state, session membership as task origin, auto-execution on session open, synthetic progress truth, silent architecture adoption and new agent authority.
 
 **This ADR is design authority only.** It does not activate Phase 9, create `0.9.0`, qualify session behavior, close older evidence gaps or activate Phase 10.
+
+**Later activation note (2026-10-10):** The owner separately authorized 9A implementation in `docs/planning/p9/activation.md`. ADR acceptance alone was not activation. 9B–9E and Phase 10 remain inactive; no session behavior is qualified by this note.
