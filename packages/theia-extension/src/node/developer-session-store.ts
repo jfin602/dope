@@ -4,8 +4,9 @@ import { lstat, mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises
 import type { FileHandle } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseSessionCollection, parseSessionProjectIdentity } from '@dope/contracts/lib/developer-session';
-import type { SessionCollection, SessionProjectIdentity } from '@dope/contracts/lib/developer-session';
+import { parseDeveloperSession, parseSessionCollection, parseSessionProjectIdentity } from '@dope/contracts/lib/developer-session';
+import type { DeveloperSession, SessionCollection, SessionProjectIdentity } from '@dope/contracts/lib/developer-session';
+import type { SessionMutationRequest, SessionMutationResult } from '@dope/contracts/lib/developer-session-service';
 
 const MAX_BYTES = 16 * 1024 * 1024;
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
@@ -14,6 +15,68 @@ const uncertain = (error: unknown): Error =>
 
 /** Filesystem only. Session lifecycle and ID allocation belong to the caller. */
 export class DeveloperSessionStore {
+    /** Apply one developer-authored lifecycle edit under the collection's atomic revision lock. */
+    async mutate(root: string, projectMindId: string | null, request: SessionMutationRequest): Promise<SessionMutationResult> {
+        if (!request || !request.operation || !Number.isSafeInteger(request.expectedCollectionRevision) ||
+            request.expectedCollectionRevision < 0) throw new Error('Invalid session mutation request');
+        const operation = request.operation;
+        let changed!: DeveloperSession;
+        const snapshot = await this.transact(root, projectMindId, request.expectedCollectionRevision, current => {
+            const sessions = [...current.sessions];
+            if (operation.type === 'create') {
+                if (request.expectedSessionRevision !== null) throw new Error('Create requires no session revision');
+                const id = randomUUID();
+                if (sessions.some(session => session.id.toLowerCase() === id.toLowerCase())) throw new Error('Duplicate session ID');
+                const latest = sessions.reduce((time, session) => Math.max(time, Date.parse(session.updatedAt)), 0);
+                const createdAt = this.nextInstant(latest);
+                changed = parseDeveloperSession({ schemaVersion: 1, id, project: current.project, revision: 1,
+                    title: operation.title, objective: operation.objective, createdAt, updatedAt: createdAt,
+                    status: 'active', notes: '', nextActions: [], closeout: null });
+                sessions.push(changed);
+            } else {
+                const index = sessions.findIndex(session => session.id === operation.sessionId);
+                if (index < 0) throw new Error('Unknown Development Session');
+                const previous = sessions[index];
+                if (!Number.isSafeInteger(request.expectedSessionRevision) ||
+                    request.expectedSessionRevision !== previous.revision) throw new Error('Stale Development Session revision');
+                if (previous.status === 'closed' && operation.type !== 'reopen')
+                    throw new Error('Closed Development Session is immutable until reopened');
+                const updatedAt = this.nextInstant(Date.parse(previous.updatedAt));
+                const next: DeveloperSession = { ...previous, revision: previous.revision + 1, updatedAt };
+                switch (operation.type) {
+                    case 'rename': next.title = operation.title; break;
+                    case 'set-objective': next.objective = operation.objective; break;
+                    case 'set-notes': next.notes = operation.notes; break;
+                    case 'set-next-actions': next.nextActions = operation.nextActions; break;
+                    case 'pause':
+                        if (previous.status !== 'active') throw new Error('Only an active session can pause');
+                        next.status = 'paused'; break;
+                    case 'resume':
+                        if (previous.status !== 'paused') throw new Error('Only a paused session can resume');
+                        next.status = 'active'; break;
+                    case 'close':
+                        next.status = 'closed';
+                        next.closeout = { ...operation.closeout, closedAt: updatedAt }; break;
+                    case 'reopen':
+                        if (previous.status !== 'closed') throw new Error('Only a closed session can reopen');
+                        next.status = 'active'; next.closeout = null; break;
+                    default: throw new Error('Unknown Development Session operation');
+                }
+                changed = parseDeveloperSession(next);
+                sessions[index] = changed;
+            }
+            return { ...current, revision: current.revision + 1, sessions };
+        });
+        return { snapshot, session: changed };
+    }
+
+    private nextInstant(previous: number): string {
+        const value = Math.max(Date.now(), previous + 1);
+        if (!Number.isFinite(value) || value > 8_640_000_000_000_000)
+            throw new Error('Development Session timestamp exhausted');
+        return new Date(value).toISOString();
+    }
+
     async root(uri: string): Promise<string> {
         if (typeof uri !== 'string') throw new Error('Development Sessions require a local file folder');
         let rawPath: string;

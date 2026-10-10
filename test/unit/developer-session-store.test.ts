@@ -7,6 +7,7 @@ import test from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { DeveloperSessionStore } from '../../packages/theia-extension/lib/node/developer-session-store.js';
 import type { SessionCollection } from '../../packages/contracts/lib/developer-session.js';
+import type { SessionOperation } from '../../packages/contracts/lib/developer-session-service.js';
 
 async function project() {
     const root = await mkdtemp(join(tmpdir(), 'dope-session-store-'));
@@ -131,4 +132,56 @@ test('copied store cannot silently rebind to another project root', async () => 
         await assert.rejects(store.transact(copy.root, null, 1, addSession), /identity/);
         assert.equal((await readdir(join(copy.root, '.dope'))).length, 1);
     } finally { await source.clean(); await copy.clean(); }
+});
+
+test('lifecycle edits are revision checked, transition safe and confined to session storage', async () => {
+    const p = await project();
+    try {
+        const store = new DeveloperSessionStore();
+        await mkdir(join(p.root, '.dope'));
+        for (const name of ['chats.json', 'planning-maps.json', 'agent.json', 'project-mind.json'])
+            await writeFile(join(p.root, '.dope', name), `${name} sentinel`);
+        let collectionRevision = 0;
+        const edit = async (operation: SessionOperation, sessionRevision: number | null) => {
+            const result = await store.mutate(p.root, null, {
+                projectHandle: 'unused-until-P4', expectedCollectionRevision: collectionRevision,
+                expectedSessionRevision: sessionRevision, operation,
+            });
+            collectionRevision = result.snapshot.revision;
+            return result.session;
+        };
+        const first = await edit({ type: 'create', title: 'First', objective: 'Build feature' }, null);
+        const second = await edit({ type: 'create', title: 'Second', objective: '' }, null);
+        assert.notEqual(first.id, second.id);
+        assert.equal(second.revision, 1);
+        let current = await edit({ type: 'rename', sessionId: first.id, title: 'Renamed' }, first.revision);
+        assert.equal(current.revision, 2);
+        assert.ok(current.updatedAt > first.updatedAt);
+        current = await edit({ type: 'set-objective', sessionId: first.id, objective: 'Revised objective' }, current.revision);
+        current = await edit({ type: 'set-notes', sessionId: first.id, notes: 'Developer note' }, current.revision);
+        current = await edit({ type: 'set-next-actions', sessionId: first.id, nextActions: ['Verify'] }, current.revision);
+        current = await edit({ type: 'pause', sessionId: first.id }, current.revision);
+        await assert.rejects(edit({ type: 'pause', sessionId: first.id }, current.revision), /active/);
+        current = await edit({ type: 'resume', sessionId: first.id }, current.revision);
+        current = await edit({ type: 'close', sessionId: first.id,
+            closeout: { achieved: 'Implemented', unresolved: 'None', deferred: 'UI' } }, current.revision);
+        assert.equal(current.closeout?.closedAt, current.updatedAt);
+        await assert.rejects(edit({ type: 'rename', sessionId: first.id, title: 'Too late' }, current.revision), /immutable/);
+        const closed = current;
+        current = await edit({ type: 'reopen', sessionId: first.id }, current.revision);
+        assert.equal(current.status, 'active');
+        assert.equal(current.closeout, null);
+        assert.ok(current.updatedAt > closed.updatedAt);
+        await assert.rejects(edit({ type: 'reopen', sessionId: first.id }, current.revision), /closed/);
+        await assert.rejects(edit({ type: 'rename', sessionId: first.id, title: 'Stale' }, first.revision), /Stale/);
+        await assert.rejects(store.mutate(p.root, null, { projectHandle: '', expectedCollectionRevision: 0,
+            expectedSessionRevision: current.revision, operation: { type: 'rename', sessionId: first.id, title: 'Stale' } }), /Stale/);
+        await assert.rejects(edit({ type: 'rename', sessionId: randomUUID(), title: 'Unknown' }, 1), /Unknown/);
+        await assert.rejects(edit({ type: 'rename', sessionId: first.id, title: ' '.repeat(161) }, current.revision), /title/);
+        await assert.rejects(edit({ type: 'set-next-actions', sessionId: first.id, nextActions: Array(51).fill('x') }, current.revision), /next actions/);
+        assert.equal((await store.read(p.root)).revision, collectionRevision);
+        assert.equal((await store.read(p.root)).sessions.find(session => session.id === second.id)?.title, 'Second');
+        for (const name of ['chats.json', 'planning-maps.json', 'agent.json', 'project-mind.json'])
+            assert.equal(await readFile(join(p.root, '.dope', name), 'utf8'), `${name} sentinel`);
+    } finally { await p.clean(); }
 });
