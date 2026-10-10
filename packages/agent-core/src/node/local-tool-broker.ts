@@ -3,6 +3,71 @@ import type { AgentExecutionRequest } from '../execution';
 import { LOCAL_TOOL_LIMITS, parseLocalToolRequests, parseLocalToolResult } from './local-tool-contracts';
 import type { LocalToolRequest, LocalToolResult } from './local-tool-contracts';
 import { launchLocalSandboxedTool } from './local-tool-sandbox';
+import { ExecutionWorkspace } from './execution-workspace';
+
+const privatePart = (part: string): boolean => {
+    const p = part.toLowerCase();
+    return ['.git', '.dope', '.codex', '.agents', '.ssh', '.aws', '.config', '.gnupg', '.kube',
+        '.docker', '.azure', '.npmrc', '.yarnrc', '.yarnrc.yml', '.netrc', '.pypirc', '.gitconfig', '.git-credentials',
+        'id_rsa', 'id_ed25519', 'credentials.json', 'secrets', 'secret', 'credentials', 'private', 'node_modules'].includes(p) ||
+        p === '.env' || p.startsWith('.env.') || ['.pem', '.key', '.p12', '.pfx'].some(s => p.endsWith(s)) ||
+        ['secret.', 'token.', 'credential.'].some(s => p.startsWith(s));
+};
+
+/** A fixed program inside the writable candidate mount. All directory traversal uses no-follow
+ * descriptors; create is exclusive and modify replaces only a verified regular file. */
+const EDIT_SCRIPT = `import os,sys,json,base64,stat,uuid
+operation,path,encoded,limit=sys.argv[1:]
+def denied():
+ print(json.dumps({'status':'denied'})); sys.exit(0)
+parts=path.split('/')
+if not parts or any(not p or p in ('.','..') or p.lower() in ('.git','.dope','.codex','.agents','.ssh','.aws','.config','.gnupg','.kube','.docker','.azure','.npmrc','.yarnrc','.yarnrc.yml','.netrc','.pypirc','.gitconfig','.git-credentials','id_rsa','id_ed25519','credentials.json','secrets','secret','credentials','private','node_modules') or p.lower()=='.env' or p.lower().startswith('.env.') or p.lower().endswith(('.pem','.key','.p12','.pfx')) or p.lower().startswith(('secret.','token.','credential.')) for p in parts): denied()
+try:
+ data=base64.b64decode(encoded,validate=True)
+ if len(data)>int(limit): denied()
+ root=os.open('/work',os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+ parent=root
+ for part in parts[:-1]:
+  nextfd=os.open(part,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=parent)
+  if parent!=root: os.close(parent)
+  parent=nextfd
+ leaf=parts[-1]
+ before=None; mode=0o600
+ try:
+  original=os.open(leaf,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=parent)
+  try:
+   info=os.fstat(original)
+   if not stat.S_ISREG(info.st_mode): denied()
+   before=(info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns)
+   mode=stat.S_IMODE(info.st_mode)
+  finally: os.close(original)
+ except FileNotFoundError:
+  if operation!='create': denied()
+ if operation=='create' and before is not None: denied()
+ if operation=='modify' and before is None: denied()
+ temp='.dope-edit-'+uuid.uuid4().hex
+ try:
+  fd=os.open(temp,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,mode,dir_fd=parent)
+  try:
+   os.fchmod(fd,mode)
+   with os.fdopen(fd,'wb',closefd=False) as out: out.write(data); out.flush()
+   os.fsync(fd)
+  finally: os.close(fd)
+  if operation=='create':
+   os.link(temp,leaf,src_dir_fd=parent,dst_dir_fd=parent,follow_symlinks=False)
+  else:
+   now=os.stat(leaf,dir_fd=parent,follow_symlinks=False)
+   if not stat.S_ISREG(now.st_mode) or (now.st_dev,now.st_ino,now.st_size,now.st_mtime_ns)!=before: denied()
+   os.replace(temp,leaf,src_dir_fd=parent,dst_dir_fd=parent)
+  print(json.dumps({'status':'completed'}))
+ finally:
+  try: os.unlink(temp,dir_fd=parent)
+  except FileNotFoundError: pass
+except (OSError,ValueError,OverflowError): denied()
+finally:
+ if 'parent' in locals() and parent!=root: os.close(parent)
+ if 'root' in locals(): os.close(root)
+`;
 
 /** Fixed code runs in P2's isolated /work mount. Path components are opened relative to
  * directory descriptors with O_NOFOLLOW, so a rename or symlink cannot redirect a read. */
@@ -11,7 +76,7 @@ name,path,limit=sys.argv[1:]
 limit=int(limit)
 def private(part):
  p=part.lower()
- return p in ('.git','.dope','.codex','.agents','.ssh','.aws','.config','.gnupg','.kube','.docker','.azure','.npmrc','.netrc','.pypirc','.gitconfig','.git-credentials','id_rsa','id_ed25519','credentials.json','secrets','private') or p=='.env' or p.startswith('.env.') or p.endswith(('.pem','.key','.p12','.pfx')) or p.startswith(('secret.','token.','credential.'))
+ return p in ('.git','.dope','.codex','.agents','.ssh','.aws','.config','.gnupg','.kube','.docker','.azure','.npmrc','.yarnrc','.yarnrc.yml','.netrc','.pypirc','.gitconfig','.git-credentials','id_rsa','id_ed25519','credentials.json','secrets','secret','credentials','private','node_modules') or p=='.env' or p.startswith('.env.') or p.endswith(('.pem','.key','.p12','.pfx')) or p.startswith(('secret.','token.','credential.'))
 def denied():
  print(json.dumps({'status':'denied'}))
  sys.exit(0)
@@ -63,12 +128,7 @@ export async function brokerLocalRead(request: AgentExecutionRequest, untrusted:
     if (call.name !== 'read' && call.name !== 'list') return result(call, 'denied');
     if (signal?.aborted) return result(call, 'cancelled');
     const parts = call.arguments.path === '.' ? [] : call.arguments.path.toLowerCase().split('/');
-    if (parts.some(part => ['.git', '.dope', '.codex', '.agents', '.ssh', '.aws', '.config', '.gnupg',
-        '.kube', '.docker', '.azure', '.npmrc', '.netrc', '.pypirc', '.gitconfig', '.git-credentials',
-        'id_rsa', 'id_ed25519', 'credentials.json', 'secrets', 'private'].includes(part) ||
-        part === '.env' || part.startsWith('.env.') ||
-        ['.pem', '.key', '.p12', '.pfx'].some(suffix => part.endsWith(suffix)) ||
-        ['secret.', 'token.', 'credential.'].some(prefix => part.startsWith(prefix))))
+    if (parts.some(privatePart))
         return result(call, 'denied');
     try {
         const grant = parseExecutionGrant(request.grant);
@@ -110,5 +170,40 @@ export async function brokerLocalRead(request: AgentExecutionRequest, untrusted:
             output = JSON.stringify(entries);
         } else if (capped) output = bytes.subarray(0, LOCAL_TOOL_LIMITS.resultBytes - 4).toString('utf8');
         return result(call, 'completed', output, wire.truncated || capped);
+    } catch { return result(call, signal?.aborted ? 'cancelled' : 'denied'); }
+}
+
+/** Mutates only an explicitly supplied active ExecutionWorkspace. The request's root is
+ * checked against that object rather than accepted as a model-selected destination. */
+export async function brokerLocalEdit(request: AgentExecutionRequest,
+    workspace: ExecutionWorkspace,
+    untrusted: LocalToolRequest, signal?: AbortSignal): Promise<LocalToolResult> {
+    let call: LocalToolRequest;
+    try { [call] = parseLocalToolRequests(JSON.stringify([untrusted])); }
+    catch { return result({ id: 'invalid', name: 'edit', arguments:
+        { operation: 'create', path: 'invalid', content: '' } }, 'denied'); }
+    if (call.name !== 'edit' || !(workspace instanceof ExecutionWorkspace) ||
+        call.arguments.path.split('/').some(privatePart))
+        return result(call, 'denied');
+    if (signal?.aborted) return result(call, 'cancelled');
+    try {
+        const grant = parseExecutionGrant(request.grant);
+        if (grant.taskId !== request.taskId || request.projectRoot !== workspace.projectRoot ||
+            request.executionRoot !== workspace.root || !checkEffect(grant,
+                { kind: 'workspace-write', scope: 'workspace', path: call.arguments.path }).allowed)
+            return result(call, 'denied');
+        await workspace.assertActiveBasis(request.projectRoot, request.executionRoot);
+        if (signal?.aborted) return result(call, 'cancelled');
+        const sandbox = await launchLocalSandboxedTool({ workspaceRoot: workspace.root },
+            ['/usr/bin/python3', '-c', EDIT_SCRIPT, call.arguments.operation,
+                call.arguments.path, Buffer.from(call.arguments.content, 'utf8').toString('base64'),
+                String(LOCAL_TOOL_LIMITS.editBytes)], 5000, signal);
+        if (signal?.aborted) return result(call, 'cancelled');
+        if (sandbox.exitCode !== 0) return result(call, 'failed');
+        const response: unknown = JSON.parse(sandbox.stdout);
+        if (!response || typeof response !== 'object') return result(call, 'failed');
+        const status = (response as Record<string, unknown>).status;
+        if (status !== 'completed' && status !== 'denied') return result(call, 'failed');
+        return result(call, status);
     } catch { return result(call, signal?.aborted ? 'cancelled' : 'denied'); }
 }

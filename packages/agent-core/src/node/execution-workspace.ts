@@ -207,6 +207,18 @@ export class ExecutionWorkspace {
         private readonly parent: string, private readonly basis: Map<string, FileState>, readonly head: string,
         readonly id: string, private readonly acceptedDirty?: AcceptedDirtyBasis) {}
 
+    /** A broker call must still belong to this disposable clone and its accepted source basis. */
+    async assertActiveBasis(projectRoot: string, executionRoot: string): Promise<void> {
+        if (projectRoot !== this.projectRoot || executionRoot !== this.root ||
+            await realpath(this.projectRoot) !== this.projectRoot ||
+            await realpath(this.root) !== this.root)
+            throw new Error('Execution workspace identity changed');
+        const current = await captureGitBasis(this.projectRoot);
+        if (current.head !== this.head) throw new Error('Authoritative Git basis changed');
+        if (this.acceptedDirty) await assertDirtyBasis(this.projectRoot, this.acceptedDirty);
+        else if (!current.clean) throw new Error('Authoritative project changed during execution');
+    }
+
     static async create(projectRoot: string, acceptedDirty?: AcceptedDirtyBasis): Promise<ExecutionWorkspace> {
         if (!isAbsolute(projectRoot) || await realpath(projectRoot) !== projectRoot)
             throw new Error('Execution workspace requires canonical project root');
