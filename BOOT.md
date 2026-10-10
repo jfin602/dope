@@ -11,7 +11,7 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 ## Current state
 
-**CURRENT GATE — PHASE 8E GREEN / QUALIFIED (October 10, 2026).** P14 qualified real Dope GUI Direct Work and saved WorkItem execution with a loaded LM Studio Qwen3-Coder, Linux OS-enforced tool containment, frozen Dope-owned validation, held-review restart/Accept, active Stop, reconnect invalidation and an equal hosted Codex comparison. The full exact-source `npm run check` passed on committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06`; see `docs/tasks/p8e/closeout.md`. Product Phase 8 remains open pending a separate owner closure decision, and Phase 9 is not activated. Phase 8D remains separately Green at `0.8.33` source `8748cb4` through `c8-fix`; its original P13 Not Green closeout remains unchanged historical evidence.
+**CURRENT STATE — PRODUCT PHASE 8 OWNER-CLOSED / GREEN / QUALIFIED (2026-10-10).** Owner closeout `docs/planning/p8/phase-8-closeout.md` accepts the approved 8A–8E scope on committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06`. P14 recorded real local Qwen GUI/OS sandbox/Dope validation, 506/506 full aggregate and 67/67 additional security tests. Original 8D P13 Not Green and earlier owner-sequencing waivers remain historical. **Phase 9 Development Sessions is NEXT / NOT ACTIVATED**; no `0.9.0` transition or Phase 10 implementation is claimed.
 
 **Product Phase 5 — Visual Software Planning is OWNER-CLOSED FOR SEQUENCING.** The retained Phase 5 source at `0.5.11` remained Not Green because P11 never completed one clean end-to-end A-I qualification replay and P12 was not executed. The owner explicitly accepted those gaps for sequencing on 2026-10-02; no failed or missing evidence is relabeled Green. The closeout transition commit `710edb362f9881ab41215705db4f08d8daca6293` established the coherent `0.6.0` successor baseline.
 
@@ -267,4 +267,4 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Current routing
 
-**Current routing: Phase 8E is GREEN / QUALIFIED on `bcc5cb8` at `0.8.47`.** See the roadmap and `docs/tasks/p8e/closeout.md` for exact local model, OS sandbox, GUI task/review, hosted comparison and aggregate evidence. Phase 8D remains Green on its separate `8748cb4` source; original P13 Not Green remains historical. Product Phase 8 closure and Phase 9 activation require a separate owner decision. Earlier `c8-chat-work-ui`, `c8-work-mode`, 8A–8C and Adaptive SEO Green qualifications retain their own exact-candidate meanings.
+**Current routing: Phase 8 is OWNER-CLOSED / GREEN for approved scope at `0.8.47` / `bcc5cb8`.** See `docs/planning/p8/phase-8-closeout.md` and `docs/tasks/p8e/closeout.md`. Phase 9 is next for separate `/docs-review` and owner activation; do not begin implementation or bump to `0.9.0` from this closeout. Original 8D P13 Not Green, later c8-fix Green and earlier slices retain exact-candidate meaning.
