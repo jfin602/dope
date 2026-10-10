@@ -1,6 +1,6 @@
 # ADR 0032 — Phase 8E Local Agent Harness and Tool Authority
 
-Status: **Accepted for 8E design/planning; implementation and activation pending**
+Status: **Accepted / Phase 8E OWNER-ACTIVATED 2026-10-10; implementation and qualification pending**
 Date: 2026-10-09
 Complements: ADR 0004, 0011, 0026, 0027, 0028, 0029 and 0031.
 Qualified reference entry: Phase 8D `0.8.33` / `8748cb4870e8cac3d2a5aca4a05623b5f3d747ec` from `docs/tasks/c8-fix/closeout.md`. Original P13 Not Green closeout remains historical.
@@ -34,4 +34,4 @@ Revisit when another local inference transport requires a genuinely different ex
 
 ## Scope and qualification
 
-This accepted ADR is **design authority**, not implementation evidence, owner activation of 8E, a model compatibility claim, or a Phase 8 closeout. See `docs/planning/p8/phase-8e-plan.md` and `docs/stability-contract.md`. The qualified `0.8.33` source and historical failed P13 closeout are unchanged.
+This accepted ADR is **design authority**; a separate owner decision activated 8E on 2026-10-10 (see `docs/planning/p8/phase-8e-activation.md`). Neither the ADR nor activation provides implementation or qualification evidence, a model compatibility claim or Phase 8 closure. See `docs/planning/p8/phase-8e-plan.md` and `docs/stability-contract.md`. The qualified `0.8.33` source and historical failed P13 closeout are unchanged.

@@ -1,9 +1,9 @@
 # Phase 8E Plan — Local Coding Agent Compatibility
 
-Status: **APPROVED DESIGN / P8E PROMPT STACK AUTHORED; NOT OWNER-ACTIVATED, NOT IMPLEMENTED**
+Status: **OWNER-ACTIVATED 2026-10-10 / P1–P14 EXECUTION AUTHORIZED; NOT QUALIFIED**
 Date: 2026-10-09
 Prerequisite: Phase 8D **GREEN / QUALIFIED** at exact source `8748cb4870e8cac3d2a5aca4a05623b5f3d747ec`, package `0.8.33`, through `docs/tasks/c8-fix/closeout.md` (cycle 2 of 5).
-Expected first *implementation* version after separate activation: `0.8.34` (provisional; no manifest bump or execution authorized by this planning document). The prospective P1–P14 `0.8.34`–`0.8.47` prompt stack is authored under `docs/tasks/p8e/` and awaits separate activation.
+Owner-authorized version continuation: P1 moves `0.8.33` to `0.8.34` during implementation; P2–P13 through `0.8.46`, manual P14 qualifies `0.8.47`. P1–P14 authored in `docs/tasks/p8e/` are activated by the 2026-10-10 owner instruction; this documentation does not bump manifests. See `docs/planning/p8/phase-8e-activation.md`.
 Authorities: ADR 0004, ADR 0026, ADR 0027, ADR 0028, ADR 0029, ADR 0031 and **ADR 0032**; `docs/ARCHITECTURE.md`, `docs/PRODUCT-MODEL.md`, `docs/stability-contract.md`.
 
 ## Goal and boundary
@@ -42,8 +42,8 @@ For the first reliable local reference, use a small disposable Git repository an
 
 ## Execution gates / non-goals
 
-- **Entry:** Owner separately activates Phase 8E from coherent committed `0.8.33` source (or a later explicitly accepted source), and approves the version/prompt stack. Planning approval alone does not mutate source, advance to `0.8.34`, qualify local model execution, or close Product Phase 8.
-- **Prompt economy:** `/prompt-ass -> /prompt-plan -> /prompt-write p8e` only after owner activation. Divide architecture-sensitive implementation into <=8-minute T1/T2 slices, changed-package builds/focused tests only. Reserve broad comparison/restart/security matrix and one final aggregate/manual GUI for dedicated T2/T3 gates. Do not run native package/full builds repeatedly for reassurance.
+- **Entry (SATISFIED 2026-10-10):** Owner activated P1–P14 from the qualified `0.8.33` baseline. The prior P1 attempt made no changes because activation had not yet been recorded, so the version check found `0.8.33`. This activation clears preflight but P1 must still advance all 13 manifests/internal references to `0.8.34` during implementation. Activation does not qualify 8E or close Phase 8.
+- **Prompt economy:** P1–P14 were authored and are now owner-activated for implementation. Divide architecture-sensitive implementation into <=8-minute T1/T2 slices, changed-package builds/focused tests only. Reserve broad comparison/restart/security matrix and one final aggregate/manual GUI for dedicated T2/T3 gates. Do not run native package/full builds repeatedly for reassurance.
 - **Exit:** A separate verified Green/Not Green closeout and product-phase decision determine whether Phase 8 can be closed and whether Phase 9 may activate; no automatic advancement.
 
 Related documents: `docs/planning/p8/phase-8-plan.md`, `docs/decisions/0032-phase-8e-local-agent-harness-and-tool-authority.md`, `docs/stability-contract.md` and `docs/roadmap/mvp-roadmap.md`.

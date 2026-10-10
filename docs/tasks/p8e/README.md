@@ -1,8 +1,8 @@
 # Phase 8E — Local Coding Agent Compatibility
 
-Status: **PROMPT STACK AUTHORED / AWAITING SEPARATE OWNER ACTIVATION / NOT IMPLEMENTED OR QUALIFIED**
+Status: **OWNER-ACTIVATED 2026-10-10 / P1 READY TO RESTART — NOT IMPLEMENTED OR QUALIFIED**
 Mode: Product Phase 8 continuation slice E. Previous qualified source: clean `0.8.33`, `8748cb4870e8cac3d2a5aca4a05623b5f3d747ec` (8D Green via `c8-fix` P6 cycle 2). Exact Phase 8D history remains in `docs/tasks/c8-fix/closeout.md`; original `docs/tasks/p8d/closeout.md` Not Green remains historical.
-Expected phase continuation after owner activation: P1–P14 `0.8.34`–`0.8.47`. **No manifest has been bumped by writing these docs.**
+Owner-authorized P1–P14 continuation: `0.8.34`–`0.8.47`. All actual manifests remain `0.8.33` until P1 implementation. The earlier P1 stopped preflight with zero source changes and no checkpoint.
 Authority: ADR 0032, ADR 0004/0026/0027/0028/0029/0031, `docs/planning/p8/phase-8e-plan.md` and `docs/stability-contract.md`.
 
 ## Why this stack
@@ -28,7 +28,7 @@ AI Center already configures LM Studio and knows local loaded model capacity; Ch
 | P13 | 0.8.46 | Cross-boundary integration and security regression | T2 | GPT-6 Sol High | no |
 | P14 | 0.8.47 | Real local agent qualification and closeout | T3 | GPT-6 Sol High | yes |
 
-The critical safety ordering is P2 OS confinement first, then P3–P5 tools, P6–P8 transport/turns, P9–P12 integration, P13 focused cross-boundary tests, P14 live T3. A cleanly compiling unsafe adapter is **not** acceptable: fail closed before local `agentExecution` eligibility if the real OS sandbox cannot enforce deny classes. Provider-owned writes are restricted to the disposable ExecutionWorkspace; final project mutation remains ADR 0028/0029 Dope-owned.
+**Version transition:** Every P1–P13 prompt advances all 13 root/app/package versions and pinned internal `@dope/*` dependency references to its assigned patch; manual P14 advances `0.8.46` to `0.8.47` before qualification. The runner checks target versions but does not bump them. The critical safety ordering is P2 OS confinement first, then P3–P5 tools, P6–P8 transport/turns, P9–P12 integration, P13 focused cross-boundary tests, P14 live T3. A cleanly compiling unsafe adapter is **not** acceptable: fail closed before local `agentExecution` eligibility if the real OS sandbox cannot enforce deny classes. Provider-owned writes are restricted to the disposable ExecutionWorkspace; final project mutation remains ADR 0028/0029 Dope-owned.
 
 ## Eight-minute efficiency gate
 
@@ -36,9 +36,9 @@ P1 and P3–P12 are each a narrow <=8-minute implementation-plus-focused-validat
 
 ## Execution gate / limits
 
-This stack is **documentation authoring**, not a phase activation. Do not execute `p8e` until owner expressly activates it, the real Git HEAD/manifest is coherent with the qualified `0.8.33` baseline, project worktree changes are preserved, and the patch continuation `0.8.34` is authorized. Neither docs nor runner metadata prove that a local model, sandbox dependency or Linux host is prepared.
+This stack was **OWNER-ACTIVATED on 2026-10-10**, recorded at `docs/planning/p8/phase-8e-activation.md`. Verify coherent `0.8.33` local source and preserve dirty work; P1 must advance versions during implementation. The earlier P1 zero-change preflight stop is not a completed checkpoint. Activation does not prove a local model or OS sandbox ready.
 
-After explicit activation and coherent source checkout:
+After syncing activation documents and verifying a coherent source checkout:
 - Validate: `npm run codex:phase:validate -- p8e`
 - Run: `npm run codex:phase -- p8e`
 - P14 requires real GUI/manual qualification and ends Green or Not Green truthfully; do not auto-close Product Phase 8 or activate Phase 9.
