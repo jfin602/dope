@@ -1,0 +1,35 @@
+TASK: Phase 9 / P5 — Qualify project isolation and session persistence across restart
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.5`.
+
+VERSION TRANSITION — REQUIRED
+After verifying the prior Git checkpoint at `0.9.4`, update all 13 root/app/package package.json versions and pinned internal @dope/* dependency references to `0.9.5` in this prompt. The runner checks but does not bump versions. Preserve unrelated dependencies and yarn.lock, never create package-lock.json or manually commit.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, docs/planning/p9/phase-9-plan.md and docs/tasks/p9a/implementation-plan.md. Confirm separately owner-activated Phase 9, coherent 0.9.0 entry and Git-proven previous prompt checkpoints/versions; preserve dirty work. This authored stack is not activation.
+
+GOAL / IMPLEMENT
+Integrate P1–P4 through a small deterministic fixture: two sessions in project A, independent project B, no-AI create/read, safe copy/reopen/restart, stale and concurrent mutations, malformed/corrupt/symlinked session path/lock, disposed/foreign RPC handles, safe missing-file recovery and no unrelated .dope/Chat/Planning/Agent/Project Mind mutation. Verify a closed session does not change any task/run. Avoid overtesting unrelated provider or UI paths. Register each new developer-session unit test exactly once in root test:product; do not delete/skip existing assertions. If an actual issue crosses a safety boundary, repair narrowly and rerun only invalidated tests.
+
+PRESERVE
+DeveloperSession remains optional provider-free organizational state. No automatic AI/AgentRun, ExecutionGrant changes, WorkItem completion, architecture adoption, Git/source effects, copying Chat/Planning/Agent truth or changes to existing records. No 9B links, 9C Session UI, 9D rich resume projections, 9E full Dope Builds Dope GUI. Preserve historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green.
+
+VALIDATION — T2
+Compile only touched packages if compiled-lib tests require; run one node --test invocation over test/unit/developer-session-contracts.test.ts, developer-session-store.test.ts and developer-session-backend.test.ts (or consolidated equivalents). Add one small cross-project/restart fixture only if gaps remain. git diff --check. No npm run check, npm test, browser/Electron build, live GUI or native packaging.
+
+EFFICIENCY
+P4 targets <=8 minutes including focused tests (10-minute soft, 15-minute hard); P5 is a justified bounded T2 integration gate. Compile only changed package lib if needed; no unconditional full builds, npm test/check, browser/Electron, GUI or packaging. Runner owns checkpoint commits.
+
+DEFER
+P6 scoped audit. 9B owns artifact links and Planning-to-Work replay; 9E owns full aggregate and real GUI.
+
+DONE WHEN
+The assigned scope has direct tests and coherent `0.9.5` manifests; report any missing evidence rather than claim a pass.
+
+FINAL RESPONSE
+Files, targeted tests, version, source identity, remaining gaps.

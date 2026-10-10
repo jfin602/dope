@@ -1,0 +1,31 @@
+TASK: Phase 9 / P6 — Session identity and persistence closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.6`.
+
+VERSION TRANSITION — REQUIRED
+P6 is the SOLE manual scoped 9A closeout. After P5 is Git-proven complete at `0.9.5`, advance all 13 root/app/package package.json versions and pinned internal @dope/* references to `0.9.6` BEFORE final exact-candidate evidence audit. Establish a separate legitimate source/version checkpoint from the final evidence-only closeout. The runner does not bump versions. Preserve unrelated dependencies, yarn.lock and user work; never create package-lock.json, fabricate a checkpoint or mark Phase 9 overall Green.
+
+GOAL
+Determine GREEN / NOT GREEN for **9A only**: optional provider-free session domain, atomic project-local persistence, lifecycle, project-scoped backend RPC and restart safety. Do not claim Chat/Planning/Work membership (9B), Session UI (9C), rich context/closeout projections (9D), real Dope Builds Dope GUI or full aggregate (9E).
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, docs/planning/p9/phase-9-plan.md and docs/tasks/p9a/implementation-plan.md. Confirm separately owner-activated Phase 9, coherent 0.9.0 entry and Git-proven previous prompt checkpoints/versions; preserve dirty work. This authored stack is not activation.
+Read P1–P5 implementation handoffs, exact source SHA and dirty patch identity, focused tests, version evidence and `docs/stability-contract.md`. Confirm no implementation prompt remains pending and no original Phase 5/8 historical closeout is rewritten.
+
+QUALIFICATION — T2 MANUAL / HEADLESS
+1. On the coherent `0.9.6` candidate, review P1 parser/service, P2 atomic store, P3 lifecycle, P4 backend/RPC and P5 integration evidence. Confirm two sessions can be created manually with no AI, renamed, paused, closed and reopened; status/notes persist after project copy/restart.
+2. Check strict canonical-root/project binding, distinct project isolation, invalid/foreign/disposed handles, stale concurrent revisions, corrupt/symlinked files and locks, atomic outcome truth and no silent session project-ID allocator or Project Mind initialization. Missing/unsupported store must fail safely.
+3. Confirm Chat, Planning, Agent Runtime, Project Mind, Git and canonical architecture are not mutated by session lifecycle; no provider call, task start, permission change or automatic WorkItem completion. Confirm no session required for existing flows.
+4. Inspect P5 targeted test outputs on the exact final source candidate; rerun ONLY if a source/version change invalidated the proof. Verify newly added tests are registered exactly once in test:product, git diff --check, 13 manifests/internal references at `0.9.6`, and actual checkpoint SHAs. Do not run a blanket npm run check, npm test, browser/Electron build, real GUI or packaging here: 9E owns full exact-candidate aggregate and GUI qualification.
+5. Write `docs/tasks/p9a/closeout.md` with evidence-linked GREEN or NOT GREEN for bounded 9A, source identity, tests, observed failures, project/copy/restart/authority checks and unqualified 9B–9E gates. Reconcile only necessary current docs once, preserving Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green. Do not automatically activate 9B, close Phase 9 or advance to `0.9.7`.
+
+PRESERVE
+DeveloperSession remains optional provider-free organizational state. No automatic AI/AgentRun, ExecutionGrant changes, WorkItem completion, architecture adoption, Git/source effects, copying Chat/Planning/Agent truth or changes to existing records. No 9B links, 9C Session UI, 9D rich resume projections, 9E full Dope Builds Dope GUI. Preserve historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green.
+
+FINAL RESPONSE
+Report 9A GREEN/NOT GREEN, exact 0.9.6 candidate/checkpoint, focused tests, real restart/project isolation evidence, blockers and pending 9B–9E. This is the only p9a closeout.
