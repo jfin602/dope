@@ -1,8 +1,8 @@
 # /prompt-plan — Phase 9A Implementation Plan
 
 Date: 2026-10-10
-Status: **PLANNED / NOT ACTIVATED**
-Qualified product source: Phase 8 `0.8.47` / `bcc5cb8`; the owner separately established coherent `0.9.0` baseline at `e250a07` (see `docs/planning/p9/baseline.md`). **Implementation activation remains pending** before P1. P1–P6 targets `0.9.1`–`0.9.6`.
+Status: **9A OWNER-ACTIVATED 2026-10-10 / P1 READY TO RESTART — NOT QUALIFIED**
+Qualified product source: Phase 8 `0.8.47` / `bcc5cb8`; the owner separately established coherent `0.9.0` baseline at `e250a07` (see `docs/planning/p9/baseline.md`). **Owner activation is recorded** in `docs/planning/p9/activation.md`; the first P1 attempt changed no files and made no checkpoint. P1–P6 targets `0.9.1`–`0.9.6`.
 
 ## Concrete code ownership
 
@@ -20,7 +20,7 @@ Qualified product source: Phase 8 `0.8.47` / `bcc5cb8`; the owner separately est
 
 ## Efficiency and version policy
 
-Each P1–P5 prompt owns its target patch and must coherently update all 13 root/app/package manifests and pinned internal `@dope/*` dependency versions. Runner does not bump versions. The separately owner-approved coherent `0.9.0` transition has been committed; P1 must start only after a further explicit Phase 9 implementation activation and then advance to `0.9.1` during implementation. Preserve unrelated dependencies, `yarn.lock`, user worktree and historical evidence; no `package-lock.json`.
+Each P1–P5 prompt owns its target patch and must coherently update all 13 root/app/package manifests and pinned internal `@dope/*` dependency versions. Runner does not bump versions. The separately owner-approved coherent `0.9.0` transition has been committed; P1 is now owner-authorized to restart from coherent `0.9.0` and advance to `0.9.1` during implementation; the runner does not bump versions. Preserve unrelated dependencies, `yarn.lock`, user worktree and historical evidence; no `package-lock.json`.
 
 P1–P4 are narrow <=8-minute implementation-plus-focused-test targets, 10-minute soft/15-minute hard. P2 security may justify longer rather than weaker enforcement. P5 T2 integration and P6 manual evidence audit may exceed ordinary budget. `npm run check` already nests typecheck, product tests and browser/Electron builds, so reserve it and real GUI Dope Builds Dope for 9E. No repeated full build, broad tests or model calls in 9A. Tests import compiled `lib`; compile only changed packages when needed.
 
@@ -28,4 +28,4 @@ P1–P4 are narrow <=8-minute implementation-plus-focused-test targets, 10-minut
 
 Sessions are optional, provider-free organizational records. Opening/closing them never creates an AgentTask, executes work, grants authority, changes WorkItem state, adopts architecture or mutates Git. The Phase 5 planning replay is deferred to 9B, not skipped; the original Phase 5 P11 Not Green/P12 unexecuted record remains historical. Phase 8 exact-source Green remains unchanged.
 
-No Phase 9 implementation is authorized by this document alone.
+The separate owner decision on 2026-10-10 now authorizes P1–P6 for 9A only (`docs/planning/p9/activation.md`). This plan alone is not the authorization, and no implementation/qualification is claimed yet.

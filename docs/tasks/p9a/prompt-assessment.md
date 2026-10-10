@@ -1,6 +1,6 @@
 # /prompt-ass — Phase 9A
 
-Disposition: **ASSESSED / NOT ACTIVATED**. Source reviewed at `0.8.47`. Goal: small optional provider-free session domain and durable lifecycle only.
+Disposition: **ASSESSED / 9A OWNER-ACTIVATED 2026-10-10 — NOT QUALIFIED**. Source reviewed at qualified `0.8.47`; clean implementation baseline is committed `0.9.0`. Goal: small optional provider-free session domain and durable lifecycle only.
 
 ## Source and identity findings
 
@@ -22,3 +22,5 @@ P6 T2 manual Medium: version/evidence review and scoped 9A closeout. **No full P
 Sessions organize work, never copy canonical Chat/Planning/Agent state, start/cancel runs, widen grants, mutate Git, complete WorkItems or auto-select model context. Typed links and Planning-to-Work replay belong to 9B; UI 9C; rich context 9D; real GUI/aggregate 9E. Preserve Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green exact-source evidence.
 
 **Prompt efficiency gate:** one owner/seam and one focused test per P1–P4; P2 security must pass immediately; one consolidated P5 integration gate; P6 no repeated full builds/tests. Target <=8 minutes for ordinary prompts; estimates are not observed timings. Explicit version transitions and exactly one final closeout required.
+
+**Activation follow-up (2026-10-10):** The owner authorized Phase 9A P1–P6 after a P1 preflight stop with zero changed files and no checkpoint. See `docs/planning/p9/activation.md`. This clears activation only; P1 still must implement contracts and advance all 13 manifests/internal references from `0.9.0` to `0.9.1` before the runner-owned checkpoint. Phase 9B–9E remain inactive.

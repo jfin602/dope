@@ -14,7 +14,7 @@ GOAL
 Determine GREEN / NOT GREEN for **9A only**: optional provider-free session domain, atomic project-local persistence, lifecycle, project-scoped backend RPC and restart safety. Do not claim Chat/Planning/Work membership (9B), Session UI (9C), rich context/closeout projections (9D), real Dope Builds Dope GUI or full aggregate (9E).
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, ADR 0033, docs/planning/p9/phase-9-plan.md and docs/tasks/p9a/implementation-plan.md. Confirm separately owner-activated Phase 9, coherent 0.9.0 entry and Git-proven previous prompt checkpoints/versions; preserve dirty work. This authored stack is not activation.
+Read BOOT.md, AGENTS.md, ADR 0033, docs/planning/p9/phase-9-plan.md, docs/planning/p9/activation.md and docs/tasks/p9a/implementation-plan.md. Phase 9 is explicitly OWNER-ACTIVATED for 9A P1–P6 on 2026-10-10; the activation gate is SATISFIED. Do not stop on historical 'not activated' baseline/planning wording. Verify P5 completed at 0.9.5 on the actual local Git basis before proceeding to 0.9.6; preserve any intentional dirty work and do not fabricate predecessor checkpoints. Session scope and authority rules remain unchanged.
 Read P1–P5 implementation handoffs, exact source SHA and dirty patch identity, focused tests, version evidence and `docs/stability-contract.md`. Confirm no implementation prompt remains pending and no original Phase 5/8 historical closeout is rewritten.
 
 QUALIFICATION — T2 MANUAL / HEADLESS
