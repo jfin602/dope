@@ -12,6 +12,7 @@ import { LocalContextBudget } from './local-context-budget';
 import { LocalAgentTurnLoop, localWorkspaceBroker } from './local-agent-turn-loop';
 import type { LocalTurnLoopBroker } from './local-agent-turn-loop';
 import { LocalToolTurnTransport } from './local-tool-turn';
+import { providerSetup } from './provider-setup';
 
 const fail = (message: string, kind: ModelRuntimeFailure['failureClass'] = 'nonretryable-provider') =>
     new ModelRuntimeFailure(message, kind);
@@ -32,7 +33,7 @@ export interface LocalAgentExecutionDependencies {
 
 interface ActiveLocalRun { abort: AbortController; loop: LocalAgentTurnLoop }
 
-/** Local LM Studio execution seam. It remains unregistered/ineligible until P10/P11. */
+/** Local LM Studio execution seam. */
 export class LocalAgentExecutionAdapter implements AgentExecutionAdapter {
     readonly id = 'local-lm-studio';
     private readonly active = new Set<ActiveLocalRun>();
@@ -67,10 +68,25 @@ export class LocalAgentExecutionAdapter implements AgentExecutionAdapter {
         if (!connection || connection.lifecycle !== 'enabled' || connection.config.type !== 'local' ||
             connection.config.runtime !== 'lm-studio' || request.registrationId !== connection.id)
             throw fail('Selected Local connection unavailable', 'connection-unavailable');
+        try { providerSetup(connection); }
+        catch { throw fail('Selected Local endpoint is not localhost LM Studio', 'connection-unavailable'); }
+        const model = inventory.registry.models.find(item => item.connectionId === connection.id &&
+            item.providerModelKey === request.modelId);
+        if (!model || !model.enabled || model.state !== 'ready' || model.locality !== 'local' ||
+            model.capabilities.agentExecution?.source !== 'adapter-known' ||
+            model.capabilities.agentExecution.value !== true ||
+            inventory.observations.find(item => item.connectionId === connection.id)?.health !== 'ready')
+            throw fail('Selected Local model is no longer eligible', 'model-unavailable');
         const budget = new LocalContextBudget(connection.id, request.modelId, inventory);
         const loadedModelIds = inventory.loadedLocalModels?.filter(item => item.connectionId === connection.id &&
             item.contextWindowTokens > 0).map(item => item.providerModelKey) ?? [];
         if (!loadedModelIds.includes(request.modelId)) throw fail('Selected local model is not loaded', 'model-unavailable');
+        const loadedContext = inventory.loadedLocalModels?.find(item => item.connectionId === connection.id &&
+            item.providerModelKey === request.modelId)?.contextWindowTokens;
+        if (request.selectedLoadedContextTokens !== undefined &&
+            (loadedContext !== request.selectedLoadedContextTokens ||
+                inventory.registry.revision !== request.selectedRegistryRevision))
+            throw fail('Selected Local model or loaded context changed before start', 'model-unavailable');
         const credential = await this.dependencies.credential?.(connection.id);
         if (connection.credential && !credential) throw fail('Local connection credential unavailable', 'connection-unavailable');
         const commands = this.dependencies.commands(request);

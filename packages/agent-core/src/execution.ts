@@ -15,6 +15,8 @@ export type AgentExecutionEvent =
 export interface AgentExecutionRequest {
     projectRoot: string; executionRoot: string; grant: ExecutionGrant; taskId: string;
     connectionId: string; registrationId: string; modelId: string;
+    /** Ephemeral Local selection evidence; adapters reject a changed inventory before tool use. */
+    selectedLoadedContextTokens?: number; selectedRegistryRevision?: number;
     prompt: string; reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh';
     onEvent(event: AgentExecutionEvent): void;
 }

@@ -10,7 +10,9 @@ import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/autho
 const connection: any = { version: 1, id: 'local', alias: 'Local', lifecycle: 'enabled',
     config: { type: 'local', runtime: 'lm-studio', endpoint: 'http://127.0.0.1:1234/v1' } };
 const inventory = (): any => ({ registry: { revision: 1, connections: [connection],
-    models: [{ connectionId: 'local', providerModelKey: 'model', enabled: true, state: 'ready' }] },
+    models: [{ connectionId: 'local', providerModelKey: 'model', enabled: true, state: 'ready', locality: 'local',
+        capabilities: { agentExecution: { source: 'adapter-known', value: true } } }] },
+observations: [{ connectionId: 'local', health: 'ready' }],
 loadedLocalModels: [{ connectionId: 'local', providerModelKey: 'model', contextWindowTokens: 65536 }] });
 
 async function fixture() {
@@ -46,6 +48,10 @@ test('requires OS containment and fresh loaded capacity before model execution',
         const stale = new LocalAgentExecutionAdapter({ ...base,
             sandboxPreflight: async () => ({ available: true }), inventory: async () => ({ ...inventory(), loadedLocalModels: [] }) });
         await assert.rejects(stale.start(f.request), /not loaded/);
+        const selected = new LocalAgentExecutionAdapter({ ...base,
+            sandboxPreflight: async () => ({ available: true }) });
+        await assert.rejects(selected.start({ ...f.request, selectedLoadedContextTokens: 8192,
+            selectedRegistryRevision: 1 }), /changed before start/);
         assert.equal(turns, 0);
     } finally { await f.cleanup(); }
 });

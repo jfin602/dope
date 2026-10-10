@@ -41,6 +41,8 @@ import { agentRuntimeServicePath, type AgentRuntimeClient } from '@dope/contract
 import { AgentRuntimeBackend } from './agent-runtime-backend';
 import { AgentExecutionRuntime } from './agent-execution-runtime';
 import { CodexAgentExecutionAdapter } from './codex-agent-execution';
+import { LocalAgentExecutionAdapter } from './local-agent-execution';
+import type { AgentExecutionAdapter } from '@dope/agent-core';
 
 export default new ContainerModule(bind => {
     bind(NoteStore).toSelf().inSingletonScope();
@@ -48,11 +50,22 @@ export default new ContainerModule(bind => {
     bind(AgentStore).toSelf().inSingletonScope();
     bind(CodexAgentExecutionAdapter).toDynamicValue(context => new CodexAgentExecutionAdapter(
         context.container.get(CodexAuthManager))).inSingletonScope();
-    bind(AgentExecutionRuntime).toDynamicValue(context => new AgentExecutionRuntime(
-        context.container.get(AgentStore), context.container.get(AIRoleRoutingService),
-        context.container.get(AIInventoryController),
-        new Map([['codex', context.container.get(CodexAgentExecutionAdapter)]]), undefined, undefined,
-        context.container.get(SoftwareMapIndex))).inSingletonScope();
+    bind(AgentExecutionRuntime).toDynamicValue(context => {
+        const inventory = context.container.get(AIInventoryController);
+        let runtime!: AgentExecutionRuntime;
+        const local = new LocalAgentExecutionAdapter({
+            inventory: () => inventory.inventory(),
+            workspace: async request => runtime.localWorkspace(request),
+            commands: request => runtime.localCommands(request),
+            credential: id => context.container.get(AICredentialManager).readForExecution(id)
+        });
+        runtime = new AgentExecutionRuntime(context.container.get(AgentStore),
+            context.container.get(AIRoleRoutingService), inventory,
+            new Map<string, AgentExecutionAdapter>([
+                ['codex', context.container.get(CodexAgentExecutionAdapter)], ['local', local]]),
+            undefined, undefined, context.container.get(SoftwareMapIndex));
+        return runtime;
+    }).inSingletonScope();
     bind(BackendApplicationContribution).toDynamicValue(context => ({
         onStop: () => context.container.get(AgentExecutionRuntime).dispose()
     })).inSingletonScope();

@@ -26,9 +26,12 @@ export const providerSetupAdapters: Readonly<Record<AIConnectionConfig['type'], 
         validate(connection) {
             const config = connection.config;
             if (config.type !== 'local') throw new Error('Invalid local configuration');
-            const host = new URL(config.endpoint).hostname;
-            if (!['localhost', '127.0.0.1', '[::1]'].includes(host) ||
-                !['/', '/v1', '/v1/'].includes(new URL(config.endpoint).pathname))
+            const endpoint = new URL(config.endpoint);
+            const host = endpoint.hostname;
+            if (endpoint.protocol !== 'http:' || endpoint.username || endpoint.password ||
+                endpoint.search || endpoint.hash ||
+                !['localhost', '127.0.0.1', '[::1]'].includes(host) ||
+                !['/', '/v1', '/v1/'].includes(endpoint.pathname))
                 throw new Error('Local runtime must use a localhost /v1 endpoint');
         },
         createRuntime(connection, credential) {

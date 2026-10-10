@@ -40,7 +40,7 @@ class FakeAdapter {
 async function fixture(work: (f: {
     root: string; store: AgentStore; runtime: AgentExecutionRuntime; backend: AgentRuntimeBackend;
     adapter: FakeAdapter; handle: string; registry: any; routing: any; validation: any;
-}) => Promise<void>, policy?: any, retryDelayMs = 0) {
+}) => Promise<void>, policy?: any, retryDelayMs = 0, controls?: any) {
     const root = await mkdtemp(join(tmpdir(), 'dope-agent-lifecycle-'));
     await git('git', ['clone', '--quiet', '--shared', resolve(import.meta.dirname, '../..'), root]);
     // Keep sequence tests independent of the live p8c checkpoint prefix and repository version.
@@ -56,11 +56,14 @@ async function fixture(work: (f: {
         `- Required unchanged project version: \`${version}\`.\n`);
     const store = new AgentStore();
     const adapter = new FakeAdapter();
+    const localAdapter = new FakeAdapter();
+    localAdapter.id = 'fake-local';
     const connection = { id: 'codex', lifecycle: 'enabled', config: { type: 'codex', runtime: 'app-server' },
         codexAccount: { accountId: 'account-1', status: 'signed-in', planUsage: 'available' } };
     const model = { connectionId: 'codex', providerModelKey: 'model-1', enabled: true, state: 'ready',
         locality: 'hosted', capabilities: { agentExecution: { source: 'adapter-known', value: true } } };
-    const registry = { connections: [connection], models: [model], observations: [{ connectionId: 'codex', health: 'ready' }] };
+    const registry = { connections: [connection], models: [model], observations: [{ connectionId: 'codex', health: 'ready' }],
+        loadedLocalModels: [] as { connectionId: string; providerModelKey: string; contextWindowTokens: number }[] };
     const routing = { calls: [] as any[], async resolve(...args: any[]) {
         this.calls.push(args);
         return { resolution: { policyRevision: 7, candidates: [
@@ -78,13 +81,15 @@ async function fixture(work: (f: {
     } };
     const runtime = new AgentExecutionRuntime(store, routing as any,
         { inventory: async () => ({ registry: { version: 1, revision: 1, connections: registry.connections,
-            models: registry.models }, observations: registry.observations }) } as any,
-        new Map([['codex', adapter as any]]), retryDelayMs, validation as any);
+            models: registry.models }, observations: registry.observations,
+            loadedLocalModels: registry.loadedLocalModels }) } as any,
+        new Map([['codex', adapter as any], ['local', localAdapter as any]]), retryDelayMs, validation as any,
+        undefined, async () => ({ available: true }));
     const backend = new AgentRuntimeBackend(store, { notifyAgentStateChanged() {} }, runtime);
     const handle = (await backend.attach(pathToFileURL(root).href)).projectHandle;
     try {
-        await backend.createTask(handle, baseTask(policy));
-        await work({ root, store, runtime, backend, adapter, handle, registry, routing, validation });
+        await backend.createTask(handle, { ...baseTask(policy), ...(controls ? { controls } : {}) });
+        await work({ root, store, runtime, backend, adapter, localAdapter, handle, registry, routing, validation } as any);
     } finally { await runtime.dispose(); backend.dispose(); await rm(root, { recursive: true, force: true }); }
 }
 
@@ -396,6 +401,87 @@ test('hosted authorization and unavailable/ineligible exact selection fail befor
     assert.equal(f.adapter.starts.length, 0);
     assert.equal((await f.store.listRuns(f.root)).length, 0);
 }, { kind: 'exact', connectionId: 'codex', modelId: 'model-1' }));
+
+function enableLocal(f: any) {
+    f.registry.connections.push({ id: 'local-1', lifecycle: 'enabled', alias: 'Local', version: 1,
+        config: { type: 'local', runtime: 'lm-studio', endpoint: 'http://127.0.0.1:1234/v1' } });
+    f.registry.models.push({ connectionId: 'local-1', providerModelKey: 'local-model', enabled: true,
+        state: 'ready', locality: 'local', capabilities: { agentExecution: { source: 'adapter-known', value: true } } });
+    f.registry.observations.push({ connectionId: 'local-1', health: 'ready' });
+    f.registry.loadedLocalModels.push({ connectionId: 'local-1', providerModelKey: 'local-model', contextWindowTokens: 8192 });
+}
+
+test('Local exact selection starts without hosted consent and records Local provenance', async () => fixture(async f => {
+    enableLocal(f);
+    const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), false);
+    assert.deepEqual(run.provenance, { version: 1, connectionId: 'local-1', modelId: 'local-model',
+        providerId: 'local', runtimeKind: 'local', adapterId: 'fake-local' });
+    assert.equal((f as any).localAdapter.starts[0].registrationId, 'local-1');
+    assert.equal((f as any).localAdapter.starts[0].selectedLoadedContextTokens, 8192);
+    assert.equal(f.adapter.starts.length, 0);
+    await f.backend.stop(f.handle, run.id);
+}, { kind: 'exact', connectionId: 'local-1', modelId: 'local-model' }));
+
+test('Local Follow Coding Agent honors role target and rejects a stale role before adapter start', async () => fixture(async f => {
+    enableLocal(f);
+    f.routing.resolve = async () => ({ resolution: { policyRevision: 8,
+        candidates: [{ target: { connectionId: 'local-1', modelId: 'local-model' } }] } });
+    const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), false);
+    assert.equal(run.provenance?.policyRevision, 8);
+    assert.equal((f as any).localAdapter.starts.length, 1);
+    await f.backend.stop(f.handle, run.id);
+}, { kind: 'follow-coding-agent' }));
+
+test('Local role revision change before start fails closed', async () => fixture(async f => {
+    enableLocal(f);
+    let revision = 8;
+    f.routing.resolve = async () => ({ resolution: { policyRevision: revision++,
+        candidates: [{ target: { connectionId: 'local-1', modelId: 'local-model' } }] } });
+    await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), false), /changed before start/);
+    assert.equal((f as any).localAdapter.starts.length, 0);
+    assert.equal(f.adapter.starts.length, 0);
+}, { kind: 'follow-coding-agent' }));
+
+test('Local loaded capacity change before start fails closed', async () => fixture(async f => {
+    enableLocal(f);
+    const original = (f.runtime as any).inventory;
+    let reads = 0;
+    (f.runtime as any).inventory = { inventory: async () => {
+        const state = await original.inventory();
+        if (++reads === 2) state.loadedLocalModels[0].contextWindowTokens = 4096;
+        return state;
+    } };
+    await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), false), /changed before start/);
+    assert.equal((f as any).localAdapter.starts.length, 0);
+}, { kind: 'exact', connectionId: 'local-1', modelId: 'local-model' }));
+
+test('Local rejects unsupported reasoning controls before an AgentRun or adapter effect', async () => fixture(async f => {
+    enableLocal(f);
+    await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), false),
+        /does not support reasoning effort/);
+    assert.deepEqual(await f.store.listRuns(f.root), []);
+    assert.equal((f as any).localAdapter.starts.length, 0);
+}, { kind: 'exact', connectionId: 'local-1', modelId: 'local-model' }, 0, { reasoningEffort: 'high' }));
+
+test('Local selection rejects unprobed, unloaded, remote and unsupported controls with no hosted fallback', async () => fixture(async f => {
+    enableLocal(f);
+    const start = () => f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), false);
+    const local = f.registry.models[1];
+    local.capabilities.agentExecution.source = 'unknown';
+    await assert.rejects(start(), /ineligible/);
+    local.capabilities.agentExecution.source = 'adapter-known';
+    f.registry.loadedLocalModels.length = 0;
+    await assert.rejects(start(), /loaded context/);
+    f.registry.loadedLocalModels.push({ connectionId: 'local-1', providerModelKey: 'local-model', contextWindowTokens: 8192 });
+    f.registry.connections[1].config.endpoint = 'http://remote.example/v1';
+    await assert.rejects(start(), /localhost/);
+    f.registry.connections[1].config.endpoint = 'http://127.0.0.1:1234/v1';
+    local.locality = 'hosted';
+    await assert.rejects(start(), /Local execution adapter/);
+    assert.equal(f.adapter.starts.length, 0);
+    assert.equal((f as any).localAdapter.starts.length, 0);
+    assert.deepEqual(await f.store.listRuns(f.root), []);
+}, { kind: 'exact', connectionId: 'local-1', modelId: 'local-model' }));
 
 test('stop before effects cancels and rejects a competing start', async () => fixture(async f => {
     const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true);

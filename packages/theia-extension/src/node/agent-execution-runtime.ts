@@ -5,6 +5,9 @@ import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, 
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureGitBasis, captureGitFinal } from '@dope/agent-core/lib/node/git-evidence';
 import { ExecutionWorkspace, PromotionFailure } from '@dope/agent-core/lib/node/execution-workspace';
+import { preflightLocalToolSandbox } from '@dope/agent-core/lib/node/local-tool-sandbox';
+import type { LocalSandboxPreflight } from '@dope/agent-core/lib/node/local-tool-sandbox';
+import type { LocalProcessCommand } from '@dope/agent-core/lib/node/local-tool-broker';
 import { CandidateValidationRunner } from '@dope/agent-core/lib/node/candidate-validation';
 import { AcceptedDirtyBasis, assertDirtyBasis } from '@dope/agent-core/lib/node/dirty-basis';
 import type { AIInventoryController } from './ai-registry-backend';
@@ -12,9 +15,10 @@ import type { AIRoleRoutingService } from './ai-role-routing';
 import { futureFeatureRoleRequest } from '@dope/ai';
 import type { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
 import { appliedMapImpact } from './agent-map-impact';
+import { providerSetup } from './provider-setup';
 
 interface Active {
-    root: string; run?: AgentRun; handle?: AgentExecutionHandle; workspace?: ExecutionWorkspace; grant?: ExecutionGrant;
+    root: string; run?: AgentRun; task?: AgentTask; handle?: AgentExecutionHandle; workspace?: ExecutionWorkspace; grant?: ExecutionGrant;
     interrupting?: Promise<void>;
     ready: Promise<void>; releaseReady(): void;
     finished: Promise<void>; releaseFinished(): void;
@@ -46,7 +50,29 @@ export class AgentExecutionRuntime {
         private readonly adapters: ReadonlyMap<string, AgentExecutionAdapter>,
         private readonly capacityRetryDelayMs = 20_000,
         private readonly validationRunner = new CandidateValidationRunner(),
-        private readonly mapIndex?: Pick<SoftwareMapIndex, 'status' | 'snapshot'>) {}
+        private readonly mapIndex?: Pick<SoftwareMapIndex, 'status' | 'snapshot'>,
+        private readonly localSandboxPreflight: () => Promise<LocalSandboxPreflight> = preflightLocalToolSandbox) {}
+
+    localWorkspace(request: AgentExecutionRequest): ExecutionWorkspace {
+        const active = this.active.get(request.projectRoot);
+        if (!active?.workspace || active.workspace.root !== request.executionRoot ||
+            active.task?.id !== request.taskId || active.grant?.id !== request.grant.id)
+            throw new Error('Active Local execution workspace unavailable');
+        return active.workspace;
+    }
+
+    localCommands(request: AgentExecutionRequest): readonly LocalProcessCommand[] {
+        const active = this.active.get(request.projectRoot);
+        if (!active?.task || active.task.id !== request.taskId || !active.workspace ||
+            active.workspace.root !== request.executionRoot) return [];
+        return active.task.completion.validation.flatMap((target, index) => {
+            const words = target.command?.split(' ');
+            if (!words || words[0] !== 'node' || words.length < 2 || words.some(word => !word)) return [];
+            const kind = target.kind === 'test' ? 'test' : target.kind === 'build' ? 'build' : undefined;
+            return kind ? [{ id: `validation-${index + 1}`, kind, executable: 'node' as const,
+                argv: words.slice(1) }] : [];
+        });
+    }
 
     private async recordMapImpact(root: string, run: AgentRun): Promise<void> {
         if (run.authorityDecision?.allowed && run.appliedFiles?.length && !await this.store.readMapImpact(root, run.id))
@@ -310,7 +336,8 @@ export class AgentExecutionRuntime {
     }
 
     private async select(modelPolicy: AgentModelPolicy, hostedAuthorized: boolean): Promise<{
-        provenance: ExecutionProvenance; registrationId: string; adapter: AgentExecutionAdapter }> {
+        provenance: ExecutionProvenance; registrationId: string; adapter: AgentExecutionAdapter;
+        loadedContext?: number; registryRevision?: number; configuration?: string }> {
         if (typeof hostedAuthorized !== 'boolean') throw new Error('Explicit hosted project-data authorization required');
         let connectionId: string;
         let modelId: string;
@@ -336,16 +363,34 @@ export class AgentExecutionRuntime {
             model.capabilities.agentExecution?.value !== true ||
             model.capabilities.agentExecution.source !== 'adapter-known')
             throw new Error('Selected Coding Agent connection/model is unavailable or ineligible');
-        if (connection.config.type === 'codex' && (model.locality !== 'hosted' || !hostedAuthorized))
-            throw new Error('Hosted project-data authorization required');
-        // The only 8B adapter is the independently authorized ChatGPT-plan Codex connection.
-        if (connection.config.type !== 'codex' || connection.config.runtime !== 'app-server' ||
-            !connection.codexAccount?.accountId || connection.codexAccount.status !== 'signed-in' ||
-            connection.codexAccount.planUsage !== 'available')
-            throw new Error('Selected Coding Agent execution adapter unavailable');
+        let registrationId: string;
+        let loadedContext: number | undefined;
+        let configuration: string | undefined;
+        if (connection.config.type === 'codex') {
+            if (model.locality !== 'hosted' || !hostedAuthorized)
+                throw new Error('Hosted project-data authorization required');
+            if (connection.config.runtime !== 'app-server' || !connection.codexAccount?.accountId ||
+                connection.codexAccount.status !== 'signed-in' || connection.codexAccount.planUsage !== 'available')
+                throw new Error('Selected Coding Agent execution adapter unavailable');
+            registrationId = connection.codexAccount.accountId;
+        } else if (connection.config.type === 'local') {
+            if (connection.config.runtime !== 'lm-studio' || model.locality !== 'local')
+                throw new Error('Selected Local execution adapter unavailable');
+            try { providerSetup(connection); }
+            catch { throw new Error('Selected Local endpoint must be localhost LM Studio'); }
+            loadedContext = state.loadedLocalModels?.find(item => item.connectionId === connectionId &&
+                item.providerModelKey === modelId)?.contextWindowTokens;
+            if (!Number.isSafeInteger(loadedContext) || loadedContext! < 2304)
+                throw new Error('Selected Local model has insufficient observed loaded context');
+            if (!(await this.localSandboxPreflight()).available)
+                throw new Error('Local OS sandbox unavailable');
+            registrationId = connection.id;
+            configuration = JSON.stringify(connection.config);
+        } else throw new Error('Selected Coding Agent execution adapter unavailable');
         const adapter = this.adapters.get(connection.config.type);
         if (!adapter) throw new Error('Selected Coding Agent execution adapter unavailable');
-        return { adapter, registrationId: connection.codexAccount.accountId,
+        return { adapter, registrationId, loadedContext, configuration,
+            ...(loadedContext === undefined ? {} : { registryRevision: state.registry.revision }),
             provenance: { version: AGENT_SCHEMA_VERSION, connectionId, modelId,
                 providerId: connection.config.type, runtimeKind: model.locality, adapterId: adapter.id,
                 ...(policyRevision === undefined ? {} : { policyRevision }) } };
@@ -382,6 +427,7 @@ export class AgentExecutionRuntime {
                 throw new Error('A mutation run requires restart reconciliation before another start');
             const task = await this.store.readTask(root, taskId);
             if (!task) throw new Error('Persisted AgentTask required');
+            active.task = task;
             if (task.origin.kind === 'work-item' && existing.some(run => run.taskId === task.id))
                 throw new Error('WorkItem AgentTask already has an AgentRun; launch a new task for another attempt');
             if (!(sequence ? task.origin.kind === 'phase-stack' :
@@ -397,6 +443,8 @@ export class AgentExecutionRuntime {
                 grant.acceptedAt < task.createdAt)
                 throw new Error('Accepted ExecutionGrant does not match the task/project');
             const selected = await this.select(task.modelPolicy, hostedAuthorized);
+            if (selected.provenance.runtimeKind === 'local' && task.controls.reasoningEffort)
+                throw new Error('Local Coding Agent does not support reasoning effort controls');
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
             const basis = await captureGitBasis(root);
             if (!basis.head) throw new Error('Phase 8B requires a committed Git HEAD');
@@ -418,10 +466,21 @@ export class AgentExecutionRuntime {
             await this.event(active, 'status', 'Agent run started', { status: 'running' });
             await this.transcript(active, { kind: 'marker', at: '', code: 'run-started' });
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
+            if (selected.provenance.runtimeKind === 'local') {
+                const current = await this.select(task.modelPolicy, hostedAuthorized);
+                if (JSON.stringify(current.provenance) !== JSON.stringify(selected.provenance) ||
+                    current.loadedContext !== selected.loadedContext || current.configuration !== selected.configuration ||
+                    current.registryRevision !== selected.registryRevision ||
+                    current.adapter !== selected.adapter)
+                    throw new Error('Selected Local Coding Agent target, role or capacity changed before start');
+            }
             const request: AgentExecutionRequest = { projectRoot: root, executionRoot: active.workspace.root,
                 grant, taskId: task.id,
                 connectionId: selected.provenance.connectionId, registrationId: selected.registrationId,
                 modelId: selected.provenance.modelId,
+                ...(selected.loadedContext === undefined ? {} : {
+                    selectedLoadedContextTokens: selected.loadedContext,
+                    selectedRegistryRevision: selected.registryRevision }),
                 prompt: `${task.objective}\n\n${task.instructions}`,
                 ...(task.controls.reasoningEffort ? { reasoningEffort: task.controls.reasoningEffort } : {}),
                 onEvent: observation => this.observed(active, observation) };
