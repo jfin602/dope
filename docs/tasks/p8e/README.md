@@ -1,13 +1,13 @@
 # Phase 8E — Local Coding Agent Compatibility
 
-Status: **OWNER-ACTIVATED 2026-10-10 / P1 READY TO RESTART — NOT IMPLEMENTED OR QUALIFIED**
+Status: **GREEN / QUALIFIED 2026-10-10 at committed `0.8.47` source `bcc5cb8`**; see [P14 closeout](closeout.md). Product Phase 8 remains open pending owner closure.
 Mode: Product Phase 8 continuation slice E. Previous qualified source: clean `0.8.33`, `8748cb4870e8cac3d2a5aca4a05623b5f3d747ec` (8D Green via `c8-fix` P6 cycle 2). Exact Phase 8D history remains in `docs/tasks/c8-fix/closeout.md`; original `docs/tasks/p8d/closeout.md` Not Green remains historical.
-Owner-authorized P1–P14 continuation: `0.8.34`–`0.8.47`. All actual manifests remain `0.8.33` until P1 implementation. The earlier P1 stopped preflight with zero source changes and no checkpoint.
+Owner-authorized P1–P14 continuation reached `0.8.47` across all 13 manifests/internal references. The earlier P1 zero-change preflight stop remains historical.
 Authority: ADR 0032, ADR 0004/0026/0027/0028/0029/0031, `docs/planning/p8/phase-8e-plan.md` and `docs/stability-contract.md`.
 
 ## Why this stack
 
-AI Center already configures LM Studio and knows local loaded model capacity; Chat/synthesis calls do not constitute coding-agent execution. Current `AgentExecutionRuntime.select()` and `backend-module.ts` authorize/register only Codex. Phase 8E must implement a real Local model tool loop through the **existing** AgentExecutionAdapter, enforce OS isolation for file/process requests, advertise `agentExecution` only after capability and containment proof, and reuse the existing Dope-owned candidate/validation/review/Authority/sequence paths.
+AI Center's LM Studio connection now qualifies a loaded local model for Coding Agent only after a genuine synthetic tool loop and OS containment proof. The Local model uses the existing AgentExecutionAdapter, AgentTask/AgentRun and Dope-owned candidate/validation/review/Authority/sequence paths. The P14 closeout records exact observed behavior; Chat/synthesis capability alone remains insufficient.
 
 ## Ordered stack (14 prompts)
 

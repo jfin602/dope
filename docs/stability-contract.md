@@ -339,7 +339,7 @@ Before calling full Phase 8 qualified, additionally prove:
 
 ### Phase 8D explicit general-delegation qualification
 
-**Current gate: Phase 8D GREEN / QUALIFIED through `c8-fix` P6 cycle 2 on committed `0.8.33` source `8748cb4` (2026-10-09).** The original P13 Not Green result remains historical: its two WorkItem tasks could not Start and its aggregate failed before product/Electron. The later correction separately qualified two real hosted Codex WorkItem runs, frozen Dope-owned validation, accept/reject, authority/steering/map/restart, legacy preservation and a full passing exact-source `npm run check`. See `docs/tasks/c8-fix/closeout.md`; 8E remains inactive.
+**Phase 8D remains GREEN / QUALIFIED through `c8-fix` P6 cycle 2 on committed `0.8.33` source `8748cb4` (2026-10-09).** The original P13 Not Green result remains historical: its two WorkItem tasks could not Start and its aggregate failed before product/Electron. The later correction separately qualified two real hosted Codex WorkItem runs, frozen Dope-owned validation, accept/reject, authority/steering/map/restart, legacy preservation and a full passing exact-source `npm run check`. See `docs/tasks/c8-fix/closeout.md`. The current Phase 8E disposition is recorded below.
 
 **Critical end-to-end distinction:** creating a WorkItem-derived AgentTask is not starting it. Direct GUI evidence must show an explicit Start on the *same saved WorkItem task ID* with a developer-accepted ExecutionGrant and required nonempty Dope-owned validation targets. Original P13's empty-validation saved tasks remain unable to Start safely; current launch requires a developer-approved target and preserves that policy on each new task. Never bypass required validation to make review UI Green. Preserve no-silent-fallback/no-authority-escalation and Direct Work/Prompt Stack regressions.
 
@@ -349,9 +349,9 @@ For a real WorkItem-origin run, inspect actual frozen candidate diff and Dope-ow
 
 Prove typed steering acknowledgement (applied at supported safe boundary or honestly pending/unsupported), cancellation and restoration without hidden resubmission. Accepted changes yield project-bound affected Software Map IDs/changed paths and bounded staleness, or explicit unknown; no continuous alignment. Regression: existing direct Work auto-promotion, Prompt Stack validation/Dope-owned Git checkpoints, manual gates, transcript, restart, Chat isolation and provider security remain qualified. Final p8d T3 requires real UI/hosted Codex exercise, one final exact-candidate `npm run check`, validated prompt stack and truthful Green/Not Green closeout; P1–P11 use focused T1/T2 implementation checks, P12 owns bounded integrated regressions, and P13 owns the sole real GUI/reference-Codex T3 qualification and one exact-candidate aggregate.
 
-### Phase 8E — Local coding-model qualification gate (owner-activated; not qualified)
+### Phase 8E — Local coding-model qualification gate (Green at `0.8.47`)
 
-Prerequisite: `c8-fix` P6 qualified Phase 8D on clean `0.8.33` source `8748cb4` with a passing exact-candidate aggregate and real saved-WorkItem Codex execution; the original P13 failure remains historical. 8E was separately owner-activated on 2026-10-10 for P1–P14, but remains unqualified. Reuse the same source/validation/authority contracts; no new canonical LocalAgent task/run types.
+Prerequisite: `c8-fix` P6 qualified Phase 8D on clean `0.8.33` source `8748cb4` with a passing exact-candidate aggregate and real saved-WorkItem Codex execution; the original P13 failure remains historical. 8E was separately owner-activated on 2026-10-10 for P1–P14 and qualified Green at committed `0.8.47` source `bcc5cb8`; see `docs/tasks/p8e/closeout.md` for live observations, deterministic guards and unqualified live failure variants. Reuse the same source/validation/authority contracts; no new canonical LocalAgent task/run types.
 
 Before 8E Green, **directly prove**:
 - AI Center discovers and selects an actually loaded Local LM Studio connection/model with measured context limit, bounded output/tool-result reserve and a safe no-project-data synthetic **agent tool-loop** capability probe; models lacking `agentExecution` remain ineligible even when conversational text works;
@@ -363,7 +363,7 @@ Before 8E Green, **directly prove**:
 - representative matching tasks compare local model and previously qualified Codex by correctness, tool-call reliability, context, latency, validation and recovery; model capability deficiencies are reported, not used to weaken Dope's security or quality gates;
 - real Dope GUI/local inference, denial/restart evidence and a **passing final exact-candidate `npm run check`** plus only separate materially required T3 evidence. No claim of native installer production qualification unless actual native evidence is collected.
 
-The earliest local qualifying task may be small and achievable; matching Codex quality on difficult tasks is not necessary. The adapter and security architecture, not benchmark supremacy, are the gating objectives. The separate owner decision activated 8E implementation on 2026-10-10; this gate does not qualify 8E or close Product Phase 8. See ADR 0032 and `docs/planning/p8/phase-8e-plan.md`.
+The earliest local qualifying task may be small and achievable; matching Codex quality on difficult tasks is not necessary. The adapter and security architecture, not benchmark supremacy, are the gating objectives. P14 qualified the observed 8E scope on 2026-10-10; this does not close Product Phase 8 or activate Phase 9. See ADR 0032, `docs/planning/p8/phase-8e-plan.md` and `docs/tasks/p8e/closeout.md`.
 
 ## Product Phase 5 — Visual Software Planning qualification
 
