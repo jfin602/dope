@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, rm, symlink } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -108,5 +108,99 @@ test('dispose rejects attachment and all subsequent calls; mutation errors retai
     } finally {
         backend.dispose();
         await rm(a, { recursive: true, force: true });
+    }
+});
+
+test('two sessions survive restart beside independent project and unchanged project truth', async () => {
+    const a = await mkdtemp(join(tmpdir(), 'dope-session-integration-a-'));
+    const b = await mkdtemp(join(tmpdir(), 'dope-session-integration-b-'));
+    const copy = await mkdtemp(join(tmpdir(), 'dope-session-integration-copy-'));
+    const store = new DeveloperSessionStore();
+    const connectionA = new DeveloperSessionBackend(store);
+    const concurrentA = new DeveloperSessionBackend(store);
+    const connectionB = new DeveloperSessionBackend(store);
+    const sentinels = [
+        ['chats/conversation.json', 'chat truth'],
+        ['planning-maps.json', 'planning truth'],
+        ['agent/tasks/task.json', 'task truth'],
+        ['agent/runs/run.json', 'run truth'],
+        ['project-mind.json', 'mind truth'],
+    ] as const;
+    try {
+        for (const [path, contents] of sentinels) {
+            const file = join(a, '.dope', path);
+            await mkdir(join(file, '..'), { recursive: true });
+            await writeFile(file, contents);
+        }
+        const attachedA = await connectionA.attach(uri(a));
+        const peerA = await concurrentA.attach(uri(a));
+        const attachedB = await connectionB.attach(uri(b));
+        assert.deepEqual(attachedA.snapshot.sessions, []); // no AI or other store is needed
+        const first = await connectionA.mutate(create(attachedA.projectHandle, 0));
+        const second = await connectionA.mutate(create(attachedA.projectHandle, 1));
+        const onlyB = await connectionB.mutate(create(attachedB.projectHandle, 0));
+        assert.notEqual(first.session.id, second.session.id);
+        assert.notEqual(first.session.id, onlyB.session.id);
+
+        const attempts = await Promise.allSettled([
+            connectionA.mutate({ projectHandle: attachedA.projectHandle, expectedCollectionRevision: 2,
+                expectedSessionRevision: first.session.revision,
+                operation: { type: 'close', sessionId: first.session.id,
+                    closeout: { achieved: 'Manual effort', unresolved: '', deferred: '' } } }),
+            concurrentA.mutate({ projectHandle: peerA.projectHandle, expectedCollectionRevision: 2,
+                expectedSessionRevision: first.session.revision,
+                operation: { type: 'pause', sessionId: first.session.id } }),
+        ]);
+        assert.equal(attempts.filter(result => result.status === 'fulfilled').length, 1);
+        assert.match(String((attempts.find(result => result.status === 'rejected') as PromiseRejectedResult).reason), /locked|Stale/);
+        let current = await connectionA.read(attachedA.projectHandle);
+        if (current.sessions.find(session => session.id === first.session.id)?.status !== 'closed') {
+            const session = current.sessions.find(session => session.id === first.session.id)!;
+            const resumed = await connectionA.mutate({ projectHandle: attachedA.projectHandle,
+                expectedCollectionRevision: current.revision, expectedSessionRevision: session.revision,
+                operation: { type: 'resume', sessionId: session.id } });
+            current = resumed.snapshot;
+            current = (await connectionA.mutate({ projectHandle: attachedA.projectHandle,
+                expectedCollectionRevision: current.revision, expectedSessionRevision: resumed.session.revision,
+                operation: { type: 'close', sessionId: session.id,
+                    closeout: { achieved: 'Manual effort', unresolved: '', deferred: '' } } })).snapshot;
+        }
+        assert.equal(current.sessions.find(session => session.id === first.session.id)?.status, 'closed');
+        assert.equal(current.sessions.find(session => session.id === second.session.id)?.status, 'active');
+        for (const [path, contents] of sentinels)
+            assert.equal(await readFile(join(a, '.dope', path), 'utf8'), contents);
+
+        connectionA.dispose(); concurrentA.dispose(); connectionB.dispose();
+        const restartedA = new DeveloperSessionBackend(new DeveloperSessionStore());
+        const restartedB = new DeveloperSessionBackend(new DeveloperSessionStore());
+        try {
+            const reopenedA = await restartedA.attach(uri(a));
+            const reopenedB = await restartedB.attach(uri(b));
+            assert.deepEqual(reopenedA.snapshot, current);
+            assert.deepEqual(reopenedB.snapshot.sessions, [onlyB.session]);
+            await assert.rejects(restartedB.read(reopenedA.projectHandle), /handle/);
+
+            await mkdir(join(copy, '.dope'));
+            await copyFile(join(a, '.dope', 'development-sessions.json'), join(copy, '.dope', 'development-sessions.json'));
+            const copied = new DeveloperSessionBackend(new DeveloperSessionStore());
+            await assert.rejects(copied.attach(uri(copy)), /identity/);
+            copied.dispose();
+
+            const bFile = join(b, '.dope', 'development-sessions.json');
+            const bBytes = await readFile(bFile);
+            await rm(bFile);
+            assert.deepEqual((await restartedB.read(reopenedB.projectHandle)).sessions, []);
+            assert.deepEqual(await readdir(join(b, '.dope')), []);
+            await assert.rejects(restartedB.mutate(create(reopenedB.projectHandle, 1)), /Stale/);
+            assert.deepEqual(await readdir(join(b, '.dope')), []);
+            await writeFile(bFile, bBytes); // explicit recovery preserves the prior identity and revision
+            assert.deepEqual((await restartedB.read(reopenedB.projectHandle)).sessions, [onlyB.session]);
+            assert.deepEqual((await restartedA.read(reopenedA.projectHandle)).sessions, current.sessions);
+        } finally { restartedA.dispose(); restartedB.dispose(); }
+    } finally {
+        connectionA.dispose(); concurrentA.dispose(); connectionB.dispose();
+        await rm(a, { recursive: true, force: true });
+        await rm(b, { recursive: true, force: true });
+        await rm(copy, { recursive: true, force: true });
     }
 });
