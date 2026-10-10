@@ -14,7 +14,7 @@ import type { LocalTurnMessage, LocalToolTurnRequest } from './local-tool-turn';
 
 const fail = (message: string, kind: ModelRuntimeFailure['failureClass'] = 'nonretryable-provider') =>
     new ModelRuntimeFailure(message, kind);
-const sensitive = /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\b|\b(?:access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|authorization|password|secret)\s*[:=]\s*\S+|\bBearer\s+\S+/giu;
+const sensitive = /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\b|\b(?:access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|authorization|password|secret|token)\s*[:=]\s*\S+|\bBearer\s+\S+/giu;
 function safeText(value: string, maxBytes: number): { text: string; truncated: boolean; redacted: boolean } {
     const clean = value.replace(sensitive, '[redacted]');
     let text = '';
