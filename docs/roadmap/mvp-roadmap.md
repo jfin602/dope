@@ -68,7 +68,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c8 — Agent Authority Boundary | **GREEN / INCORPORATED INTO QUALIFIED 8B.** Isolated ExecutionWorkspace -> CandidateDelta -> Dope Authority/ToolExecutor promotion is the canonical mutation boundary. |
 | Correction c8-candidate-validation — Dope-owned Candidate Validation | **GREEN / QUALIFIED.** Dope-owned frozen-candidate validation supports private temp/loopback without host/private/network authority; real Adaptive SEO Prompt Stack completed in Cycle 2 of 5. |
 | Correction c8-work-mode — Work / Prompt Stack UI | **GREEN / QUALIFIED / CLOSED at `0.8.20`.** Separate Chat and Work panels, Work toolbar, stable titles, durable agent transcript and collapsed command detail, live GUI/restart evidence. |
-| Product Phase 9 — Development Sessions | Dope Builds Dope. A real Dope feature can travel end-to-end through durable intent, plans, WorkItems, agent runs, validation, decisions, review and session closeout inside Dope. |
+| Product Phase 9 — Development Sessions | **NEXT / DESIGN APPROVED / NOT ACTIVATED.** Optional project-scoped sessions link multiple existing Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, validation and decisions without copying their truth or granting execution. Real Dope Builds Dope session replay is the exit gate. See `docs/planning/p9/phase-9-plan.md` and ADR 0033. |
 | Product Phase 10 — Living Software Knowledge Model | Dope continuously checks whether source/runtime evidence, canonical Software Map state, documentation and formal contracts still describe the same software. It can also use Phase 8 WorkItem and Phase 9 session provenance to explain why state changed. Deterministic impact analysis narrows work first; bounded local-model semantic checks maintain alignment in the background without silently mutating project truth. |
 
 Self-development never receives privileged authority.
@@ -1039,27 +1039,24 @@ A developer can run a real sequential implementation stack inside Dope through t
 
 ## Product Phase 9 — Development Sessions
 
+Status: **NEXT / DESIGN APPROVED / NOT OWNER-ACTIVATED**. Phase 8 is owner-closed Green for approved scope at committed `0.8.47`; no `0.9.0` package transition or Phase 9 implementation is authorized by this roadmap.
+
 Purpose:
-Make a development effort durable for the developer, not only for the model. Once Dope can perform bounded coding work, the next layer is a persistent session that organizes the intent, plans, WorkItems, agent runs, validation and decisions that belong to one coherent effort.
+Make a development effort durable for the **developer**, not just for a model. A DeveloperSession is an **optional** project-scoped organizational workspace with an objective, multiple linked Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, decisions, validation, progress, unresolved work, and explicit pause/resume/closeout. Chat, Planning, Work and IDE remain independently usable without a session.
 
-Initial scope:
-- persistent DeveloperSession;
-- current objective and active plan;
-- linked Chats, Planning Maps and WorkItems;
-- agent execution history and developer versus AI contribution history;
-- unresolved work and follow-up items;
-- decisions made and their rationale/provenance;
-- validation state and relevant results;
-- captured ideas and architecture implications;
-- durable references to affected project/map identities rather than copying canonical truth into the session;
-- reopen/resume context across application restart;
-- session closeout with completed, unresolved and deferred outcomes.
+Phase 9 does **not** create another task ontology, agent runtime, grant, source-of-truth store for existing artifacts or automatic AI context. Membership is a typed reference to existing project records; a shared artifact may appear in multiple sessions without duplication or execution. Session status never marks WorkItems complete, promotes candidates, adopts architecture, cancels runs or modifies Git. The proposed session-only store is versioned project-local `.dope/development-sessions.json`, with revision-checked operations and missing/stale-link visibility.
 
-Session state records the history and intent of work but is not itself canonical Architecture, implementation truth or authorization for future mutation.
+Workstreams:
+- **9A — Identity/persistence:** versioned sessions, lifecycle, project isolation, atomic revision writes and restart recovery, useful without AI.
+- **9B — Artifact linking:** attach/detach/resolve existing Chat, Planning, Work and decisions; prove one real PlanningMap -> WorkItem -> authorized AgentTask -> Dope-owned validation/review replay. Repair only affected Phase 5 seam; its historical P11 Not Green/P12 unexecuted result remains unchanged.
+- **9C — Session workspace:** overview, links and navigation through existing panels, preserving Chat/Work single-panel ownership and independent editor state.
+- **9D — Resume/closeout:** truthful progress, restart, unresolved/deferred items, decision provenance and explicit close/reopen without changing linked object lifecycles.
+- **9E — Dope Builds Dope:** one small real feature through Session -> Chat -> Planning -> Work -> validation/review -> restart/resume -> session closeout, plus non-session regressions and exact-source aggregate.
 
 Exit condition:
+A developer can create/use sessions without AI, attach multiple existing objects, navigate them, perform authorized work without new permissions, restore after restart, distinguish actual validation and unresolved work, and explicitly close a real Dope Builds Dope session. Required GUI, security and final aggregate evidence must be Green on one exact source candidate.
 
-Returning to a project restores the active development effort well enough to continue without reconstructing it from chat history: the developer can reopen the session, recover its objective/plan/WorkItems/agent results/validation/decisions, continue delegated work and explicitly close the effort when done.
+Authority: `docs/planning/p9/phase-9-plan.md` and ADR 0033. The provisional `0.9.0` baseline and prompt stack require **separate owner activation**; Phase 10 remains inactive.
 
 ## Product Phase 10 — Living Software Knowledge Model
 

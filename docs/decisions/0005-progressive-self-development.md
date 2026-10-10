@@ -3,7 +3,9 @@
 Status: Accepted
 Date: 2026-09-27
 
-Sequencing amendment (2026-10-01): ADR 0020 inserts provider-free Product Phase 6 — Data Flow before AI Presence. The original phase numbering below is preserved as historical decision context; current future sequencing is Phase 6 Data Flow, Phase 7 AI Presence, Phase 8 Scoped Delegation, Phase 9 Development Sessions.
+Sequencing amendment (2026-10-01): ADR 0020 inserts provider-free Product Phase 6 — Data Flow before AI Presence. The original phase numbering below is preserved as historical decision context; current future sequencing at that time was Phase 6 Data Flow, Phase 7 AI Presence, Phase 8 Scoped Delegation, Phase 9 Development Sessions.
+
+**Current applicability note (2026-10-10):** The historical phase numbers in the Roadmap qualification section below are **not** current activation guidance. The authoritative roadmap now places Phase 8 Coding Agent/Scoped Delegation (owner-closed Green at `0.8.47`), Phase 9 Development Sessions (design approved, **not activated**) and Phase 10 Living Software Knowledge Model (future). ADR 0033 governs the optional session contract; `docs/planning/p9/phase-9-plan.md` is the Phase 9 plan. Preserve the original decision's self-development and bootstrap-independence principles.
 
 ## Context
 

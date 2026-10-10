@@ -340,7 +340,7 @@ Local sMap synthesis and Phase 7 Local AI Presence are also different capabiliti
 
 ### Phase 9 — Development Sessions
 
-Introduce durable DeveloperSession as the cross-time development unit.
+**Design approved, not activated.** Introduce an optional, project-scoped DeveloperSession as a durable organizational workspace linking existing Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, decisions and validation. Membership is not ownership, task origin, permission or canonical truth. Sessions must work without AI and cannot silently start work. See ADR 0033 and `docs/planning/p9/phase-9-plan.md`.
 
 ### Later expansion
 
@@ -385,6 +385,8 @@ Later AI should be able to detect conflict with an accepted Decision.
 
 ### Plan
 
+**Historical only:** this Plan/PlanStep/Task vocabulary belongs to removed Phase 3 `0.3.6` Planning and is **not** the Phase 9 session ontology. Current planning is `PlanningMap -> PlannedTransformation -> WorkItem`; execution is `AgentTask -> AgentRun`. Phase 9 links these records without reviving Phase 3 Plan/Task. See ADR 0017 and ADR 0033.
+
 Phase 3 historical planning semantics. A Plan is a live control structure in the `0.3.6` implementation; the live concept is intentionally removed by the pre-Phase-4 correction and may or may not return in the Phase 5 ontology.
 
 A Plan has explicit objective/context, status, ordered PlanSteps, a visible revision, links to supporting Project Mind knowledge/files and append-only mutation history. Plan edits are explicit saved mutations rather than hidden derivation from chat or editor state.
@@ -417,19 +419,17 @@ Opening a Task's file link uses the ordinary editor. Implementation remains ordi
 
 ### DeveloperSession
 
-A durable representation of one development session.
+A durable, **optional** organizational workspace for one development effort within one canonical project. A project may contain many sessions; Chat, Planning and Work remain fully usable outside them. Phase 9 design is approved but not yet activated.
 
-It should answer:
-- what were we trying to do
-- what changed
-- what did the developer do
-- what did AI do
-- what decisions were made
-- what remains unresolved
-- what validation exists
-- what ideas were captured
+Owned state: stable session ID, project identity, version/revision, title, objective, timestamps, lifecycle `active | paused | closed`, bounded developer notes/next actions and explicit closeout. Proposed persistence: versioned, atomic `.dope/development-sessions.json`, independently recoverable without a running Dope UI.
 
-A session is not a raw transcript.
+Membership consists of **typed references**, not copies: multiple Chat IDs, Planning Map IDs, WorkItems identified by map ID + WorkItem ID, AgentTask/AgentRun/AgentTaskSequence IDs, and optionally Project Mind decision/idea and Software Map IDs. An artifact may appear in multiple sessions without duplicate execution or conflicting ownership. The session resolves status, activity and validation from the existing authoritative stores; missing/deleted/stale links remain visibly unresolved rather than silently retargeted.
+
+A session answers what we intended, what the developer and agents actually did, what was validated, which decisions were accepted, what changed and what remains unresolved/deferred. WorkItem completion, AgentRun completion and Dope-owned validation pass are **different facts**. Session status does not complete WorkItems, cancel AgentRuns, adopt target architecture, mutate source, change Git or confer an ExecutionGrant. Session membership does not rewrite AgentTask `origin` (including reserved `future-session`).
+
+Session opening/navigating focuses existing Chat/Planning/Work surfaces under their normal single-panel ownership rules. Attaching an artifact does not silently add it to model context; future session-aware context requires explicit bounded project-scoped selection and applicable provider/egress consent. Close/reopen records outcomes without changing linked artifact lifecycles.
+
+A session is **not** a raw transcript, agent runtime, replacement Planning Map or new task system. See ADR 0033 and `docs/planning/p9/phase-9-plan.md`.
 
 ### Research
 
