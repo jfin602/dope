@@ -1,6 +1,6 @@
 {
   "name": "@dope/software-map",
-  "version": "0.8.33",
+  "version": "0.8.34",
   "private": true,
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -8,6 +8,6 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@dope/contracts": "0.8.33"
+    "@dope/contracts": "0.8.34"
   }
 }
