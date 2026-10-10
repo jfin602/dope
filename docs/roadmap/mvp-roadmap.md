@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: **Product Phase 8 — OWNER-CLOSED / GREEN / QUALIFIED for approved scope (2026-10-10)** on committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06`. P14 real local Qwen GUI/OS sandbox/Dope validation, hosted Codex comparison, 506/506 full aggregate, 67/67 additional agent/security tests and stack validator support the final scope. See `docs/planning/p8/phase-8-closeout.md` and `docs/tasks/p8e/closeout.md`. Original 8D P13 Not Green remains historical; later c8-fix Green at `0.8.33` is separate. **Phase 9 — Development Sessions is NEXT / NOT ACTIVATED**, with no `0.9.0` baseline.
+Current stage: **Product Phase 8 — OWNER-CLOSED / GREEN / QUALIFIED for approved scope (2026-10-10)** on committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06`. P14 real local Qwen GUI/OS sandbox/Dope validation, hosted Codex comparison, 506/506 full aggregate, 67/67 additional agent/security tests and stack validator support the final scope. See `docs/planning/p8/phase-8-closeout.md` and `docs/tasks/p8e/closeout.md`. Original 8D P13 Not Green remains historical; later c8-fix Green at `0.8.33` is separate. **Phase 9 — Development Sessions is NEXT / NOT ACTIVATED**; a clean version-only `0.9.0` baseline was committed at `e250a07` (`docs/planning/p9/baseline.md`), without implementation or new qualification.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
@@ -1039,7 +1039,7 @@ A developer can run a real sequential implementation stack inside Dope through t
 
 ## Product Phase 9 — Development Sessions
 
-Status: **NEXT / DESIGN APPROVED / NOT OWNER-ACTIVATED**. Phase 8 is owner-closed Green for approved scope at committed `0.8.47`; no `0.9.0` package transition or Phase 9 implementation is authorized by this roadmap.
+Status: **NEXT / DESIGN APPROVED / VERSION BASELINE READY / NOT OWNER-ACTIVATED**. Phase 8 is owner-closed Green for approved scope at committed `0.8.47` / `bcc5cb8`; the owner separately authorized a clean `0.9.0` version-only baseline at `e250a07` (`docs/planning/p9/baseline.md`). No Phase 9 implementation or qualification is authorized by this roadmap.
 
 Purpose:
 Make a development effort durable for the **developer**, not just for a model. A DeveloperSession is an **optional** project-scoped organizational workspace with an objective, multiple linked Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, decisions, validation, progress, unresolved work, and explicit pause/resume/closeout. Chat, Planning, Work and IDE remain independently usable without a session.
@@ -1056,7 +1056,7 @@ Workstreams:
 Exit condition:
 A developer can create/use sessions without AI, attach multiple existing objects, navigate them, perform authorized work without new permissions, restore after restart, distinguish actual validation and unresolved work, and explicitly close a real Dope Builds Dope session. Required GUI, security and final aggregate evidence must be Green on one exact source candidate.
 
-Authority: `docs/planning/p9/phase-9-plan.md` and ADR 0033. The provisional `0.9.0` baseline and prompt stack require **separate owner activation**; Phase 10 remains inactive.
+Authority: `docs/planning/p9/phase-9-plan.md` and ADR 0033. The coherent `0.9.0` baseline is committed and `p9a` prompts are authored; **Phase 9 implementation still requires separate explicit owner activation**. Phase 10 remains inactive.
 
 ## Product Phase 10 — Living Software Knowledge Model
 
