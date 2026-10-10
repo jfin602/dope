@@ -1,6 +1,6 @@
 {
   "name": "@dope/agent-core",
-  "version": "0.8.47",
+  "version": "0.9.0",
   "private": true,
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
