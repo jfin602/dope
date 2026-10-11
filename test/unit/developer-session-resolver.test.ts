@@ -7,6 +7,9 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/chat-repository.js';
 import { PlanningStore } from '../../packages/visual-planning/lib/node/planning-store.js';
 import { DeveloperSessionChatPlanningResolver } from '../../packages/theia-extension/lib/node/developer-session-resolver.js';
+import { DeveloperSessionAgentMindResolver } from '../../packages/theia-extension/lib/node/developer-session-resolver.js';
+import { AgentStore } from '../../packages/agent-core/lib/node/agent-store.js';
+import { ProjectMindStore } from '../../packages/project-intelligence/lib/node/project-mind-store.js';
 
 const basis = { architectureRevision: 1, architectureFingerprint: 'architecture',
   physicalInputFingerprint: 'source', physicalGeneration: 1 };
@@ -46,6 +49,88 @@ test('Chat metadata peek preserves interrupted and legacy bytes and excludes tra
     await writeFile(chatFile, before[1]);
     await writeFile(manifestFile, '{bad json');
     assert.equal((await resolver(root).resolve.resolve('attached', { kind: 'chat', chatId: id })).availability, 'unavailable');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('Agent and Project Mind resolution keeps owner bytes and source facts distinct', async () => {
+  const root = await folder(), agents = new AgentStore(), mind = new ProjectMindStore();
+  const now = '2026-10-11T12:00:00.000Z', decisionId = randomUUID(), ideaId = randomUUID();
+  const task = { version: 1 as const, id: 'task-one', createdAt: now, objective: 'One objective',
+    instructions: 'Implement', projectRoot: '.' as const, modelPolicy: { kind: 'follow-coding-agent' as const },
+    controls: {}, authority: { profile: 'phase-8b-project' as const },
+    completion: { validation: [], requireValidationPass: false }, origin: { kind: 'direct' as const } };
+  const run = { version: 1 as const, id: 'run-one', taskId: task.id, status: 'pending' as const,
+    grantId: 'grant-one', grantRevision: 0, requestedPolicy: task.modelPolicy, projectRoot: '.' as const,
+    createdAt: now, changedFiles: [], validationResults: [] };
+  const artifact = (type: 'decision' | 'idea', id: string) => ({ schemaVersion: 2 as const,
+    id, type, title: type, createdAt: now, updatedAt: now, provenance: 'developer' as const,
+    archivedAt: null, links: [], status: type === 'decision' ? 'proposed' as const : 'captured' as const,
+    ...(type === 'decision' ? { decision: 'Choice', context: '', rationale: '', consequences: '',
+      alternatives: '', revisitConditions: '' } : { body: 'Idea body' }) });
+  try {
+    const subject = new DeveloperSessionAgentMindResolver(() => ({ root, projectHandle: 'attached' }));
+    assert.equal((await subject.resolve('attached', { kind: 'agent-run', taskId: task.id, runId: run.id })).availability, 'missing');
+    assert.equal((await subject.resolve('attached', { kind: 'agent-sequence', sequenceId: 'sequence-one' })).availability, 'missing');
+    assert.equal((await subject.resolve('attached', { kind: 'project-mind', artifactType: 'decision', artifactId: decisionId })).availability, 'missing');
+    await agents.createTask(root, task);
+    await agents.createRun(root, run);
+    await agents.createTask(root, { ...task, id: 'task-two' });
+    await mind.mutate(root, 0, { type: 'create', artifact: artifact('decision', decisionId) });
+    await mind.mutate(root, 1, { type: 'create', artifact: artifact('idea', ideaId) });
+    const files = [join(root, '.dope/agent/tasks/task-one.json'), join(root, '.dope/agent/runs/run-one/run.json'),
+      join(root, '.dope/project-mind.json')];
+    const before = await Promise.all(files.map(file => readFile(file)));
+    const linked = await subject.resolve('attached', { kind: 'agent-run', taskId: task.id, runId: run.id });
+    assert.equal(linked.availability, 'resolved');
+    assert.equal(linked.status, 'pending');
+    assert.equal(linked.taskOrigin, 'direct');
+    assert.equal(linked.validationStatus, 'unavailable');
+    assert.equal(linked.promotionStatus, 'not-applied');
+    assert.equal((await subject.resolve('attached', { kind: 'agent-run', taskId: 'task-two', runId: run.id })).availability, 'stale');
+    assert.equal((await subject.resolve('attached', { kind: 'agent-task', taskId: task.id })).objective, task.objective);
+    assert.equal((await subject.resolve('attached', { kind: 'project-mind', artifactType: 'decision', artifactId: decisionId })).status, 'proposed');
+    assert.equal((await subject.resolve('attached', { kind: 'project-mind', artifactType: 'idea', artifactId: ideaId })).status, 'captured');
+    assert.equal((await subject.resolve('attached', { kind: 'project-mind', artifactType: 'idea', artifactId: decisionId })).availability, 'stale');
+    assert.equal((await subject.resolve('attached', { kind: 'project-mind', artifactType: 'idea', artifactId: randomUUID() })).availability, 'missing');
+    assert.deepEqual(await Promise.all(files.map(file => readFile(file))), before);
+    await writeFile(files[1], '{bad json');
+    assert.equal((await subject.resolve('attached', { kind: 'agent-run', taskId: task.id, runId: run.id })).availability, 'unavailable');
+    await writeFile(files[1], before[1]);
+    await writeFile(files[2], '{bad json');
+    assert.equal((await subject.resolve('attached', { kind: 'project-mind', artifactType: 'idea', artifactId: ideaId })).availability, 'unavailable');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('Agent review and Dope validation projection uses exact run facts', async () => {
+  const root = await folder();
+  try {
+    const task = { id: 'task-one', projectId: 'project-one', objective: 'Implement',
+      origin: { kind: 'direct' }, completion: { validation: [] } };
+    const base = { id: 'run-one', taskId: task.id, projectId: task.projectId, status: 'completed',
+      candidateFingerprint: 'candidate', authorityDecision: { allowed: true }, appliedFiles: ['src/a.ts'],
+      validationResults: [{ owner: 'dope', status: 'passed', candidateFingerprint: 'candidate' }] };
+    let run: any = { ...base, reviewDecision: { kind: 'accept', candidateFingerprint: 'candidate' } };
+    let sequence: any = { id: 'sequence-one', status: 'running', stack: { folderName: 'p9b' } };
+    const agents = { readTask: async () => task, readRun: async () => run,
+      readSequence: async () => sequence } as unknown as AgentStore;
+    const subject = new DeveloperSessionAgentMindResolver(() => ({ root, projectHandle: 'attached' }),
+      undefined, agents);
+    const ref = { kind: 'agent-run' as const, taskId: task.id, runId: base.id };
+    assert.deepEqual((( { validationStatus, reviewDecision, promotionStatus }) =>
+      ({ validationStatus, reviewDecision, promotionStatus }))(await subject.resolve('attached', ref)),
+      { validationStatus: 'passed', reviewDecision: 'accept', promotionStatus: 'applied' });
+    task.completion.validation.push({ kind: 'test', label: 'required second target' });
+    assert.equal((await subject.resolve('attached', ref)).validationStatus, 'incomplete');
+    task.completion.validation.pop();
+    run = { ...base, status: 'cancelled', reviewDecision: { kind: 'reject', candidateFingerprint: 'candidate' },
+      validationResults: [{ owner: 'dope', status: 'failed', candidateFingerprint: 'candidate' }] };
+    const rejected = await subject.resolve('attached', ref);
+    assert.equal(rejected.validationStatus, 'failed');
+    assert.equal(rejected.reviewDecision, 'reject');
+    assert.equal(rejected.promotionStatus, 'not-applied');
+    assert.equal((await subject.resolve('attached', { kind: 'agent-sequence', sequenceId: sequence.id })).status, 'running');
+    sequence = undefined;
+    assert.equal((await subject.resolve('attached', { kind: 'agent-sequence', sequenceId: 'sequence-one' })).availability, 'missing');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
