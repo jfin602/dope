@@ -1,0 +1,35 @@
+TASK: Phase 9 / P5 — Add revision-safe artifact attach detach and resolve RPC
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.11`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.10`, advance all 13 root/app/package package.json versions and pinned internal @dope/* dependency references to `0.9.11` DURING THIS PROMPT. Runner verifies but does not bump. Preserve unrelated dependencies, yarn.lock and local work; no root package-lock.json or manual commit.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, `docs/planning/p9/phase-9b-plan.md`, `docs/tasks/p9b/implementation-plan.md` and `docs/tasks/p9a/closeout.md`. 9A is bounded Green at `0.9.6`; **9B is NOT activated by these authored docs**. Require separate explicit owner activation at `docs/planning/p9/phase-9b-activation.md` before implementation. If absent, stop with zero changes; do not self-activate or pre-bump. Verify prior Pn checkpoint/version and preserve any intentional dirty work.
+
+GOAL / IMPLEMENT
+Extend `developer-session-service.ts` with typed attach-link/detach-link and compact resolve requests, and `DeveloperSessionStore`/`DeveloperSessionBackend` with 9A revision-checked mutation under the existing atomic lock. Attach validates owner target in the same canonical project through P3/P4 resolvers before session mutation; recheck session handle/root and expected collection/session revisions under lock. Duplicate attach at current revisions is idempotent with NO revision bump, shared links across sessions allowed; reject closed sessions, invalid IDs, foreign project, stale revisions and oversize link counts. Detach removes only membership, never owner artifact. If target disappears after validation, keep reference and return missing on next resolve. Use the existing per-connection RPC registration, not a new Session UI or task runtime. Keep 9A lifecycle operations and v1 migration intact.
+
+PRESERVE
+Sessions are optional project-root-bound membership only, not execution origin/authority. Preserve 9A lifecycle, Chat/Planning/Agent/Project Mind owning stores, no-AI use and independent non-session flows. No automatic agent execution, ExecutionGrant change, WorkItem completion, architecture adoption, provider fallback, AI context inclusion, Git/source write or owner-store mutation from Session resolution. 9C UI, 9D rich progress and 9E GUI/full aggregate remain out of scope. Preserve Phase 5 Not Green and Phase 8 Green history.
+
+VALIDATION — T2
+Add `test/unit/developer-session-membership.test.ts` with two sessions sharing a link, duplicate no-op, detach leaves source unchanged, closed/reopen, stale revision, foreign/disposed handle, target deleted after attach, missing/unavailable and no model/AgentRuntime call. Compile only touched libs if needed; run the focused test and `git diff --check`.
+
+EFFICIENCY
+P4/P5 target <=8 minutes implementation plus focused tests (10-minute soft, 15-minute hard); P6 is a justified bounded T2 integration gate. Never weaken security to hit timing. Compile only changed libs required by tests; no routine npm test, npm run check, browser/Electron/native builds, live provider calls or packaging. Runner owns checkpoint commits.
+
+DEFER
+P6 integration and targeted replay fixture; P7 manual real replay; 9C Session UI.
+
+DONE WHEN
+Assigned seam has direct focused evidence, coherent `0.9.11` versions, no widened authority and explicit remaining gaps.
+
+FINAL RESPONSE
+Files changed, focused tests, source/version checkpoint and unresolved qualification.

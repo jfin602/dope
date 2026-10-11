@@ -1,0 +1,35 @@
+TASK: Phase 9 / P4 — Resolve Agent runs sequences and Project Mind metadata read-only
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.10`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.9`, advance all 13 root/app/package package.json versions and pinned internal @dope/* dependency references to `0.9.10` DURING THIS PROMPT. Runner verifies but does not bump. Preserve unrelated dependencies, yarn.lock and local work; no root package-lock.json or manual commit.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, `docs/planning/p9/phase-9b-plan.md`, `docs/tasks/p9b/implementation-plan.md` and `docs/tasks/p9a/closeout.md`. 9A is bounded Green at `0.9.6`; **9B is NOT activated by these authored docs**. Require separate explicit owner activation at `docs/planning/p9/phase-9b-activation.md` before implementation. If absent, stop with zero changes; do not self-activate or pre-bump. Verify prior Pn checkpoint/version and preserve any intentional dirty work.
+
+GOAL / IMPLEMENT
+Extend the compact Session artifact resolver with AgentTask, AgentRun (taskId+runId), AgentTaskSequence and Project Mind decision/idea. Use `AgentStore.readTask/readRun/readSequence` and `ProjectMindStore.read` only through safe read-only project-root-bound APIs; no owner writes, initialization or model calls. Verify run.taskId matches the requested task and project relationship; do not substitute another run or provider ID. Return bounded objective/title, task origin, actual run/sequence status, Dope-owned validation status, review decision and authoritative applied/promoted state as DISTINCT sourced facts. Project Mind type/status must match the requested decision/idea. Distinguish missing, corrupt/unavailable and stale provenance without inventing WorkItem completion or exposing transcripts/candidate diffs.
+
+PRESERVE
+Sessions are optional project-root-bound membership only, not execution origin/authority. Preserve 9A lifecycle, Chat/Planning/Agent/Project Mind owning stores, no-AI use and independent non-session flows. No automatic agent execution, ExecutionGrant change, WorkItem completion, architecture adoption, provider fallback, AI context inclusion, Git/source write or owner-store mutation from Session resolution. 9C UI, 9D rich progress and 9E GUI/full aggregate remain out of scope. Preserve Phase 5 Not Green and Phase 8 Green history.
+
+VALIDATION — T2
+Extend `test/unit/developer-session-resolver.test.ts` (or focused Agent resolver test) for matching/mismatched task-run, absent run/sequence, accepted/rejected review, validation pass/fail, missing Project Mind, decision/idea type/status, corrupt store and byte-identical owner state. Build only changed compiled libs if needed; run one focused test and `git diff --check`.
+
+EFFICIENCY
+P4/P5 target <=8 minutes implementation plus focused tests (10-minute soft, 15-minute hard); P6 is a justified bounded T2 integration gate. Never weaken security to hit timing. Compile only changed libs required by tests; no routine npm test, npm run check, browser/Electron/native builds, live provider calls or packaging. Runner owns checkpoint commits.
+
+DEFER
+P5 attach/detach and RPC; P6 cross-store integration; P7 real replay.
+
+DONE WHEN
+Assigned seam has direct focused evidence, coherent `0.9.10` versions, no widened authority and explicit remaining gaps.
+
+FINAL RESPONSE
+Files changed, focused tests, source/version checkpoint and unresolved qualification.

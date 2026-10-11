@@ -1,0 +1,35 @@
+TASK: Phase 9 / P6 — Integrate artifact linking and prepare bounded Planning to Work replay
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.12`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.11`, advance all 13 root/app/package package.json versions and pinned internal @dope/* dependency references to `0.9.12` DURING THIS PROMPT. Runner verifies but does not bump. Preserve unrelated dependencies, yarn.lock and local work; no root package-lock.json or manual commit.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, `docs/planning/p9/phase-9b-plan.md`, `docs/tasks/p9b/implementation-plan.md` and `docs/tasks/p9a/closeout.md`. 9A is bounded Green at `0.9.6`; **9B is NOT activated by these authored docs**. Require separate explicit owner activation at `docs/planning/p9/phase-9b-activation.md` before implementation. If absent, stop with zero changes; do not self-activate or pre-bump. Verify prior Pn checkpoint/version and preserve any intentional dirty work.
+
+GOAL / IMPLEMENT
+Create one compact deterministic cross-store fixture on a disposable project exercising v1 -> v2 no-write migration, two sessions and shared links, attach/detach/restart, project A/B isolation, stale/missing/unavailable owner records, byte-unchanged Chat/Planning/Agent/Project Mind reads and accurate AgentTask/Run/Sequence validation/review projection. Use real persisted owner-domain records and existing Dope-owned validation/review state; do not fabricate a live agent execution or falsely call this a real-run qualification. Include a ready PlanningMap + eligible AI/SHARED WorkItem, existing revision-checked launch request and candidate/review expectations for P7's separate real authorized replay. If a seam fails, repair only that boundary and rerun invalidated focused tests. Register new session test files once in root `test:product`, without deleting existing 9A tests.
+
+PRESERVE
+Sessions are optional project-root-bound membership only, not execution origin/authority. Preserve 9A lifecycle, Chat/Planning/Agent/Project Mind owning stores, no-AI use and independent non-session flows. No automatic agent execution, ExecutionGrant change, WorkItem completion, architecture adoption, provider fallback, AI context inclusion, Git/source write or owner-store mutation from Session resolution. 9C UI, 9D rich progress and 9E GUI/full aggregate remain out of scope. Preserve Phase 5 Not Green and Phase 8 Green history.
+
+VALIDATION — T2
+Compile only changed package lib dependencies if required. Run one focused `node --test` invocation covering updated 9A session tests and new resolver/membership/integration tests. Verify no writes to owner-store sentinel files, project switching/restart and version coherence; run `git diff --check`. Do not run full `npm run check`, Electron/browser/native builds or a live provider here. P7 owns the real authorized run.
+
+EFFICIENCY
+P4/P5 target <=8 minutes implementation plus focused tests (10-minute soft, 15-minute hard); P6 is a justified bounded T2 integration gate. Never weaken security to hit timing. Compile only changed libs required by tests; no routine npm test, npm run check, browser/Electron/native builds, live provider calls or packaging. Runner owns checkpoint commits.
+
+DEFER
+P7 manual real Planning-to-Work replay and scoped 9B closeout; 9C UI; 9E full GUI/aggregate.
+
+DONE WHEN
+Assigned seam has direct focused evidence, coherent `0.9.12` versions, no widened authority and explicit remaining gaps.
+
+FINAL RESPONSE
+Files changed, focused tests, source/version checkpoint and unresolved qualification.
