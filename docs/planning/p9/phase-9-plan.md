@@ -39,7 +39,7 @@ Provider-free parser/service/store; create, rename, pause, resume, close/reopen,
 **OWNER-ACTIVATED AND BOUNDED GREEN at `0.9.13` / `5aa0bac`.** See `docs/planning/p9/phase-9b-activation.md` and `docs/tasks/p9b/closeout.md` for strict v2 session references/v1 migration, read-only Chat/Planning/Agent/Project Mind resolution, revision-safe attach/detach and the real authorized Planning-to-Work replay. No owner truth was copied or work started on Session selection; Phase 5 Not Green remains historical. This does not qualify the 9C UI, 9D rich projections or 9E GUI/aggregate.
 
 ### 9C — Session workspace
-Compact session selector, overview, links to existing Chat/Planning/Work, activity, decisions and next actions. Use normal open/focus APIs, preserving Chat/Work single-panel ownership and independent center workspace. No new agent composer or canvas redesign.
+**DESIGN REVIEWED / PROMPT STACK AUTHORED / NOT OWNER-ACTIVATED OR IMPLEMENTED** (2026-10-11). See `docs/planning/p9/phase-9c-plan.md` and `docs/tasks/p9c/README.md`. A compact dedicated center Session workspace supplies project-local selection, developer-authored objective/notes/next actions, existing v2 artifact attach/detach, truthful compact resolution and navigation into normal Chat/Planning/Work/Project Mind surfaces. Preserve their single-owner behavior and independent editor state; no activity inference, session-native execution, model context or new agent composer. 9C requires separate owner activation after prompt authoring; 9D remains responsible for rich progress, resume and guided closeout.
 
 ### 9D — Resume and closeout
 Restore sessions after restart/project switch without restarting AgentRuns. Truthful progress, unresolved/deferred items, decision links, explicit developer close/reopen and durable closeout. Closing a session never cancels or completes linked work.
@@ -57,4 +57,4 @@ No new agent runtime, mandatory sessions, provider-native session state, automat
 
 ## Activation
 
-**Phase 9 is ACTIVE / NOT QUALIFIED overall.** The owner authorized the coherent `0.9.0` baseline at `e250a07`, separately activated 9A (`docs/planning/p9/activation.md`) and later 9B (`docs/planning/p9/phase-9b-activation.md`). The 9A and 9B bounded closeouts are recorded at `0.9.6` and `0.9.13`. 9C–9E and Phase 10 need separate activation and evidence; this 9B result does not close Phase 9.
+**Phase 9 is ACTIVE / NOT QUALIFIED overall.** The owner authorized the coherent `0.9.0` baseline at `e250a07`, separately activated 9A (`docs/planning/p9/activation.md`) and later 9B (`docs/planning/p9/phase-9b-activation.md`). The 9A and 9B bounded closeouts are recorded at `0.9.6` and `0.9.13`. 9C design/prompt authoring does not activate implementation. 9C–9E and Phase 10 need separate activation and evidence; the 9B result does not close Phase 9.

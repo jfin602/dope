@@ -1,0 +1,47 @@
+# Phase 9C Plan — Session Workspace UI and Existing-Artifact Navigation
+
+**Status:** DESIGN REVIEWED / DOCUMENTATION AND PROMPT AUTHORING ONLY / NOT OWNER-ACTIVATED OR IMPLEMENTED  
+**Date:** 2026-10-11 (America/Chicago)  
+**Entry:** 9A bounded Green at `0.9.6` / `6b51ee96`; 9B bounded backend/headless Green at exact `0.9.13` / `5aa0bacecb4c26bf1806821747f36fae57077b1a`, evidence-only closeout `3825b5e73db527a9f52c0ca3767620fec2065700`. All 25 focused Session tests passed and the real local Planning-to-Work replay passed its bounded gate. **Phase 9 overall NOT QUALIFIED.**  
+**Authority:** ADR 0033, ADR 0025 Chat single-owner contract, Phase 9 plan, 9B closeout, Phase 8 workbench ownership/validation and stability contract. 9D–9E and Phase 10 remain inactive.
+
+## Outcome
+
+Provide a **dedicated center-editor Development Sessions workspace** in the existing Theia shell. The workspace shows the Sessions in the current project, permits explicit creation and revision-safe edits to 9A developer-authored metadata, offers attach/detach of existing v2 typed references through owner-backed browsing, displays compact *current* resolution truth from the existing 9B backend, and opens/reveals existing Chat, Planning, Work and Project Mind presentations. This is a navigation and organizational surface, **not** a new editor for copied artifacts or an agent console.
+
+Keep Sessions optional. Ordinary Chat, Planning Map, WorkItem, direct Work, Prompt Stack and Project Mind flows remain available without creating/selecting any Session. Selecting a Session never becomes implicit origin, permission, default AI context or work trigger.
+
+## UI workflow and product contract
+
+- **Entry:** a discoverable **Sessions** action in the left activity bar and Command Palette, with one center Session widget (stable widget identity). Do not create another set of Chat/Work launchers or change their panel placement. Repeated activation reveals the existing widget; allow normal center tab closing/reopening.
+- **Session selector:** current project's Session rows with title, actual active/paused/closed status and updated timestamp, modest filtering and New Session. Selection is by stable ID. Empty project shows an intentional empty state; non-Session workflows are unaffected.
+- **Overview:** title, objective, developer notes, next actions and simple lifecycle badge. Show a grouped list of typed linked artifacts and their compact live resolution. Do not fabricate progress percentages, inferred accomplishments, activity timeline or model-generated summaries.
+- **Editing:** New Session requires title; objective may be empty as allowed by 9A. Rename, objective, notes and next actions are explicit saved operations with current collection/session expected revisions. Keep drafts local, protect or visibly reconcile unsaved data across failure/switch, and on conflict refresh and request developer choice; never silently overwrite. Existing backend status rules govern edits; closed Sessions are read-only until deliberately reopened in the later 9D workflow. The existing backend may already support basic pause/resume/reopen; 9C does not invent a guided status/closeout feature.
+- **Link membership:** UI exposes only the seven implemented `SessionArtifactRef` kinds: Chat; Planning Map; WorkItem (map+item); AgentTask; AgentRun (task+run); AgentTaskSequence; Project Mind decision/idea. Use bounded, **owner-backed** metadata lists/selection from existing services, not guessed paths, copied payloads, unbounded full transcripts or a new inverse-link database. If an owner list cannot safely be accessed, document the limitation rather than invent a backend lookup or displaying an unusable fake chooser. Duplicate attach is a no-op; multiple Sessions may link the same artifact. Detach affects Session membership only.
+- **Resolution display:** the `DeveloperSessionService.resolve` compact result supplies availability `resolved | missing | stale | unavailable`, grounded diagnostics and selective owner statuses. Preserve distinct WorkItem, AgentRun, validation, review and promotion states. Group artifacts by Chat, Planning, Work/Agent and Project Mind without changing canonical identities. A missing/stale/unavailable target remains visible, diagnostically labeled and detachable; not silently dropped, fixed, read-recovered or treated as completed.
+- **Navigation:** clicking a resolved link opens/reveals the **existing** artifact-specific surface. Reuse ChatPanel single-owner focus, Work panel single-owner selection, PlanningMapController's selected map/item in the existing Physical/Planning Map center workspace, and ProjectMindWidget's artifact navigation. Never spawn a second transcript/editor or redirect a link to a different project/object. For unsupported navigation (e.g. no precise target API), offer a truthful non-mutating fallback to the existing owner view and identify the target without claiming selection succeeded.
+- **Visual behavior:** Dope dark/light theme support and current subdued `#336699` visual identity; neutral utility controls, discernible focus, keyboard-friendly labels and bounded responsive content. Avoid a full dashboard, dense orchestration console or new agent composer.
+
+## Source and integration seams inspected (2026-10-11)
+
+- `packages/contracts/src/developer-session.ts` owns v2 exact-shape types (seven kinds), 100 links/session and 10,000 links/collection. `developer-session-service.ts` already exposes `attach/read/list/get/mutate/attachLink/detachLink/resolve`, expected collection+session revisions and canonical projectHandle.
+- `packages/theia-extension/src/node/developer-session-backend.ts` checks root-bound handles, performs owner validation before attach and resolves links without copying records. Frontend should not reproduce backend authority or store Session copies in workbench state.
+- `packages/theia-extension/src/browser/frontend-module.ts` registers Theia WidgetFactory, commands, left/right Chat and Work launchers. There is not yet a Session frontend widget/controller; introduce a small connector/controller/presentation seam instead of extending the large ChatPanelWidget.
+- `chat-panel-widget.ts`, `chat-panel-controller.ts` and `shared-panel-state.ts` implement Chat/Work open-owner semantics. `ChatPanelWidget.selectChatLauncher` / `selectWorkLauncher`, `ChatOpenOwners` and `WorkOpenOwners` must remain the authority for opening a currently owned item.
+- `planning-map-controller.ts` offers `setMode`, `select(mapId)`, `selectWorkItem(id)`; `physical-map-widget.ts` owns the existing center Physical/Planning workspace. `dope-workbench.ts` already has `ProjectMindWidget.openArtifact(id)`. Use bounded target navigation adapters rather than synchronized Session/Planning transient selection state.
+
+## Safety and lifecycle
+
+One selected Session ID belongs only to current canonical project identity. Cancel/ignore late attach/read/resolve/list responses after project change, selection change, widget disposal, backend handle invalidation or a newer request. Refresh and project switches must not rewrite owners, leak previous-project Session data, resurrect old selection, bypass expected-revision checks, or cause automatic Task/Run activity. Workbench restoration may remember project+selected Session ID only; the Session store remains the source of truth and stale/cross-project restoration must fall back safely. Closed Sessions stay inspectable; no edits without explicit permitted reopen.
+
+Session metadata is project-local and **not** equivalent to an AI context grant. Resolution/browsing must never run Chat recovery, Planning rebase, Project Mind initialization, AI inference, delegated Work, Git writes or candidate review. No HTML injection through persisted titles/diagnostics. If an artifact disappears after attachment, preserve its link with the owner-sourced diagnosis.
+
+## Qualification and phase split
+
+9C **bounded Green** requires focused controller/widget/navigation integration tests and one real Theia GUI smoke on the exact candidate: create/edit Session, link and unlink existing artifacts, navigate owner panels without duplicate ownership, inspect missing/stale/closed truth, use Session without AI, switch project, restart/reopen and verify no automatically launched AgentRun or changed owner stores. Failed GUI or missing target-navigation proof is NOT GREEN / Evidence Gap; don't substitute headless tests for UI proof.
+
+9D owns rich activity/progress synthesis, guided pause/resume/closeout and durable closeout projections. 9E owns the full Dope Builds Dope GUI feature, full exact-candidate aggregate, necessary native/package and final Phase 9 closeout. Historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green remain unchanged.
+
+## Separate activation and version law
+
+9C is **DESIGN REVIEWED, NOT OWNER-ACTIVATED** by this document or authored prompts. Require a **separate explicit owner activation record** at `docs/planning/p9/phase-9c-activation.md` before P1 implementation. From coherent Git-proven predecessor `0.9.13` / `5aa0bac`, P1 owns `0.9.14` during implementation; the runner never pre-bumps. P1–P7 implementation target `0.9.14`–`0.9.20`; P8 is the sole manual 9C GUI qualification/closeout at separately committed exact `0.9.21`. Version steps apply to all 13 manifests and pinned internal `@dope/*` references without unrelated dependency/lockfile changes. 9C closeout does not activate 9D or close Phase 9.
