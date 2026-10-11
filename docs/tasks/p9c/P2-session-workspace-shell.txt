@@ -1,0 +1,35 @@
+TASK: Phase 9 / P2 — Build center Session selector widget and launcher
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.15`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.14`, advance all 13 root/app/package package.json versions and pinned internal @dope/* references to `0.9.15` DURING THIS PROMPT. Runner verifies but does not bump. Preserve unrelated dependencies, yarn.lock, and user work; no root package-lock.json. Do not commit manually; runner owns checkpoint commits. Never fabricate a Git checkpoint.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, ADR 0025, `docs/planning/p9/phase-9c-plan.md`, `docs/tasks/p9c/implementation-plan.md` and `docs/tasks/p9b/closeout.md`. Phase 9B is bounded Green at `0.9.13`, not Phase 9 Green. This stack is NOT activated by authoring. Require a separate explicit owner activation record at `docs/planning/p9/phase-9c-activation.md` before ANY implementation. If absent, stop with zero changes; do not self-activate or pre-bump. Verify Git-proven preceding version, source SHA and worktree before execution.
+
+GOAL / IMPLEMENT
+Add independent center editor-area developer-session-widget.ts using P1 controller. Wire stable WidgetFactory ID, Sessions Command Palette action and left activity-bar launcher via supported Theia frontend-module.ts APIs. Repeated activation focuses one widget. Show current project Session list (title, actual status, update), compact filter, selection, empty/loading/error states, read-only objective/notes/next-actions and linked count. Respect Dope dark/light and neutral #336699 identity. Do not extend ChatPanelWidget or create owner panels.
+
+PRESERVE
+Sessions organize links in the current project, never authorize execution or copy authoritative Chat/Planning/Work/Project Mind records. Preserve 9A/9B Green scope, exact root/IDs/revisions, Chat/Work single-writer ownership, bounded resolution and honest missing/stale/unavailable states. No auto-start AgentTask/Run, new grant, WorkItem completion, candidate acceptance, architecture adoption, provider call/fallback, implicit model context, Git writes or silent owner-store mutation by Session navigation. Historic Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green remain unchanged; 9D/9E and Phase 10 not activated.
+
+VALIDATION — T1
+Create test/unit/developer-session-widget.test.ts registered once. Check widget/command/launcher wiring, repeated-open idempotence, project-empty/error states and safe text presentation using focused tests. Build only changed extension lib, run widget test and git diff --check.
+
+EFFICIENCY
+Target <=8 minutes including focused tests (10-minute soft, 15-minute hard). Split/report oversized work instead of bypassing security. Build only necessary changed libs when focused tests import compiled outputs; no unconditional npm run check, npm test, browser/Electron/native build or live model run. Runner owns Git checkpoint.
+
+DEFER
+Editing P3, candidate/link UI P4, resolution P5, owner navigation P6, GUI P8.
+
+DONE WHEN
+Focused evidence supports this seam at coherent 0.9.15 and unresolved gaps are reported rather than relabeled Green.
+
+FINAL RESPONSE
+Report exact source/version checkpoint, files changed, focused tests, observed versus unqualified behavior, and remaining 9D/9E gates.

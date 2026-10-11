@@ -1,0 +1,35 @@
+TASK: Phase 9 / P7 — Harden Session UI restoration project switching and regression
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.20`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.19`, advance all 13 root/app/package package.json versions and pinned internal @dope/* references to `0.9.20` DURING THIS PROMPT. Runner verifies but does not bump. Preserve unrelated dependencies, yarn.lock, and user work; no root package-lock.json. Do not commit manually; runner owns checkpoint commits. Never fabricate a Git checkpoint.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, ADR 0025, `docs/planning/p9/phase-9c-plan.md`, `docs/tasks/p9c/implementation-plan.md` and `docs/tasks/p9b/closeout.md`. Phase 9B is bounded Green at `0.9.13`, not Phase 9 Green. This stack is NOT activated by authoring. Require a separate explicit owner activation record at `docs/planning/p9/phase-9c-activation.md` before ANY implementation. If absent, stop with zero changes; do not self-activate or pre-bump. Verify Git-proven preceding version, source SHA and worktree before execution.
+
+GOAL / IMPLEMENT
+Integrate P1-P6 seams. Restore only verified project-scoped selected Session ID from workbench layout; never mirror authoritative Session data in layout. Ignore late reads/resolve/navigation/mutations after root change, dispose, selection change or handle invalidation; reject cross-root restored IDs and preserve/reconcile drafts safely. Verify closed Sessions, stale/conflicted revisions, no Session use, shared artifacts and independent owner-panel behavior. Fix only affected integration problems.
+
+PRESERVE
+Sessions organize links in the current project, never authorize execution or copy authoritative Chat/Planning/Work/Project Mind records. Preserve 9A/9B Green scope, exact root/IDs/revisions, Chat/Work single-writer ownership, bounded resolution and honest missing/stale/unavailable states. No auto-start AgentTask/Run, new grant, WorkItem completion, candidate acceptance, architecture adoption, provider call/fallback, implicit model context, Git writes or silent owner-store mutation by Session navigation. Historic Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green remain unchanged; 9D/9E and Phase 10 not activated.
+
+VALIDATION — T2
+Run one bounded focused node --test of new Session controller/widget/membership/navigation and affected existing developer-session-contracts/store/backend/resolver/membership/integration tests after minimum changed-lib build/typecheck. Check root A/B, restart-simulated restoration, stale responses, closed/conflict and no owner writes or new AgentRun. Register test files only once; git diff --check. No GUI Green claim.
+
+EFFICIENCY
+Target <=8 minutes including focused tests (10-minute soft, 15-minute hard). Split/report oversized work instead of bypassing security. Build only necessary changed libs when focused tests import compiled outputs; no unconditional npm run check, npm test, browser/Electron/native build or live model run. Runner owns Git checkpoint.
+
+DEFER
+P8 real Theia GUI and 0.9.21 closeout; 9D/9E not activated.
+
+DONE WHEN
+Focused evidence supports this seam at coherent 0.9.20 and unresolved gaps are reported rather than relabeled Green.
+
+FINAL RESPONSE
+Report exact source/version checkpoint, files changed, focused tests, observed versus unqualified behavior, and remaining 9D/9E gates.
