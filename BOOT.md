@@ -269,4 +269,4 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Current routing
 
-**Current routing: Phase 8 is OWNER-CLOSED / GREEN for approved scope at `0.8.47` / `bcc5cb8`; Phase 9 is ACTIVE for 9A only, not qualified.** Owner activation `docs/planning/p9/activation.md` authorizes `p9a` P1–P6 from coherent `0.9.0` baseline `e250a07`. The earlier P1 zero-change stop is historical, not a checkpoint. Do not pre-bump versions or require another activation for 9A. 9B–9E and Phase 10 remain inactive. Preserve Phase 8 P14 and original 8D P13/c8-fix dispositions.
+**Current routing: Phase 8 owner-closed Green at `0.8.47` / `bcc5cb8`; Phase 9 ACTIVE, 9A BOUNDED GREEN at `0.9.6` / `6b51ee96`; 9B DESIGN APPROVED / NOT ACTIVATED; Phase 9 NOT QUALIFIED.** `p9b` design: `docs/planning/p9/phase-9b-plan.md`; implementation needs separate owner activation. 9C–9E and Phase 10 inactive. Preserve Phase 5 Not Green and Phase 8 Green.

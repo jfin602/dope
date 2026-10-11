@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: **Product Phase 9 — ACTIVE / 9A IMPLEMENTATION OWNER-AUTHORIZED (2026-10-10), NOT QUALIFIED.** The owner activated `p9a` P1–P6 in `docs/planning/p9/activation.md` from the coherent `0.9.0` baseline `e250a07`. The first P1 attempt stopped before changes due to missing activation and created no checkpoint. 9B–9E and Phase 10 are inactive; last qualified product source remains Phase 8 `0.8.47` / `bcc5cb8` (see `docs/planning/p8/phase-8-closeout.md`).
+Current stage: **Phase 9 ACTIVE / 9A BOUNDED GREEN at `0.9.6` / `6b51ee96`; 9B DESIGN APPROVED / NOT ACTIVATED; Phase 9 NOT QUALIFIED.** 9A evidence: `docs/tasks/p9a/closeout.md`. 9B design: `docs/planning/p9/phase-9b-plan.md`. 9C–9E and Phase 10 inactive; Phase 8 remains owner-closed Green.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
@@ -68,7 +68,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c8 — Agent Authority Boundary | **GREEN / INCORPORATED INTO QUALIFIED 8B.** Isolated ExecutionWorkspace -> CandidateDelta -> Dope Authority/ToolExecutor promotion is the canonical mutation boundary. |
 | Correction c8-candidate-validation — Dope-owned Candidate Validation | **GREEN / QUALIFIED.** Dope-owned frozen-candidate validation supports private temp/loopback without host/private/network authority; real Adaptive SEO Prompt Stack completed in Cycle 2 of 5. |
 | Correction c8-work-mode — Work / Prompt Stack UI | **GREEN / QUALIFIED / CLOSED at `0.8.20`.** Separate Chat and Work panels, Work toolbar, stable titles, durable agent transcript and collapsed command detail, live GUI/restart evidence. |
-| Product Phase 9 — Development Sessions | **ACTIVE / 9A OWNER-AUTHORIZED / NOT QUALIFIED.** Optional project-scoped sessions link multiple existing Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, validation and decisions without copying their truth or granting execution. Real Dope Builds Dope session replay is the exit gate. See `docs/planning/p9/phase-9-plan.md` and ADR 0033. |
+| Product Phase 9 — Development Sessions | **ACTIVE / 9A BOUNDED GREEN at 0.9.6; 9B DESIGN APPROVED / NOT ACTIVATED; Phase 9 NOT QUALIFIED.** Optional project-scoped sessions link multiple existing Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, validation and decisions without copying their truth or granting execution. Real Dope Builds Dope session replay is the exit gate. See `docs/planning/p9/phase-9-plan.md` and ADR 0033. |
 | Product Phase 10 — Living Software Knowledge Model | Dope continuously checks whether source/runtime evidence, canonical Software Map state, documentation and formal contracts still describe the same software. It can also use Phase 8 WorkItem and Phase 9 session provenance to explain why state changed. Deterministic impact analysis narrows work first; bounded local-model semantic checks maintain alignment in the background without silently mutating project truth. |
 
 Self-development never receives privileged authority.
@@ -1039,7 +1039,7 @@ A developer can run a real sequential implementation stack inside Dope through t
 
 ## Product Phase 9 — Development Sessions
 
-Status: **ACTIVE / 9A IMPLEMENTATION OWNER-AUTHORIZED / NOT QUALIFIED (2026-10-10)**. Phase 8 is owner-closed Green for approved scope at committed `0.8.47` / `bcc5cb8`; the owner separately authorized a clean `0.9.0` version-only baseline at `e250a07` (`docs/planning/p9/baseline.md`). 9A P1–P6 implementation is separately authorized in `docs/planning/p9/activation.md`; this roadmap does not claim implementation or qualification.
+Status: **ACTIVE / 9A BOUNDED GREEN at `0.9.6` / `6b51ee96` — 9B DESIGN APPROVED, NOT ACTIVATED; Phase 9 NOT QUALIFIED.** Phase 8 is owner-closed Green for approved scope at committed `0.8.47` / `bcc5cb8`; the owner separately authorized a clean `0.9.0` version-only baseline at `e250a07` (`docs/planning/p9/baseline.md`). 9A P1–P6 completed and were bounded-headless Green in `docs/tasks/p9a/closeout.md`. The 9B design is approved in `docs/planning/p9/phase-9b-plan.md`, but implementation is not activated or qualified.
 
 Purpose:
 Make a development effort durable for the **developer**, not just for a model. A DeveloperSession is an **optional** project-scoped organizational workspace with an objective, multiple linked Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, decisions, validation, progress, unresolved work, and explicit pause/resume/closeout. Chat, Planning, Work and IDE remain independently usable without a session.
@@ -1047,8 +1047,8 @@ Make a development effort durable for the **developer**, not just for a model. A
 Phase 9 does **not** create another task ontology, agent runtime, grant, source-of-truth store for existing artifacts or automatic AI context. Membership is a typed reference to existing project records; a shared artifact may appear in multiple sessions without duplication or execution. Session status never marks WorkItems complete, promotes candidates, adopts architecture, cancels runs or modifies Git. The proposed session-only store is versioned project-local `.dope/development-sessions.json`, with revision-checked operations and missing/stale-link visibility.
 
 Workstreams:
-- **9A — Identity/persistence:** versioned sessions, lifecycle, project isolation, atomic revision writes and restart recovery, useful without AI.
-- **9B — Artifact linking:** attach/detach/resolve existing Chat, Planning, Work and decisions; prove one real PlanningMap -> WorkItem -> authorized AgentTask -> Dope-owned validation/review replay. Repair only affected Phase 5 seam; its historical P11 Not Green/P12 unexecuted result remains unchanged.
+- **9A — Identity/persistence:** bounded Green at `0.9.6` / `6b51ee96`, 13/13 focused tests, restart and project isolation; schema v1 has no links.
+- **9B — Artifact linking:** design approved, NOT ACTIVATED. Strict v2 references/v1 migration, genuinely read-only Chat/Planning/Agent/Project Mind resolution, revision-safe attach/detach and a real PlanningMap -> WorkItem -> authorized AgentTask -> Dope-owned validation/review replay. Repair only affected Phase 5 seam; its historical P11 Not Green/P12 unexecuted result remains unchanged.
 - **9C — Session workspace:** overview, links and navigation through existing panels, preserving Chat/Work single-panel ownership and independent editor state.
 - **9D — Resume/closeout:** truthful progress, restart, unresolved/deferred items, decision provenance and explicit close/reopen without changing linked object lifecycles.
 - **9E — Dope Builds Dope:** one small real feature through Session -> Chat -> Planning -> Work -> validation/review -> restart/resume -> session closeout, plus non-session regressions and exact-source aggregate.
@@ -1056,7 +1056,7 @@ Workstreams:
 Exit condition:
 A developer can create/use sessions without AI, attach multiple existing objects, navigate them, perform authorized work without new permissions, restore after restart, distinguish actual validation and unresolved work, and explicitly close a real Dope Builds Dope session. Required GUI, security and final aggregate evidence must be Green on one exact source candidate.
 
-Authority: `docs/planning/p9/phase-9-plan.md` and ADR 0033. The coherent `0.9.0` baseline is committed and `p9a` prompts are authored; **Phase 9 implementation is now owner-authorized for 9A only** (`docs/planning/p9/activation.md`); 9B–9E require separate approval. Phase 10 remains inactive.
+Authority: `docs/planning/p9/phase-9-plan.md` and ADR 0033. 9A is bounded Green at `0.9.6`; 9B design/prompt authoring is approved but **9B implementation requires separate owner activation**. 9C–9E and Phase 10 remain inactive; see `docs/planning/p9/phase-9b-plan.md`. Phase 10 remains inactive.
 
 ## Product Phase 10 — Living Software Knowledge Model
 

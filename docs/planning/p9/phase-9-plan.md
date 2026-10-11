@@ -18,7 +18,7 @@ Sessions **reference existing truth**, never clone Chat, Planning, Agent or Proj
 - Planning uses `.dope/planning-maps.json`, map/WorkItem identities, revisions, basis and explicit rebase/adoption. Phase 5 P11 final A–I replay was Not Green and P12 was unexecuted; this history is preserved.
 - Agent Runtime persists AgentTasks/AgentRuns/AgentTaskSequences under `.dope/agent/` with grant, transcript, frozen candidate, validation/review and checkpoints. Reserved AgentTask `future-session` origin must **not** be repurposed for mutable membership.
 - Project Mind owns decisions/ideas; Software Map owns architecture. Session UI derives their current evidence.
-- No dedicated session store/service/workspace exists in qualified `0.8.47` source.
+- Historical `0.8.47` had no session store/service/workspace. 9A subsequently implemented and qualified the provider-free parser, store, lifecycle and backend at `0.9.6` (`docs/tasks/p9a/closeout.md`); no typed links or UI.
 
 ## Domain and persistence
 
@@ -36,7 +36,7 @@ Provider-free parser/service/store; create, rename, pause, resume, close/reopen,
 **Execution update (2026-10-10):** P1–P6 completed through the separate `0.9.6` source/version checkpoint `6b51ee96`; [9A closeout](../../tasks/p9a/closeout.md) records bounded headless Green. The preceding paragraph is retained as prompt-authoring history. Phase 9 overall remains unqualified; 9B–9E require separate activation and evidence.
 
 ### 9B — Typed membership and resolution
-Attach/detach Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks and decisions by typed ID. Resolve live status and missing/stale links without copying truth or executing work. Include **one targeted Planning-to-Work replay**: real Planning Map/WorkItem -> authorized existing AgentTask -> frozen Dope validation/review -> session projection. Repair only a directly evidenced seam; do not reopen all Phase 5 or rewrite its historical Not Green closeout.
+**DESIGN APPROVED / NOT OWNER-ACTIVATED.** See `docs/planning/p9/phase-9b-plan.md` for strict v2 session references/v1 migration, truly read-only Chat/Planning/Agent/Project Mind resolution, revision-safe attach/detach and a real authorized Planning-to-Work replay. Do not copy owner truth, start work on session selection or rewrite Phase 5 Not Green. Prompt authoring does not activate execution.
 
 ### 9C — Session workspace
 Compact session selector, overview, links to existing Chat/Planning/Work, activity, decisions and next actions. Use normal open/focus APIs, preserving Chat/Work single-panel ownership and independent center workspace. No new agent composer or canvas redesign.
@@ -57,4 +57,4 @@ No new agent runtime, mandatory sessions, provider-native session state, automat
 
 ## Activation
 
-**Phase 9 is ACTIVE FOR 9A ONLY / NOT QUALIFIED.** The owner authorized the coherent `0.9.0` baseline at `e250a07` and then explicitly activated the optimized `p9a` P1–P6 stack on 2026-10-10 (`docs/planning/p9/activation.md`). The first P1 attempt stopped at preflight with zero changes and no checkpoint; P1 may now restart from `0.9.0`. 9B–9E remain unactivated. Final Green/Not Green is a separate evidence closeout and terminal docs reconciliation; Phase 10 needs its own activation.
+**Phase 9 is ACTIVE FOR 9A ONLY / NOT QUALIFIED.** The owner authorized the coherent `0.9.0` baseline at `e250a07` and then explicitly activated the optimized `p9a` P1–P6 stack on 2026-10-10 (`docs/planning/p9/activation.md`). The first P1 attempt stopped at preflight with zero changes and no checkpoint; P1 may now restart from `0.9.0`. 9B–9E remain unactivated; 9B design is approved in `docs/planning/p9/phase-9b-plan.md`. Final Green/Not Green is a separate evidence closeout and terminal docs reconciliation; Phase 10 needs its own activation.
