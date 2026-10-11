@@ -36,7 +36,7 @@ Provider-free parser/service/store; create, rename, pause, resume, close/reopen,
 **Execution update (2026-10-10):** P1–P6 completed through the separate `0.9.6` source/version checkpoint `6b51ee96`; [9A closeout](../../tasks/p9a/closeout.md) records bounded headless Green. The preceding paragraph is retained as prompt-authoring history. Phase 9 overall remains unqualified; 9B–9E require separate activation and evidence.
 
 ### 9B — Typed membership and resolution
-**DESIGN APPROVED / NOT OWNER-ACTIVATED.** See `docs/planning/p9/phase-9b-plan.md` for strict v2 session references/v1 migration, truly read-only Chat/Planning/Agent/Project Mind resolution, revision-safe attach/detach and a real authorized Planning-to-Work replay. Do not copy owner truth, start work on session selection or rewrite Phase 5 Not Green. Prompt authoring does not activate execution.
+**DESIGN APPROVED / P1–P7 PROMPTS AUTHORED / NOT OWNER-ACTIVATED.** See `docs/planning/p9/phase-9b-plan.md` and `docs/tasks/p9b/README.md` for strict v2 session references/v1 migration, truly read-only Chat/Planning/Agent/Project Mind resolution, revision-safe attach/detach and a real authorized Planning-to-Work replay. Do not copy owner truth, start work on session selection or rewrite Phase 5 Not Green. Prompt authoring does not activate execution.
 
 ### 9C — Session workspace
 Compact session selector, overview, links to existing Chat/Planning/Work, activity, decisions and next actions. Use normal open/focus APIs, preserving Chat/Work single-panel ownership and independent center workspace. No new agent composer or canvas redesign.

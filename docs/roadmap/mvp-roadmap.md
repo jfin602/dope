@@ -1056,7 +1056,7 @@ Workstreams:
 Exit condition:
 A developer can create/use sessions without AI, attach multiple existing objects, navigate them, perform authorized work without new permissions, restore after restart, distinguish actual validation and unresolved work, and explicitly close a real Dope Builds Dope session. Required GUI, security and final aggregate evidence must be Green on one exact source candidate.
 
-Authority: `docs/planning/p9/phase-9-plan.md` and ADR 0033. 9A is bounded Green at `0.9.6`; 9B design/prompt authoring is approved but **9B implementation requires separate owner activation**. 9C–9E and Phase 10 remain inactive; see `docs/planning/p9/phase-9b-plan.md`. Phase 10 remains inactive.
+Authority: `docs/planning/p9/phase-9-plan.md` and ADR 0033. 9A is bounded Green at `0.9.6`; 9B design and the P1–P7 prompt stack are authored, but **9B implementation requires separate owner activation**. 9C–9E and Phase 10 remain inactive; see `docs/planning/p9/phase-9b-plan.md`. Phase 10 remains inactive.
 
 ## Product Phase 10 — Living Software Knowledge Model
 
