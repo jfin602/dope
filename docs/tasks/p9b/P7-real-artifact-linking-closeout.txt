@@ -1,0 +1,31 @@
+TASK: Phase 9 / P7 — Real artifact linking qualification and closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.13`.
+
+VERSION TRANSITION — REQUIRED
+P7 is the SOLE MANUAL scoped 9B closeout. After P6 is Git-proven complete at `0.9.12`, advance all 13 root/app/package package.json versions and pinned internal @dope/* references to `0.9.13` BEFORE exact-candidate qualification. Create a separate legitimate source/version checkpoint from the evidence-only closeout. The runner does not bump versions. Preserve unrelated dependencies, yarn.lock and user work; do not create package-lock.json, fabricate a checkpoint or mark Phase 9 overall Green.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, `docs/planning/p9/phase-9b-plan.md`, `docs/tasks/p9b/implementation-plan.md`, `docs/stability-contract.md`, `docs/tasks/p9a/closeout.md` and P1–P6 implementation evidence. Require a separately owner-approved 9B activation record at `docs/planning/p9/phase-9b-activation.md`; authored docs alone do not authorize implementation. Verify actual P6 `0.9.12` Git checkpoint and safe worktree. Preserve original Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green.
+
+GOAL
+Decide GREEN / NOT GREEN for **9B only**: strict typed links, v1-to-v2 session migration, owner-read-only resolution, revision-safe membership, truthful missing/stale/unavailable states and a real authorized Planning-to-Work replay. 9C Session UI, 9D rich progress/resume projections and 9E real GUI/full aggregate remain unqualified and inactive.
+
+QUALIFICATION — T2 MANUAL / REAL HEADLESS REPLAY
+1. Verify exact `0.9.13` source/version checkpoint, 13 coherent manifests/internal pins, clean/safely accounted worktree, P1–P6 handoffs and focused tests. Confirm the original 9A v1 session bytes survive read-only normalization; explicit mutation persists v2 without changing session ID, project, revision history, timestamps, notes or closeout unexpectedly. Prove no-read-write to owner stores including legacy/interrupted Chats.
+2. In a disposable project, create or reopen two Sessions and link existing Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks and Project Mind decisions/ideas. Verify duplicate attach no-op, shared membership, detach-only, closed-session denial, A/B project isolation, stale revisions, missing/stale/unavailable target and no owner-store side effects. Verify semantic Planning staleness uses evidence, not physical generation alone.
+3. **Perform one real authorized Planning-to-Work replay**, not a synthetic task/run fixture: use an active real Planning Map with eligible AI/SHARED WorkItem and current basis, existing `launchWorkItem` revision checks, explicitly developer-approved nonempty Dope validation commands, normal fixed ExecutionGrant and an available genuine local model (or hosted Codex ONLY with separate explicit hosted-data consent). Run through existing AgentTask/AgentRun, isolated frozen candidate, Dope-owned validation and developer review. Record actual task/run IDs, project/map/work IDs, candidate fingerprint, validation result, review decision and source SHA. Do not relax permissions, silently choose a hosted fallback or manufacture a successful run.
+4. Attach/resolve the exact real task/run links in a Session, restart the Session backend and show persisted membership plus truthful current WorkItem status, AgentRun status, validation, review and applied-file provenance. An accepted run does NOT automatically mark the WorkItem completed. Confirm Session resolution neither re-executes the task nor writes Chat/Planning/Agent/Project Mind/Git. A blocked/rejected real run is evidence but not an accepted-path proof; report the actual gap.
+5. Review P6 targeted test outputs on the final exact candidate and rerun ONLY if a source/version change invalidated the proof. Verify new tests appear exactly once in `test:product`, no skipped/removed 9A assertions, `git diff --check` and actual checkpoint SHAs. Do not run unconditional `npm run check`, browser/Electron/native packaging or a second full Phase 8 security/model matrix; Phase 9E owns full GUI/aggregate. If a repair changes source, create a new legitimate checkpoint and requalify invalidated gates.
+6. Write `docs/tasks/p9b/closeout.md` with explicit 9B GREEN/NOT GREEN, exact source/version SHA, real run IDs, validation/review evidence, restart/isolation/authority proof, observed failures and remaining 9C–9E gates. If the real authorized replay cannot run or a required gate fails, mark NOT GREEN rather than substituting deterministic fixtures or prior Phase 8 evidence. Reconcile current docs once; do not auto-activate 9C, close Phase 9, or advance to `0.9.14`.
+
+PRESERVE
+Sessions organize existing records only; they cannot grant authority, start or cancel AgentRuns on view, complete WorkItems, adopt architecture, mutate owner stores/Git or include linked data in model context automatically. Preserve the 9A Green exact-source claim and historical Phase 5/8 evidence. No Session UI or full Dope Builds Dope qualification here.
+
+FINAL RESPONSE
+Report bounded 9B GREEN/NOT GREEN with exact `0.9.13` checkpoint, focused test evidence, genuine authorized Planning-to-Work run and candidate/review IDs, limitations, and 9C–9E still inactive. This is the only p9b closeout.
