@@ -17,9 +17,9 @@ async function project() {
 function addSession(current: SessionCollection): SessionCollection {
     const now = '2026-10-10T12:00:00.000Z';
     return { ...current, revision: current.revision + 1, sessions: [...current.sessions, {
-        schemaVersion: 1, id: randomUUID(), project: current.project, revision: 1,
+        schemaVersion: 2, id: randomUUID(), project: current.project, revision: 1,
         title: 'Manual effort', objective: '', createdAt: now, updatedAt: now,
-        status: 'active', notes: '', nextActions: [], closeout: null,
+        status: 'active', notes: '', nextActions: [], closeout: null, links: [],
     }] };
 }
 
@@ -30,7 +30,7 @@ test('missing read is side effect free; transaction is atomic, bound and does no
         assert.equal(await store.root(pathToFileURL(p.root).href), p.root);
         await assert.rejects(store.root(`${pathToFileURL(p.root).href}/../other`), /Unsafe/);
         const empty = await store.read(p.root);
-        assert.deepEqual(empty, { schemaVersion: 1, project: { canonicalRoot: p.root, projectMindId: null }, revision: 0, sessions: [] });
+        assert.deepEqual(empty, { schemaVersion: 2, project: { canonicalRoot: p.root, projectMindId: null }, revision: 0, sessions: [] });
         assert.deepEqual(await readdir(p.root), []);
         await mkdir(join(p.root, '.dope'));
         await writeFile(join(p.root, '.dope', 'planning-maps.json'), 'planning sentinel');
@@ -47,6 +47,61 @@ test('missing read is side effect free; transaction is atomic, bound and does no
         await assert.rejects(store.transact(p.root, null, 0, addSession), /Stale/);
         assert.deepEqual(await store.read(p.root), saved);
         await assert.rejects(store.read(p.root, 'different-project'), /identity/);
+    } finally { await p.clean(); }
+});
+
+test('v1 reads normalize without writes; an explicit locked edit atomically persists v2', async () => {
+    const p = await project();
+    try {
+        const store = new DeveloperSessionStore();
+        const directory = join(p.root, '.dope');
+        const file = join(directory, 'development-sessions.json');
+        await mkdir(directory);
+        await writeFile(join(directory, 'project-mind.json'), 'mind sentinel');
+        const projectIdentity = { canonicalRoot: p.root, projectMindId: null };
+        const createdAt = '2026-10-10T12:00:00.000Z';
+        const active = { schemaVersion: 1, id: randomUUID(), project: projectIdentity, revision: 3,
+            title: 'Active', objective: 'Investigate', createdAt, updatedAt: createdAt,
+            status: 'active', notes: 'Original notes', nextActions: ['Review'], closeout: null };
+        const closed = { ...active, id: randomUUID(), revision: 5, title: 'Closed', status: 'closed',
+            closeout: { achieved: 'Done', unresolved: '', deferred: '', closedAt: createdAt } };
+        const legacy = { schemaVersion: 1, project: projectIdentity, revision: 8, sessions: [active, closed] };
+        const original = Buffer.from(`${JSON.stringify(legacy)}\n`);
+        await writeFile(file, original);
+
+        const normalized = await store.read(p.root);
+        assert.equal(normalized.schemaVersion, 2);
+        assert.equal(normalized.revision, 8);
+        assert.deepEqual(normalized.sessions, [
+            { ...active, schemaVersion: 2, links: [] },
+            { ...closed, schemaVersion: 2, links: [] },
+        ]);
+        assert.deepEqual(await readFile(file), original);
+        assert.deepEqual(await readdir(directory), ['development-sessions.json', 'project-mind.json']);
+        assert.deepEqual(await new DeveloperSessionStore().read(p.root), normalized);
+        assert.deepEqual(await readFile(file), original);
+
+        const request = { projectHandle: 'store-test', expectedCollectionRevision: 8,
+            expectedSessionRevision: 3, operation: { type: 'set-notes' as const,
+                sessionId: active.id, notes: 'Updated notes' } };
+        await assert.rejects(store.mutate(p.root, null, { ...request, expectedCollectionRevision: 7 }), /Stale/);
+        await assert.rejects(store.mutate(p.root, null, { ...request, expectedSessionRevision: 2 }), /Stale/);
+        await assert.rejects(store.mutate(p.root, null, { ...request, expectedSessionRevision: 5,
+            operation: { type: 'set-notes', sessionId: closed.id, notes: 'Forbidden' } }), /immutable/);
+        assert.deepEqual(await readFile(file), original);
+
+        const edited = await store.mutate(p.root, null, request);
+        assert.equal(edited.snapshot.schemaVersion, 2);
+        assert.equal(edited.snapshot.revision, 9);
+        assert.equal(edited.session.revision, 4);
+        assert.equal(edited.session.notes, 'Updated notes');
+        assert.equal(edited.session.id, active.id);
+        assert.equal(edited.session.createdAt, active.createdAt);
+        assert.deepEqual(edited.snapshot.sessions[1], normalized.sessions[1]);
+        assert.deepEqual(JSON.parse(await readFile(file, 'utf8')), edited.snapshot);
+        assert.deepEqual(await new DeveloperSessionStore().read(p.root), edited.snapshot);
+        assert.equal(await readFile(join(directory, 'project-mind.json'), 'utf8'), 'mind sentinel');
+        await assert.rejects(store.mutate(p.root, null, request), /Stale/);
     } finally { await p.clean(); }
 });
 

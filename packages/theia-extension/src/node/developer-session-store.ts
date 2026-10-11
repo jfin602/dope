@@ -29,9 +29,9 @@ export class DeveloperSessionStore {
                 if (sessions.some(session => session.id.toLowerCase() === id.toLowerCase())) throw new Error('Duplicate session ID');
                 const latest = sessions.reduce((time, session) => Math.max(time, Date.parse(session.updatedAt)), 0);
                 const createdAt = this.nextInstant(latest);
-                changed = parseDeveloperSession({ schemaVersion: 1, id, project: current.project, revision: 1,
+                changed = parseDeveloperSession({ schemaVersion: 2, id, project: current.project, revision: 1,
                     title: operation.title, objective: operation.objective, createdAt, updatedAt: createdAt,
-                    status: 'active', notes: '', nextActions: [], closeout: null });
+                    status: 'active', notes: '', nextActions: [], closeout: null, links: [] });
                 sessions.push(changed);
             } else {
                 const index = sessions.findIndex(session => session.id === operation.sessionId);
@@ -141,7 +141,7 @@ export class DeveloperSessionStore {
     async read(root: string, projectMindId: string | null = null): Promise<SessionCollection> {
         const { directory, file } = await this.paths(root);
         const project = this.identity(root, projectMindId);
-        if (!(await this.regular(file))) return { schemaVersion: 1, project, revision: 0, sessions: [] };
+        if (!(await this.regular(file))) return { schemaVersion: 2, project, revision: 0, sessions: [] };
         const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
         try {
             const opened = await handle.stat();

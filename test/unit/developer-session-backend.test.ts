@@ -54,6 +54,41 @@ test('A/B connections isolate data and handles; same-root reopen retires the old
     }
 });
 
+test('backend attachment reads v1 without migration and an explicit edit persists v2 across restart', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-session-backend-v1-'));
+    const file = join(root, '.dope', 'development-sessions.json');
+    const backend = new DeveloperSessionBackend(new DeveloperSessionStore());
+    try {
+        await mkdir(join(root, '.dope'));
+        const session = { schemaVersion: 1, id: 'd6174551-e136-48a8-a3f8-f3d4f911a10c',
+            project: { canonicalRoot: root, projectMindId: null }, revision: 2,
+            title: 'Legacy', objective: '', createdAt: '2026-10-10T12:00:00.000Z',
+            updatedAt: '2026-10-10T12:00:00.000Z', status: 'active', notes: 'Keep',
+            nextActions: [], closeout: null };
+        const bytes = Buffer.from(JSON.stringify({ schemaVersion: 1, project: session.project,
+            revision: 4, sessions: [session] }));
+        await writeFile(file, bytes);
+        const { projectHandle, snapshot } = await backend.attach(uri(root));
+        assert.equal(snapshot.schemaVersion, 2);
+        assert.deepEqual(snapshot.sessions[0].links, []);
+        assert.deepEqual(await backend.get(projectHandle, session.id), snapshot.sessions[0]);
+        assert.deepEqual(await readFile(file), bytes);
+        const updated = await backend.mutate({ projectHandle, expectedCollectionRevision: 4,
+            expectedSessionRevision: 2, operation: { type: 'rename', sessionId: session.id, title: 'Current' } });
+        assert.equal(updated.snapshot.revision, 5);
+        assert.equal(updated.session.revision, 3);
+        assert.equal(JSON.parse(await readFile(file, 'utf8')).schemaVersion, 2);
+        backend.dispose();
+        const restarted = new DeveloperSessionBackend(new DeveloperSessionStore());
+        try {
+            assert.deepEqual((await restarted.attach(uri(root))).snapshot, updated.snapshot);
+        } finally { restarted.dispose(); }
+    } finally {
+        backend.dispose();
+        await rm(root, { recursive: true, force: true });
+    }
+});
+
 test('superseded concurrent attach cannot publish a stale project or handle', async () => {
     const a = await mkdtemp(join(tmpdir(), 'dope-session-backend-race-'));
     const b = await mkdtemp(join(tmpdir(), 'dope-session-backend-race-'));
