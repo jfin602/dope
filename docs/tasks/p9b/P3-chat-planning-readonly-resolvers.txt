@@ -1,0 +1,35 @@
+TASK: Phase 9 / P3 — Resolve linked Chat Planning Map and WorkItem metadata read-only
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.9`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.8`, update all 13 root/app/package package.json version fields and every pinned internal @dope/* dependency reference to `0.9.9` DURING THIS PROMPT. The runner checks versions but does not bump them. Preserve unrelated dependencies and yarn.lock, do not create package-lock.json or commit manually. P1 must not pre-bump from `0.9.6` before activation.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, `docs/planning/p9/phase-9b-plan.md`, `docs/tasks/p9b/implementation-plan.md` and `docs/tasks/p9a/closeout.md`. 9A is bounded Green at `0.9.6` / `6b51ee96`; **9B is NOT owner-activated by these documents**. Before any implementation, require a separate explicit owner activation record at `docs/planning/p9/phase-9b-activation.md`. If absent, stop with zero file changes; do not self-activate or pre-bump. Verify the Git-proven predecessor checkpoint/version and preserve intentional dirty work.
+
+GOAL / IMPLEMENT
+Implement a narrow project-root-scoped Session resolver for Chat and Planning Map/WorkItem links under `packages/theia-extension/src/node/` (reuse existing packages where a safe read-only metadata API belongs). `ChatRepository.read()` may write interrupted/legacy recovery state: do NOT call it; add a safe non-recovering metadata peek that reads validated manifest/files without recovery or exposing transcripts. Planning resolution uses existing read-only PlanningStore, exact mapId+workItemId, owner projectId and status; check semantic basis only from already available trusted evidence, not generation-only changes or new analysis. Return compact resolved/missing/stale/unavailable with diagnostic and observed revision, no copied owner records. Validate canonical root and handle; never rebase, mutate, create Project Mind, execute models or start work.
+
+PRESERVE
+Sessions are optional organizational membership, never execution origin or permission. Preserve canonical root/project isolation, 9A lifecycle and no-AI operation. No copied Chat/Planning/Agent/Project Mind truth, automatic agent run, implicit model context, WorkItem completion, architecture adoption, Git/source writes, provider fallback, Session UI (9C), rich projections (9D) or full GUI/aggregate (9E). Historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green remain unchanged.
+
+VALIDATION — T2
+Add `test/unit/developer-session-resolver.test.ts` or focused equivalent. Prove Chat interrupted/legacy records remain byte-identical, no transcript exposure, missing Chat/Map/WorkItem, corrupt/unavailable owner stores, stale semantic basis versus generation-only observation and independent Planning projectId. Compile only changed package libs when needed; run the new focused file and `git diff --check`.
+
+EFFICIENCY
+Aim <=8 minutes including focused tests (10-minute soft, 15-minute hard). Never weaken security or skip necessary changed-seam tests to hit a time target. Build only touched compiled libs if tests require them; no unconditional npm run check, npm test, browser/Electron/native build, live model run or packaging. Runner owns checkpoints.
+
+DEFER
+P4 Agent/Project Mind resolver; P5 membership RPC; P6 integration; P7 real replay.
+
+DONE WHEN
+The assigned seam has focused evidence, coherent `0.9.9` versions, and any missing qualification is reported without inventing success.
+
+FINAL RESPONSE
+Files changed, targeted tests, source/version checkpoint and remaining gaps.
