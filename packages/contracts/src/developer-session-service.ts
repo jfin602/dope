@@ -1,4 +1,4 @@
-import type { DeveloperSession, SessionCloseout, SessionCollection, SessionProjectIdentity } from './developer-session';
+import type { DeveloperSession, SessionArtifactRef, SessionCloseout, SessionCollection, SessionProjectIdentity } from './developer-session';
 
 export const developerSessionServicePath = '/services/dope/developer-session';
 export const DeveloperSessionService = Symbol('DeveloperSessionService');
@@ -29,6 +29,19 @@ export interface SessionMutationRequest {
 export interface SessionMutationResult {
     snapshot: SessionCollection;
     session: DeveloperSession;
+}
+
+/** Compact, read-only owner truth for a link. P3/P4 supply the resolver. */
+export interface SessionArtifactResolution {
+    ref: SessionArtifactRef;
+    state: 'resolved' | 'missing' | 'stale' | 'unavailable';
+    ownerStatus?: string;
+}
+
+/** Session membership is independent of artifact origin and execution authority. */
+export interface SessionArtifactMembership {
+    sessionId: string;
+    ref: SessionArtifactRef;
 }
 
 export interface DeveloperSessionService {
