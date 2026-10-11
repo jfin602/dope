@@ -1,6 +1,6 @@
 # Phase 9A — Session Identity and Persistence
 
-Status: **OWNER-ACTIVATED FOR IMPLEMENTATION 2026-10-10 / P1 READY TO RESTART — NOT YET QUALIFIED**
+Status: **BOUNDED 9A GREEN AT `0.9.6` / `6b51ee96`; PHASE 9 NOT QUALIFIED**. See [closeout](closeout.md).
 Entry: Phase 8 owner-closed Green at `0.8.47` / `bcc5cb8`. Phase 9 is ACTIVE for 9A only, under `docs/planning/p9/activation.md`; 9B–9E remain inactive.
 Execution folder: `p9a`. **Clean `0.9.0` baseline is now committed** at `e250a07` under the owner's version-only approval (`docs/planning/p9/baseline.md`). The last qualified product source remains `0.8.47` / `bcc5cb8`. **Phase 9A implementation is explicitly owner-authorized (2026-10-10).** The prior P1 attempt changed zero files and created no checkpoint. Prompt targets P1–P6: `0.9.1`–`0.9.6`.
 
@@ -20,3 +20,5 @@ Execution folder: `p9a`. **Clean `0.9.0` baseline is now committed** at `e250a07
 **Efficiency:** P1–P4 target <=8 minutes implementation + focused test (10-minute soft, 15-minute hard). P2 safety may justify extra time, never weaker filesystem checks. P5 owns bounded cross-boundary/restart tests; P6 audits final 9A evidence. Build only touched package outputs when compiled-lib tests require them; register new tests once in `test:product`. No per-prompt `npm run check`, `npm test`, browser/Electron/native builds, model calls or GUI. 9E owns full GUI/aggregate.
 
 After syncing the **already-approved owner activation** (`docs/planning/p9/activation.md`) and verifying the coherent `0.9.0` baseline, validate `npm run codex:phase:validate -- p9a` and run `npm run codex:phase -- p9a`. P6 decides 9A GREEN/NOT GREEN only; it does not close Phase 9 or activate 9B.
+
+The preceding entry instructions are historical. P1–P6 have completed; do not rerun the implementation stack. P6's sole bounded decision and exact source/evidence are in [closeout](closeout.md).

@@ -1,6 +1,6 @@
 # ADR 0033 — Optional Development Sessions and Linked Work
 
-Status: **Accepted design / Phase 9A subsequently owner-activated 2026-10-10; implementation and qualification pending**
+Status: **Accepted design / bounded Phase 9A Green at `0.9.6` / `6b51ee96`; Phase 9 overall unqualified**
 Date: 2026-10-10
 Depends on: ADR 0005, 0017, 0025, 0028–0032
 Entry: Phase 8 owner-closed Green at committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06`.
@@ -31,3 +31,5 @@ Rejected: mandatory sessions, copying authoritative state, session membership as
 **This ADR is design authority only.** It does not activate Phase 9, create `0.9.0`, qualify session behavior, close older evidence gaps or activate Phase 10.
 
 **Later activation note (2026-10-10):** The owner separately authorized 9A implementation in `docs/planning/p9/activation.md`. ADR acceptance alone was not activation. 9B–9E and Phase 10 remain inactive; no session behavior is qualified by this note.
+
+**9A closeout note (2026-10-10):** [The sole bounded 9A closeout](../tasks/p9a/closeout.md) records headless Green for identity, persistence, lifecycle, backend and restart at the separate `0.9.6` source checkpoint. It does not qualify the remaining ADR behavior assigned to 9B–9E or Phase 9 overall.

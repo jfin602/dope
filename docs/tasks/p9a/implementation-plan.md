@@ -1,7 +1,7 @@
 # /prompt-plan — Phase 9A Implementation Plan
 
 Date: 2026-10-10
-Status: **9A OWNER-ACTIVATED 2026-10-10 / P1 READY TO RESTART — NOT QUALIFIED**
+Status: **EXECUTED P1–P6 / BOUNDED 9A GREEN AT `0.9.6` / `6b51ee96`; PHASE 9 NOT QUALIFIED**. See [closeout](closeout.md).
 Qualified product source: Phase 8 `0.8.47` / `bcc5cb8`; the owner separately established coherent `0.9.0` baseline at `e250a07` (see `docs/planning/p9/baseline.md`). **Owner activation is recorded** in `docs/planning/p9/activation.md`; the first P1 attempt changed no files and made no checkpoint. P1–P6 targets `0.9.1`–`0.9.6`.
 
 ## Concrete code ownership

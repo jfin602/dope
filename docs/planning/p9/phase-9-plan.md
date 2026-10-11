@@ -1,6 +1,6 @@
 # Phase 9 Plan — Development Sessions
 
-Status: **PHASE 9 ACTIVE / 9A IMPLEMENTATION OWNER-AUTHORIZED 2026-10-10 — NOT QUALIFIED**
+Status: **PHASE 9 ACTIVE / 9A BOUNDED GREEN AT `0.9.6` — PHASE 9 NOT QUALIFIED; 9B–9E INACTIVE**
 Date: 2026-10-10
 Entry: Phase 8 owner-closed Green at committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06` (`docs/planning/p8/phase-8-closeout.md`).
 **Version baseline established:** coherent `0.9.0` commit `e250a07c9b4b7ec29fd178a22036094307237b23`, separately owner-approved on 2026-10-10 (see `docs/planning/p9/baseline.md`). This is a version-only transition; Phase 9 implementation is now **OWNER-ACTIVATED FOR 9A ONLY**; see `docs/planning/p9/activation.md`. This version-only baseline remains distinct from the later activation.
@@ -32,6 +32,8 @@ Resolve links through existing owning stores; foreign-project/stale revisions fa
 Provider-free parser/service/store; create, rename, pause, resume, close/reopen, revision-checked writes, project isolation and restart recovery. Demonstrate two sessions and ordinary no-session use.
 
 **Prompt authoring update (2026-10-10):** The bounded `docs/tasks/p9a/` P1–P6 stack has been assessed, planned and written for this workstream, targeting `0.9.1`–`0.9.6` after the now-committed coherent `0.9.0` baseline **and the now-recorded separate 9A implementation activation (`docs/planning/p9/activation.md`)**. Its P6 is a headless 9A-scoped closeout, not full Phase 9 GUI/aggregate qualification. The subsequent explicit owner activation on 2026-10-10 authorizes 9A P1–P6 only; no session has been implemented or qualified by documentation, and the baseline remains `0.9.0` until P1.
+
+**Execution update (2026-10-10):** P1–P6 completed through the separate `0.9.6` source/version checkpoint `6b51ee96`; [9A closeout](../../tasks/p9a/closeout.md) records bounded headless Green. The preceding paragraph is retained as prompt-authoring history. Phase 9 overall remains unqualified; 9B–9E require separate activation and evidence.
 
 ### 9B — Typed membership and resolution
 Attach/detach Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks and decisions by typed ID. Resolve live status and missing/stale links without copying truth or executing work. Include **one targeted Planning-to-Work replay**: real Planning Map/WorkItem -> authorized existing AgentTask -> frozen Dope validation/review -> session projection. Repair only a directly evidenced seam; do not reopen all Phase 5 or rewrite its historical Not Green closeout.

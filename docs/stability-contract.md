@@ -399,9 +399,9 @@ Require executable evidence for:
 
 Broad browser/Electron/native/package evidence belongs in the designated T3 qualification/closeout gate rather than ordinary implementation prompts.
 
-## Product Phase 9 — Development Sessions qualification (9A owner-activated; not qualified)
+## Product Phase 9 — Development Sessions qualification (9A bounded Green; Phase 9 not qualified)
 
-Phase 9 is **ACTIVE FOR 9A ONLY / NOT QUALIFIED**, explicitly owner-activated on 2026-10-10 (`docs/planning/p9/activation.md`). Entry is Phase 8 owner-closed Green at committed `0.8.47`; the owner-approved coherent `0.9.0` baseline exists at `e250a07`, and P1 must advance to `0.9.1` during implementation. ADR 0033 and `docs/planning/p9/phase-9-plan.md` govern the optional session contract; 9B–9E remain inactive.
+Phase 9 is **ACTIVE; bounded 9A is GREEN at committed `0.9.6` / `6b51ee96`, while Phase 9 overall remains NOT QUALIFIED** (`docs/tasks/p9a/closeout.md`). Entry was Phase 8 owner-closed Green at committed `0.8.47`; owner activation of P1–P6 is recorded in `docs/planning/p9/activation.md`. ADR 0033 and `docs/planning/p9/phase-9-plan.md` govern the optional session contract; 9B–9E remain inactive.
 
 Before any Phase 9 Green claim, prove:
 - provider-free session creation, rename, pause/resume, close/reopen and multiple sessions per project, with no model required and unchanged independent non-session Chat/Planning/Work;
