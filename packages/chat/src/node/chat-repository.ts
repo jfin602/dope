@@ -176,6 +176,13 @@ export class ChatRepository {
         }
         return parseChatCollection({ schemaVersion: 1, revision: manifest.revision, folders: manifest.folders, chats });
     }
+    /** Validated owner metadata without lease recovery, legacy migration, or transcript output. */
+    async peekMetadata(root: string, chatId: string): Promise<{ title: string; revision: number; updatedAt: string } | undefined> {
+        uuid(chatId);
+        const collection = await this.raw(root);
+        const chat = collection.chats.find(item => item.id === chatId);
+        return chat && { title: chat.title, revision: chat.revision, updatedAt: chat.updatedAt };
+    }
     private async acquire(base: string): Promise<import('node:fs/promises').FileHandle> {
         const path = join(base, '.mutation.lock');
         for (let attempt = 0; attempt < 100; attempt++) {
