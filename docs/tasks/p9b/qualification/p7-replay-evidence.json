@@ -1,0 +1,143 @@
+{
+  "sourceSha": "5aa0bacecb4c26bf1806821747f36fae57077b1a",
+  "root": "/tmp/dope-p9b-p7-real-LAmJrs",
+  "fixtureBasisHead": "82d29c8f76d018d2728a13b4a7b2c0b688cfb899",
+  "projectId": "project-cb1d9d7d-3aba-464f-8b2b-578b09452523",
+  "mapId": "math-plan",
+  "workItemId": "fix-add-work",
+  "taskId": "work-7b354ba30b6c427b7a237f98926d2704",
+  "runId": "f9e427a5-cba4-4655-9368-9d78a7364e89",
+  "sessionA": "23f5f3d5-28d5-427c-af8d-c0807d13ec86",
+  "sessionB": "b10469d0-5e6b-46a9-8f2e-2b491c01efc9",
+  "chatId": "f00a7506-2fd3-407a-a0e6-703975afc6e7",
+  "decisionId": "85dcaf59-1487-46b4-ba33-dfbd875ac8e9",
+  "modelId": "qwen3-coder-30b-a3b-instruct@q3_k_l",
+  "loadedContext": 16384,
+  "sandbox": "all-denials-and-workspace-write-proved",
+  "probe": "supported",
+  "initialBasis": {
+    "architectureRevision": 0,
+    "architectureFingerprint": "cfc33f622e1f3c18b5b18bb255419f2a746fd64b618b88e5307bf993e0e7881a",
+    "physicalInputFingerprint": "390515918378e2c0695aaa0ef2e5cb7818688b6f8e43970ece07ffb5c46d7657",
+    "physicalGeneration": 1
+  },
+  "candidateFingerprint": "1d6ff80aaf5578c6403eb1930c4fd69c1fc43574faf1c575c1a953bfb6eae15c",
+  "reviewDiff": "diff --git a/src/math.js b/src/math.js\n--- a/src/math.js\n+++ b/src/math.js\n@@ -1,1 +1,1 @@\n-function add(a, b) { return a - b; }\n+function add(a, b) { return a + b; }\n",
+  "heldStatus": "blocked",
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "approved math tests",
+      "status": "passed",
+      "durationMs": 82,
+      "owner": "dope",
+      "command": "node --test math.test.js",
+      "candidateFingerprint": "1d6ff80aaf5578c6403eb1930c4fd69c1fc43574faf1c575c1a953bfb6eae15c",
+      "workspaceId": "b3c7a4fd-6e2e-4e44-8fdb-f3bb0f8d252d",
+      "exitCode": 0,
+      "stdout": "\u2714 adds positive integers (0.519801ms)\n\u2714 adds negative integers (0.107619ms)\n\u2139 tests 2\n\u2139 suites 0\n\u2139 pass 2\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 40.703524\n",
+      "stderr": "",
+      "stdoutTruncated": false,
+      "stderrTruncated": false
+    }
+  ],
+  "candidateReview": {
+    "state": "ready",
+    "revision": 0,
+    "changedPaths": [
+      "src/math.js"
+    ],
+    "validation": [
+      {
+        "version": 1,
+        "kind": "test",
+        "label": "approved math tests",
+        "status": "passed",
+        "durationMs": 82,
+        "owner": "dope",
+        "command": "node --test math.test.js",
+        "candidateFingerprint": "1d6ff80aaf5578c6403eb1930c4fd69c1fc43574faf1c575c1a953bfb6eae15c",
+        "workspaceId": "b3c7a4fd-6e2e-4e44-8fdb-f3bb0f8d252d",
+        "exitCode": 0,
+        "stdout": "\u2714 adds positive integers (0.519801ms)\n\u2714 adds negative integers (0.107619ms)\n\u2139 tests 2\n\u2139 suites 0\n\u2139 pass 2\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 40.703524\n",
+        "stderr": "",
+        "stdoutTruncated": false,
+        "stderrTruncated": false
+      }
+    ]
+  },
+  "userDecision": "accept, continue",
+  "reviewDecision": {
+    "kind": "accept",
+    "revision": 1,
+    "at": "2026-10-11T12:47:18.515Z",
+    "candidateFingerprint": "1d6ff80aaf5578c6403eb1930c4fd69c1fc43574faf1c575c1a953bfb6eae15c"
+  },
+  "finalRunStatus": "completed",
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [
+    "src/math.js"
+  ],
+  "finalGit": {
+    "head": "82d29c8f76d018d2728a13b4a7b2c0b688cfb899",
+    "clean": false,
+    "headChanged": false,
+    "metadataChanged": true,
+    "statuses": [
+      {
+        "code": " M",
+        "path": "src/math.js"
+      }
+    ],
+    "truncated": false
+  },
+  "postReviewRestart": {
+    "sessionRevision": 7,
+    "collectionRevision": 9,
+    "linkedArtifacts": [
+      {
+        "kind": "planning-map",
+        "availability": "stale",
+        "status": "active"
+      },
+      {
+        "kind": "work-item",
+        "availability": "stale",
+        "status": "ready"
+      },
+      {
+        "kind": "chat",
+        "availability": "resolved"
+      },
+      {
+        "kind": "project-mind",
+        "availability": "resolved",
+        "status": "proposed"
+      },
+      {
+        "kind": "agent-task",
+        "availability": "resolved"
+      },
+      {
+        "kind": "agent-run",
+        "availability": "resolved",
+        "status": "completed",
+        "validationStatus": "passed",
+        "reviewDecision": "accept",
+        "promotionStatus": "applied"
+      }
+    ],
+    "ownerFilesCompared": 10,
+    "ownerBytesUnchanged": true,
+    "gitStatusUnchanged": true,
+    "runIdsUnchanged": true,
+    "postChangeBasis": "cbce103bc68812845758db79378b08eb6933c9eb38ef725ec93f7f85994db5a1",
+    "physicalGeneration": 2,
+    "postPromotionTest": "\u2714 adds positive integers (0.586984ms)\n\u2714 adds negative integers (0.100976ms)\n\u2139 tests 2\n\u2139 suites 0\n\u2139 pass 2\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 56.143018\n",
+    "fixtureFinalHead": "82d29c8f76d018d2728a13b4a7b2c0b688cfb899"
+  }
+}

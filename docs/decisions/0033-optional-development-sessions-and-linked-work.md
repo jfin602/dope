@@ -1,6 +1,6 @@
 # ADR 0033 — Optional Development Sessions and Linked Work
 
-Status: **Accepted design / bounded Phase 9A Green at `0.9.6` / `6b51ee96`; Phase 9 overall unqualified**
+Status: **Accepted design / bounded Phase 9A Green at `0.9.6` / `6b51ee96` and Phase 9B Green at `0.9.13` / `5aa0bac`; Phase 9 overall unqualified**
 Date: 2026-10-10
 Depends on: ADR 0005, 0017, 0025, 0028–0032
 Entry: Phase 8 owner-closed Green at committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06`.
@@ -35,3 +35,5 @@ Rejected: mandatory sessions, copying authoritative state, session membership as
 **9A closeout note (2026-10-10):** [The sole bounded 9A closeout](../tasks/p9a/closeout.md) records headless Green for identity, persistence, lifecycle, backend and restart at the separate `0.9.6` source checkpoint. It does not qualify the remaining ADR behavior assigned to 9B–9E or Phase 9 overall.
 
 **9B design clarification (2026-10-10):** The 9A Green source uses strict v1 session records without links. Approved 9B design adds strict v2 typed links and non-mutating v1 normalization, with v2 persisted only through explicit revision-checked session writes. Session resolvers must not trigger Chat recovery writes, owner-store mutation or provider execution; distinguish missing, stale and unavailable. See `docs/planning/p9/phase-9b-plan.md`. This is design authority only; 9B is NOT activated or qualified.
+
+**9B execution note (2026-10-11):** The owner separately activated P1–P7 in `docs/planning/p9/phase-9b-activation.md`. The sole [9B closeout](../tasks/p9b/closeout.md) records bounded Green for typed links, v1 migration, read-only resolution, membership and a genuine local Planning-to-Work replay at the exact `0.9.13` source checkpoint `5aa0bac`. The preceding design and activation notes retain their historical timing. 9C–9E and Phase 10 remain inactive, and Phase 9 overall is not qualified.

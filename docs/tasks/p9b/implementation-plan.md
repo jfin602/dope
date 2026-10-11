@@ -1,7 +1,7 @@
 # /prompt-plan — Phase 9B Implementation Plan
 
-**Status:** PLANNED / SEVEN-PROMPT STACK / NOT OWNER-ACTIVATED
-**Entry:** `0.9.6` source checkpoint `6b51ee96bcdc4ca185292f594c1886de81b149e8`, 9A evidence closeout `bb266b34796bdb5a390e0e8e263cd8caf45701d8`. Actual manifests stay `0.9.6` until a separate owner activation and P1.
+**Status:** SEVEN-PROMPT STACK EXECUTED / BOUNDED 9B GREEN at `0.9.13` / `5aa0bac`; this plan retains its pre-execution task boundaries
+**Entry:** `0.9.6` source checkpoint `6b51ee96bcdc4ca185292f594c1886de81b149e8`, 9A evidence closeout `bb266b34796bdb5a390e0e8e263cd8caf45701d8`. This was the pre-activation entry; separate 9B activation and P1–P7 execution subsequently advanced manifests to `0.9.13`. The bounded result is `docs/tasks/p9b/closeout.md`.
 **Version targets:** P1–P7 `0.9.7`–`0.9.13`, 13 root/app/package manifests plus pinned internal `@dope/*` references advanced by the assigned prompt. Runner checks but does not bump. Sole manual closeout P7.
 
 ## Concrete seams

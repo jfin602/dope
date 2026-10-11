@@ -1,9 +1,9 @@
 # Phase 9B Plan — Typed Artifact Membership and Read-Only Resolution
 
-**Status:** DESIGN APPROVED / P1–P7 PROMPT STACK AUTHORED / NOT OWNER-ACTIVATED OR IMPLEMENTED
+**Status:** OWNER-ACTIVATED / P1–P7 EXECUTED / BOUNDED 9B GREEN at `0.9.13` / `5aa0bac`; Phase 9 overall NOT QUALIFIED
 **Date:** 2026-10-10 (local)
-**Entry:** Phase 9A GREEN for bounded headless scope at exact `0.9.6` source/version checkpoint `6b51ee96bcdc4ca185292f594c1886de81b149e8`, evidence-only closeout `bb266b34796bdb5a390e0e8e263cd8caf45701d8` (`docs/tasks/p9a/closeout.md`). Actual manifests remain `0.9.6`.
-**Authority:** ADR 0033, Phase 9 plan, Phase 5 retained P11 Not Green/P12 unexecuted, Phase 8 qualified execution/validation, stability contract. 9B is NOT activated by authoring. 9C–9E and Phase 10 remain inactive.
+**Entry:** Phase 9A GREEN for bounded headless scope at exact `0.9.6` source/version checkpoint `6b51ee96bcdc4ca185292f594c1886de81b149e8`, evidence-only closeout `bb266b34796bdb5a390e0e8e263cd8caf45701d8` (`docs/tasks/p9a/closeout.md`). The separately authorized 9B result is in `docs/tasks/p9b/closeout.md`; actual manifests are `0.9.13`.
+**Authority:** ADR 0033, Phase 9 plan, separate owner activation `docs/planning/p9/phase-9b-activation.md`, Phase 5 retained P11 Not Green/P12 unexecuted, Phase 8 qualified execution/validation, stability contract. 9C–9E and Phase 10 remain inactive.
 
 ## Outcome and boundaries
 
@@ -60,10 +60,10 @@ Attach: validate session handle/root and current target identity in its owner st
 6. Bounded cross-store integration and real Planning-to-Work replay: PlanningMap -> WorkItem -> authorized AgentTask/AgentRun -> frozen Dope validation/review -> Session projection.
 7. Sole manual scoped closeout on an exact coherent source/version checkpoint.
 
-The optimized executable stack is now authored at `docs/tasks/p9b/`: P1–P6 implementation and the sole manual P7 closeout, targeting `0.9.7`–`0.9.13`. The actual source remains `0.9.6`. Implementation prompts target <=8 minutes (10-minute soft, 15-minute hard), with focused tests and only changed package lib builds when needed. Security cannot be deferred for speed. One designated T2 real replay may take longer. No per-prompt npm run check, broad browser/Electron/native packaging or full Phase 9 GUI. Phase 9E owns the full Dope Builds Dope GUI and final aggregate.
+The optimized executable stack at `docs/tasks/p9b/` completed P1–P6 implementation and the sole manual P7 closeout through `0.9.13`. Its focused exact-candidate tests and T2 real replay are recorded in `docs/tasks/p9b/closeout.md`. No full `npm run check`, browser/Electron/native packaging or Phase 9 GUI is claimed. Phase 9E owns the full Dope Builds Dope GUI and final aggregate.
 
 ## Exit and activation
 
 9B is GREEN only with observed v1 migration, typed link CRUD, read-only resolution, project isolation, shared/missing/stale/unavailable handling, truthful validation/review and a real targeted Planning-to-Work replay on a coherent candidate. Otherwise mark NOT GREEN and retain evidence gaps. The 9B closeout cannot activate 9C, claim full Phase 9 Green or rewrite Phase 5/8 history.
 
-**9B is NOT OWNER-ACTIVATED.** The actual source remains `0.9.6` until separate explicit owner activation and P1 advances to `0.9.7` during implementation.
+**9B was separately owner-activated on 2026-10-11 and is now bounded GREEN at `0.9.13` / `5aa0bac`.** See its activation record and sole closeout. This does not activate 9C–9E or close Phase 9.

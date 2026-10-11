@@ -1,9 +1,9 @@
 # Phase 9 Plan — Development Sessions
 
-Status: **PHASE 9 ACTIVE / 9A BOUNDED GREEN AT `0.9.6` — PHASE 9 NOT QUALIFIED; 9B–9E INACTIVE**
+Status: **PHASE 9 ACTIVE / 9A BOUNDED GREEN AT `0.9.6` AND 9B BOUNDED GREEN AT `0.9.13` — PHASE 9 NOT QUALIFIED; 9C–9E INACTIVE**
 Date: 2026-10-10
 Entry: Phase 8 owner-closed Green at committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06` (`docs/planning/p8/phase-8-closeout.md`).
-**Version baseline established:** coherent `0.9.0` commit `e250a07c9b4b7ec29fd178a22036094307237b23`, separately owner-approved on 2026-10-10 (see `docs/planning/p9/baseline.md`). This is a version-only transition; Phase 9 implementation is now **OWNER-ACTIVATED FOR 9A ONLY**; see `docs/planning/p9/activation.md`. This version-only baseline remains distinct from the later activation.
+**Version baseline established:** coherent `0.9.0` commit `e250a07c9b4b7ec29fd178a22036094307237b23`, separately owner-approved on 2026-10-10 (see `docs/planning/p9/baseline.md`). This was a version-only transition, distinct from the later 9A and 9B activations in `docs/planning/p9/activation.md` and `docs/planning/p9/phase-9b-activation.md`.
 Authority: ADR 0033, ADR 0017, 0025, 0028–0032, Product Model, Architecture, Stability Contract and Workflow.
 
 ## Goal and product contract
@@ -36,7 +36,7 @@ Provider-free parser/service/store; create, rename, pause, resume, close/reopen,
 **Execution update (2026-10-10):** P1–P6 completed through the separate `0.9.6` source/version checkpoint `6b51ee96`; [9A closeout](../../tasks/p9a/closeout.md) records bounded headless Green. The preceding paragraph is retained as prompt-authoring history. Phase 9 overall remains unqualified; 9B–9E require separate activation and evidence.
 
 ### 9B — Typed membership and resolution
-**DESIGN APPROVED / P1–P7 PROMPTS AUTHORED / NOT OWNER-ACTIVATED.** See `docs/planning/p9/phase-9b-plan.md` and `docs/tasks/p9b/README.md` for strict v2 session references/v1 migration, truly read-only Chat/Planning/Agent/Project Mind resolution, revision-safe attach/detach and a real authorized Planning-to-Work replay. Do not copy owner truth, start work on session selection or rewrite Phase 5 Not Green. Prompt authoring does not activate execution.
+**OWNER-ACTIVATED AND BOUNDED GREEN at `0.9.13` / `5aa0bac`.** See `docs/planning/p9/phase-9b-activation.md` and `docs/tasks/p9b/closeout.md` for strict v2 session references/v1 migration, read-only Chat/Planning/Agent/Project Mind resolution, revision-safe attach/detach and the real authorized Planning-to-Work replay. No owner truth was copied or work started on Session selection; Phase 5 Not Green remains historical. This does not qualify the 9C UI, 9D rich projections or 9E GUI/aggregate.
 
 ### 9C — Session workspace
 Compact session selector, overview, links to existing Chat/Planning/Work, activity, decisions and next actions. Use normal open/focus APIs, preserving Chat/Work single-panel ownership and independent center workspace. No new agent composer or canvas redesign.
@@ -57,4 +57,4 @@ No new agent runtime, mandatory sessions, provider-native session state, automat
 
 ## Activation
 
-**Phase 9 is ACTIVE FOR 9A ONLY / NOT QUALIFIED.** The owner authorized the coherent `0.9.0` baseline at `e250a07` and then explicitly activated the optimized `p9a` P1–P6 stack on 2026-10-10 (`docs/planning/p9/activation.md`). The first P1 attempt stopped at preflight with zero changes and no checkpoint; P1 may now restart from `0.9.0`. 9B–9E remain unactivated; 9B design is approved in `docs/planning/p9/phase-9b-plan.md`. Final Green/Not Green is a separate evidence closeout and terminal docs reconciliation; Phase 10 needs its own activation.
+**Phase 9 is ACTIVE / NOT QUALIFIED overall.** The owner authorized the coherent `0.9.0` baseline at `e250a07`, separately activated 9A (`docs/planning/p9/activation.md`) and later 9B (`docs/planning/p9/phase-9b-activation.md`). The 9A and 9B bounded closeouts are recorded at `0.9.6` and `0.9.13`. 9C–9E and Phase 10 need separate activation and evidence; this 9B result does not close Phase 9.

@@ -1,9 +1,9 @@
 # Phase 9B — Typed Artifact Linking and Resolution
 
-**Status:** ASSESSMENT/PLAN/PROMPTS AUTHORED — NOT OWNER-ACTIVATED OR IMPLEMENTED
-**Entry:** 9A bounded Green at `0.9.6` / `6b51ee96`; evidence-only closeout `bb266b3`. Phase 9 overall NOT QUALIFIED; 9C–9E inactive.
+**Status:** OWNER-ACTIVATED / P1–P7 EXECUTED / BOUNDED 9B GREEN at `0.9.13` / `5aa0bac`
+**Entry:** 9A bounded Green at `0.9.6` / `6b51ee96`; 9B sole scoped closeout `docs/tasks/p9b/closeout.md`. Phase 9 overall NOT QUALIFIED; 9C–9E inactive.
 **Authority:** `docs/planning/p9/phase-9b-plan.md`, ADR 0033, `docs/stability-contract.md`.
-**Execution folder:** `p9b`. Actual root/app/package manifests remain `0.9.6`. No version advance is authorized by these docs.
+**Execution folder:** `p9b`. Actual root/app/package manifests and internal pins are `0.9.13`; the separate owner activation is `docs/planning/p9/phase-9b-activation.md`.
 
 | Prompt | Target | Scope | Tier | Model | Browser |
 | --- | --- | --- | --- | --- | --- |
@@ -21,9 +21,4 @@
 
 **Safety:** Typed links are organizational only. Never mutate Chat/Planning/Agent/Project Mind by resolving or detaching. Preserve 9A lifecycle, project-root identity, stale revisions, missing/unavailable links, Phase 5 Not Green and Phase 8 Green. No automatic execution, provider fallback, session-origin task or AI context.
 
-**Execution gate:** The stack is ready for a separate owner decision to activate 9B. When that activation is recorded, safely sync Git, verify coherent `0.9.6` and run:
-```bash
-npm run codex:phase:validate -- p9b
-npm run codex:phase -- p9b
-```
-P7 is the **sole manual scoped 9B closeout**. It must not activate 9C, claim full Phase 9 Green or bump to `0.9.14`.
+**Execution result:** The owner separately activated P1–P7. P1–P6 are committed implementation checkpoints, and P7 is the **sole manual scoped 9B closeout** on a separate `0.9.13` source/version checkpoint. See `closeout.md` for the exact candidate, 25/25 focused tests, real local Planning-to-Work replay and remaining gates. This does not activate 9C, claim full Phase 9 Green or bump to `0.9.14`.

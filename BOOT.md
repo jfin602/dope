@@ -11,9 +11,9 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 ## Current state
 
-**CURRENT STATE — PRODUCT PHASE 8 OWNER-CLOSED / GREEN / QUALIFIED (2026-10-10).** Owner closeout `docs/planning/p8/phase-8-closeout.md` accepts the approved 8A–8E scope on committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06`. P14 recorded real local Qwen GUI/OS sandbox/Dope validation, 506/506 full aggregate and 67/67 additional security tests. Original 8D P13 Not Green and earlier owner-sequencing waivers remain historical. **Phase 9 Development Sessions is ACTIVE; bounded 9A is GREEN at committed `0.9.6` source `6b51ee96`, while Phase 9 overall is NOT QUALIFIED.** 9B–9E and Phase 10 are not activated. See `docs/tasks/p9a/closeout.md`.
+**CURRENT STATE — PRODUCT PHASE 8 OWNER-CLOSED / GREEN / QUALIFIED (2026-10-10).** Owner closeout `docs/planning/p8/phase-8-closeout.md` accepts the approved 8A–8E scope on committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06`. P14 recorded real local Qwen GUI/OS sandbox/Dope validation, 506/506 full aggregate and 67/67 additional security tests. Original 8D P13 Not Green and earlier owner-sequencing waivers remain historical. **Phase 9 Development Sessions is ACTIVE; bounded 9A is GREEN at `0.9.6` / `6b51ee96` and bounded 9B is GREEN at `0.9.13` / `5aa0bac`, while Phase 9 overall is NOT QUALIFIED.** 9C–9E and Phase 10 are not activated. See `docs/tasks/p9a/closeout.md` and `docs/tasks/p9b/closeout.md`.
 
-**CURRENT PHASE — PHASE 9 DEVELOPMENT SESSIONS / 9A BOUNDED GREEN, PHASE 9 NOT QUALIFIED.** The owner authorized `p9a` P1–P6 on 2026-10-10; the sole scoped closeout is `docs/tasks/p9a/closeout.md` at `0.9.6` / `6b51ee96`. Sessions remain optional project-scoped organizational state, not sources of agent authority. The Phase 5 Planning-to-Work qualification gap belongs to 9B; its original P11 Not Green/P12 unexecuted evidence remains historical. 9B–9E are not activated.
+**CURRENT PHASE — PHASE 9 DEVELOPMENT SESSIONS / 9A AND 9B BOUNDED GREEN, PHASE 9 NOT QUALIFIED.** The owner separately authorized `p9a` P1–P6 and `p9b` P1–P7. Their scoped closeouts are `docs/tasks/p9a/closeout.md` at `0.9.6` / `6b51ee96` and `docs/tasks/p9b/closeout.md` at `0.9.13` / `5aa0bac`. Sessions remain optional project-scoped organizational state, not sources of agent authority. The targeted 9B Planning-to-Work replay passed; Phase 5's original P11 Not Green/P12 unexecuted evidence remains historical. 9C–9E are not activated.
 
 **Product Phase 5 — Visual Software Planning is OWNER-CLOSED FOR SEQUENCING.** The retained Phase 5 source at `0.5.11` remained Not Green because P11 never completed one clean end-to-end A-I qualification replay and P12 was not executed. The owner explicitly accepted those gaps for sequencing on 2026-10-02; no failed or missing evidence is relabeled Green. The closeout transition commit `710edb362f9881ab41215705db4f08d8daca6293` established the coherent `0.6.0` successor baseline.
 
@@ -97,8 +97,11 @@ Current authority:
 - docs/decisions/0025-durable-project-chat-and-chatpanel-ai-presence.md
 - docs/decisions/0026-ai-center-and-role-based-model-routing.md
 - docs/decisions/0027-phase-8-coding-agent-execution-and-codex-reference-runtime.md
+- docs/decisions/0033-optional-development-sessions-and-linked-work.md
 - docs/planning/p8/phase-8-plan.md
 - docs/planning/p7/phase-7-plan.md
+- docs/planning/p9/phase-9-plan.md
+- docs/planning/p9/phase-9b-plan.md
 
 ## Product premise
 
@@ -269,4 +272,4 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Current routing
 
-**Current routing: Phase 8 owner-closed Green at `0.8.47` / `bcc5cb8`; Phase 9 ACTIVE, 9A BOUNDED GREEN at `0.9.6` / `6b51ee96`; 9B DESIGN APPROVED / NOT ACTIVATED; Phase 9 NOT QUALIFIED.** `p9b` design: `docs/planning/p9/phase-9b-plan.md`; implementation needs separate owner activation. 9C–9E and Phase 10 inactive. Preserve Phase 5 Not Green and Phase 8 Green.
+**Current routing: Phase 8 owner-closed Green at `0.8.47` / `bcc5cb8`; Phase 9 ACTIVE, 9A BOUNDED GREEN at `0.9.6` / `6b51ee96` and 9B BOUNDED GREEN at `0.9.13` / `5aa0bac`; Phase 9 NOT QUALIFIED.** 9C–9E and Phase 10 inactive. Preserve Phase 5 Not Green and Phase 8 Green.
