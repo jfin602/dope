@@ -340,7 +340,7 @@ Local sMap synthesis and Phase 7 Local AI Presence are also different capabiliti
 
 ### Phase 9 — Development Sessions
 
-**Design approved, 9A owner-activated 2026-10-10, not yet qualified.** Introduce an optional, project-scoped DeveloperSession as a durable organizational workspace linking existing Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, decisions and validation. Membership is not ownership, task origin, permission or canonical truth. Sessions must work without AI and cannot silently start work. See ADR 0033 and `docs/planning/p9/phase-9-plan.md`.
+**9A BOUNDED GREEN at `0.9.6` / `6b51ee96`; 9B DESIGN APPROVED / NOT ACTIVATED; Phase 9 NOT QUALIFIED.** Introduce an optional, project-scoped DeveloperSession as a durable organizational workspace linking existing Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, decisions and validation. Membership is not ownership, task origin, permission or canonical truth. Sessions must work without AI and cannot silently start work. See ADR 0033 and `docs/planning/p9/phase-9-plan.md`.
 
 ### Later expansion
 
@@ -419,9 +419,9 @@ Opening a Task's file link uses the ordinary editor. Implementation remains ordi
 
 ### DeveloperSession
 
-A durable, **optional** organizational workspace for one development effort within one canonical project. A project may contain many sessions; Chat, Planning and Work remain fully usable outside them. Phase 9A is owner-activated for implementation under `docs/planning/p9/activation.md`, but session behavior is not yet qualified and 9B–9E remain inactive.
+A durable, **optional** organizational workspace for one development effort within one canonical project. A project may contain many sessions; Chat, Planning and Work remain fully usable outside them. Phase 9A identity, lifecycle and project-local persistence are bounded Green at `0.9.6` (`docs/tasks/p9a/closeout.md`). Typed membership and read-only resolution are planned for 9B (`docs/planning/p9/phase-9b-plan.md`), not yet implemented or qualified; 9C–9E remain inactive.
 
-Owned state: stable session ID, project identity, version/revision, title, objective, timestamps, lifecycle `active | paused | closed`, bounded developer notes/next actions and explicit closeout. Proposed persistence: versioned, atomic `.dope/development-sessions.json`, independently recoverable without a running Dope UI.
+Owned state: stable session ID, project identity, version/revision, title, objective, timestamps, lifecycle `active | paused | closed`, bounded developer notes/next actions and explicit closeout. Implemented 9A persistence: versioned, atomic `.dope/development-sessions.json`, independently recoverable without a running Dope UI; v1 currently has no artifact links.
 
 Membership consists of **typed references**, not copies: multiple Chat IDs, Planning Map IDs, WorkItems identified by map ID + WorkItem ID, AgentTask/AgentRun/AgentTaskSequence IDs, and optionally Project Mind decision/idea and Software Map IDs. An artifact may appear in multiple sessions without duplicate execution or conflicting ownership. The session resolves status, activity and validation from the existing authoritative stores; missing/deleted/stale links remain visibly unresolved rather than silently retargeted.
 

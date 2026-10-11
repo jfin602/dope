@@ -33,3 +33,5 @@ Rejected: mandatory sessions, copying authoritative state, session membership as
 **Later activation note (2026-10-10):** The owner separately authorized 9A implementation in `docs/planning/p9/activation.md`. ADR acceptance alone was not activation. 9B–9E and Phase 10 remain inactive; no session behavior is qualified by this note.
 
 **9A closeout note (2026-10-10):** [The sole bounded 9A closeout](../tasks/p9a/closeout.md) records headless Green for identity, persistence, lifecycle, backend and restart at the separate `0.9.6` source checkpoint. It does not qualify the remaining ADR behavior assigned to 9B–9E or Phase 9 overall.
+
+**9B design clarification (2026-10-10):** The 9A Green source uses strict v1 session records without links. Approved 9B design adds strict v2 typed links and non-mutating v1 normalization, with v2 persisted only through explicit revision-checked session writes. Session resolvers must not trigger Chat recovery writes, owner-store mutation or provider execution; distinguish missing, stale and unavailable. See `docs/planning/p9/phase-9b-plan.md`. This is design authority only; 9B is NOT activated or qualified.

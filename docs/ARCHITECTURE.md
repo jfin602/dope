@@ -249,11 +249,11 @@ React Flow/browser presentation does not own Flow discovery, aggregation, eviden
 Phase 6 requires no model provider, AI Presence, mutation authority, mandatory live tracing, Planning Map Flow editing or new durable Flow store.
 
 
-## Phase 9 — Development Sessions boundary (9A owner-activated; not qualified)
+## Phase 9 — Development Sessions boundary (9A bounded Green; 9B planned, inactive)
 
 A `DeveloperSession` is a **Dope-owned, optional organizational workspace**, not a new Agent Runtime, Chat, Planning Map, Project Mind artifact owner or source of authority. It binds to the canonical attached project and references existing stable identities: Chat IDs; Planning Map IDs; WorkItem (`mapId`, `workItemId`); AgentTask/AgentRun/AgentTaskSequence IDs; optional Project Mind decision/idea and Software Map IDs. Multiple references of each kind and shared membership across sessions are allowed. No transcripts, graph data, candidate diffs, validation records or accepted decisions are copied into session persistence.
 
-The proposed provider-free domain/application boundary is a typed `DeveloperSession` parser, project-local `SessionStore` and `SessionService` with optimistic revision checks, atomic writes and recovery in versioned `.dope/development-sessions.json`. Session-owned state is limited to identity, project binding, title/objective, lifecycle, timestamps, bounded notes/next actions, typed membership and explicit closeout. Do not add a mutable inverse-link registry in Chat/Planning/Agent stores; derive it from session membership. Never revive historical Phase 3 `Plan/PlanStep/Task` or `.dope/planning.json`.
+The 9A-qualified provider-free boundary is a typed `DeveloperSession` parser, project-local `DeveloperSessionStore` and `DeveloperSessionBackend` with optimistic revision checks, atomic writes and recovery in versioned `.dope/development-sessions.json` (`0.9.6` / `6b51ee96`). 9B will add strict v2 links, read-only v1 normalization, owner metadata resolvers and revision-safe membership; see `docs/planning/p9/phase-9b-plan.md`. Session-owned state is limited to identity, project binding, title/objective, lifecycle, timestamps, bounded notes/next actions, typed membership and explicit closeout. Do not add a mutable inverse-link registry in Chat/Planning/Agent stores; derive it from session membership. Never revive historical Phase 3 `Plan/PlanStep/Task` or `.dope/planning.json`.
 
 The Session workspace is a **projection/navigation boundary**. Resolve linked status and provenance through owning services, display missing/deleted/stale references without silent retargeting, and enforce same-project identity at both mutation and resolution. Opening linked Chats/Work must focus their existing panel owners; the session does not clone editors or steal the independent center map workspace. Session selection/open/restart never automatically invokes AI, starts/cancels AgentRuns, grants permissions, completes WorkItems, adopts architecture or modifies Git.
 
@@ -261,7 +261,7 @@ Session progress distinguishes developer-completed WorkItems, AgentRun terminal 
 
 The retained Phase 5 P11 Not Green/P12 unexecuted end-to-end Planning qualification requires **one targeted PlanningMap -> WorkItem -> authorized AgentTask -> Dope-owned validation/review replay** before Phase 9 claims full continuity. This does not retroactively qualify Phase 5 or authorize a map redesign. Final T3 must demonstrate a real Dope Builds Dope session with restart/resume and non-session regressions.
 
-Authority: **ADR 0033** and `docs/planning/p9/phase-9-plan.md`. Phase 9 is **ACTIVE for 9A P1–P6 only / NOT QUALIFIED**, owner-activated on 2026-10-10 (`docs/planning/p9/activation.md`). A coherent `0.9.0` baseline exists at `e250a07` and P1 must advance it to `0.9.1` during implementation; this documentation does not create a session runtime or alter manifests. Last qualified product source remains Phase 8 `0.8.47` / `bcc5cb8`.
+Authority: **ADR 0033** and `docs/planning/p9/phase-9-plan.md`. Phase 9 is ACTIVE / NOT QUALIFIED. 9A is bounded Green at `0.9.6` source `6b51ee96` (`docs/tasks/p9a/closeout.md`); 9B design approved, NOT OWNER-ACTIVATED (`docs/planning/p9/phase-9b-plan.md`). Actual manifests remain `0.9.6`; no v2 membership or resolution is implemented by these docs. Last qualified product source remains Phase 8 `0.8.47` / `bcc5cb8`.
 
 ## Model and provider boundary
 
