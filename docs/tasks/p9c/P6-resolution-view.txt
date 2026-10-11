@@ -1,0 +1,35 @@
+TASK: Phase 9 / P6 — Render truthful linked artifact resolution in Session overview
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.19`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.18`, advance all 13 root/app/package package.json versions and pinned internal @dope/* dependency references to `0.9.19` DURING THIS PROMPT. Runner verifies but never bumps. Preserve yarn.lock, unrelated dependencies, user work and no root package-lock.json. Runner owns checkpoint commits; do not commit manually. Never fabricate or pre-bump a source/version checkpoint.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, ADR 0025, `docs/planning/p9/phase-9c-plan.md`, `docs/tasks/p9c/implementation-plan.md` and `docs/tasks/p9b/closeout.md`. Phase 9B is bounded Green `0.9.13`, not Phase 9 overall. These prompts are NOT owner activation. Require separate explicit owner authorization recorded at `docs/planning/p9/phase-9c-activation.md` before ANY 9C implementation. If absent stop with ZERO file changes. Verify real Git predecessor version/checkpoint and safe worktree; do not self-activate or pre-bump.
+
+GOAL / IMPLEMENT
+Render grouped exact Session links from DeveloperSessionService.resolve; show resolved/missing/stale/unavailable, grounded diagnostic, small owner-derived title/status, actual validation/review/applied facts. Keep WorkItem ready separate from completed/applied AgentRun. Retain missing/stale links; no invented progress, transcript, diff or HTML. Drop stale results when root/selected Session changes.
+
+PRESERVE
+Optional Session membership is not authority, task origin, model context or copied owner truth. Retain 9A/9B Green scope, exact project root/typed IDs/revision checks, Chat/Work single-panel ownership, truthful WorkItem versus AgentRun validation/review/promotion status, and ordinary no-Session workflows. No automatic execution, provider calls/fallback, Chat recovery, Planning rebase, Mind initialization, candidate promotion, WorkItem completion, Architecture adoption, Git/source changes from Session selection or owner-store mutation. Retain historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green; 9D/9E and Phase 10 inactive.
+
+VALIDATION — T1
+Focused widget/resolution helper tests cover all availability states, WorkItem ready after applied Run, late resolution and escaped untrusted text, without owner mutations. Register any new test once, minimal lib build and git diff --check.
+
+EFFICIENCY
+Aim <=8 minutes implementation plus smallest focused tests (10-minute soft, 15-minute hard). If overloaded split/report rather than relax security or authority. Compile only changed package libs required by focused tests; no routine npm run check, npm test, browser/Electron/native packaging or live model work.
+
+DEFER
+P7 onwards including manual P10; 9D/9E/Phase 10 separate.
+
+DONE WHEN
+Assigned seam has focused evidence with coherent 0.9.19 version and unproven behavior called out.
+
+FINAL RESPONSE
+Files changed, focused tests, exact version/source checkpoint, observed and unqualified behavior, remaining phase gates.

@@ -1,0 +1,35 @@
+TASK: Phase 9 / P9 — Qualify Session UI state isolation and restoration seams
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.22`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.21`, advance all 13 root/app/package package.json versions and pinned internal @dope/* dependency references to `0.9.22` DURING THIS PROMPT. Runner verifies but never bumps. Preserve yarn.lock, unrelated dependencies, user work and no root package-lock.json. Runner owns checkpoint commits; do not commit manually. Never fabricate or pre-bump a source/version checkpoint.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, ADR 0025, `docs/planning/p9/phase-9c-plan.md`, `docs/tasks/p9c/implementation-plan.md` and `docs/tasks/p9b/closeout.md`. Phase 9B is bounded Green `0.9.13`, not Phase 9 overall. These prompts are NOT owner activation. Require separate explicit owner authorization recorded at `docs/planning/p9/phase-9c-activation.md` before ANY 9C implementation. If absent stop with ZERO file changes. Verify real Git predecessor version/checkpoint and safe worktree; do not self-activate or pre-bump.
+
+GOAL / IMPLEMENT
+Integrate P1-P8: restore only selected Session ID scoped to verified project from Theia layout (not canonical session data); ignore late read/resolve/navigate/attach after switching roots, dispose or select change; preserve local drafts/conflict visibility, closed inspect-only and owner single-writer rules. Test ordinary Chat/Work/Planning without Session, no implicit AgentRun and unchanged owner stores. Repair bounded defects only and run affected focused regression.
+
+PRESERVE
+Optional Session membership is not authority, task origin, model context or copied owner truth. Retain 9A/9B Green scope, exact project root/typed IDs/revision checks, Chat/Work single-panel ownership, truthful WorkItem versus AgentRun validation/review/promotion status, and ordinary no-Session workflows. No automatic execution, provider calls/fallback, Chat recovery, Planning rebase, Mind initialization, candidate promotion, WorkItem completion, Architecture adoption, Git/source changes from Session selection or owner-store mutation. Retain historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green; 9D/9E and Phase 10 inactive.
+
+VALIDATION — T2
+One bounded focused node --test invocation of new UI controller/widget/membership/candidates/navigation plus prior 9A/9B Session contract/store/backend/resolver/membership/integration tests. Minimum lib build + touched extension typecheck if required; verify A/B roots, restore, stale races, no owner-store writes/agent work, git diff --check. No real GUI Green claim.
+
+EFFICIENCY
+Aim <=8 minutes implementation plus smallest focused tests (10-minute soft, 15-minute hard). If overloaded split/report rather than relax security or authority. Compile only changed package libs required by focused tests; no routine npm run check, npm test, browser/Electron/native packaging or live model work.
+
+DEFER
+P10 onwards including manual P10; 9D/9E/Phase 10 separate.
+
+DONE WHEN
+Assigned seam has focused evidence with coherent 0.9.22 version and unproven behavior called out.
+
+FINAL RESPONSE
+Files changed, focused tests, exact version/source checkpoint, observed and unqualified behavior, remaining phase gates.

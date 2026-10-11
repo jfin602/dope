@@ -1,0 +1,35 @@
+TASK: Phase 9 / P10 — Real Session workspace GUI qualification and scoped closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- The assigned project version is `0.9.23`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.22`, advance all 13 root/app/package package.json versions and pinned internal @dope/* dependency references to `0.9.23` DURING THIS PROMPT. Runner verifies but never bumps. Preserve yarn.lock, unrelated dependencies, user work and no root package-lock.json. P10 manually creates a separate legitimate source/version checkpoint before an evidence-only closeout commit. Never fabricate or pre-bump a source/version checkpoint.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0033, ADR 0025, `docs/planning/p9/phase-9c-plan.md`, `docs/tasks/p9c/implementation-plan.md` and `docs/tasks/p9b/closeout.md`. Phase 9B is bounded Green `0.9.13`, not Phase 9 overall. These prompts are NOT owner activation. Require separate explicit owner authorization recorded at `docs/planning/p9/phase-9c-activation.md` before ANY 9C implementation. If absent stop with ZERO file changes. Verify real Git predecessor version/checkpoint and safe worktree; do not self-activate or pre-bump.
+
+GOAL / IMPLEMENT
+MANUAL sole 9C closeout. After Git-proven P9 0.9.22, advance all 13 manifests/internal pins to 0.9.23 in a separately committed legitimate source/version checkpoint, then perform direct real Theia GUI qualification on exact candidate. Use a no-AI disposable project: create/select/edit Session, link existing Chat/Planning/Work/Project Mind artifacts, inspect shared/detached/missing/stale/closed links, navigate owner panels without duplicate Chat/Work writers or implicit run, switch projects, restart/reopen, check keyboard/theme and ordinary no-Session operations. Review owner store bytes, relevant focused tests, candidate source SHA. Record actual steps/evidence, failed/unsupported navigation or picker gaps and GREEN/NOT GREEN in docs/tasks/p9c/closeout.md as a separate evidence-only commit. If direct GUI cannot run, mark NOT GREEN; do not substitute headless tests.
+
+PRESERVE
+Optional Session membership is not authority, task origin, model context or copied owner truth. Retain 9A/9B Green scope, exact project root/typed IDs/revision checks, Chat/Work single-panel ownership, truthful WorkItem versus AgentRun validation/review/promotion status, and ordinary no-Session workflows. No automatic execution, provider calls/fallback, Chat recovery, Planning rebase, Mind initialization, candidate promotion, WorkItem completion, Architecture adoption, Git/source changes from Session selection or owner-store mutation. Retain historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green; 9D/9E and Phase 10 inactive.
+
+VALIDATION — T3
+T3 manual real Theia browser GUI REQUIRED; exact 0.9.23 checkpoint; screenshots/interaction proof, restart, no extra execution, owner-store byte preservation, relevant focused tests, git diff --check. Full 9E aggregate and native packaging remain deferred.
+
+EFFICIENCY
+P10 sole manual direct-GUI T3 closeout may exceed ordinary time; label missing real GUI proof NOT GREEN/Evidence Gap, never synthetic Green.
+
+DEFER
+9D richer progress/resume/closeout projections, 9E full Dope Builds Dope and aggregate, Phase 10.
+
+DONE WHEN
+Exact 0.9.23 source/version checkpoint and truthful 9C-only GUI closeout are recorded; 9D/9E remain inactive.
+
+FINAL RESPONSE
+Files changed, focused real GUI qualification, exact version/source checkpoint, observed and unqualified behavior, remaining phase gates.

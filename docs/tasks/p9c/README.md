@@ -1,30 +1,32 @@
-# Phase 9C — Development Sessions Workspace UI
+# Phase 9C — Development Sessions Workspace
 
-**Status:** ASSESSMENT / PLAN / PROMPTS AUTHORED — NOT OWNER-ACTIVATED OR IMPLEMENTED
-**Entry:** 9A Green 0.9.6/6b51ee96; 9B bounded Green 0.9.13/5aa0bac (25/25 focused tests and real local Qwen Planning-to-Work replay). Phase 9 overall NOT QUALIFIED.
-**Authority:** `docs/planning/p9/phase-9c-plan.md`, ADR 0033 and ADR 0025.
-**Current version:** `0.9.13`; no 9C version or implementation changes from prompt authoring.
+**Status:** ASSESSED / PLANNED / PROMPTS AUTHORED — NOT OWNER-ACTIVATED OR IMPLEMENTED
+**Entry:** 9A bounded Green `0.9.6`; 9B bounded Green `0.9.13` / `5aa0bac`; Phase 9 overall NOT QUALIFIED.
+**Authority:** `docs/planning/p9/phase-9c-plan.md`, ADR 0033/0025 and stability contract.
+**Execution:** `docs/tasks/p9c/`. Actual coherent root/app/package version remains `0.9.13`.
 
 | Prompt | Target | Tier | Model | Browser |
 | --- | --- | --- | --- | --- |
-| P1 | 0.9.14 | T1 | GPT-6 Sol High | no |
-| P2 | 0.9.15 | T1 | GPT-6 Sol High | no |
-| P3 | 0.9.16 | T1 | GPT-6 Sol Medium | no |
-| P4 | 0.9.17 | T2 | GPT-6 Sol High | no |
-| P5 | 0.9.18 | T1 | GPT-6 Sol Medium | no |
-| P6 | 0.9.19 | T2 | GPT-6 Sol High | no |
-| P7 | 0.9.20 | T2 | GPT-6 Sol High | no |
-| P8 | 0.9.21 | T3/manual | GPT-6 Sol High | yes |
+| P1 | `0.9.14` | T1 | GPT-6 Sol High | no |
+| P2 | `0.9.15` | T1 | GPT-6 Sol High | no |
+| P3 | `0.9.16` | T1 | GPT-6 Sol Medium | no |
+| P4 | `0.9.17` | T1 | GPT-6 Sol High | no |
+| P5 | `0.9.18` | T2 | GPT-6 Sol High | no |
+| P6 | `0.9.19` | T1 | GPT-6 Sol Medium | no |
+| P7 | `0.9.20` | T2 | GPT-6 Sol High | no |
+| P8 | `0.9.21` | T2 | GPT-6 Sol High | no |
+| P9 | `0.9.22` | T2 | GPT-6 Sol High | no |
+| P10 | `0.9.23` | T3/manual | GPT-6 Sol High | yes |
 
-**Preflight/activation:** Every prompt requires a *separate explicit owner-approved* record at `docs/planning/p9/phase-9c-activation.md`; these documents are NOT owner activation. Do not start P1 or pre-bump from `0.9.13` while absent.
+**Activation gate:** P1–P10 require a separate explicit owner-approved `docs/planning/p9/phase-9c-activation.md`. This authored stack and 9B Green do NOT activate 9C. Stop with zero changes if absent.
 
-**Version law:** P1 moves all 13 root/app/package manifests and pinned internal `@dope/*` references to `0.9.14` only during implementation; each subsequent Pn owns next patch through P7 `0.9.20`. P8 is sole manual T3 and must create separate legitimate `0.9.21` exact source/version checkpoint before evidence-only closeout. Runner verifies but does not bump. No root package-lock.json or unrelated lock/dependency edits.
+**Version law:** P1 starts from Git-proven `0.9.13`, moves all 13 root/app/package manifests and pinned internal `@dope/*` refs to `0.9.14` DURING implementation. Through P9 each prompt moves one patch to `0.9.22`. P10 MANUAL requires separately committed exact `0.9.23` source/version checkpoint before evidence-only closeout; never fabricate version/source SHAs. Preserve yarn.lock and unrelated dependencies; do not create root package-lock.json.
 
-**Safety:** No implicit task run, model context, owner-store write, Chat recovery, duplicate Chat/Work owner, silent WorkItem completion, Architecture adoption or Phase 9 overall Green claim. 9D richer progress/closeout, 9E full Dope Builds Dope and Phase 10 remain deferred. P1–P6 <=8-minute focused goal; P7 bounded T2 and P8 direct real Theia GUI only. New tests registered exactly once; no per-prompt full `npm run check` or native packaging.
+**Safety/efficiency:** Sessions are optional metadata and existing-artifact references only. No task origin, permission, new agent, Chat recovery, implicit model context, auto WorkItem completion, automatic Architecture adoption or duplicate Chat/Work writer. P1–P8 target <=8 minutes with focused tests; P5/P7/P8/P9 use bounded T2, P10 manual direct GUI T3. Build changed compiled libs only; register new test paths once in `test:product`, no per-prompt full npm run check / npm test / packaging. 9D richer progress/closeout and 9E full product GUI/aggregate remain inactive.
 
-After separate owner approval, safe Git sync and baseline verification only:
+After separate owner activation and safe Git sync:
 ```bash
 npm run codex:phase:validate -- p9c
 npm run codex:phase -- p9c
 ```
-P8 remains **MANUAL / CLOSEOUT**; the above runner runs implementation prompts P1–P7.
+P10 remains the **sole manual closeout**; the runner executes P1–P9.

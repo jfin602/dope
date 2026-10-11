@@ -1,28 +1,33 @@
-# /prompt-ass — Phase 9C Session Workspace
+# /prompt-ass — Phase 9C Sessions UI
 
-**Status:** SOURCE-REVIEWED / TASK DECOMPOSITION RECORDED / NOT OWNER-ACTIVATED
-**Entry:** 9A Green 0.9.6/6b51ee96; 9B bounded Green 0.9.13/5aa0bac (25/25 focused tests and real local Qwen Planning-to-Work replay). Phase 9 overall NOT QUALIFIED.
-**Authority:** `docs/planning/p9/phase-9c-plan.md`, ADR 0033 and 0025, stability contract.
+**Status:** SOURCE REVIEWED / EFFICIENCY-AUDITED / NOT OWNER-ACTIVATED
+**Entry:** 9A scoped Green `0.9.6`; 9B scoped Green `0.9.13` / `5aa0bac` (25/25 focused and real authorized Qwen replay). Phase 9 overall NOT QUALIFIED.
+**Authority:** ADR 0033/0025, `docs/planning/p9/phase-9c-plan.md`, Phase 9 stability requirements.
 
-## Source-grounded assessment
-- `developer-session-service.ts` and backend already provide atomic v2 Session CRUD, typed attach/detach, read-only owner resolve, per-project handle and revision checks. No new Session store/backend execution authority.
-- `frontend-module.ts` has Theia WidgetFactory/CommandContribution and side Chat/Work launchers but no Session presentation. Keep Session controller + widget small rather than adding to large `chat-panel-widget.ts`.
-- `ChatOpenOwners` and `WorkOpenOwners` ensure one live writer; normal ChatPanel/Work open commands, `PlanningMapController.select/selectWorkItem` and `ProjectMindWidget.openArtifact` are navigation seams. Must not duplicate panels.
-- ChatRepository.read may perform recovery writes. Session candidate discovery must use already selected, safe metadata paths; no recovery-writing Chat list, copied transcript, unbounded candidate index or unsafe synthetic chooser. If a kind is unavailable, report gap.
-- Async project-root attach/switch is a race. Guard stale responses, revision conflicts, layout restoration, closed Session, draft scope, and project isolation.
-- UI truth uses only v2's seven reference kinds. Show missing/stale/unavailable and distinct WorkItem/run/validation/review/applied states; applied run may leave WorkItem ready. Software Map direct refs excluded.
-- Accessibility, keyboard, theme neutrality and untrusted text rendering are current UI requirements. 9D rich progress/resume and 9E full Dope Builds Dope remain deferred.
+## Grounded risks and responsibilities
 
-## Prompt ownership and model routing
-| Task | Target | Tier | Model | Owner |
+- Existing `DeveloperSessionService` + backend already own atomic Session v2, project handles, expected revisions, typed membership and non-mutating compact resolve. Frontend only; no second domain/store.
+- `frontend-module.ts` and Theia WidgetFactory/CommandContribution own shell entry; large `chat-panel-widget.ts` is not the Session UI. ChatOpenOwners/WorkOpenOwners enforce one writer; existing PlanningMapController and ProjectMindWidget own their views.
+- ChatRepository.read can perform recovery writes; **separate** generic attach/detach actions (P4) from safe owner candidate discovery (P5). Unsafe candidate read = unavailable/qualification gap, never implicit recovery.
+- **Split** Chat/Work navigation (P7) from Planning/Project Mind navigation (P8); each uses different existing ownership/selection APIs. Never silently execute Work or rebase Planning.
+- P1/P9 must guard late responses, stale handles, project root switches, conflicts, unsaved drafts, restart layout and closed records. v2 supports seven reference kinds, not direct Software Map ID.
+- 9C renders actual status and diagnostics, never fabricated progress; 9D owns rich progress, resume and guided closeout, 9E full Dope Builds Dope.
+
+## Bounded prompt allocation
+
+| Prompt | Target | Tier | Model | Owner |
 | --- | --- | --- | --- | --- |
-| P1 | 0.9.14 | T1 | GPT-6 Sol High | Implement project-scoped Session frontend controller |
-| P2 | 0.9.15 | T1 | GPT-6 Sol High | Build center Session selector widget and launcher |
-| P3 | 0.9.16 | T1 | GPT-6 Sol Medium | Add explicit Session metadata create and edit forms |
-| P4 | 0.9.17 | T2 | GPT-6 Sol High | Implement bounded artifact chooser and link operations |
-| P5 | 0.9.18 | T1 | GPT-6 Sol Medium | Render owner-sourced linked artifact status accurately |
-| P6 | 0.9.19 | T2 | GPT-6 Sol High | Open existing Chat Planning Work and Project Mind views |
-| P7 | 0.9.20 | T2 | GPT-6 Sol High | Harden Session UI restoration project switching and regression |
-| P8 | 0.9.21 | T3/manual | GPT-6 Sol High | Real Session workspace GUI qualification and scoped closeout |
+| P1 | `0.9.14` | T1 | GPT-6 Sol High | Implement project-scoped Session frontend controller |
+| P2 | `0.9.15` | T1 | GPT-6 Sol High | Create center Session widget selector and launcher |
+| P3 | `0.9.16` | T1 | GPT-6 Sol Medium | Add explicit Session create and metadata editing |
+| P4 | `0.9.17` | T1 | GPT-6 Sol High | Add typed Session membership attach and detach actions |
+| P5 | `0.9.18` | T2 | GPT-6 Sol High | Browse existing artifacts without unsafe owner reads |
+| P6 | `0.9.19` | T1 | GPT-6 Sol Medium | Render truthful linked artifact resolution in Session overview |
+| P7 | `0.9.20` | T2 | GPT-6 Sol High | Navigate Chat and Work links through existing owners |
+| P8 | `0.9.21` | T2 | GPT-6 Sol High | Navigate Planning Maps WorkItems and Project Mind links |
+| P9 | `0.9.22` | T2 | GPT-6 Sol High | Qualify Session UI state isolation and restoration seams |
+| P10 | `0.9.23` | T3/manual | GPT-6 Sol High | Real Session workspace GUI qualification and scoped closeout |
 
-P1–P6 focus one bounded owner seam at a time with <=8-minute implementation-plus-focused-validation target (10-minute soft, 15-minute hard). P4/P6/P7 need focused T2 integration; P8 alone owns manual real Theia GUI T3. Build touched extension libs only for compiled-output tests, register new test files once in root `test:product`, avoid nested `npm run check`/full browser/Electron/native work per ordinary prompt. Do not trade safety for prompt duration. No 9C activation until separate owner record.
+## Prompt Efficiency Gate
+
+P1–P8 each own one primary coherent seam targeting <=8 minutes implementation and focused tests (10-minute soft, 15-minute hard). P5/P7/P8 are justified bounded cross-owner T2 checks, not full aggregate. P9 is targeted T2 integration; P10 sole manual T3 direct GUI and closeout. Only compile changed extension lib needed by tests that import `lib/browser`; register new test paths once in `test:product`; do not append unconditional npm test / npm run check, browser/Electron packaging or provider calls to ordinary prompts. Never waive isolation, revision or owner-write checks to meet time. Separate 9C activation required; no 9D/9E/Phase 10 activation.
