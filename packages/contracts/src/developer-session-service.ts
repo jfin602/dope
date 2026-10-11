@@ -19,6 +19,19 @@ export type SessionOperation =
     | { type: 'pause' | 'resume' | 'reopen'; sessionId: string }
     | { type: 'close'; sessionId: string; closeout: Pick<SessionCloseout, 'achieved' | 'unresolved' | 'deferred'> };
 
+export interface SessionLinkMutationRequest {
+    projectHandle: string;
+    expectedCollectionRevision: number;
+    expectedSessionRevision: number;
+    sessionId: string;
+    ref: SessionArtifactRef;
+}
+
+export interface SessionResolveRequest {
+    projectHandle: string;
+    sessionId: string;
+}
+
 export interface SessionMutationRequest {
     projectHandle: string;
     expectedCollectionRevision: number;
@@ -34,14 +47,26 @@ export interface SessionMutationResult {
 /** Compact, read-only owner truth for a link. P3/P4 supply the resolver. */
 export interface SessionArtifactResolution {
     ref: SessionArtifactRef;
-    state: 'resolved' | 'missing' | 'stale' | 'unavailable';
-    ownerStatus?: string;
+    availability: 'resolved' | 'missing' | 'stale' | 'unavailable';
+    diagnostic: string;
+    title?: string;
+    objective?: string;
+    status?: string;
+    observedRevision?: number;
+    observedBasis?: { architectureRevision: number; architectureFingerprint: string;
+        physicalInputFingerprint: string; physicalGeneration: number };
+    taskOrigin?: string;
+    validationStatus?: 'passed' | 'failed' | 'incomplete' | 'unavailable';
+    reviewDecision?: 'accept' | 'reject';
+    promotionStatus?: 'applied' | 'not-applied';
+    source?: 'agent-task' | 'agent-run' | 'agent-sequence' | 'project-mind';
 }
 
-/** Session membership is independent of artifact origin and execution authority. */
-export interface SessionArtifactMembership {
+export interface SessionResolveResult {
     sessionId: string;
-    ref: SessionArtifactRef;
+    collectionRevision: number;
+    sessionRevision: number;
+    artifacts: SessionArtifactResolution[];
 }
 
 export interface DeveloperSessionService {
@@ -50,4 +75,7 @@ export interface DeveloperSessionService {
     list(projectHandle: string): Promise<DeveloperSession[]>;
     get(projectHandle: string, sessionId: string): Promise<DeveloperSession | undefined>;
     mutate(request: SessionMutationRequest): Promise<SessionMutationResult>;
+    attachLink(request: SessionLinkMutationRequest): Promise<SessionMutationResult>;
+    detachLink(request: SessionLinkMutationRequest): Promise<SessionMutationResult>;
+    resolve(request: SessionResolveRequest): Promise<SessionResolveResult>;
 }

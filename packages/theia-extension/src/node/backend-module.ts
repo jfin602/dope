@@ -134,7 +134,8 @@ export default new ContainerModule(bind => {
         return backend;
     })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<object>(developerSessionServicePath, client => {
-        const backend = new DeveloperSessionBackend(context.container.get(DeveloperSessionStore));
+        const backend = new DeveloperSessionBackend(context.container.get(DeveloperSessionStore),
+            context.container.get(SoftwareMapIndex));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

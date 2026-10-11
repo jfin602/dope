@@ -4,9 +4,10 @@ import { lstat, mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises
 import type { FileHandle } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseDeveloperSession, parseSessionCollection, parseSessionProjectIdentity } from '@dope/contracts/lib/developer-session';
+import { MAX_COLLECTION_LINKS, MAX_SESSION_LINKS, parseDeveloperSession, parseSessionArtifactRef,
+    parseSessionCollection, parseSessionProjectIdentity, sessionArtifactRefKey } from '@dope/contracts/lib/developer-session';
 import type { DeveloperSession, SessionCollection, SessionProjectIdentity } from '@dope/contracts/lib/developer-session';
-import type { SessionMutationRequest, SessionMutationResult } from '@dope/contracts/lib/developer-session-service';
+import type { SessionLinkMutationRequest, SessionMutationRequest, SessionMutationResult } from '@dope/contracts/lib/developer-session-service';
 
 const MAX_BYTES = 16 * 1024 * 1024;
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
@@ -15,6 +16,43 @@ const uncertain = (error: unknown): Error =>
 
 /** Filesystem only. Session lifecycle and ID allocation belong to the caller. */
 export class DeveloperSessionStore {
+    /** Owner validation happens before this call. The lock protects Session membership only. */
+    async mutateLink(root: string, projectMindId: string | null, request: SessionLinkMutationRequest,
+        action: 'attach' | 'detach', verifyHandle: () => void): Promise<SessionMutationResult> {
+        if (!request || !Number.isSafeInteger(request.expectedSessionRevision) || request.expectedSessionRevision < 1 ||
+            typeof request.sessionId !== 'string' ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(request.sessionId) ||
+            typeof verifyHandle !== 'function') throw new Error('Invalid Session link request');
+        const ref = parseSessionArtifactRef(request.ref);
+        const key = sessionArtifactRefKey(ref);
+        let changed!: DeveloperSession;
+        const snapshot = await this.transact(root, projectMindId, request.expectedCollectionRevision, current => {
+            verifyHandle();
+            const index = current.sessions.findIndex(session => session.id === request.sessionId);
+            if (index < 0) throw new Error('Unknown Development Session');
+            const previous = current.sessions[index];
+            if (previous.revision !== request.expectedSessionRevision)
+                throw new Error('Stale Development Session revision');
+            if (previous.status === 'closed') throw new Error('Closed Development Session is immutable until reopened');
+            const present = previous.links.some(link => sessionArtifactRefKey(link) === key);
+            if (action === 'attach' ? present : !present) {
+                changed = previous;
+                return null;
+            }
+            if (action === 'attach' && (previous.links.length >= MAX_SESSION_LINKS ||
+                current.sessions.reduce((count, session) => count + session.links.length, 0) >= MAX_COLLECTION_LINKS))
+                throw new Error('Too many Session links');
+            changed = parseDeveloperSession({ ...previous, revision: previous.revision + 1,
+                updatedAt: this.nextInstant(Date.parse(previous.updatedAt)),
+                links: action === 'attach' ? [...previous.links, ref] :
+                    previous.links.filter(link => sessionArtifactRefKey(link) !== key) });
+            const sessions = [...current.sessions];
+            sessions[index] = changed;
+            return { ...current, revision: current.revision + 1, sessions };
+        });
+        return { snapshot, session: changed };
+    }
+
     /** Apply one developer-authored lifecycle edit under the collection's atomic revision lock. */
     async mutate(root: string, projectMindId: string | null, request: SessionMutationRequest): Promise<SessionMutationResult> {
         if (!request || !request.operation || !Number.isSafeInteger(request.expectedCollectionRevision) ||
@@ -210,7 +248,7 @@ export class DeveloperSessionStore {
     }
 
     async transact(root: string, projectMindId: string | null, expectedRevision: number,
-        change: (current: SessionCollection) => SessionCollection | Promise<SessionCollection>): Promise<SessionCollection> {
+        change: (current: SessionCollection) => SessionCollection | null | Promise<SessionCollection | null>): Promise<SessionCollection> {
         if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || typeof change !== 'function')
             throw new Error('Invalid Development Sessions transaction');
         const { directory, lock } = await this.paths(root);
@@ -228,7 +266,9 @@ export class DeveloperSessionStore {
         try {
             const current = await this.read(root, projectMindId);
             if (current.revision !== expectedRevision) throw new Error(`Stale Development Sessions revision; current ${current.revision}`);
-            const next = parseSessionCollection(await change(structuredClone(current)));
+            const proposed = await change(structuredClone(current));
+            if (proposed === null) return current;
+            const next = parseSessionCollection(proposed);
             if (next.project.canonicalRoot !== root || next.project.projectMindId !== projectMindId ||
                 next.revision !== current.revision + 1)
                 throw new Error('Invalid Development Sessions project identity or next revision');
