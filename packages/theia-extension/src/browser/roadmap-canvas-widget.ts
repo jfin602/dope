@@ -3,6 +3,7 @@ import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service
 import { projectRoadmap, type RoadmapProjection } from '@dope/project-intelligence/lib/roadmap-projection';
 import type { RoadmapService } from '../roadmap-service';
 import { roadmapCanvasOrder, roadmapNextId } from './roadmap-canvas-model';
+import { RoadmapInspectorModel } from './roadmap-inspector-model';
 
 export const ROADMAP_CANVAS_ID = 'dope-roadmap-canvas';
 
@@ -12,13 +13,16 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly path = document.createElement('ol');
     private readonly toolbar = document.createElement('header');
     private readonly reload = document.createElement('button');
+    private readonly details = document.createElement('button');
     private readonly rootsListener;
+    private readonly modelListener;
     private request = 0;
     private projectUri?: string;
     private projection?: RoadmapProjection;
     private selectedId?: string;
 
-    constructor(private readonly service: RoadmapService, private readonly workspaces: WorkspaceService) {
+    constructor(private readonly service: RoadmapService, private readonly workspaces: WorkspaceService,
+        private readonly inspector: RoadmapInspectorModel, private readonly openInspector: () => Promise<unknown>) {
         super();
         this.id = ROADMAP_CANVAS_ID;
         this.title.label = this.title.caption = 'Roadmap';
@@ -31,13 +35,23 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.reload.textContent = 'Refresh';
         this.reload.setAttribute('aria-label', 'Refresh Roadmap');
         this.reload.onclick = () => { void this.refresh(); };
-        this.toolbar.append(heading, this.reload);
+        this.details.type = 'button';
+        this.details.textContent = 'Details';
+        this.details.setAttribute('aria-label', 'Show Roadmap details in left sidebar');
+        this.details.onclick = () => { void this.openInspector(); };
+        this.toolbar.append(heading, this.details, this.reload);
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.path.setAttribute('aria-label', 'Roadmap checkpoints');
         this.path.onkeydown = event => this.onPathKey(event);
         this.node.append(this.toolbar, this.status, this.path);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.refresh(); });
+        this.modelListener = inspector.onChange(() => {
+            if (!this.projectUri || inspector.projectUri !== this.projectUri || !inspector.index) return;
+            this.selectedId = inspector.selectedId;
+            this.projection = projectRoadmap(inspector.index, [], { projectId: inspector.index.projectId, selectedId: this.selectedId });
+            this.render();
+        });
         void this.refresh();
     }
 
@@ -53,6 +67,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.projectUri = undefined;
                 this.selectedId = undefined;
                 this.status.textContent = 'Open one local project folder to view its Roadmap.';
+                this.inspector.setSnapshot(undefined, undefined);
                 return;
             }
             const projectUri = roots[0].resource.toString();
@@ -60,6 +75,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (this.isDisposed || request !== this.request) return;
             if (this.projectUri !== projectUri) this.selectedId = undefined;
             this.projectUri = projectUri;
+            this.inspector.setSnapshot(projectUri, index);
             if (index.revision === 0) {
                 this.status.textContent = 'No Roadmap index yet. Refresh after checkpoints are created or imported.';
                 return;
@@ -69,6 +85,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         } catch (error) {
             if (this.isDisposed || request !== this.request) return;
             this.status.textContent = `Roadmap unavailable: ${error instanceof Error ? error.message : 'Unable to read Roadmap'}. Use Refresh to retry.`;
+            this.inspector.setSnapshot(undefined, undefined);
         }
     }
 
@@ -112,6 +129,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private select(id: string, focus = false): void {
         if (!this.projection?.nodes.some(node => node.id === id)) return;
         this.selectedId = id;
+        this.inspector.select(id);
         this.render();
         if (focus) [...this.path.querySelectorAll<HTMLButtonElement>('button')]
             .find(button => button.dataset.checkpointId === id)?.focus();
@@ -128,5 +146,5 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.select(next, true);
     }
 
-    override dispose(): void { ++this.request; this.rootsListener.dispose(); super.dispose(); }
+    override dispose(): void { ++this.request; this.rootsListener.dispose(); this.modelListener(); super.dispose(); }
 }

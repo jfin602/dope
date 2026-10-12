@@ -55,7 +55,10 @@ import { HistoryWidget, HISTORY_WIDGET_ID } from './history-widget';
 import { HistoryFocusContribution } from './history-focus-contribution';
 import { historyOwnerNavigation } from './history-owner-navigation';
 import { RoadmapCanvasWidget, ROADMAP_CANVAS_ID } from './roadmap-canvas-widget';
-import { roadmapServicePath, type RoadmapService } from '../roadmap-service';
+import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
+import { RoadmapInspectorModel } from './roadmap-inspector-model';
+import { RoadmapInspectorView, RoadmapInspectorWidget, ROADMAP_INSPECTOR_ID } from './roadmap-inspector-widget';
+import type { RoadmapChange } from '@dope/project-intelligence/lib/node/roadmap-store';
 
 const modelInventoryChanged = new Emitter<void>();
 
@@ -172,6 +175,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     })).inSingletonScope();
     bindViewContribution(bind, ProjectMindView);
     bindViewContribution(bind, SoftwareMapView);
+    bindViewContribution(bind, RoadmapInspectorView);
     bindViewContribution(bind, LeftChatLauncher);
     bindViewContribution(bind, RightChatLauncher);
     bindViewContribution(bind, LeftWorkLauncher);
@@ -276,6 +280,11 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(PlanningMapController).toDynamicValue(context => new PlanningMapController(context.container.get(SoftwareMapController),
         () => ServiceConnectionProvider.createProxy<VisualPlanningService>(context.container, visualPlanningServicePath),
         context.container.get(AgentRuntimeService))).inSingletonScope();
+    bind<RoadmapService>('RoadmapService').toDynamicValue(context => ServiceConnectionProvider.createProxy<RoadmapService & RpcServer<RoadmapClient>>(
+        context.container, roadmapServicePath, { notifyRoadmapChanged: (change: RoadmapChange) => {
+            void context.container.get(RoadmapInspectorModel).remoteChange(change);
+        } })).inSingletonScope();
+    bind(RoadmapInspectorModel).toDynamicValue(context => new RoadmapInspectorModel(context.container.get<RoadmapService>('RoadmapService'))).inSingletonScope();
     bind(SmapPresentationState).toDynamicValue(context => new SmapPresentationState(context.container.get(StorageService))).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_ID, createWidget: () => new SoftwareMapWidget(
         context.container.get(SoftwareMapController), context.container.get(WorkspaceService), context.container.get(OpenerService),
@@ -299,8 +308,10 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 await widget.selectWorkLauncher({ kind: 'task', id: taskId });
             }) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_CANVAS_ID, createWidget: () =>
-        new RoadmapCanvasWidget(ServiceConnectionProvider.createProxy<RoadmapService>(context.container, roadmapServicePath),
-            context.container.get(WorkspaceService)) })).inSingletonScope();
+        new RoadmapCanvasWidget(context.container.get<RoadmapService>('RoadmapService'), context.container.get(WorkspaceService),
+            context.container.get(RoadmapInspectorModel), () => context.container.get(RoadmapInspectorView).show()) })).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_INSPECTOR_ID, createWidget: () =>
+        new RoadmapInspectorWidget(context.container.get(RoadmapInspectorModel)) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_REVIEW_ID, createWidget: () =>
         new SoftwareMapReviewWidget(context.container.get(SoftwareMapController), context.container.get(WorkspaceService),
             context.container.get(OpenerService), () => context.container.get(AICenterContribution).openFromSoftwareMapReview()) })).inSingletonScope();

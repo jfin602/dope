@@ -46,7 +46,8 @@ import type { AgentExecutionAdapter } from '@dope/agent-core';
 import { historyServicePath, historyFocusServicePath } from '@dope/contracts/lib/history-service';
 import { HistoryBackend } from './history-backend';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
-import { roadmapServicePath, type RoadmapService } from '../roadmap-service';
+import { ProjectPlanningActions } from '@dope/project-intelligence/lib/node/project-planning-actions';
+import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
 
 export default new ContainerModule(bind => {
     bind(NoteStore).toSelf().inSingletonScope();
@@ -76,9 +77,27 @@ export default new ContainerModule(bind => {
     bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
     bind(PlanningStore).toSelf().inSingletonScope();
     bind(RoadmapStore).toSelf().inSingletonScope();
-    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<RoadmapService>(
-        roadmapServicePath, () => ({ read: async (projectUri: string) => context.container.get(RoadmapStore)
-            .read(await context.container.get(PlanningStore).root(projectUri)) }))).inSingletonScope();
+    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<RoadmapClient>(
+        roadmapServicePath, client => {
+            const actions = new ProjectPlanningActions(context.container.get(RoadmapStore));
+            const handles = new Set<string>();
+            const off = context.container.get(RoadmapStore).onChange(change => client.notifyRoadmapChanged(change));
+            client.onDidCloseConnection(() => { off(); for (const handle of handles) actions.detach(handle); });
+            const backend: RoadmapService = {
+                read: async (uri) => context.container.get(RoadmapStore).read(await context.container.get(PlanningStore).root(uri)),
+                attach: async (uri) => {
+                    const result = await actions.attach(await context.container.get(PlanningStore).root(uri));
+                    handles.add(result.projectHandle);
+                    return result;
+                },
+                detach: async (handle) => { actions.detach(handle); handles.delete(handle); },
+                preview: request => actions.preview(request),
+                apply: (request, token, approved) => actions.apply(request, token, approved),
+                undo: request => actions.undoEligible(request),
+                undoToken: (handle, ownerId) => Promise.resolve(actions.undoToken(handle, ownerId))
+            };
+            return backend;
+        })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler(historyServicePath, client => {
         const backend = new HistoryBackend(context.container.get(PlanningStore),
             context.container.get(AIRoleRoutingService), context.container.get(ModelConnectionsRegistry));
