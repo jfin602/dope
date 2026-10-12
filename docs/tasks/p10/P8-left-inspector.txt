@@ -1,0 +1,38 @@
+TASK: Phase 10 / P8 — In-place checkpoint detail inspector and manual editing
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.10.8`.
+
+VERSION TRANSITION — REQUIRED
+Check Git-proven predecessor `0.10.7` (prior implementation checkpoint). Advance all 13 root/app/package package.json versions and the 20 pinned internal @dope/* dependencies to `0.10.8` DURING this prompt. Runner verifies but does not bump; runner owns checkpoint commits; agent must not commit. No pre-bump, yarn.lock/unrelated dependency edits, root package-lock, destructive reset or unapproved overwrite.
+
+PREFLIGHT / ACTIVATION
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0016, ADR 0036 including its existing ChatPanel amendment, docs/planning/p10/phase-10-plan.md, docs/tasks/p10/README.md, implementation-plan.md and relevant owner services. Phase 9 is owner-closed but Phase 10 is DESIGN APPROVED only. REQUIRE separate explicit owner-approved docs/planning/p10/activation.md; if absent STOP with zero files changed. Verify exact source version, safe Git status and preceding checkpoint rather than trusting prompt resume subject alone.
+
+SOURCE INSPECTION
+software-map-widget.ts, software-map-controller.ts, P3 and P7. Trace actual producers, consumers and test dependencies before editing; listed files are hints rather than invented interfaces.
+
+GOAL / IMPLEMENT
+Add Software Map-style left inspector, not standalone checkpoint page. Show selected objective, evidence/gates, dependencies and typed links; manual edit submits P3 preview + expected revision and visible approval for high-impact changes. Maintain drafts through latency, stale/foreign response rejection, undo on eligible edit, keyboard/focus/narrow panes. Do not steal a user-controlled left Chat panel.
+
+PRESERVE
+The Roadmap is strategic, not another Session or shadow canonical document. Markdown/Project Mind/Planning Map/Work/Chat/History and evidence have independent truth and owner revisions. Existing ChatPanel/ChatRepository/model/lease (left/right/bottom/center) remains the only Chat system: no Roadmap Chat mode, widget, transcript, forced docking/opening or center editor theft. Manual and AI use Dope-owned ProjectPlanningActions; untrusted model text cannot self-authorize source writes, Git/shell/process/MCP, AgentRun, map adoption, gate Green or hosted data egress. Keep original Phase 9 evidence and c9 corrections separate; Phase 11 and Phase 12 inactive.
+
+VALIDATION — T1
+roadmap-inspector.test.ts: edit/event sync, stale response, guarded gate, preservation of draft, no forced panel placement, keyboard error.. Run only the focused new/affected test(s), compile changed library outputs actually imported by tests, register new test once in test:product and run git diff --check. Do not run routine full npm run check or live GUI/model as a substitute for final P16.
+
+EFFICIENCY
+Target <=8 min incl. focused validation, 10-min soft/15-min hard; bounded T2 cross-owner/security tests may justify extra time. Split unexpected scope rather than skipping mandatory safety.
+
+DEFER
+All other workstreams and full real GUI/model/aggregate gates to assigned later prompts; no premature Phase 10 Green.
+
+DONE WHEN
+Coherent 0.10.8 checkpoint and focused test report exist; remaining gates are explicit, not presumed Green.
+
+FINAL RESPONSE
+Exact files/changes, focused tests and builds actually observed, source/version identity and remaining evidence gaps.

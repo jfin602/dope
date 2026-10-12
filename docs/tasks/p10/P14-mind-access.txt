@@ -1,0 +1,38 @@
+TASK: Phase 10 / P14 — Protect Project Mind access before navigation retirement
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.10.14`.
+
+VERSION TRANSITION — REQUIRED
+Check Git-proven predecessor `0.10.13` (prior implementation checkpoint). Advance all 13 root/app/package package.json versions and the 20 pinned internal @dope/* dependencies to `0.10.14` DURING this prompt. Runner verifies but does not bump; runner owns checkpoint commits; agent must not commit. No pre-bump, yarn.lock/unrelated dependency edits, root package-lock, destructive reset or unapproved overwrite.
+
+PREFLIGHT / ACTIVATION
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0016, ADR 0036 including its existing ChatPanel amendment, docs/planning/p10/phase-10-plan.md, docs/tasks/p10/README.md, implementation-plan.md and relevant owner services. Phase 9 is owner-closed but Phase 10 is DESIGN APPROVED only. REQUIRE separate explicit owner-approved docs/planning/p10/activation.md; if absent STOP with zero files changed. Verify exact source version, safe Git status and preceding checkpoint rather than trusting prompt resume subject alone.
+
+SOURCE INSPECTION
+project-mind-controller.ts, frontend-module.ts, Mind owner backend, History navigation, P4/P9. Trace actual producers, consumers and test dependencies before editing; listed files are hints rather than invented interfaces.
+
+GOAL / IMPLEMENT
+Prove all Notes, Ideas, Questions and Decisions remain discoverable, editable at original owner and recoverable, including old layout/History exact refs. Only then remove redundant Project Mind navigation surface, never Mind data/RPC/Chat context owner. If recovery cannot be retained, keep old launcher and record blocker instead of removing it. Roadmap Issue display does not create new issue domain.
+
+PRESERVE
+The Roadmap is strategic, not another Session or shadow canonical document. Markdown/Project Mind/Planning Map/Work/Chat/History and evidence have independent truth and owner revisions. Existing ChatPanel/ChatRepository/model/lease (left/right/bottom/center) remains the only Chat system: no Roadmap Chat mode, widget, transcript, forced docking/opening or center editor theft. Manual and AI use Dope-owned ProjectPlanningActions; untrusted model text cannot self-authorize source writes, Git/shell/process/MCP, AgentRun, map adoption, gate Green or hosted data egress. Keep original Phase 9 evidence and c9 corrections separate; Phase 11 and Phase 12 inactive.
+
+VALIDATION — T2
+roadmap-mind-access.test.ts: four Mind types, old restored layout, deep links, missing/corrupt/foreign refs, byte-identical original owner unless explicitly edited.. Run only the focused new/affected test(s), compile changed library outputs actually imported by tests, register new test once in test:product and run git diff --check. Do not run routine full npm run check or live GUI/model as a substitute for final P16.
+
+EFFICIENCY
+Target <=8 min incl. focused validation, 10-min soft/15-min hard; bounded T2 cross-owner/security tests may justify extra time. Split unexpected scope rather than skipping mandatory safety.
+
+DEFER
+All other workstreams and full real GUI/model/aggregate gates to assigned later prompts; no premature Phase 10 Green.
+
+DONE WHEN
+Coherent 0.10.14 checkpoint and focused test report exist; remaining gates are explicit, not presumed Green.
+
+FINAL RESPONSE
+Exact files/changes, focused tests and builds actually observed, source/version identity and remaining evidence gaps.

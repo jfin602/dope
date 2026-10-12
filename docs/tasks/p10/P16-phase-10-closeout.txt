@@ -1,0 +1,38 @@
+TASK: Phase 10 / P16 — Manual real UI/local model qualification and Phase 10 closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.10.16`.
+
+VERSION TRANSITION — REQUIRED
+Check Git-proven predecessor `0.10.15` (prior implementation checkpoint). Advance all 13 root/app/package package.json versions and the 20 pinned internal @dope/* dependencies to `0.10.16` DURING this prompt. Runner verifies but does not bump; manual P16 must create real separately committed exact-source/version checkpoint before evidence-only qualification. No pre-bump, yarn.lock/unrelated dependency edits, root package-lock, destructive reset or unapproved overwrite.
+
+PREFLIGHT / ACTIVATION
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0016, ADR 0036 including its existing ChatPanel amendment, docs/planning/p10/phase-10-plan.md, docs/tasks/p10/README.md, implementation-plan.md and relevant owner services. Phase 9 is owner-closed but Phase 10 is DESIGN APPROVED only. REQUIRE separate explicit owner-approved docs/planning/p10/activation.md; if absent STOP with zero files changed. Verify exact source version, safe Git status and preceding checkpoint rather than trusting prompt resume subject alone.
+
+SOURCE INSPECTION
+P1-P15 committed source, ADR 0036, Phase 10 plan and all acceptance gates. Trace actual producers, consumers and test dependencies before editing; listed files are hints rather than invented interfaces.
+
+GOAL / IMPLEMENT
+MANUAL SOLE FINAL PHASE 10 CLOSEOUT: establish independently committed coherent 0.10.16 source/version candidate BEFORE evidence. Use actual Dope + disposable project in Theia browser/Electron: truthful Markdown import/roundtrip, zero-model manual edit, branch/pool promotion, left inspector, restart, real local LM Studio 4,096-total-context if supported without native tools, human and AI shared action and NEXT-turn freshness, stale/foreign/malformed/approval fail closed, basis-safe Planning Map, full project/History/Mind access. Test SAME saved Chat in left/right/bottom/center, real center tab split beside map/code, Follow/Pin, lease/model/stream retention and no layout hijack. Inspect keyboard, narrow panes, dark/light restrained orange and real noncolor statuses; independently observe no silent hosted egress/agent grants. Run ONE full npm run check on exact committed candidate with browser/Electron builds, restart/authority evidence and git diff --check. Write docs/tasks/p10/closeout.md with exact SHA, per-gate GREEN/NOT GREEN/Evidence Gap. Missing real local, center split, authority or aggregate is NOT GREEN; owner closure and Phase11 activation require separate decision.
+
+PRESERVE
+The Roadmap is strategic, not another Session or shadow canonical document. Markdown/Project Mind/Planning Map/Work/Chat/History and evidence have independent truth and owner revisions. Existing ChatPanel/ChatRepository/model/lease (left/right/bottom/center) remains the only Chat system: no Roadmap Chat mode, widget, transcript, forced docking/opening or center editor theft. Manual and AI use Dope-owned ProjectPlanningActions; untrusted model text cannot self-authorize source writes, Git/shell/process/MCP, AgentRun, map adoption, gate Green or hosted data egress. Keep original Phase 9 evidence and c9 corrections separate; Phase 11 and Phase 12 inactive.
+
+VALIDATION — T3
+P16 T3 direct GUI, connected local model, OS/connection egress observation, exact-source full check, restart, evidence-only closeout; no claimed Green from fixtures.. Run only the focused new/affected test(s), compile changed library outputs actually imported by tests, register new test once in test:product and run git diff --check. For manual P16, run one exact-source full npm run check and real GUI/LM Studio/network/restart evidence, not mock qualification.
+
+EFFICIENCY
+Manual T3 qualification may exceed ordinary prompt budget; record exact source, stage outcomes, and every evidence gap.
+
+DEFER
+Separate explicit Phase 10 owner closeout and Phase 11 activation.
+
+DONE WHEN
+Real committed 0.10.16 source and docs/tasks/p10/closeout.md give an honest Phase 10 GREEN/NOT GREEN with exact tests and unqualified gates; no automatic phase owner-close.
+
+FINAL RESPONSE
+Exact files/changes, focused tests and builds actually observed, source/version identity and remaining evidence gaps.

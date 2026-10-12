@@ -1,0 +1,38 @@
+TASK: Phase 10 / P13 — Small-context local planning transport and JSON fallback
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.10.13`.
+
+VERSION TRANSITION — REQUIRED
+Check Git-proven predecessor `0.10.12` (prior implementation checkpoint). Advance all 13 root/app/package package.json versions and the 20 pinned internal @dope/* dependencies to `0.10.13` DURING this prompt. Runner verifies but does not bump; runner owns checkpoint commits; agent must not commit. No pre-bump, yarn.lock/unrelated dependency edits, root package-lock, destructive reset or unapproved overwrite.
+
+PREFLIGHT / ACTIVATION
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0016, ADR 0036 including its existing ChatPanel amendment, docs/planning/p10/phase-10-plan.md, docs/tasks/p10/README.md, implementation-plan.md and relevant owner services. Phase 9 is owner-closed but Phase 10 is DESIGN APPROVED only. REQUIRE separate explicit owner-approved docs/planning/p10/activation.md; if absent STOP with zero files changed. Verify exact source version, safe Git status and preceding checkpoint rather than trusting prompt resume subject alone.
+
+SOURCE INSPECTION
+model-connections.ts, ai-role-routing.ts, local-context-budget.ts, ChatBackend. Trace actual producers, consumers and test dependencies before editing; listed files are hints rather than invented interfaces.
+
+GOAL / IMPLEMENT
+Support one narrow action per conversational step with measured local model capability, strict JSON fallback without native tools, input+system+output reserve under 4,096 total tokens when supported. Cap retries, abort, visible missing context; fail closed on unavailable local model or bad output. Never silent hosted fallback, background inference or new provider-specific action authority; explicitly chosen hosted Chat remains consented/provenanced.
+
+PRESERVE
+The Roadmap is strategic, not another Session or shadow canonical document. Markdown/Project Mind/Planning Map/Work/Chat/History and evidence have independent truth and owner revisions. Existing ChatPanel/ChatRepository/model/lease (left/right/bottom/center) remains the only Chat system: no Roadmap Chat mode, widget, transcript, forced docking/opening or center editor theft. Manual and AI use Dope-owned ProjectPlanningActions; untrusted model text cannot self-authorize source writes, Git/shell/process/MCP, AgentRun, map adoption, gate Green or hosted data egress. Keep original Phase 9 evidence and c9 corrections separate; Phase 11 and Phase 12 inactive.
+
+VALIDATION — T2
+roadmap-local-model.test.ts: simulated non-tools local response, 4,096 total reserve, context truncation, bounded retries, abort, missing capability and hosted fallback denial. Genuine LM Studio only P16.. Run only the focused new/affected test(s), compile changed library outputs actually imported by tests, register new test once in test:product and run git diff --check. Do not run routine full npm run check or live GUI/model as a substitute for final P16.
+
+EFFICIENCY
+Target <=8 min incl. focused validation, 10-min soft/15-min hard; bounded T2 cross-owner/security tests may justify extra time. Split unexpected scope rather than skipping mandatory safety.
+
+DEFER
+All other workstreams and full real GUI/model/aggregate gates to assigned later prompts; no premature Phase 10 Green.
+
+DONE WHEN
+Coherent 0.10.13 checkpoint and focused test report exist; remaining gates are explicit, not presumed Green.
+
+FINAL RESPONSE
+Exact files/changes, focused tests and builds actually observed, source/version identity and remaining evidence gaps.
