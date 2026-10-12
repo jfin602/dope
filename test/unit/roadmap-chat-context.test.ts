@@ -46,7 +46,7 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
       providerCalls++;
       sent = request.messages.at(-1)?.content ?? '';
-      yield { type: 'complete' as const, text: 'Done', usage: { tokenMeasurement: 'estimated' as const } };
+      yield { type: 'complete' as const, text: '{"type":"no-action","message":"Done"}', usage: { tokenMeasurement: 'estimated' as const } };
     } };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer);
     const { projectHandle } = await backend.attach(new URL(`file://${root}`).href);
@@ -64,7 +64,7 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     const preview = await backend.previewContext({ projectHandle, chatId, selectedModel: selection,
       content: 'What next?', context });
     assert.equal(providerCalls, 0);
-    assert.equal(preview.budgetTokens, 3072);
+    assert.equal(preview.budgetTokens, 938);
     assert.equal(preview.refs[0].kind, 'roadmap-checkpoint');
     assert.equal(preview.refs[0].ownerRevision, 3);
     assert.equal(preview.refs[0].sourceHash, sha256);

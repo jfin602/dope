@@ -58,16 +58,17 @@ async function setup() {
 
 test('only complete strict proposals preview; malformed, fake ID, Green and tool escape do not write', async () => fixture(async f => {
     const initial = await f.current();
-    f.outputs.push('{bad json', proposal(initial.projectId, 1, { type: 'edit', id: 'fake', objective: 'Wrong' }),
+    f.outputs.push('{bad json', '{bad json', proposal(initial.projectId, 1, { type: 'edit', id: 'fake', objective: 'Wrong' }),
         proposal(initial.projectId, 1, { type: 'status', id: 'a', status: 'green' }),
         proposal(initial.projectId, 1, { type: 'shell', id: 'a', command: 'touch file' }));
-    for (let i = 0; i < 4; i++) {
+    await assert.rejects(f.turn(1), /strict JSON/);
+    for (let i = 0; i < 3; i++) {
         const result = await f.turn(1);
         assert.equal(result.proposal, undefined);
         assert.match(result.proposalError ?? '', /rejected/);
         assert.equal((await f.current()).revision, 1);
     }
-    assert.equal(f.sent.length, 4);
+    assert.equal(f.sent.length, 5);
 }));
 
 test('developer rejects or approves one completed proposal; stale manual race rejects and next turn refreshes', async () => fixture(async f => {
@@ -97,7 +98,7 @@ test('developer rejects or approves one completed proposal; stale manual race re
     assert.deepEqual(changed?.changedIds, ['a']);
     assert.equal(changed?.revision, 3);
     assert.equal((await f.current()).checkpoints[0].objective, 'Approved');
-    f.outputs.push('No proposal');
+    f.outputs.push('{"type":"no-action","message":"No proposal"}');
     await f.turn(3);
     assert.match(f.sent.at(-1) ?? '', /Approved/);
 }));

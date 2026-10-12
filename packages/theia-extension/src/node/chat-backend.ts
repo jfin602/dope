@@ -10,6 +10,7 @@ import { ChatContextComposer } from './chat-context-composer';
 import { ChatProjectGrounder, type GroundingResult } from './chat-project-grounder';
 import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
+import { localPlanningJson, roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
     locality: 'any', enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
@@ -91,7 +92,16 @@ export class ChatBackend implements ChatService {
             ?.models.find(item => item.id === request.selectedModel.modelId && item.usable);
         if (!model) throw new Error('Selected model unavailable');
         const grounding = await this.grounder?.ground(root, request.content);
-        const composed = await this.composer.compose(root, chat, request.content, request.context, model.capabilities, grounding);
+        const connection = (await this.models.list()).connections.find(item => item.id === request.selectedModel.connectionId);
+        const localRoadmap = connection?.providerId === 'local' &&
+            request.context.some(item => item.kind === 'roadmap-checkpoint');
+        const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
+            chat.settings.context.reservedOutputTokens) : undefined;
+        const capabilities = budget ? { ...model.capabilities, maxInputTokens: budget.composerInputTokens } : model.capabilities;
+        const composed = await this.composer.compose(root, chat, request.content, request.context, capabilities, grounding);
+        if (budget) verifyRoadmapLocalInput(composed.messages, budget);
+        if (localRoadmap && !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
+            throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
         return { refs: composed.refs, diagnostics: composed.diagnostics,
             usedTokens: composed.usedTokens, budgetTokens: composed.budgetTokens };
     }
@@ -195,6 +205,7 @@ export class ChatBackend implements ChatService {
             return chat.messages[retryIndex - 1].content;
         })() : request.content?.trim() ?? '';
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
+        const roadmapTurn = (request.context ?? []).some(item => item.kind === 'roadmap-checkpoint');
         const requestHard: AIRoleHardConstraints = { ...chatHard,
             minimumKnownContextTokens: Math.ceil(Buffer.byteLength(content, 'utf8') / 3) + 4 +
                 chat.settings.context.reservedOutputTokens };
@@ -202,30 +213,43 @@ export class ChatBackend implements ChatService {
         let selectedModel = request.selectedModel ?? (chat.settings.modelPolicy.type === 'exact' ? chat.settings.modelPolicy.model : undefined);
         if (following) {
             if (!this.routing) throw new Error('Interactive role routing unavailable');
-            const proposed = await this.routing.resolve('interactive', requestHard, true);
+            const proposed = await this.routing.resolve('interactive',
+                roadmapTurn ? { ...requestHard, locality: 'local-only' } : requestHard,
+                roadmapTurn ? false : true);
             const first = proposed.resolution.selectedTarget;
             if (!first) throw new Error('Interactive role has no eligible model; configure or repair it in AI Center → Roles');
             const locality = proposed.inventory.models.find(item => item.connectionId === first.connectionId &&
                 item.providerModelKey === first.modelId)?.locality;
             if (locality === 'hosted' && !request.hostedProjectDataAuthorized)
                 throw new Error('Chat hosted egress confirmation required');
-            const eligible = await this.routing.resolve('interactive', requestHard, request.hostedProjectDataAuthorized === true);
+            const eligible = await this.routing.resolve('interactive',
+                roadmapTurn ? { ...requestHard, locality: 'local-only' } : requestHard,
+                !roadmapTurn && request.hostedProjectDataAuthorized === true);
             selectedModel = eligible.resolution.selectedTarget;
         }
         if (!selectedModel) throw new Error('Select an exact model or configure Interactive in AI Center → Roles');
         const connection = (await this.models.list()).connections.find(item => item.id === selectedModel.connectionId);
         const model = connection?.ready && connection.models.find(item => item.id === selectedModel.modelId && item.usable);
         if (!connection || !model) throw new ModelRuntimeFailure('Selected model is unavailable; manage AI connections in AI Center', 'model-unavailable');
+        if (roadmapTurn && connection.providerId !== 'local' && request.hostedProjectDataAuthorized !== true)
+            throw new Error('Chat hosted project-data confirmation required');
         const controls = chat.settings.reasoningControls ?? {};
         for (const [id, value] of Object.entries(controls))
             if (!model.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
                 throw new ModelRuntimeFailure('Selected model does not support the saved reasoning control', 'unsupported-capability');
         if (!this.composer) throw new Error('Context composer unavailable');
+        const localRoadmap = roadmapTurn && connection.providerId === 'local';
+        const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
+            chat.settings.context.reservedOutputTokens) : undefined;
+        const capabilities = budget ? { ...model.capabilities, maxInputTokens: budget.composerInputTokens } : model.capabilities;
         const grounding = await this.grounder?.ground(root, content);
         const priorRefs = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs : undefined;
         if (priorRefs && !sameAutomaticEvidence(grounding, priorRefs))
             throw new Error('Retry project evidence changed or is stale; start a fresh turn');
-        const composed = await this.composer.compose(root, contextChat, content, request.context ?? [], model.capabilities, grounding);
+        const composed = await this.composer.compose(root, contextChat, content, request.context ?? [], capabilities, grounding);
+        if (budget) verifyRoadmapLocalInput(composed.messages, budget);
+        if (roadmapTurn && !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
+            throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
         let preview: ChatContextPreview = { refs: composed.refs, diagnostics: composed.diagnostics,
             usedTokens: composed.usedTokens, budgetTokens: composed.budgetTokens };
         if (priorRefs && JSON.stringify(preview.refs.filter(ref => ref.origin !== 'automatic')) !==
@@ -271,8 +295,11 @@ export class ChatBackend implements ChatService {
                 await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id, actualModel: actual });
             }
             let sequence = 0;
-            const events = following ? this.routing!.generate({ roleId: 'interactive', requestHard,
-                hostedProjectDataAuthorized: request.hostedProjectDataAuthorized === true, allowFallback: true,
+            const generate = () => following ? this.routing!.generate({ roleId: 'interactive',
+                requestHard: localRoadmap ? { ...requestHard, locality: 'local-only' as const } : requestHard,
+                hostedProjectDataAuthorized: !localRoadmap && request.hostedProjectDataAuthorized === true,
+                allowFallback: !roadmapTurn,
+                localOnly: localRoadmap,
                 signal: abort.signal,
                 conversation: async target => {
                     const resolvedConnection = (await this.models!.list()).connections.find(item => item.id === target.connectionId);
@@ -281,7 +308,12 @@ export class ChatBackend implements ChatService {
                     for (const [id, value] of Object.entries(controls))
                         if (!resolvedModel.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
                             throw new ModelRuntimeFailure('Role target does not support the saved reasoning control', 'unsupported-capability');
-                    const next = await this.composer!.compose(root, contextChat, content, request.context ?? [], resolvedModel.capabilities, grounding);
+                    const nextBudget = localRoadmap ? roadmapLocalBudget(resolvedModel.capabilities.contextWindowTokens,
+                        chat.settings.context.reservedOutputTokens) : undefined;
+                    const nextCapabilities = nextBudget ? { ...resolvedModel.capabilities,
+                        maxInputTokens: nextBudget.composerInputTokens } : resolvedModel.capabilities;
+                    const next = await this.composer!.compose(root, contextChat, content, request.context ?? [], nextCapabilities, grounding);
+                    if (nextBudget) verifyRoadmapLocalInput(next.messages, nextBudget);
                     if (!sameRefIdentities(next.refs, preview.refs))
                         throw new Error('Fallback evidence differs; choose a model explicitly');
                     if (JSON.stringify(next.refs) !== JSON.stringify(preview.refs)) {
@@ -292,11 +324,15 @@ export class ChatBackend implements ChatService {
                         usedTokens: next.usedTokens, budgetTokens: next.budgetTokens };
                     return { messages: next.messages, controls, signal: abort.signal,
                         ...(chat.settings.context.reservedOutputTokens > 0 ?
-                            { maxOutputTokens: chat.settings.context.reservedOutputTokens } : {}) };
-                } }) : this.models.generate(selectedModel,
+                        { maxOutputTokens: budget?.output ?? chat.settings.context.reservedOutputTokens } : {}) };
+                } }) : this.models!.generate(selectedModel!,
                 { messages: composed.messages, controls, signal: abort.signal,
                     ...(chat.settings.context.reservedOutputTokens > 0 ?
-                        { maxOutputTokens: chat.settings.context.reservedOutputTokens } : {}) });
+                        { maxOutputTokens: budget?.output ?? chat.settings.context.reservedOutputTokens } : {}) },
+                localRoadmap ? { localOnly: true } : undefined);
+            const events = localRoadmap ? (async function* () {
+                yield await localPlanningJson(generate, abort.signal, budget!.output);
+            })() : generate();
             for await (const event of events) {
                 if (event.type === 'delta') {
                     if (following && sequence === 0) {
@@ -333,7 +369,7 @@ export class ChatBackend implements ChatService {
                     const titledChat = completed.chats.find(item => item.id === key);
                     const index = titledChat?.messages.findIndex(message => message.id === assistant!.id) ?? -1;
                     const preceding = index > 0 ? titledChat!.messages[index - 1] : undefined;
-                    if (titledChat?.titleSource === 'placeholder' && preceding?.role === 'user' &&
+                    if (!roadmapTurn && titledChat?.titleSource === 'placeholder' && preceding?.role === 'user' &&
                         !titledChat.messages.slice(0, index).some(message =>
                             message.role === 'assistant' && message.execution.status === 'complete'))
                         void this.automaticTitle(root, key, preceding, assistant.id, output, actual);

@@ -15,7 +15,7 @@ import { RoadmapStore, type RoadmapCheckpoint } from '@dope/project-intelligence
 import type { GroundingResult } from './chat-project-grounder';
 
 export const GROUNDED_CHAT_INSTRUCTION = 'Project facts are verified only when supported by the supplied project evidence. Do not claim to have read, listed, searched, or inspected project state beyond that evidence. State what is missing or unknown.';
-const ROADMAP_ACTION_INSTRUCTION = 'If proposing one Roadmap edit, reply with only compact JSON: {"type":"roadmap-proposal","projectId":"<context projectId>","ownerRevision":<context ownerRevision>,"action":<one P3 planning action>}. Use only IDs and revision from supplied context. This is a proposal requiring human approval; never claim it was applied. Otherwise answer normally.';
+const ROADMAP_ACTION_INSTRUCTION = 'If proposing one Roadmap edit, reply with only compact JSON: {"type":"roadmap-proposal","projectId":"<context projectId>","ownerRevision":<context ownerRevision>,"action":<one P3 planning action>}. Use only IDs and revision from supplied context. This is a proposal requiring human approval; never claim it was applied. If no edit is justified, reply {"type":"no-action","message":"brief reason or missing context"}. Never claim an edit was applied.';
 
 export interface ComposedChatContext { messages: ConversationMessage[]; refs: ChatContextRef[];
     diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }

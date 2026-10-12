@@ -24,7 +24,7 @@ const complete = (text: string): ConversationEvent => ({ type: 'complete', text,
 type Step = ConversationEvent | Error;
 
 function harness(options: { preferred?: string; fallbacks?: string[]; models?: AIModel[];
-    policyFallback?: boolean; scripts?: Record<string, Step[]>; onGenerate?: () => void;
+    policyFallback?: boolean; scripts?: Record<string, Step[]>; onGenerate?: (guard?: { localOnly: true }) => void;
     health?: Record<string, AIConnectionHealth> } = {}) {
     const models = options.models ?? [model('a'), model('b')];
     const state = { policy: { version: 1 as const, revision: 4, policies: AI_ROLE_IDS.map(roleId => ({
@@ -41,9 +41,9 @@ function harness(options: { preferred?: string; fallbacks?: string[]; models?: A
             tests: [] }), loadedLocalModelsSnapshot: () => models.filter(item => item.locality === 'local').map(item =>
             ({ connectionId: item.connectionId, providerModelKey: item.providerModelKey,
                 contextWindowTokens: 8192 })) }, {
-        async *generate(target) {
+        async *generate(target, _conversation, guard) {
             calls.push(target.connectionId);
-            options.onGenerate?.();
+            options.onGenerate?.(guard);
             for (const step of options.scripts?.[target.connectionId] ?? [complete(target.connectionId)]) {
                 if (step instanceof Error) throw step;
                 yield step;
@@ -60,6 +60,15 @@ function harness(options: { preferred?: string; fallbacks?: string[]; models?: A
     };
     return { service, state, calls, request, run };
 }
+
+test('local planning forwards a transport guard and never authorizes hosted routing', async () => {
+    const guards: unknown[] = [];
+    const base = harness({ preferred: 'a', fallbacks: [], models: [model('a', 'local')],
+        onGenerate: guard => guards.push(guard) });
+    await base.run({ requestHard: { ...hard(), locality: 'local-only' },
+        hostedProjectDataAuthorized: false, allowFallback: false, localOnly: true });
+    assert.deepEqual(guards, [{ localOnly: true }]);
+});
 
 async function rejected(run: () => Promise<unknown>, expected: string[]) {
     await assert.rejects(run, error => {

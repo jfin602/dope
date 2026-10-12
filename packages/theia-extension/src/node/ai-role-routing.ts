@@ -16,6 +16,7 @@ export interface RoleConversationRequest {
     requestHard: AIRoleHardConstraints;
     hostedProjectDataAuthorized: boolean;
     allowFallback: boolean;
+    localOnly?: boolean;
     signal?: AbortSignal;
     conversation: Omit<ConversationRequest, 'modelId'> | ((target: AIRoleTarget) => Promise<Omit<ConversationRequest, 'modelId'>>);
 }
@@ -116,7 +117,8 @@ export class AIRoleRoutingService {
             let meaningfulOutput = false;
             try {
                 const conversation = typeof request.conversation === 'function' ? await request.conversation(target) : request.conversation;
-                for await (const event of this.runtime.generate(target, conversation)) {
+                for await (const event of this.runtime.generate(target, conversation,
+                    request.localOnly ? { localOnly: true } : undefined)) {
                     if (event.type === 'delta') {
                         if (event.text.length) { meaningfulOutput = true; yield { ...event, target }; }
                     } else {
