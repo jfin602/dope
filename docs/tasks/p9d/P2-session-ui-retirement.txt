@@ -1,0 +1,35 @@
+TASK: Phase 9 / P2 — Remove Session frontend workspace launcher and editing surface
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.24`.
+
+VERSION TRANSITION — REQUIRED
+Verify Git-proven predecessor `0.9.23`. Advance all 13 root/app/package package.json versions and pinned internal @dope/* dependency references to `0.9.24` DURING THIS PROMPT. Runner verifies but does not bump, and owns checkpoint commits; do not commit manually. Preserve yarn.lock, unrelated dependencies, user work and no root package-lock.json. No pre-bump.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0034, docs/planning/p9/phase-9-plan.md, docs/tasks/p9d/README.md, docs/tasks/p9d/implementation-plan.md and docs/tasks/p9b/closeout.md. Old Session p9c P10 is superseded and is NOT authority for this stack. Require a separate explicitly owner-approved docs/planning/p9/phase-9d-activation.md before implementation or version change; if absent STOP with zero changes. Verify the actual source SHA/version and safe worktree.
+
+GOAL / IMPLEMENT
+Trace frontend Session code consumers first. Remove the LEFT SessionsLauncherView, dope.sessions.open command, center DeveloperSessionWidget, Session controller/navigation/presentation and obsolete Session-specific CSS/registration from frontend-module.ts. Do not leave an invisible Session UI or replace it prematurely with History. Safely handle stale Theia widget/layout restoration IDs without cross-root content. Preserve existing Chat/Work left/right launchers, ChatOpenOwners/WorkOpenOwners, PlanningMap and editor behavior. Remove UI-specific test registration only when the corresponding UI is gone; preserve original source/evidence in Git, and do not touch legacy .dope user data or P1 exporter.
+
+PRESERVE
+ADR 0034 replaces DeveloperSession with History/Developer Continuity; do not create hidden Session-owned links, a new task ontology, or a second canonical activity log. Protect original .dope/development-sessions.json and all other owner stores, Chat/Work single-owner and Planning independence. No automatic agent/model action, hosted egress, WorkItem completion or canonical Architecture adoption. Preserve historical 9A/9B bounded Green, old 9C unqualified P10 unexecuted, Phase5 Not Green/P12 unexecuted and Phase8 Green. Phase 10 inactive.
+
+VALIDATION — T1
+T1 focused frontend registration/Chat/Work panel tests plus source negative guard for Session launcher/center widget, minimal extension typecheck/build and git diff --check. Do not run full npm run check.
+
+EFFICIENCY
+Target <=8 minutes including focused validation (10-minute soft, 15-minute hard), except bounded T2 safety checks may justifiably exceed; split unexpected scope instead of waiving safety. Build only required changed compiled libs and run smallest tests, not unconditional npm test/check, browser/Electron packaging or model calls. P13 alone owns full aggregate/real GUI.
+
+DEFER
+Node Session backend and contracts P3; History right toolbar P7.
+
+DONE WHEN
+Coherent `0.9.24` checkpoint has scoped validation, true negative regression coverage and explicit unqualified gaps; do not claim Phase 9 Green.
+
+FINAL RESPONSE
+Files changed, focused tests, exact source/version checkpoint and remaining gates.

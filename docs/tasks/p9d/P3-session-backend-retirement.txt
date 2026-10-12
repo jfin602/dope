@@ -1,0 +1,35 @@
+TASK: Phase 9 / P3 — Remove Session-only Node backend store RPC and contracts
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.25`.
+
+VERSION TRANSITION — REQUIRED
+Verify Git-proven predecessor `0.9.24`. Advance all 13 root/app/package package.json versions and pinned internal @dope/* dependency references to `0.9.25` DURING THIS PROMPT. Runner verifies but does not bump, and owns checkpoint commits; do not commit manually. Preserve yarn.lock, unrelated dependencies, user work and no root package-lock.json. No pre-bump.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0034, docs/planning/p9/phase-9-plan.md, docs/tasks/p9d/README.md, docs/tasks/p9d/implementation-plan.md and docs/tasks/p9b/closeout.md. Old Session p9c P10 is superseded and is NOT authority for this stack. Require a separate explicitly owner-approved docs/planning/p9/phase-9d-activation.md before implementation or version change; if absent STOP with zero changes. Verify the actual source SHA/version and safe worktree.
+
+GOAL / IMPLEMENT
+After P1 exporter and P2 frontend retirement, inspect all imports of DeveloperSession*, SessionArtifactRef and Session-only resolver/candidate/store. Delete former packages/contracts/src/developer-session*.ts, Session-specific node backend/store/resolver/candidate and backend-module.ts ConnectionHandler/DI bindings; retire related unit tests/test:product entries only after proving no current consumer. Re-home any independently useful owner metadata code into neutral History seam, not hidden Session object. Preserve persisted AgentTask origin schema compatibility and legacy .dope/development-sessions.json untouched, even in migrated/moved projects. P1 offline read-only export must still work.
+
+PRESERVE
+ADR 0034 replaces DeveloperSession with History/Developer Continuity; do not create hidden Session-owned links, a new task ontology, or a second canonical activity log. Protect original .dope/development-sessions.json and all other owner stores, Chat/Work single-owner and Planning independence. No automatic agent/model action, hosted egress, WorkItem completion or canonical Architecture adoption. Preserve historical 9A/9B bounded Green, old 9C unqualified P10 unexecuted, Phase5 Not Green/P12 unexecuted and Phase8 Green. Phase 10 inactive.
+
+VALIDATION — T2
+T2 targeted old-state runtime import/registration negative test, legacy exporter v1/v2 preservation, affected Chat/Planning/Agent/Project Mind test suites and actual typecheck/build dependency graph. Verify no deprecated runtime writes, test:product only removes obsolete tests, git diff --check.
+
+EFFICIENCY
+Target <=8 minutes including focused validation (10-minute soft, 15-minute hard), except bounded T2 safety checks may justifiably exceed; split unexpected scope instead of waiving safety. Build only required changed compiled libs and run smallest tests, not unconditional npm test/check, browser/Electron packaging or model calls. P13 alone owns full aggregate/real GUI.
+
+DEFER
+History projection and services P4 onward; prior historical Green remains history.
+
+DONE WHEN
+Coherent `0.9.25` checkpoint has scoped validation, true negative regression coverage and explicit unqualified gaps; do not claim Phase 9 Green.
+
+FINAL RESPONSE
+Files changed, focused tests, exact source/version checkpoint and remaining gates.
