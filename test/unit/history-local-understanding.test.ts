@@ -41,6 +41,15 @@ test('exact connected local model produces bounded, cited, ephemeral sections', 
     assert.deepEqual(result.provenance, provenance);
 });
 
+test('uncited unknowns are omitted while cited model interpretation remains visible', async () => {
+    const output = JSON.stringify({ interpretations: [{ text: 'The map may need review',
+        citations: ['planning:map:map-a'] }], unknowns: [{ text: 'No further details were supplied', citations: [] }] });
+    const result = await explainHistoryLocally(preview as any, new AbortController().signal,
+        routing(local) as any, model(output) as any);
+    assert.equal(result.interpretations.length, 1);
+    assert.deepEqual(result.unknowns, []);
+});
+
 test('hosted-only and role fallback cannot execute, even if routing returns a hosted target', async () => {
     let calls = 0;
     const models = { generate: async function* () { calls++; yield { type: 'complete' }; } };
