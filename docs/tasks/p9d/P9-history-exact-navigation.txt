@@ -1,0 +1,35 @@
+TASK: Phase 9 / P9 — Continue into exact existing Chat Work Planning Mind and editor
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.31`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven `0.9.30`, change all 13 root/app/package package.json versions and pinned internal @dope/* dependencies to `0.9.31` DURING THIS PROMPT. Runner verifies but does not bump and owns implementation checkpoint. No manual commits or pre-bumps; preserve yarn.lock, unrelated dependencies, developer changes, no root package-lock.json.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0034, docs/planning/p9/phase-9-plan.md, docs/tasks/p9d/implementation-plan.md, docs/tasks/p9d/README.md and docs/tasks/p9b/closeout.md. Old Session p9c P10 is superseded, and p9d is final Phase9 subphase. Require separate explicitly owner-approved docs/planning/p9/phase-9d-activation.md before any implementation; STOP with zero changes when absent. Verify actual source/version predecessor and safe worktree.
+
+GOAL / IMPLEMENT
+Wire Continue and History rows through current ChatOpenOwners/WorkOpenOwners, ChatPanelController/Widget, PlanningMapController and existing PhysicalMapWidget, ProjectMindWidget and EditorManager/OpenerService for safe project-relative file paths. Reuse only independently useful code from old Session navigation without retaining Session contracts or manual links. Verify exact artifact/project/root/revision before and after awaits, focus an existing panel rather than opening duplicate writer, and honestly report stale/missing/foreign/unsupported target. Never execute/resume AgentRun, auto-accept, rebase/adopt Planning or modify Git/source.
+
+PRESERVE
+History is optional source-backed project-local observation and navigation, not a Session, permission grant, activity database or canonical record of work. Chat/Work one-live-owner; Planning and Mind independent. No automatic agent/model call, hosted fallback, owner-store write, synthetic Git edit timestamp, WorkItem completion or architecture adoption. No data egress without explicit separate permission. Preserve historical 9A/9B scoped Green, old 9C unqualified, Phase5 Not Green, Phase8 Green; Phase10 inactive.
+
+VALIDATION — T2
+T2 test/unit/history-navigation.test.ts: already-open Chat/Work owner focus, precise map+WorkItem and Mind, file traversal/symlink/foreign project, async switch/cancellation, no AgentRun execution or source mutation. Register once and run bounded affected panel/planning tests with minimal builds and git diff --check.
+
+EFFICIENCY
+Aim <=8 minutes incl. focused checks (10-minute soft/15-minute hard); T2 may exceed only for justified bounded cross-owner safety. Build only changed package lib outputs needed by tests; no unconditional npm run check/npm test, broad GUI/native package or model execution. P13 owns full Phase9 qualification.
+
+DEFER
+Context preview and local-only explanation P10/P11; full GUI P13.
+
+DONE WHEN
+Scoped feature has focused evidence and coherent `0.9.31` version, with any unqualified behavior reported instead of inventing Phase9 Green.
+
+FINAL RESPONSE
+Files changed, targeted tests, exact version/source checkpoint and remaining gaps.
