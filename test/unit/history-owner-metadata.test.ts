@@ -78,6 +78,7 @@ test('Planning status and Mind timestamps remain owner facts; absent Mind stays 
     const mindBefore = await readFile(mindPath);
     const second = await readHistoryOwnerMetadata(project(root), observedAt);
     assert.equal(second.entries.find(item => item.source === 'project-mind')?.occurredAt, now);
+    assert.equal(second.entries.find(item => item.source === 'project-mind')?.ownerProjectId, mind.projectId);
     assert.equal(JSON.stringify(second).includes('Private body'), false);
     assert.deepEqual(await readFile(mindPath), mindBefore);
   } finally { await rm(root, { recursive: true, force: true }); }

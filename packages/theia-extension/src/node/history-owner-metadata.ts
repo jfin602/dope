@@ -70,7 +70,7 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
                 if (!meta) { diagnostic('chat', `Chat ${chatId} missing`); continue; }
                 result.entries.push({ ...project, kind: 'event', source: 'chat', sourceId: chatId,
                     owner: { kind: 'chat', chatId }, title: meta.title, status: { kind: 'owner', label: 'Chat' },
-                    availability: 'available', occurredAt: meta.lastInteractedAt, observedAt: null });
+                    availability: 'available', ownerRevision: meta.revision, occurredAt: meta.lastInteractedAt, observedAt: null });
             } catch (error) { diagnostic('chat', `Chat ${chatId}: ${String(error)}`); }
         }
     } catch (error) { diagnostic('chat', error); }
@@ -87,7 +87,7 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
                 const latest = map.history.at(-1);
                 result.entries.push({ ...project, kind: 'event', source: 'planning', sourceId: `map:${map.id}`,
                     owner: { kind: 'planning-map', mapId: map.id }, title: map.title,
-                    status: { kind: 'owner', label: map.status }, availability: 'available',
+                    status: { kind: 'owner', label: map.status }, availability: 'available', ownerRevision: map.revision,
                     occurredAt: latest?.at ?? null, observedAt: null });
                 count++;
                 for (const item of map.workItems) {
@@ -97,7 +97,7 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
                     result.entries.push({ ...project, kind: 'snapshot', source: 'planning',
                         sourceId: `work:${map.id}:${item.id}`, owner: { kind: 'work-item', mapId: map.id, workItemId: item.id },
                         title: item.title, status: { kind: 'work-item', state: item.status },
-                        availability: 'available', occurredAt: null, observedAt });
+                        availability: 'available', ownerRevision: map.revision, occurredAt: null, observedAt });
                     count++;
                 }
             }
@@ -112,6 +112,7 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
                 result.entries.push({ ...project, kind: 'event', source: 'project-mind', sourceId: artifact.id,
                     owner: { kind: 'project-mind', artifactId: artifact.id }, title: artifact.title,
                     status: { kind: 'owner', label: `${artifact.type}: ${artifact.status}` }, availability: 'available',
+                    ownerRevision: mind.revision, ownerProjectId: mind.projectId,
                     occurredAt: artifact.updatedAt, observedAt: null });
             }
             if (mind.artifacts.length > MAX_ITEMS) {

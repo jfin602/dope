@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { lstat, realpath } from 'node:fs/promises';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { projectHistory, proposeHistoryContinuation } from '@dope/contracts/lib/history';
 import type { HistoryFocusTarget, HistoryProject } from '@dope/contracts/lib/history';
@@ -64,6 +67,27 @@ export class HistoryBackend implements HistoryService {
         });
         this.focusWrite = write.catch(() => {});
         await write;
+    }
+
+    async resolveEditor(projectHandle: string, projectRelativePath: string): Promise<string> {
+        if (this.disposed || !this.project || projectHandle !== this.handle) throw new Error('Invalid History project handle');
+        const project = this.project, generation = this.generation;
+        const parts = typeof projectRelativePath === 'string' ? projectRelativePath.split('/') : [];
+        if (!parts.length || projectRelativePath.length > 512 || parts.some(part => !part || part === '.' || part === '..' || part.includes('\\') || part.includes('\0')))
+            throw new Error('Unsafe project-relative editor path');
+        if (await realpath(project.projectRoot) !== project.projectRoot) throw new Error('Project root moved');
+        let file = project.projectRoot;
+        for (const [index, part] of parts.entries()) {
+            file = join(file, part);
+            const info = await lstat(file);
+            if (info.isSymbolicLink() || await realpath(file) !== file ||
+                (index === parts.length - 1 ? !info.isFile() : !info.isDirectory()))
+                throw new Error('Unsafe editor path');
+        }
+        if (this.disposed || generation !== this.generation || projectHandle !== this.handle ||
+            (await this.planning.read(project.projectRoot)).projectId !== project.projectId)
+            throw new Error('History project changed during editor validation');
+        return pathToFileURL(file).toString();
     }
 
     dispose(): void { this.disposed = true; ++this.generation; this.project = undefined; }

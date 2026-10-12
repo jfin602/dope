@@ -16,4 +16,5 @@ export interface HistoryService {
     attach(folderUri: string): Promise<{ projectHandle: string }>;
     read(projectHandle: string): Promise<HistorySnapshot>;
     recordFocus(projectHandle: string, owner: HistoryFocusTarget): Promise<void>;
+    resolveEditor(projectHandle: string, projectRelativePath: string): Promise<string>;
 }

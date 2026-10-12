@@ -47,6 +47,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private readonly content = document.createElement('div');
     private workspaceRequest = 0;
+    private initialAttach: Promise<void> = Promise.resolve();
     private modelsRequest = 0;
     private models: ModelConnectionsSnapshot = { connections: [] };
     private settingsOpen = false;
@@ -103,7 +104,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             void this.directController?.resolveTarget();
             void this.workController?.phase.refresh();
             if (this.panel.work?.kind === 'task') void this.workController?.select(this.panel.work); });
-        void this.attach();
+        this.initialAttach = this.attach();
         if (this.module === 'chat') void this.loadModels();
     }
     private scrollToLatest(): void {
@@ -191,12 +192,23 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 void this.workController?.select(this.panel.work);
         });
         if (this.module === 'chat') await this.controller.attach(workspace);
+        else await workAttached;
     }
 
     async selectChatLauncher(): Promise<void> {
         if (this.module !== 'chat') return;
         this.panel.setMode('chat');
         await this.controller.select(undefined);
+    }
+    async navigateChat(chatId: string, workspace: string): Promise<boolean> {
+        await this.initialAttach;
+        if (this.isDisposed || this.module !== 'chat' || this.panel.workspace !== workspace ||
+            this.controller.workspace !== workspace || !this.controller.attached) return false;
+        await this.controller.refresh();
+        if (this.isDisposed || this.panel.workspace !== workspace || this.controller.workspace !== workspace ||
+            !this.controller.snapshot?.chats.some(chat => chat.id === chatId)) return false;
+        return await this.controller.select(chatId) && this.panel.workspace === workspace &&
+            this.controller.workspace === workspace && this.controller.chatId === chatId;
     }
     async selectWorkLauncher(selection?: WorkSelection, navigationOnly = false): Promise<void> {
         this.composingWork = false;
@@ -208,16 +220,20 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (!navigationOnly) await this.refreshWork();
     }
     /** Exact owner navigation; never starts a task or changes the Chat conversation. */
-    async navigateWork(selection: WorkSelection): Promise<boolean> {
-        if (this.module !== 'work' || !this.panel.workspace || !this.workController?.handle) return false;
+    async navigateWork(selection: WorkSelection, workspace: string): Promise<boolean> {
+        await this.initialAttach;
+        if (this.module !== 'work' || this.panel.workspace !== workspace || this.workController?.project !== workspace ||
+            !this.workController.handle) return false;
         await this.selectWorkLauncher(selection, true);
-        if (!this.panel.work || this.panel.work.id !== selection.id || this.panel.work.kind !== selection.kind)
+        if (this.panel.workspace !== workspace || this.workController.project !== workspace ||
+            !this.panel.work || this.panel.work.id !== selection.id || this.panel.work.kind !== selection.kind)
             return false;
         const exact = selection.kind === 'task' ? this.workController.selectedTask?.id === selection.id :
             selection.kind === 'run' ? this.workController.selectedRun?.id === selection.id :
                 this.workController.phase.selected?.id === selection.id;
         if (!exact) this.panel.selectWork(undefined);
-        return exact && this.panel.work?.id === selection.id && this.panel.work.kind === selection.kind;
+        return exact && this.panel.workspace === workspace && this.workController.project === workspace &&
+            this.panel.work?.id === selection.id && this.panel.work.kind === selection.kind;
     }
     async selectPromptStacks(): Promise<void> {
         if (this.module !== 'work') return;

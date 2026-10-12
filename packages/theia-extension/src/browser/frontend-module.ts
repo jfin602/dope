@@ -53,6 +53,7 @@ import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, workLau
 import { historyServicePath, HistoryService } from '@dope/contracts/lib/history-service';
 import { HistoryWidget, HISTORY_WIDGET_ID } from './history-widget';
 import { HistoryFocusContribution } from './history-focus-contribution';
+import { historyOwnerNavigation } from './history-owner-navigation';
 
 const modelInventoryChanged = new Emitter<void>();
 
@@ -187,7 +188,12 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(HistoryFocusContribution).toSelf().inSingletonScope();
     bind(FrontendApplicationContribution).toService(HistoryFocusContribution);
     bind(WidgetFactory).toDynamicValue(context => ({ id: HISTORY_WIDGET_ID, createWidget: () => new HistoryWidget(
-        () => context.container.get(HistoryService), context.container.get(WorkspaceService)) })).inSingletonScope();
+        () => context.container.get(HistoryService), context.container.get(WorkspaceService), (handle, project) =>
+            historyOwnerNavigation({ shell: context.container.get(ApplicationShell), manager: context.container.get(WidgetManager),
+                chats: context.container.get(ChatOpenOwners), work: context.container.get(WorkOpenOwners),
+                planning: context.container.get(PlanningMapController), map: context.container.get(SoftwareMapController),
+                history: context.container.get(HistoryService), editors: context.container.get(EditorManager),
+                opener: context.container.get(OpenerService) }, handle, project)) })).inSingletonScope();
     const openPhysicalMap = async (manager: WidgetManager, shell: ApplicationShell,
         map?: SoftwareMapController, options?: PhysicalMapTabOptions) => {
         const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID, options);

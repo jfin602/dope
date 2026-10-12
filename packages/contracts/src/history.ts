@@ -39,6 +39,8 @@ interface HistoryEntryBase extends HistoryProject {
     title: string;
     status: HistoryStatus;
     availability: HistoryAvailability;
+    ownerRevision?: number;
+    ownerProjectId?: string;
 }
 export type HistoryEntry = HistoryEntryBase & (
     /** Actual owner event time, or null when the owner has no known event time. */
@@ -106,7 +108,7 @@ export function proposeHistoryContinuation(
         return { kind: 'verified-focus', owner: focus.owner, observedAt: focus.observedAt };
     }
     for (const entry of projectHistory(entries, project)) {
-        if (entry.availability === 'available' && entry.owner.kind !== 'git-dirty') {
+        if (entry.availability === 'available' && entry.owner.kind !== 'git-dirty' && entry.owner.kind !== 'git-commit') {
             return { kind: 'recent-activity-suggestion', owner: entry.owner,
                 sourceId: entry.sourceId, title: entry.title };
         }

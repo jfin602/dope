@@ -126,6 +126,14 @@ export class ProjectMindWidget extends BaseWidget {
         await this.navigate(id);
     }
 
+    async navigateArtifact(id: string, workspace: string, projectId: string): Promise<boolean> {
+        await this.loadPromise;
+        if (this.isDisposed || this.controller.workspace !== workspace || !this.controller.canLeave ||
+            this.controller.projectId !== projectId || !await this.controller.refresh()) return false;
+        return !this.isDisposed && this.controller.workspace === workspace && this.controller.projectId === projectId &&
+            this.controller.snapshot?.artifacts.some(artifact => artifact.id === id) === true && this.controller.select(id);
+    }
+
     private render(): void {
         const mind = this.controller;
         this.status.textContent = mind.error || (mind.loading ? 'Loading Project Mind…' : mind.pending ? `${mind.pendingOperation ?? 'Operation'} pending; awaiting committed acknowledgement…` :
