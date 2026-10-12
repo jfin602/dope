@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
-    ChatTurnRequest, ChatOperation, ChatContextPreview } from '@dope/chat/lib/service';
+    ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal } from '@dope/chat/lib/service';
 import { suggestedChatTitle, type ChatAssistantMessage, type ChatModelProvenance, type ChatUserMessage } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
@@ -9,6 +9,7 @@ import { ModelConnectionsRegistry } from './model-connections';
 import { ChatContextComposer } from './chat-context-composer';
 import { ChatProjectGrounder, type GroundingResult } from './chat-project-grounder';
 import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
+import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
     locality: 'any', enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
@@ -35,10 +36,13 @@ export class ChatBackend implements ChatService {
     private readonly unlisten: () => void;
     private readonly turns = new Map<string, { token: string; abort: AbortController }>();
     private readonly pendingCancel = new Map<string, string>();
+    private readonly proposals = new Map<string, { id: string; messageId: string; leaseToken: string;
+        handle: string; request: PlanningActionRequest; token: string; changedIds: string[] }>();
 
     constructor(private readonly repository: ChatRepository, client: ChatClient,
         private readonly models?: ModelConnectionsRegistry, private readonly composer?: ChatContextComposer,
-        private readonly routing?: AIRoleRoutingService, private readonly grounder?: ChatProjectGrounder) {
+        private readonly routing?: AIRoleRoutingService, private readonly grounder?: ChatProjectGrounder,
+        private readonly planning?: ProjectPlanningActions) {
         this.unlisten = repository.onChange((root, event) => {
             if (!this.disposed && root === this.root && this.handle)
                 client.notifyChatEvent({ ...event, projectHandle: this.handle });
@@ -106,12 +110,83 @@ export class ChatBackend implements ChatService {
         return this.repository.publishDelta(this.active(request.projectHandle), request.chatId,
             request.messageId, request.executionId, request.sequence, request.delta, request.leaseToken);
     }
-    async runTurn(request: ChatTurnRequest): Promise<ChatContextPreview> {
+    private clearProposal(chatId: string): void {
+        const pending = this.proposals.get(chatId);
+        if (pending) this.planning?.detach(pending.handle);
+        this.proposals.delete(chatId);
+    }
+
+    private async proposal(root: string, chatId: string, messageId: string, leaseToken: string,
+        output: string, refs: ChatContextPreview['refs']): Promise<{ proposal?: ChatPlanningProposal; proposalError?: string }> {
+        if (!this.planning || !output.trimStart().startsWith('{') || !refs.some(ref => ref.kind === 'roadmap-checkpoint')) return {};
+        let handle: string | undefined;
+        try {
+            if (Buffer.byteLength(output, 'utf8') > 4096) throw new Error('Planning proposal exceeds the size limit');
+            const value: unknown = JSON.parse(output);
+            if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid planning proposal');
+            const raw = value as Record<string, unknown>;
+            if (Object.keys(raw).sort().join(',') !== 'action,ownerRevision,projectId,type' ||
+                raw.type !== 'roadmap-proposal' || typeof raw.projectId !== 'string' ||
+                !Number.isSafeInteger(raw.ownerRevision) || !raw.action || typeof raw.action !== 'object' ||
+                Array.isArray(raw.action)) throw new Error('Invalid planning proposal schema');
+            const context = refs.filter(ref => ref.kind === 'roadmap-checkpoint');
+            if (context.length !== 1 || context[0].projectId !== raw.projectId ||
+                context[0].ownerRevision !== raw.ownerRevision) throw new Error('Stale or foreign planning proposal');
+            const action = raw.action as PlanningAction;
+            if (action.type !== 'create' && action.id !== context[0].id)
+                throw new Error('Planning proposal targets an unselected checkpoint');
+            // The action is untrusted. P3 validates every field, identity, source and owner transition.
+            const attached = await this.planning.attach(root);
+            handle = attached.projectHandle;
+            if (attached.snapshot.projectId !== raw.projectId || attached.snapshot.revision !== raw.ownerRevision)
+                throw new Error('Stale or foreign planning proposal');
+            const request: PlanningActionRequest = { projectHandle: handle, ownerId: raw.projectId,
+                expectedRevision: raw.ownerRevision as number, actions: [action],
+                ...(context[0].sourceHash ? { sourceHashes: { [context[0].id]: context[0].sourceHash } } : {}) };
+            const preview = await this.planning.preview(request);
+            const id = randomUUID();
+            const fields = (item: typeof preview.next.checkpoints[number] | undefined) => item && ({
+                id: item.id, title: item.title, objective: item.objective, order: item.order,
+                dependencies: item.dependencies, links: item.links, status: item.status });
+            this.proposals.set(chatId, { id, messageId, leaseToken, handle, request,
+                token: preview.token, changedIds: preview.changedIds });
+            return { proposal: { id, chatId, messageId, ownerId: preview.ownerId, revision: preview.revision,
+                changedIds: preview.changedIds, action: { type: action.type, id: action.id },
+                summary: JSON.stringify({ action, before: fields(attached.snapshot.checkpoints.find(item => item.id === action.id)),
+                    after: fields(preview.next.checkpoints.find(item => item.id === action.id)) }) } };
+        } catch (error) {
+            if (handle) this.planning.detach(handle);
+            return { proposalError: `Planning proposal rejected: ${String(error)}` };
+        }
+    }
+
+    async decidePlanningProposal(projectHandle: string, chatId: string, leaseToken: string,
+        proposalId: string, approve: boolean): Promise<{ revision: number; changedIds: string[] } | undefined> {
+        const root = this.active(projectHandle);
+        const pending = this.proposals.get(chatId);
+        if (!pending || pending.id !== proposalId || pending.leaseToken !== leaseToken || !this.planning ||
+            typeof approve !== 'boolean') throw new Error('Planning proposal unavailable');
+        await this.repository.renew(root, chatId, leaseToken);
+        const message = (await this.repository.read(root)).chats.find(chat => chat.id === chatId)
+            ?.messages.find(item => item.id === pending.messageId);
+        if (message?.role !== 'assistant' || message.execution.status !== 'complete')
+            throw new Error('Planning proposal is not a completed Chat turn');
+        this.proposals.delete(chatId);
+        try {
+            if (!approve) return undefined;
+            const result = await this.planning.apply(pending.request, pending.token, true);
+            return { revision: result.revision, changedIds: pending.changedIds };
+        } finally { this.planning.detach(pending.handle); }
+    }
+
+    async runTurn(request: ChatTurnRequest): Promise<ChatTurnResult> {
         const root = this.active(request.projectHandle);
         if (!this.models || this.turns.has(request.chatId)) throw new Error('Chat turn already active or runtime unavailable');
         const snapshot = await this.repository.read(root);
         const chat = snapshot.chats.find(item => item.id === request.chatId);
         if (!chat) throw new Error('Chat not found');
+        await this.repository.renew(root, request.chatId, request.leaseToken);
+        this.clearProposal(request.chatId);
         const retryIndex = request.retryMessageId ? chat.messages.findIndex(item => item.id === request.retryMessageId) : -1;
         const content = request.retryMessageId ? (() => {
             if (retryIndex < 1 || chat.messages[retryIndex].role !== 'assistant' ||
@@ -262,7 +337,8 @@ export class ChatBackend implements ChatService {
                         !titledChat.messages.slice(0, index).some(message =>
                             message.role === 'assistant' && message.execution.status === 'complete'))
                         void this.automaticTitle(root, key, preceding, assistant.id, output, actual);
-                    return preview;
+                    if (abort.signal.aborted || request.retryMessageId) return preview;
+                    return { ...preview, ...await this.proposal(root, key, assistant.id, request.leaseToken, output, preview.refs) };
                 }
             }
             throw new Error('Model stream ended without completion');
@@ -323,6 +399,7 @@ export class ChatBackend implements ChatService {
     }
     dispose(): void {
         this.disposed = true;
+        for (const chatId of this.proposals.keys()) this.clearProposal(chatId);
         for (const turn of this.turns.values()) turn.abort.abort();
         this.unlisten();
     }

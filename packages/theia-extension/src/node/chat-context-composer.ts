@@ -15,6 +15,7 @@ import { RoadmapStore, type RoadmapCheckpoint } from '@dope/project-intelligence
 import type { GroundingResult } from './chat-project-grounder';
 
 export const GROUNDED_CHAT_INSTRUCTION = 'Project facts are verified only when supported by the supplied project evidence. Do not claim to have read, listed, searched, or inspected project state beyond that evidence. State what is missing or unknown.';
+const ROADMAP_ACTION_INSTRUCTION = 'If proposing one Roadmap edit, reply with only compact JSON: {"type":"roadmap-proposal","projectId":"<context projectId>","ownerRevision":<context ownerRevision>,"action":<one P3 planning action>}. Use only IDs and revision from supplied context. This is a proposal requiring human approval; never claim it was applied. Otherwise answer normally.';
 
 export interface ComposedChatContext { messages: ConversationMessage[]; refs: ChatContextRef[];
     diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }
@@ -186,7 +187,9 @@ export class ChatContextComposer {
         const budgetTokens = Math.min(availableChatContextTokens(policy, window), capabilities.maxInputTokens ?? Infinity);
         // ponytail: no conversational adapter exposes a tokenizer; UTF-8 bytes / 3 is a conservative deterministic estimate.
         const tokens = (value: string) => Math.ceil(Buffer.byteLength(value, 'utf8') / 3) + 4;
-        let remaining = budgetTokens - tokens(content) - (grounding ? tokens(GROUNDED_CHAT_INSTRUCTION) : 0);
+        const roadmapAction = selections.some(source => source.kind === 'roadmap-checkpoint');
+        let remaining = budgetTokens - tokens(content) - (grounding ? tokens(GROUNDED_CHAT_INSTRUCTION) : 0) -
+            (roadmapAction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0);
         if (remaining < 0) throw new Error('Message exceeds selected model input budget');
         const refs: ChatContextRef[] = [], diagnostics: ChatContextDiagnostic[] = [], attached: string[] = [];
         if (grounding) for (const diagnostic of grounding.diagnostics)
@@ -240,6 +243,7 @@ export class ChatContextComposer {
         }
         if (!attached.length) remaining += wrapperTokens;
         const messages: ConversationMessage[] = grounding ? [{ role: 'system', content: GROUNDED_CHAT_INSTRUCTION }] : [];
+        if (roadmapAction) messages.push({ role: 'system', content: ROADMAP_ACTION_INSTRUCTION });
         if (policy.history === 'recent') {
             const history = chat.messages.filter(item => item.role === 'user' || item.execution.status === 'complete');
             for (const item of history.reverse()) {

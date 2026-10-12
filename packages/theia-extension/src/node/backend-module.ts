@@ -161,7 +161,8 @@ export default new ContainerModule(bind => {
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<ChatClient>(`${chatServicePath}/:panelId`, client => {
         const backend = new ChatBackend(context.container.get(ChatRepository), client,
             context.container.get(ModelConnectionsRegistry), context.container.get(ChatContextComposer),
-            context.container.get(AIRoleRoutingService), context.container.get(ChatProjectGrounder));
+            context.container.get(AIRoleRoutingService), context.container.get(ChatProjectGrounder),
+            new ProjectPlanningActions(context.container.get(RoadmapStore)));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

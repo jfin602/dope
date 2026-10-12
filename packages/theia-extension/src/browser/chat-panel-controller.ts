@@ -1,6 +1,7 @@
 import { compareChatsByInteraction, joinChatFolderPath } from '@dope/chat';
 import type { Chat, ChatCollection, ChatFolderPath } from '@dope/chat';
-import type { ChatClient, ChatOperation, ChatService, ChatContextSelection, ChatContextPreview, ChatSearchHit } from '@dope/chat/lib/service';
+import type { ChatClient, ChatOperation, ChatService, ChatContextSelection, ChatContextPreview, ChatSearchHit,
+    ChatPlanningProposal } from '@dope/chat/lib/service';
 import type { ChatModelSelection } from '@dope/chat';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
 
@@ -68,6 +69,8 @@ export class ChatPanelController {
     draft = '';
     context: ChatContextSelection[] = [];
     lastContext?: ChatContextPreview;
+    planningProposal?: ChatPlanningProposal;
+    planningProposalError?: string;
     planningMode: 'follow' | 'pin' = 'follow';
     pinnedPlanning?: PlanningSelection;
     turnModel: ChatModelSelection | undefined;
@@ -107,7 +110,8 @@ export class ChatPanelController {
         this.loading = !!workspace;
         this.pending = false;
         this.error = '';
-        this.draft = ''; this.context = []; this.lastContext = undefined; this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
+        this.draft = ''; this.context = []; this.lastContext = undefined; this.planningProposal = undefined;
+        this.planningProposalError = undefined; this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
         this.planningMode = 'follow'; this.pinnedPlanning = undefined;
         if (workspace && this.restoredPlanning?.workspace === workspace) {
             this.planningMode = 'pin'; this.pinnedPlanning = this.restoredPlanning.selection;
@@ -212,7 +216,8 @@ export class ChatPanelController {
         }
         if (chatId === this.chatId && this.mode === 'chat' && this.lease) return true;
         this.chatId = undefined; this.mode = 'select-chat'; this.error = '';
-        this.draft = ''; this.context = []; this.lastContext = undefined; this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
+        this.draft = ''; this.context = []; this.lastContext = undefined; this.planningProposal = undefined;
+        this.planningProposalError = undefined; this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
         this.changed();
         await this.leave();
         await Promise.allSettled(previous);
@@ -356,6 +361,7 @@ export class ChatPanelController {
         const generation = this.generation, chatId = this.chatId;
         let completed = false;
         this.running = true; this.error = ''; this.stream = undefined;
+        this.planningProposal = undefined; this.planningProposalError = undefined;
         if (!retryMessageId && chatId) this.transientUser = { chatId, content,
             previousIds: new Set(this.chat?.messages.filter(message => message.role === 'user').map(message => message.id)) };
         if (!retryMessageId) this.draft = '';
@@ -368,12 +374,18 @@ export class ChatPanelController {
             const request = { projectHandle: lease.handle, chatId: lease.chatId, leaseToken: lease.token,
                 ...(model ? { selectedModel: model } : {}), context,
                 ...(retryMessageId ? { retryMessageId } : { content }) };
-            try { this.lastContext = await lease.connection.runTurn(request); }
+            let result;
+            try { result = await lease.connection.runTurn(request); }
             catch (error) {
                 if (!model && String(error).includes('Chat hosted egress confirmation required') && confirmHosted?.())
-                    this.lastContext = await lease.connection.runTurn({ ...request, hostedProjectDataAuthorized: true });
+                    result = await lease.connection.runTurn({ ...request, hostedProjectDataAuthorized: true });
                 else throw error;
             }
+            if (generation !== this.generation || chatId !== this.chatId || lease !== this.lease)
+                throw new Error('Chat changed during the turn');
+            this.lastContext = result;
+            this.planningProposal = result.proposal;
+            this.planningProposalError = result.proposalError;
             completed = true;
             this.context = [];
             return true;
@@ -394,6 +406,21 @@ export class ChatPanelController {
                 }
             }
         }
+    }
+    async decidePlanningProposal(approve: boolean): Promise<void> {
+        const lease = this.lease, proposal = this.planningProposal;
+        if (!lease || !proposal || this.pending || this.running || proposal.chatId !== lease.chatId) return;
+        this.pending = true; this.changed();
+        try {
+            const result = await lease.connection.decidePlanningProposal(lease.handle, lease.chatId,
+                lease.token, proposal.id, approve);
+            this.planningProposal = undefined;
+            this.planningProposalError = approve && result ?
+                `Roadmap updated at revision ${result.revision}: ${result.changedIds.join(', ')}` : 'Planning proposal rejected';
+        } catch (error) {
+            this.planningProposal = undefined;
+            this.planningProposalError = `Planning proposal was not applied: ${String(error)}. Refresh the selection for the next turn.`;
+        } finally { this.pending = false; this.changed(); }
     }
     addContext(selection: ChatContextSelection): void {
         if (this.context.length >= 20) throw new Error('Too many context selections');

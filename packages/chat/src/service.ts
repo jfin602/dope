@@ -40,6 +40,9 @@ export interface ChatContextSelection { kind: ChatContextKind; id: string; proje
     messageId?: string; text?: string; start?: number; end?: number; direction?: 'upstream' | 'downstream' }
 export interface ChatContextDiagnostic { kind: 'omitted' | 'truncated' | 'history'; source: string; message: string }
 export interface ChatContextPreview { refs: ChatContextRef[]; diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }
+export interface ChatPlanningProposal { id: string; chatId: ChatId; messageId: string; ownerId: string;
+    revision: number; changedIds: string[]; action: { type: string; id: string }; summary: string }
+export interface ChatTurnResult extends ChatContextPreview { proposal?: ChatPlanningProposal; proposalError?: string }
 export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'changed' | 'lease-changed'; chatId?: ChatId }
     /** Transient visible output; persistence happens at turn lifecycle boundaries. */
@@ -61,6 +64,8 @@ export interface ChatService {
     renew(projectHandle: string, chatId: ChatId, token: string): Promise<void>;
     release(projectHandle: string, chatId: ChatId, token: string): Promise<void>;
     publishDelta(request: ChatDeltaRequest): Promise<void>;
-    runTurn(request: ChatTurnRequest): Promise<ChatContextPreview>;
+    runTurn(request: ChatTurnRequest): Promise<ChatTurnResult>;
+    decidePlanningProposal(projectHandle: string, chatId: ChatId, leaseToken: string,
+        proposalId: string, approve: boolean): Promise<{ revision: number; changedIds: string[] } | undefined>;
     cancelTurn(projectHandle: string, chatId: ChatId, leaseToken: string): Promise<void>;
 }

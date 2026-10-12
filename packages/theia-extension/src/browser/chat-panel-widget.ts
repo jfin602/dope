@@ -1407,6 +1407,27 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             });
             composer.append(selectedContext);
         }
+        if (state.planningProposal) {
+            const proposal = state.planningProposal;
+            const review = document.createElement('section');
+            review.className = 'dope-chat-context-diagnostics';
+            review.setAttribute('aria-label', 'Roadmap proposal review');
+            const heading = document.createElement('strong');
+            heading.textContent = `Review Roadmap proposal · revision ${proposal.revision}`;
+            const change = document.createElement('p');
+            change.textContent = `${proposal.summary}\nAffected: ${proposal.changedIds.join(', ')}`;
+            change.style.whiteSpace = 'pre-wrap';
+            review.append(heading, change,
+                this.button('Apply proposal', () => void state.decidePlanningProposal(true), state.pending),
+                this.button('Reject', () => void state.decidePlanningProposal(false), state.pending));
+            composer.append(review);
+        }
+        if (state.planningProposalError) {
+            const note = document.createElement('p');
+            note.setAttribute('role', 'status');
+            note.textContent = state.planningProposalError;
+            composer.append(note);
+        }
         if (state.lastContext) {
             const details = document.createElement('details');
             details.className = 'dope-chat-context-diagnostics';
