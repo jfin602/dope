@@ -1,10 +1,8 @@
 # Phase 9D — Owner Activation and P1 Recovery Gate
 
-> **CURRENT EXECUTION GATE (2026-10-12):** **OWNER ACTIVATION EFFECTIVE; P1 GREEN FOR BOUNDED OFFLINE EXPORT; P2 MAY PROCEED AFTER ITS FOUR DETERMINISTIC CHECKS.** See docs/tasks/p9d/p1-requalification.md and the updated P2 preflight. The earlier missing-P1 narrative in this file is historical, not a continuing refusal. A failing actual exporter test or unsafe checkout still blocks P2, with the failed check disclosed. Phase 9 remains NOT QUALIFIED.
+**CURRENT IMPLEMENTATION ROUTING — 2026-10-12:** **P1 was repaired and accepted GREEN for its bounded exporter scope at `d58872f` (see `docs/tasks/p9d/p1-requalification.md`). The P1 recovery/requalification gate is CLOSED and is NOT a per-P2 test gate.** The owner has activated all p9d implementation prompts. P2 should perform only the ordinary runner preflight for `0.9.23`/safe worktree and then implement Session UI retirement. **Do not rerun the P1 child-process test inside the P2 preflight**, demand another authorization, or block because of its known sandbox `spawnSync .../bin/node EPERM` failure. P2 validates its own change; environment-blocked validation must be recorded truthfully and addressed at later designated qualification, not silently marked passed. Phase 9 remains NOT QUALIFIED.
 
-
-> **P1 REQUALIFICATION UPDATE — 2026-10-12:** The owner supplied passing bounded exporter evidence (7/7 focused tests, `git diff --check`, legacy/owner bytes unchanged, standalone without Session runtime), and connected source inspection verified the repair commit `d58872f62eebc1426769c1c262807df8133406e9`, test/guide and coherent 13-manifest `0.9.23` version. **P1 is now GREEN for its bounded offline-export scope; P2's conditional gate is satisfied.** Authoritative dated record: [p9d P1 requalification](../../tasks/p9d/p1-requalification.md). The older missing-P1 discussion below is preserved as the historical reason for the gate, not a continuing prohibition. Run P2 against the repaired source; the runner's version-only "previously completed" marker is insufficient by itself. Phase 9 overall NOT QUALIFIED.
-
+## Prior activation and recovery history (superseded as active preflight guidance)
 
 **Date:** 2026-10-11 (America/Chicago)  
 **Disposition:** **OWNER-APPROVED FOR PHASE 9D P1–P13, CONDITIONED ON P1 REQUALIFICATION BEFORE P2**  
