@@ -1,0 +1,24 @@
+TASK: Correction 9 / P1 — Restore restrained-orange Dope Dark theme tokens
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Required unchanged project version: `0.9.23`.
+
+GOAL
+Restore orange primary identity through Dope Dark's **central** semantic token layer, while keeping neutral ordinary controls and preserving theme isolation. This is not a per-panel restyle.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, current ADR 0016 October 12 amendment, ADR 0030, docs/ARCHITECTURE.md theme section, and this stack README/assessment/plan. Inspect current dope.css .dope-dark token block, scoped status/Git and .dope-action-primary selectors, dope-theme.ts, and test/unit/dope-theme.test.ts. Confirm coherent 0.9.23 root/workspace manifests and safe working tree; if already advanced by p9d, STOP without version rollback and request coherent retargeting of both c9 prompts. Do not modify existing p9d work or historical theme closeouts.
+
+IMPLEMENT
+- In central .dope-dark tokens, restore #1F1F1F workbench, #FF7A1A brand primary, #FFB15C intended hover/highlight, #C75100 deep pressed reference, #303030 neutral secondary controls and #484848 neutral borders. Define accessible central action/foreground/focus/selected derivations; bright-orange filled actions use readable dark foreground, deep pressed state needs contrast-tested foreground.
+- Keep generic Theia button backgrounds/hover and input borders neutral, primary orange opt-in, selected/focus visibly distinguishable without loud always-on orange frames. Inspect inherited badge, tab, list, progress, menu and links for accidental orange-washing; adjust only central theme/scoped selectors necessary to maintain restraint.
+- Keep dark full-width status bar, only bounded filled Git region, semantically colored diagnostics/SCM/syntax/errors/warnings/success. Preserve AI Center compact grammar, ten independent Chat colors, map/Flow color semantics, and explicit user theme deactivation. No second theme, broad Theia override, layout/behavior/persistence/provider/authority change.
+- Update dope-theme.test.ts: replace obsolete blue/white-foreground/forbidden-orange expectations with central restrained-orange and contrast-aware action states; retain positive guards for neutral controls, semantic tokens, theme activation/deactivation, browser/Electron default and status diagnostic separation. Ensure no brand hex repeated in widget CSS; do not weaken tests.
+
+VALIDATION — T1
+Run node --test test/unit/dope-theme.test.ts and git diff --check. Verify unchanged coherent 0.9.23 manifests and no root package-lock.json. Only compile the changed Theia extension if TS/runtime boundaries actually change (not expected). Do NOT run npm run check, npm test, browser/Electron builds, live provider or packaging; P2 owns aggregate and real GUI.
+
+DONE WHEN
+Central token mapping, contrast-aware states and theme regression pass without unintended color spread or changed package version. Preserve dirty/unrelated work; no manual commit (runner owns P1 checkpoint). Report exact files, focused tests, unchanged version and P2 handoff.

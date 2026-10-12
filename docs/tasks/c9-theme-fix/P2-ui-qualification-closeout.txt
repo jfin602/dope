@@ -1,0 +1,31 @@
+TASK: Correction 9 / P2 — Restrained-orange real GUI qualification closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- Required unchanged project version: `0.9.23`.
+
+GOAL
+MANUAL FINAL T3: on P1's exact committed candidate, verify that orange is the recognizable primary accent without returning to orange-washed panels. Record an honest c9-theme-fix GREEN / NOT GREEN closeout. No unrelated phase or provider qualification.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, current ADR 0016 October 12 amendment, ADR 0030, docs/ARCHITECTURE.md theme section, this stack README/assessment/plan and P1 checkpoint. Confirm coherent unchanged 0.9.23 source, clean intended candidate, no concurrent p9d mutation, original c8 and p9d history preserved. If version advanced, do not run this stale correction or reset source; retarget the unexecuted prompts separately.
+
+AUTOMATED T3
+- Run npm run codex:phase:validate -- c9-theme-fix.
+- Run ONE npm run check on exact final P1 candidate (inspect package.json scripts first; it already includes dope-theme.test.ts and builds).
+- Run only directly impacted presentation tests not included in that aggregate, if any; no duplicated broad suite. Run git diff --check, check coherent root/app/workspace version and absent root package-lock.json. No AppImage/native package for a CSS-only change.
+
+DIRECT REAL GUI
+1. In browser-hosted or Electron Dope, set Dope Dark. With AI Center as restrained grammar reference inspect primary actions and neutral utility controls; verify orange #FF7A1A, intended hover #FFB15C, pressed #C75100 and contrast-appropriate foreground using computed states/equivalent evidence where possible. Check subdued but visible keyboard focus, semantic selected states, inputs, tabs, badges and link contrast.
+2. Inspect Select Chat/Chat and Select Work/Work in narrow left/right and center/bottom when supported. Confirm unchanged accessible actions and layout, no persistent orange input/row/panel outlines, and ten Chat organizational colors independent from the global accent.
+3. Inspect Software Map inspector and center Physical Map/Flow, Planning Map, Project Mind and basic workbench editor/tab/toolbar/menu when available. Confirm map colors and semantic statuses are independent; do not claim unavailable UI was observed.
+4. Inspect status bar: dark full width, one bounded orange Git segment with readable foreground, regular text/icons neutral and error/warning/info/hint/SCM colors meaningful.
+5. Switch to a compatible alternate dark/light theme: .dope-dark scope must deactivate and orange Dope variables must not leak. Switch back and verify default palette and focus/selection. Check narrow layouts/contrast; do not alter real project data or run agents solely to demonstrate theme.
+6. Record screenshots/computed token values, available UI evidence, missing observations, exact candidate SHA/version, aggregate/focused check outcomes, and deviations. If any essential visual/contrast/theme-isolation gate fails or is unobserved, mark NOT GREEN / Evidence Gap with bounded remedy, never infer from CSS alone.
+
+CLOSEOUT
+Write docs/tasks/c9-theme-fix/closeout.md and update README with exact P1 source SHA, checks, direct GUI proof, remaining limits, and correction-only GREEN/NOT GREEN. Keep earlier c4-color-theme and c8-chat-work-ui qualifications, Phase 9 and p9d progress unchanged. Do not rewrite broad UI, bump version, claim provider/agent qualification, or commit implementation edits in an evidence-only Green pass. Manual operator owns final evidence review/commit.
+
+FINAL RESPONSE
+Report exact source/version, final aggregate/focused checks, observed orange vs neutral balance, contrast, status bar, alternate-theme isolation, panel coverage, residual gaps and correction disposition.
