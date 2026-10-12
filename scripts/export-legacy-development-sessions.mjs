@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 const MAX_BYTES = 16 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 20 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PLANNING_ID = /^[A-Za-z][A-Za-z0-9._-]*$/;
+const MAP_ID = /^[A-Za-z][A-Za-z0-9._-]*$/;
 const AGENT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 function fail(message) { throw new Error(message); }
@@ -48,8 +48,8 @@ function reference(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) fail('Invalid artifact reference');
     const specs = {
         chat: [['chatId', UUID, 36]],
-        'planning-map': [['mapId', PLANNING_ID, 4096]],
-        'work-item': [['mapId', PLANNING_ID, 4096], ['workItemId', PLANNING_ID, 4096]],
+        'planning-map': [['mapId', MAP_ID, 4096]],
+        'work-item': [['mapId', MAP_ID, 4096], ['workItemId', MAP_ID, 4096]],
         'agent-task': [['taskId', AGENT_ID, 120]],
         'agent-run': [['taskId', AGENT_ID, 120], ['runId', AGENT_ID, 120]],
         'agent-sequence': [['sequenceId', AGENT_ID, 120]],

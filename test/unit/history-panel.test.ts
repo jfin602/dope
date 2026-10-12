@@ -32,7 +32,12 @@ test('History uses one right activity-bar widget, a palette command, and safe in
     assert.match(css, /button:focus-visible/);
     const backend = source('node/backend-module.ts');
     assert.equal((backend.match(/new RpcConnectionHandler\(historyServicePath/g) ?? []).length, 1);
+    assert.equal((backend.match(/new RpcConnectionHandler\(historyFocusServicePath/g) ?? []).length, 1);
     assert.match(backend, /client\.onDidCloseConnection\(\(\) => backend\.dispose\(\)\)/);
+    const contracts = readFileSync(new URL('../../packages/contracts/src/history-service.ts', import.meta.url), 'utf8');
+    assert.match(contracts, /historyServicePath = '\/services\/dope\/history'/);
+    assert.match(contracts, /historyFocusServicePath = '\/services\/dope\/history-focus'/);
+    assert.match(module, /context\.container, historyFocusServicePath\)\)\.inSingletonScope\(\)/);
     const productScript = readFileSync(new URL('../../package.json', import.meta.url), 'utf8');
     assert.equal((productScript.match(/test\/unit\/history-panel\.test\.ts/g) ?? []).length, 1);
 });

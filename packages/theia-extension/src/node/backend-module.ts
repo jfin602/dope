@@ -43,7 +43,7 @@ import { AgentExecutionRuntime } from './agent-execution-runtime';
 import { CodexAgentExecutionAdapter } from './codex-agent-execution';
 import { LocalAgentExecutionAdapter } from './local-agent-execution';
 import type { AgentExecutionAdapter } from '@dope/agent-core';
-import { historyServicePath } from '@dope/contracts/lib/history-service';
+import { historyServicePath, historyFocusServicePath } from '@dope/contracts/lib/history-service';
 import { HistoryBackend } from './history-backend';
 
 export default new ContainerModule(bind => {
@@ -76,6 +76,11 @@ export default new ContainerModule(bind => {
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler(historyServicePath, client => {
         const backend = new HistoryBackend(context.container.get(PlanningStore),
             context.container.get(AIRoleRoutingService), context.container.get(ModelConnectionsRegistry));
+        client.onDidCloseConnection(() => backend.dispose());
+        return backend;
+    })).inSingletonScope();
+    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler(historyFocusServicePath, client => {
+        const backend = new HistoryBackend(context.container.get(PlanningStore));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();
