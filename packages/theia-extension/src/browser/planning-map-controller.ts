@@ -55,6 +55,7 @@ export class PlanningMapController {
     }
     private notify(): void { for (const listener of this.listeners) listener(); }
     get selected(): PlanningMap | undefined { return this.collection?.maps.find(map => map.id === this.selectedMapId); }
+    get projectWorkspace(): string | undefined { return this.workspace; }
     get canCreate(): boolean { return !!(this.map.status?.state === 'ready' && this.map.status.inputFingerprint &&
         this.map.initialization?.declarationFingerprint && this.handle && this.map.workspace === this.workspace); }
     get visibleMaps(): PlanningMap[] { return this.collection?.maps.filter(map => this.showHistory || map.status === 'draft' || map.status === 'active') ?? []; }

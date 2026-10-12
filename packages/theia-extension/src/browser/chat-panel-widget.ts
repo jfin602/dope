@@ -26,6 +26,7 @@ import { createDefaultExecutionGrant, EFFECT_KINDS } from '@dope/agent-core';
 import { AgentRunController } from './agent-run-controller';
 import type { HistoryFocusTarget } from '@dope/contracts/lib/history';
 import { panelFocusTarget } from './history-focus-target';
+import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
 
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     readonly controller: ChatPanelController;
@@ -37,6 +38,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private lastWorkSelection?: WorkSelection;
     private readonly rootsListener;
     private readonly modelsListener;
+    private readonly planningListener;
     private readonly status = document.createElement('p');
     private module: 'chat' | 'work';
     get moduleKind(): 'chat' | 'work' { return this.module; }
@@ -77,7 +79,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly editors?: EditorManager, private readonly map?: SoftwareMapController,
         private readonly aiCenter?: AICenterContribution, onModelsChanged?: Event<void>,
         runtime?: AgentRuntimeService, registry?: AIRegistryService, roles?: AIRolePolicyService,
-        private readonly openTranscript?: (project: string, runId: string) => Promise<void>) {
+        private readonly openTranscript?: (project: string, runId: string) => Promise<void>,
+        private readonly planningSelection?: ChatPlanningSelection) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -89,7 +92,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             this.id !== workLauncherIds.left && this.id !== workLauncherIds.right;
         this.addClass('dope-chat-panel');
         this.controller = new ChatPanelController(connect, () => this.render(), owners, this.id,
-            () => { void this.shell.activateWidget(this.id); });
+            () => { void this.shell.activateWidget(this.id); }, planningSelection);
         this.panel = new SharedPanelState(workOwners, this.id,
             () => { this.panel.setMode('work'); void this.shell.activateWidget(this.id); }, () => this.render());
         this.panel.mode = this.module;
@@ -104,6 +107,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             void this.directController?.resolveTarget();
             void this.workController?.phase.refresh();
             if (this.panel.work?.kind === 'task') void this.workController?.select(this.panel.work); });
+        this.planningListener = planningSelection?.onChange(() => this.updatePlanningLabel());
         this.initialAttach = this.attach();
         if (this.module === 'chat') void this.loadModels();
     }
@@ -114,6 +118,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.cancelScrollAnimation?.();
         this.scrollAnimationUntil = performance.now() + 200;
         this.animateLatest(scroll);
+    }
+    private updatePlanningLabel(): void {
+        const state = this.controller;
+        const active = state.activePlanning;
+        const label = this.content.querySelector<HTMLElement>('.dope-chat-planning-context');
+        if (label) label.textContent = `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
+            (active ? `${active.kind === 'roadmap-checkpoint' ? 'checkpoint' : 'Planning Map'} ${active.id}` : 'none');
+        const pin = this.content.querySelector<HTMLButtonElement>('.dope-chat-pin-planning');
+        if (pin) pin.disabled = !state.workspace || !this.planningSelection?.current(state.workspace);
     }
     private animateLatest(scroll: HTMLElement): void {
         const remaining = Math.max(0, this.scrollAnimationUntil - performance.now());
@@ -160,6 +173,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
 
     storeState(): object {
         return { ...this.panel.layout(this.module === 'chat' ? this.controller.chatId : undefined),
+            planningContext: this.controller.planningMode === 'pin' ? this.controller.pinnedPlanning : undefined,
             module: this.module, area: this.shell.getAreaFor(this) };
     }
     restoreState(state: object): void {
@@ -169,6 +183,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         layout.panelMode = this.module;
         this.panel.restore(layout);
         if (this.module === 'chat') this.controller.restore(layout.workspace, layout.chatId ? 'chat' : 'select-chat', layout.chatId);
+        const pin = (state as { planningContext?: PlanningSelection }).planningContext;
+        if (this.module === 'chat' && pin) this.controller.restorePlanning('pin', pin, layout.workspace);
     }
 
     private async attach(): Promise<void> {
@@ -1306,6 +1322,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         for (const kind of ['Ask', 'Explain', 'Trace', 'Find Related'] as const)
             menuButton(kind, () => this.behavior(kind));
         if (state.context.length) menuButton('Clear context', () => state.clearContext());
+        menuButton('Follow active planning selection', () => state.followPlanning());
+        const pinPlanning = this.button('Pin selected checkpoint / Planning Map', () => {
+            menu.hidePopover(); state.pinPlanning();
+        }, !state.workspace || !this.planningSelection?.current(state.workspace));
+        pinPlanning.className = 'dope-chat-pin-planning';
+        menu.append(pinPlanning);
         const modelSelector = document.createElement('select'); modelSelector.setAttribute('aria-label', 'Model for next turn');
         const usable = this.usableModels();
         if (chat.settings.modelPolicy.type === 'follow-interactive') modelSelector.append(new Option('Follow Interactive', ''));
@@ -1367,6 +1389,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         toolbar.append(more, modelSelector, submitButton);
         composer.append(input, toolbar);
         composer.append(menu);
+        const planning = document.createElement('div');
+        planning.className = 'dope-chat-planning-context';
+        const activePlanning = state.activePlanning;
+        planning.textContent = `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
+            (activePlanning ? `${activePlanning.kind === 'roadmap-checkpoint' ? 'checkpoint' : 'Planning Map'} ${activePlanning.id}` : 'none');
+        composer.append(planning);
         if (state.context.length) {
             const selectedContext = document.createElement('ul');
             selectedContext.className = 'dope-chat-selected-context';
@@ -1433,6 +1461,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         ++this.modelsRequest;
         this.rootsListener.dispose();
         this.modelsListener?.dispose();
+        this.planningListener?.dispose();
         this.panel.dispose();
         this.controller.dispose();
         super.dispose();

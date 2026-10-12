@@ -544,6 +544,7 @@
 .dope-chat-panel button:hover:not(:disabled) { background: var(--theia-button-secondaryHoverBackground); }
 .dope-chat-panel button:focus-visible, .dope-chat-panel summary:focus-visible, .dope-chat-panel select:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-chat-panel button:disabled { opacity: .55; cursor: default; }
+.dope-chat-panel .dope-chat-planning-context { color: var(--theia-descriptionForeground); font-size: 12px; overflow-wrap: anywhere; padding: 3px 0; }
 .dope-chat-panel ul, .dope-chat-panel ol { list-style: none; padding-left: 14px; }
 .dope-chat-panel li { margin: 5px 0; }
 .dope-chat-panel summary { cursor: pointer; overflow-wrap: anywhere; }

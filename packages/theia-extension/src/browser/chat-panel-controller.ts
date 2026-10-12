@@ -2,6 +2,7 @@ import { compareChatsByInteraction, joinChatFolderPath } from '@dope/chat';
 import type { Chat, ChatCollection, ChatFolderPath } from '@dope/chat';
 import type { ChatClient, ChatOperation, ChatService, ChatContextSelection, ChatContextPreview, ChatSearchHit } from '@dope/chat/lib/service';
 import type { ChatModelSelection } from '@dope/chat';
+import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
 
 export type ChatConnection = ChatService & { setClient(client: ChatClient | undefined): void; dispose(): void };
 export type ChatMode = 'select-chat' | 'chat';
@@ -67,6 +68,8 @@ export class ChatPanelController {
     draft = '';
     context: ChatContextSelection[] = [];
     lastContext?: ChatContextPreview;
+    planningMode: 'follow' | 'pin' = 'follow';
+    pinnedPlanning?: PlanningSelection;
     turnModel: ChatModelSelection | undefined;
     running = false;
     stream: { messageId: string; executionId: string; content: string; sequence: number } | undefined;
@@ -81,12 +84,13 @@ export class ChatPanelController {
     private lease?: { workspace: string; chatId: string; connection: ChatConnection; handle: string; token: string };
     private renewal?: ReturnType<typeof setInterval>;
     private restored?: { workspace: string; chatId: string };
+    private restoredPlanning?: { workspace: string; selection: PlanningSelection };
     private departing?: Promise<void>;
     private readonly selections = new Set<Promise<boolean>>();
 
     constructor(private readonly connect: () => ChatConnection, private readonly changed: () => void,
         private readonly owners = new ChatOpenOwners(), private readonly panelId: string = crypto.randomUUID(),
-        private readonly focus = () => {}) { }
+        private readonly focus = () => {}, private readonly planning?: ChatPlanningSelection) { }
     get chat(): Chat | undefined { return this.snapshot?.chats.find(chat => chat.id === this.chatId); }
     get attached(): boolean { return !!this.handle; }
 
@@ -104,6 +108,11 @@ export class ChatPanelController {
         this.pending = false;
         this.error = '';
         this.draft = ''; this.context = []; this.lastContext = undefined; this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
+        this.planningMode = 'follow'; this.pinnedPlanning = undefined;
+        if (workspace && this.restoredPlanning?.workspace === workspace) {
+            this.planningMode = 'pin'; this.pinnedPlanning = this.restoredPlanning.selection;
+        }
+        if (workspace) this.restoredPlanning = undefined;
         this.changed();
         await this.leave();
         this.running = false;
@@ -314,6 +323,31 @@ export class ChatPanelController {
     async newChat(folderPath: ChatFolderPath): Promise<boolean> {
         return this.mutate({ type: 'create-chat', id: crypto.randomUUID(), folderPath });
     }
+    get activePlanning(): PlanningSelection | undefined {
+        return this.planningMode === 'pin' ? this.pinnedPlanning : this.workspace ? this.planning?.current(this.workspace) : undefined;
+    }
+    pinPlanning(): boolean {
+        const selection = this.workspace && this.planning?.current(this.workspace);
+        if (!selection) { this.error = 'Select a Roadmap checkpoint or Planning Map first.'; this.changed(); return false; }
+        this.pinnedPlanning = selection; this.planningMode = 'pin'; this.lastContext = undefined; this.error = ''; this.changed();
+        return true;
+    }
+    followPlanning(): void { this.planningMode = 'follow'; this.pinnedPlanning = undefined; this.lastContext = undefined; this.error = ''; this.changed(); }
+    restorePlanning(mode: 'follow' | 'pin', selection?: PlanningSelection, workspace?: string): void {
+        if (mode === 'pin' && selection && selection.projectId && selection.id &&
+            (selection.kind === 'roadmap-checkpoint' || selection.kind === 'planning-map')) {
+            this.planningMode = 'pin'; this.pinnedPlanning = selection;
+            if (workspace && this.workspace !== workspace) this.restoredPlanning = { workspace, selection };
+        } else { this.restoredPlanning = undefined; this.followPlanning(); }
+        this.changed();
+    }
+    private async turnContext(): Promise<ChatContextSelection[]> {
+        const selection = this.activePlanning;
+        if (!selection || !this.planning || !this.workspace) return this.context;
+        const current = await this.planning.resolve(this.workspace, selection, this.planningMode === 'pin');
+        if (this.context.length >= 20) throw new Error('Too many context selections; remove one before adding the planning selection');
+        return [...this.context, current];
+    }
     async runTurn(model?: ChatModelSelection, retryMessageId?: string,
         confirmHosted?: () => boolean): Promise<boolean> {
         const lease = this.lease;
@@ -328,8 +362,11 @@ export class ChatPanelController {
         this.turnModel = undefined;
         this.changed();
         try {
+            const context = await this.turnContext();
+            if (generation !== this.generation || chatId !== this.chatId || lease !== this.lease)
+                throw new Error('Chat changed while resolving planning selection');
             const request = { projectHandle: lease.handle, chatId: lease.chatId, leaseToken: lease.token,
-                ...(model ? { selectedModel: model } : {}), context: this.context,
+                ...(model ? { selectedModel: model } : {}), context,
                 ...(retryMessageId ? { retryMessageId } : { content }) };
             try { this.lastContext = await lease.connection.runTurn(request); }
             catch (error) {
@@ -368,8 +405,10 @@ export class ChatPanelController {
         const lease = this.lease;
         if (!lease) throw new Error('Chat unavailable');
         const generation = this.generation, chatId = this.chatId;
+        const context = await this.turnContext();
+        if (lease !== this.lease) throw new Error('Chat changed while resolving planning selection');
         const preview = await lease.connection.previewContext({ projectHandle: lease.handle, chatId: lease.chatId,
-            selectedModel: model, content: this.draft, context: this.context });
+            selectedModel: model, content: this.draft, context });
         if (generation === this.generation && chatId === this.chatId) { this.lastContext = preview; this.changed(); }
     }
     async searchSaved(query: string): Promise<ChatSearchHit[]> {

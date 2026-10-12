@@ -41,6 +41,7 @@ import { AgentTranscriptWidget } from './agent-transcript-widget';
 import { AGENT_TRANSCRIPT_ID, openAgentTranscript, type AgentTranscriptOptions } from './work-transcript-presentation';
 import { bindSharedAgentRuntime } from './agent-runtime-connection';
 import { ChatOpenOwners } from './chat-panel-controller';
+import { ChatPlanningSelection } from './chat-planning-selection';
 import { WorkOpenOwners } from './shared-panel-state';
 import { AIRegistryService, aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
 import { AIRolePolicyService, aiRolePolicyServicePath, type AIRolePolicyClient } from '@dope/contracts/lib/ai-role-policy-service';
@@ -285,6 +286,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             void context.container.get(RoadmapInspectorModel).remoteChange(change);
         } })).inSingletonScope();
     bind(RoadmapInspectorModel).toDynamicValue(context => new RoadmapInspectorModel(context.container.get<RoadmapService>('RoadmapService'))).inSingletonScope();
+    bind(ChatPlanningSelection).toDynamicValue(context => new ChatPlanningSelection(context.container.get(RoadmapInspectorModel),
+        context.container.get(PlanningMapController), context.container.get<RoadmapService>('RoadmapService'))).inSingletonScope();
     bind(SmapPresentationState).toDynamicValue(context => new SmapPresentationState(context.container.get(StorageService))).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_ID, createWidget: () => new SoftwareMapWidget(
         context.container.get(SoftwareMapController), context.container.get(WorkspaceService), context.container.get(OpenerService),
@@ -337,7 +340,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 await openAgentTranscript({ project, runId }, options =>
                     context.container.get(WidgetManager).getOrCreateWidget<AgentTranscriptWidget>(
                         AGENT_TRANSCRIPT_ID, options), context.container.get(ApplicationShell));
-            });
+            }, context.container.get(ChatPlanningSelection));
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({
