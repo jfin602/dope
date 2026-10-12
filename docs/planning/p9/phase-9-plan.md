@@ -22,6 +22,12 @@
 - Keep useful with zero models and without manual artifact attachments or Session status/lifecycle.
 - Phase 10 still exclusively owns continuous software knowledge alignment and any associated background local-model scheduler.
 
+## Final Phase 9 subphase — p9d prompt authoring (2026-10-11)
+
+The owner designated `p9d` as the **final** Phase 9 subphase. The source-reviewed assessment, implementation plan and P1–P13 prompts in `docs/tasks/p9d/` cover legacy Session export/retirement, right-toolbar History, automatic factual activity, one-click continuation, explicit local-only contextual understanding and the **sole manual final Phase 9 closeout**. The historical Session 9D/9E plans remain superseded: **there is no p9e**.
+
+P1 starts from the actual coherent `0.9.22` predecessor `0752415` and targets `0.9.23` during implementation. P1–P12 target `0.9.23`–`0.9.34`; P13 is the manual exact-candidate final Phase 9 qualification at separate source/version `0.9.35` with real Theia GUI and one full `npm run check`. **Authoring is NOT activation:** require a separate owner-approved `docs/planning/p9/phase-9d-activation.md` before P1. The old p9c P10 remains unexecuted/superseded; do not pre-bump `0.9.23`. Phase 9 overall still NOT QUALIFIED, and any owner closeout or Phase 10 activation remains separate.
+
 ## Replacement implementation workstreams (NOT yet activated)
 
 | Workstream | Goal | Required proof |
