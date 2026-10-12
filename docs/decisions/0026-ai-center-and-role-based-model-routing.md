@@ -674,3 +674,7 @@ A global Codex connection or Coding Agent role never grants mutation authority b
 ## Amendment — ADR 0035 (2026-10-12): Codex as a conversational provider
 
 Approved design, not yet implemented/qualified. The **same signed-in Codex AI Center connection** may expose separately tested conversationalText + streaming (Interactive) and agentExecution (Coding Agent) capability. The ordinary Chat path uses the OpenAI public Responses API with the managed ChatGPT-plan OAuth token, store:false, stream:true and no executable tools; Work retains its existing Codex App Server AgentExecutionAdapter. The two roles share Work/Codex subscription allowance and never silently fall back to separately billed OpenAI API keys. Codex remains a hosted connection, project-evidence egress still needs Chat consent, and provider/model choice and actual provenance remain explicit. See ADR 0035 and docs/tasks/c9-codex-chat/. Historical Phase 7/8 qualifications are unchanged.
+
+## Forward amendment — ADR 0036 (2026-10-12)
+
+Phase 10 interactive planning uses existing provider/model identity, capabilities and role selection. Constrained local models without native tool calling use small strictly parsed structured proposals and capacity-aware context. Feature hard constraints prohibit silent local-to-hosted fallback/egress even during retries. Explicit hosted consent and actual provider/model provenance persist. These rules do not activate Phase 10 or change the currently registered Codex Chat capability.

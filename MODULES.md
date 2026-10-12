@@ -35,6 +35,12 @@ Own durable project knowledge as Notes, Ideas, Questions, and Decisions, includi
 - The workbench presents and edits Project Mind through typed frontend/backend service contracts; Project Mind's rules and `.dope/project-mind.json` state are Dope-owned.
 - Artifact links may refer to project files or other artifacts. Project Mind does not own Software Map architecture state.
 
+## Planned System: Roadmap / Shared Planning Actions (ADR 0036; NOT IMPLEMENTED)
+
+**Purpose:** Checkpoint-path Roadmap with correction branches and Ideas/Issues pools; in-place Software Map-style inspector plus docked real Chat. Human and local AI share typed revision-safe project planning actions.
+
+**Boundaries:** Reuse existing Planning Map, Project Mind, Chat, agent validation and History authority. The future roadmap domain owns only uniquely roadmap-owned structured IDs/edges/links, with explicit safe Markdown adapters. No speculative source paths, direct model writes, duplicate Project Mind store or Chat coding-agent grants. Local small-context structured-output compatibility and no-model use are essential. Phase 10 design is not activated; Phase 11 retains ADR 0023 background alignment.
+
 ## System: Software Map
 
 **Purpose:**  

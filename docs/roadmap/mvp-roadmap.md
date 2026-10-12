@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: **Phase 9 DEVELOPER CONTINUITY/HISTORY DESIGN APPROVED under ADR 0034; replacement implementation NOT ACTIVATED and Phase 9 overall NOT QUALIFIED.** Historical 9A Green `0.9.6` / `6b51ee96`, 9B Green `0.9.13` / `5aa0bac`; original 9C P1–P9 source at `0.9.22` / `0752415`, P10 unexecuted/superseded. Phase 10 inactive. Current plan: `docs/planning/p9/phase-9-plan.md`.
+Current stage: **Phase 9 Developer Continuity/History `p9d` independently active and NOT QUALIFIED.** Phase 10 Unified Roadmap & Local-First AI Planning is ADR 0036 design approved, NOT ACTIVATED; former Phase 10 Living Software Knowledge Model is Phase 11, inactive. Historical 9A Green `0.9.6` / `6b51ee96`, 9B Green `0.9.13` / `5aa0bac`; original 9C P1–P9 source at `0.9.22` / `0752415`, P10 unexecuted/superseded. Phase 10 inactive. Current plan: `docs/planning/p9/phase-9-plan.md`.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
@@ -32,6 +32,7 @@ Theia
 -> c7 Chat Project Grounding correction
 -> Scoped Delegation
 -> Developer Continuity / right-toolbar History
+-> Unified Roadmap & Local-First AI Planning
 -> Living Software Knowledge Model
 
 Each stage should make Dope more useful to the developer before the next layer of AI is added.
@@ -69,7 +70,8 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c8-candidate-validation — Dope-owned Candidate Validation | **GREEN / QUALIFIED.** Dope-owned frozen-candidate validation supports private temp/loopback without host/private/network authority; real Adaptive SEO Prompt Stack completed in Cycle 2 of 5. |
 | Correction c8-work-mode — Work / Prompt Stack UI | **GREEN / QUALIFIED / CLOSED at `0.8.20`.** Separate Chat and Work panels, Work toolbar, stable titles, durable agent transcript and collapsed command detail, live GUI/restart evidence. |
 | Product Phase 9 — Developer Continuity / History | **ADR 0034 DESIGN APPROVED / IMPLEMENTATION NOT ACTIVATED / NOT QUALIFIED.** Right-toolbar History, deterministic activity, one-click return and optional local-first understanding. Historical Session 9A/9B bounded Green retained; Session 9C P1–P9 at `0.9.22`, P10 unexecuted. No legacy data deletion or session-based new authority. See `docs/planning/p9/phase-9-plan.md`. |
-| Product Phase 10 — Living Software Knowledge Model | Dope continuously reconciles source/runtime, canonical Software Map, docs and contracts through deterministic-first and bounded local-first background checks, using actual WorkItem/AgentRun/change provenance and optional History navigation context (not deprecated Session membership). Remains inactive; no automatic canonical mutation or hosted escalation. |
+| Product Phase 10 — Unified Roadmap & Local-First AI Planning | **ADR 0036 DESIGN APPROVED / NOT ACTIVATED / NOT QUALIFIED.** Checkpoint path with correction branches, Issues/Ideas pools and a left inspector, co-edited via validated manual/local-model Chat actions. |
+| Product Phase 11 — Living Software Knowledge Model (formerly Phase 10) | Dope continuously reconciles source/runtime, canonical Software Map, docs and contracts through deterministic-first and bounded local-first background checks, using actual WorkItem/AgentRun/change provenance and optional History navigation context (not deprecated Session membership). Remains inactive; no automatic canonical mutation or hosted escalation. |
 
 Self-development never receives privileged authority.
 
@@ -887,7 +889,7 @@ Initial scope:
 - Phase 7C role policies for Interactive, Deep Reasoning, Background, Software Map and Coding Agent work;
 - capability/constraint-aware preferred targets and permitted fallback policies rather than feature-owned provider configuration;
 - explicit user model choice above Chat policy, feature role constraints and global role policy;
-- preservation of explicit sMap evidence-egress authority and Phase 10 local-only/no-hosted-fallback Background constraints.
+- preservation of explicit sMap evidence-egress authority and Phase 11 local-only/no-hosted-fallback Background constraints (formerly Phase 10).
 
 Product laws:
 - ChatPanel is presentation; ChatService/ChatRepository own conversation behavior and persistence.
@@ -1031,7 +1033,7 @@ Initial scope also retains:
 - validation evidence tied to AgentRun/delegated work;
 - model/tool/action provenance sufficient to understand what happened without persisting hidden chain-of-thought;
 - no hidden authority escalation or silent provider/billing fallback;
-- bounded post-edit Software Map impact/staleness markers only; full continuous alignment remains Phase 10.
+- bounded post-edit Software Map impact/staleness markers only; full continuous alignment remains Phase 11 (formerly Phase 10).
 
 Exit condition:
 
@@ -1049,7 +1051,15 @@ The new Phase 9 implementation must first retire the old Session UI/domain after
 
 Authority: ADR 0034, `docs/planning/p9/phase-9-plan.md` and the updated `docs/stability-contract.md`. The old ADR 0033 and p9a/p9b/p9c records remain historical, not permission to continue old Session work.
 
-## Product Phase 10 — Living Software Knowledge Model
+## Product Phase 10 — Unified Roadmap & Local-First AI Planning
+
+**Status: DESIGN APPROVED (ADR 0036), NOT ACTIVATED OR QUALIFIED.** Phase 9 `p9d` is independently active/Not Qualified. Turn existing phase planning into a visual checkpoint path with corrections and detached unscheduled Ideas/Issues. Select a checkpoint for in-place Software Map-style **left inspector** editing without a standalone page; a reusable project Chat remains visible alongside it. Planning Maps link to checkpoints but keep real architecture/basis/WorkItem authority.
+
+Manual controls and local-model Chat send the same small validated, revision-safe project planning actions. State changes instantly notify map/inspector and refresh the model's **next** context; stale in-flight proposals reject. Preserve Markdown/Project Mind/issue owners, qualification evidence and code-agent permission separation. Manual no-model use and real bounded-context local model without native tool calling are mandatory, with no silent hosted fallback. Apply October 12 restrained dark-orange theme tokens. See `docs/planning/p10/phase-10-plan.md`.
+
+Exit requires real local/manual edits, UI consistency, restart, stale/project isolation, no-hosted/authority controls and direct Theia GUI evidence. Implementation requires separate owner activation, prompt planning and qualification; this is documentation-only.
+
+## Product Phase 11 — Living Software Knowledge Model (formerly Phase 10)
 
 Purpose:
 Turn the Software Map into a living, evidence-backed software knowledge model that continuously checks whether implementation, runtime evidence, canonical architecture, documentation and formal contracts still describe the same software state.
@@ -1074,7 +1084,7 @@ Initial scope:
 Background intelligence law:
 Deterministic analysis narrows the problem first. Local models are the preferred high-volume semantic maintenance layer. Model output creates findings/interpretation, not physical evidence or canonical truth, and foreground developer interaction always outranks background inference.
 
-General-purpose ambient intelligence remains outside this phase. Phase 10 authorizes only bounded background work required to maintain the Living Software Knowledge Model.
+General-purpose ambient intelligence remains outside this phase. Phase 11 authorizes only bounded background work required to maintain the Living Software Knowledge Model.
 
 Exit condition:
 
@@ -1085,7 +1095,7 @@ On a real project, Dope can detect representative source/map, source/documentati
 These remain valid parts of the vision but must not block the initial product:
 - dedicated Research workspace
 - semantic project-wide search
-- general-purpose advanced ambient intelligence beyond the bounded Phase 10 knowledge-alignment monitor
+- general-purpose advanced ambient intelligence beyond the bounded Phase 11 knowledge-alignment monitor
 - automatic Ideas capture
 - sophisticated model routing
 - multi-agent orchestration

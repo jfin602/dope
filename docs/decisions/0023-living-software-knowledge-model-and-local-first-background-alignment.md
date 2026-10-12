@@ -218,3 +218,7 @@ Revisit scheduler policy and local-model strategy when real Phase 10 qualificati
 Revisit whether any specific hosted background policy is useful only if it can remain explicit, cost/egress-aware and developer-controlled. The no-silent-hosted-escalation rule does not expire merely because hosted inference becomes cheaper.
 
 **2026-10-11 Phase 9 supersession note:** ADR 0034 removes the forward DeveloperSession product ontology. Phase 10 may use real task/run, Git and observed continuity provenance but must not depend on manual Session membership. The Phase 10 background alignment scheduler, deterministic-first checks and local-only/no-hosted-fallback safety policy remain unchanged and inactive until separately authorized.
+
+## Sequencing amendment — ADR 0036 (2026-10-12)
+
+For **forward implementation**, the Living Software Knowledge Model becomes **Phase 11** after newly inserted **Phase 10 Unified Roadmap & Local-First AI Planning**. Earlier Phase 10 terms above remain the historical accepted design label; read them as Phase 11 for future implementation. Preserve all deterministic-first, local-only/no-hosted-fallback Background constraints, resource-aware scheduler, evidence authority and no-silent-canonical-mutation requirements. Interactive Phase 10 planning does not activate Phase 11 background alignment. Neither future phase is activated/qualified; Phase 9 is unaffected.

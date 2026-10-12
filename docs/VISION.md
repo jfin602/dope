@@ -120,6 +120,12 @@ Understand current system
 
 The software map must remain useful without an AI provider and independent from Theia or any visualization technology.
 
+## Roadmap as a shared planning workspace
+
+The Roadmap unifies strategic navigation: existing phases form connected checkpoints with correction branches and detached Ideas/Issues pools. Select a checkpoint to inspect/edit it in place as in the Software Map; keep the ordinary project-grounded Chat visible alongside a Roadmap or Planning Map. Developer and AI use the same revision-checked project planning operations, and committed changes become immediately visible to both, with a fresh model context at its next step. The Software Map still documents actual architecture, Planning Maps describe proposed transformations and History reports verified events. Project Mind knowledge survives even if its standalone view is retired.
+
+No model is required for manual use, and small local models must be able to act through bounded structured proposals without full-project context, native tool calling or silent hosted fallback. This is future Phase 10 design (ADR 0036), not implementation; former Living Software Knowledge Model is Phase 11.
+
 ## Project Mind before AI dependence
 
 Dope's early differentiated value should not require an LLM.

@@ -59,3 +59,7 @@ Official provider references:
 - https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference
 - https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server
 - https://help.openai.com/en/articles/20001542-using-your-chatgpt-plan-in-other-apps-and-sites
+
+## Forward compatibility — ADR 0036 (2026-10-12)
+
+The `c9-codex-chat` subscription conversational Responses transport remains **tool-free**, with no shell, MCP, coding-agent task or direct mutation granted. A separately authorized future Dope planning orchestrator can validate completed text as a project-scoped semantic proposal outside that provider call. This does not change c9 fixed scope/version, shared plan usage, agent permissions or activate Phase 10.

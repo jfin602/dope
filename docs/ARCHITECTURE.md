@@ -261,6 +261,14 @@ Understanding is user-initiated, using a bounded preview of source-backed eviden
 
 Legacy Session UI/backend/domain/RPC/store must be removed only after tracing consumers and retaining independently useful read-only metadata/navigation adapters. Preserve existing `.dope/development-sessions.json` v1/v2 bytes and provide optional read-only export/recovery of developer-authored notes; no auto-delete, implicit migration or model injection. Historical p9a/p9b evidence remains true, old p9c P10 must not execute or auto-advance to `0.9.23`, and Phase 9 cannot be Green without a separately authorized new stack and exact-candidate real GUI/aggregate evidence. See ADR 0034 and `docs/planning/p9/phase-9-plan.md`.
 
+## Planned Phase 10 — Roadmap/shared planning actions (ADR 0036)
+
+**Design only, not implemented.** Roadmap is a center checkpoint/path map and typed projection of real project phase/issue/idea/Planning Map records. Checkpoint details/editing use the Software Map-style **left inspector**, not a new center page; a real reusable ChatPanel can remain to the right. Stable IDs and semantic edges are domain state; layout, transient selections, viewport and colors are presentation state.
+
+One provider-neutral `ProjectPlanningActions` interface serves manual gestures and future Dope-owned AI planning proposals. It provides bounded selected-object reads, deterministic previews and owner-delegated typed mutations. Project-bound opaque handles, expected owner revisions/PlanningMap basis, stable IDs, lifecycle/graph/permission checks, clear partial multi-owner outcomes and small affected-identity notifications prevent lost manual/AI edits. In-flight model proposals are checked/rejected if stale, with current owner context read before the next step. Do not clone Markdown, PlanningMap targets, Architecture, Project Mind or History into a second source of truth.
+
+Models interpret a compact selected checkpoint/neighborhood and emit strict validated structured actions; native provider tool calling is optional, with a constrained JSON-output fallback. A real local small-context (4,096 total tokens when supported) and no-model workflow are required. Ordinary Chat has no shell/filesystem/MCP/AgentTask authority. ADR 0035 Codex Chat transport remains tool-free and all hosted project data egress requires explicit consent, never silent local fallback. Phase 11 Background scheduler remains inactive. UI uses current restrained-orange ADR 0016 semantic theme tokens, narrow-pane/focus accessibility and alternate-theme isolation. See `docs/planning/p10/phase-10-plan.md`.
+
 ## Model and provider boundary
 
 Dope must not depend architecturally on one model, model family, provider, API, hosted service, local runtime, or provider-native chat/session ontology.
@@ -397,7 +405,7 @@ Every routed execution records compact routing provenance: role/resolution sourc
 
 Software Map consumes centralized connections and the Software Map role as default-target policy, but Analyze Project/Search Deeper still own exact run-level target consent/disclosure, probe/readiness, warm-up and synthesis strategy under ADR 0022.
 
-Phase 10 requests Background with hard local-only/no-hosted-fallback constraints under ADR 0023.
+Phase 11 (formerly Phase 10) requests Background with hard local-only/no-hosted-fallback constraints under ADR 0023.
 
 Coding Agent may be configured before Product Phase 8 but has no mutation-capable consumer in Phase 7.
 
@@ -433,7 +441,7 @@ A ChatGPT-plan Codex connection never silently falls back to an API-key OpenAI c
 
 ## Living Software Knowledge Model and background alignment boundary
 
-Product Phase 10 adds a knowledge-alignment layer over existing Software Map identities after Scoped Delegation and Developer Continuity, using real task/run and source-change provenance while remaining observation-first.
+Product Phase 11 (formerly Phase 10) adds a knowledge-alignment layer over existing Software Map identities after Scoped Delegation and Developer Continuity, using real task/run and source-change provenance while remaining observation-first.
 
 The durable conceptual layering is:
 
@@ -475,7 +483,7 @@ The background scheduler owns debounce, deduplication, impact batching, queue pr
 
 Alignment results are derived findings. They may identify source/map drift, source/documentation drift, source/contract disagreement, contract/map disagreement, orphaned evidence or unrepresented implementation. Model output may classify or explain a finding but cannot silently mutate source, documentation, contracts, canonical architecture or Physical Map truth.
 
-General-purpose ambient intelligence remains deferred. Phase 10 authorizes bounded ambient/background behavior only for maintaining the Living Software Knowledge Model.
+General-purpose ambient intelligence remains deferred. Phase 11 authorizes bounded ambient/background behavior only for maintaining the Living Software Knowledge Model.
 
 ## Theia AI boundary
 

@@ -11,6 +11,8 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 ## Current state
 
+**2026-10-12 forward design (ADR 0036):** New Phase 10 Unified Roadmap & Local-First AI Planning is documentation-approved only: checkpoints, correction branches, Ideas/Issues, in-place left inspector, real Chat co-editing through shared revision-safe planning actions and local-small-model/no-model qualification. Former Living Software Knowledge Model becomes Phase 11, ADR 0023 safety unchanged. **No source implementation, version bump, phase activation or Green claim.** Active Phase 9 `p9d`, `c9-codex-chat`, `c9-theme-fix` and historical evidence remain independently scoped.
+
 **2026-10-12 correction:** ADR 0035 accepts Codex as an ordinary Chat provider using the same secure ChatGPT-plan connection and a distinct no-tools Responses adapter. Correction `c9-codex-chat` is documentation/prompt-authoring only at unchanged `0.9.23`, NOT IMPLEMENTED or Green. The separately OWNER-ACTIVATED `p9d` History stack has P1 bounded/requalified Green; P2–P13 pending and Phase 9 overall NOT QUALIFIED. Keep their versions and worktrees separate; do not run superseded p9c P10 or activate Phase 10. See docs/decisions/0035-codex-conversational-chat.md and docs/tasks/c9-codex-chat/.
 
 **CURRENT STATE (2026-10-11) — Phase 8 OWNER-CLOSED / GREEN at `0.8.47` / `bcc5cb8`. Phase 9 design is now **Developer Continuity with right-toolbar History** under ADR 0034; replacement implementation is NOT ACTIVATED or qualified. Historical 9A Green `0.9.6` and 9B Green `0.9.13` remain scoped evidence; Session 9C P1–P9 committed through `0.9.22` / `0752415`, but old P10 was unexecuted and superseded. Phase 9 overall NOT QUALIFIED; Phase 10 inactive.
@@ -105,6 +107,8 @@ Current authority:
 - docs/planning/p9/phase-9-plan.md
 - docs/planning/p9/phase-9b-plan.md
 - docs/decisions/0034-developer-continuity-and-right-toolbar-history.md
+- docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md
+- docs/planning/p10/phase-10-plan.md
 
 ## Product premise
 
@@ -142,7 +146,8 @@ Foundation Spike 0 — qualify Theia
 -> Phase 7 — AI Presence
 -> Phase 8 — Scoped Delegation / Coding Agent
 -> Phase 9 — Developer Continuity / right-toolbar History
--> Phase 10 — Living Software Knowledge Model
+-> Phase 10 — Unified Roadmap & Local-First AI Planning (ADR 0036; design only)
+-> Phase 11 — Living Software Knowledge Model (ADR 0023; inactive)
 
 Do not pull later-phase concepts forward merely because they already exist in the long-term product model.
 

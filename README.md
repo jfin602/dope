@@ -36,6 +36,10 @@ The menu launcher is `~/.local/share/applications/dope.desktop`; search for **Do
 
 Each build retains `build.json` beside its AppImage. `~/.local/opt/dope/history.jsonl` is append-only and records version, UTC time, Git commit, branch, clean/dirty state, source and installed artifact paths, activation result, and optional notes. `BUILD-HISTORY.md` in the same directory is the readable summary. A failed activation leaves `current` pointing at the previous build. Previous releases remain available for rollback.
 
+## Forward roadmap design (documentation only)
+
+[ADR 0036](docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md) and [Phase 10 plan](docs/planning/p10/phase-10-plan.md) approve a future collaborative Roadmap with checkpoints, detached Ideas/Issues, in-place inspector and shared validated human/local-AI planning. Manual zero-model use and real short-context local inference are release gates. Former Phase 10 Living Software Knowledge Model is now Phase 11, inactive. Phase 9 remains independent/Not Qualified; this is no source/version/qualification claim.
+
 ## Core docs
 
 - docs/VISION.md

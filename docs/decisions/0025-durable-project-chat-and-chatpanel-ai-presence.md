@@ -314,3 +314,7 @@ Opening or selecting Work in a sidebar leaves the center editor and visualizatio
 ## Amendment — ADR 0035 (2026-10-12): conversational Codex eligibility
 
 Ordinary Dope Chat may select a model on the existing signed-in Codex connection if its verified conversationalText/streaming capabilities are eligible. The conversation stays Dope-owned under .dope/chats with its current per-message selection, immutable actual provider/model provenance, restart, cancellation, hosted-data consent and no-silent-fallback contracts. No Codex AgentTask/AgentRun, command or executable provider tool may be created through Chat. This is approved design pending correction c9-codex-chat; no Phase 7 qualification claim is changed.
+
+## Forward amendment — ADR 0036 (2026-10-12)
+
+The ordinary saved dockable ChatPanel may accompany a Roadmap/Planning Map; selected-object facts are compactly retrieved with provenance. Future Dope-owned planning orchestration may parse *completed* model output into small authorized planning proposals; transcripts are not canonical state, and an in-flight generation does not know later manual changes. Next-step context re-reads current owner revisions; stale proposals reject. Existing single Chat owner, explicit model, hosted-data consent and no-agent-tools boundary remain.

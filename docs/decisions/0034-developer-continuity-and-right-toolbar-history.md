@@ -48,3 +48,7 @@ Manual Development Sessions ask the developer to create, name, link, maintain an
 A **new task assessment/plan and separate explicit owner implementation activation** must precede source changes. The task stack must prove, on an exact version/source checkpoint: old Session runtime/UI is retired and legacy data can still be recovered; right-toolbar History works in a real Theia GUI; activity and timestamps are sourced/non-mutating; exact focus/navigation survives restart and project switch; no duplicate Chat/Work owner, automatic AgentRun or hosted egress; optional local-only explanation with clear factual/interpretive boundaries; no-AI operation, focused regression and final appropriately scoped aggregate. Failure or missing GUI proof is **NOT GREEN / Evidence Gap**.
 
 This ADR and `/docs-apply` authorize **documentation changes only**. At the recorded baseline `0.9.22`, Session UI/backend still exists. No source deletion, new package version, Phase 9 Green, Phase 10 activation or replacement implementation is claimed.
+
+## Forward compatibility — ADR 0036 (2026-10-12)
+
+Roadmap checkpoint links can navigate real History/Work/Planning/Chat evidence but cannot infer Green or event chronology from History snapshots. Keep History read-only and avoid new manual or hidden Session containers. Phase 9 `p9d` and legacy Session export/qualification stay separate. Phase 10 Roadmap remains unimplemented; former Living Software Knowledge Model becomes inactive Phase 11.

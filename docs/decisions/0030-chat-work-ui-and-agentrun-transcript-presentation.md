@@ -58,3 +58,7 @@ ADR 0016's October 12 restrained-orange amendment is the **current palette autho
 ## Clarification — ADR 0035 (2026-10-12)
 
 Codex may become selectable for ordinary Chat without joining Chat and Work into one panel or adding a Chat | Agent mode switch. ChatPanel uses conversational capability and .dope/chats; Work uses agentExecution and .dope/agent. The shared AI Center account is not a shared UI mode or mutation authority. See ADR 0035; no presentation implementation or qualification is claimed here.
+
+## Forward amendment — ADR 0036 (2026-10-12)
+
+Roadmap is a center checkpoint canvas with Software Map-style in-place **left inspector**, not a standalone checkpoint details page. Keep the reusable ChatPanel dockable alongside it, preserving single ownership, accessible narrow/resized panes and the current ADR 0016 restrained-orange central token contract. This future UI is not covered by historical Chat/Work GUI qualification.

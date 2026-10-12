@@ -187,3 +187,7 @@ A Planning Map becomes **Completed only through explicit developer closeout**. E
 ## Consequences
 
 Dope regains planning as a graph-centered product rather than restoring Phase 3. Architecture intent, canonical authority and physical evidence remain independently inspectable. Planning survives restart/copy/reopen without Theia or provider dependence. Staleness, rebase and adoption become explicit developer decisions. A visualization library can be replaced without migrating canonical planning semantics.
+
+## Forward amendment — ADR 0036 (2026-10-12)
+
+Roadmap checkpoints may reference existing Planning Maps/WorkItems, but Roadmap reordering never changes architectural basis, accepted target, WorkItem completion, transformation staleness or owner-controlled adoption. Manual/AI actions use the real revision-validated planning owner. Design only; Phase 5 qualification remains historical.
