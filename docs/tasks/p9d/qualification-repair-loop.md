@@ -1,7 +1,7 @@
 # Phase 9 final qualification repair loop — NOT GREEN
 
-**Date:** 2026-10-12 (America/Chicago)  
-**Disposition:** **Phase 9 NOT GREEN / NOT QUALIFIED** after five cycles. This is follow-up evidence to the original [P13 closeout](closeout.md), not owner closure or Phase 10 activation.  
+**Date:** 2026-10-12 (America/Chicago)
+**Disposition:** **Phase 9 NOT GREEN / NOT QUALIFIED** after five cycles. This is follow-up evidence to the original [P13 closeout](closeout.md), not owner closure or Phase 10 activation.
 **Exact final source/version candidate:** `0.9.35` / `2210a54d72fc0c0c31f617c42da7d4c9ee55fce9`. The original P13 source/version checkpoint remains `7fdf7b3f43d695e12fa3390f7fbad63d90e5cfa5`; the four repair commits followed it at unchanged package version. Documentation is committed separately after this source candidate.
 
 ## Five cycles
@@ -39,4 +39,4 @@ The user-invoked offline legacy exporter CLI was run against fresh v1 and v2 `.d
 
 **NOT GREEN.** A live completed AgentRun with its actual validation/review/promotion truth was unavailable: the disposable Work panel reported Coding Agent capability unavailable, and only a pending owner task was created. No validation or review result is inferred from that task. The local explanation sometimes fails strict validation, and one successful interpretation was misleading about model activity. Independent hosted-egress observation was not completed. These leave the requested Phase 9-wide chronology, understanding quality, and authority proof short of qualification despite the passing exact-source aggregate and substantial direct GUI evidence.
 
-Historical 9A/9B bounded Green, old 9C P10 superseded/unexecuted, Phase 5 Not Green, and Phase 8 Green are unchanged. There is no p9e. Phase 10 remains inactive; owner closure and Phase 10 activation each require a separate owner decision.
+Historical 9A/9B bounded Green, old 9C P10 NOT GREEN and superseded, Phase 5 Not Green, and Phase 8 Green are unchanged. There is no p9e. Phase 10 remains inactive; owner closure and Phase 10 activation each require a separate owner decision.
