@@ -2,7 +2,7 @@
 
 **Status:** OWNER-ACTIVATED IMPLEMENTATION THROUGH `0.9.35` / FINAL P13 NOT GREEN / PHASE 9 NOT QUALIFIED
 **Date:** 2026-10-12 (America/Chicago)
-**Authority:** ADR 0034 supersedes ADR 0033 for forward product development. Owner activation: `docs/planning/p9/phase-9d-activation.md`. Exact P13 source/version: `0.9.35` / `7fdf7b3f43d695e12fa3390f7fbad63d90e5cfa5`. Final evidence: `docs/tasks/p9d/closeout.md`. Original 9A Green `0.9.6`, 9B Green `0.9.13`; historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green unchanged.
+**Authority:** ADR 0034 supersedes ADR 0033 for forward product development. Owner activation: `docs/planning/p9/phase-9d-activation.md`. Original P13 source/version: `0.9.35` / `7fdf7b3f43d695e12fa3390f7fbad63d90e5cfa5`; five-cycle repair source at unchanged version: `2210a54d72fc0c0c31f617c42da7d4c9ee55fce9`. Current evidence: `docs/tasks/p9d/qualification-repair-loop.md`; original P13 evidence: `docs/tasks/p9d/closeout.md`. Original 9A Green `0.9.6`, 9B Green `0.9.13`; historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green unchanged.
 
 ## Outcome
 
@@ -48,4 +48,4 @@ Before implementation: `/prompt-ass` -> `/prompt-plan` -> `/prompt-write` for a 
 - Original Session 9D/9E: **SUPERSEDED / UNEXECUTED**. A new final History/Continuity qualification replaces old Session-based dogfooding; no Phase 9 owner closeout is implied.
 - Existing Session files in `.dope/development-sessions.json` are preserved without deletion/implicit migration. Developer-authored notes must remain recoverable by an explicit read-only export path.
 
-**Phase 9 overall is NOT QUALIFIED.** The real History panel is blocked at loading and the exact-candidate aggregate failed. No owner close or Phase 10 activation is implied.
+**Phase 9 overall is NOT QUALIFIED.** The repaired History panel loaded in direct Theia GUI and the final exact-source aggregate passed. A live completed AgentRun/validation chronology, consistent local explanation quality, and independent hosted-egress proof remain missing or failed; see the five-cycle repair record. No owner close or Phase 10 activation is implied.

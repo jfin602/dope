@@ -1,4 +1,6 @@
-# Final Phase 9 / p9d P13 closeout — NOT GREEN
+# Original Phase 9 / p9d P13 closeout — historical NOT GREEN
+
+**Current follow-up:** The five-cycle [qualification repair loop](qualification-repair-loop.md) supersedes this document's current-state routing at committed `0.9.35` source `2210a54d72fc0c0c31f617c42da7d4c9ee55fce9`. Phase 9 remains **NOT GREEN**. The original exact-candidate evidence below remains unchanged as history.
 
 **Date:** 2026-10-12 (America/Chicago)
 **Disposition:** **PHASE 9 NOT GREEN / NOT QUALIFIED.** This is the sole manual final Phase 9 qualification attempt, not owner closure or Phase 10 activation.
