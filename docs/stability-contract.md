@@ -399,22 +399,21 @@ Require executable evidence for:
 
 Broad browser/Electron/native/package evidence belongs in the designated T3 qualification/closeout gate rather than ordinary implementation prompts.
 
-## Product Phase 9 — Development Sessions qualification (9A/9B bounded Green; Phase 9 not qualified)
+## Product Phase 9 — Developer Continuity and History qualification (design approved / not qualified)
 
-Phase 9 is **ACTIVE; bounded 9A GREEN at committed `0.9.6` / `6b51ee96` and bounded 9B GREEN at committed `0.9.13` / `5aa0bac`; Phase 9 overall remains NOT QUALIFIED** (`docs/tasks/p9a/closeout.md`, `docs/tasks/p9b/closeout.md`). The original Phase 5 P11 Not Green/P12 unexecuted history remains unchanged. ADR 0033 and `docs/planning/p9/phase-9-plan.md` govern optional Sessions. 9C UI is design-reviewed but not activated; 9D–9E and Phase 10 remain inactive.
+**Current design is ADR 0034.** Original Phase 9A bounded headless Green at `0.9.6` / `6b51ee96` and 9B bounded backend Green at `0.9.13` / `5aa0bac` remain historical. Session 9C P1–P9 reached committed `0.9.22` / `0752415` but had no P10 real-GUI closeout; **the old p9c stack is superseded**, not Green. Phase 9 overall is NOT QUALIFIED; replacement implementation is not activated. Phase 5 P11 Not Green/P12 unexecuted, Phase 8 Green and Phase 10 inactivity remain unchanged.
 
-Before any Phase 9 Green claim, prove:
-- provider-free session creation, rename, pause/resume, close/reopen and multiple sessions per project, with no model required and unchanged independent non-session Chat/Planning/Work;
-- versioned atomic project-local session storage, optimistic revision conflict handling, canonical project isolation, malformed/foreign ID denial and restart/project-switch recovery without duplicate work;
-- 9B strict v2 typed attach/detach and live resolution of multiple Chats, Planning Maps, WorkItems (map ID + WorkItem ID), AgentTasks/AgentRuns/sequences and relevant decisions, with one artifact linked into multiple sessions without cloning it; preserve 9A v1 records via deterministic no-write read normalization and explicit locked migration on mutation;
-- missing/deleted/stale/unavailable references remain visibly unresolved, not silently retargeted, removed from history or treated as completed; Chat metadata resolution must not call recovery-writing reads, and other resolvers must remain read-only;
-- existing Chat/Work panel owner/focus semantics, independent center workspace, truthful activity/validation provenance, and clear distinction among WorkItem completion, AgentRun completion and passed Dope-owned validation;
-- session selection, pause, close and reopening do not invoke models, cancel/start tasks, expand ExecutionGrant, mutate source/Git, complete WorkItems, adopt architecture or rewrite accepted Project Mind decisions;
-- a **bounded real PlanningMap -> WorkItem -> AgentTask -> frozen Dope-owned validation/review** replay on the affected Phase 5 seam. Its original P11 Not Green/P12 unexecuted disposition remains historical even if this narrower Phase 9 replay passes;
-- a real Dope Builds Dope feature in a disposable Git worktree, through Session -> Chat -> Planning -> authorized Work -> validation/review -> restart/resume -> explicit closeout, with unresolved/deferred work preserved;
-- one passing final exact-candidate `npm run check`, plus genuinely separate required GUI/restart/security proof. Focused implementation tests and aggregate builds should not be redundantly repeated.
+Before claiming the **new** Phase 9 Green, qualify an exact source/version candidate with:
 
-Sessions never become a new source of authority or automatically feed linked project data to models. Session-aware AI context, if added later, requires explicit bounded project-scoped selection and existing hosted-egress consent. Phase 10 background knowledge alignment is out of scope.
+- **Retirement/data safety:** eliminate Session left launcher/center workspace, manual lifecycle/membership and dedicated runtime without leaving hidden canonical Session usage. Review all consumers and existing tests; preserve original `.dope/development-sessions.json` v1/v2 bytes and demonstrate bounded opt-in read-only export/recovery of developer-authored notes/objectives. Do not automatically import or delete legacy data.
+- **Right-toolbar History GUI:** real Theia interaction verifies the History button is in the right activity toolbar alongside Chat/Work, opening exactly one right panel; repeat open is idempotent, keyboard/theme accessibility and small sidebar usability are observed.
+- **Truthful activity:** bounded project-scoped owner-backed Chat last interaction, tasks/runs/sequences, Planning/WorkItems, Project Mind, Git commit/dirty snapshot and focus; correct timestamp provenance and honest unavailable/unknown. No derived activity ledger, write-on-read/Chat recovery writes, transcript copying, fake event chronology or WorkItem auto-completion from applied Run.
+- **Exact continuation:** verified last meaningful focus (or explicitly labeled fallback suggestion) opens existing Chat/Work/Planning/editor owner, preserving single writer and independent map state; missing/stale/cross-project links fail safely; project switch/restart/late responses cannot leak or execute work.
+- **Optional understanding:** developer explicitly invokes a compact evidence-backed context preview and eligible local-first explanation; no model required for History, no automatic on-open calls, hosted egress or silent fallback, no AI-generated facts promoted to canonical truth, no source/Git/Project Mind/candidate/Architecture mutation.
+- **Performance/security:** bounded refresh on open and owner events, no expensive continuous polling or unapproved Phase 10 background alignment, no new grants/model context from viewing activity.
+- **Release evidence:** focused regression of unchanged Chat/Work/Planning/Project Mind/no-History workflows, separate real GUI restart/authority/isolation proof and one passing final exact-candidate `npm run check` at the designated T3 gate; do not repeat the aggregate on every prompt.
+
+A missing qualification gate is **NOT GREEN / Evidence Gap**. Old 9B local Qwen Planning-to-Work proof remains bounded historical evidence, not a substitute for new History UX. No Phase 9 closeout or Phase 10 activation follows from documentation.
 
 ## Planning Maps and WorkItems
 

@@ -54,7 +54,7 @@ Dope owns:
 - the Physical Map
 - the future Visual Software Planning/work model
 - Agent Mind
-- DeveloperSession
+- Developer Continuity / History projection (not a new Session owner)
 - ownership/delegation
 - steering
 - Ideas/Questions/Decisions/Research
@@ -249,19 +249,17 @@ React Flow/browser presentation does not own Flow discovery, aggregation, eviden
 Phase 6 requires no model provider, AI Presence, mutation authority, mandatory live tracing, Planning Map Flow editing or new durable Flow store.
 
 
-## Phase 9 — Development Sessions boundary (9A bounded Green; 9B planned, inactive)
+## Phase 9 — Developer Continuity / History boundary (ADR 0034)
 
-A `DeveloperSession` is a **Dope-owned, optional organizational workspace**, not a new Agent Runtime, Chat, Planning Map, Project Mind artifact owner or source of authority. It binds to the canonical attached project and references existing stable identities: Chat IDs; Planning Map IDs; WorkItem (`mapId`, `workItemId`); AgentTask/AgentRun/AgentTaskSequence IDs; optional Project Mind decision/idea and Software Map IDs. Multiple references of each kind and shared membership across sessions are allowed. No transcripts, graph data, candidate diffs, validation records or accepted decisions are copied into session persistence.
+**The product replacement is design-approved, not implemented/qualified.** Original Session source remains at `0.9.22` / `0752415`, with 9A/9B bounded historical Green and 9C P10 unexecuted/superseded.
 
-The 9A-qualified provider-free boundary is a typed `DeveloperSession` parser, project-local `DeveloperSessionStore` and `DeveloperSessionBackend` with optimistic revision checks, atomic writes and recovery in versioned `.dope/development-sessions.json` (`0.9.6` / `6b51ee96`). 9B will add strict v2 links, read-only v1 normalization, owner metadata resolvers and revision-safe membership; see `docs/planning/p9/phase-9b-plan.md`. Session-owned state is limited to identity, project binding, title/objective, lifecycle, timestamps, bounded notes/next actions, typed membership and explicit closeout. Do not add a mutable inverse-link registry in Chat/Planning/Agent stores; derive it from session membership. Never revive historical Phase 3 `Plan/PlanStep/Task` or `.dope/planning.json`.
+History is a **bounded, project-root-scoped, read-only projection** of authoritative Chat activity, AgentTask/AgentRun/sequences, PlanningMap/WorkItems, Project Mind, Git evidence and observed workbench focus. Do not build another canonical event ledger, Session-like grouping/attachments or copied owner records. Persist only minimal last-meaningful-focus reference if necessary. Use safe non-recovering Chat metadata reads, distinguish current Git working-tree snapshots from historical events, and keep WorkItem completion, AgentRun terminal status, Dope validation and promotion distinct.
 
-The Session workspace is a **projection/navigation boundary**. Resolve linked status and provenance through owning services, display missing/deleted/stale references without silent retargeting, and enforce same-project identity at both mutation and resolution. Opening linked Chats/Work must focus their existing panel owners; the session does not clone editors or steal the independent center map workspace. Session selection/open/restart never automatically invokes AI, starts/cancels AgentRuns, grants permissions, completes WorkItems, adopts architecture or modifies Git.
+The **History** launcher belongs to the **right activity toolbar** beside Chat and Work and reveals one existing **right-side** panel. Show **Continue Where You Left Off** first, a bounded Recent Activity list and explicit **Understand Recent Work**. Continue prefers a verified project-local last meaningful focus; otherwise label the suggested most recent relevant activity. Open exact original Chat/Work/Planning/editor views under existing single-owner and independent-map navigation. Reject stale/missing/foreign identities and late project-switch responses without silent fallback or running agents.
 
-Session progress distinguishes developer-completed WorkItems, AgentRun terminal state and Dope-owned validation results. A session closeout can record unresolved/deferred work while leaving linked records untouched. Attaching an artifact does not automatically include its content in a model prompt; any later session-aware context must be explicit, bounded, project-scoped and subject to existing provider/egress policy.
+Understanding is user-initiated, using a bounded preview of source-backed evidence and eligible local-first model policy. No ambient AI inference, automatic hosted egress/fallback, code mutation, decision writing or broader authority. History works without AI; Phase 10 remains separately responsible for continuous background software knowledge alignment.
 
-The retained Phase 5 P11 Not Green/P12 unexecuted end-to-end Planning qualification requires **one targeted PlanningMap -> WorkItem -> authorized AgentTask -> Dope-owned validation/review replay** before Phase 9 claims full continuity. This does not retroactively qualify Phase 5 or authorize a map redesign. Final T3 must demonstrate a real Dope Builds Dope session with restart/resume and non-session regressions.
-
-Authority: **ADR 0033** and `docs/planning/p9/phase-9-plan.md`. Phase 9 is ACTIVE / NOT QUALIFIED. 9A is bounded Green at `0.9.6` source `6b51ee96` (`docs/tasks/p9a/closeout.md`); 9B design approved, NOT OWNER-ACTIVATED (`docs/planning/p9/phase-9b-plan.md`). Actual manifests remain `0.9.6`; no v2 membership or resolution is implemented by these docs. Last qualified product source remains Phase 8 `0.8.47` / `bcc5cb8`.
+Legacy Session UI/backend/domain/RPC/store must be removed only after tracing consumers and retaining independently useful read-only metadata/navigation adapters. Preserve existing `.dope/development-sessions.json` v1/v2 bytes and provide optional read-only export/recovery of developer-authored notes; no auto-delete, implicit migration or model injection. Historical p9a/p9b evidence remains true, old p9c P10 must not execute or auto-advance to `0.9.23`, and Phase 9 cannot be Green without a separately authorized new stack and exact-candidate real GUI/aggregate evidence. See ADR 0034 and `docs/planning/p9/phase-9-plan.md`.
 
 ## Model and provider boundary
 
@@ -435,7 +433,7 @@ A ChatGPT-plan Codex connection never silently falls back to an API-key OpenAI c
 
 ## Living Software Knowledge Model and background alignment boundary
 
-Product Phase 10 adds a knowledge-alignment layer over existing Software Map identities after Scoped Delegation and Development Sessions, using their change/session provenance while remaining observation-first.
+Product Phase 10 adds a knowledge-alignment layer over existing Software Map identities after Scoped Delegation and Developer Continuity, using real task/run and source-change provenance while remaining observation-first.
 
 The durable conceptual layering is:
 
@@ -894,7 +892,7 @@ It must not:
 - auto-revert cancelled work;
 - create Git commits;
 - implement AgentTaskSequence or phase-runner semantics;
-- become DeveloperSession.
+- become a hidden DeveloperSession or duplicate History/task store.
 
 ## Frontend/backend communication
 
@@ -932,7 +930,7 @@ Canonical product state includes, as phases introduce it:
 - accepted AgentWorkingState fields
 - ownership
 - ProposedAction lifecycle
-- DeveloperSession
+- project-scoped last meaningful focus metadata (not a Session record)
 - Validation evidence
 
 Derived/non-canonical state includes:

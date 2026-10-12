@@ -332,15 +332,15 @@ Introduce or activate:
 - ChangeSet
 - Validation integration
 
-AI Presence begins in Phase 7A through the Dope-owned durable Chat/ChatPanel and context-composition boundary defined by ADR 0025. Phase 7B centralizes global connection/model management in AI Center, and Phase 7C adds role policies/routing under ADR 0026. AI Presence may consume Dope-owned architecture, Flow, planning, Project Mind, editor/project and bounded saved-Chat context without making conversation canonical truth. Phase 8 consumes that provider-independent, role-aware runtime for Scoped Delegation / Coding Agent work. Phase 9 adds durable Development Sessions over intent, WorkItems, agent runs and validation. Phase 10 then maintains the Living Software Knowledge Model through deterministic-first, local-first background alignment using Phase 8 change provenance and Phase 9 session context; alignment findings never silently mutate source, documentation, contracts or canonical architecture.
+AI Presence begins in Phase 7A through the Dope-owned durable Chat/ChatPanel and context-composition boundary defined by ADR 0025. Phase 7B centralizes global connection/model management in AI Center, and Phase 7C adds role policies/routing under ADR 0026. AI Presence may consume Dope-owned architecture, Flow, planning, Project Mind, editor/project and bounded saved-Chat context without making conversation canonical truth. Phase 8 consumes that provider-independent, role-aware runtime for Scoped Delegation / Coding Agent work. Phase 9 provides Developer Continuity through deterministic History and verified existing-artifact focus without manually managed Sessions. Phase 10 separately maintains the Living Software Knowledge Model through deterministic-first, local-first background alignment using real Work/Planning/change provenance; alignment findings never silently mutate source, documentation, contracts or canonical architecture.
 
 Before Phase 7 general AI Presence, correction `c6-branch-seam` establishes only the minimal Model Runtime/provider-session boundary already needed by existing sMap synthesis. Software Map authority, sMap synthesis strategy and provider execution are separate concerns: Local and hosted synthesis share final evidence/proposal/validation/acceptance semantics but may use different model-appropriate prompt packing and stage strategies. This correction is infrastructure reuse, not early Agent Mind/chat/delegation scope.
 
 Local sMap synthesis and Phase 7 Local AI Presence are also different capabilities. A Local sMap strategy may be developed in parallel after the seam without making LM Studio/Qwen the general Agent Runtime or forcing the hosted sMap strategy to inherit Local-model constraints.
 
-### Phase 9 — Development Sessions
+### Phase 9 — Developer Continuity / History
 
-**9A BOUNDED GREEN at `0.9.6` / `6b51ee96`; 9B BOUNDED GREEN at `0.9.13` / `5aa0bac`; 9C DESIGN REVIEWED / NOT ACTIVATED; Phase 9 NOT QUALIFIED.** Introduce an optional, project-scoped DeveloperSession as a durable organizational workspace linking existing Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, decisions and validation. Membership is not ownership, task origin, permission or canonical truth. Sessions must work without AI and cannot silently start work. See ADR 0033 and `docs/planning/p9/phase-9-plan.md`.
+**OWNER-APPROVED REPLACEMENT DESIGN, NOT IMPLEMENTED OR QUALIFIED.** ADR 0034 supersedes Development Sessions for forward product development. History belongs in the right toolbar and projects sourced activity from Chat, Planning, Work, Project Mind, Git and recent focus with exact one-click continuation. Optional local-first contextual explanations require explicit developer action and inspectable bounded evidence. No manual Session objects, attachment workflow or automatic inference. Original 9A/9B bounded Green is historical; 9C P1–P9 committed through `0.9.22` but P10 GUI closeout was not executed. Phase 9 remains NOT QUALIFIED; Phase 10 inactive. See `docs/planning/p9/phase-9-plan.md`.
 
 ### Later expansion
 
@@ -385,7 +385,7 @@ Later AI should be able to detect conflict with an accepted Decision.
 
 ### Plan
 
-**Historical only:** this Plan/PlanStep/Task vocabulary belongs to removed Phase 3 `0.3.6` Planning and is **not** the Phase 9 session ontology. Current planning is `PlanningMap -> PlannedTransformation -> WorkItem`; execution is `AgentTask -> AgentRun`. Phase 9 links these records without reviving Phase 3 Plan/Task. See ADR 0017 and ADR 0033.
+**Historical only:** this Plan/PlanStep/Task vocabulary belongs to removed Phase 3 `0.3.6` Planning and is **not** a current Phase 9 session ontology. Current planning is `PlanningMap -> PlannedTransformation -> WorkItem`; execution is `AgentTask -> AgentRun`. Phase 9 links these records without reviving Phase 3 Plan/Task. See ADR 0017 and ADR 0033.
 
 Phase 3 historical planning semantics. A Plan is a live control structure in the `0.3.6` implementation; the live concept is intentionally removed by the pre-Phase-4 correction and may or may not return in the Phase 5 ontology.
 
@@ -417,19 +417,11 @@ Initial status transitions support explicit pending/active/blocked/complete/canc
 
 Opening a Task's file link uses the ordinary editor. Implementation remains ordinary coding until later AI phases add scoped delegation.
 
-### DeveloperSession
+### DeveloperSession (historical, superseded)
 
-A durable, **optional** organizational workspace for one development effort within one canonical project. A project may contain many sessions; Chat, Planning and Work remain fully usable outside them. Phase 9A identity, lifecycle and project-local persistence are bounded Green at `0.9.6` (`docs/tasks/p9a/closeout.md`). Typed membership and read-only resolution are bounded Green for 9B at `0.9.13` (`docs/tasks/p9b/closeout.md`); the 9C Session workspace is design-reviewed but not implemented or activated; 9D–9E remain inactive.
+Original Phase 9A/9B implemented a project-local versioned DeveloperSession store at `.dope/development-sessions.json`: Session identity, developer-authored title/objective/notes/nextActions and closeout; 9B added typed references and read-only metadata resolution. Those implementations were bounded Green at `0.9.6` and `0.9.13`, respectively, and are retained as historical evidence under ADR 0033. Original 9C UI P1–P9 committed through `0.9.22` / `0752415` but had no P10 real-GUI closeout; do not claim it qualified.
 
-Owned state: stable session ID, project identity, version/revision, title, objective, timestamps, lifecycle `active | paused | closed`, bounded developer notes/next actions and explicit closeout. Versioned, atomic `.dope/development-sessions.json` remains independently recoverable without a working Dope UI; 9B implements v2 typed links and in-memory v1 normalization with no read-time writes.
-
-Membership consists of **typed references**, not copies: multiple Chat IDs, Planning Map IDs, WorkItems identified by map ID + WorkItem ID, AgentTask/AgentRun/AgentTaskSequence IDs, and optionally Project Mind decision/idea and Software Map IDs. The bounded 9B source implements Project Mind decision/idea references; direct Software Map references remain deferred and are not introduced by 9C. An artifact may appear in multiple sessions without duplicate execution or conflicting ownership. The session resolves status, activity and validation from the existing authoritative stores; missing/deleted/stale links remain visibly unresolved rather than silently retargeted.
-
-A session answers what we intended, what the developer and agents actually did, what was validated, which decisions were accepted, what changed and what remains unresolved/deferred. WorkItem completion, AgentRun completion and Dope-owned validation pass are **different facts**. Session status does not complete WorkItems, cancel AgentRuns, adopt target architecture, mutate source, change Git or confer an ExecutionGrant. Session membership does not rewrite AgentTask `origin` (including reserved `future-session`).
-
-Session opening/navigating focuses existing Chat/Planning/Work surfaces under their normal single-panel ownership rules. Attaching an artifact does not silently add it to model context; future session-aware context requires explicit bounded project-scoped selection and applicable provider/egress consent. Close/reopen records outcomes without changing linked artifact lifecycles.
-
-A session is **not** a raw transcript, agent runtime, replacement Planning Map or new task system. See ADR 0033 and `docs/planning/p9/phase-9-plan.md`.
+**Not current product state:** ADR 0034 requires removal of the Session UI/domain after dependency review. Legacy persisted files and their developer-authored data must remain recoverable via explicit read-only export; they must not be silently deleted, imported into current History or fed to AI. Current owner records (Chat, PlanningMap/WorkItem, AgentTask/AgentRun/sequence, Project Mind) remain canonical. The replacement **History** is a read-only derived activity view, with at most minimal project-scoped focus metadata.
 
 ### Research
 
@@ -597,7 +589,7 @@ An AgentTask may originate from:
 - one imported phase/correction prompt;
 - a WorkItem;
 - a direct developer coding request;
-- a future DeveloperSession workflow.
+- a direct or WorkItem-derived developer-authorized workflow (not a Session-origin task).
 
 Initial durable fields include:
 - stable Dope task ID and schema version;
@@ -876,7 +868,7 @@ Idea / Question
 -> Task
 -> ChangeSet
 -> Validation
--> DeveloperSession
+-> developer-continuity evidence / History projection (no new task origin)
 
 No ProjectArtifact, Plan, Task, Agent Mind, ProposedAction, ChangeSet, Validation, or Session receives extra authority merely because the target repository is Dope.
 

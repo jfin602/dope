@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: **Phase 9 ACTIVE / 9A BOUNDED GREEN at `0.9.6` / `6b51ee96`; 9B BOUNDED GREEN at `0.9.13` / `5aa0bac`; 9C DESIGN REVIEWED / NOT ACTIVATED; Phase 9 NOT QUALIFIED.** 9A evidence: `docs/tasks/p9a/closeout.md`; 9B evidence: `docs/tasks/p9b/closeout.md`; 9C plan: `docs/planning/p9/phase-9c-plan.md`. 9C–9E and Phase 10 inactive; Phase 8 remains owner-closed Green.
+Current stage: **Phase 9 DEVELOPER CONTINUITY/HISTORY DESIGN APPROVED under ADR 0034; replacement implementation NOT ACTIVATED and Phase 9 overall NOT QUALIFIED.** Historical 9A Green `0.9.6` / `6b51ee96`, 9B Green `0.9.13` / `5aa0bac`; original 9C P1–P9 source at `0.9.22` / `0752415`, P10 unexecuted/superseded. Phase 10 inactive. Current plan: `docs/planning/p9/phase-9-plan.md`.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
@@ -31,7 +31,7 @@ Theia
 -> AI Roles & Routing
 -> c7 Chat Project Grounding correction
 -> Scoped Delegation
--> Development Sessions
+-> Developer Continuity / right-toolbar History
 -> Living Software Knowledge Model
 
 Each stage should make Dope more useful to the developer before the next layer of AI is added.
@@ -68,8 +68,8 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c8 — Agent Authority Boundary | **GREEN / INCORPORATED INTO QUALIFIED 8B.** Isolated ExecutionWorkspace -> CandidateDelta -> Dope Authority/ToolExecutor promotion is the canonical mutation boundary. |
 | Correction c8-candidate-validation — Dope-owned Candidate Validation | **GREEN / QUALIFIED.** Dope-owned frozen-candidate validation supports private temp/loopback without host/private/network authority; real Adaptive SEO Prompt Stack completed in Cycle 2 of 5. |
 | Correction c8-work-mode — Work / Prompt Stack UI | **GREEN / QUALIFIED / CLOSED at `0.8.20`.** Separate Chat and Work panels, Work toolbar, stable titles, durable agent transcript and collapsed command detail, live GUI/restart evidence. |
-| Product Phase 9 — Development Sessions | **ACTIVE / 9A BOUNDED GREEN at 0.9.6; 9B BOUNDED GREEN at 0.9.13; 9C DESIGN REVIEWED / NOT ACTIVATED; Phase 9 NOT QUALIFIED.** Optional project-scoped sessions link multiple existing Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, validation and decisions without copying their truth or granting execution. Real Dope Builds Dope session replay is the exit gate. See `docs/planning/p9/phase-9-plan.md` and ADR 0033. |
-| Product Phase 10 — Living Software Knowledge Model | Dope continuously checks whether source/runtime evidence, canonical Software Map state, documentation and formal contracts still describe the same software. It can also use Phase 8 WorkItem and Phase 9 session provenance to explain why state changed. Deterministic impact analysis narrows work first; bounded local-model semantic checks maintain alignment in the background without silently mutating project truth. |
+| Product Phase 9 — Developer Continuity / History | **ADR 0034 DESIGN APPROVED / IMPLEMENTATION NOT ACTIVATED / NOT QUALIFIED.** Right-toolbar History, deterministic activity, one-click return and optional local-first understanding. Historical Session 9A/9B bounded Green retained; Session 9C P1–P9 at `0.9.22`, P10 unexecuted. No legacy data deletion or session-based new authority. See `docs/planning/p9/phase-9-plan.md`. |
+| Product Phase 10 — Living Software Knowledge Model | Dope continuously reconciles source/runtime, canonical Software Map, docs and contracts through deterministic-first and bounded local-first background checks, using actual WorkItem/AgentRun/change provenance and optional History navigation context (not deprecated Session membership). Remains inactive; no automatic canonical mutation or hosted escalation. |
 
 Self-development never receives privileged authority.
 
@@ -1037,26 +1037,17 @@ Exit condition:
 
 A developer can run a real sequential implementation stack inside Dope through the Coding Agent role, safely resume it across restart/manual gates, and inspect/control its repository effects. The same execution substrate can then accept WorkItem-derived AgentTasks with explicit authority, steering, diff/review and validation. Reference-agent qualification precedes local coding-model qualification so harness failures and model-capability failures remain separable.
 
-## Product Phase 9 — Development Sessions
+## Product Phase 9 — Developer Continuity / History
 
-Status: **ACTIVE / 9A BOUNDED GREEN at `0.9.6` / `6b51ee96`; 9B BOUNDED GREEN at `0.9.13` / `5aa0bac`; 9C DESIGN REVIEWED / NOT ACTIVATED; Phase 9 NOT QUALIFIED.** Phase 8 remains owner-closed Green for its approved scope at committed `0.8.47` / `bcc5cb8`. The owner authorized coherent `0.9.0` baseline `e250a07` and separately activated 9A and 9B. Bounded 9A and 9B closeouts are in `docs/tasks/p9a/closeout.md` and `docs/tasks/p9b/closeout.md`. 9C design is in `docs/planning/p9/phase-9c-plan.md`; authoring does not activate implementation.
+**Status: OWNER-APPROVED REPLACEMENT DESIGN (ADR 0034) / NOT IMPLEMENTATION-ACTIVATED / PHASE 9 NOT QUALIFIED.** Actual root version `0.9.22` / `0752415`. Historical Phase 9A (`0.9.6`) and 9B (`0.9.13`) scoped Green retained unchanged. Old 9C P1–P9 implementation exists but P10 GUI closeout was not executed and is now superseded. Do not run original p9c or pre-bump `0.9.23`.
 
-Purpose:
-Make a development effort durable for the **developer**, not just for a model. A DeveloperSession is an **optional** project-scoped organizational workspace with an objective, multiple linked Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, decisions, validation, progress, unresolved work, and explicit pause/resume/closeout. Chat, Planning, Work and IDE remain independently usable without a session.
+**Purpose:** Make the developer's understanding and working context survive a break without maintaining another Session object. **History** belongs in the **right toolbar**, shows a factual bounded activity timeline and provides **Continue Where You Left Off** at top. A developer can explicitly request **Understand Recent Work** using approved local-first, previewed evidence, but History remains useful with no model.
 
-Phase 9 does **not** create another task ontology, agent runtime, grant, source-of-truth store for existing artifacts or automatic AI context. Membership is a typed reference to existing project records; a shared artifact may appear in multiple sessions without duplication or execution. Session status never marks WorkItems complete, promotes candidates, adopts architecture, cancels runs or modifies Git. The proposed session-only store is versioned project-local `.dope/development-sessions.json`, with revision-checked operations and missing/stale-link visibility.
+The new Phase 9 implementation must first retire the old Session UI/domain after dependency review and preserve existing `.dope/development-sessions.json` files with an opt-in read-only export/recovery path for notes/actions. It must not silently delete data, mutate owner stores, infer unsupported events, or build hidden Session membership. Read-only activity comes from existing Chat/Work/Planning/Project Mind/Git owners. Continuation focuses real existing Chat/Work/Planning/editor, respecting project identity and panel ownership; no automatic AgentRun execution, hosted inference or architectural adoption.
 
-Workstreams:
-- **9A — Identity/persistence:** bounded Green at `0.9.6` / `6b51ee96`, 13/13 focused tests, restart and project isolation; original schema v1 had no links and remains supported via 9B migration.
-- **9B — Artifact linking:** bounded Green at `0.9.13` / `5aa0bac`, 25/25 focused tests and a real local Qwen PlanningMap -> WorkItem -> AgentTask/AgentRun -> Dope validation -> explicit developer Accept replay. Strict v2 references/v1 migration, read-only resolution and revision-safe membership qualified for bounded backend/headless scope. Phase 5 P11 Not Green/P12 unexecuted remains unchanged.
-- **9C — Session workspace:** design reviewed, NOT ACTIVATED. Dedicated center Session selection/overview, edits of developer-authored metadata, typed artifact linking, truthful resolution and navigation into existing Chat/Planning/Work/Project Mind panels. Preserve Chat/Work single-panel ownership, independent editor state and no-model manual use; see `docs/planning/p9/phase-9c-plan.md`.
-- **9D — Resume/closeout:** truthful progress, restart, unresolved/deferred items, decision provenance and explicit close/reopen without changing linked object lifecycles.
-- **9E — Dope Builds Dope:** one small real feature through Session -> Chat -> Planning -> Work -> validation/review -> restart/resume -> session closeout, plus non-session regressions and exact-source aggregate.
+**Planned workstreams, not executable prompts:** Session retirement/data safety; right-toolbar History; exact meaningful-focus Continuation; optional explicit local-first Understanding; separate real Theia GUI and full exact-candidate qualification. New `/prompt-ass`, `/prompt-plan`, `/prompt-write` and separate owner activation required before implementation. Only the final qualification can claim Phase 9 Green; Phase 10 remains inactive.
 
-Exit condition:
-A developer can create/use sessions without AI, attach multiple existing objects, navigate them, perform authorized work without new permissions, restore after restart, distinguish actual validation and unresolved work, and explicitly close a real Dope Builds Dope session. Required GUI, security and final aggregate evidence must be Green on one exact source candidate.
-
-Authority: `docs/planning/p9/phase-9-plan.md` and ADR 0033. 9A and 9B are bounded Green at `0.9.6` and `0.9.13`; the 9B activation and closeout are recorded. 9C design and task stack authoring do **not** authorize 9C implementation; separate owner approval remains required. 9C–9E and Phase 10 remain inactive.
+Authority: ADR 0034, `docs/planning/p9/phase-9-plan.md` and the updated `docs/stability-contract.md`. The old ADR 0033 and p9a/p9b/p9c records remain historical, not permission to continue old Session work.
 
 ## Product Phase 10 — Living Software Knowledge Model
 

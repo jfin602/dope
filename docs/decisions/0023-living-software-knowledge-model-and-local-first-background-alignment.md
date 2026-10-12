@@ -18,14 +18,14 @@ Running every change through hosted frontier inference would be expensive, priva
 
 ### Phase 10 is the Living Software Knowledge Model
 
-Product Phase 10 follows Product Phase 8 — Scoped Delegation and Product Phase 9 — Development Sessions.
+Product Phase 10 follows Product Phase 8 — Scoped Delegation and Product Phase 9 — Developer Continuity / History, as amended by ADR 0034.
 
 The forward sequence is:
 
 ```text
 Phase 7 — AI Presence
 Phase 8 — Scoped Delegation
-Phase 9 — Development Sessions
+Phase 9 — Developer Continuity / History
 Phase 10 — Living Software Knowledge Model
 ```
 
@@ -185,7 +185,7 @@ Placing this phase before Scoped Delegation means Dope learns to maintain and ch
 ## Consequences
 
 - Product Phase 8 is Scoped Delegation / Coding Agent.
-- Product Phase 9 is Development Sessions.
+- Product Phase 9 is Developer Continuity / History (ADR 0034), not durable manually linked Sessions.
 - Product Phase 10 is Living Software Knowledge Model.
 - Phase 7 Model Runtime/AI role routing must support the bounded structured/cancellable Background execution needed by Phase 10 without making provider/role state canonical; Phase 10 supplies hard local-only/no-hosted-fallback constraints.
 - Software Map/product storage must support durable assertion/finding state without persisting unnecessary provider/session detail.
@@ -216,3 +216,5 @@ Rejected because disagreement is evidence that requires developer judgment; choo
 Revisit scheduler policy and local-model strategy when real Phase 10 qualification data exists for latency, false positives, battery/resource contention, model residency and semantic-check quality.
 
 Revisit whether any specific hosted background policy is useful only if it can remain explicit, cost/egress-aware and developer-controlled. The no-silent-hosted-escalation rule does not expire merely because hosted inference becomes cheaper.
+
+**2026-10-11 Phase 9 supersession note:** ADR 0034 removes the forward DeveloperSession product ontology. Phase 10 may use real task/run, Git and observed continuity provenance but must not depend on manual Session membership. The Phase 10 background alignment scheduler, deterministic-first checks and local-only/no-hosted-fallback safety policy remain unchanged and inactive until separately authorized.
