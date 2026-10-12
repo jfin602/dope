@@ -5,7 +5,7 @@
 .dope-history-panel h3 { margin: 0 0 6px; font-size: 14px; }
 .dope-history-panel h4 { margin: 10px 0 4px; font-size: 12px; }
 .dope-history-panel section { margin-top: 12px; }
-.dope-history-continue { border-left: 3px solid #336699; padding: 9px; background: color-mix(in srgb, #336699 12%, var(--theia-sideBar-background)); }
+.dope-history-continue { border-left: 3px solid var(--dope-primary, var(--theia-focusBorder)); padding: 9px; background: color-mix(in srgb, var(--dope-primary, var(--theia-focusBorder)) 12%, var(--theia-sideBar-background)); }
 .dope-history-panel p { margin: 5px 0; line-height: 1.4; overflow-wrap: anywhere; }
 .dope-history-panel ul { list-style: none; padding: 0; margin: 0; }
 .dope-history-panel li { border-bottom: 1px solid var(--theia-widget-border); padding: 6px 0; overflow-wrap: anywhere; }

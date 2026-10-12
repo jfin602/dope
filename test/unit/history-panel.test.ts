@@ -28,7 +28,7 @@ test('History uses one right activity-bar widget, a palette command, and safe in
     assert.match(widget, /aria-live/);
     assert.match(widget, /Event · time unknown/);
     assert.match(widget, /Current snapshot · observed/);
-    assert.match(css, /#336699/);
+    assert.match(css, /--dope-primary, var\(--theia-focusBorder\)/);
     assert.match(css, /button:focus-visible/);
     const backend = source('node/backend-module.ts');
     assert.equal((backend.match(/new RpcConnectionHandler\(historyServicePath/g) ?? []).length, 1);
