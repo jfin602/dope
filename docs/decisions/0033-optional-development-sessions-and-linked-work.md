@@ -1,6 +1,6 @@
 # ADR 0033 — Optional Development Sessions and Linked Work
 
-Status: **Accepted design / bounded Phase 9A Green at `0.9.6` / `6b51ee96` and Phase 9B Green at `0.9.13` / `5aa0bac`; Phase 9 overall unqualified**
+Status: **SUPERSEDED for forward product design by ADR 0034; historical Phase 9A and 9B bounded Green evidence retained, Phase 9 overall unqualified**
 Date: 2026-10-10
 Depends on: ADR 0005, 0017, 0025, 0028–0032
 Entry: Phase 8 owner-closed Green at committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06`.
@@ -39,3 +39,5 @@ Rejected: mandatory sessions, copying authoritative state, session membership as
 **9B execution note (2026-10-11):** The owner separately activated P1–P7 in `docs/planning/p9/phase-9b-activation.md`. The sole [9B closeout](../tasks/p9b/closeout.md) records bounded Green for typed links, v1 migration, read-only resolution, membership and a genuine local Planning-to-Work replay at the exact `0.9.13` source checkpoint `5aa0bac`. The preceding design and activation notes retain their historical timing. 9C–9E and Phase 10 remain inactive, and Phase 9 overall is not qualified.
 
 **9C design review (2026-10-11):** With 9A identity and 9B typed membership/read-only resolution bounded Green, the proposed 9C surface is a project-scoped center Session workspace with selection, developer-authored fields, membership and truthful linked status. It only opens/focuses existing owner panels (respecting Chat/Work single-owner semantics) and must never execute work, copy owner truth or feed linked data automatically to a model. Rich progress, guided resume/closeout and final GUI aggregate remain in 9D/9E. See `docs/planning/p9/phase-9c-plan.md`. This design/prompt authoring is **not owner activation**.
+
+**Supersession (2026-10-11):** The owner replaced the user-facing Development Sessions concept with right-toolbar History and Developer Continuity; see [ADR 0034](0034-developer-continuity-and-right-toolbar-history.md). P1-P9 of the earlier 9C stack committed through `0.9.22` / `0752415`; P10 was not executed. This ADR and the 9A/9B Green results remain historical, not present implementation authority.

@@ -1,60 +1,45 @@
-# Phase 9 Plan — Development Sessions
+# Phase 9 Plan — Developer Continuity and History
 
-Status: **PHASE 9 ACTIVE / 9A BOUNDED GREEN AT `0.9.6` AND 9B BOUNDED GREEN AT `0.9.13` — PHASE 9 NOT QUALIFIED; 9C–9E INACTIVE**
-Date: 2026-10-10
-Entry: Phase 8 owner-closed Green at committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06` (`docs/planning/p8/phase-8-closeout.md`).
-**Version baseline established:** coherent `0.9.0` commit `e250a07c9b4b7ec29fd178a22036094307237b23`, separately owner-approved on 2026-10-10 (see `docs/planning/p9/baseline.md`). This was a version-only transition, distinct from the later 9A and 9B activations in `docs/planning/p9/activation.md` and `docs/planning/p9/phase-9b-activation.md`.
-Authority: ADR 0033, ADR 0017, 0025, 0028–0032, Product Model, Architecture, Stability Contract and Workflow.
+**Status:** OWNER-APPROVED DESIGN REPLACEMENT / IMPLEMENTATION NOT ACTIVATED / PHASE 9 NOT QUALIFIED  
+**Date:** 2026-10-11 (America/Chicago)  
+**Authority:** ADR 0034 supersedes ADR 0033 for forward product development. Current source `0.9.22` / `0752415be76ef3f87e1a34bf17c4009a888be085`. Original 9A Green `0.9.6`, 9B Green `0.9.13`; historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green unchanged.
 
-## Goal and product contract
+## Outcome
 
-A Development Session is an **optional top-level organizational workspace** for one project development effort. It contains links to multiple existing Chats, Planning Maps/WorkItems, AgentTasks/AgentRuns/Prompt Stacks, validation, decisions and architecture. It offers objective, progress, recent activity, unresolved work, next actions, pause/resume and explicit closeout.
+**History** is a small **right-toolbar/right-side panel** that automatically presents what happened and lets a developer continue their exact existing Chat, Work, Planning or editor state without creating or maintaining a Development Session. Preserve normal owner stores, existing views and no-AI use; do not substitute a hidden Session object.
 
-Sessions **reference existing truth**, never clone Chat, Planning, Agent or Project Mind records. A project may have multiple sessions; an artifact may be linked to multiple sessions. Non-session Chat, Planning, Work and IDE behavior remains fully available. Opening a session cannot execute work, widen permissions, alter WorkItem status or adopt architecture.
+### User experience
 
-## Inspected entry substrate
+1. **Continue Where You Left Off:** top-of-panel action from a verified project-bound last meaningful focus record; fall back to a clearly labeled recent-activity suggestion if unknown. One click reveals the ordinary owning view, never executes a task.
+2. **Recent Activity:** compact time-ordered owner-backed Chat interactions, tasks/runs/stacks, Dope-owned validation/review/promotions, Planning/WorkItem truth, Project Mind, Git commit and dirty snapshot and meaningful editor/view focus. Use real timestamps, distinguish snapshots from events, report unknown/unavailable and avoid false causality/progress.
+3. **Understand Recent Work:** explicit opt-in local-first evidence summary with preview, provenance and separated fact/interpretation; no automatic provider calls, silent hosted fallback or AI context egress, and no mutation authority.
 
-- Chat uses project-local `.dope/chats`, stable IDs/revisions and single-panel ownership.
-- Planning uses `.dope/planning-maps.json`, map/WorkItem identities, revisions, basis and explicit rebase/adoption. Phase 5 P11 final A–I replay was Not Green and P12 was unexecuted; this history is preserved.
-- Agent Runtime persists AgentTasks/AgentRuns/AgentTaskSequences under `.dope/agent/` with grant, transcript, frozen candidate, validation/review and checkpoints. Reserved AgentTask `future-session` origin must **not** be repurposed for mutable membership.
-- Project Mind owns decisions/ideas; Software Map owns architecture. Session UI derives their current evidence.
-- Historical `0.8.47` had no session store/service/workspace. 9A subsequently implemented and qualified the provider-free parser, store, lifecycle and backend at `0.9.6` (`docs/tasks/p9a/closeout.md`); no typed links or UI.
+### UI and data architecture
 
-## Domain and persistence
+- History launcher in **right activity bar** beside Chat/Work, one right-side panel; repeated activation reveals it. **Remove old left Sessions launcher and center Session workspace.**
+- Derive bounded read-only data from current owner stores. Minimize new durable state: only project-scoped last meaningful focus if required. Don't copy transcripts/owner records or keep another canonical activity log. Chat owner metadata must be read without Chat recovery writes.
+- Reuse normal Chat/Work single live owner, Planning Map independent view navigation, Project Mind and editor opening. Handle stale/missing/foreign targets, root switching, late responses and restart without retargeting or automatic execution.
+- Keep useful with zero models and without manual artifact attachments or Session status/lifecycle.
+- Phase 10 still exclusively owns continuous software knowledge alignment and any associated background local-model scheduler.
 
-Create a small versioned, project-scoped DeveloperSession with stable ID, canonical project identity, optimistic revision, title/objective, `active | paused | closed`, timestamps, bounded notes/next actions and explicit closeout. Typed links: Chat ID; Planning Map ID; WorkItem (map ID + WorkItem ID); AgentTask, AgentRun and sequence IDs; optionally Project Mind decision/idea and Software Map identities. Proposed single atomic project-local store: `.dope/development-sessions.json`. No duplicate cross-store membership indexes or Phase 3 Plan/Task compatibility.
+## Replacement implementation workstreams (NOT yet activated)
 
-Resolve links through existing owning stores; foreign-project/stale revisions fail closed, missing/stale links remain visible. WorkItem completion, AgentRun completion and passed Dope validation are separate progress facts. Session lifecycle never mutates linked records.
+| Workstream | Goal | Required proof |
+| --- | --- | --- |
+| R — Retire Sessions | Remove Session UI/contracts/backends/store wiring after tracing consumers; preserve legacy files and opt-in read-only export/recovery | No residual Session runtime, no data deletion, normal Chat/Work/Planning regression |
+| H — History panel | Right toolbar launcher, bounded truthful owner-readonly activity | Real right-panel appearance, correct provenance/time, no-write/no-model, project scope |
+| C — Continue | Restore verified last meaningful focus; open real existing owner views | One-click exact owner, duplicate prevention, stale/foreign, restart/switch |
+| U — Understanding | User-triggered local-first bounded contextual explanation | Context preview, no hosted fallback, source-backed fact vs inference, no side effects |
+| Q — Final qualification | Real Theia GUI, restart, security, focused and final exact-candidate aggregate | Green/Not Green based on observed evidence |
 
-## Implementation workstreams (not prompt count)
+Before implementation: `/prompt-ass` -> `/prompt-plan` -> `/prompt-write` for a **new bounded stack** based on actual `0.9.22` state, then a **separate owner activation**. Optimize ordinary implementation to <=8 minutes including focused tests, reserve real GUI/full aggregate for assigned gates. **Do not pre-bump to `0.9.23` simply because the retired P10 specified it.**
 
-### 9A — Identity and persistence
-Provider-free parser/service/store; create, rename, pause, resume, close/reopen, revision-checked writes, project isolation and restart recovery. Demonstrate two sessions and ordinary no-session use.
+## Historical disposition (preserve source/evidence)
 
-**Prompt authoring update (2026-10-10):** The bounded `docs/tasks/p9a/` P1–P6 stack has been assessed, planned and written for this workstream, targeting `0.9.1`–`0.9.6` after the now-committed coherent `0.9.0` baseline **and the now-recorded separate 9A implementation activation (`docs/planning/p9/activation.md`)**. Its P6 is a headless 9A-scoped closeout, not full Phase 9 GUI/aggregate qualification. The subsequent explicit owner activation on 2026-10-10 authorizes 9A P1–P6 only; no session has been implemented or qualified by documentation, and the baseline remains `0.9.0` until P1.
+- 9A Session identity/persistence: **GREEN for bounded headless 9A** at `0.9.6` / `6b51ee96` (`docs/tasks/p9a/closeout.md`).
+- 9B Session typed links/read-only owner resolution: **GREEN for bounded headless 9B** at `0.9.13` / `5aa0bac`, 25/25 focused tests, real accepted local Planning-to-Work replay (`docs/tasks/p9b/closeout.md`). This does not retroactively qualify Phase 5.
+- 9C Session UI: **P1–P9 implemented** at consecutive committed versions `0.9.14`–`0.9.22`, last `0752415`; **P10 GUI closeout unexecuted**. Session 9C is SUPERSEDED, NOT QUALIFIED. The original activation and P1–P10 prompts remain historical records but must not be executed further.
+- Original Session 9D/9E: **SUPERSEDED / UNEXECUTED**. A new final History/Continuity qualification replaces old Session-based dogfooding; no Phase 9 owner closeout is implied.
+- Existing Session files in `.dope/development-sessions.json` are preserved without deletion/implicit migration. Developer-authored notes must remain recoverable by an explicit read-only export path.
 
-**Execution update (2026-10-10):** P1–P6 completed through the separate `0.9.6` source/version checkpoint `6b51ee96`; [9A closeout](../../tasks/p9a/closeout.md) records bounded headless Green. The preceding paragraph is retained as prompt-authoring history. Phase 9 overall remains unqualified; 9B–9E require separate activation and evidence.
-
-### 9B — Typed membership and resolution
-**OWNER-ACTIVATED AND BOUNDED GREEN at `0.9.13` / `5aa0bac`.** See `docs/planning/p9/phase-9b-activation.md` and `docs/tasks/p9b/closeout.md` for strict v2 session references/v1 migration, read-only Chat/Planning/Agent/Project Mind resolution, revision-safe attach/detach and the real authorized Planning-to-Work replay. No owner truth was copied or work started on Session selection; Phase 5 Not Green remains historical. This does not qualify the 9C UI, 9D rich projections or 9E GUI/aggregate.
-
-### 9C — Session workspace
-**DESIGN REVIEWED / PROMPT STACK AUTHORED / NOT OWNER-ACTIVATED OR IMPLEMENTED** (2026-10-11). See `docs/planning/p9/phase-9c-plan.md` and `docs/tasks/p9c/README.md`. A compact dedicated center Session workspace supplies project-local selection, developer-authored objective/notes/next actions, existing v2 artifact attach/detach, truthful compact resolution and navigation into normal Chat/Planning/Work/Project Mind surfaces. Preserve their single-owner behavior and independent editor state; no activity inference, session-native execution, model context or new agent composer. 9C requires separate owner activation after prompt authoring; 9D remains responsible for rich progress, resume and guided closeout.
-
-### 9D — Resume and closeout
-Restore sessions after restart/project switch without restarting AgentRuns. Truthful progress, unresolved/deferred items, decision links, explicit developer close/reopen and durable closeout. Closing a session never cancels or completes linked work.
-
-### 9E — Dope Builds Dope qualification
-Use a disposable Git worktree for one small real Dope feature: Session -> Chat -> Planning/WorkItem -> authorized Work -> frozen candidate -> Dope-owned validation/review -> restart/resume -> session closeout. Verify multiple links, shared artifacts, no-AI manual session, missing/stale refs, project isolation, existing non-session flows and no new authority.
-
-## Qualification economy
-
-- T1: <=8-minute focused implementation-plus-tests target (10-minute soft/15-minute hard), build only changed compiled dependencies if tests require `lib`. Do not run aggregate/browser/Electron on every prompt.
-- T2: bounded cross-store/project/revision/restart/authority integration and targeted Phase 5 Planning-to-Work replay. Never defer a required safety check beyond an unsafe intermediate state.
-- T3: one real Dope Builds Dope GUI feature, exact-candidate passing `npm run check` plus separate necessary restart/security proof; preserve all failed observations. Green requires direct evidence, not just stored references.
-
-No new agent runtime, mandatory sessions, provider-native session state, automatic AI context, silent hosted fallback, WorkItem auto-completion, architecture auto-adoption, Phase 10 background alignment or Phase 9-to-10 auto-advance.
-
-## Activation
-
-**Phase 9 is ACTIVE / NOT QUALIFIED overall.** The owner authorized the coherent `0.9.0` baseline at `e250a07`, separately activated 9A (`docs/planning/p9/activation.md`) and later 9B (`docs/planning/p9/phase-9b-activation.md`). The 9A and 9B bounded closeouts are recorded at `0.9.6` and `0.9.13`. 9C design/prompt authoring does not activate implementation. 9C–9E and Phase 10 need separate activation and evidence; the 9B result does not close Phase 9.
+**Phase 9 overall is NOT QUALIFIED.** No successor phase or source implementation is activated by these documentation edits.

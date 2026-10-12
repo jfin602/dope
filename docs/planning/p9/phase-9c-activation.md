@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-10-11 (America/Chicago):** ADR 0034 replaces Development Sessions with right-toolbar History / Developer Continuity. Historical 9C P1-P9 reached committed `0.9.22` / `0752415` but P10 real GUI closeout was not executed. **Do not run old p9c, advance to 0.9.23 under this stack, or claim Phase 9 Green.** The former plan/activation/prompt text is retained below solely for historical reference. Current authority: `docs/planning/p9/phase-9-plan.md`.
+
 # Phase 9C — Separate Owner Activation
 
 **Date:** 2026-10-11 (America/Chicago)  
