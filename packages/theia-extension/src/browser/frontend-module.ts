@@ -54,6 +54,8 @@ import { historyServicePath, historyFocusServicePath, HistoryService } from '@do
 import { HistoryWidget, HISTORY_WIDGET_ID } from './history-widget';
 import { HistoryFocusContribution } from './history-focus-contribution';
 import { historyOwnerNavigation } from './history-owner-navigation';
+import { RoadmapCanvasWidget, ROADMAP_CANVAS_ID } from './roadmap-canvas-widget';
+import { roadmapServicePath, type RoadmapService } from '../roadmap-service';
 
 const modelInventoryChanged = new Emitter<void>();
 
@@ -210,6 +212,14 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) =>
         commands.registerCommand({ id: 'dope.physicalMap.open', label: 'Dope: Open Physical Map' },
             { execute: () => openPhysicalMap(context.container.get(WidgetManager), context.container.get(ApplicationShell)) }) })).inSingletonScope();
+    bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) =>
+        commands.registerCommand({ id: 'dope.roadmap.open', label: 'Dope: Open Roadmap' }, { execute: async () => {
+            const manager = context.container.get(WidgetManager);
+            const shell = context.container.get(ApplicationShell);
+            const widget = await manager.getOrCreateWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
+            if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
+            await shell.activateWidget(widget.id);
+        } }) })).inSingletonScope();
     bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) => {
         for (const name of Object.keys(chatAreas) as ChatArea[]) commands.registerCommand(
             { id: `dope.chat.open.${name}`, label: `Dope: Open Chat Panel in ${name[0].toUpperCase()}${name.slice(1)}` },
@@ -288,6 +298,9 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                     .getOrCreateWidget<ChatPanelWidget>(CHAT_PANEL_ID, panelOptions), context.container.get(ApplicationShell), 'work');
                 await widget.selectWorkLauncher({ kind: 'task', id: taskId });
             }) })).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_CANVAS_ID, createWidget: () =>
+        new RoadmapCanvasWidget(ServiceConnectionProvider.createProxy<RoadmapService>(context.container, roadmapServicePath),
+            context.container.get(WorkspaceService)) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_REVIEW_ID, createWidget: () =>
         new SoftwareMapReviewWidget(context.container.get(SoftwareMapController), context.container.get(WorkspaceService),
             context.container.get(OpenerService), () => context.container.get(AICenterContribution).openFromSoftwareMapReview()) })).inSingletonScope();

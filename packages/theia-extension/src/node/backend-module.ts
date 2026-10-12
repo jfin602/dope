@@ -45,6 +45,8 @@ import { LocalAgentExecutionAdapter } from './local-agent-execution';
 import type { AgentExecutionAdapter } from '@dope/agent-core';
 import { historyServicePath, historyFocusServicePath } from '@dope/contracts/lib/history-service';
 import { HistoryBackend } from './history-backend';
+import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
+import { roadmapServicePath, type RoadmapService } from '../roadmap-service';
 
 export default new ContainerModule(bind => {
     bind(NoteStore).toSelf().inSingletonScope();
@@ -73,6 +75,10 @@ export default new ContainerModule(bind => {
     })).inSingletonScope();
     bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
     bind(PlanningStore).toSelf().inSingletonScope();
+    bind(RoadmapStore).toSelf().inSingletonScope();
+    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<RoadmapService>(
+        roadmapServicePath, () => ({ read: async (projectUri: string) => context.container.get(RoadmapStore)
+            .read(await context.container.get(PlanningStore).root(projectUri)) }))).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler(historyServicePath, client => {
         const backend = new HistoryBackend(context.container.get(PlanningStore),
             context.container.get(AIRoleRoutingService), context.container.get(ModelConnectionsRegistry));
