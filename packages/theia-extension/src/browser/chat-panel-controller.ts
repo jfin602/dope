@@ -32,6 +32,12 @@ export class ChatOpenOwners {
         const key = this.key(workspace, chatId);
         if (this.owners.get(key)?.panelId === panelId) this.owners.delete(key);
     }
+    focus(workspace: string, chatId: string): boolean {
+        const owner = this.owners.get(this.key(workspace, chatId));
+        if (!owner) return false;
+        owner.focus();
+        return true;
+    }
 }
 
 export function chatTree(collection: ChatCollection): ChatTree {

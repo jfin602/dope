@@ -50,6 +50,12 @@ export class WorkOpenOwners {
         const key = this.key(workspace, work);
         if (this.owners.get(key)?.panelId === panelId) this.owners.delete(key);
     }
+    focus(workspace: string, work: WorkSelection): boolean {
+        const owner = this.owners.get(this.key(workspace, work));
+        if (!owner) return false;
+        owner.focus();
+        return true;
+    }
 }
 
 export class SharedPanelState {

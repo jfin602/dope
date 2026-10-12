@@ -4,6 +4,7 @@ import type { WorkspaceService } from '@theia/workspace/lib/browser/workspace-se
 import type { SessionArtifactRef } from '@dope/contracts/lib/developer-session';
 import { DeveloperSessionController } from './developer-session-controller';
 import { visibleSessions, sessionListState, sessionOverview, sessionLinkGroups } from './developer-session-presentation';
+import { navigateSessionArtifact, type SessionNavigationOwners } from './developer-session-navigation';
 
 export const DEVELOPER_SESSION_ID = 'dope-developer-sessions';
 export const DEVELOPER_SESSION_LAUNCHER_ID = 'dope-developer-sessions-launcher';
@@ -49,7 +50,8 @@ export class DeveloperSessionWidget extends BaseWidget {
     private readonly filter = element('input');
     private attachedOnce = false;
 
-    constructor(connect: () => DeveloperSessionService & { dispose(): void | Promise<void> }, workspace: WorkspaceService) {
+    constructor(connect: () => DeveloperSessionService & { dispose(): void | Promise<void> }, workspace: WorkspaceService,
+        private readonly navigation: SessionNavigationOwners) {
         super();
         this.id = DEVELOPER_SESSION_ID;
         this.title.label = 'Sessions';
@@ -150,6 +152,15 @@ export class DeveloperSessionWidget extends BaseWidget {
             for (const { ref, resolution } of group.entries) {
                 const row = element('li');
                 row.append(element('strong', linkLabel(ref)));
+                if (ref.kind === 'chat' || ref.kind === 'agent-task' || ref.kind === 'agent-run' ||
+                    ref.kind === 'agent-sequence') {
+                    const open = element('button', 'Open in owner');
+                    open.type = 'button';
+                    open.disabled = !resolution || resolution.availability !== 'resolved';
+                    open.setAttribute('aria-label', `Open ${linkLabel(ref)} in owner panel`);
+                    open.addEventListener('click', () => void this.navigate(ref));
+                    row.append(open);
+                }
                 if (resolution) {
                     row.append(element('span', ` · ${resolution.availability}`));
                     if (resolution.title) row.append(element('span', ` · ${resolution.title}`));
@@ -179,6 +190,18 @@ export class DeveloperSessionWidget extends BaseWidget {
 
     private async refresh(): Promise<void> {
         if (await this.controller.refresh()) await this.controller.resolveSelected();
+    }
+
+    private async navigate(ref: SessionArtifactRef): Promise<void> {
+        const controller = this.controller;
+        const workspace = controller.workspace, collection = controller.snapshot, session = controller.selected;
+        if (!workspace || !collection || !session || !await controller.resolveSelected()) return;
+        const current = () => !this.isDisposed && controller.workspace === workspace &&
+            controller.snapshot === collection && controller.selected?.id === session.id &&
+            controller.selected?.revision === session.revision;
+        const result = await navigateSessionArtifact({ workspace, collection, session,
+            resolution: controller.resolution, current }, ref, this.navigation);
+        if (current()) { controller.notice = result.message; this.render(); }
     }
 
     private async detach(ref: SessionArtifactRef): Promise<void> {

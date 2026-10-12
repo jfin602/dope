@@ -37,6 +37,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private readonly modelsListener;
     private readonly status = document.createElement('p');
     private module: 'chat' | 'work';
+    get moduleKind(): 'chat' | 'work' { return this.module; }
     private readonly content = document.createElement('div');
     private workspaceRequest = 0;
     private modelsRequest = 0;
@@ -190,14 +191,26 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.panel.setMode('chat');
         await this.controller.select(undefined);
     }
-    async selectWorkLauncher(selection?: WorkSelection): Promise<void> {
+    async selectWorkLauncher(selection?: WorkSelection, navigationOnly = false): Promise<void> {
         this.composingWork = false;
         this.promptStacksOnly = false;
         if (this.module !== 'work') return;
         this.panel.setMode('work');
-        if (selection) this.selectWork(selection);
+        if (selection) await this.selectWork(selection, navigationOnly);
         else this.render();
-        void this.refreshWork();
+        if (!navigationOnly) await this.refreshWork();
+    }
+    /** Exact owner navigation; never starts a task or changes the Chat conversation. */
+    async navigateWork(selection: WorkSelection): Promise<boolean> {
+        if (this.module !== 'work' || !this.panel.workspace || !this.workController?.handle) return false;
+        await this.selectWorkLauncher(selection, true);
+        if (!this.panel.work || this.panel.work.id !== selection.id || this.panel.work.kind !== selection.kind)
+            return false;
+        const exact = selection.kind === 'task' ? this.workController.selectedTask?.id === selection.id :
+            selection.kind === 'run' ? this.workController.selectedRun?.id === selection.id :
+                this.workController.phase.selected?.id === selection.id;
+        if (!exact) this.panel.selectWork(undefined);
+        return exact && this.panel.work?.id === selection.id && this.panel.work.kind === selection.kind;
     }
     async selectPromptStacks(): Promise<void> {
         if (this.module !== 'work') return;
@@ -220,19 +233,17 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         button.onclick = action;
         return button;
     }
-    private selectWork(selection?: WorkSelection): void {
+    private async selectWork(selection?: WorkSelection, navigationOnly = false): Promise<void> {
         this.composingWork = false;
         if (selection) this.promptStacksOnly = false;
         if (!this.panel.selectWork(selection)) return;
         if (selection) this.lastWorkSelection = selection;
-        void (async () => {
-            await this.workController?.select(selection);
-            if (!selection) await this.workController?.refresh();
-            if (selection?.kind === 'sequence' && this.panel.work?.id === selection.id) {
-                const id = this.workController?.phase.selected?.id;
-                if (id && id !== selection.id) this.panel.selectWork({ kind: 'sequence', id });
-            }
-        })();
+        await this.workController?.select(selection, navigationOnly);
+        if (!selection) await this.workController?.refresh();
+        if (selection?.kind === 'sequence' && this.panel.work?.id === selection.id) {
+            const id = this.workController?.phase.selected?.id;
+            if (id && id !== selection.id) this.panel.selectWork({ kind: 'sequence', id });
+        }
     }
     private renderWorkComposer(): void {
         const controller = this.directController;

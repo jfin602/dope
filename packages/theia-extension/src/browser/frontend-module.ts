@@ -53,6 +53,7 @@ import { developerSessionServicePath, type DeveloperSessionService } from '@dope
 import { DeveloperSessionWidget, DeveloperSessionsLauncherWidget, DEVELOPER_SESSION_ID,
     DEVELOPER_SESSION_LAUNCHER_ID } from './developer-session-widget';
 import { revealSessionWidget } from './developer-session-presentation';
+import type { SessionNavigationOwners } from './developer-session-navigation';
 import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, workLauncherIds, workLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
 
 const modelInventoryChanged = new Emitter<void>();
@@ -187,10 +188,38 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(FrontendApplicationContribution).toService(LeftWorkLauncher);
     bind(FrontendApplicationContribution).toService(RightWorkLauncher);
     bind(FrontendApplicationContribution).toService(SessionsLauncherView);
-    bind(WidgetFactory).toDynamicValue(context => ({ id: DEVELOPER_SESSION_ID, createWidget: () =>
-        new DeveloperSessionWidget(() => ServiceConnectionProvider.createProxy<DeveloperSessionService & RpcServer<never>>(
-            context.container, developerSessionServicePath),
-        context.container.get(WorkspaceService)) })).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({ id: DEVELOPER_SESSION_ID, createWidget: () => {
+        const manager = context.container.get(WidgetManager);
+        const shell = context.container.get(ApplicationShell);
+        const panels = () => [...manager.getWidgets(CHAT_PANEL_ID),
+            ...(['left', 'right'] as const).flatMap(side => [manager.tryGetWidget(chatLauncherIds[side]),
+                manager.tryGetWidget(workLauncherIds[side])])].filter(Boolean) as ChatPanelWidget[];
+        const navigation: SessionNavigationOwners = {
+            focusChat: (workspace, id) => context.container.get(ChatOpenOwners).focus(workspace, id),
+            focusWork: (workspace, selection) => context.container.get(WorkOpenOwners).focus(workspace, selection),
+            openChat: async (workspace, id, current) => {
+                if (!current()) return false;
+                const widget = panels().find(panel => panel.isAttached && panel.moduleKind === 'chat' &&
+                    panel.controller.workspace === workspace && panel.controller.attached && !panel.controller.chatId);
+                if (!widget || !current() ||
+                    !widget.controller.snapshot?.chats.some(chat => chat.id === id)) return false;
+                await shell.activateWidget(widget.id);
+                if (!current() || !await widget.controller.select(id) || !current()) return false;
+                return current() && widget.controller.chatId === id;
+            },
+            openWork: async (workspace, selection, current) => {
+                if (!current()) return false;
+                const widget = panels().find(panel => panel.isAttached && panel.moduleKind === 'work' &&
+                    panel.panel.workspace === workspace && !!panel.workController?.handle && !panel.panel.work);
+                if (!widget || !current() ||
+                    !await widget.navigateWork(selection) || !current()) return false;
+                await shell.activateWidget(widget.id);
+                return current();
+            },
+        };
+        return new DeveloperSessionWidget(() => ServiceConnectionProvider.createProxy<DeveloperSessionService & RpcServer<never>>(
+            context.container, developerSessionServicePath), context.container.get(WorkspaceService), navigation);
+    } })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: DEVELOPER_SESSION_LAUNCHER_ID, createWidget: () =>
         new DeveloperSessionsLauncherWidget(() => openDeveloperSessions(context.container.get(ApplicationShell),
             context.container.get(WidgetManager))) })).inSingletonScope();

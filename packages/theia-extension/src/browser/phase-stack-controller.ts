@@ -119,14 +119,14 @@ export class PhaseStackController {
         } catch (error) { if (serial === this.serial) this.message = this.errorMessage(error); }
         finally { if (serial === this.serial) { this.busy = false; this.changed(); } }
     }
-    async selectStored(sequenceId: string): Promise<void> {
+    async selectStored(sequenceId: string, refresh = true): Promise<void> {
         if (!this.handle || this.busy) return;
         const sequence = this.sequences.find(item => item.id === sequenceId);
         if (!sequence) return;
         this.selected = sequence;
         this.acceptedGrant = false; this.dirtyPromptDismissed = false;
         this.validationCommand = ''; this.validationTaskId = undefined; this.run = undefined;
-        await this.refresh();
+        if (refresh) await this.refresh();
         this.changed();
     }
     private selectionError(folder: string, result: Exclude<OpenTaskStackResult, { kind: 'opened' }>): string {

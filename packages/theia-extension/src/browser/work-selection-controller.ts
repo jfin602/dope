@@ -159,7 +159,7 @@ export class WorkSelectionController {
     async scan(): Promise<void> {
         await Promise.all([this.phase.scan(), this.refresh()]);
     }
-    async select(selection: WorkSelection | undefined): Promise<void> {
+    async select(selection: WorkSelection | undefined, navigationOnly = false): Promise<void> {
         const handle = this.handle, serial = ++this.serial;
         this.selectedTaskId = selection?.kind === 'task' ? selection.id : undefined;
         this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false; this.startTarget = undefined;
@@ -168,10 +168,11 @@ export class WorkSelectionController {
         this.message = ''; this.phase.message = ''; this.phase.selected = undefined; this.phase.run = undefined;
         if (!handle || !selection) { this.changed(); return; }
         if (selection.kind === 'sequence') {
-            if (this.phase.sequences.some(item => item.id === selection.id)) await this.phase.selectStored(selection.id);
+            if (this.phase.sequences.some(item => item.id === selection.id))
+                await this.phase.selectStored(selection.id, !navigationOnly);
             else {
                 const candidate = this.phase.stacks.find(item => item.folderName === selection.id);
-                if (candidate) await this.phase.select(candidate.folderName);
+                if (candidate && !navigationOnly) await this.phase.select(candidate.folderName);
             }
             if (serial === this.serial) this.changed();
             return;
@@ -182,7 +183,7 @@ export class WorkSelectionController {
                 selection.kind === 'task' ? await this.runtime.readTask(handle, selection.id) : undefined;
             if (serial !== this.serial || handle !== this.handle) return;
             this.selectedRun = run; this.selectedTask = task;
-            if (selection.kind === 'task' && task?.origin.kind === 'work-item' && this.resolveTarget) {
+            if (!navigationOnly && selection.kind === 'task' && task?.origin.kind === 'work-item' && this.resolveTarget) {
                 try {
                     const result = await this.resolveTarget(task.modelPolicy);
                     if (serial !== this.serial || handle !== this.handle) return;
