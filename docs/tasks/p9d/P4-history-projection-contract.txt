@@ -1,0 +1,35 @@
+TASK: Phase 9 / P4 — Define pure History activity and continuation contracts
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.26`.
+
+VERSION TRANSITION — REQUIRED
+Verify Git-proven predecessor `0.9.25`; advance all 13 root/app/package package.json versions and pinned internal @dope/* refs to `0.9.26` DURING THIS PROMPT. Runner checks but does not bump, and owns implementation checkpoints; do not commit manually or pre-bump. Preserve yarn.lock, unrelated dependencies, user changes and no root package-lock.json.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0034, docs/planning/p9/phase-9-plan.md, docs/tasks/p9d/implementation-plan.md and docs/tasks/p9b/closeout.md. p9d is final Phase 9 subphase, historical Session p9c P10 superseded. Require separately owner-approved docs/planning/p9/phase-9d-activation.md; if absent STOP with zero changes. Verify exact previous source/version and safe worktree.
+
+GOAL / IMPLEMENT
+Introduce provider/framework-independent History projection types/helpers under existing contracts/Theia seam (no new package or canonical store). Each bounded entry carries project identity, stable typed owner reference, actual timestamp or explicitly unknown, a separate observed-now timestamp for Git dirty snapshots, truthful status/availability, source label and small title. Deterministically sort, cap/deduplicate, classify event vs snapshot and propose either verified last meaningful focus or clearly labeled recent-activity suggestion. An applied AgentRun never means a WorkItem is completed; a passing test is not an applied candidate.
+
+PRESERVE
+History is an observation/navigation layer only, not a new Session ontology, activity database, agent task or authority. No read-triggered Chat recovery, provider inference, owner-store writes, WorkItem completion, candidate acceptance, Architecture adoption or hosted data transfer. Keep root isolation, Chat/Work panel ownership, no-model workflows and historical 9A/9B/Phase5/Phase8 truth. Phase10 inactive.
+
+VALIDATION — T1
+T1 test/unit/history-projection.test.ts registered once in test:product; sorting/dedup/caps, unknown timestamps, dirty snapshot, WorkItem ready after applied Run, source IDs and root isolation. Minimal build for compiled imports, targeted test and git diff --check.
+
+EFFICIENCY
+T1 target <=8 minutes incl. tests (10-minute soft, 15-minute hard); T2 bounded cross-owner safety may take longer when justified. Test smallest changed seam with required lib builds only; no routine npm run check/npm test, browser/Electron/native build, model calls or duplicate aggregate. New tests registered once in test:product; git diff --check.
+
+DEFER
+Owner adapters P5/P6, History GUI P7.
+
+DONE WHEN
+Coherent `0.9.26` source with direct focused evidence and honest remaining gaps; no Phase9 Green claim.
+
+FINAL RESPONSE
+Files, targeted tests, exact version/source and evidence gaps.

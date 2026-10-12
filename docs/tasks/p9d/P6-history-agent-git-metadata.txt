@@ -1,0 +1,35 @@
+TASK: Phase 9 / P6 — Add truthful bounded Agent validation and Git history metadata
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.28`.
+
+VERSION TRANSITION — REQUIRED
+Verify Git-proven predecessor `0.9.27`; advance all 13 root/app/package package.json versions and pinned internal @dope/* refs to `0.9.28` DURING THIS PROMPT. Runner checks but does not bump, and owns implementation checkpoints; do not commit manually or pre-bump. Preserve yarn.lock, unrelated dependencies, user changes and no root package-lock.json.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0034, docs/planning/p9/phase-9-plan.md, docs/tasks/p9d/implementation-plan.md and docs/tasks/p9b/closeout.md. p9d is final Phase 9 subphase, historical Session p9c P10 superseded. Require separately owner-approved docs/planning/p9/phase-9d-activation.md; if absent STOP with zero changes. Verify exact previous source/version and safe worktree.
+
+GOAL / IMPLEMENT
+Build compact History metadata source for AgentTask/AgentRun/AgentTaskSequence and Dope-owned test/validation, developer review and applied status using true owning records. Enforce run/task/project relationship; omit transcript, candidate diff, tool prompts, credentials. Build bounded read-only Git log and working-tree status adapter using fixed no-shell Git arguments with safe canonical cwd, time/output/record limits and no mutating Git commands. A dirty file list is a current snapshot, not a fabricated change event. Distinguish completed AgentRun from completed WorkItem and passed validation from accepted/promotion.
+
+PRESERVE
+History is an observation/navigation layer only, not a new Session ontology, activity database, agent task or authority. No read-triggered Chat recovery, provider inference, owner-store writes, WorkItem completion, candidate acceptance, Architecture adoption or hosted data transfer. Keep root isolation, Chat/Work panel ownership, no-model workflows and historical 9A/9B/Phase5/Phase8 truth. Phase10 inactive.
+
+VALIDATION — T2
+T2 test/unit/history-work-git.test.ts with disposable Git commit and dirty snapshot, run provenance/validation/review permutations, root/path/timeout limits, owner bytes unchanged and no process side effects beyond read-only git. Register test once, minimal required build, targeted node --test and git diff --check.
+
+EFFICIENCY
+T1 target <=8 minutes incl. tests (10-minute soft, 15-minute hard); T2 bounded cross-owner safety may take longer when justified. Test smallest changed seam with required lib builds only; no routine npm run check/npm test, browser/Electron/native build, model calls or duplicate aggregate. New tests registered once in test:product; git diff --check.
+
+DEFER
+Presentation P7 and integrated proof P12.
+
+DONE WHEN
+Coherent `0.9.28` source with direct focused evidence and honest remaining gaps; no Phase9 Green claim.
+
+FINAL RESPONSE
+Files, targeted tests, exact version/source and evidence gaps.

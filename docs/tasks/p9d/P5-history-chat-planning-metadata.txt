@@ -1,0 +1,35 @@
+TASK: Phase 9 / P5 — Add read-only Chat Planning and Mind activity metadata
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.27`.
+
+VERSION TRANSITION — REQUIRED
+Verify Git-proven predecessor `0.9.26`; advance all 13 root/app/package package.json versions and pinned internal @dope/* refs to `0.9.27` DURING THIS PROMPT. Runner checks but does not bump, and owns implementation checkpoints; do not commit manually or pre-bump. Preserve yarn.lock, unrelated dependencies, user changes and no root package-lock.json.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0034, docs/planning/p9/phase-9-plan.md, docs/tasks/p9d/implementation-plan.md and docs/tasks/p9b/closeout.md. p9d is final Phase 9 subphase, historical Session p9c P10 superseded. Require separately owner-approved docs/planning/p9/phase-9d-activation.md; if absent STOP with zero changes. Verify exact previous source/version and safe worktree.
+
+GOAL / IMPLEMENT
+Implement bounded project-root-bound metadata adapters for Chat, Planning Maps/WorkItems and Project Mind. ChatRepository.peekMetadata currently omits lastInteractedAt; extend its non-recovery peek (or add bounded peek) to return actual last interaction and title without loading transcripts/recovering legacy Chats. Never use ChatBackend.read/list or ChatRepository.read which can write recovery. Confirm PlanningStore/ProjectMindStore read behavior and do not rebase, initialize missing Mind or mutate owner records. Limit work/bytes/items; wrong root, unsupported/legacy, missing/symlink/corrupt metadata yields unavailable/partial with grounded diagnostic rather than false events.
+
+PRESERVE
+History is an observation/navigation layer only, not a new Session ontology, activity database, agent task or authority. No read-triggered Chat recovery, provider inference, owner-store writes, WorkItem completion, candidate acceptance, Architecture adoption or hosted data transfer. Keep root isolation, Chat/Work panel ownership, no-model workflows and historical 9A/9B/Phase5/Phase8 truth. Phase10 inactive.
+
+VALIDATION — T2
+T2 test/unit/history-owner-metadata.test.ts and relevant chat-repository/planning tests. Probe interrupted/legacy Chats and original owner-file byte invariance, Mind absence, map/item status, bounded/truncated lists and two project roots. Register once, minimal libs, focused node --test and git diff --check.
+
+EFFICIENCY
+T1 target <=8 minutes incl. tests (10-minute soft, 15-minute hard); T2 bounded cross-owner safety may take longer when justified. Test smallest changed seam with required lib builds only; no routine npm run check/npm test, browser/Electron/native build, model calls or duplicate aggregate. New tests registered once in test:product; git diff --check.
+
+DEFER
+Agent/validation/Git metadata P6.
+
+DONE WHEN
+Coherent `0.9.27` source with direct focused evidence and honest remaining gaps; no Phase9 Green claim.
+
+FINAL RESPONSE
+Files, targeted tests, exact version/source and evidence gaps.
