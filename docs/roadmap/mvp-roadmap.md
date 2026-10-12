@@ -1153,3 +1153,8 @@ Locked repair:
 The correction uses one manual GPT-6 Sol High one-off with focused automated repair plus a fresh replay of only the Flow evidence blocked by the empty canvas. If Green, record supplemental P3 evidence and return to fresh Phase 6 P7 qualification.
 
 The packaged AppImage controlled-shutdown failure remains a separate unresolved P7 blocker. P8 remains blocked.
+
+
+## c9-codex-chat — bounded subscription Chat correction (2026-10-12)
+
+**APPROVED DESIGN / DOCUMENTS AND PROMPTS ONLY; NOT IMPLEMENTED OR QUALIFIED.** At unchanged coherent 0.9.23, add ordinary Chat support to the existing signed-in Codex AI Center connection using an independently authorized tool-free Responses conversational adapter. Preserve provider-neutral Chat/Interactive routing, one secure sign-in, shared Work/Codex usage reporting, existing Coding Agent execution/permissions, separate Chat and Work panels, hosted-data consent and no API-key fallback. Authority: ADR 0035; execution stack docs/tasks/c9-codex-chat/. Independently activated p9d continues from its bounded Green P1 with P2–P13 pending; do not run both concurrently against one worktree, version-bump a correction, or change p9d evidence. Phase 10 remains inactive.
