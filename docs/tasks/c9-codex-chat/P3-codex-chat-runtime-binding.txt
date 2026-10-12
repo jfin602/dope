@@ -1,0 +1,35 @@
+TASK: Correction 9 / P3 — Connect the existing account to conversational Model Runtime
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.9.23`.
+
+GOAL
+Wire one already-authenticated Codex connection into Dope's ordinary conversational execution boundary without duplicating identity, auth or provider registration.
+
+PREFLIGHT
+Before edits read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0035 and the correction assessment/implementation plan. Inspect actual local Git status/HEAD, all package versions, affected producers/consumers and test imports. This is a fixed-0.9.23 correction; p9d is separately ACTIVE. If p9d/another owner has advanced the local version beyond 0.9.23, STOP WITHOUT EDITS and report the needed explicit rebase/replan. Preserve uncommitted user work and .dope user data. Do not force-pull, reset, clean, rewrite p9d evidence, or execute superseded p9c P10. No version bump or root package-lock.
+
+IMPLEMENT
+1. Inspect provider-setup.ts, model-connections.ts, AI registry backend/inventory and backend-module.ts. Add the smallest Codex runtime factory/injection seam using CodexAuthManager and P1 catalog + P2 adapter. Leave separate agent-runtime capability and CodexAppServer Test Connection untouched.
+2. Ensure ModelConnectionsRegistry can mark eligible Codex chat models usable only on confirmed credential, readiness, correct account/connection, supported streaming/context budget and current model catalog. Support fresh token per request and invalidate correctly on sign-out, selected-account change, model disabling and concurrent refresh. ProviderId remains codex; no second registered provider and no silent OpenAI API-key fallback.
+3. Add focused connection lifecycle tests for ready/unavailable, revoked auth, stale generation, account switch, model-selection identity, two different accounts and independent Work agent status.
+
+PRESERVE
+Keep one AI Center Codex connection/account and protected OAuth token owner; Work's Codex App Server, AgentTask/Run/Sequence, grant/sandbox/validation/promotion, and Chat's project leases, history/context, exact selection, hosted consent, actual-model provenance and no fallback unchanged. No Chat tools/commands/mutations, no API-key billing fallback, Chat|Agent toggle, theme redesign, p9d/Phase 10 work, or secret in logs/persistence. The runner owns implementation commits; do not commit manually.
+
+VALIDATION — T1
+Run node --test test/unit/model-connections.test.ts plus new narrow Codex-binding assertions in test/unit/ai-inventory.test.ts. Inspect test imports; build changed @dope/ai then @dope/theia-extension once only if compiled output is required.
+For this T1 prompt target <=8 minutes including focused checks, 10-minute soft ceiling, 15-minute hard limit. Record unrun/blocked checks, no synthetic Green. Run git diff --check. Build only directly changed package output and required compiled dependencies in their actual order, not all-package check. Do not run full npm test, npm run check, browser/Electron build or restart here.
+
+DEFER
+Chat exact/role/hosted UX P4, adversarial integration P5, real account P6.
+
+DONE WHEN
+The narrow responsibility works with focused evidence, unchanged 0.9.23 manifests, no weakened authority and no regression to another stage; report exact edited files and test counts.
+
+FINAL RESPONSE
+Report source/test changes, evidence, remaining unknowns and next P4 preconditions.
