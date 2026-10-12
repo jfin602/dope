@@ -114,7 +114,8 @@ export default new ContainerModule(bind => {
     bind(ChatRepository).toSelf().inSingletonScope();
     bind(ChatContextComposer).toDynamicValue(context => new ChatContextComposer(
         context.container.get(ProjectMindStore), context.container.get(PlanningStore),
-        context.container.get(SoftwareMapIndex), context.container.get(ChatRepository))).inSingletonScope();
+        context.container.get(SoftwareMapIndex), context.container.get(ChatRepository),
+        context.container.get(RoadmapStore))).inSingletonScope();
     bind(ChatProjectGrounder).toDynamicValue(context => new ChatProjectGrounder(
         context.container.get(SoftwareMapIndex))).inSingletonScope();
     bind(AIRegistryStore).toSelf().inSingletonScope();

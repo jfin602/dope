@@ -36,6 +36,7 @@ export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseT
     content?: string; retryMessageId?: string; context?: ChatContextSelection[] }
 /** Captured editor text is transport-only. Other IDs are resolved against current project authorities. */
 export interface ChatContextSelection { kind: ChatContextKind; id: string; projectId?: string; generation?: number;
+    ownerRevision?: number; sourceHash?: string;
     messageId?: string; text?: string; start?: number; end?: number; direction?: 'upstream' | 'downstream' }
 export interface ChatContextDiagnostic { kind: 'omitted' | 'truncated' | 'history'; source: string; message: string }
 export interface ChatContextPreview { refs: ChatContextRef[]; diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }

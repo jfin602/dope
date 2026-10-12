@@ -11,6 +11,7 @@ import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-inde
 import { ProjectMindStore } from '@dope/project-intelligence/lib/node/project-mind-store';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { ChatRepository } from '@dope/chat/lib/node';
+import { RoadmapStore, type RoadmapCheckpoint } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { GroundingResult } from './chat-project-grounder';
 
 export const GROUNDED_CHAT_INSTRUCTION = 'Project facts are verified only when supported by the supplied project evidence. Do not claim to have read, listed, searched, or inspected project state beyond that evidence. State what is missing or unknown.';
@@ -21,9 +22,60 @@ export interface ComposedChatContext { messages: ConversationMessage[]; refs: Ch
 /** One project-scoped translation boundary. Model requests never read project state directly. */
 export class ChatContextComposer {
     constructor(private readonly mind: ProjectMindStore, private readonly planning: PlanningStore,
-        private readonly index: SoftwareMapIndex, private readonly chats: ChatRepository) {}
+        private readonly index: SoftwareMapIndex, private readonly chats: ChatRepository,
+        private readonly roadmap?: RoadmapStore) {}
 
-    private async file(root: string, path: string): Promise<string> {
+    private async roadmapContext(root: string, source: ChatContextSelection): Promise<{ label: string; text: string; omitted?: string }> {
+        if (!this.roadmap) throw new Error('Roadmap context unavailable');
+        const index = await this.roadmap.read(root);
+        if (!index.revision || !source.projectId || source.projectId !== index.projectId ||
+            !Number.isSafeInteger(source.ownerRevision) || source.ownerRevision !== index.revision)
+            throw new Error('Stale or foreign Roadmap context; select the checkpoint again');
+        const checkpoint = index.checkpoints.find(item => item.id === source.id);
+        if (!checkpoint) throw new Error('Roadmap checkpoint missing');
+        if (checkpoint.source?.sha256 !== source.sourceHash)
+            throw new Error('Stale Roadmap source; select the checkpoint again');
+        const neighbors = index.checkpoints.filter(item => item.id !== checkpoint.id &&
+            (checkpoint.dependencies.includes(item.id) || item.dependencies.includes(checkpoint.id))).slice(0, 4);
+        const citations = [checkpoint, ...neighbors].flatMap(item => [item.source, ...item.evidence.slice(0, 2)]).filter(item => item !== undefined);
+        // Source-backed index entries may outlive the Markdown that produced them.
+        for (const citation of citations) {
+            const path = await this.file(root, citation.path, 2 * 1024 * 1024);
+            const bytes = await readFile(path);
+            if (createHash('sha256').update(bytes).digest('hex') !== citation.sha256)
+                throw new Error('Stale Roadmap source; refresh the import before using Chat context');
+        }
+        const fact = (item: RoadmapCheckpoint) => ({ id: item.id, kind: item.kind, title: item.title,
+            objective: item.objective.slice(0, 1200), status: item.status, dependencies: item.dependencies.slice(0, 8),
+            source: item.source, evidence: item.evidence.slice(0, 2) });
+        const planningLinks = checkpoint.links.filter(link => link.owner === 'planning-map').slice(0, 2);
+        const maps: unknown[] = [];
+        if (planningLinks.length) {
+            const planning = await this.planning.read(root);
+            for (const link of planningLinks) {
+                const map = planning.maps.find(item => item.id === link.targetId);
+                if (link.ownerProjectId !== planning.projectId || !map || map.revision !== link.ownerRevision ||
+                    JSON.stringify(map.basis) !== JSON.stringify(link.basis))
+                    throw new Error('Stale Planning Map basis in Roadmap context');
+                maps.push({ id: map.id, title: map.title, objective: map.objective.slice(0, 800),
+                    status: map.status, basis: map.basis, transformations: map.transformations.length,
+                    workItems: map.workItems.length });
+            }
+            const again = await this.planning.read(root);
+            if (again.projectId !== planning.projectId || again.revision !== planning.revision)
+                throw new Error('Planning Map changed during context reading; preview again');
+        }
+        const current = await this.roadmap.read(root);
+        if (current.projectId !== index.projectId || current.revision !== index.revision)
+            throw new Error('Roadmap changed during context reading; preview again');
+        return { label: `Roadmap checkpoint: ${checkpoint.title}`, text: JSON.stringify({
+            projectId: index.projectId, ownerRevision: index.revision, checkpoint: fact(checkpoint),
+            neighbors: neighbors.map(fact), planningMaps: maps }),
+            ...(index.checkpoints.length > neighbors.length + 1 || checkpoint.links.length > planningLinks.length ||
+                checkpoint.evidence.length > 2 ? { omitted: 'Roadmap neighbors, links or evidence omitted by query bound' } : {}) };
+    }
+
+    private async file(root: string, path: string, maxBytes = 1_000_000): Promise<string> {
         projectPath(path);
         if (path.startsWith('.dope/')) throw new Error('Use a typed project context source for .dope data');
         const actual = await realpath(join(root, path));
@@ -32,7 +84,7 @@ export class ChatContextComposer {
             throw new Error(`Context file escapes project: ${path}`);
         if (within.startsWith('.dope/')) throw new Error('Use a typed project context source for .dope data');
         const info = await stat(actual);
-        if (!info.isFile() || info.size > 1_000_000) throw new Error(`Context file is unavailable or exceeds 1 MB: ${path}`);
+        if (!info.isFile() || info.size > maxBytes) throw new Error(`Context file is unavailable or exceeds read limit: ${path}`);
         return actual;
     }
 
@@ -56,6 +108,7 @@ export class ChatContextComposer {
             if (!artifact) throw new Error('Project Mind artifact missing');
             return { label: `${artifact.type}: ${artifact.title}`, text: JSON.stringify(artifact) };
         }
+        if (source.kind === 'roadmap-checkpoint') return this.roadmapContext(root, source);
         if (source.kind === 'architecture') {
             const state = await readInitialization(root);
             if (!state.initialized) throw new Error('Canonical Architecture unavailable');
@@ -164,6 +217,8 @@ export class ChatContextComposer {
                 contentHash: createHash('sha256').update(text).digest('hex'),
                 ...(source.projectId ? { projectId: source.projectId } : {}),
                 ...(source.generation !== undefined ? { generation: source.generation } : {}),
+                ...(source.ownerRevision !== undefined ? { ownerRevision: source.ownerRevision } : {}),
+                ...(source.sourceHash !== undefined ? { sourceHash: source.sourceHash } : {}),
                 ...(source.kind === 'selection' ? { start: source.start, end: source.end } : {}),
                 ...(source.kind === 'saved-chat' ? { messageId: source.messageId } : {}) });
         }

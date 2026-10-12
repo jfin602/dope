@@ -8,7 +8,7 @@ export const CHAT_COLORS = ['blue', 'cyan', 'teal', 'green', 'yellow', 'orange',
 export type ChatColor = typeof CHAT_COLORS[number];
 export type AssistantStatus = 'pending' | 'streaming' | 'complete' | 'failed' | 'cancelled';
 export type ChatContextKind = 'editor' | 'selection' | 'file' | 'project-mind' | 'architecture' |
-    'physical-map' | 'flow' | 'planning-map' | 'work-item' | 'saved-chat' | 'directory' | 'path-search' | 'text-search' | 'project-orientation' | 'grounding-status';
+    'physical-map' | 'flow' | 'planning-map' | 'work-item' | 'roadmap-checkpoint' | 'saved-chat' | 'directory' | 'path-search' | 'text-search' | 'project-orientation' | 'grounding-status';
 
 export interface ChatContextRef {
     schemaVersion: 1;
@@ -22,6 +22,8 @@ export interface ChatContextRef {
     contentHash?: string;
     projectId?: string;
     generation?: number;
+    ownerRevision?: number;
+    sourceHash?: string;
     messageId?: string;
     start?: number;
     end?: number;
@@ -104,7 +106,7 @@ export interface ChatCollection {
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const contextKinds: readonly ChatContextKind[] = ['editor', 'selection', 'file', 'project-mind', 'architecture',
-    'physical-map', 'flow', 'planning-map', 'work-item', 'saved-chat', 'directory', 'path-search', 'text-search', 'project-orientation', 'grounding-status'];
+    'physical-map', 'flow', 'planning-map', 'work-item', 'roadmap-checkpoint', 'saved-chat', 'directory', 'path-search', 'text-search', 'project-orientation', 'grounding-status'];
 const statuses: readonly AssistantStatus[] = ['pending', 'streaming', 'complete', 'failed', 'cancelled'];
 
 export function parseChatColor(value: unknown): ChatColor { return choice(value, CHAT_COLORS, 'Chat color'); }
@@ -186,7 +188,7 @@ function parseModelProvenance(value: unknown): ChatModelProvenance {
 }
 export function parseChatContextRef(value: unknown): ChatContextRef {
     const v = record(value, ['schemaVersion', 'kind', 'id', 'label', 'origin', 'excerpt', 'estimatedTokens',
-        'includedBytes', 'contentHash', 'projectId', 'generation', 'messageId', 'start', 'end'],
+        'includedBytes', 'contentHash', 'projectId', 'generation', 'ownerRevision', 'sourceHash', 'messageId', 'start', 'end'],
         ['schemaVersion', 'kind', 'id', 'label', 'estimatedTokens']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported context reference schema');
     const ref: ChatContextRef = { schemaVersion: 1, kind: choice(v.kind, contextKinds, 'context kind'), id: string(v.id, 'context ID'),
@@ -200,6 +202,11 @@ export function parseChatContextRef(value: unknown): ChatContextRef {
     }
     if (v.projectId !== undefined) ref.projectId = string(v.projectId, 'context project ID');
     if (v.generation !== undefined) ref.generation = count(v.generation, 'context generation');
+    if (v.ownerRevision !== undefined) ref.ownerRevision = count(v.ownerRevision, 'context owner revision');
+    if (v.sourceHash !== undefined) {
+        if (typeof v.sourceHash !== 'string' || !/^[0-9a-f]{64}$/.test(v.sourceHash)) throw new Error('Invalid context source hash');
+        ref.sourceHash = v.sourceHash;
+    }
     if (v.messageId !== undefined) ref.messageId = string(v.messageId, 'context message ID');
     if (v.start !== undefined) ref.start = count(v.start, 'context start');
     if (v.end !== undefined) ref.end = count(v.end, 'context end');
