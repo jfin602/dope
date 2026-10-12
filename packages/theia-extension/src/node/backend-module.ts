@@ -43,6 +43,8 @@ import { AgentExecutionRuntime } from './agent-execution-runtime';
 import { CodexAgentExecutionAdapter } from './codex-agent-execution';
 import { LocalAgentExecutionAdapter } from './local-agent-execution';
 import type { AgentExecutionAdapter } from '@dope/agent-core';
+import { historyServicePath } from '@dope/contracts/lib/history-service';
+import { HistoryBackend } from './history-backend';
 
 export default new ContainerModule(bind => {
     bind(NoteStore).toSelf().inSingletonScope();
@@ -71,6 +73,11 @@ export default new ContainerModule(bind => {
     })).inSingletonScope();
     bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
     bind(PlanningStore).toSelf().inSingletonScope();
+    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler(historyServicePath, client => {
+        const backend = new HistoryBackend(context.container.get(PlanningStore));
+        client.onDidCloseConnection(() => backend.dispose());
+        return backend;
+    })).inSingletonScope();
     bind(ChatRepository).toSelf().inSingletonScope();
     bind(ChatContextComposer).toDynamicValue(context => new ChatContextComposer(
         context.container.get(ProjectMindStore), context.container.get(PlanningStore),

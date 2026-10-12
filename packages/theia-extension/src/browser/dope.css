@@ -1,4 +1,19 @@
 .dope-ai-launcher { width: 100%; border: 0; padding: 0; color: inherit; background: transparent; cursor: pointer; position: relative; }
+.dope-history-panel { box-sizing: border-box; height: 100%; overflow: auto; padding: 12px; color: var(--theia-foreground); background: var(--theia-sideBar-background); font-family: var(--theia-ui-font-family); }
+.dope-history-panel header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dope-history-panel h2 { margin: 0; font-size: 17px; }
+.dope-history-panel h3 { margin: 0 0 6px; font-size: 14px; }
+.dope-history-panel h4 { margin: 10px 0 4px; font-size: 12px; }
+.dope-history-panel section { margin-top: 12px; }
+.dope-history-continue { border-left: 3px solid #336699; padding: 9px; background: color-mix(in srgb, #336699 12%, var(--theia-sideBar-background)); }
+.dope-history-panel p { margin: 5px 0; line-height: 1.4; overflow-wrap: anywhere; }
+.dope-history-panel ul { list-style: none; padding: 0; margin: 0; }
+.dope-history-panel li { border-bottom: 1px solid var(--theia-widget-border); padding: 6px 0; overflow-wrap: anywhere; }
+.dope-history-panel strong, .dope-history-panel small { display: block; }
+.dope-history-panel small { color: var(--theia-descriptionForeground); margin-top: 3px; }
+.dope-history-panel button { color: var(--theia-foreground); background: var(--theia-button-secondaryBackground); border: 1px solid var(--theia-widget-border); border-radius: 4px; padding: 4px 7px; cursor: pointer; }
+.dope-history-panel button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-history-panel button:disabled { opacity: .6; cursor: default; }
 .dope-ai-launcher:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: -2px; }
 .dope-ai-launcher-warning { position: absolute; top: 0; right: 0; min-width: 12px; font-weight: 700; color: var(--theia-editor-foreground); background: var(--theia-editor-background); border: 1px solid var(--theia-focusBorder); border-radius: 50%; }
 .dope-ai-center { box-sizing: border-box; height: 100%; overflow: auto; padding: 20px; color: var(--theia-editor-foreground); background: var(--theia-editor-background); }

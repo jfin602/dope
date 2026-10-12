@@ -50,6 +50,8 @@ import { AICenterContribution } from './ai-center-contribution';
 import { AICenterBottomMenuWidget } from './ai-center-launcher';
 import { SidebarBottomMenuWidget } from '@theia/core/lib/browser/shell/sidebar-bottom-menu-widget';
 import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, workLauncherIds, workLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
+import { historyServicePath, HistoryService } from '@dope/contracts/lib/history-service';
+import { HistoryWidget, HISTORY_WIDGET_ID } from './history-widget';
 
 const modelInventoryChanged = new Emitter<void>();
 
@@ -112,6 +114,24 @@ class LeftWorkLauncher extends WorkLauncherView { constructor() { super('left');
 @injectable()
 class RightWorkLauncher extends WorkLauncherView { constructor() { super('right'); } }
 
+@injectable()
+class RightHistoryLauncher extends AbstractViewContribution<HistoryWidget> implements FrontendApplicationContribution {
+    constructor() {
+        super({ widgetId: HISTORY_WIDGET_ID, widgetName: 'History', defaultWidgetOptions: { area: 'right', rank: 252 } });
+    }
+    async onDidInitializeLayout(): Promise<void> { await this.openView(); }
+    async openLauncher(): Promise<HistoryWidget> {
+        const widget = await this.openView({ activate: true });
+        await widget.refresh();
+        return widget;
+    }
+    override registerCommands(commands: CommandRegistry): void {
+        super.registerCommands(commands);
+        commands.registerCommand({ id: 'dope.history.open', label: 'Dope: Open History' },
+            { execute: () => this.openLauncher() });
+    }
+}
+
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     rebind(SidebarBottomMenuWidget).to(AICenterBottomMenuWidget);
     bind(AICenterContribution).toSelf().inSingletonScope();
@@ -152,11 +172,17 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bindViewContribution(bind, RightChatLauncher);
     bindViewContribution(bind, LeftWorkLauncher);
     bindViewContribution(bind, RightWorkLauncher);
+    bindViewContribution(bind, RightHistoryLauncher);
     bind(FrontendApplicationContribution).toService(SoftwareMapView);
     bind(FrontendApplicationContribution).toService(LeftChatLauncher);
     bind(FrontendApplicationContribution).toService(RightChatLauncher);
     bind(FrontendApplicationContribution).toService(LeftWorkLauncher);
     bind(FrontendApplicationContribution).toService(RightWorkLauncher);
+    bind(FrontendApplicationContribution).toService(RightHistoryLauncher);
+    bind(HistoryService).toDynamicValue(context => ServiceConnectionProvider.createProxy<HistoryService>(
+        context.container, historyServicePath)).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({ id: HISTORY_WIDGET_ID, createWidget: () => new HistoryWidget(
+        () => context.container.get(HistoryService), context.container.get(WorkspaceService)) })).inSingletonScope();
     const openPhysicalMap = async (manager: WidgetManager, shell: ApplicationShell,
         map?: SoftwareMapController, options?: PhysicalMapTabOptions) => {
         const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID, options);
