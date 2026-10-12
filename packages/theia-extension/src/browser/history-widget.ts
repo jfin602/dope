@@ -4,6 +4,7 @@ import type { HistoryEntry, HistoryNavigableOwnerRef } from '@dope/contracts/lib
 import type { HistoryService, HistorySnapshot } from '@dope/contracts/lib/history-service';
 import { HISTORY_PREVIEW_MAX_ITEMS } from '@dope/contracts/lib/history-context-preview';
 import type { HistorySelection } from '@dope/contracts/lib/history-context-preview';
+import type { HistoryContextPreview } from '@dope/contracts/lib/history-context-preview';
 import { navigateHistory, type HistoryNavigationOwners } from './history-navigation';
 
 export const HISTORY_WIDGET_ID = 'dope-history';
@@ -23,6 +24,7 @@ export class HistoryWidget extends BaseWidget {
     private navigation = 0;
     private projectUri?: string;
     private handle?: string;
+    private explanationId?: string;
 
     constructor(private readonly connect: () => HistoryService, private readonly workspaces: WorkspaceService,
         private readonly owners: (handle: string, project: HistorySnapshot['project']) => HistoryNavigationOwners) {
@@ -41,6 +43,7 @@ export class HistoryWidget extends BaseWidget {
     }
 
     async refresh(): Promise<void> {
+        this.cancelExplanation();
         const request = ++this.request;
         ++this.navigation;
         this.projectUri = undefined;
@@ -65,6 +68,11 @@ export class HistoryWidget extends BaseWidget {
             if (this.isDisposed || request !== this.request) return;
             this.status.textContent = `History unavailable: ${error instanceof Error ? error.message : 'Unable to read project metadata'}`;
         }
+    }
+
+    private cancelExplanation(): void {
+        if (this.explanationId) { void this.connect().cancelExplanation(this.explanationId).catch(() => {});
+            this.explanationId = undefined; }
     }
 
     private async navigate(snapshot: HistorySnapshot, owner: HistoryNavigableOwnerRef,
@@ -111,6 +119,10 @@ export class HistoryWidget extends BaseWidget {
             continueCard.append(button);
         }
         const selected = new Map<string, HistorySelection>();
+        let confirmedPreview: HistoryContextPreview | undefined;
+        let previewRevision = 0;
+        const invalidatePreview = () => { ++previewRevision; confirmedPreview = undefined; this.cancelExplanation();
+            explain.disabled = true; output.replaceChildren(); result.replaceChildren(); };
         const recent = document.createElement('section');
         const recentTitle = document.createElement('h3'); recentTitle.textContent = 'Recent Activity';
         recent.append(recentTitle);
@@ -135,6 +147,7 @@ export class HistoryWidget extends BaseWidget {
                 const pick = document.createElement('input'); pick.type = 'checkbox';
                 pick.setAttribute('aria-label', `Select ${entry.source} ${entry.sourceId} for evidence preview`);
                 pick.onchange = () => {
+                    invalidatePreview();
                     const key = JSON.stringify([entry.source, entry.sourceId]);
                     if (pick.checked) {
                         if (selected.size >= HISTORY_PREVIEW_MAX_ITEMS) { pick.checked = false; this.status.textContent = 'Select at most 8 items.'; return; }
@@ -162,16 +175,57 @@ export class HistoryWidget extends BaseWidget {
         const explanation = document.createElement('p'); explanation.id = 'dope-history-understanding-explanation';
         explanation.textContent = 'Select up to 8 items. Preview reads only project-local owner metadata. No model runs or data leaves this machine.';
         const output = document.createElement('div'); output.setAttribute('aria-live', 'polite');
+        const result = document.createElement('div'); result.setAttribute('aria-live', 'polite');
+        const explain = document.createElement('button'); explain.type = 'button';
+        explain.textContent = 'Confirm preview and explain locally'; explain.disabled = true;
+        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel explanation';
+        cancel.disabled = true;
+        cancel.onclick = () => { this.cancelExplanation(); cancel.disabled = true; explain.disabled = !confirmedPreview;
+            result.textContent = 'Local explanation cancelled.'; };
+        explain.onclick = async () => {
+            const preview = confirmedPreview, handle = this.handle, uri = this.projectUri, request = this.request;
+            if (!preview || !handle || !uri) return;
+            const roots = await this.workspaces.roots;
+            if (request !== this.request || roots.length !== 1 || roots[0].resource.toString() !== uri) return;
+            const id = crypto.randomUUID(); this.explanationId = id; explain.disabled = true; cancel.disabled = false;
+            result.textContent = 'Requesting a local explanation…';
+            try {
+                const explanation = await this.connect().explain(handle, preview, [...selected.values()], id, true);
+                const currentRoots = await this.workspaces.roots;
+                if (request !== this.request || this.explanationId !== id || currentRoots.length !== 1 ||
+                    currentRoots[0].resource.toString() !== uri) return;
+                const provenance = document.createElement('p');
+                provenance.textContent = `Local model: ${explanation.provenance.modelLabel} · ${explanation.provenance.providerId} · ${explanation.provenance.connectionId}/${explanation.provenance.modelId}`;
+                const sections = (['facts', 'interpretations', 'unknowns'] as const).map(kind => {
+                    const section = document.createElement('section');
+                    const heading = document.createElement('h4'); heading.textContent = kind === 'facts' ? 'Facts from selected metadata' :
+                        kind === 'interpretations' ? 'Model interpretations' : 'Unknowns';
+                    const list = document.createElement('ul');
+                    for (const line of explanation[kind]) {
+                        const row = document.createElement('li'); row.textContent = `${line.text} [${line.citations.join(', ')}]`;
+                        list.append(row);
+                    }
+                    section.append(heading, list); return section;
+                });
+                result.replaceChildren(provenance, ...sections);
+            } catch (error) {
+                if (request === this.request && this.explanationId === id)
+                    result.textContent = `Local explanation unavailable: ${error instanceof Error ? error.message : 'Unable to explain preview'}`;
+            } finally {
+                if (this.explanationId === id) { this.explanationId = undefined; cancel.disabled = true; explain.disabled = !confirmedPreview; }
+            }
+        };
         action.onclick = async () => {
-            const request = this.request, handle = this.handle, uri = this.projectUri;
+            invalidatePreview(); explain.disabled = true; result.replaceChildren();
+            const revision = previewRevision, request = this.request, handle = this.handle, uri = this.projectUri;
             if (!handle || !uri || !selected.size) { output.textContent = 'Select at least one item.'; return; }
             output.textContent = 'Checking current evidence…';
             try {
                 const roots = await this.workspaces.roots;
-                if (request !== this.request || roots.length !== 1 || roots[0].resource.toString() !== uri) return;
+                if (request !== this.request || revision !== previewRevision || roots.length !== 1 || roots[0].resource.toString() !== uri) return;
                 const preview = await this.connect().preview(handle, snapshot.evidenceBasis, [...selected.values()]);
                 const currentRoots = await this.workspaces.roots;
-                if (request !== this.request || currentRoots.length !== 1 || currentRoots[0].resource.toString() !== uri) return;
+                if (request !== this.request || revision !== previewRevision || currentRoots.length !== 1 || currentRoots[0].resource.toString() !== uri) return;
                 const heading = document.createElement('h4'); heading.textContent = 'Local evidence preview';
                 const privacy = document.createElement('p'); privacy.textContent = preview.privacy;
                 const budget = document.createElement('p');
@@ -184,13 +238,15 @@ export class HistoryWidget extends BaseWidget {
                 }
                 const omitted = document.createElement('p'); omitted.textContent = preview.omissions.join('; ');
                 output.replaceChildren(heading, privacy, budget, list, omitted);
+                confirmedPreview = preview; explain.disabled = !preview.items.length;
             } catch (error) {
-                if (request === this.request) output.textContent = `Preview invalid: ${error instanceof Error ? error.message : 'Unable to verify evidence'}`;
+                if (request === this.request && revision === previewRevision)
+                    output.textContent = `Preview invalid: ${error instanceof Error ? error.message : 'Unable to verify evidence'}`;
             }
         };
-        understanding.append(understandingTitle, action, explanation, output);
+        understanding.append(understandingTitle, action, explanation, output, explain, cancel, result);
         this.content.replaceChildren(header, continueCard, recent, understanding);
     }
 
-    override dispose(): void { ++this.request; ++this.navigation; this.rootsListener.dispose(); super.dispose(); }
+    override dispose(): void { this.cancelExplanation(); ++this.request; ++this.navigation; this.rootsListener.dispose(); super.dispose(); }
 }

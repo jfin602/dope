@@ -1,6 +1,12 @@
 import type { HistoryEntry, HistoryProject, HistorySource, HistoryContinuation, HistoryFocusTarget } from './history';
 import type { HistorySelection, HistoryContextPreview } from './history-context-preview';
 
+export interface HistoryExplanationLine { text: string; citations: string[] }
+export interface HistoryLocalExplanation {
+    facts: HistoryExplanationLine[]; interpretations: HistoryExplanationLine[]; unknowns: HistoryExplanationLine[];
+    provenance: { connectionId: string; modelId: string; providerId: string; modelLabel: string };
+}
+
 export const historyServicePath = '/services/dope/history';
 export const HistoryService = Symbol('HistoryService');
 
@@ -19,6 +25,9 @@ export interface HistoryService {
     read(projectHandle: string): Promise<HistorySnapshot>;
     preview(projectHandle: string, expectedBasis: string, selection: HistorySelection[]): Promise<HistoryContextPreview>;
     verifyPreviewBasis(projectHandle: string, expectedBasis: string): Promise<boolean>;
+    explain(projectHandle: string, preview: HistoryContextPreview, selection: HistorySelection[],
+        requestId: string, confirmed: boolean): Promise<HistoryLocalExplanation>;
+    cancelExplanation(requestId: string): Promise<void>;
     recordFocus(projectHandle: string, owner: HistoryFocusTarget): Promise<void>;
     resolveEditor(projectHandle: string, projectRelativePath: string): Promise<string>;
 }

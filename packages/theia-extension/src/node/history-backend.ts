@@ -5,12 +5,15 @@ import { pathToFileURL } from 'node:url';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { projectHistory, proposeHistoryContinuation } from '@dope/contracts/lib/history';
 import type { HistoryFocusTarget, HistoryProject } from '@dope/contracts/lib/history';
-import type { HistoryService, HistorySnapshot } from '@dope/contracts/lib/history-service';
-import { buildHistoryContextPreview } from '@dope/contracts/lib/history-context-preview';
+import type { HistoryService, HistorySnapshot, HistoryLocalExplanation } from '@dope/contracts/lib/history-service';
+import { buildHistoryContextPreview, HISTORY_PREVIEW_MAX_BYTES } from '@dope/contracts/lib/history-context-preview';
 import type { HistorySelection, HistoryContextPreview } from '@dope/contracts/lib/history-context-preview';
 import { readHistoryOwnerMetadata } from './history-owner-metadata';
 import { readHistoryWorkGitMetadata } from './history-work-git';
 import { readHistoryFocus, writeHistoryFocus } from './history-focus';
+import { explainHistoryLocally } from './history-local-understanding';
+import type { AIRoleRoutingService } from './ai-role-routing';
+import type { ModelConnectionsRegistry } from './model-connections';
 
 /** Per-RPC-connection projection with one bounded focus hint. Late work cannot publish for a replaced root. */
 export class HistoryBackend implements HistoryService {
@@ -19,11 +22,15 @@ export class HistoryBackend implements HistoryService {
     private generation = 0;
     private disposed = false;
     private focusWrite: Promise<void> = Promise.resolve();
+    private explanations = new Map<string, AbortController>();
 
-    constructor(private readonly planning = new PlanningStore()) {}
+    constructor(private readonly planning = new PlanningStore(),
+        private readonly routing?: Pick<AIRoleRoutingService, 'resolve'>,
+        private readonly models?: Pick<ModelConnectionsRegistry, 'generate'>) {}
 
     async attach(folderUri: string): Promise<{ projectHandle: string }> {
         if (this.disposed) throw new Error('History connection disposed');
+        for (const controller of this.explanations.values()) controller.abort();
         const generation = ++this.generation;
         this.project = undefined;
         this.handle = randomUUID();
@@ -73,6 +80,37 @@ export class HistoryBackend implements HistoryService {
         return (await this.read(projectHandle)).evidenceBasis === expectedBasis;
     }
 
+    async explain(projectHandle: string, preview: HistoryContextPreview, selection: HistorySelection[],
+        requestId: string, confirmed: boolean): Promise<HistoryLocalExplanation> {
+        if (confirmed !== true) throw new Error('Explicit preview confirmation required');
+        if (!this.routing || !this.models) throw new Error('Local explanation capability unavailable');
+        if (typeof requestId !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(requestId) || this.explanations.has(requestId))
+            throw new Error('Invalid local explanation request');
+        if (!preview || typeof preview !== 'object' || typeof preview.evidenceBasis !== 'string' ||
+            typeof preview.projectId !== 'string' || !Array.isArray(preview.items) ||
+            Buffer.byteLength(JSON.stringify(preview), 'utf8') > HISTORY_PREVIEW_MAX_BYTES)
+            throw new Error('Invalid History preview');
+        const controller = new AbortController();
+        this.explanations.set(requestId, controller);
+        const generation = this.generation;
+        try {
+            const current = await this.preview(projectHandle, preview.evidenceBasis, selection);
+            if (this.disposed || generation !== this.generation || controller.signal.aborted)
+                throw new Error('History project changed or explanation cancelled');
+            const stable = (value: HistoryContextPreview) => JSON.stringify({ projectId: value.projectId,
+                evidenceBasis: value.evidenceBasis, items: value.items.map(item => ({ ...item, observedAt: null })),
+                omissions: value.omissions });
+            if (stable(current) !== stable(preview)) throw new Error('History preview changed; inspect and confirm again');
+            const result = await explainHistoryLocally(current, controller.signal, this.routing, this.models);
+            if (this.disposed || generation !== this.generation || controller.signal.aborted ||
+                !(await this.verifyPreviewBasis(projectHandle, preview.evidenceBasis)))
+                throw new Error('History evidence changed during explanation');
+            return result;
+        } finally { controller.abort(); this.explanations.delete(requestId); }
+    }
+
+    async cancelExplanation(requestId: string): Promise<void> { this.explanations.get(requestId)?.abort(); }
+
     async recordFocus(projectHandle: string, owner: HistoryFocusTarget): Promise<void> {
         if (this.disposed || !this.project || projectHandle !== this.handle) throw new Error('Invalid History project handle');
         const project = this.project, generation = this.generation;
@@ -108,5 +146,6 @@ export class HistoryBackend implements HistoryService {
         return pathToFileURL(file).toString();
     }
 
-    dispose(): void { this.disposed = true; ++this.generation; this.project = undefined; }
+    dispose(): void { this.disposed = true; ++this.generation; this.project = undefined;
+        for (const controller of this.explanations.values()) controller.abort(); }
 }

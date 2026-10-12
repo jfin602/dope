@@ -252,7 +252,8 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
         live.ready = true;
         this.changed();
     }
-    async *generate(selection: ModelSelection, request: Omit<ConversationRequest, 'modelId'>): AsyncIterable<ConversationEvent> {
+    async *generate(selection: ModelSelection, request: Omit<ConversationRequest, 'modelId'>,
+        guard?: { localOnly: true }): AsyncIterable<ConversationEvent> {
         await this.loaded;
         if (this.globalStore && !(await this.list()).connections.find(item => item.id === selection.connectionId)
             ?.models.some(item => item.id === selection.modelId && item.usable))
@@ -263,6 +264,8 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
         if (!model) throw new ModelRuntimeFailure('Selected model unavailable', 'model-unavailable');
         const connection = this.connections.get(selection.connectionId);
         if (!connection) throw new ModelRuntimeFailure('Connection unavailable', 'connection-unavailable');
+        if (guard?.localOnly && connection.providerId !== 'local')
+            throw new ModelRuntimeFailure('Local-only generation requires a local connection', 'unsupported-capability');
         if (!model.capabilities.conversationalText) throw new ModelRuntimeFailure('Model lacks conversational text', 'unsupported-capability');
         for (const [id, value] of Object.entries(request.controls ?? {})) {
             if (!model.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
@@ -273,6 +276,8 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
             for await (const event of live.runtime.generateConversation({ ...request, modelId: selection.modelId })) {
                 if (this.live.get(selection.connectionId) !== live || !live.ready)
                     throw new ModelRuntimeFailure('Connection changed during generation', 'connection-unavailable');
+                if (guard?.localOnly && this.connections.get(selection.connectionId)?.providerId !== 'local')
+                    throw new ModelRuntimeFailure('Local-only connection changed', 'connection-unavailable');
                 if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
                 yield event.type === 'complete' ? { ...event, provenance: { connectionId: connection.id,
                     modelId: event.actualModelId ?? model.id, providerId: connection.providerId,

@@ -74,7 +74,8 @@ export default new ContainerModule(bind => {
     bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
     bind(PlanningStore).toSelf().inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler(historyServicePath, client => {
-        const backend = new HistoryBackend(context.container.get(PlanningStore));
+        const backend = new HistoryBackend(context.container.get(PlanningStore),
+            context.container.get(AIRoleRoutingService), context.container.get(ModelConnectionsRegistry));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();
