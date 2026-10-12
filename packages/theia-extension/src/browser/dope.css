@@ -260,17 +260,20 @@
 .dope-rebase-conflict { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .dope-dark {
     --dope-background: #1F1F1F;
-    --dope-primary: #336699;
-    --dope-on-primary: #FFFFFF;
-    --dope-text-accent: color-mix(in srgb, var(--dope-primary) 55%, white);
-    --dope-focus: color-mix(in srgb, var(--dope-primary) 65%, white);
+    --dope-primary: #FF7A1A;
+    --dope-highlight: #FFB15C;
+    --dope-deep: #C75100;
+    --dope-on-primary: var(--dope-background);
+    --dope-on-pressed: #FFFFFF;
+    --dope-text-accent: color-mix(in srgb, var(--dope-primary) 70%, white);
+    --dope-focus: color-mix(in srgb, var(--dope-control-border) 55%, white);
     --dope-control-background: #303030;
     --dope-control-hover: #3B3B3B;
     --dope-control-border: #484848;
-    --dope-selected-background: color-mix(in srgb, var(--dope-primary) 25%, var(--dope-control-background));
+    --dope-selected-background: color-mix(in srgb, var(--dope-primary) 15%, var(--dope-control-background));
     --dope-action-background: var(--dope-primary);
-    --dope-action-hover: color-mix(in srgb, var(--dope-primary) 85%, var(--dope-background));
-    --dope-action-pressed: color-mix(in srgb, var(--dope-primary) 70%, var(--dope-background));
+    --dope-action-hover: var(--dope-highlight);
+    --dope-action-pressed: var(--dope-deep);
     --dope-ready: var(--theia-testing-iconPassed, var(--theia-foreground));
 
     --theia-editor-background: var(--dope-background);
@@ -287,19 +290,19 @@
     --theia-textLink-activeForeground: var(--dope-text-accent);
     --theia-activityBar-foreground: var(--theia-foreground);
     --theia-activityBar-activeBorder: var(--dope-primary);
-    --theia-activityBarBadge-background: var(--dope-primary);
-    --theia-activityBarBadge-foreground: var(--dope-on-primary);
+    --theia-activityBarBadge-background: var(--dope-control-border);
+    --theia-activityBarBadge-foreground: var(--theia-foreground);
     --theia-tab-activeBorderTop: var(--dope-primary);
     --theia-tab-activeBorder: var(--dope-primary);
     --theia-list-activeSelectionBackground: var(--dope-selected-background);
     --theia-list-activeSelectionForeground: var(--theia-foreground);
     --theia-list-focusOutline: var(--dope-focus);
-    --theia-editor-selectionBackground: color-mix(in srgb, var(--dope-primary) 35%, transparent);
-    --theia-editor-inactiveSelectionBackground: color-mix(in srgb, var(--dope-primary) 20%, transparent);
-    --theia-editor-findMatchHighlightBackground: color-mix(in srgb, var(--dope-primary) 30%, transparent);
-    --theia-badge-background: var(--dope-primary);
-    --theia-badge-foreground: var(--dope-on-primary);
-    --theia-progressBar-background: var(--dope-primary);
+    --theia-editor-selectionBackground: color-mix(in srgb, var(--dope-primary) 22%, transparent);
+    --theia-editor-inactiveSelectionBackground: color-mix(in srgb, var(--dope-primary) 12%, transparent);
+    --theia-editor-findMatchHighlightBackground: color-mix(in srgb, var(--dope-highlight) 25%, transparent);
+    --theia-badge-background: var(--dope-control-border);
+    --theia-badge-foreground: var(--theia-foreground);
+    --theia-progressBar-background: var(--dope-focus);
     --theia-statusBar-background: var(--dope-background);
     --theia-statusBar-foreground: var(--theia-foreground);
     --theia-statusBar-noFolderBackground: var(--dope-background);
@@ -360,24 +363,24 @@
 }
 
 /* Intentional work-starting actions opt into brand color; utilities inherit neutral controls. */
-:is(.dope-ai-center, .dope-smap-view) button.dope-action-primary {
+.dope-dark :is(.dope-ai-center, .dope-smap-view) button.dope-action-primary {
     color: var(--dope-on-primary, var(--theia-button-foreground));
     background: var(--dope-action-background, var(--theia-button-background));
     border-color: var(--dope-action-background, var(--theia-button-background));
 }
-:is(.dope-ai-center, .dope-smap-view) button.dope-action-primary:hover:not(:disabled) {
+.dope-dark :is(.dope-ai-center, .dope-smap-view) button.dope-action-primary:hover:not(:disabled) {
     background: var(--dope-action-hover, var(--theia-button-hoverBackground));
 }
 .dope-dark :is(.dope-ai-center, .dope-smap-view) button.dope-action-primary:active:not(:disabled) {
-    color: var(--dope-on-primary);
+    color: var(--dope-on-pressed);
     background: var(--dope-action-pressed);
 }
-.dope-smap-view button.dope-action-outline {
+.dope-dark .dope-smap-view button.dope-action-outline {
     color: var(--dope-text-accent, var(--theia-button-foreground));
     background: transparent;
     border-color: var(--dope-action-background, var(--theia-button-background));
 }
-.dope-smap-view button.dope-action-outline:hover:not(:disabled) { background: var(--theia-button-hoverBackground); }
+.dope-dark .dope-smap-view button.dope-action-outline:hover:not(:disabled) { background: var(--theia-button-hoverBackground); }
 
 .dope-smap-view .dope-smap-compact-actions { border: 0; margin: 0; }
 .dope-smap-view .dope-smap-control-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
