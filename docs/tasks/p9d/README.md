@@ -1,6 +1,6 @@
 # p9d — Final Phase 9: Developer Continuity and History
 
-**Status (2026-10-12):** OWNER-ACTIVATED / P1 GREEN FOR BOUNDED OFFLINE EXPORT (`d58872f`, [requalification](p1-requalification.md)); P2–P12 NOT YET QUALIFIED, P13 MANUAL, PHASE 9 NOT QUALIFIED.
+**Status (2026-10-12):** OWNER-ACTIVATED / P1–P12 SOURCE COMMITTED THROUGH `0.9.34` / P13 FINAL [CLOSEOUT](closeout.md) NOT GREEN AT `0.9.35` / PHASE 9 NOT QUALIFIED. P1 remains Green for its bounded offline exporter (`d58872f`, [requalification](p1-requalification.md)).
 **Entry:** actual committed `0.9.22` / `0752415be76ef3f87e1a34bf17c4009a888be085`. ADR 0034 approves replacing Sessions with **History in the RIGHT activity toolbar**, automatic factual context, one-click continuation and optional local-first understanding.
 **Historical scope:** 9A bounded Green `0.9.6`, 9B bounded Green `0.9.13`. Original Session 9C P1–P9 reached `0.9.22`; P10 was superseded/unexecuted. **Phase 9 overall NOT QUALIFIED.**
 **Finality:** This p9d stack replaces the deprecated Session 9D and 9E plans; **no p9e subphase**. P13 is the sole manual **FINAL Phase 9** qualification/closeout, not a limited 9D-only audit.
@@ -23,7 +23,7 @@
 
 ## Activation and version law
 
-**Separate owner authorization is recorded at `docs/planning/p9/phase-9d-activation.md`. P1's scoped exporter was repaired and requalified separately at `d58872f`; see [P1 evidence](p1-requalification.md).** The baseline before P1 was `0.9.22`, but the **current** 13-manifest/pinned internal dependency version is `0.9.23`. P1 has already been accepted GREEN for its bounded exporter scope; the P1 requalification gate is CLOSED. P2 must NOT rerun P1's seven child-process tests as a preflight. P2 applies the usual safe-worktree and coherent `0.9.23` predecessor checks, then implements the UI retirement and owns the next transition to `0.9.24`. Later prompts own subsequent patches. P13 manually creates a separate legitimate `0.9.35` source/version checkpoint BEFORE evidence-only closeout. Runner verifies but never bumps. Preserve developer dirty files, `yarn.lock`, unrelated dependencies and no root `package-lock.json`.
+**Separate owner authorization is recorded at `docs/planning/p9/phase-9d-activation.md`. P1's scoped exporter was repaired and requalified separately at `d58872f`; see [P1 evidence](p1-requalification.md).** P1–P12 reached committed `0.9.23`–`0.9.34`; P13 created the separate `0.9.35` source/version checkpoint `7fdf7b3f43d695e12fa3390f7fbad63d90e5cfa5` before this evidence-only closeout. All 13 manifests and pinned internal references are coherent; `yarn.lock` and unrelated dependencies were preserved, and no root `package-lock.json` was created. Runner verifies but never bumps.
 
 The former `p9c` P10 is superseded (its historical GUI closeout is **NOT GREEN**) and cannot qualify p9d's `0.9.23`. The runner may still display P1 as `PREVIOUSLY COMPLETED` because of its version subject; the separate `d58872f` exporter and P1 evidence have already CLOSED that conditional gate. Do not repeat P1 checks in P2. Never pre-bump to `0.9.24`.
 

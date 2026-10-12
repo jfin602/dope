@@ -1,8 +1,8 @@
 # Phase 9 Plan — Developer Continuity and History
 
-**Status:** OWNER-APPROVED DESIGN REPLACEMENT / IMPLEMENTATION NOT ACTIVATED / PHASE 9 NOT QUALIFIED  
-**Date:** 2026-10-11 (America/Chicago)  
-**Authority:** ADR 0034 supersedes ADR 0033 for forward product development. Current source `0.9.22` / `0752415be76ef3f87e1a34bf17c4009a888be085`. Original 9A Green `0.9.6`, 9B Green `0.9.13`; historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green unchanged.
+**Status:** OWNER-ACTIVATED IMPLEMENTATION THROUGH `0.9.35` / FINAL P13 NOT GREEN / PHASE 9 NOT QUALIFIED
+**Date:** 2026-10-12 (America/Chicago)
+**Authority:** ADR 0034 supersedes ADR 0033 for forward product development. Owner activation: `docs/planning/p9/phase-9d-activation.md`. Exact P13 source/version: `0.9.35` / `7fdf7b3f43d695e12fa3390f7fbad63d90e5cfa5`. Final evidence: `docs/tasks/p9d/closeout.md`. Original 9A Green `0.9.6`, 9B Green `0.9.13`; historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green unchanged.
 
 ## Outcome
 
@@ -28,7 +28,7 @@ The owner designated `p9d` as the **final** Phase 9 subphase. The source-reviewe
 
 P1 starts from the actual coherent `0.9.22` predecessor `0752415` and targets `0.9.23` during implementation. P1–P12 target `0.9.23`–`0.9.34`; P13 is the manual exact-candidate final Phase 9 qualification at separate source/version `0.9.35` with real Theia GUI and one full `npm run check`. **Authoring is NOT activation:** require a separate owner-approved `docs/planning/p9/phase-9d-activation.md` before P1. The old p9c P10 remains unexecuted/superseded; do not pre-bump `0.9.23`. Phase 9 overall still NOT QUALIFIED, and any owner closeout or Phase 10 activation remains separate.
 
-## Replacement implementation workstreams (NOT yet activated)
+## Replacement implementation workstreams (implemented, final qualification Not Green)
 
 | Workstream | Goal | Required proof |
 | --- | --- | --- |
@@ -48,4 +48,4 @@ Before implementation: `/prompt-ass` -> `/prompt-plan` -> `/prompt-write` for a 
 - Original Session 9D/9E: **SUPERSEDED / UNEXECUTED**. A new final History/Continuity qualification replaces old Session-based dogfooding; no Phase 9 owner closeout is implied.
 - Existing Session files in `.dope/development-sessions.json` are preserved without deletion/implicit migration. Developer-authored notes must remain recoverable by an explicit read-only export path.
 
-**Phase 9 overall is NOT QUALIFIED.** No successor phase or source implementation is activated by these documentation edits.
+**Phase 9 overall is NOT QUALIFIED.** The real History panel is blocked at loading and the exact-candidate aggregate failed. No owner close or Phase 10 activation is implied.
