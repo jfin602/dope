@@ -64,10 +64,12 @@ async function regular(path: string): Promise<boolean> {
     try { const info = await lstat(path); if (!info.isFile() || info.isSymbolicLink()) throw new Error(`Unsafe Chat file: ${path}`); return true; }
     catch (error) { if (absent(error)) return false; throw error; }
 }
-async function safeText(path: string): Promise<string> {
+async function safeText(path: string, maxBytes?: number): Promise<string> {
     const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
-        if (!(await handle.stat()).isFile()) throw new Error(`Unsafe Chat file: ${path}`);
+        const info = await handle.stat();
+        if (!info.isFile()) throw new Error(`Unsafe Chat file: ${path}`);
+        if (maxBytes !== undefined && info.size > maxBytes) throw new Error(`Chat file exceeds metadata bound: ${path}`);
         return await handle.readFile('utf8');
     } finally { await handle.close(); }
 }
@@ -140,14 +142,14 @@ export class ChatRepository {
         }
         return at;
     }
-    private async manifest(base: string): Promise<Manifest> {
+    private async manifest(base: string, maxBytes?: number): Promise<Manifest> {
         const path = join(base, 'index.json');
         if (!await regular(path)) {
             const folders = join(base, 'folders');
             if ((await directory(folders)) && (await readdir(folders)).length) throw new Error(`Missing Chat manifest: ${path}`);
             return { schemaVersion: 1, revision: 0, folders: [], entries: [] };
         }
-        try { return parseManifest(JSON.parse(await safeText(path))); }
+        try { return parseManifest(JSON.parse(await safeText(path, maxBytes))); }
         catch { throw new Error(`Corrupt or unsupported Chat manifest: ${path}`); }
     }
     private async raw(root: string, legacyIds = new Set<string>()): Promise<ChatCollection> {
@@ -176,12 +178,44 @@ export class ChatRepository {
         }
         return parseChatCollection({ schemaVersion: 1, revision: manifest.revision, folders: manifest.folders, chats });
     }
-    /** Validated owner metadata without lease recovery, legacy migration, or transcript output. */
-    async peekMetadata(root: string, chatId: string): Promise<{ title: string; revision: number; updatedAt: string } | undefined> {
+    /** One bounded, current-format owner file; never runs lease recovery or legacy migration. */
+    async peekMetadata(root: string, chatId: string): Promise<{ title: string; revision: number; updatedAt: string; lastInteractedAt: string } | undefined> {
         uuid(chatId);
-        const collection = await this.raw(root);
-        const chat = collection.chats.find(item => item.id === chatId);
-        return chat && { title: chat.title, revision: chat.revision, updatedAt: chat.updatedAt };
+        const { base, exists } = await this.paths(root);
+        if (!exists) return undefined;
+        const index = join(base, 'index.json');
+        if (await regular(index) && (await lstat(index)).size > 256 * 1024) throw new Error('Chat manifest exceeds metadata bound');
+        const manifest = await this.manifest(base, 256 * 1024);
+        if (manifest.entries.length > 1000) throw new Error('Chat manifest exceeds metadata bound');
+        const entry = manifest.entries.find(item => item.id === chatId);
+        if (!entry) return undefined;
+        const file = join(await this.folder(base, entry.folderPath), entry.file);
+        if (!await regular(file)) throw new Error(`Missing Chat file: ${file}`);
+        let chat: Chat;
+        try {
+            const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+            try {
+                const info = await handle.stat();
+                if (!info.isFile() || info.size > 64 * 1024 * 1024) throw new Error('Chat file exceeds metadata bound');
+                const prefix = Buffer.alloc(Math.min(info.size, 64 * 1024));
+                let read = 0;
+                while (read < prefix.length) {
+                    const result = await handle.read(prefix, read, prefix.length - read, read);
+                    if (!result.bytesRead) break;
+                    read += result.bytesRead;
+                }
+                // Current owner serialization puts messages last. Refuse other layouts rather than reading transcripts.
+                const beforeMessages = prefix.subarray(0, read).toString('utf8');
+                const match = /\n  "messages": \[/.exec(beforeMessages);
+                if (!match) throw new Error('Chat metadata prefix unavailable');
+                const metadata = JSON.parse(`${beforeMessages.slice(0, match.index).replace(/,\s*$/, '')}\n}`);
+                chat = parseChat({ ...metadata, messages: [] });
+            } finally { await handle.close(); }
+        }
+        catch { throw new Error(`Corrupt or unsupported Chat file: ${file}`); }
+        if (chat.id !== entry.id || chat.folderPath !== entry.folderPath || chat.revision !== entry.revision)
+            throw new Error(`Chat manifest/file mismatch: ${file}`);
+        return { title: chat.title, revision: chat.revision, updatedAt: chat.updatedAt, lastInteractedAt: chat.lastInteractedAt };
     }
     /** Manifest IDs only: browsing must not read Chat files or run recovery/migration. */
     async peekCandidateIds(root: string, limit: number): Promise<{ ids: string[]; truncated: boolean }> {
@@ -190,7 +224,7 @@ export class ChatRepository {
         if (!exists) return { ids: [], truncated: false };
         if (await regular(join(base, 'index.json')) && (await lstat(join(base, 'index.json'))).size > 256 * 1024)
             throw new Error('Chat candidate manifest exceeds browse bound');
-        const manifest = await this.manifest(base);
+        const manifest = await this.manifest(base, 256 * 1024);
         if (manifest.entries.length > 1000) throw new Error('Chat candidate manifest exceeds browse bound');
         const entries = manifest.entries.slice(0, limit);
         for (const entry of entries) {
