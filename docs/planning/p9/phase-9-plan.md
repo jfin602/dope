@@ -1,8 +1,8 @@
 # Phase 9 Plan — Developer Continuity and History
 
-**Status:** OWNER-ACTIVATED IMPLEMENTATION THROUGH `0.9.35` / FINAL P13 NOT GREEN / PHASE 9 NOT QUALIFIED
+**Status:** IMPLEMENTED THROUGH `0.9.35` / FINAL QUALIFICATION GREEN / PHASE 9 QUALIFIED / OWNER CLOSEOUT PENDING
 **Date:** 2026-10-12 (America/Chicago)
-**Authority:** ADR 0034 supersedes ADR 0033 for forward product development. Owner activation: `docs/planning/p9/phase-9d-activation.md`. Original P13 source/version: `0.9.35` / `7fdf7b3f43d695e12fa3390f7fbad63d90e5cfa5`; five-cycle repair source at unchanged version: `2210a54d72fc0c0c31f617c42da7d4c9ee55fce9`. Current evidence: `docs/tasks/p9d/qualification-repair-loop.md`; original P13 evidence: `docs/tasks/p9d/closeout.md`. Original 9A Green `0.9.6`, 9B Green `0.9.13`; historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green unchanged.
+**Authority:** ADR 0034 supersedes ADR 0033 for forward product development. Owner activation: `docs/planning/p9/phase-9d-activation.md`. Final qualified source/version: `0.9.35` / `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`; current evidence: `docs/tasks/p9d/final-qualification.md`. Original P13 Not Green at `7fdf7b3f43d695e12fa3390f7fbad63d90e5cfa5` and five-cycle repair-loop Not Green at `2210a54d72fc0c0c31f617c42da7d4c9ee55fce9` remain historical evidence. Original 9A Green `0.9.6`, 9B Green `0.9.13`; historical Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green unchanged.
 
 ## Outcome
 
@@ -26,9 +26,9 @@
 
 The owner designated `p9d` as the **final** Phase 9 subphase. The source-reviewed assessment, implementation plan and P1–P13 prompts in `docs/tasks/p9d/` cover legacy Session export/retirement, right-toolbar History, automatic factual activity, one-click continuation, explicit local-only contextual understanding and the **sole manual final Phase 9 closeout**. The historical Session 9D/9E plans remain superseded: **there is no p9e**.
 
-P1 starts from the actual coherent `0.9.22` predecessor `0752415` and targets `0.9.23` during implementation. P1–P12 target `0.9.23`–`0.9.34`; P13 is the manual exact-candidate final Phase 9 qualification at separate source/version `0.9.35` with real Theia GUI and one full `npm run check`. **Authoring is NOT activation:** require a separate owner-approved `docs/planning/p9/phase-9d-activation.md` before P1. The old p9c P10 remains unexecuted/superseded; do not pre-bump `0.9.23`. Phase 9 overall still NOT QUALIFIED, and any owner closeout or Phase 10 activation remains separate.
+P1 started from the actual coherent `0.9.22` predecessor `0752415`; P1–P12 advanced through `0.9.34`, and P13 qualified the separate exact source candidate at `0.9.35` with the real Theia GUI and one full `npm run check`. The owner-approved activation is preserved in `docs/planning/p9/phase-9d-activation.md`. The old p9c P10 remains unexecuted/superseded. Phase 9 is **QUALIFIED / GREEN** at `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`; owner closeout and any Phase 10 activation remain separate.
 
-## Replacement implementation workstreams (implemented, final qualification Not Green)
+## Replacement implementation workstreams (implemented and qualified)
 
 | Workstream | Goal | Required proof |
 | --- | --- | --- |
@@ -48,4 +48,4 @@ Before implementation: `/prompt-ass` -> `/prompt-plan` -> `/prompt-write` for a 
 - Original Session 9D/9E: **SUPERSEDED / UNEXECUTED**. A new final History/Continuity qualification replaces old Session-based dogfooding; no Phase 9 owner closeout is implied.
 - Existing Session files in `.dope/development-sessions.json` are preserved without deletion/implicit migration. Developer-authored notes must remain recoverable by an explicit read-only export path.
 
-**Phase 9 overall is NOT QUALIFIED.** The repaired History panel loaded in direct Theia GUI and the final exact-source aggregate passed. A live completed AgentRun/validation chronology, consistent local explanation quality, and independent hosted-egress proof remain missing or failed; see the five-cycle repair record. No owner close or Phase 10 activation is implied.
+**Phase 9 overall is GREEN / QUALIFIED at exact source `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`.** The bounded final loop proved a real authorized WorkItem AgentRun through Dope validation, explicit review and promotion; truthful History navigation and restart; repeatable grounded local Qwen explanations; and OS-observed loopback-only inference with no automatic invocation. The one full final aggregate passed 556/556 with browser and Electron builds. See `docs/tasks/p9d/final-qualification.md`. Owner closeout and Phase 10 activation remain separate explicit decisions.
