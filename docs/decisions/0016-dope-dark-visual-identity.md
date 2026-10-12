@@ -128,3 +128,27 @@ Current Dope Dark design tokens / intent:
 AI Center is the accepted reference for the quiet, compact dark visual grammar. Chat, Work, their selection states and AgentRun transcripts must use the same semantic Theia/Dope token layer, restrained boundaries and understated utility controls; see ADR 0030. Focus must remain visibly distinguishable without loud persistent borders, selected state must have non-color cues, and the user's explicitly selected compatible theme must still override Dope Dark without leakage.
 
 Implementation and direct browser/Electron visual evidence for the updated palette are pending the bounded pre-qualification `c8-chat-work-ui` correction at unchanged `0.8.20`. Do not relabel its documentation approval as implementation or qualification.
+
+## Amendment — 2026-10-12: Dope Dark restrained-orange identity (current authority)
+
+**Status: accepted design direction / implementation pending.** This amendment supersedes **only** the October 8, 2026 blue-as-primary palette allocation and incompatible orange restrictions for current and future UI work. The October 1 original palette and October 8 implementation/qualification remain truthful history. Neither documentation approval nor this amendment constitutes source implementation or visual qualification.
+
+**Current Dope Dark palette and roles**
+- Workbench/editor background anchor: `#1F1F1F`.
+- Primary action/brand emphasis: **orange `#FF7A1A`**.
+- Intended bright hover/highlight accent: `#FFB15C`; deeper pressed/emphasis reference: `#C75100`. Use contrast-tested state mappings, including appropriate dark foreground on bright orange and a readable foreground on deeper orange.
+- Neutral secondary/utility controls: `#303030`; neutral borders/separators: `#484848`. Derive subdued focus/hover/selected states centrally, with clear keyboard visibility and accessible contrast.
+- `#336699` is **not** the global Dope Dark interactive accent. Prior blue and teal global theme allocations are historical only; independent user-selected map/chat organizational colors are unaffected.
+
+**Restrained orange, not orange everywhere**
+- Orange is an **opt-in primary-action** and intentional active/selected emphasis, not the default fill/border for ordinary buttons, text inputs, tabs, sidebars, panes, or every row. Secondary and utility actions remain neutral.
+- No persistent bright input outline, orange panel framing, blanket orange status-bar text/icons, or orange-washed navigation. Selection and focus require non-color cues; keyboard focus must remain visible without a constantly loud outline.
+- Keep a neutral dark full-width status bar. The bounded far-left Git branch segment may retain the filled orange brand region with contrast-tested text. Diagnostics, syntax, source-control and success/warning/error semantics retain their own colors.
+- Retain AI Center's compact, calm hierarchy as the reference visual grammar across Dope-owned panels, including Chat and Work (ADR 0030). Preserve layout/interaction semantics; this amendment alone does not authorize panel redesign.
+- All Dope-owned surfaces consume centralized semantic Theia/Dope tokens. Define literal brand hex values **only in the central theme layer**, not in individual widget CSS. Keep Dope Dark activation scoped and deactivated when an explicitly selected compatible light/dark/custom theme is active. Browser/Electron still default to `dope-dark`.
+- Preserve the independent ten-color Chat organization palette, developer map/Flow node-color controls, and meaningful status/chart categories. Do not force those palettes into orange.
+
+**Enforcement and qualification**
+- UI implementation prompts must follow `AGENTS.md` and the UI Design Compliance Gate in `docs/workflow.md`; they must read this current ADR and any applicable presentation authority, reuse semantic tokens, and avoid hard-coded widget palettes.
+- `c9-theme-fix` owns the bounded theme-token/test correction and one direct real-GUI visual qualification. Focused theme tests and contrast/theme-isolation checks are required; a T3 pass inspects major Dope-owned surfaces, narrow panes, status bar and a non-Dope theme. Failed/unknown gates remain Not Green.
+- This is a presentation-only change: no package-version advancement for the correction, no new theme identity/framework, no application/domain/authority mutation, and no rewriting historical `c4-color-theme` or `c8-chat-work-ui` qualification records.

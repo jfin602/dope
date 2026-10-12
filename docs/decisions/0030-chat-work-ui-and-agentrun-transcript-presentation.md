@@ -49,3 +49,7 @@ A bounded `c8-chat-work-ui` correction should split selector/control presentatio
 ## Qualification follow-up (2026-10-09)
 
 The earlier command/validation blocker was repaired and the final `c8-work-mode` P9 closeout is GREEN / QUALIFIED at unchanged `0.8.20`. Real command expansion, Dope-owned candidate validation/promotion, Work GUI/restart and preserved Adaptive SEO history were directly evidenced; see `docs/tasks/c8-work-mode/closeout.md`. Earlier Not Green attempts remain preserved; ADR 0031 governs the independently activated 8D scope.
+
+## Forward theme clarification — 2026-10-12
+
+ADR 0016's October 12 restrained-orange amendment is the **current palette authority**, superseding this ADR's October 8 blue-primary references for future implementations. The qualified `c8-chat-work-ui` at `0.8.20` remains historically accurate, including its blue palette evidence. The enduring **visual grammar** in this ADR remains unchanged: AI Center-like compact dark hierarchy, neutral secondary inputs/buttons, subdued borders, keyboard-visible but restrained focus, accessible selection states, and safely rendered Chat/Work/AgentRun surfaces. Orange is reserved for intentional primary actions and emphasis, not every widget. Current color allocation comes only from theme-scoped semantic tokens, and compatible user theme overrides remain uncontaminated. The palette return requires separate implementation and visual qualification under `c9-theme-fix`; it is not retroactive evidence.

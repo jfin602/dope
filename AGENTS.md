@@ -24,6 +24,7 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 8. Identify only the persistence, authority, process, filesystem, network, provider, UI, and framework failure modes applicable to capabilities that exist in the current phase.
 9. Separate product/domain logic from Theia UI integration and provider-specific code.
 10. Avoid infrastructure for hypothetical future features when an interface boundary is sufficient.
+11. For any prompt that creates or materially changes Dope-owned UI, read the **current** ADR 0016 visual-identity amendment and applicable presentation ADRs (including ADR 0030 for Chat/Work/AI Center), inspect existing semantic Theia/Dope tokens and components, and apply the UI Design Compliance Gate in `docs/workflow.md`. Do not substitute historical palettes or hard-coded widget hex values for current theme authority.
 
 ## Phase and gate scope
 
@@ -260,7 +261,7 @@ Implementation:
 -> /prompt-plan
 -> /prompt-write <folder>
 
-Before `/prompt-write` is complete, run the **mandatory Prompt Efficiency Gate** in `docs/workflow.md` over every newly authored prompt. Split overloaded responsibilities for the <=8-minute implementation-and-focused-validation target; inspect actual compiled-output/test dependencies, prevent redundant builds and nested aggregate commands, concentrate expensive T2/T3 gates, select the lowest suitable Sol effort and record necessary deferrals. Preserve security, authority, regression evidence and truthful results. This is a documentation-authoring audit, not an extra executable prompt.
+Before `/prompt-write` is complete, run the **mandatory Prompt Efficiency Gate** and the integrated **UI Design Compliance Gate** where applicable in `docs/workflow.md` over every newly authored prompt. Split overloaded responsibilities for the <=8-minute implementation-and-focused-validation target; inspect actual compiled-output/test dependencies, prevent redundant builds and nested aggregate commands, concentrate expensive T2/T3 gates, select the lowest suitable Sol effort and record necessary deferrals. Preserve security, authority, regression evidence and truthful results. This is a documentation-authoring audit, not an extra executable prompt.
 
 New executable task stacks use explicit GPT-6 Sol labels:
 - GPT-6 Sol Medium by default;

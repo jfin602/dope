@@ -93,10 +93,23 @@ The efficiency audit is part of `/prompt-ass -> /prompt-plan -> /prompt-write`, 
 6. **Command deduplication:** inspect nested scripts before prescribing them. If the final aggregate already runs typecheck, package builds and product tests, do not separately rerun those commands on the same unchanged candidate. Register new focused tests in the relevant aggregate when appropriate. If a subsequent repair invalidates previous evidence, rerun only affected checks, including the aggregate when genuinely invalidated.
 7. **Model economy and deferral:** use the lowest suitable approved model effort (Sol Medium for ordinary narrow work; High for genuinely demanding architecture, authority, security, cross-boundary or debugging work; XHigh exceptionally). Explicitly defer unrelated functionality, tests and broad qualification without deferring mandatory correctness or authority checks.
 8. **Runnable/traceable contract:** preserve task grammar, contiguous prompt/version rules, exactly one final closeout, Browser-required flags, stable provider/model recommendations, immutable historical evidence and honest Green/Not Green decisions. Confirm no prompt contradicts a preceding task, existing granted authority, or the stack's planned tests.
+9. **UI Design Compliance (for UI-changing prompts):** follow the current ADR 0016 and applicable presentation ADRs, consume shared semantic theme tokens, reserve brand orange for intentional emphasis, keep ordinary controls neutral and user-theme overrides safe, and assign focused plus visual evidence at the appropriate T1/T3 gate. Do not mandate unrelated GUI evidence for a non-UI prompt.
 
 The audit outcome should be concise in the stack assessment/plan: describe meaningful splits, chosen narrow validation/build commands, shared expensive gates and any accepted exceptions. It does not require a second worksheet, exhaustive file inventory, speculative tests, automatic test execution during documentation authoring, or a separate audit prompt.
 
 **Safety and truth override speed.** Do not delete tests, widen permissions, suppress errors, hide failed evidence, omit required validation, claim unrun checks or defer a safety gate needed before continuing merely to meet a runtime target.
+
+### UI Design Compliance Gate (integrated with prompt planning/writing)
+
+This is an **applicable ninth check of the existing Prompt Efficiency Gate**, not another product phase, test suite, or executable prompt.
+
+- **Preflight:** For a task that creates/changes a Dope-owned panel, shell control, visualization UI, or theme, read current ADR 0016 (including the latest amendment), plus applicable UI-specific contracts such as ADR 0030. Historical prompts/qualification do not override current palette authority.
+- **Design before coding:** Inspect existing theme tokens and comparable Dope controls. Describe intentional primary versus neutral utility actions, density, typography, boundaries, focus/selection, narrow-pane behavior and meaningful semantic colors only as relevant to the task.
+- **Implementation contract:** Prefer `--theia-*` and centralized `--dope-*` semantic tokens. Put literal brand hex values in the central theme layer only; do not add local component palettes, broad global overrides, or a second theme system. Preserve keyboard-visible focus, readable contrast, non-color selection cues, independent Chat/map palettes and explicit compatible user-theme overrides.
+- **Prompt-writing contract:** State the smallest applicable visual constraints in each UI-changing implementation prompt and require a concrete done condition. Reuse already-approved component patterns; no copy-pasted full palette into every prompt and no unnecessary UI refactor.
+- **Evidence contract:** Use the smallest directly affected presentation/theme test(s) for T1; include `test/unit/dope-theme.test.ts` when central tokens or theme registration change, not for every unrelated panel. Reserve direct browser/Electron visual comparisons for the planned T3 gate when visible styling materially changes. Check normal and narrow layouts, focus/selection, primary vs secondary hierarchy and alternate-theme isolation as relevant. Unobserved GUI behavior is an evidence gap, never Green by assertion.
+- **Forward-prompt conflicts:** Before executing an unrun UI prompt that hard-codes a superseded palette, reconcile that instruction with current ADR 0016 and document the bounded update; leave executed prompts and historical closeouts unchanged.
+
 
 ## Repository implementation model routing
 
