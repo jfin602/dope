@@ -3,6 +3,8 @@ import { realpath } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
 import { parseRoadmapIndex, RoadmapStore } from './roadmap-store';
 import type { RoadmapCheckpoint, RoadmapIndex, RoadmapLink } from './roadmap-store';
+import { RoadmapOwnerLinks } from './roadmap-owner-links';
+import type { RoadmapOwnerRecord } from './roadmap-owner-links';
 
 export type PlanningAction =
     | { type: 'create'; id: string; kind: RoadmapCheckpoint['kind']; title: string; objective: string; order: number }
@@ -53,6 +55,8 @@ export class ProjectPlanningActions {
     private readonly handles = new Map<string, { root: string; ownerId: string }>();
     private readonly undo = new Map<string, { ownerId: string; revision: number; before: RoadmapCheckpoint; after: RoadmapCheckpoint }>();
 
+    private readonly owners = new RoadmapOwnerLinks();
+
     constructor(private readonly store: RoadmapStore, private readonly resolveLink?: PlanningLinkResolver) {}
 
     async attach(root: string): Promise<{ projectHandle: string; snapshot: RoadmapIndex }> {
@@ -81,6 +85,19 @@ export class ProjectPlanningActions {
         if (!selected) throw new Error('Unknown Roadmap checkpoint');
         const neighbors = snapshot.checkpoints.filter(item => selected.dependencies.includes(item.id) || item.dependencies.includes(selectedId));
         return copy({ selected, neighbors, revision: snapshot.revision });
+    }
+
+    async readOwner(projectHandle: string, ownerId: string, link: RoadmapLink): Promise<RoadmapOwnerRecord | undefined> {
+        const { root } = this.binding(projectHandle, ownerId);
+        if ((await this.store.read(root)).projectId !== ownerId) throw new Error('Planning owner changed');
+        return this.owners.resolve(root, link);
+    }
+
+    async readDetached(projectHandle: string, ownerId: string): Promise<RoadmapOwnerRecord[]> {
+        const { root } = this.binding(projectHandle, ownerId);
+        const roadmap = await this.store.read(root);
+        if (roadmap.projectId !== ownerId) throw new Error('Planning owner changed');
+        return this.owners.detached(root, roadmap);
     }
 
     private validateRequest(request: PlanningActionRequest): { root: string; ownerId: string } {
@@ -134,11 +151,14 @@ export class ProjectPlanningActions {
                     if (!['document', 'project-mind', 'issue', 'planning-map', 'work-item', 'evidence'].includes(link.owner) ||
                         !validId(link.targetId) || link.ownerRevision !== undefined && !validOrder(link.ownerRevision) ||
                         link.sourceHash !== undefined && !/^[a-f0-9]{64}$/.test(link.sourceHash) ||
-                        (link.owner === 'document' || link.owner === 'evidence' ? !link.sourceHash : link.ownerRevision === undefined))
+                        (link.owner === 'document' || link.owner === 'evidence' ? !link.sourceHash :
+                            link.owner === 'issue' ? link.sourceHash === undefined && link.ownerRevision === undefined :
+                                link.ownerRevision === undefined))
                         throw new Error('Invalid Roadmap link');
                     const index = item.links.findIndex(existing => linkKey(existing) === linkKey(link));
                     if (action.type === 'link') {
-                        if (index >= 0 || !this.resolveLink || !await this.resolveLink(root, link)) throw new Error('Foreign or unresolved Roadmap link');
+                        if (index >= 0 || !(this.resolveLink ? await this.resolveLink(root, link) : await this.owners.resolve(root, link)))
+                            throw new Error('Foreign or unresolved Roadmap link');
                         item.links.push(link);
                     } else {
                         if (index < 0 || JSON.stringify(item.links[index]) !== JSON.stringify(link)) throw new Error('Unknown or changed Roadmap link');
