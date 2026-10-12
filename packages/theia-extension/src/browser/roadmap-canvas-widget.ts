@@ -2,6 +2,9 @@ import { BaseWidget, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { projectRoadmap, type RoadmapProjection } from '@dope/project-intelligence/lib/roadmap-projection';
 import type { RoadmapService } from '../roadmap-service';
+import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
+import type { RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import { roadmapCanvasOrder, roadmapNextId } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 
@@ -12,6 +15,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly status = document.createElement('p');
     private readonly path = document.createElement('ol');
     private readonly toolbar = document.createElement('header');
+    private readonly pools = document.createElement('section');
+    private readonly poolFilter = document.createElement('input');
+    private owners: RoadmapOwnerRecord[] = [];
+    private poolQuery = '';
+    private mutating = false;
     private readonly reload = document.createElement('button');
     private readonly details = document.createElement('button');
     private readonly rootsListener;
@@ -44,12 +52,18 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.status.setAttribute('aria-live', 'polite');
         this.path.setAttribute('aria-label', 'Roadmap checkpoints');
         this.path.onkeydown = event => this.onPathKey(event);
-        this.node.append(this.toolbar, this.status, this.path);
+        this.pools.className = 'dope-roadmap-pools';
+        this.pools.setAttribute('aria-label', 'Detached Ideas and Issues');
+        this.poolFilter.type = 'search';
+        this.poolFilter.setAttribute('aria-label', 'Filter Ideas and Issues');
+        this.poolFilter.placeholder = 'Filter Ideas and Issues';
+        this.poolFilter.oninput = () => { this.poolQuery = this.poolFilter.value; this.renderPools(); };
+        this.node.append(this.toolbar, this.status, this.path, this.pools);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.refresh(); });
         this.modelListener = inspector.onChange(() => {
             if (!this.projectUri || inspector.projectUri !== this.projectUri || !inspector.index) return;
             this.selectedId = inspector.selectedId;
-            this.projection = projectRoadmap(inspector.index, [], { projectId: inspector.index.projectId, selectedId: this.selectedId });
+            this.projection = projectRoadmap(inspector.index, this.owners, { projectId: inspector.index.projectId, selectedId: this.selectedId });
             this.render();
         });
         void this.refresh();
@@ -58,7 +72,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
     async refresh(): Promise<void> {
         const request = ++this.request;
         this.projection = undefined;
+        this.owners = [];
         this.path.replaceChildren();
+        this.pools.replaceChildren();
         this.status.textContent = 'Loading Roadmap…';
         try {
             const roots = await this.workspaces.roots;
@@ -71,16 +87,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 return;
             }
             const projectUri = roots[0].resource.toString();
-            const index = await this.service.read(projectUri);
+            const [index, owners] = await Promise.all([this.service.read(projectUri), this.service.owners(projectUri)]);
             if (this.isDisposed || request !== this.request) return;
-            if (this.projectUri !== projectUri) this.selectedId = undefined;
+            if (this.projectUri !== projectUri) { this.selectedId = undefined; this.poolQuery = ''; this.poolFilter.value = ''; }
+            this.owners = owners;
             this.projectUri = projectUri;
             this.inspector.setSnapshot(projectUri, index);
-            if (index.revision === 0) {
-                this.status.textContent = 'No Roadmap index yet. Refresh after checkpoints are created or imported.';
-                return;
-            }
-            this.projection = projectRoadmap(index, [], { projectId: index.projectId, selectedId: this.selectedId });
+            if (index.revision === 0) this.status.textContent = 'No Roadmap index yet. Detached records remain visible; create or import a checkpoint to link them.';
+            this.projection = projectRoadmap(index, owners, { projectId: index.projectId, selectedId: this.selectedId });
             this.render();
         } catch (error) {
             if (this.isDisposed || request !== this.request) return;
@@ -122,8 +136,107 @@ export class RoadmapCanvasWidget extends BaseWidget {
             item.append(button);
             this.path.append(item);
         }
+        this.renderPools();
         const diagnostic = projection.diagnostics.length ? ` · ${projection.diagnostics.length} unresolved reference(s)` : '';
-        this.status.textContent = `${nodes.length} checkpoints · Roadmap revision ${projection.revision}${diagnostic}`;
+        this.status.textContent = projection.revision === 0 ?
+            'No Roadmap index yet. Detached records remain visible; create or import a checkpoint to link them.' :
+            `${nodes.length} checkpoints · Roadmap revision ${projection.revision}${diagnostic}`;
+    }
+
+
+    private renderPools(): void {
+        const projection = this.projection;
+        if (!projection) return;
+        const filterFocused = document.activeElement === this.poolFilter;
+        const filterSelection = filterFocused ? [this.poolFilter.selectionStart, this.poolFilter.selectionEnd] : undefined;
+        this.pools.replaceChildren();
+        const heading = document.createElement('h2');
+        heading.textContent = 'Unsequenced Ideas and Issues';
+        const hint = document.createElement('p');
+        hint.textContent = this.selectedId ? 'Link a record to the selected checkpoint. The original record stays with its owner.' :
+            'Select a checkpoint above to link an Idea or Issue.';
+        this.pools.append(heading, hint, this.poolFilter);
+        if (filterFocused) {
+            this.poolFilter.focus();
+            if (filterSelection && filterSelection[0] !== null && filterSelection[1] !== null)
+                this.poolFilter.setSelectionRange(filterSelection[0], filterSelection[1]);
+        }
+        const query = this.poolQuery.trim().toLocaleLowerCase();
+        for (const [label, records] of [['Ideas', projection.pools.ideas], ['Issues', projection.pools.issues]] as const) {
+            const group = document.createElement('section');
+            const title = document.createElement('h3'); title.textContent = label;
+            const list = document.createElement('ul'); list.setAttribute('aria-label', `Detached ${label}`);
+            const matches = records.filter(record => !query || `${record.title} ${record.status} ${record.targetId} ${record.provenance}`.toLocaleLowerCase().includes(query));
+            for (const record of matches) {
+                const item = document.createElement('li');
+                const name = document.createElement('strong'); name.textContent = record.title;
+                const details = document.createElement('span');
+                details.textContent = `${record.status} · ${record.provenance} · ${record.targetId}`;
+                const link = document.createElement('button'); link.type = 'button';
+                link.textContent = 'Promote / link to selected checkpoint';
+                link.setAttribute('aria-label', `Promote or link ${record.title} to selected checkpoint`);
+                link.disabled = !this.selectedId || this.mutating || !!this.inspector.selected?.readOnly;
+                link.onclick = () => void this.changeLink('link', this.selectedId!, record.owner === 'issue'
+                    ? { owner: 'issue', targetId: record.targetId, sourceHash: record.sourceHash }
+                    : { owner: 'project-mind', targetId: record.targetId, ownerRevision: record.ownerRevision });
+                item.append(name, details, link); list.append(item);
+            }
+            if (!matches.length) { const empty = document.createElement('li'); empty.textContent = 'No matching detached records.'; list.append(empty); }
+            group.append(title, list); this.pools.append(group);
+        }
+        const selected = this.inspector.selected;
+        if (selected) {
+            const linked = document.createElement('section');
+            const title = document.createElement('h3'); title.textContent = `Linked to ${selected.title}`;
+            const list = document.createElement('ul'); list.setAttribute('aria-label', 'Linked Ideas and Issues');
+            for (const link of selected.links.filter(link => link.owner === 'issue' || link.owner === 'project-mind')) {
+                const record = this.owners.find(owner => owner.owner === link.owner && owner.targetId === link.targetId);
+                const current = record && (record.owner === 'issue' ? record.sourceHash === link.sourceHash : record.ownerRevision === link.ownerRevision);
+                const item = document.createElement('li');
+                const text = document.createElement('span');
+                text.textContent = record ? `${record.title} · ${record.status} · ${current ? 'linked' : 'changed owner reference'}` :
+                    `${link.owner} · ${link.targetId} · missing owner reference`;
+                const unlink = document.createElement('button'); unlink.type = 'button'; unlink.textContent = 'Unlink';
+                unlink.setAttribute('aria-label', `Unlink ${record?.title ?? link.targetId} from ${selected.title}`);
+                unlink.disabled = this.mutating || selected.readOnly;
+                unlink.onclick = () => void this.changeLink('unlink', selected.id, link);
+                item.append(text, unlink); list.append(item);
+            }
+            if (!list.childElementCount) { const empty = document.createElement('li'); empty.textContent = 'No linked Ideas or Issues.'; list.append(empty); }
+            linked.append(title, list); this.pools.append(linked);
+        }
+    }
+
+    private async changeLink(type: 'link' | 'unlink', id: string, link: RoadmapLink): Promise<void> {
+        const uri = this.projectUri, index = this.inspector.index;
+        if (this.mutating || !uri || !index || !index.checkpoints.some(item => item.id === id && !item.readOnly)) return;
+        this.mutating = true; this.renderPools();
+        let handle: string | undefined;
+        try {
+            const attached = await this.service.attach(uri);
+            handle = attached.projectHandle;
+            if (this.projectUri !== uri || attached.snapshot.projectId !== index.projectId || attached.snapshot.revision !== index.revision)
+                throw new Error('Roadmap changed. Refresh and retry.');
+            const source = index.checkpoints.find(item => item.id === id)?.source;
+            const request: PlanningActionRequest = { projectHandle: handle, ownerId: index.projectId,
+                expectedRevision: index.revision, sourceHashes: source ? { [id]: source.sha256 } : undefined,
+                actions: [{ type, id, link }] };
+            const preview = await this.service.preview(request);
+            if (this.projectUri !== uri || this.inspector.index?.revision !== index.revision) throw new Error('Roadmap changed. Refresh and retry.');
+            if (preview.requiresApproval && !window.confirm(`Unlink ${link.targetId} from ${id}? The original record will remain intact.`)) return;
+            const result = await this.service.apply(request, preview.token, preview.requiresApproval);
+            if (this.projectUri === uri) {
+                this.inspector.setSnapshot(uri, result);
+                await this.refresh();
+                if (this.projectUri === uri && this.projection?.revision === result.revision)
+                    this.status.textContent = `${type === 'link' ? 'Linked' : 'Unlinked'} ${link.targetId}. Original owner record unchanged.`;
+            }
+        } catch (error) {
+            if (this.projectUri === uri) this.status.textContent = `Roadmap link failed: ${error instanceof Error ? error.message : String(error)} Refresh and retry.`;
+        } finally {
+            if (handle) { try { await this.service.detach(handle); } catch { /* Connection may have closed. */ } }
+            this.mutating = false; this.renderPools();
+        }
     }
 
     private select(id: string, focus = false): void {

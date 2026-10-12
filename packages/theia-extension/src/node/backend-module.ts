@@ -47,6 +47,7 @@ import { historyServicePath, historyFocusServicePath } from '@dope/contracts/lib
 import { HistoryBackend } from './history-backend';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import { ProjectPlanningActions } from '@dope/project-intelligence/lib/node/project-planning-actions';
+import { RoadmapOwnerLinks } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
 
 export default new ContainerModule(bind => {
@@ -85,6 +86,7 @@ export default new ContainerModule(bind => {
             client.onDidCloseConnection(() => { off(); for (const handle of handles) actions.detach(handle); });
             const backend: RoadmapService = {
                 read: async (uri) => context.container.get(RoadmapStore).read(await context.container.get(PlanningStore).root(uri)),
+                owners: async (uri) => new RoadmapOwnerLinks().list(await context.container.get(PlanningStore).root(uri)),
                 attach: async (uri) => {
                     const result = await actions.attach(await context.container.get(PlanningStore).root(uri));
                     handles.add(result.projectHandle);

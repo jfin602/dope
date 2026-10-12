@@ -19,6 +19,7 @@ const deferred = <T>() => {
 };
 const fake = (state: { index: RoadmapIndex; pending?: ReturnType<typeof deferred<any>>; applied: number; approved: boolean }): RoadmapService => ({
     read: async () => state.index,
+    owners: async () => [],
     attach: async () => ({ projectHandle: 'handle', snapshot: state.index }),
     detach: async () => {},
     preview: async request => state.pending ? state.pending.promise : ({ token: 'a'.repeat(64), ownerId: 'project',

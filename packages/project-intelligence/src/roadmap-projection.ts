@@ -36,6 +36,7 @@ export interface PoolNode {
     ownerRevision?: number;
     sourceHash?: string;
     readOnly: boolean;
+    provenance: string;
 }
 export interface RoadmapProjection {
     projectId: string;
@@ -68,7 +69,7 @@ export function projectRoadmap(index: RoadmapIndex, owners: readonly RoadmapOwne
     const byId = new Map(nodes.map(node => [node.id, node]));
     const edges: CheckpointEdge[] = [];
     const diagnostics: string[] = [];
-    const knownOwners = new Set(owners.map(record => ownerKey(record.owner, record.targetId)));
+    const knownOwners = new Map(owners.map(record => [ownerKey(record.owner, record.targetId), record]));
     const linkedOwners = new Set<string>();
     for (const item of index.checkpoints) {
         for (const dependency of item.dependencies) {
@@ -84,7 +85,10 @@ export function projectRoadmap(index: RoadmapIndex, owners: readonly RoadmapOwne
             if (link.owner !== 'project-mind' && link.owner !== 'issue') continue;
             const key = ownerKey(link.owner, link.targetId);
             linkedOwners.add(key);
-            if (!knownOwners.has(key)) diagnostics.push(`Missing ${link.owner} reference: ${item.id} -> ${link.targetId}`);
+            const record = knownOwners.get(key);
+            if (!record) diagnostics.push(`Missing ${link.owner} reference: ${item.id} -> ${link.targetId}`);
+            else if (record.owner === 'issue' ? link.sourceHash !== record.sourceHash : link.ownerRevision !== record.ownerRevision)
+                diagnostics.push(`Changed ${link.owner} reference: ${item.id} -> ${link.targetId}`);
         }
     }
     edges.sort((a, b) => compare(a.from, b.from) || compare(a.to, b.to) || compare(a.id, b.id));
@@ -94,6 +98,7 @@ export function projectRoadmap(index: RoadmapIndex, owners: readonly RoadmapOwne
     const pool = (record: RoadmapOwnerRecord): PoolNode => ({
         id: `${record.owner}:${record.targetId}`, owner: record.owner, targetId: record.targetId,
         title: record.title, status: record.status, readOnly: record.readOnly,
+        provenance: record.owner === 'issue' ? 'known-issues.md' : record.artifact.provenance,
         ...(record.owner === 'issue' ? { sourceHash: record.sourceHash } : { ownerRevision: record.ownerRevision }),
     });
     const poolOrder = (a: PoolNode, b: PoolNode): number => compare(a.title, b.title) || compare(a.id, b.id);
