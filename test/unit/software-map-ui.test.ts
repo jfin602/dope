@@ -501,6 +501,24 @@ test('draft validation, manual cancellation and existing acceptance are explicit
   controller.dispose();
 });
 
+test('manual acceptance refreshes the canonical fingerprint used by Planning Maps', async () => {
+  const c = connection();
+  c.initializationStatus = () => Promise.resolve({ state: c.accepted ? 'initialized' : 'uninitialized',
+    declarationPresent: !!c.accepted, declarationFingerprint: c.accepted ? 'accepted-architecture' : 'absent' });
+  const controller = new SoftwareMapController(() => c, () => {});
+  const attaching = controller.attach('file:///A'); c.attachPending.resolve({ projectHandle: 'a', status: idle }); await attaching;
+  controller.manual();
+  const system = controller.draft[0];
+  Object.assign(system, { id: 'app', name: 'App', purpose: 'Purpose' });
+  controller.add('subsystem', system.proposalKey);
+  Object.assign(controller.draft[1], { id: 'core', name: 'Core', purpose: 'Purpose', roots: ['src'] });
+  assert.equal(controller.draftError(), undefined);
+  await controller.accept();
+  assert.equal(controller.initialization.declarationFingerprint, 'accepted-architecture');
+  assert.equal(controller.initialization.state, 'initialized');
+  controller.dispose();
+});
+
 test('stale model discovery and proposal cannot render into a new project', async () => {
   const a = connection(), b = connection();
   const discovery = deferred(), proposal = deferred();

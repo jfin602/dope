@@ -658,7 +658,9 @@ export class SoftwareMapController {
                 ? await this.connection.acceptReview(this.handle, this.review.reviewId, this.draft)
                 : await this.connection.acceptManual(this.handle, declarationFromDraft(this.draft), this.initialization.declarationFingerprint);
             if (project !== this.project || request !== this.setupRequest) return;
-            this.initialization = { ...this.initialization, state: 'initialized' };
+            const initialization = await this.connection.initializationStatus(this.handle);
+            if (project !== this.project || request !== this.setupRequest) return;
+            this.initialization = initialization;
             this.flow = 'none'; this.review = undefined; this.draft = [];
             this.refinementPreview = undefined;
             this.refinementBusyKey = undefined; this.refinementError = undefined; ++this.refinementRequest;
