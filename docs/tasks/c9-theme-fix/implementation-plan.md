@@ -22,7 +22,7 @@ Token consumers: shared `--theia-*` controls, selectors, menus, status bar, edit
 5. Keep `dope-dark` registration/default and explicit alternate-theme deactivation exactly as qualified. If a rare scoped selector must be adjusted to prevent orange-washing, modify only central presentation CSS and test that rule.
 6. Update the old blue-specific test assertions and forbidden-orange rule to **require** centrally defined restrained orange, neutral utility controls, no duplicate widget brand hexes, theme deactivation, status bar semantic colors, and intended opt-in primary action behavior. Do not remove test coverage to obtain Green.
 
-**T1 gate:** `node --test test/unit/dope-theme.test.ts`, `git diff --check`, unchanged coherent manifest version `0.9.23` and no root `package-lock.json`. CSS/test-only change needs no extension compilation. If a necessary TS seam changes, run the smallest affected extension typecheck/build and explain. No `npm run check`, full build, browser, AppImage or provider calls.
+**T1 gate:** `node --test test/unit/dope-theme.test.ts`, `git diff --check`, unchanged coherent manifest version `0.9.35` and no root `package-lock.json`. CSS/test-only change needs no extension compilation. If a necessary TS seam changes, run the smallest affected extension typecheck/build and explain. No `npm run check`, full build, browser, AppImage or provider calls.
 
 **Boundary:** P1 makes no UI component ownership/layout/domain changes; do not move or change the History/Session/Chat/Work/Map flows.
 
@@ -30,7 +30,7 @@ Token consumers: shared `--theia-*` controls, selectors, menus, status bar, edit
 
 1. Verify exact P1 commit/source fingerprint, unchanged coherent `0.9.23`, intended diff and no unrelated dirty changes; validate stack grammar. Do not treat a theme test as visual evidence.
 2. Run `npm run check` **once** on the final coherent candidate. It already exercises `test:baseline` (`dope-theme.test.ts`) and package/browser/Electron build; avoid separately duplicating these checks. Run genuinely missing focused presentation tests only if needed.
-3. In a real browser-hosted Theia (or Electron) workbench, inspect Dope Dark with AI Center as reference; Chat and Work left/right narrow + center/bottom where supported; sMap sidebar, Physical Map/Flow, Planning Map, Project Mind, editor chrome, tabs/menu/list, input/button states, status bar and Git area. Only claim a surface when actually available and observed.
+3. In real browser-hosted or Electron Theia, sample AI Center, one Chat/Work panel, one Map/Planning panel and ordinary workbench/status chrome strictly for color-token/contrast/alternate-theme leakage. Do **not** conduct the comprehensive Phase 11 usability audit.
 4. Verify restrained-orange primary actions, bright hover/deep pressed readable text and subdued neutral secondary controls; subdued yet visible keyboard focus/selected states; no orange-washed input borders, panels, status text, every row or every button. Check contrast and compact layout in narrow panes. Compare computed style or equivalent when practical rather than inferring from source alone.
 5. Switch to another compatible theme and verify `body.dope-dark` deactivation and no orange Dope override leakage, then return to Dope Dark. Confirm independent Chat organizational colors, user map colors, semantic error/warning/success/syntax/SCM cues.
 6. Preserve project isolation, Chat/Work and map state; do not start destructive/live agents or mutate reference projects to inspect theme. If required surface inaccessible or evidence is missing, record it explicitly.
@@ -40,4 +40,8 @@ Token consumers: shared `--theia-*` controls, selectors, menus, status bar, edit
 
 ## Execution and integration safety
 
-The original c8 blue implementation Green remains historical evidence. Do not rewrite c8 sources, old prompt stacks, or closeouts. p9d is separately activated with fixed per-prompt version increments and must not overlap on one worktree. This correction is frozen to `0.9.23` for grammar: if live source has advanced beyond that, **retarget the two unexecuted correction prompts coherently in a separate docs-only review** before execution; never downgrade or alter p9d versions simply to satisfy the c9 runner.
+The original c8 blue implementation Green remains historical evidence. Do not rewrite c8 sources, old prompt stacks, or closeouts. p9d is separately activated with fixed per-prompt version increments and must not overlap on one worktree. This correction now targets unchanged `0.9.35`; if a live checkout is newer, retarget both prompts before running. Do not alter Phase 9 source or history to satisfy c9 runner grammar.
+
+## Execution clarification — 2026-10-12 after Phase 9 Green
+
+This originally drafted correction now uses **unchanged version `0.9.35`** (Phase 9 qualified source `af3447c`; GitHub main `adf5c073` theme CSS/test rechecked). Earlier `0.9.23` dates/source claims remain historical planning context, not executable version metadata. The task remains **palette/theme-only**: no every-panel human usability redesign, now separately planned as Phase 11 (ADR 0037). Verify actual checkout source and worktree before mutation.

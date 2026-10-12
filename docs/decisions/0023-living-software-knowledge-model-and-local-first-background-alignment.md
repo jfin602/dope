@@ -222,3 +222,7 @@ Revisit whether any specific hosted background policy is useful only if it can r
 ## Sequencing amendment — ADR 0036 (2026-10-12)
 
 For **forward implementation**, the Living Software Knowledge Model becomes **Phase 11** after newly inserted **Phase 10 Unified Roadmap & Local-First AI Planning**. Earlier Phase 10 terms above remain the historical accepted design label; read them as Phase 11 for future implementation. Preserve all deterministic-first, local-only/no-hosted-fallback Background constraints, resource-aware scheduler, evidence authority and no-silent-canonical-mutation requirements. Interactive Phase 10 planning does not activate Phase 11 background alignment. Neither future phase is activated/qualified; Phase 9 is unaffected.
+
+## Forward amendment — 2026-10-12: Human-Centered UI phase
+
+For **forward implementation**, ADR 0037 inserts **Phase 11 Human-Centered UI** after ADR 0036's Phase 10 Roadmap, so this Living Software Knowledge Model moves from the previously planned Phase 11 to **Phase 12**. Its earlier Phase 10/11 references are historical; all deterministic-first, local-only/no-hosted-fallback, resource-aware Background scheduling and no-silent-canonical-mutation constraints remain unchanged. Phase 12 is not activated, and Phase 11 does not activate it.

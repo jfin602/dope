@@ -30,7 +30,7 @@ No extra P1 package build: CSS and source-string test edits do not change TypeSc
 2. **Overuse regression:** changing `--dope-primary` affects many inherited `--theia-*` maps. Evaluate whether badges, global focus/selection or default nav become visually noisy. Keep neutral button backgrounds and input borders; primary-filled buttons must stay intentional opt-ins. Keep status text neutral, only bounded Git fill.
 3. **Theme isolation:** central `.dope-dark` scoped tokens must deactivate on a non-Dope selected theme. Do not recolor extension/syntax/error/warning/success/SCM semantics globally.
 4. **Unrelated colors:** Chat organization and user map/Flow overrides must not be overwritten or homogenized. Keep accessible non-color cues.
-5. **Version collision:** GitHub main is `0.9.23` while owner-activated `p9d` is progressing. This fixed-version correction may be run now only on coherent `0.9.23`; if p9d moved ahead locally, retarget all c9 prompt version fields via a docs-only update before execution. Never force reset/downgrade, relabel p9d P1, or run two mutating stacks simultaneously.
+5. **Version retargeted:** The originally drafted `0.9.23` correction now targets qualified `0.9.35`; GitHub's current blue theme CSS/test was rechecked at `adf5c073`. Require coherent local version and safe worktree, and never run two mutating stacks simultaneously.
 
 ## Explicit deferrals
 
@@ -42,4 +42,8 @@ No general shell redesign, panel archetype library, broad CSS style sweep, event
 - **P2/T3:** one final-candidate `npm run check` (contains `test:baseline` with `dope-theme.test.ts`, extension/browser/Electron builds) + only genuinely missing focused tests; direct browser-hosted or Electron GUI visual sampling, narrow-pane/alternate-theme and contrast observations; one evidence closeout. Do not repeat aggregate for an unchanged checkpoint.
 - **Single responsibility / time:** P1 is a central theme CSS/test patch, not a panel refactor. P2 manual real GUI can legitimately exceed ordinary prompt budget.
 - **UI Design Compliance Gate:** both prompts read current ADR 0016 and ADR 0030, use shared semantic tokens, and explicitly protect neutral controls, dark status bar, accessible focus, alternative themes and preserved feature colors.
-- **Runnable grammar:** c9 correction, contiguous P1-P2, one final P2 *closeout*, fixed unchanged `0.9.23` at writing, browser flags, approved GPT-6 Sol High, historical evidence unchanged. If version differs at execution, halt and retarget coherently before running.
+- **Runnable grammar:** c9 correction, contiguous P1-P2, one final P2 *closeout*, fixed unchanged `0.9.35` after retargeting, browser flags, approved GPT-6 Sol High, historical evidence unchanged. If version differs at execution, halt and retarget coherently before running.
+
+## Execution clarification — 2026-10-12 after Phase 9 Green
+
+This originally drafted correction now uses **unchanged version `0.9.35`** (Phase 9 qualified source `af3447c`; GitHub main `adf5c073` theme CSS/test rechecked). Earlier `0.9.23` dates/source claims remain historical planning context, not executable version metadata. The task remains **palette/theme-only**: no every-panel human usability redesign, now separately planned as Phase 11 (ADR 0037). Verify actual checkout source and worktree before mutation.

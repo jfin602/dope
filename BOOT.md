@@ -13,7 +13,9 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 **CURRENT STATE (2026-10-12) — Phase 9 Developer Continuity / right-toolbar History is GREEN / QUALIFIED at exact source `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`, package `0.9.35`; owner closeout is pending.** The bounded final loop proved a real authorized WorkItem AgentRun through Dope validation, explicit review and promotion; truthful History navigation and restart; two repeatable grounded local Qwen explanations; OS-observed loopback-only inference with no automatic model invocation; and one full 556/556 aggregate with browser/Electron builds. See `docs/tasks/p9d/final-qualification.md`. Original P13 and five-cycle repair-loop Not Green evidence remain historical and unchanged.
 
-**2026-10-12 forward design (ADR 0036):** Phase 10 Unified Roadmap & Local-First AI Planning is documentation-approved only: checkpoints, correction branches, Ideas/Issues, in-place left inspector, real Chat co-editing through shared revision-safe planning actions and local-small-model/no-model qualification. Former Living Software Knowledge Model becomes Phase 11, ADR 0023 safety unchanged. **No source implementation, phase activation or Green claim.** Phase 9 qualification does not owner-close Phase 9 or activate Phase 10.
+**2026-10-12 forward design (ADR 0036):** Phase 10 Unified Roadmap & Local-First AI Planning is documentation-approved only: checkpoints, correction branches, Ideas/Issues, in-place left inspector, real Chat co-editing through shared revision-safe planning actions and local-small-model/no-model qualification. The newly approved Phase 11 Human-Centered UI audit follows Phase 10 under ADR 0037; former Living Software Knowledge Model becomes inactive Phase 12, ADR 0023 safety unchanged. **No source implementation, phase activation or Green claim.** Phase 9 qualification does not owner-close Phase 9 or activate Phase 10.
+
+**2026-10-12 theme correction routing:** `c9-theme-fix` has been retargeted from its original `0.9.23` draft to unchanged qualified `0.9.35` for execution. It is strictly palette/contrast/theme-isolation work, NOT Phase 11's all-panel usability audit; inspect the live checkout and do not run concurrent mutating stacks. No theme source implementation or qualification is claimed here.
 
 **2026-10-12 correction:** ADR 0035 accepts Codex as an ordinary Chat provider using the same secure ChatGPT-plan connection and a distinct no-tools Responses adapter. Correction `c9-codex-chat` remains documentation/prompt-authoring only at its separately defined unchanged correction version, NOT IMPLEMENTED or Green. Keep correction scope and evidence separate from qualified `p9d`; do not run superseded p9c P10. See `docs/decisions/0035-codex-conversational-chat.md` and `docs/tasks/c9-codex-chat/`.
 
@@ -145,7 +147,8 @@ Foundation Spike 0 — qualify Theia
 -> Phase 8 — Scoped Delegation / Coding Agent
 -> Phase 9 — Developer Continuity / right-toolbar History
 -> Phase 10 — Unified Roadmap & Local-First AI Planning (ADR 0036; design only)
--> Phase 11 — Living Software Knowledge Model (ADR 0023; inactive)
+-> Phase 11 — Human-Centered UI / Usability Qualification (ADR 0037; design only)
+-> Phase 12 — Living Software Knowledge Model (ADR 0023; inactive)
 
 Do not pull later-phase concepts forward merely because they already exist in the long-term product model.
 

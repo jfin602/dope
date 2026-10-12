@@ -4,7 +4,7 @@
 **Mode:** bounded correction, not a new product phase
 **Authority:** ADR 0016 October 12, 2026 amendment (supersedes October 8 blue-primary allocation); ADR 0030 UI grammar; `docs/ARCHITECTURE.md`; `AGENTS.md`; `docs/workflow.md`
 **Reviewed source:** `e11b72fe35f86f1700861101184760b80254c659`; documentation application `6e76285616eb73e9d65ee2e56cb16ef5b6bd9d83`; current GitHub `main` package `0.9.23` at writing.
-**Required unchanged project version:** `0.9.23` for this prepared stack. **Before running**, confirm the actual checkout is coherent at `0.9.23`; do not downgrade or reset a checkout that has advanced. If p9d or another stack advanced the version, first re-plan/rewrite **both** c9 correction prompts' fixed unchanged-version metadata at that future coherent baseline, then validate again. Do not run concurrent mutation stacks on the same worktree.
+**Required unchanged project version:** `0.9.35` after Phase 9 qualification. Confirm a coherent local `0.9.35` checkout and safe worktree. Do not run alongside any other mutating stack; if the local version advances again, retarget both prompts before running.
 
 ## Outcome
 
@@ -28,7 +28,7 @@ P1 is the sole ordinary implementation responsibility (<=8-minute target, 10-min
 ## Scope and sequencing safeguards
 
 - **No project version change.** Historical c4/c8 theme qualification remains untouched; this is a new bounded UI correction.
-- `p9d` is separately owner-activated, and its P1 exporter was requalified at `0.9.23`. Do not redo its gate, modify its phase versions, replace its History owner, or run c9 in parallel with active p9d steps. The pending `p9d/P7-history-right-toolbar.txt` was reconciled with current theme authority in the documentation application; do not reopen executed p9d work.
+- Phase 9 is now GREEN / QUALIFIED at unchanged `0.9.35` / `af3447c` (owner closeout pending). Preserve History and past evidence, and never run competing mutating stacks. Recheck live source before executing the retargeted prompts.
 - No Chat/Work/AgentRun/Session/History/Planning/Map behavior, domain, persistence, transport, provider, model routing, permissions, grants, app shell ownership, or editor interaction changes. Keep direct real GUI evidence honest.
 - Alternate user themes, readability and non-color interaction cues are non-negotiable.
 
@@ -43,3 +43,7 @@ Validate grammar: `npm run codex:phase:validate -- c9-theme-fix`
 Run P1, with manual stop before P2: `npm run codex:phase -- c9-theme-fix`
 
 Actual source, version, focused tests, computed colors, GUI observations and GREEN/NOT GREEN must be recorded by P2 in `closeout.md`. Documentation and prompt creation are not source implementation or qualification.
+
+## Execution clarification — 2026-10-12 after Phase 9 Green
+
+This originally drafted correction now uses **unchanged version `0.9.35`** (Phase 9 qualified source `af3447c`; GitHub main `adf5c073` theme CSS/test rechecked). Earlier `0.9.23` dates/source claims remain historical planning context, not executable version metadata. The task remains **palette/theme-only**: no every-panel human usability redesign, now separately planned as Phase 11 (ADR 0037). Verify actual checkout source and worktree before mutation.

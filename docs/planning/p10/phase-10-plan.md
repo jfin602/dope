@@ -24,6 +24,6 @@ Open a real project's roadmap; click an existing checkpoint and edit it in the l
 
 ## Sequencing and constraints
 
-The current `p9d` Phase 9 stack is separate/Not Qualified. The `c9-codex-chat` and `c9-theme-fix` corrections, fixed versions and historical 9A/9B/9C records are unaffected. Plan richly but prompt sparsely using `/prompt-ass -> /prompt-plan -> /prompt-write` **only after a separate owner implementation activation**, ordinary <=8-minute prompt targets and appropriate T1/T2/T3 security/local/GUI gates. This plan performs no implementation, activation or version change.
+Phase 9 is GREEN / QUALIFIED at `0.9.35` / `af3447c`, owner closeout pending. The `c9-codex-chat` and `c9-theme-fix` corrections, fixed versions and historical 9A/9B/9C records are unaffected. Plan richly but prompt sparsely using `/prompt-ass -> /prompt-plan -> /prompt-write` **only after a separate owner implementation activation**, ordinary <=8-minute prompt targets and appropriate T1/T2/T3 security/local/GUI gates. This plan performs no implementation, activation or version change.
 
-The former Phase 10 Living Software Knowledge Model is now **Phase 11** under ADR 0023's sequencing amendment, preserving local-only deterministic-first background alignment without pre-activating its scheduler.
+The former Living Software Knowledge Model moves to **Phase 12** after the newly designed **Phase 11 Human-Centered UI** (ADR 0037); its deterministic-first/local-only Background constraints remain inactive. Phase 10 Roadmap remains the same approved, not yet activated design and will be reviewed in Phase 11 after implementation.

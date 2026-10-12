@@ -41,3 +41,7 @@ Phase 9 Developer Continuity/History remains separately active and **not qualifi
 Qualification must demonstrate real existing Markdown/Project Mind preservation; zero-model manual editing; a real short-context local-model create/edit/link workflow without native tool calls; immediate human/AI state visibility and next-step refresh; stale-race, malformed output, unauthorized mutation, restart and cross-project isolation; true historical gate status; no hosted fallback; and direct Theia GUI/theme/accessibility evidence. Failed or unobserved gates are Not Green.
 
 This approval is **documentation only**. It does not implement UI/contracts, create an executable runner stack, bump any version, activate Phase 10/11 or claim qualification.
+
+## Forward amendment — 2026-10-12: Human-Centered UI phase
+
+ADR 0037 inserts **Phase 11 Human-Centered UI** after this existing Phase 10 Roadmap, moving the Living Software Knowledge Model to **Phase 12**. Prior Phase 11 labels above are historical, not current execution guidance. Phase 10's local-model/manual Roadmap contracts remain unchanged and not activated; its UI will be included in the Phase 11 usability audit once implemented. Phase 9 subsequently qualified Green at `0.9.35` / `af3447c` with owner closeout pending. The independent `c9-theme-fix` is palette-only.

@@ -94,6 +94,7 @@ The efficiency audit is part of `/prompt-ass -> /prompt-plan -> /prompt-write`, 
 7. **Model economy and deferral:** use the lowest suitable approved model effort (Sol Medium for ordinary narrow work; High for genuinely demanding architecture, authority, security, cross-boundary or debugging work; XHigh exceptionally). Explicitly defer unrelated functionality, tests and broad qualification without deferring mandatory correctness or authority checks.
 8. **Runnable/traceable contract:** preserve task grammar, contiguous prompt/version rules, exactly one final closeout, Browser-required flags, stable provider/model recommendations, immutable historical evidence and honest Green/Not Green decisions. Confirm no prompt contradicts a preceding task, existing granted authority, or the stack's planned tests.
 9. **UI Design Compliance (for UI-changing prompts):** follow the current ADR 0016 and applicable presentation ADRs, consume shared semantic theme tokens, reserve brand orange for intentional emphasis, keep ordinary controls neutral and user-theme overrides safe, and assign focused plus visual evidence at the appropriate T1/T3 gate. Do not mandate unrelated GUI evidence for a non-UI prompt.
+10. **Human Usability (for UI-changing prompts):** follow ADR 0037: define the human goal, entry point, visible next action, feedback/error/recovery path and applicable keyboard/narrow behavior; use smallest focused regressions at T1/T2 and reserve actual human-driven task validation for warranted T3. The separate c9-theme-fix is palette-only, not the full usability phase.
 
 The audit outcome should be concise in the stack assessment/plan: describe meaningful splits, chosen narrow validation/build commands, shared expensive gates and any accepted exceptions. It does not require a second worksheet, exhaustive file inventory, speculative tests, automatic test execution during documentation authoring, or a separate audit prompt.
 
@@ -110,6 +111,15 @@ This is an **applicable ninth check of the existing Prompt Efficiency Gate**, no
 - **Evidence contract:** Use the smallest directly affected presentation/theme test(s) for T1; include `test/unit/dope-theme.test.ts` when central tokens or theme registration change, not for every unrelated panel. Reserve direct browser/Electron visual comparisons for the planned T3 gate when visible styling materially changes. Check normal and narrow layouts, focus/selection, primary vs secondary hierarchy and alternate-theme isolation as relevant. Unobserved GUI behavior is an evidence gap, never Green by assertion.
 - **Forward-prompt conflicts:** Before executing an unrun UI prompt that hard-codes a superseded palette, reconcile that instruction with current ADR 0016 and document the bounded update; leave executed prompts and historical closeouts unchanged.
 
+
+### Human Usability Gate (integrated with prompt planning/writing)
+
+This is the applicable tenth check of the **existing** Prompt Efficiency Gate, not a new mandatory suite on every prompt.
+
+- For material UI changes, inspect the developer's real task and how they discover its entry point and next action. Follow ADR 0037 plus relevant panel authority.
+- State only the applicable requirements: information hierarchy, honest success/loading/blocked/error feedback, human recovery, focus/keyboard and narrow-pane behavior. Preserve domain owners, authorization and theme contracts.
+- Include one bounded, task-specific acceptance criterion and smallest relevant regression. Plan direct human-driven GUI qualification for meaningful T3 gates; distinguish agent heuristic inspection from observed human use and never fabricate timings or tester sessions.
+- **Scope:** c9-theme-fix qualifies restrained-orange tokens, contrast, scoped theme isolation and a limited representative visual sample. It does not audit/rebuild every panel. Non-UI implementation does not require human GUI validation.
 
 ## Repository implementation model routing
 

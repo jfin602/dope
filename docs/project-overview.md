@@ -198,10 +198,12 @@ Foundation Spike 0 — qualify Theia
 -> Phase 7B — AI Center
 -> Phase 7C — AI Roles & Routing
 -> Phase 8 — Coding Agent / Scoped Delegation (owner-closed Green at 0.8.47)
--> Phase 9 — Developer Continuity / History (ADR 0034 design approved; Phase 9 not qualified)
--> Phase 10 — Living Software Knowledge Model
+-> Phase 9 — Developer Continuity / History (qualified at 0.9.35; owner closeout pending)
+-> Phase 10 — Unified Roadmap & Local-First AI Planning (ADR 0036; design only)
+-> Phase 11 — Human-Centered UI / Usability Qualification (ADR 0037; design only)
+-> Phase 12 — Living Software Knowledge Model (ADR 0023; inactive)
 
-Phase 8 qualified Dope-owned agent execution, WorkItem delegation and candidate review. Phase 9's current product goal is **Developer Continuity**: right-toolbar History, automatic factual activity, exact one-click return and opt-in local-first understanding (ADR 0034). Original Session 9A/9B bounded Green remains history; Session 9C P1–P9 reached `0.9.22` / `0752415` but P10 is superseded/unexecuted. Phase 9 remains unqualified, replacement implementation inactive. Phase 10 owns separately authorized continuous knowledge alignment.
+Phase 8 qualified Dope-owned agent execution, WorkItem delegation and candidate review. Phase 9's current product goal is **Developer Continuity**: right-toolbar History, automatic factual activity, exact one-click return and opt-in local-first understanding (ADR 0034). Original Session 9A/9B bounded Green remains history; Session 9C P1–P9 reached `0.9.22` / `0752415` but P10 is superseded/unexecuted. Phase 9 subsequently qualified Green at `0.9.35` / `af3447c`, with owner closeout pending; the historical Session work below is retained. Phase 10 owns the not-yet-activated Roadmap, Phase 11 owns the later comprehensive human usability audit, and Phase 12 the inactive background knowledge alignment.
 
 Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map core remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The later architecture-synthesis corrections remain truthful owner-closed Not Qualified history with useful implementation retained; `c4-smap-storage` and `c4-color-theme` closed Green. Owner closeout advanced only the package baseline to `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 5 — Visual Software Planning was subsequently owner-closed for sequencing with P11 still Not Green and P12 unexecuted; the retained implementation remains available without a retroactive Green claim. The owner-close transition established coherent `0.6.0` for Product Phase 6 — Flow under ADR 0020. The fresh provider comparison remains deferred; general AI Presence is Product Phase 7.
 
