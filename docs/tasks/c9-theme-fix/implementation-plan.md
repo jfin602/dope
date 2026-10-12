@@ -28,7 +28,7 @@ Token consumers: shared `--theia-*` controls, selectors, menus, status bar, edit
 
 ## P2 — Real GUI qualification and closeout (T3 / manual)
 
-1. Verify exact P1 commit/source fingerprint, unchanged coherent `0.9.23`, intended diff and no unrelated dirty changes; validate stack grammar. Do not treat a theme test as visual evidence.
+1. Verify exact P1 commit/source fingerprint, unchanged coherent `0.9.35`, intended diff and no unrelated dirty changes; validate stack grammar. Do not treat a theme test as visual evidence.
 2. Run `npm run check` **once** on the final coherent candidate. It already exercises `test:baseline` (`dope-theme.test.ts`) and package/browser/Electron build; avoid separately duplicating these checks. Run genuinely missing focused presentation tests only if needed.
 3. In real browser-hosted or Electron Theia, sample AI Center, one Chat/Work panel, one Map/Planning panel and ordinary workbench/status chrome strictly for color-token/contrast/alternate-theme leakage. Do **not** conduct the comprehensive Phase 11 usability audit.
 4. Verify restrained-orange primary actions, bright hover/deep pressed readable text and subdued neutral secondary controls; subdued yet visible keyboard focus/selected states; no orange-washed input borders, panels, status text, every row or every button. Check contrast and compact layout in narrow panes. Compare computed style or equivalent when practical rather than inferring from source alone.
