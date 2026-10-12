@@ -24,7 +24,7 @@ test('History uses one right activity-bar widget, a palette command, and safe in
     assert.match(widget, /name\.textContent = entry\.title/);
     assert.match(widget, /meta\.textContent =/);
     assert.doesNotMatch(widget, /innerHTML|outerHTML|insertAdjacentHTML/);
-    assert.match(widget, /action\.disabled = true/);
+    assert.match(widget, /Preview selected evidence/);
     assert.match(widget, /aria-live/);
     assert.match(widget, /Event · time unknown/);
     assert.match(widget, /Current snapshot · observed/);

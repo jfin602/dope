@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { lstat, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -6,6 +6,8 @@ import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { projectHistory, proposeHistoryContinuation } from '@dope/contracts/lib/history';
 import type { HistoryFocusTarget, HistoryProject } from '@dope/contracts/lib/history';
 import type { HistoryService, HistorySnapshot } from '@dope/contracts/lib/history-service';
+import { buildHistoryContextPreview } from '@dope/contracts/lib/history-context-preview';
+import type { HistorySelection, HistoryContextPreview } from '@dope/contracts/lib/history-context-preview';
 import { readHistoryOwnerMetadata } from './history-owner-metadata';
 import { readHistoryWorkGitMetadata } from './history-work-git';
 import { readHistoryFocus, writeHistoryFocus } from './history-focus';
@@ -32,6 +34,8 @@ export class HistoryBackend implements HistoryService {
         return { projectHandle: this.handle };
     }
 
+    private digest(value: unknown): string { return createHash('sha256').update(JSON.stringify(value)).digest('hex'); }
+
     async read(projectHandle: string): Promise<HistorySnapshot> {
         if (this.disposed || !this.project || projectHandle !== this.handle) throw new Error('Invalid History project handle');
         const project = this.project, generation = this.generation;
@@ -49,10 +53,24 @@ export class HistoryBackend implements HistoryService {
         const focus = await readHistoryFocus(project);
         if (this.disposed || generation !== this.generation || projectHandle !== this.handle)
             throw new Error('History project changed during read');
-        return { project, entries, continueWith: proposeHistoryContinuation(project, entries, focus),
+        const evidenceBasis = this.digest({ project, entries: entries.map(entry => ({ ...entry,
+            observedAt: entry.kind === 'snapshot' ? null : entry.observedAt })), dirtyPaths: work.dirtyPaths, gitBasis: work.gitBasis,
+            diagnostics: [...owner.diagnostics, ...work.diagnostics], truncated: owner.truncated || work.truncated });
+        return { project, entries, evidenceBasis, continueWith: proposeHistoryContinuation(project, entries, focus),
             diagnostics: [...owner.diagnostics, ...work.diagnostics].slice(0, 20).map(item => ({
                 source: item.source, message: item.message.slice(0, 200)
             })), truncated: owner.truncated || work.truncated || owner.entries.length + work.entries.length > entries.length };
+    }
+
+    async preview(projectHandle: string, expectedBasis: string, selection: HistorySelection[]): Promise<HistoryContextPreview> {
+        const snapshot = await this.read(projectHandle);
+        if (snapshot.evidenceBasis !== expectedBasis) throw new Error('History evidence changed; refresh and select again');
+        return buildHistoryContextPreview(snapshot.project, snapshot.evidenceBasis, snapshot.entries, selection,
+            entry => this.digest({ ...entry, observedAt: entry.kind === 'snapshot' ? null : entry.observedAt }));
+    }
+
+    async verifyPreviewBasis(projectHandle: string, expectedBasis: string): Promise<boolean> {
+        return (await this.read(projectHandle)).evidenceBasis === expectedBasis;
     }
 
     async recordFocus(projectHandle: string, owner: HistoryFocusTarget): Promise<void> {

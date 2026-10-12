@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { lstat, readdir, realpath, stat } from 'node:fs/promises';
-import { isAbsolute, join, resolve } from 'node:path';
+import { isAbsolute, join, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import type { AgentRun, ValidationResult } from '@dope/agent-core/lib/contracts';
@@ -15,6 +16,7 @@ const missing = (error: unknown): boolean => (error as NodeJS.ErrnoException).co
 export interface HistoryWorkGitMetadata {
     entries: HistoryEntry[];
     dirtyPaths: string[];
+    gitBasis: string;
     diagnostics: { source: 'agent' | 'git'; message: string }[];
     truncated: boolean;
 }
@@ -75,7 +77,7 @@ async function git(root: string, args: string[]): Promise<string> {
 /** No user-controlled Git arguments, shell, paging, optional index locks, or ancestor-repository fallback. */
 export async function readHistoryWorkGitMetadata(project: HistoryProject, observedAt: string,
     store = new AgentStore()): Promise<HistoryWorkGitMetadata> {
-    const result: HistoryWorkGitMetadata = { entries: [], dirtyPaths: [], diagnostics: [], truncated: false };
+    const result: HistoryWorkGitMetadata = { entries: [], dirtyPaths: [], gitBasis: '', diagnostics: [], truncated: false };
     const root = project.projectRoot;
     try { await canonicalRoot(root); }
     catch { result.diagnostics.push({ source: 'agent', message: 'Invalid project root' },
@@ -145,6 +147,16 @@ export async function readHistoryWorkGitMetadata(project: HistoryProject, observ
         const records = porcelain.split('\0').filter(Boolean);
         result.truncated ||= records.length > LIMIT;
         result.dirtyPaths = records.slice(0, LIMIT).map(row => row.slice(3));
+        const dirtyStats: unknown[] = [];
+        for (const path of result.dirtyPaths) {
+            const candidate = resolve(root, path);
+            if (!candidate.startsWith(root + sep)) { dirtyStats.push('unsafe'); continue; }
+            try {
+                const info = await lstat(candidate);
+                dirtyStats.push([info.size, info.mtimeMs, info.mode]);
+            } catch { dirtyStats.push('missing'); }
+        }
+        result.gitBasis = createHash('sha256').update(JSON.stringify([porcelain, dirtyStats])).digest('hex');
         if (records.length) result.entries.push({ ...project, kind: 'snapshot', source: 'git', sourceId: 'working-tree',
             owner: { kind: 'git-dirty' }, title: `Working tree has changes (${records.length} paths)`,
             status: { kind: 'owner', label: 'Current dirty snapshot' }, availability: 'available',

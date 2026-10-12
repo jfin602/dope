@@ -2,6 +2,8 @@ import { BaseWidget, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import type { HistoryEntry, HistoryNavigableOwnerRef } from '@dope/contracts/lib/history';
 import type { HistoryService, HistorySnapshot } from '@dope/contracts/lib/history-service';
+import { HISTORY_PREVIEW_MAX_ITEMS } from '@dope/contracts/lib/history-context-preview';
+import type { HistorySelection } from '@dope/contracts/lib/history-context-preview';
 import { navigateHistory, type HistoryNavigationOwners } from './history-navigation';
 
 export const HISTORY_WIDGET_ID = 'dope-history';
@@ -108,6 +110,7 @@ export class HistoryWidget extends BaseWidget {
                 choice.kind === 'verified-focus' ? choice.observedAt : undefined); };
             continueCard.append(button);
         }
+        const selected = new Map<string, HistorySelection>();
         const recent = document.createElement('section');
         const recentTitle = document.createElement('h3'); recentTitle.textContent = 'Recent Activity';
         recent.append(recentTitle);
@@ -129,7 +132,16 @@ export class HistoryWidget extends BaseWidget {
                     entry.status.kind === 'work-item' ? `WorkItem: ${entry.status.state}` :
                         `Run: ${entry.status.state} · validation ${entry.status.validation} · promotion ${entry.status.promotion}`;
                 meta.textContent = `${historyTimeLabel(entry)} · ${status} · ${entry.availability}`;
-                row.append(name, meta);
+                const pick = document.createElement('input'); pick.type = 'checkbox';
+                pick.setAttribute('aria-label', `Select ${entry.source} ${entry.sourceId} for evidence preview`);
+                pick.onchange = () => {
+                    const key = JSON.stringify([entry.source, entry.sourceId]);
+                    if (pick.checked) {
+                        if (selected.size >= HISTORY_PREVIEW_MAX_ITEMS) { pick.checked = false; this.status.textContent = 'Select at most 8 items.'; return; }
+                        selected.set(key, { source: entry.source, sourceId: entry.sourceId });
+                    } else selected.delete(key);
+                };
+                row.append(pick, name, meta);
                 if (entry.availability === 'available' && entry.owner.kind !== 'git-dirty' && entry.owner.kind !== 'git-commit') {
                     const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Open';
                     button.setAttribute('aria-label', `Open ${entry.title} in its owner view`);
@@ -145,11 +157,38 @@ export class HistoryWidget extends BaseWidget {
         }
         const understanding = document.createElement('section'); understanding.className = 'dope-history-understanding';
         const understandingTitle = document.createElement('h3'); understandingTitle.textContent = 'Understand recent work';
-        const action = document.createElement('button'); action.type = 'button'; action.textContent = 'Explain'; action.disabled = true;
+        const action = document.createElement('button'); action.type = 'button'; action.textContent = 'Preview selected evidence';
         action.setAttribute('aria-describedby', 'dope-history-understanding-explanation');
         const explanation = document.createElement('p'); explanation.id = 'dope-history-understanding-explanation';
-        explanation.textContent = 'Explicit local understanding is planned for a later step. No model runs when History opens.';
-        understanding.append(understandingTitle, action, explanation);
+        explanation.textContent = 'Select up to 8 items. Preview reads only project-local owner metadata. No model runs or data leaves this machine.';
+        const output = document.createElement('div'); output.setAttribute('aria-live', 'polite');
+        action.onclick = async () => {
+            const request = this.request, handle = this.handle, uri = this.projectUri;
+            if (!handle || !uri || !selected.size) { output.textContent = 'Select at least one item.'; return; }
+            output.textContent = 'Checking current evidence…';
+            try {
+                const roots = await this.workspaces.roots;
+                if (request !== this.request || roots.length !== 1 || roots[0].resource.toString() !== uri) return;
+                const preview = await this.connect().preview(handle, snapshot.evidenceBasis, [...selected.values()]);
+                const currentRoots = await this.workspaces.roots;
+                if (request !== this.request || currentRoots.length !== 1 || currentRoots[0].resource.toString() !== uri) return;
+                const heading = document.createElement('h4'); heading.textContent = 'Local evidence preview';
+                const privacy = document.createElement('p'); privacy.textContent = preview.privacy;
+                const budget = document.createElement('p');
+                budget.textContent = `${preview.items.length} items · ${preview.bytes}/${4096} bytes · estimated ${preview.estimatedTokens}/${1024} tokens · basis ${preview.evidenceBasis}`;
+                const list = document.createElement('ul');
+                for (const item of preview.items) {
+                    const row = document.createElement('li');
+                    row.textContent = `${item.category} · ${item.ownerKind} · ${item.source}:${item.sourceId} · ${item.summary} · event ${item.occurredAt ?? 'unknown'} · observed ${item.observedAt ?? 'unknown'} · fingerprint ${item.fingerprint}`;
+                    list.append(row);
+                }
+                const omitted = document.createElement('p'); omitted.textContent = preview.omissions.join('; ');
+                output.replaceChildren(heading, privacy, budget, list, omitted);
+            } catch (error) {
+                if (request === this.request) output.textContent = `Preview invalid: ${error instanceof Error ? error.message : 'Unable to verify evidence'}`;
+            }
+        };
+        understanding.append(understandingTitle, action, explanation, output);
         this.content.replaceChildren(header, continueCard, recent, understanding);
     }
 
