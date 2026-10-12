@@ -4,7 +4,7 @@ import type { HistoryContextPreview } from '@dope/contracts/lib/history-context-
 import type { HistoryExplanationLine, HistoryLocalExplanation } from '@dope/contracts/lib/history-service';
 
 const MAX_OUTPUT_BYTES = 8192;
-const TIMEOUT_MS = 30000;
+const TIMEOUT_MS = 120000;
 const hard = { requiredCapabilities: ['conversationalText'] as const, locality: 'local-only' as const,
     enabledOnly: true, usableOnly: true, hostedProjectData: 'forbidden' as const };
 

@@ -28,6 +28,8 @@ test('History uses one right activity-bar widget, a palette command, and safe in
     assert.match(widget, /aria-live/);
     assert.match(widget, /Event · time unknown/);
     assert.match(widget, /Current snapshot · observed/);
+    assert.match(widget, /for \(const entry of snapshot\.entries\)/);
+    assert.doesNotMatch(widget, /snapshot\.entries\.filter\(entry => entry\.source/);
     assert.match(css, /--dope-primary, var\(--theia-focusBorder\)/);
     assert.match(css, /button:focus-visible/);
     const backend = source('node/backend-module.ts');

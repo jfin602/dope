@@ -130,20 +130,16 @@ export class HistoryWidget extends BaseWidget {
             const empty = document.createElement('p'); empty.textContent = 'No source-backed activity is available for this project.';
             recent.append(empty);
         }
-        for (const source of Object.keys(sourceNames) as (keyof typeof sourceNames)[]) {
-            const entries = snapshot.entries.filter(entry => entry.source === source);
-            if (!entries.length) continue;
-            const group = document.createElement('div'); group.className = 'dope-history-group';
-            const heading = document.createElement('h4'); heading.textContent = sourceNames[source];
+        if (snapshot.entries.length) {
             const list = document.createElement('ul');
-            for (const entry of entries) {
+            for (const entry of snapshot.entries) {
                 const row = document.createElement('li');
                 const name = document.createElement('strong'); name.textContent = entry.title;
                 const meta = document.createElement('small');
                 const status = entry.status.kind === 'owner' ? entry.status.label :
                     entry.status.kind === 'work-item' ? `WorkItem: ${entry.status.state}` :
                         `Run: ${entry.status.state} · validation ${entry.status.validation} · promotion ${entry.status.promotion}`;
-                meta.textContent = `${historyTimeLabel(entry)} · ${status} · ${entry.availability}`;
+                meta.textContent = `${historyTimeLabel(entry)} · ${sourceNames[entry.source]} · ${status} · ${entry.availability}`;
                 const pick = document.createElement('input'); pick.type = 'checkbox';
                 pick.setAttribute('aria-label', `Select ${entry.source} ${entry.sourceId} for evidence preview`);
                 pick.onchange = () => {
@@ -166,7 +162,7 @@ export class HistoryWidget extends BaseWidget {
                 }
                 list.append(row);
             }
-            group.append(heading, list); recent.append(group);
+            recent.append(list);
         }
         const understanding = document.createElement('section'); understanding.className = 'dope-history-understanding';
         const understandingTitle = document.createElement('h3'); understandingTitle.textContent = 'Understand recent work';
