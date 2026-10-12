@@ -1,4 +1,4 @@
-import type { HistoryEntry, HistoryProject, HistorySource, HistoryContinuation } from './history';
+import type { HistoryEntry, HistoryProject, HistorySource, HistoryContinuation, HistoryFocusTarget } from './history';
 
 export const historyServicePath = '/services/dope/history';
 export const HistoryService = Symbol('HistoryService');
@@ -15,4 +15,5 @@ export interface HistorySnapshot {
 export interface HistoryService {
     attach(folderUri: string): Promise<{ projectHandle: string }>;
     read(projectHandle: string): Promise<HistorySnapshot>;
+    recordFocus(projectHandle: string, owner: HistoryFocusTarget): Promise<void>;
 }

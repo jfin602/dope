@@ -67,7 +67,9 @@ export class HistoryWidget extends BaseWidget {
         const continueCard = document.createElement('section'); continueCard.className = 'dope-history-continue';
         const continueTitle = document.createElement('h3'); continueTitle.textContent = 'Continue';
         const continueText = document.createElement('p');
-        continueText.textContent = snapshot.continueWith.kind === 'recent-activity-suggestion' ?
+        continueText.textContent = snapshot.continueWith.kind === 'verified-focus' ?
+            `Last focused ${snapshot.continueWith.owner.kind} at ${snapshot.continueWith.observedAt}. Exact continuation arrives in a later step.` :
+            snapshot.continueWith.kind === 'recent-activity-suggestion' ?
             `Recent activity suggests: ${snapshot.continueWith.title}. Exact continuation arrives in a later step.` :
             'No verified place to continue yet. Exact continuation arrives in a later step.';
         continueCard.append(continueTitle, continueText);

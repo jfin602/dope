@@ -24,6 +24,8 @@ import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service'
 import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
 import { createDefaultExecutionGrant, EFFECT_KINDS } from '@dope/agent-core';
 import { AgentRunController } from './agent-run-controller';
+import type { HistoryFocusTarget } from '@dope/contracts/lib/history';
+import { panelFocusTarget } from './history-focus-target';
 
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     readonly controller: ChatPanelController;
@@ -38,6 +40,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private readonly status = document.createElement('p');
     private module: 'chat' | 'work';
     get moduleKind(): 'chat' | 'work' { return this.module; }
+    historyFocusTarget(projectUri?: string): HistoryFocusTarget | undefined {
+        return panelFocusTarget({ module: this.module, projectUri, panelWorkspace: this.panel.workspace,
+            chatWorkspace: this.controller.workspace, chatId: this.controller.chatId,
+            workProject: this.workController?.project, work: this.panel.work });
+    }
     private readonly content = document.createElement('div');
     private workspaceRequest = 0;
     private modelsRequest = 0;

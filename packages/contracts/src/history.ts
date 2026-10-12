@@ -54,6 +54,10 @@ export interface VerifiedHistoryFocus extends HistoryProject {
     verified: true;
 }
 
+/** A single observed owner target, never a record of owner contents or activity. */
+export type HistoryFocusTarget = Extract<HistoryNavigableOwnerRef,
+    { kind: 'chat' | 'planning-map' | 'work-item' | 'agent-task' | 'agent-run' | 'agent-sequence' | 'editor' }>;
+
 export type HistoryContinuation =
     | { kind: 'verified-focus'; owner: HistoryNavigableOwnerRef; observedAt: string }
     | { kind: 'recent-activity-suggestion'; owner: HistoryNavigableOwnerRef; sourceId: string; title: string }

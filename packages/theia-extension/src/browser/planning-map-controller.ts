@@ -27,6 +27,7 @@ export class PlanningMapController {
     private disposed = false;
     collection?: PlanningCollection;
     selectedMapId?: string;
+    get focusWorkspace(): string | undefined { return this.workspace; }
     selectedWorkItemId?: string;
     linkedTasks: AgentTask[] = [];
     launchingWork = false;

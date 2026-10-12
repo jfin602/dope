@@ -52,6 +52,7 @@ import { SidebarBottomMenuWidget } from '@theia/core/lib/browser/shell/sidebar-b
 import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, workLauncherIds, workLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
 import { historyServicePath, HistoryService } from '@dope/contracts/lib/history-service';
 import { HistoryWidget, HISTORY_WIDGET_ID } from './history-widget';
+import { HistoryFocusContribution } from './history-focus-contribution';
 
 const modelInventoryChanged = new Emitter<void>();
 
@@ -181,6 +182,10 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(FrontendApplicationContribution).toService(RightHistoryLauncher);
     bind(HistoryService).toDynamicValue(context => ServiceConnectionProvider.createProxy<HistoryService>(
         context.container, historyServicePath)).inSingletonScope();
+    bind('HistoryFocusService').toDynamicValue(context => ServiceConnectionProvider.createProxy<HistoryService>(
+        context.container, historyServicePath)).inSingletonScope();
+    bind(HistoryFocusContribution).toSelf().inSingletonScope();
+    bind(FrontendApplicationContribution).toService(HistoryFocusContribution);
     bind(WidgetFactory).toDynamicValue(context => ({ id: HISTORY_WIDGET_ID, createWidget: () => new HistoryWidget(
         () => context.container.get(HistoryService), context.container.get(WorkspaceService)) })).inSingletonScope();
     const openPhysicalMap = async (manager: WidgetManager, shell: ApplicationShell,

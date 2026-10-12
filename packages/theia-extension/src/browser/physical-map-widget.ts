@@ -19,6 +19,8 @@ import type { PlannedNode, Resolution, WorkItem } from '@dope/visual-planning';
 import { reconciliationRollups } from '@dope/visual-planning/lib/reconciliation';
 import { SmapPresentationState, architectureColors, nodePalette, type NodePalette } from './smap-presentation-state';
 import './dope.css';
+import type { HistoryFocusTarget } from '@dope/contracts/lib/history';
+import { planningFocusTarget } from './history-focus-target';
 
 export const PHYSICAL_MAP_ID = 'dope-physical-map-canvas';
 
@@ -55,6 +57,12 @@ function iconButton(button: HTMLButtonElement, label: string, icon: string): voi
 }
 
 export class PhysicalMapWidget extends BaseWidget {
+    historyFocusTarget(projectUri?: string): HistoryFocusTarget | undefined {
+        return planningFocusTarget({ planningMode: this.planning.planningMode,
+            projectMatches: this.controller.projectMatches && this.controller.mapWorkspace === projectUri,
+            mapWorkspace: this.controller.mapWorkspace, focusWorkspace: this.planning.focusWorkspace,
+            selectedMapId: this.planning.selectedMapId, selectedWorkItemId: this.planning.selectedWorkItemId });
+    }
     private async ask(title: string, initialValue = ''): Promise<string | undefined> {
         return (await new SingleTextInputDialog({ title, initialValue }).open())?.trim();
     }
