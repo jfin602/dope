@@ -27,6 +27,8 @@ export type HistoryStatus =
     | { kind: 'agent-run'; state: 'pending' | 'running' | 'blocked' | 'cancelling' |
         'cancelled' | 'completed' | 'failed' | 'interrupted';
         validation: 'unknown' | 'not-started' | 'pending' | 'passed' | 'failed' | 'skipped' | 'cancelled';
+        review?: 'none' | 'pending' | 'accept' | 'reject';
+        provenance?: { connectionId: string; modelId: string; adapterId: string; runtimeKind: 'local' | 'hosted' };
         promotion: 'not-applied' | 'applied' | 'unknown' };
 
 interface HistoryEntryBase extends HistoryProject {
