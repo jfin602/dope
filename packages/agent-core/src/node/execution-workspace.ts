@@ -345,7 +345,20 @@ export class ExecutionWorkspace {
         return { version: AGENT_SCHEMA_VERSION, effects: effects.sort((a, b) => a.path.localeCompare(b.path)) };
     }
 
-    /** Identity of all non-dependency candidate bytes, including ignored output. */
+    /** Remove generated, ignored files before validation so the frozen fingerprint
+     * identifies only the candidate that can be reviewed and promoted. */
+    async freezeCandidate(): Promise<{ delta: CandidateDelta; fingerprint: string }> {
+        const current = await scan(this.root);
+        const ignored = await ignoredNewPaths(this.root, [...current.keys()].filter(path =>
+            !this.basis.has(path) && !protectedPath(path)));
+        for (const path of ignored) {
+            const target = await safeTarget(this.root, path, 'file');
+            await rm(target);
+        }
+        return { delta: await this.delta(), fingerprint: await this.fingerprint() };
+    }
+
+    /** Identity of all non-dependency bytes in the prepared candidate. */
     async fingerprint(): Promise<string> {
         return fingerprintCandidate(this.root);
     }

@@ -225,6 +225,25 @@ test('accept promotes the exact validated WorkItem candidate once and persists t
         assert.equal((await new AgentStore().readRun(f.root, held.id))?.reviewDecision?.kind, 'accept');
     }));
 
+test('ignored generated output is excluded from the frozen review candidate', async () =>
+    fixture('work-item', 'passed', async f => {
+        const grant = createDefaultExecutionGrant({ id: 'grant-review', revision: 0,
+            taskId: 'task-review', acceptedAt: now });
+        const started = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-review', grant, true);
+        await writeFile(join(f.adapter.request!.executionRoot, 'review.txt'), 'candidate\n');
+        await mkdir(join(f.adapter.request!.executionRoot, '.tmp'), { recursive: true });
+        await writeFile(join(f.adapter.request!.executionRoot, '.tmp/generated.cache'), 'ignored output\n');
+        f.adapter.complete();
+        const held = await f.runtime.waitForRun(f.root, started.id);
+        assert.equal(held.candidateReview?.state, 'ready');
+        const accepted = await f.backend.decideCandidate(f.handle, held.id, 0,
+            held.candidateReview!.candidateFingerprint, 'accept', grant);
+        assert.equal(accepted.status, 'completed');
+        assert.deepEqual(accepted.appliedFiles, ['review.txt']);
+        assert.equal(await readFile(join(f.root, 'review.txt'), 'utf8'), 'candidate\n');
+        await assert.rejects(readFile(join(f.root, '.tmp/generated.cache')), { code: 'ENOENT' });
+    }));
+
 test('reject persists without applying and repeated rejection is idempotent', async () =>
     fixture('work-item', 'passed', async f => {
         const { held } = await hold(f);

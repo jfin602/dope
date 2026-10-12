@@ -566,8 +566,7 @@ export class AgentExecutionRuntime {
         let reviewScopeDenied = false;
         if (active.workspace && active.run) {
             try {
-                const delta = await active.workspace.delta();
-                const fingerprint = await active.workspace.fingerprint();
+                const { delta, fingerprint } = await active.workspace.freezeCandidate();
                 await this.serial(active, () => this.update(active, run => ({ ...run,
                     validationBasis: 'execution-workspace', candidateDelta: delta, candidateFingerprint: fingerprint })));
                 const reviewRequired = task?.origin.kind === 'work-item' && task.reviewPolicy?.kind === 'required';
