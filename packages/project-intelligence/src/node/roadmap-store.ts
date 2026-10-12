@@ -17,10 +17,12 @@ const status = (value: unknown): value is RoadmapStatus =>
 const fail = (reason: string): never => { throw new Error(`Invalid Roadmap index: ${reason}`); };
 
 export interface RoadmapLink {
-    owner: 'document' | 'project-mind' | 'issue' | 'planning-map' | 'work-item' | 'evidence';
+    owner: 'document' | 'project-mind' | 'issue' | 'planning-map' | 'transformation' | 'work-item' | 'evidence';
     targetId: string;
     ownerRevision?: number;
     sourceHash?: string;
+    ownerProjectId?: string;
+    basis?: { architectureRevision: number; architectureFingerprint: string; physicalInputFingerprint: string; physicalGeneration: number };
 }
 export interface RoadmapCheckpoint {
     id: string;
@@ -58,9 +60,18 @@ function citation(value: unknown): value is RoadmapCitation {
 function link(value: unknown): value is RoadmapLink {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const item = value as Record<string, unknown>;
-    return ['document', 'project-mind', 'issue', 'planning-map', 'work-item', 'evidence'].includes(item.owner as string) &&
+    const planning = ['planning-map', 'transformation', 'work-item'].includes(item.owner as string);
+    const basis = item.basis as Record<string, unknown> | undefined;
+    return ['document', 'project-mind', 'issue', 'planning-map', 'transformation', 'work-item', 'evidence'].includes(item.owner as string) &&
         id(item.targetId) && (item.ownerRevision === undefined || revision(item.ownerRevision)) &&
-        (item.sourceHash === undefined || typeof item.sourceHash === 'string' && /^[a-f0-9]{64}$/.test(item.sourceHash));
+        (item.sourceHash === undefined || typeof item.sourceHash === 'string' && /^[a-f0-9]{64}$/.test(item.sourceHash)) &&
+        (planning ? id(item.ownerProjectId) && item.ownerRevision !== undefined && item.sourceHash === undefined &&
+            !!basis && typeof basis === 'object' && !Array.isArray(basis) &&
+            Object.keys(basis).sort().join(',') === 'architectureFingerprint,architectureRevision,physicalGeneration,physicalInputFingerprint' &&
+            revision(basis.architectureRevision) && revision(basis.physicalGeneration) &&
+            typeof basis.architectureFingerprint === 'string' && !!basis.architectureFingerprint &&
+            typeof basis.physicalInputFingerprint === 'string' && !!basis.physicalInputFingerprint :
+            item.ownerProjectId === undefined && item.basis === undefined);
 }
 
 /** Reject unknown versions and malformed persisted state rather than normalizing it into new authority. */

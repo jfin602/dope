@@ -111,6 +111,7 @@ export class VisualPlanningBackend implements VisualPlanningService {
     if (!map) throw new Error('Unknown planning map');
     return stalePlanningMap(map, await this.reality(root));
   }
+  async currentBasis(projectHandle: string) { return (await this.reality(this.active(projectHandle))).basis; }
   async previewRebase(request: RebaseRequest) {
     const root = this.active(request.projectHandle), collection = await this.read(request.projectHandle);
     const map = collection.maps.find(item => item.id === request.mapId);

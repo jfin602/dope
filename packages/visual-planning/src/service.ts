@@ -41,6 +41,8 @@ export interface VisualPlanningService {
   previewAdoption(request: AdoptionRequest): Promise<AdoptionPreview>;
   adoptTarget(request: AdoptionAcceptance): Promise<PlanningCollection>;
   staleness(projectHandle: string, mapId: string): Promise<StaleResult>;
+  /** Exact current observation for cross-owner references; generation alone is not semantic staleness. */
+  currentBasis(projectHandle: string): Promise<PlanningBasis>;
   previewRebase(request: RebaseRequest): Promise<RebaseResult>;
   acceptRebase(request: RebaseAcceptance): Promise<PlanningCollection>;
   mutate(request: PlanningMutation): Promise<PlanningCollection>;

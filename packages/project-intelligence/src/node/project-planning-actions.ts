@@ -5,6 +5,10 @@ import { parseRoadmapIndex, RoadmapStore } from './roadmap-store';
 import type { RoadmapCheckpoint, RoadmapIndex, RoadmapLink } from './roadmap-store';
 import { RoadmapOwnerLinks } from './roadmap-owner-links';
 import type { RoadmapOwnerRecord } from './roadmap-owner-links';
+export interface RoadmapPlanningRecord { owner: 'planning-map' | 'transformation' | 'work-item' }
+export interface RoadmapPlanningLinks {
+    resolve(root: string, link: RoadmapLink): Promise<RoadmapPlanningRecord | undefined>;
+}
 
 export type PlanningAction =
     | { type: 'create'; id: string; kind: RoadmapCheckpoint['kind']; title: string; objective: string; order: number }
@@ -57,7 +61,8 @@ export class ProjectPlanningActions {
 
     private readonly owners = new RoadmapOwnerLinks();
 
-    constructor(private readonly store: RoadmapStore, private readonly resolveLink?: PlanningLinkResolver) {}
+    constructor(private readonly store: RoadmapStore, private readonly resolveLink?: PlanningLinkResolver,
+        private readonly planningLinks?: RoadmapPlanningLinks) {}
 
     async attach(root: string): Promise<{ projectHandle: string; snapshot: RoadmapIndex }> {
         if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root) throw new Error('Invalid planning root');
@@ -87,10 +92,11 @@ export class ProjectPlanningActions {
         return copy({ selected, neighbors, revision: snapshot.revision });
     }
 
-    async readOwner(projectHandle: string, ownerId: string, link: RoadmapLink): Promise<RoadmapOwnerRecord | undefined> {
+    async readOwner(projectHandle: string, ownerId: string, link: RoadmapLink): Promise<RoadmapOwnerRecord | RoadmapPlanningRecord | undefined> {
         const { root } = this.binding(projectHandle, ownerId);
         if ((await this.store.read(root)).projectId !== ownerId) throw new Error('Planning owner changed');
-        return this.owners.resolve(root, link);
+        return ['planning-map', 'transformation', 'work-item'].includes(link.owner)
+            ? this.planningLinks?.resolve(root, link) : this.owners.resolve(root, link);
     }
 
     async readDetached(projectHandle: string, ownerId: string): Promise<RoadmapOwnerRecord[]> {
@@ -147,17 +153,22 @@ export class ProjectPlanningActions {
                 case 'link': case 'unlink': {
                     keys(action, ['type', 'id', 'link']);
                     const link = object(action.link) as unknown as RoadmapLink;
-                    keys(link as unknown as Record<string, unknown>, ['owner', 'targetId'], ['ownerRevision', 'sourceHash']);
-                    if (!['document', 'project-mind', 'issue', 'planning-map', 'work-item', 'evidence'].includes(link.owner) ||
+                    keys(link as unknown as Record<string, unknown>, ['owner', 'targetId'], ['ownerRevision', 'sourceHash', 'ownerProjectId', 'basis']);
+                    if (!['document', 'project-mind', 'issue', 'planning-map', 'transformation', 'work-item', 'evidence'].includes(link.owner) ||
                         !validId(link.targetId) || link.ownerRevision !== undefined && !validOrder(link.ownerRevision) ||
                         link.sourceHash !== undefined && !/^[a-f0-9]{64}$/.test(link.sourceHash) ||
                         (link.owner === 'document' || link.owner === 'evidence' ? !link.sourceHash :
                             link.owner === 'issue' ? link.sourceHash === undefined && link.ownerRevision === undefined :
                                 link.ownerRevision === undefined))
                         throw new Error('Invalid Roadmap link');
+                    if (['planning-map', 'transformation', 'work-item'].includes(link.owner) &&
+                        (!this.planningLinks || !link.ownerProjectId || !link.basis || link.sourceHash !== undefined))
+                        throw new Error('Planning Map link requires exact owner and basis');
                     const index = item.links.findIndex(existing => linkKey(existing) === linkKey(link));
                     if (action.type === 'link') {
-                        if (index >= 0 || !(this.resolveLink ? await this.resolveLink(root, link) : await this.owners.resolve(root, link)))
+                        if (index >= 0 || !(['planning-map', 'transformation', 'work-item'].includes(link.owner)
+                            ? await this.planningLinks?.resolve(root, link) :
+                            this.resolveLink ? await this.resolveLink(root, link) : await this.owners.resolve(root, link)))
                             throw new Error('Foreign or unresolved Roadmap link');
                         item.links.push(link);
                     } else {
