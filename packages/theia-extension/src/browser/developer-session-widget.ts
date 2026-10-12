@@ -202,6 +202,34 @@ export class DeveloperSessionWidget extends BaseWidget {
                 break;
             }
         }
+        const browse = element('button', this.controller.candidatesLoading ? 'Browsing…' : 'Browse existing');
+        browse.type = 'button';
+        browse.disabled = this.controller.candidatesLoading || this.controller.pending;
+        browse.addEventListener('click', () => void this.controller.browseCandidates());
+        form.append(browse);
+        const result = this.controller.candidates;
+        if (result?.kind === draft.kind) {
+            const status = element('p', result.diagnostic || `${result.candidates.length} existing artifacts available.`);
+            status.setAttribute('role', 'status');
+            form.append(status);
+            if (result.availability === 'ready' && result.candidates.length) {
+                const pickerLabel = element('label', 'Choose existing artifact');
+                const picker = element('select');
+                const placeholder = element('option', 'Select an artifact');
+                placeholder.value = '';
+                picker.append(placeholder);
+                result.candidates.forEach((candidate, index) => {
+                    const option = element('option', candidate.label);
+                    option.value = String(index);
+                    picker.append(option);
+                });
+                picker.addEventListener('change', () => {
+                    if (picker.value) this.controller.chooseCandidate(Number(picker.value));
+                });
+                pickerLabel.append(picker);
+                form.append(pickerLabel);
+            }
+        }
         const submit = element('button', this.controller.pending ? 'Linking…' : 'Attach link');
         submit.type = 'submit';
         submit.disabled = this.controller.pending;

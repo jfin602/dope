@@ -1,6 +1,6 @@
 import { parseSessionArtifactRef } from '@dope/contracts/lib/developer-session';
 import type { DeveloperSession, SessionArtifactRef, SessionCollection } from '@dope/contracts/lib/developer-session';
-import type { DeveloperSessionService, SessionMutationResult, SessionOperation, SessionResolveResult } from '@dope/contracts/lib/developer-session-service';
+import type { DeveloperSessionService, SessionMutationResult, SessionOperation, SessionResolveResult, SessionCandidateResult } from '@dope/contracts/lib/developer-session-service';
 import type { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 
 type SessionConnection = DeveloperSessionService & { dispose(): void | Promise<void> };
@@ -59,6 +59,8 @@ export class DeveloperSessionController {
     snapshot?: SessionCollection;
     selectedId?: string;
     resolution?: SessionResolveResult;
+    candidates?: SessionCandidateResult;
+    candidatesLoading = false;
     loading = false;
     pending = false;
     error = '';
@@ -69,6 +71,7 @@ export class DeveloperSessionController {
     private connection?: SessionConnection;
     private handle?: string;
     private token = 0;
+    private candidateRequest = 0;
     private disposed = false;
     private readonly rootsListener;
 
@@ -103,7 +106,46 @@ export class DeveloperSessionController {
 
     setLinkDraft<K extends keyof SessionLinkDraft>(field: K, value: SessionLinkDraft[K]): void {
         const draft = this.selectedLinkDraft;
-        if (draft) draft[field] = value;
+        if (draft) {
+            draft[field] = value;
+            if (field === 'kind') { ++this.candidateRequest; this.candidates = undefined; this.candidatesLoading = false; }
+        }
+    }
+
+    async browseCandidates(): Promise<boolean> {
+        const connection = this.connection, handle = this.handle, selected = this.selected;
+        const kind = this.selectedLinkDraft?.kind;
+        if (this.disposed || !connection || !handle || !selected || !kind || selected.status === 'closed') return false;
+        const token = this.token, request = ++this.candidateRequest;
+        this.candidates = undefined;
+        this.candidatesLoading = true;
+        this.changed();
+        try {
+            const result = await connection.candidates(handle, kind);
+            if (this.disposed || token !== this.token || request !== this.candidateRequest ||
+                this.selectedId !== selected.id || this.selectedLinkDraft?.kind !== kind) return false;
+            this.candidates = result;
+            this.candidatesLoading = false;
+            this.changed();
+            return result.availability === 'ready';
+        } catch {
+            if (this.disposed || token !== this.token || request !== this.candidateRequest) return false;
+            this.candidates = { kind, availability: 'unavailable', candidates: [], truncated: false,
+                diagnostic: 'Owner metadata is unavailable; enter a verified exact ID or retry later.' };
+            this.candidatesLoading = false;
+            this.changed();
+            return false;
+        }
+    }
+
+    chooseCandidate(index: number): boolean {
+        const choice = this.candidates?.availability === 'ready' ? this.candidates.candidates[index] : undefined;
+        const draft = this.selectedLinkDraft;
+        if (!choice || !draft || choice.ref.kind !== draft.kind) return false;
+        const ref = parseSessionArtifactRef(choice.ref);
+        Object.assign(draft, ref);
+        this.changed();
+        return true;
     }
 
     setCreateDraft(field: 'title' | 'objective', value: string): void {
@@ -149,6 +191,7 @@ export class DeveloperSessionController {
         this.snapshot = undefined;
         this.selectedId = undefined;
         this.resolution = undefined;
+        ++this.candidateRequest; this.candidates = undefined; this.candidatesLoading = false;
         this.loading = false;
         this.pending = false;
         this.error = '';
@@ -198,6 +241,7 @@ export class DeveloperSessionController {
         ++this.token;
         this.selectedId = id;
         this.resolution = undefined;
+        ++this.candidateRequest; this.candidates = undefined; this.candidatesLoading = false;
         this.loading = false;
         this.error = '';
         this.notice = '';
@@ -210,6 +254,7 @@ export class DeveloperSessionController {
         const handle = this.handle;
         if (this.disposed || !connection || !handle || this.pending) return false;
         const token = ++this.token;
+        ++this.candidateRequest; this.candidates = undefined; this.candidatesLoading = false;
         this.loading = true;
         this.resolution = undefined;
         this.error = '';
@@ -244,6 +289,7 @@ export class DeveloperSessionController {
         const sessionId = this.selectedId;
         if (this.disposed || !connection || !handle || !sessionId || this.loading || this.pending) return false;
         const token = ++this.token;
+        ++this.candidateRequest; this.candidates = undefined; this.candidatesLoading = false;
         this.resolution = undefined;
         this.error = '';
         this.notice = '';
@@ -277,6 +323,7 @@ export class DeveloperSessionController {
         if (this.disposed || !connection || !handle || !snapshot || this.loading || this.pending ||
             operation.type !== 'create' && (!selected || operation.sessionId !== selected.id || selected.status === 'closed')) return false;
         const token = ++this.token;
+        ++this.candidateRequest; this.candidates = undefined; this.candidatesLoading = false;
         this.pending = true;
         this.error = '';
         this.notice = '';
@@ -340,6 +387,7 @@ export class DeveloperSessionController {
         if (this.disposed || !connection || !handle || !snapshot || !selected ||
             selected.status === 'closed' || this.loading || this.pending) return false;
         const token = ++this.token;
+        ++this.candidateRequest; this.candidates = undefined; this.candidatesLoading = false;
         this.pending = true;
         this.error = '';
         this.notice = '';

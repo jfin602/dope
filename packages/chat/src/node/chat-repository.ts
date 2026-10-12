@@ -183,6 +183,22 @@ export class ChatRepository {
         const chat = collection.chats.find(item => item.id === chatId);
         return chat && { title: chat.title, revision: chat.revision, updatedAt: chat.updatedAt };
     }
+    /** Manifest IDs only: browsing must not read Chat files or run recovery/migration. */
+    async peekCandidateIds(root: string, limit: number): Promise<{ ids: string[]; truncated: boolean }> {
+        if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) throw new Error('Invalid Chat candidate limit');
+        const { base, exists } = await this.paths(root);
+        if (!exists) return { ids: [], truncated: false };
+        if (await regular(join(base, 'index.json')) && (await lstat(join(base, 'index.json'))).size > 256 * 1024)
+            throw new Error('Chat candidate manifest exceeds browse bound');
+        const manifest = await this.manifest(base);
+        if (manifest.entries.length > 1000) throw new Error('Chat candidate manifest exceeds browse bound');
+        const entries = manifest.entries.slice(0, limit);
+        for (const entry of entries) {
+            const folder = await this.folder(base, entry.folderPath);
+            if (!await regular(join(folder, entry.file))) throw new Error('Chat candidate file is missing');
+        }
+        return { ids: entries.map(entry => entry.id), truncated: manifest.entries.length > limit };
+    }
     private async acquire(base: string): Promise<import('node:fs/promises').FileHandle> {
         const path = join(base, '.mutation.lock');
         for (let attempt = 0; attempt < 100; attempt++) {

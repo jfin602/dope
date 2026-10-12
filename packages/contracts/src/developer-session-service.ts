@@ -69,6 +69,19 @@ export interface SessionResolveResult {
     artifacts: SessionArtifactResolution[];
 }
 
+/** Bounded owner metadata for an explicit browse action. No owner payload is copied. */
+export interface SessionCandidate {
+    ref: SessionArtifactRef;
+    label: string;
+}
+export interface SessionCandidateResult {
+    kind: SessionArtifactRef['kind'];
+    availability: 'ready' | 'unavailable';
+    candidates: SessionCandidate[];
+    truncated: boolean;
+    diagnostic: string;
+}
+
 export interface DeveloperSessionService {
     attach(folderUri: string): Promise<SessionAttachment>;
     read(projectHandle: string): Promise<SessionCollection>;
@@ -78,4 +91,5 @@ export interface DeveloperSessionService {
     attachLink(request: SessionLinkMutationRequest): Promise<SessionMutationResult>;
     detachLink(request: SessionLinkMutationRequest): Promise<SessionMutationResult>;
     resolve(request: SessionResolveRequest): Promise<SessionResolveResult>;
+    candidates(projectHandle: string, kind: SessionArtifactRef['kind']): Promise<SessionCandidateResult>;
 }

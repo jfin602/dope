@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { DeveloperSessionService, SessionArtifactResolution, SessionAttachment, SessionLinkMutationRequest,
-    SessionMutationRequest, SessionMutationResult, SessionResolveRequest, SessionResolveResult } from '@dope/contracts/lib/developer-session-service';
+    SessionMutationRequest, SessionMutationResult, SessionResolveRequest, SessionResolveResult, SessionCandidateResult } from '@dope/contracts/lib/developer-session-service';
 import type { DeveloperSession, SessionCollection } from '@dope/contracts/lib/developer-session';
 import { parseSessionArtifactRef, sessionArtifactRefKey } from '@dope/contracts/lib/developer-session';
 import { DeveloperSessionStore } from './developer-session-store';
 import { DeveloperSessionAgentMindResolver, DeveloperSessionChatPlanningResolver, trustedPlanningBasis } from './developer-session-resolver';
+import { DeveloperSessionCandidates } from './developer-session-candidates';
 import type { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
 
 /** One RPC connection owns one attachment. The store owns all durable state. */
@@ -16,6 +17,7 @@ export class DeveloperSessionBackend implements DeveloperSessionService {
 
     private readonly chatPlanning: DeveloperSessionChatPlanningResolver;
     private readonly agentMind: DeveloperSessionAgentMindResolver;
+    private readonly candidateOwner = new DeveloperSessionCandidates();
 
     constructor(private readonly store: DeveloperSessionStore, index?: SoftwareMapIndex) {
         const scope = () => this.root && this.handle && !this.disposed ?
@@ -130,6 +132,15 @@ export class DeveloperSessionBackend implements DeveloperSessionService {
         }
         return { sessionId: session.id, collectionRevision: snapshot.revision,
             sessionRevision: session.revision, artifacts };
+    }
+
+    async candidates(projectHandle: string, kind: SessionArtifactResolution['ref']['kind']): Promise<SessionCandidateResult> {
+        const root = this.active(projectHandle);
+        const snapshot = await this.read(projectHandle);
+        this.verify(root, snapshot);
+        const result = await this.candidateOwner.list(root, kind);
+        if (this.active(projectHandle) !== root) throw new Error('Development Sessions project changed');
+        return result;
     }
 
     dispose(): void {
