@@ -3,7 +3,7 @@ import type { DeveloperSessionService } from '@dope/contracts/lib/developer-sess
 import type { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import type { SessionArtifactRef } from '@dope/contracts/lib/developer-session';
 import { DeveloperSessionController } from './developer-session-controller';
-import { visibleSessions, sessionListState, sessionOverview } from './developer-session-presentation';
+import { visibleSessions, sessionListState, sessionOverview, sessionLinkGroups } from './developer-session-presentation';
 
 export const DEVELOPER_SESSION_ID = 'dope-developer-sessions';
 export const DEVELOPER_SESSION_LAUNCHER_ID = 'dope-developer-sessions-launcher';
@@ -22,6 +22,11 @@ function dateLabel(value: string): string {
 
 const linkKinds: SessionArtifactRef['kind'][] = ['chat', 'planning-map', 'work-item', 'agent-task',
     'agent-run', 'agent-sequence', 'project-mind'];
+const kindNames: Record<SessionArtifactRef['kind'], string> = {
+    chat: 'Chats', 'planning-map': 'Planning Maps', 'work-item': 'WorkItems',
+    'agent-task': 'AgentTasks', 'agent-run': 'AgentRuns', 'agent-sequence': 'AgentTaskSequences',
+    'project-mind': 'Project Mind',
+};
 
 function linkLabel(ref: SessionArtifactRef): string {
     switch (ref.kind) {
@@ -58,7 +63,7 @@ export class DeveloperSessionWidget extends BaseWidget {
         const heading = element('h2', 'Development Sessions');
         const refresh = element('button', 'Refresh');
         refresh.type = 'button';
-        refresh.addEventListener('click', () => void this.controller.refresh());
+        refresh.addEventListener('click', () => void this.refresh());
         const toolbar = element('header');
         toolbar.append(heading, refresh);
         this.createForm.addEventListener('submit', event => { event.preventDefault(); void this.controller.create(); });
@@ -98,7 +103,9 @@ export class DeveloperSessionWidget extends BaseWidget {
             row.setAttribute('aria-current', session.id === controller.selectedId ? 'true' : 'false');
             row.append(element('strong', session.title),
                 element('span', `${session.status} · Updated ${dateLabel(session.updatedAt)}`));
-            row.addEventListener('click', () => controller.select(session.id));
+            row.addEventListener('click', () => {
+                if (controller.select(session.id)) void controller.resolveSelected();
+            });
             this.list.append(row);
         }
         this.overview.replaceChildren();
@@ -136,22 +143,54 @@ export class DeveloperSessionWidget extends BaseWidget {
             notice.setAttribute('role', 'status');
             this.overview.append(notice);
         }
-        const links = element('ul');
-        for (const ref of selected.links) {
-            const row = element('li');
-            row.append(element('span', linkLabel(ref)));
-            if (selected.status !== 'closed') {
-                const detach = element('button', 'Detach');
-                detach.type = 'button';
-                detach.disabled = controller.pending;
-                detach.setAttribute('aria-label', `Detach ${linkLabel(ref)}`);
-                detach.addEventListener('click', () => void controller.detachLink(ref));
-                row.append(detach);
+        for (const group of sessionLinkGroups(selected, controller.revision, controller.resolution)) {
+            const section = element('section');
+            section.append(element('h4', kindNames[group.kind]));
+            const links = element('ul');
+            for (const { ref, resolution } of group.entries) {
+                const row = element('li');
+                row.append(element('strong', linkLabel(ref)));
+                if (resolution) {
+                    row.append(element('span', ` · ${resolution.availability}`));
+                    if (resolution.title) row.append(element('span', ` · ${resolution.title}`));
+                    if (resolution.objective) row.append(element('span', ` · ${resolution.objective}`));
+                    if (resolution.status) row.append(element('span', ` · ${resolution.status}`));
+                    if (resolution.validationStatus) row.append(element('span', ` · Validation: ${resolution.validationStatus}`));
+                    if (resolution.reviewDecision) row.append(element('span', ` · Review: ${resolution.reviewDecision}`));
+                    if (resolution.promotionStatus) row.append(element('span', ` · Promotion: ${resolution.promotionStatus}`));
+                    row.append(element('p', resolution.diagnostic));
+                } else row.append(element('span', controller.error
+                    ? ' · Owner metadata unavailable; refresh to retry.' : ' · Resolving owner metadata…'));
+                if (selected.status !== 'closed') {
+                    const detach = element('button', 'Detach');
+                    detach.type = 'button';
+                    detach.disabled = controller.pending;
+                    detach.setAttribute('aria-label', `Detach ${linkLabel(ref)}`);
+                    detach.addEventListener('click', () => void this.detach(ref));
+                    row.append(detach);
+                }
+                links.append(row);
             }
-            links.append(row);
+            section.append(links);
+            this.overview.append(section);
         }
-        this.overview.append(links);
         if (selected.status !== 'closed') this.renderLinkForm();
+    }
+
+    private async refresh(): Promise<void> {
+        if (await this.controller.refresh()) await this.controller.resolveSelected();
+    }
+
+    private async detach(ref: SessionArtifactRef): Promise<void> {
+        if (await this.controller.detachLink(ref)) await this.controller.resolveSelected();
+    }
+
+    private async attachLink(): Promise<void> {
+        if (await this.controller.attachLink()) await this.controller.resolveSelected();
+    }
+
+    private async saveSelected(field: 'title' | 'objective' | 'notes' | 'nextActions'): Promise<void> {
+        if (await this.controller.saveSelected(field)) await this.controller.resolveSelected();
     }
 
     private renderLinkForm(): void {
@@ -234,7 +273,7 @@ export class DeveloperSessionWidget extends BaseWidget {
         submit.type = 'submit';
         submit.disabled = this.controller.pending;
         form.append(submit);
-        form.addEventListener('submit', event => { event.preventDefault(); void this.controller.attachLink(); });
+        form.addEventListener('submit', event => { event.preventDefault(); void this.attachLink(); });
         this.overview.append(form);
     }
 
@@ -258,7 +297,7 @@ export class DeveloperSessionWidget extends BaseWidget {
         save.type = 'submit';
         save.disabled = this.controller.pending;
         form.append(save);
-        form.addEventListener('submit', event => { event.preventDefault(); void this.controller.saveSelected(field); });
+        form.addEventListener('submit', event => { event.preventDefault(); void this.saveSelected(field); });
         this.overview.append(form);
     }
 
