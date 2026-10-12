@@ -489,7 +489,7 @@ The background scheduler owns debounce, deduplication, impact batching, queue pr
 
 Alignment results are derived findings. They may identify source/map drift, source/documentation drift, source/contract disagreement, contract/map disagreement, orphaned evidence or unrepresented implementation. Model output may classify or explain a finding but cannot silently mutate source, documentation, contracts, canonical architecture or Physical Map truth.
 
-General-purpose ambient intelligence remains deferred. Phase 11 authorizes bounded ambient/background behavior only for maintaining the Living Software Knowledge Model.
+General-purpose ambient intelligence remains deferred. Phase 12 authorizes bounded ambient/background behavior only for maintaining the Living Software Knowledge Model.
 
 ## Theia AI boundary
 

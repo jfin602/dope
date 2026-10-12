@@ -1,7 +1,7 @@
 # Dope Roadmap
 
 Status: ACTIVE ROADMAP
-Current stage: **Phase 9 Developer Continuity/History `p9d` is GREEN / QUALIFIED at `0.9.35` / `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`; owner closeout is pending.** Final evidence: `docs/tasks/p9d/final-qualification.md`. Phase 10 Unified Roadmap & Local-First AI Planning is ADR 0036 design approved and NOT ACTIVATED; former Phase 10 Living Software Knowledge Model is Phase 11, inactive. Historical 9A Green `0.9.6` / `6b51ee96`, 9B Green `0.9.13` / `5aa0bac`, original 9C P1–P9 at `0.9.22` / `0752415` and unexecuted/superseded P10 remain unchanged.
+Current stage: **Product Phase 9 Developer Continuity/History is OWNER-CLOSED / GREEN / QUALIFIED** at source `af3447ccc419cc9c06051dbd4046a9145d7bf0ae` / `0.9.35` (2026-10-12). The coherent `0.10.0` successor baseline is established; **Phase 10 Unified Roadmap & Local-First AI Planning is DESIGN APPROVED / NOT ACTIVATED / NOT QUALIFIED.** See `docs/planning/p9/phase-9-closeout.md`, `docs/planning/p10/baseline.md`, and `docs/tasks/p9d/final-qualification.md`. Phase 11 Human-Centered UI and Phase 12 Living Software Knowledge Model remain inactive. Historical 9A/9B bounded Green, original 9C P1–P9 and superseded P10, plus original p9d P13/repair-loop Not Green, remain preserved.
 Phase 2 P6 `0.2.6` remains **Not Qualified** as an evidence audit. The owner explicitly accepted the retained gaps for sequencing and closed Phase 2 without relabeling them Green. Phase 3 is therefore authorized from `0.3.0`; see `docs/planning/p3/activation.md`.
 
 This roadmap deliberately starts small.
@@ -33,6 +33,7 @@ Theia
 -> Scoped Delegation
 -> Developer Continuity / right-toolbar History
 -> Unified Roadmap & Local-First AI Planning
+-> Human-Centered UI / Usability Qualification
 -> Living Software Knowledge Model
 
 Each stage should make Dope more useful to the developer before the next layer of AI is added.
@@ -69,7 +70,7 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Correction c8 — Agent Authority Boundary | **GREEN / INCORPORATED INTO QUALIFIED 8B.** Isolated ExecutionWorkspace -> CandidateDelta -> Dope Authority/ToolExecutor promotion is the canonical mutation boundary. |
 | Correction c8-candidate-validation — Dope-owned Candidate Validation | **GREEN / QUALIFIED.** Dope-owned frozen-candidate validation supports private temp/loopback without host/private/network authority; real Adaptive SEO Prompt Stack completed in Cycle 2 of 5. |
 | Correction c8-work-mode — Work / Prompt Stack UI | **GREEN / QUALIFIED / CLOSED at `0.8.20`.** Separate Chat and Work panels, Work toolbar, stable titles, durable agent transcript and collapsed command detail, live GUI/restart evidence. |
-| Product Phase 9 — Developer Continuity / History | **GREEN / QUALIFIED at `0.9.35` / `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`; OWNER CLOSEOUT PENDING.** Right-toolbar History, deterministic activity, exact continuation, repeatable explicit local-first understanding and real AgentRun/validation/review chronology are qualified. Historical Session and Not Green evidence remains intact. See `docs/tasks/p9d/final-qualification.md`. |
+| Product Phase 9 — Developer Continuity / History | **GREEN / QUALIFIED at `0.9.35` / `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`; OWNER-CLOSED (2026-10-12).** Right-toolbar History, deterministic activity, exact continuation, repeatable explicit local-first understanding and real AgentRun/validation/review chronology are qualified. Historical Session and Not Green evidence remains intact. See `docs/tasks/p9d/final-qualification.md`. |
 | Product Phase 10 — Unified Roadmap & Local-First AI Planning | **ADR 0036 DESIGN APPROVED / NOT ACTIVATED / NOT QUALIFIED.** Checkpoint path with correction branches, Issues/Ideas pools and a left inspector, co-edited via validated manual/local-model Chat actions. |
 | Product Phase 11 — Human-Centered UI / Usability Qualification | **ADR 0037 DESIGN APPROVED / NOT ACTIVATED / NOT QUALIFIED.** Audit each Dope-owned panel against real human tasks, fix confusing navigation, hierarchy, feedback and recovery, and qualify cross-panel flows with direct GUI evidence. Palette-only `c9-theme-fix` is separate. |
 | Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11) | Dope continuously reconciles source/runtime, canonical Software Map, docs and contracts through deterministic-first and bounded local-first background checks, using actual WorkItem/AgentRun/change provenance and optional History navigation context (not deprecated Session membership). Remains inactive; no automatic canonical mutation or hosted escalation. |
@@ -1042,7 +1043,7 @@ A developer can run a real sequential implementation stack inside Dope through t
 
 ## Product Phase 9 — Developer Continuity / History
 
-**Status: GREEN / QUALIFIED at exact source `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`, root version `0.9.35`; OWNER CLOSEOUT PENDING.** Historical Phase 9A (`0.9.6`) and 9B (`0.9.13`) scoped Green remain unchanged. Old 9C P1–P9 exists, P10 was unexecuted and superseded, and original p9d P13 plus its first repair loop remain truthful Not Green records. Do not run original p9c.
+**Status: GREEN / QUALIFIED at exact source `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`, root version `0.9.35`; OWNER-CLOSED (2026-10-12).** Historical Phase 9A (`0.9.6`) and 9B (`0.9.13`) scoped Green remain unchanged. Old 9C P1–P9 exists, P10 was unexecuted and superseded, and original p9d P13 plus its first repair loop remain truthful Not Green records. Do not run original p9c.
 
 **Purpose:** Make the developer's understanding and working context survive a break without maintaining another Session object. **History** belongs in the **right toolbar**, shows a factual bounded activity timeline and provides **Continue Where You Left Off** at top. A developer can explicitly request **Understand Recent Work** using approved local-first, previewed evidence, but History remains useful with no model.
 
@@ -1054,13 +1055,17 @@ Authority: ADR 0034, `docs/planning/p9/phase-9-plan.md` and the updated `docs/st
 
 ## Product Phase 10 — Unified Roadmap & Local-First AI Planning
 
-**Status: DESIGN APPROVED (ADR 0036), NOT ACTIVATED OR QUALIFIED.** Phase 9 `p9d` is qualified with owner closeout pending; that result does not activate Phase 10. Turn existing phase planning into a visual checkpoint path with corrections and detached unscheduled Ideas/Issues. Select a checkpoint for in-place Software Map-style **left inspector** editing without a standalone page; a reusable project Chat remains visible alongside it. Planning Maps link to checkpoints but keep real architecture/basis/WorkItem authority.
+**Status: DESIGN APPROVED (ADR 0036), NOT ACTIVATED OR QUALIFIED.** Phase 9 is owner-closed and a coherent `0.10.0` baseline exists; neither qualification nor baseline creation activates Phase 10. Turn existing phase planning into a visual checkpoint path with corrections and detached unscheduled Ideas/Issues. Select a checkpoint for in-place Software Map-style **left inspector** editing without a standalone page; a reusable project Chat remains visible alongside it. Planning Maps link to checkpoints but keep real architecture/basis/WorkItem authority.
 
 Manual controls and local-model Chat send the same small validated, revision-safe project planning actions. State changes instantly notify map/inspector and refresh the model's **next** context; stale in-flight proposals reject. Preserve Markdown/Project Mind/issue owners, qualification evidence and code-agent permission separation. Manual no-model use and real bounded-context local model without native tool calling are mandatory, with no silent hosted fallback. Apply October 12 restrained dark-orange theme tokens. See `docs/planning/p10/phase-10-plan.md`.
 
 Exit requires real local/manual edits, UI consistency, restart, stale/project isolation, no-hosted/authority controls and direct Theia GUI evidence. Implementation requires separate owner activation, prompt planning and qualification; this is documentation-only.
 
-## Product Phase 11 — Living Software Knowledge Model (formerly Phase 10)
+## Product Phase 11 — Human-Centered UI / Usability Qualification
+
+**Status: DESIGN APPROVED (ADR 0037), NOT ACTIVATED OR QUALIFIED.** Audit real developer tasks across Dope-owned panels and improve navigation, affordances, feedback and recovery with direct GUI evidence. Palette-only `c9-theme-fix` remains separate. Phase 11 requires separate activation after Phase 10.
+
+## Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11)
 
 Purpose:
 Turn the Software Map into a living, evidence-backed software knowledge model that continuously checks whether implementation, runtime evidence, canonical architecture, documentation and formal contracts still describe the same software state.
@@ -1085,7 +1090,7 @@ Initial scope:
 Background intelligence law:
 Deterministic analysis narrows the problem first. Local models are the preferred high-volume semantic maintenance layer. Model output creates findings/interpretation, not physical evidence or canonical truth, and foreground developer interaction always outranks background inference.
 
-General-purpose ambient intelligence remains outside this phase. Phase 11 authorizes only bounded background work required to maintain the Living Software Knowledge Model.
+General-purpose ambient intelligence remains outside this phase. Phase 12 authorizes only bounded background work required to maintain the Living Software Knowledge Model.
 
 Exit condition:
 
@@ -1096,7 +1101,7 @@ On a real project, Dope can detect representative source/map, source/documentati
 These remain valid parts of the vision but must not block the initial product:
 - dedicated Research workspace
 - semantic project-wide search
-- general-purpose advanced ambient intelligence beyond the bounded Phase 11 knowledge-alignment monitor
+- general-purpose advanced ambient intelligence beyond the bounded Phase 12 knowledge-alignment monitor
 - automatic Ideas capture
 - sophisticated model routing
 - multi-agent orchestration
@@ -1168,4 +1173,4 @@ The packaged AppImage controlled-shutdown failure remains a separate unresolved 
 
 ## c9-codex-chat — bounded subscription Chat correction (2026-10-12)
 
-**APPROVED DESIGN / DOCUMENTS AND PROMPTS ONLY; NOT IMPLEMENTED OR QUALIFIED.** At unchanged coherent 0.9.23, add ordinary Chat support to the existing signed-in Codex AI Center connection using an independently authorized tool-free Responses conversational adapter. Preserve provider-neutral Chat/Interactive routing, one secure sign-in, shared Work/Codex usage reporting, existing Coding Agent execution/permissions, separate Chat and Work panels, hosted-data consent and no API-key fallback. Authority: ADR 0035; execution stack docs/tasks/c9-codex-chat/. Independently activated p9d is now qualified Green at `0.9.35` / `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`, with owner closeout pending; keep this correction's versions and evidence separate from p9d. Phase 10 remains inactive.
+**APPROVED DESIGN / DOCUMENTS AND PROMPTS ONLY; NOT IMPLEMENTED OR QUALIFIED.** At unchanged coherent 0.9.23, add ordinary Chat support to the existing signed-in Codex AI Center connection using an independently authorized tool-free Responses conversational adapter. Preserve provider-neutral Chat/Interactive routing, one secure sign-in, shared Work/Codex usage reporting, existing Coding Agent execution/permissions, separate Chat and Work panels, hosted-data consent and no API-key fallback. Authority: ADR 0035; execution stack docs/tasks/c9-codex-chat/. Independently activated p9d is now qualified Green at `0.9.35` / `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`, and is now owner-closed; keep the historical correction's fixed versions/evidence separate from p9d and do not assume they apply unchanged to the new `0.10.0` successor baseline. Phase 10 remains inactive.

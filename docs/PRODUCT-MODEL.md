@@ -315,13 +315,13 @@ Initial feature bindings are:
 - role-following Chat -> Interactive;
 - explicit heavy foreground analysis -> Deep Reasoning;
 - Analyze Project/Search Deeper -> Software Map default-target policy while keeping explicit run authority;
-- Phase 11 Living Software Knowledge Model maintenance (formerly Phase 10) -> Background + hard local-only/no-hosted-fallback;
+- Phase 12 Living Software Knowledge Model maintenance (formerly Phase 10, then 11) -> Background + hard local-only/no-hosted-fallback;
 - Phase 8 delegation -> Coding Agent when that consumer ships.
 
 Connection/model configuration and role policy are application state. They never become canonical project truth merely because a project uses them.
 
 
-### Phase 7–11 — AI collaboration, delegation, continuity, roadmap and knowledge alignment
+### Phase 7–12 — AI collaboration, delegation, continuity, roadmap, usability and knowledge alignment
 
 Introduce or activate:
 - AgentWorkingState / Agent Mind
@@ -332,7 +332,7 @@ Introduce or activate:
 - ChangeSet
 - Validation integration
 
-AI Presence begins in Phase 7A through the Dope-owned durable Chat/ChatPanel and context-composition boundary defined by ADR 0025. Phase 7B centralizes global connection/model management in AI Center, and Phase 7C adds role policies/routing under ADR 0026. AI Presence may consume Dope-owned architecture, Flow, planning, Project Mind, editor/project and bounded saved-Chat context without making conversation canonical truth. Phase 8 consumes that provider-independent, role-aware runtime for Scoped Delegation / Coding Agent work. Phase 9 provides Developer Continuity through deterministic History and verified existing-artifact focus without manually managed Sessions. Phase 10 adds the collaborative local-first checkpoint Roadmap and shared planning actions (ADR 0036). Phase 11 separately maintains the Living Software Knowledge Model through deterministic-first, local-first background alignment using real Work/Planning/change provenance; alignment findings never silently mutate source, documentation, contracts or canonical architecture.
+AI Presence begins in Phase 7A through the Dope-owned durable Chat/ChatPanel and context-composition boundary defined by ADR 0025. Phase 7B centralizes global connection/model management in AI Center, and Phase 7C adds role policies/routing under ADR 0026. AI Presence may consume Dope-owned architecture, Flow, planning, Project Mind, editor/project and bounded saved-Chat context without making conversation canonical truth. Phase 8 consumes that provider-independent, role-aware runtime for Scoped Delegation / Coding Agent work. Phase 9 provides Developer Continuity through deterministic History and verified existing-artifact focus without manually managed Sessions. Phase 10 adds the collaborative local-first checkpoint Roadmap and shared planning actions (ADR 0036). Phase 11 audits human-centered UI/usability (ADR 0037); Phase 12 separately maintains the Living Software Knowledge Model through deterministic-first, local-first background alignment using real Work/Planning/change provenance; alignment findings never silently mutate source, documentation, contracts or canonical architecture.
 
 Before Phase 7 general AI Presence, correction `c6-branch-seam` establishes only the minimal Model Runtime/provider-session boundary already needed by existing sMap synthesis. Software Map authority, sMap synthesis strategy and provider execution are separate concerns: Local and hosted synthesis share final evidence/proposal/validation/acceptance semantics but may use different model-appropriate prompt packing and stage strategies. This correction is infrastructure reuse, not early Agent Mind/chat/delegation scope.
 
