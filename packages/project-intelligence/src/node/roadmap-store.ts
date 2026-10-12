@@ -291,4 +291,33 @@ export class RoadmapStore {
             return { checkpoints, changedIds: [operation.id] };
         });
     }
+
+    /** One revisioned Roadmap-owner transaction for validated planning actions. */
+    async transact(root: string, expectedRevision: number, expectedProjectId: string,
+        transform: (current: RoadmapIndex) => Promise<RoadmapCheckpoint[]>): Promise<RoadmapIndex> {
+        return this.commit(root, expectedRevision, expectedProjectId, async current => {
+            if (!current.revision) throw new Error('Roadmap is not initialized');
+            const checkpoints = await transform(current);
+            const before = new Map(current.checkpoints.map(item => [item.id, item]));
+            const after = new Map(checkpoints.map(item => [item.id, item]));
+            if (before.size !== current.checkpoints.length || after.size !== checkpoints.length ||
+                [...before.keys()].some(key => !after.has(key))) throw new Error('Roadmap deletion requires separate authority');
+            const changedIds = checkpoints.filter(item => JSON.stringify(item) !== JSON.stringify(before.get(item.id))).map(item => item.id);
+            const sourceChanges = changedIds.filter(key => before.get(key)?.source);
+            if (sourceChanges.length) {
+                const fresh = await previewRoadmapImport(root);
+                for (const key of sourceChanges) {
+                    const old = before.get(key)!;
+                    const next = after.get(key)!;
+                    const source = fresh.checkpoints.find(item => item.id === key);
+                    if (old.readOnly || !source || source.readOnly || source.source.sha256 !== old.source!.sha256 ||
+                        source.title !== old.title || source.status !== old.status || next.title !== old.title ||
+                        next.status !== old.status || JSON.stringify(next.source) !== JSON.stringify(old.source) ||
+                        JSON.stringify(next.evidence) !== JSON.stringify(old.evidence))
+                        throw new Error('Stale or immutable Roadmap source');
+                }
+            }
+            return { checkpoints, changedIds };
+        });
+    }
 }
