@@ -1,10 +1,7 @@
 import { injectable } from '@theia/core/shared/inversify';
-import { CommandContribution, CommandRegistry, MenuContribution, MenuModelRegistry } from '@theia/core/lib/common';
-import { AbstractViewContribution } from '@theia/core/lib/browser';
 import { BaseWidget } from '@theia/core/lib/browser/widgets/widget';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
 import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-service';
-import { CommonMenus } from '@theia/core/lib/browser/common-menus';
 import type { Artifact, ArtifactLink, ArtifactStatus } from '@dope/contracts/lib/project-mind';
 import { queryArtifacts } from '@dope/project-intelligence';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
@@ -310,22 +307,6 @@ export class ProjectMindWidget extends BaseWidget {
         this.rootsListener.dispose();
         this.controller.dispose();
         super.dispose();
-    }
-}
-
-@injectable()
-export class ProjectMindView extends AbstractViewContribution<ProjectMindWidget> {
-    constructor() {
-        super({ widgetId: PROJECT_MIND_ID, widgetName: 'Project Mind', defaultWidgetOptions: { area: 'right' } });
-    }
-    override registerCommands(commands: CommandRegistry): void {
-        super.registerCommands(commands);
-        commands.registerCommand({ id: 'dope.projectMind.open', label: 'Dope: Show Project Mind' }, {
-            execute: () => this.openView({ activate: true })
-        });
-    }
-    override registerMenus(menus: MenuModelRegistry): void {
-        menus.registerMenuAction(CommonMenus.VIEW_VIEWS, { commandId: 'dope.projectMind.open', label: 'Project Mind' });
     }
 }
 

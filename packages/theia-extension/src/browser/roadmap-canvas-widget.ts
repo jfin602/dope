@@ -22,6 +22,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private mutating = false;
     private readonly reload = document.createElement('button');
     private readonly details = document.createElement('button');
+    private readonly mind = document.createElement('button');
     private readonly rootsListener;
     private readonly modelListener;
     private request = 0;
@@ -30,7 +31,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private selectedId?: string;
 
     constructor(private readonly service: RoadmapService, private readonly workspaces: WorkspaceService,
-        private readonly inspector: RoadmapInspectorModel, private readonly openInspector: () => Promise<unknown>) {
+        private readonly inspector: RoadmapInspectorModel, private readonly openInspector: () => Promise<unknown>,
+        private readonly openMind: (id?: string, workspace?: string) => Promise<boolean> = async () => false) {
         super();
         this.id = ROADMAP_CANVAS_ID;
         this.title.label = this.title.caption = 'Roadmap';
@@ -47,7 +49,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.details.textContent = 'Details';
         this.details.setAttribute('aria-label', 'Show Roadmap details in left sidebar');
         this.details.onclick = () => { void this.openInspector(); };
-        this.toolbar.append(heading, this.details, this.reload);
+        this.mind.type = 'button';
+        this.mind.textContent = 'Project Mind';
+        this.mind.setAttribute('aria-label', 'Browse and edit Project Mind Notes, Ideas, Questions and Decisions');
+        this.mind.onclick = () => { void this.openMind().catch(error => {
+            this.status.textContent = `Project Mind unavailable: ${String(error)}. Retry from the command palette.`;
+        }); };
+        this.toolbar.append(heading, this.details, this.mind, this.reload);
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.path.setAttribute('aria-label', 'Roadmap checkpoints');
@@ -179,7 +187,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 link.onclick = () => void this.changeLink('link', this.selectedId!, record.owner === 'issue'
                     ? { owner: 'issue', targetId: record.targetId, sourceHash: record.sourceHash }
                     : { owner: 'project-mind', targetId: record.targetId, ownerRevision: record.ownerRevision });
-                item.append(name, details, link); list.append(item);
+                if (record.owner === 'project-mind') {
+                    const open = document.createElement('button'); open.type = 'button';
+                    open.textContent = 'Open in Project Mind';
+                    open.setAttribute('aria-label', `Open ${record.title} in Project Mind`);
+                    open.onclick = () => void this.openMindRecord(record.targetId);
+                    item.append(name, details, open, link);
+                } else item.append(name, details, link);
+                list.append(item);
             }
             if (!matches.length) { const empty = document.createElement('li'); empty.textContent = 'No matching detached records.'; list.append(empty); }
             group.append(title, list); this.pools.append(group);
@@ -200,10 +215,28 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 unlink.setAttribute('aria-label', `Unlink ${record?.title ?? link.targetId} from ${selected.title}`);
                 unlink.disabled = this.mutating || selected.readOnly;
                 unlink.onclick = () => void this.changeLink('unlink', selected.id, link);
-                item.append(text, unlink); list.append(item);
+                if (link.owner === 'project-mind') {
+                    const open = document.createElement('button'); open.type = 'button';
+                    open.textContent = 'Open in Project Mind';
+                    open.setAttribute('aria-label', `Open ${record?.title ?? link.targetId} in Project Mind`);
+                    open.onclick = () => void this.openMindRecord(link.targetId);
+                    item.append(text, open, unlink);
+                } else item.append(text, unlink);
+                list.append(item);
             }
             if (!list.childElementCount) { const empty = document.createElement('li'); empty.textContent = 'No linked Ideas or Issues.'; list.append(empty); }
             linked.append(title, list); this.pools.append(linked);
+        }
+    }
+
+    private async openMindRecord(id: string): Promise<void> {
+        const workspace = this.projectUri;
+        if (!workspace) return;
+        try {
+            if (!await this.openMind(id, workspace) && this.projectUri === workspace)
+                this.status.textContent = 'Project Mind reference is missing, stale, foreign, or a draft is unsaved. Open Project Mind to inspect or recover.';
+        } catch (error) {
+            if (this.projectUri === workspace) this.status.textContent = `Project Mind unavailable: ${String(error)}. Refresh and retry.`;
         }
     }
 

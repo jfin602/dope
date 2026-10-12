@@ -18,7 +18,8 @@ import { ThemeService } from '@theia/core/lib/browser/theming';
 import { CoreMarkdownRenderer, type MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import { dopeDarkTheme } from './dope-theme';
 import './dope.css';
-import { DopeWindowTitleService, ProjectMindView, ProjectMindWidget, PROJECT_MIND_ID } from './dope-workbench';
+import { DopeWindowTitleService, ProjectMindWidget, PROJECT_MIND_ID } from './dope-workbench';
+import { openProjectMindOwner } from './project-mind-navigation';
 import { SoftwareMapService, softwareMapServicePath } from '@dope/software-map';
 import type { SoftwareMapClient } from '@dope/software-map';
 import { SoftwareMapView, SoftwareMapWidget, SOFTWARE_MAP_ID } from './software-map-widget';
@@ -174,7 +175,6 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(FrontendApplicationContribution).toDynamicValue(context => ({
         initialize: () => context.container.get(ThemeService).register(dopeDarkTheme),
     })).inSingletonScope();
-    bindViewContribution(bind, ProjectMindView);
     bindViewContribution(bind, SoftwareMapView);
     bindViewContribution(bind, RoadmapInspectorView);
     bindViewContribution(bind, LeftChatLauncher);
@@ -225,6 +225,18 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
             await shell.activateWidget(widget.id);
         } }) })).inSingletonScope();
+    const openMind = (context: { container: import('@theia/core/shared/inversify').interfaces.Context['container'] },
+        id?: string, workspace?: string) => openProjectMindOwner(
+        () => context.container.get(WidgetManager).getOrCreateWidget<ProjectMindWidget>(PROJECT_MIND_ID),
+        async widget => {
+            const shell = context.container.get(ApplicationShell);
+            const mind = widget as ProjectMindWidget;
+            if (!mind.isAttached) await shell.addWidget(mind, { area: 'right' });
+            await shell.activateWidget(mind.id);
+        }, id, workspace);
+    bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) =>
+        commands.registerCommand({ id: 'dope.projectMind.open', label: 'Dope: Show Project Mind' },
+            { execute: () => openMind(context) }) })).inSingletonScope();
     bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) => {
         for (const name of Object.keys(chatAreas) as ChatArea[]) commands.registerCommand(
             { id: `dope.chat.open.${name}`, label: `Dope: Open Chat Panel in ${name[0].toUpperCase()}${name.slice(1)}` },
@@ -312,7 +324,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             }) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_CANVAS_ID, createWidget: () =>
         new RoadmapCanvasWidget(context.container.get<RoadmapService>('RoadmapService'), context.container.get(WorkspaceService),
-            context.container.get(RoadmapInspectorModel), () => context.container.get(RoadmapInspectorView).show()) })).inSingletonScope();
+            context.container.get(RoadmapInspectorModel), () => context.container.get(RoadmapInspectorView).show(),
+            (id, workspace) => openMind(context, id, workspace)) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_INSPECTOR_ID, createWidget: () =>
         new RoadmapInspectorWidget(context.container.get(RoadmapInspectorModel)) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_REVIEW_ID, createWidget: () =>
