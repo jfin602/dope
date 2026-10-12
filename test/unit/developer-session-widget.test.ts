@@ -97,3 +97,12 @@ test('Theia registration wires the left launcher, center factory and palette com
     assert.equal((module.match(/id: 'dope\.sessions\.open'/g) ?? []).length, 1);
     assert.match(module, /revealSessionWidget\(\(\) => manager\.getOrCreateWidget<DeveloperSessionWidget>\(DEVELOPER_SESSION_ID\)/);
 });
+
+test('center widget layout stores only the selected Session reference and exposes every owner navigation route', () => {
+    const widget = readFileSync(new URL('../../packages/theia-extension/src/browser/developer-session-widget.ts', import.meta.url), 'utf8');
+    assert.match(widget, /storeState\(\): object \{ return this\.controller\.layoutSelection\(\) \?\? \{\}; \}/);
+    assert.match(widget, /restoreState\(state: object\): void \{ this\.controller\.restoreSelection\(state\); \}/);
+    for (const kind of ['planning-map', 'work-item', 'project-mind'])
+        assert.match(widget, new RegExp(`ref\\.kind === '${kind}'`));
+    assert.match(widget, /open\.addEventListener\('click', \(\) => void this\.navigate\(ref\)\)/);
+});

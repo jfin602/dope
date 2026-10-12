@@ -152,8 +152,9 @@ export class DeveloperSessionWidget extends BaseWidget {
             for (const { ref, resolution } of group.entries) {
                 const row = element('li');
                 row.append(element('strong', linkLabel(ref)));
-                if (ref.kind === 'chat' || ref.kind === 'agent-task' || ref.kind === 'agent-run' ||
-                    ref.kind === 'agent-sequence') {
+                if (ref.kind === 'chat' || ref.kind === 'planning-map' || ref.kind === 'work-item' ||
+                    ref.kind === 'agent-task' || ref.kind === 'agent-run' || ref.kind === 'agent-sequence' ||
+                    ref.kind === 'project-mind') {
                     const open = element('button', 'Open in owner');
                     open.type = 'button';
                     open.disabled = !resolution || resolution.availability !== 'resolved';
@@ -328,6 +329,10 @@ export class DeveloperSessionWidget extends BaseWidget {
         super.onAfterAttach(msg);
         if (!this.attachedOnce) { this.attachedOnce = true; void this.controller.attach(); }
     }
+
+    storeState(): object { return this.controller.layoutSelection() ?? {}; }
+
+    restoreState(state: object): void { this.controller.restoreSelection(state); }
 
     protected override onActivateRequest(msg: Message): void { super.onActivateRequest(msg); this.node.focus(); }
 

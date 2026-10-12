@@ -1,10 +1,11 @@
 import { parseSessionArtifactRef } from '@dope/contracts/lib/developer-session';
-import type { DeveloperSession, SessionArtifactRef, SessionCollection } from '@dope/contracts/lib/developer-session';
+import type { DeveloperSession, SessionArtifactRef, SessionCollection, SessionProjectIdentity } from '@dope/contracts/lib/developer-session';
 import type { DeveloperSessionService, SessionMutationResult, SessionOperation, SessionResolveResult, SessionCandidateResult } from '@dope/contracts/lib/developer-session-service';
 import type { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 
 type SessionConnection = DeveloperSessionService & { dispose(): void | Promise<void> };
 export interface SessionDraft { title: string; objective: string; notes: string; nextActions: string[] }
+export interface SessionLayoutSelection { workspace: string; project: SessionProjectIdentity; selectedId: string }
 type SessionField = keyof SessionDraft;
 export interface SessionLinkDraft {
     kind: SessionArtifactRef['kind'];
@@ -73,11 +74,12 @@ export class DeveloperSessionController {
     private token = 0;
     private candidateRequest = 0;
     private disposed = false;
+    private restoredSelection?: SessionLayoutSelection;
     private readonly rootsListener;
 
     constructor(private readonly connect: () => SessionConnection, private readonly workspaces: WorkspaceService,
         private readonly changed: () => void) {
-        this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.attach(); });
+        this.rootsListener = workspaces.onWorkspaceChanged(() => { this.restoredSelection = undefined; void this.attach(); });
     }
 
     get revision(): number { return this.snapshot?.revision ?? 0; }
@@ -85,6 +87,40 @@ export class DeveloperSessionController {
         return this.snapshot?.sessions.find(session => session.id === this.selectedId);
     }
     get attached(): boolean { return !!this.handle; }
+    /** Layout remembers only a reference; the Session collection stays in the project store. */
+    layoutSelection(): SessionLayoutSelection | undefined {
+        const project = this.snapshot?.project;
+        return this.workspace && project && this.selectedId && this.selected
+            ? { workspace: this.workspace, project: { ...project }, selectedId: this.selectedId } : undefined;
+    }
+
+    restoreSelection(value: unknown): void {
+        if (this.disposed || !value || typeof value !== 'object' || Array.isArray(value)) return;
+        const state = value as Record<string, unknown>;
+        const project = state.project;
+        if (typeof state.workspace !== 'string' || !state.workspace.startsWith('file:') ||
+            !project || typeof project !== 'object' || Array.isArray(project) ||
+            typeof (project as Record<string, unknown>).canonicalRoot !== 'string' ||
+            (project as Record<string, unknown>).canonicalRoot === '' ||
+            ((project as Record<string, unknown>).projectMindId !== null &&
+                typeof (project as Record<string, unknown>).projectMindId !== 'string') ||
+            typeof state.selectedId !== 'string' ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(state.selectedId)) return;
+        this.restoredSelection = { workspace: state.workspace,
+            project: { canonicalRoot: (project as SessionProjectIdentity).canonicalRoot,
+                projectMindId: (project as SessionProjectIdentity).projectMindId }, selectedId: state.selectedId };
+        this.applyRestoredSelection();
+    }
+
+    private applyRestoredSelection(): void {
+        const stored = this.restoredSelection, actual = this.snapshot?.project;
+        if (!stored || !this.handle || !actual || !this.workspace) return;
+        this.restoredSelection = undefined;
+        if (stored.workspace !== this.workspace || stored.project.canonicalRoot !== actual.canonicalRoot ||
+            stored.project.projectMindId !== actual.projectMindId ||
+            !this.snapshot?.sessions.some(session => session.id === stored.selectedId)) return;
+        if (this.select(stored.selectedId)) void this.resolveSelected();
+    }
     get selectedDraft(): SessionDraft | undefined {
         const selected = this.selected;
         const project = this.snapshot?.project;
@@ -221,10 +257,14 @@ export class DeveloperSessionController {
             this.connection = connection;
             const attached = await connection.attach(workspace);
             if (this.disposed || token !== this.token) return;
+            if (attached.project.canonicalRoot !== attached.snapshot.project.canonicalRoot ||
+                attached.project.projectMindId !== attached.snapshot.project.projectMindId)
+                throw new Error('Development Sessions attachment project identity mismatch');
             this.handle = attached.projectHandle;
             this.snapshot = attached.snapshot;
             this.loading = false;
             this.changed();
+            this.applyRestoredSelection();
         } catch (error) {
             if (this.disposed || token !== this.token) return;
             this.handle = undefined;

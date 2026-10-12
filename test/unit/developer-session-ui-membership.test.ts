@@ -173,3 +173,38 @@ test('UI attach and detach touch Session membership while real Chat owner bytes 
         await rm(root, { recursive: true, force: true });
     }
 });
+
+test('late attach result after switching roots cannot select or overwrite the new project', async () => {
+    let root = 'file:///A';
+    let changed: (() => void) | undefined;
+    const workspace = { get roots() { return Promise.resolve([{ resource: { toString: () => root } }]); },
+        onWorkspaceChanged(listener: () => void) { changed = listener; return { dispose() { changed = undefined; } }; } };
+    const record = (project: any) => ({ schemaVersion: 2, id: firstId, project, revision: 1,
+        title: project.canonicalRoot, objective: '', createdAt: '', updatedAt: '', status: 'active',
+        notes: '', nextActions: [], closeout: null, links: [] });
+    const aProject = { canonicalRoot: '/A', projectMindId: null };
+    const bProject = { canonicalRoot: '/B', projectMindId: null };
+    const aSnapshot = { schemaVersion: 2, project: aProject, revision: 1, sessions: [record(aProject)] };
+    const bSnapshot = { schemaVersion: 2, project: bProject, revision: 1, sessions: [record(bProject)] };
+    let deliver!: (result: any) => void;
+    let calls = 0;
+    const a: any = { attach: async () => ({ projectHandle: 'A', project: aProject, snapshot: aSnapshot }),
+        attachLink: () => { calls++; return new Promise(resolve => { deliver = resolve; }); }, dispose() {} };
+    const b: any = { attach: async () => ({ projectHandle: 'B', project: bProject, snapshot: bSnapshot }),
+        attachLink: () => { calls++; throw Error('Unexpected B mutation'); }, dispose() {} };
+    const connections = [a, b];
+    const controller = new DeveloperSessionController(() => connections.shift()!, workspace as any, () => {});
+    await controller.attach(); controller.select(firstId);
+    controller.setLinkDraft('chatId', chatId);
+    const pending = controller.attachLink();
+    root = 'file:///B'; changed?.();
+    await Promise.resolve(); await Promise.resolve();
+    deliver({ snapshot: { ...aSnapshot, revision: 2 }, session: aSnapshot.sessions[0] });
+    assert.equal(await pending, false);
+    assert.equal(controller.workspace, 'file:///B');
+    assert.equal(controller.snapshot?.project.canonicalRoot, '/B');
+    assert.equal(controller.selectedId, undefined);
+    assert.equal(controller.notice, '');
+    assert.equal(calls, 1);
+    controller.dispose();
+});

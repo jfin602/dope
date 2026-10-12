@@ -287,3 +287,81 @@ test('same Session ID in another project cannot inherit an unsaved draft', async
     assert.equal(controller.selected?.project.canonicalRoot, '/B');
     controller.dispose();
 });
+
+test('layout restores only a selected ID after the attached project identity is verified', async () => {
+    const id = 'c433482f-9576-4402-af45-ef246414c9c0';
+    const ws = workspace('file:///A');
+    const backend = connection('A', collection('/A', [session(id, '/A')]));
+    const controller = new DeveloperSessionController(() => backend, ws as any, () => {});
+    const layout = { workspace: 'file:///A', project: { canonicalRoot: '/A', projectMindId: null }, selectedId: id };
+    controller.restoreSelection(layout);
+    assert.equal(controller.selectedId, undefined);
+    assert.equal(controller.layoutSelection(), undefined);
+    await controller.attach();
+    assert.equal(controller.selectedId, id);
+    assert.deepEqual(controller.layoutSelection(), layout);
+    assert.deepEqual(backend.calls.map(call => call.method), ['attach', 'resolve']);
+    assert.equal(backend.calls.some(call => call.method === 'mutate'), false);
+    controller.dispose();
+});
+
+test('layout rejects missing, malformed and other-project selections without owner writes', async () => {
+    const id = 'c433482f-9576-4402-af45-ef246414c9c0';
+    for (const layout of [
+        { workspace: 'file:///B', project: { canonicalRoot: '/A', projectMindId: null }, selectedId: id },
+        { workspace: 'file:///A', project: { canonicalRoot: '/B', projectMindId: null }, selectedId: id },
+        { workspace: 'file:///A', project: { canonicalRoot: '/A', projectMindId: 'foreign' }, selectedId: id },
+        { workspace: 'file:///A', project: { canonicalRoot: '/A', projectMindId: null },
+            selectedId: '5852ad1b-6ab5-4632-bb64-9cac4a9469f8' },
+        { workspace: 'file:///A', project: { canonicalRoot: '/A', projectMindId: null }, selectedId: '../bad' },
+    ]) {
+        const backend = connection('A', collection('/A', [session(id, '/A')]));
+        const controller = new DeveloperSessionController(() => backend, workspace('file:///A') as any, () => {});
+        controller.restoreSelection(layout);
+        await controller.attach();
+        assert.equal(controller.selectedId, undefined);
+        assert.deepEqual(backend.calls.map(call => call.method), ['attach']);
+        controller.dispose();
+    }
+});
+
+test('root switch retires pending layout restoration and late resolution', async () => {
+    const id = 'c433482f-9576-4402-af45-ef246414c9c0';
+    const ws = workspace('file:///A');
+    const a = connection('A', collection('/A', [session(id, '/A')]));
+    const b = connection('B', collection('/B', [session(id, '/B')]));
+    const waiting = deferred();
+    a.attach = () => waiting.promise;
+    const backends = [a, b];
+    const controller = new DeveloperSessionController(() => backends.shift()!, ws as any, () => {});
+    controller.restoreSelection({ workspace: 'file:///A', project: { canonicalRoot: '/A', projectMindId: null }, selectedId: id });
+    const first = controller.attach();
+    await Promise.resolve();
+    ws.change('file:///B');
+    waiting.resolve({ projectHandle: 'A', project: collection('/A', []).project,
+        snapshot: collection('/A', [session(id, '/A')]) });
+    await first;
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(controller.workspace, 'file:///B');
+    assert.equal(controller.selectedId, undefined);
+    assert.deepEqual(b.calls.map(call => call.method), ['attach']);
+    assert.equal(a.disposed, true);
+    controller.dispose();
+});
+
+test('attachment refuses a backend snapshot for a different project identity', async () => {
+    const id = 'c433482f-9576-4402-af45-ef246414c9c0';
+    const ws = workspace('file:///A');
+    const backend = connection('A', collection('/A', [session(id, '/A')]));
+    backend.attach = async () => ({ projectHandle: 'A', project: { canonicalRoot: '/B', projectMindId: null },
+        snapshot: collection('/A', [session(id, '/A')]) });
+    const controller = new DeveloperSessionController(() => backend, ws as any, () => {});
+    controller.restoreSelection({ workspace: 'file:///A', project: { canonicalRoot: '/A', projectMindId: null }, selectedId: id });
+    await controller.attach();
+    assert.equal(controller.attached, false);
+    assert.equal(controller.snapshot, undefined);
+    assert.equal(controller.selectedId, undefined);
+    assert.match(controller.error, /identity mismatch/);
+    controller.dispose();
+});
