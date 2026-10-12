@@ -13,7 +13,6 @@ import { ProjectMindStore } from '../../packages/project-intelligence/lib/node/p
 import { DeveloperSessionBackend } from '../../packages/theia-extension/lib/node/developer-session-backend.js';
 import { DeveloperSessionStore } from '../../packages/theia-extension/lib/node/developer-session-store.js';
 import { DeveloperSessionCandidates } from '../../packages/theia-extension/lib/node/developer-session-candidates.js';
-import { DeveloperSessionController } from '../../packages/theia-extension/lib/browser/developer-session-controller.js';
 
 const basis = { architectureRevision: 1, architectureFingerprint: 'architecture',
     physicalInputFingerprint: 'source', physicalGeneration: 1 };
@@ -105,7 +104,7 @@ test('one-kind browse returns exact owner IDs without Chat recovery, transcripts
     }
 });
 
-test('bounded choices and unavailable owner leave exact-ID attach available', async () => {
+test('backend candidate choices remain bounded and report unavailable owners', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-session-candidate-bounds-'));
     try {
         const tasks = Array.from({ length: 55 }, (_, i) => ({ id: `task-${i}`, objective: `Task ${i}`,
@@ -119,64 +118,5 @@ test('bounded choices and unavailable owner leave exact-ID attach available', as
         assert.equal(limited.truncated, true);
         assert.equal((await adapter.list(root, 'agent-sequence')).availability, 'unavailable');
         assert.deepEqual((await adapter.list(root, 'project-mind')).candidates, []);
-        const sessionId = randomUUID();
-        const project = { canonicalRoot: root, projectMindId: null };
-        const session = { schemaVersion: 2, id: sessionId, project, revision: 0, title: 'Session',
-            objective: '', createdAt: now, updatedAt: now, status: 'active', notes: '', nextActions: [],
-            closeout: null, links: [] };
-        let attachedRef: unknown;
-        let offered: any;
-        const connection: any = { attach: async () => ({ projectHandle: 'handle', project,
-            snapshot: { schemaVersion: 2, project, revision: 0, sessions: [session] } }),
-            candidates: async (_: string, kind: string) => offered ?? ({ kind, availability: 'unavailable',
-                candidates: [], truncated: false, diagnostic: 'Unavailable' }),
-            attachLink: async (request: any) => { attachedRef = request.ref; return {
-                snapshot: { schemaVersion: 2, project, revision: 0, sessions: [session] }, session }; },
-            dispose() {} };
-        const controller = new DeveloperSessionController(() => connection,
-            { roots: Promise.resolve([{ resource: { toString: () => uri(root) } }]),
-                onWorkspaceChanged: () => ({ dispose() {} }) } as any, () => {});
-        await controller.attach(); controller.select(sessionId);
-        assert.equal(await controller.browseCandidates(), false);
-        assert.equal(controller.candidates?.availability, 'unavailable');
-        controller.setLinkDraft('chatId', randomUUID());
-        assert.equal(controller.selectedLinkDraft?.chatId.length, 36);
-        assert.equal(await controller.attachLink(), true);
-        assert.deepEqual(attachedRef, { kind: 'chat', chatId: controller.selectedLinkDraft?.chatId });
-        controller.setLinkDraft('kind', 'work-item');
-        offered = { kind: 'work-item', availability: 'ready', candidates: [{
-            ref: { kind: 'work-item', mapId: 'plan', workItemId: 'work' }, label: 'Plan / Work' }],
-            truncated: false, diagnostic: '' };
-        assert.equal(await controller.browseCandidates(), true);
-        assert.equal(controller.chooseCandidate(0), true);
-        assert.equal(controller.selectedLinkDraft?.mapId, 'plan');
-        assert.equal(controller.selectedLinkDraft?.workItemId, 'work');
-        assert.equal(controller.chooseCandidate(1), false);
-        controller.dispose();
     } finally { await rm(root, { recursive: true, force: true }); }
-});
-
-test('late browse result cannot populate another selected Session', async () => {
-    const project = { canonicalRoot: '/project', projectMindId: null };
-    const record = (id: string) => ({ schemaVersion: 2, id, project, revision: 0, title: id,
-        objective: '', createdAt: now, updatedAt: now, status: 'active', notes: '', nextActions: [],
-        closeout: null, links: [] });
-    const first = randomUUID(), second = randomUUID();
-    let deliver!: (value: any) => void;
-    const delayed = new Promise<any>(resolve => { deliver = resolve; });
-    const connection: any = { attach: async () => ({ projectHandle: 'handle', project,
-        snapshot: { schemaVersion: 2, project, revision: 0, sessions: [record(first), record(second)] } }),
-        candidates: async () => delayed, dispose() {} };
-    const controller = new DeveloperSessionController(() => connection,
-        { roots: Promise.resolve([{ resource: { toString: () => 'file:///project' } }]),
-            onWorkspaceChanged: () => ({ dispose() {} }) } as any, () => {});
-    await controller.attach(); controller.select(first);
-    const pending = controller.browseCandidates();
-    controller.select(second);
-    deliver({ kind: 'chat', availability: 'ready', candidates: [{
-        ref: { kind: 'chat', chatId: randomUUID() }, label: 'Old Chat' }], truncated: false, diagnostic: '' });
-    assert.equal(await pending, false);
-    assert.equal(controller.candidates, undefined);
-    assert.equal(controller.candidatesLoading, false);
-    controller.dispose();
 });

@@ -49,11 +49,6 @@ import { AICenterWidget, AI_CENTER_ID } from './ai-center-widget';
 import { AICenterContribution } from './ai-center-contribution';
 import { AICenterBottomMenuWidget } from './ai-center-launcher';
 import { SidebarBottomMenuWidget } from '@theia/core/lib/browser/shell/sidebar-bottom-menu-widget';
-import { developerSessionServicePath, type DeveloperSessionService } from '@dope/contracts/lib/developer-session-service';
-import { DeveloperSessionWidget, DeveloperSessionsLauncherWidget, DEVELOPER_SESSION_ID,
-    DEVELOPER_SESSION_LAUNCHER_ID } from './developer-session-widget';
-import { revealSessionWidget } from './developer-session-presentation';
-import type { SessionNavigationOwners } from './developer-session-navigation';
 import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, workLauncherIds, workLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
 
 const modelInventoryChanged = new Emitter<void>();
@@ -117,30 +112,6 @@ class LeftWorkLauncher extends WorkLauncherView { constructor() { super('left');
 @injectable()
 class RightWorkLauncher extends WorkLauncherView { constructor() { super('right'); } }
 
-@injectable()
-class SessionsLauncherView extends AbstractViewContribution<DeveloperSessionsLauncherWidget> implements FrontendApplicationContribution {
-    constructor() { super({ widgetId: DEVELOPER_SESSION_LAUNCHER_ID, widgetName: 'Sessions',
-        defaultWidgetOptions: { area: 'left', rank: 252 } }); }
-    async onDidInitializeLayout(): Promise<void> {
-        const widget = await this.openView();
-        const tabBar = this.shell.getTabBarFor(widget);
-        if (!tabBar) return;
-        const activated = (_sender: typeof tabBar, { title }: { title: typeof widget.title }) => {
-            if (title.owner === widget) void this.openSessions();
-        };
-        tabBar.tabActivateRequested.connect(activated);
-        widget.disposed.connect(() => tabBar.tabActivateRequested.disconnect(activated));
-    }
-    async openSessions(): Promise<DeveloperSessionWidget> {
-        return openDeveloperSessions(this.shell, this.widgetManager);
-    }
-}
-
-async function openDeveloperSessions(shell: ApplicationShell, manager: WidgetManager): Promise<DeveloperSessionWidget> {
-    return revealSessionWidget(() => manager.getOrCreateWidget<DeveloperSessionWidget>(DEVELOPER_SESSION_ID),
-        widget => shell.addWidget(widget, { area: 'main' }), id => shell.activateWidget(id));
-}
-
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     rebind(SidebarBottomMenuWidget).to(AICenterBottomMenuWidget);
     bind(AICenterContribution).toSelf().inSingletonScope();
@@ -181,99 +152,11 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bindViewContribution(bind, RightChatLauncher);
     bindViewContribution(bind, LeftWorkLauncher);
     bindViewContribution(bind, RightWorkLauncher);
-    bindViewContribution(bind, SessionsLauncherView);
     bind(FrontendApplicationContribution).toService(SoftwareMapView);
     bind(FrontendApplicationContribution).toService(LeftChatLauncher);
     bind(FrontendApplicationContribution).toService(RightChatLauncher);
     bind(FrontendApplicationContribution).toService(LeftWorkLauncher);
     bind(FrontendApplicationContribution).toService(RightWorkLauncher);
-    bind(FrontendApplicationContribution).toService(SessionsLauncherView);
-    bind(WidgetFactory).toDynamicValue(context => ({ id: DEVELOPER_SESSION_ID, createWidget: () => {
-        const manager = context.container.get(WidgetManager);
-        const shell = context.container.get(ApplicationShell);
-        const panels = () => [...manager.getWidgets(CHAT_PANEL_ID),
-            ...(['left', 'right'] as const).flatMap(side => [manager.tryGetWidget(chatLauncherIds[side]),
-                manager.tryGetWidget(workLauncherIds[side])])].filter(Boolean) as ChatPanelWidget[];
-        const navigation: SessionNavigationOwners = {
-            focusChat: (workspace, id) => context.container.get(ChatOpenOwners).focus(workspace, id),
-            focusWork: (workspace, selection) => context.container.get(WorkOpenOwners).focus(workspace, selection),
-            openChat: async (workspace, id, current) => {
-                if (!current()) return false;
-                const widget = panels().find(panel => panel.isAttached && panel.moduleKind === 'chat' &&
-                    panel.controller.workspace === workspace && panel.controller.attached && !panel.controller.chatId);
-                if (!widget || !current() ||
-                    !widget.controller.snapshot?.chats.some(chat => chat.id === id)) return false;
-                await shell.activateWidget(widget.id);
-                if (!current() || !await widget.controller.select(id) || !current()) return false;
-                return current() && widget.controller.chatId === id;
-            },
-            openWork: async (workspace, selection, current) => {
-                if (!current()) return false;
-                const widget = panels().find(panel => panel.isAttached && panel.moduleKind === 'work' &&
-                    panel.panel.workspace === workspace && !!panel.workController?.handle && !panel.panel.work);
-                if (!widget || !current() ||
-                    !await widget.navigateWork(selection) || !current()) return false;
-                await shell.activateWidget(widget.id);
-                return current();
-            },
-            openPlanning: async (workspace, ref, current) => {
-                const map = context.container.get(SoftwareMapController);
-                const planning = context.container.get(PlanningMapController);
-                if (!current() || map.workspace !== workspace || !planning.collection || planning.loading) return false;
-                const target = planning.collection.maps.find(item => item.id === ref.mapId);
-                if (!target || ref.kind === 'work-item' && !target.workItems.some(item => item.id === ref.workItemId)) return false;
-                const fresh = await planning.navigationMap(ref.mapId);
-                if (!current() || map.workspace !== workspace || !fresh || fresh.revision !== target.revision ||
-                    ref.kind === 'work-item' && !fresh.workItems.some(item => item.id === ref.workItemId)) return false;
-                const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID);
-                if (!current() || map.workspace !== workspace || widget.isDisposed ||
-                    !planning.collection?.maps.some(item => item.id === ref.mapId && item.revision === target.revision &&
-                        (ref.kind === 'planning-map' || item.workItems.some(work => work.id === ref.workItemId)))) return false;
-                if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
-                if (!current() || map.workspace !== workspace || widget.isDisposed) return false;
-                if (!planning.showHistory && target.status !== 'draft' && target.status !== 'active') planning.setHistory(true);
-                if (planning.selectedMapId !== ref.mapId) planning.select(ref.mapId);
-                if (ref.kind === 'work-item' && planning.selectedWorkItemId !== ref.workItemId)
-                    planning.selectWorkItem(ref.workItemId);
-                if (!planning.planningMode) planning.setMode(true);
-                await shell.activateWidget(widget.id);
-                return current() && map.workspace === workspace && !widget.isDisposed &&
-                    planning.planningMode && planning.selected?.id === ref.mapId &&
-                    (ref.kind === 'planning-map' || planning.selectedWorkItemId === ref.workItemId);
-            },
-            openProjectMind: async (workspace, artifactId, artifactType, projectMindId, current) => {
-                if (!current()) return false;
-                const widget = await manager.getOrCreateWidget<ProjectMindWidget>(PROJECT_MIND_ID);
-                await widget.currentMind();
-                if (!current() || widget.isDisposed || widget.controller.workspace !== workspace ||
-                    !widget.controller.canLeave || !await widget.controller.refresh()) return false;
-                const snapshot = widget.controller.snapshot;
-                const artifact = snapshot?.artifacts.find(item => item.id.toLowerCase() === artifactId.toLowerCase() &&
-                    item.type === artifactType);
-                if (!current() || widget.isDisposed || widget.controller.workspace !== workspace || !snapshot ||
-                    projectMindId !== null && snapshot.projectId !== projectMindId || !artifact ||
-                    !widget.controller.canLeave) return false;
-                if (!widget.isAttached) await shell.addWidget(widget, { area: 'right' });
-                if (!current() || widget.isDisposed || widget.controller.workspace !== workspace) return false;
-                await widget.openArtifact(artifact.id, true);
-                if (!current() || widget.isDisposed || widget.controller.workspace !== workspace ||
-                    widget.controller.selectedId !== artifact.id ||
-                    widget.controller.draft?.type !== artifactType) return false;
-                await shell.activateWidget(widget.id);
-                return current() && !widget.isDisposed && widget.controller.workspace === workspace &&
-                    widget.controller.selectedId === artifact.id;
-            },
-        };
-        return new DeveloperSessionWidget(() => ServiceConnectionProvider.createProxy<DeveloperSessionService & RpcServer<never>>(
-            context.container, developerSessionServicePath), context.container.get(WorkspaceService), navigation);
-    } })).inSingletonScope();
-    bind(WidgetFactory).toDynamicValue(context => ({ id: DEVELOPER_SESSION_LAUNCHER_ID, createWidget: () =>
-        new DeveloperSessionsLauncherWidget(() => openDeveloperSessions(context.container.get(ApplicationShell),
-            context.container.get(WidgetManager))) })).inSingletonScope();
-    bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) =>
-        commands.registerCommand({ id: 'dope.sessions.open', label: 'Dope: Open Sessions' },
-            { execute: () => openDeveloperSessions(context.container.get(ApplicationShell),
-                context.container.get(WidgetManager)) }) })).inSingletonScope();
     const openPhysicalMap = async (manager: WidgetManager, shell: ApplicationShell,
         map?: SoftwareMapController, options?: PhysicalMapTabOptions) => {
         const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID, options);
