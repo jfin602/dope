@@ -1,5 +1,8 @@
 # Phase 9D — Owner Activation and P1 Recovery Gate
 
+> **P1 REQUALIFICATION UPDATE — 2026-10-12:** The owner supplied passing bounded exporter evidence (7/7 focused tests, `git diff --check`, legacy/owner bytes unchanged, standalone without Session runtime), and connected source inspection verified the repair commit `d58872f62eebc1426769c1c262807df8133406e9`, test/guide and coherent 13-manifest `0.9.23` version. **P1 is now GREEN for its bounded offline-export scope; P2's conditional gate is satisfied.** Authoritative dated record: [p9d P1 requalification](../../tasks/p9d/p1-requalification.md). The older missing-P1 discussion below is preserved as the historical reason for the gate, not a continuing prohibition. Run P2 against the repaired source; the runner's version-only "previously completed" marker is insufficient by itself. Phase 9 overall NOT QUALIFIED.
+
+
 **Date:** 2026-10-11 (America/Chicago)  
 **Disposition:** **OWNER-APPROVED FOR PHASE 9D P1–P13, CONDITIONED ON P1 REQUALIFICATION BEFORE P2**  
 **Owner instruction:** "i approve. and p1 did not complete correctly. it started already completed for some reason" (2026-10-12T02:12:05Z).  
