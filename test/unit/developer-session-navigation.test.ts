@@ -11,6 +11,9 @@ const chat = { kind: 'chat', chatId } as const;
 const run = { kind: 'agent-run', taskId: 'task-1', runId: 'run-1' } as const;
 const task = { kind: 'agent-task', taskId: 'task-1' } as const;
 const sequence = { kind: 'agent-sequence', sequenceId: 'sequence-1' } as const;
+const planning = { kind: 'planning-map', mapId: 'map-1' } as const;
+const workItem = { kind: 'work-item', mapId: 'map-1', workItemId: 'item-1' } as const;
+const decision = { kind: 'project-mind', artifactId: 'd1a2b3c4-2222-4222-8222-222222222222', artifactType: 'decision' } as const;
 const project = { canonicalRoot: '/project-a', projectMindId: null };
 
 function fixture(ref: any = chat) {
@@ -32,6 +35,7 @@ test('Chat and Work links focus their existing single owner by exact project and
         focusWork: (root: string, selection: any) => work.focus(root, selection),
         openChat: async () => { calls.push('open-chat'); return true; },
         openWork: async () => { calls.push('open-work'); return true; },
+        openPlanning: async () => false, openProjectMind: async () => false,
     };
     assert.equal((await navigateSessionArtifact(fixture(chat), chat, owners)).opened, true);
     assert.equal((await navigateSessionArtifact(fixture(run), run, owners)).opened, true);
@@ -46,6 +50,7 @@ test('new selection routes exact Task, Run and Sequence to normal idle owner pan
         focusChat: () => false, focusWork: () => false,
         openChat: async (_root: string, id: string) => { selections.push(['chat', id]); return true; },
         openWork: async (_root: string, selection: unknown) => { selections.push(selection); return true; },
+        openPlanning: async () => false, openProjectMind: async () => false,
     };
     for (const ref of [chat, task, run, sequence])
         assert.equal((await navigateSessionArtifact(fixture(ref), ref, owners)).opened, true);
@@ -53,10 +58,29 @@ test('new selection routes exact Task, Run and Sequence to normal idle owner pan
         { kind: 'run', id: 'run-1' }, { kind: 'sequence', id: 'sequence-1' }]);
 });
 
-test('foreign project, missing or mismatched exact target, and unsupported deep link deny focus', async () => {
+test('Planning composite and Mind identity use exact owner navigation without changing Session membership', async () => {
+    const calls: unknown[] = [];
+    const owners = { focusChat: () => false, focusWork: () => false,
+        openChat: async () => false, openWork: async () => false,
+        openPlanning: async (root: string, ref: unknown) => { calls.push([root, ref]); return true; },
+        openProjectMind: async (root: string, id: string, type: string, mindId: string | null) => {
+            calls.push([root, id, type, mindId]); return true;
+        } };
+    for (const ref of [planning, workItem, decision]) {
+        const context = fixture(ref);
+        const before = structuredClone([context.collection, context.session, context.resolution]);
+        assert.equal((await navigateSessionArtifact(context, ref, owners)).opened, true);
+        assert.deepEqual([context.collection, context.session, context.resolution], before);
+    }
+    assert.deepEqual(calls, [[workspace, planning], [workspace, workItem],
+        [workspace, decision.artifactId, 'decision', null]]);
+});
+
+test('foreign project, missing/stale or mismatched exact target deny owner navigation', async () => {
     let focus = 0;
     const owners = { focusChat: () => { focus++; return true; }, focusWork: () => { focus++; return true; },
-        openChat: async () => { focus++; return true; }, openWork: async () => { focus++; return true; } };
+        openChat: async () => { focus++; return true; }, openWork: async () => { focus++; return true; },
+        openPlanning: async () => { focus++; return true; }, openProjectMind: async () => { focus++; return true; } };
     const foreign = fixture(); foreign.session = { ...foreign.session,
         project: { ...project, canonicalRoot: '/project-b' } };
     assert.equal((await navigateSessionArtifact(foreign, chat, owners)).opened, false);
@@ -64,8 +88,12 @@ test('foreign project, missing or mismatched exact target, and unsupported deep 
     assert.match((await navigateSessionArtifact(missing, chat, owners)).message, /missing/);
     const mismatched = fixture(run); mismatched.resolution.artifacts[0].ref = { ...run, runId: 'run-2' };
     assert.equal((await navigateSessionArtifact(mismatched, run, owners)).opened, false);
-    const unsupported = { kind: 'planning-map', mapId: 'map-1' } as const;
-    assert.match((await navigateSessionArtifact(fixture(unsupported), unsupported, owners)).message, /not available/);
+    const stale = fixture(workItem); stale.resolution.artifacts[0].availability = 'stale';
+    assert.match((await navigateSessionArtifact(stale, workItem, owners)).message, /stale/);
+    const deleted = fixture(decision); deleted.resolution.artifacts[0].availability = 'missing';
+    assert.match((await navigateSessionArtifact(deleted, decision, owners)).message, /missing/);
+    const mismatchedMap = fixture(workItem); mismatchedMap.resolution.artifacts[0].ref = { ...workItem, mapId: 'map-2' };
+    assert.equal((await navigateSessionArtifact(mismatchedMap, workItem, owners)).opened, false);
     assert.equal(focus, 0);
 });
 
@@ -75,6 +103,7 @@ test('project switch during navigation cannot report a successful open', async (
     const result = await navigateSessionArtifact(context, chat, {
         focusChat: () => false, focusWork: () => false,
         openChat: async () => { current = false; return true; }, openWork: async () => true,
+        openPlanning: async () => true, openProjectMind: async () => true,
     });
     assert.equal(result.opened, false);
     assert.match(result.message, /Project or Session changed/);
@@ -84,9 +113,21 @@ test('an occupied owner panel produces an explicit fallback without replacing it
     const result = await navigateSessionArtifact(fixture(chat), chat, {
         focusChat: () => false, focusWork: () => false,
         openChat: async () => false, openWork: async () => false,
+        openPlanning: async () => false, openProjectMind: async () => false,
     });
     assert.equal(result.opened, false);
     assert.match(result.message, /No available owner panel/);
+});
+
+test('unavailable exact Planning or Mind selection reports a bounded fallback', async () => {
+    const owners = { focusChat: () => false, focusWork: () => false,
+        openChat: async () => false, openWork: async () => false,
+        openPlanning: async () => false, openProjectMind: async () => false };
+    for (const ref of [workItem, decision]) {
+        const result = await navigateSessionArtifact(fixture(ref), ref, owners);
+        assert.equal(result.opened, false);
+        assert.match(result.message, /No available owner panel could select this exact linked artifact/);
+    }
 });
 
 test('Session Work selection reads an exact task without agent execution or model readiness', async () => {

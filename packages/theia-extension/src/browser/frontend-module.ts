@@ -216,6 +216,53 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 await shell.activateWidget(widget.id);
                 return current();
             },
+            openPlanning: async (workspace, ref, current) => {
+                const map = context.container.get(SoftwareMapController);
+                const planning = context.container.get(PlanningMapController);
+                if (!current() || map.workspace !== workspace || !planning.collection || planning.loading) return false;
+                const target = planning.collection.maps.find(item => item.id === ref.mapId);
+                if (!target || ref.kind === 'work-item' && !target.workItems.some(item => item.id === ref.workItemId)) return false;
+                const fresh = await planning.navigationMap(ref.mapId);
+                if (!current() || map.workspace !== workspace || !fresh || fresh.revision !== target.revision ||
+                    ref.kind === 'work-item' && !fresh.workItems.some(item => item.id === ref.workItemId)) return false;
+                const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID);
+                if (!current() || map.workspace !== workspace || widget.isDisposed ||
+                    !planning.collection?.maps.some(item => item.id === ref.mapId && item.revision === target.revision &&
+                        (ref.kind === 'planning-map' || item.workItems.some(work => work.id === ref.workItemId)))) return false;
+                if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
+                if (!current() || map.workspace !== workspace || widget.isDisposed) return false;
+                if (!planning.showHistory && target.status !== 'draft' && target.status !== 'active') planning.setHistory(true);
+                if (planning.selectedMapId !== ref.mapId) planning.select(ref.mapId);
+                if (ref.kind === 'work-item' && planning.selectedWorkItemId !== ref.workItemId)
+                    planning.selectWorkItem(ref.workItemId);
+                if (!planning.planningMode) planning.setMode(true);
+                await shell.activateWidget(widget.id);
+                return current() && map.workspace === workspace && !widget.isDisposed &&
+                    planning.planningMode && planning.selected?.id === ref.mapId &&
+                    (ref.kind === 'planning-map' || planning.selectedWorkItemId === ref.workItemId);
+            },
+            openProjectMind: async (workspace, artifactId, artifactType, projectMindId, current) => {
+                if (!current()) return false;
+                const widget = await manager.getOrCreateWidget<ProjectMindWidget>(PROJECT_MIND_ID);
+                await widget.currentMind();
+                if (!current() || widget.isDisposed || widget.controller.workspace !== workspace ||
+                    !widget.controller.canLeave || !await widget.controller.refresh()) return false;
+                const snapshot = widget.controller.snapshot;
+                const artifact = snapshot?.artifacts.find(item => item.id.toLowerCase() === artifactId.toLowerCase() &&
+                    item.type === artifactType);
+                if (!current() || widget.isDisposed || widget.controller.workspace !== workspace || !snapshot ||
+                    projectMindId !== null && snapshot.projectId !== projectMindId || !artifact ||
+                    !widget.controller.canLeave) return false;
+                if (!widget.isAttached) await shell.addWidget(widget, { area: 'right' });
+                if (!current() || widget.isDisposed || widget.controller.workspace !== workspace) return false;
+                await widget.openArtifact(artifact.id, true);
+                if (!current() || widget.isDisposed || widget.controller.workspace !== workspace ||
+                    widget.controller.selectedId !== artifact.id ||
+                    widget.controller.draft?.type !== artifactType) return false;
+                await shell.activateWidget(widget.id);
+                return current() && !widget.isDisposed && widget.controller.workspace === workspace &&
+                    widget.controller.selectedId === artifact.id;
+            },
         };
         return new DeveloperSessionWidget(() => ServiceConnectionProvider.createProxy<DeveloperSessionService & RpcServer<never>>(
             context.container, developerSessionServicePath), context.container.get(WorkspaceService), navigation);

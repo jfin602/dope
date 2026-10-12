@@ -141,6 +141,25 @@ function harness(agent?: AgentRuntimeService) {
   return { controller, physical, listeners, service, get collection() { return collection; }, set collection(value: PlanningCollection) { collection = value; } };
 }
 
+test('Session navigation reads exact current Planning identity without changing workspace selection or owner state', async () => {
+  const h = harness(); await tick();
+  const original = map('plan', 'active');
+  h.collection = { schemaVersion: 1, projectId: 'project', revision: 1, maps: [original] };
+  await h.controller.refresh();
+  h.controller.setMode(true);
+  h.controller.setView('target');
+  const before = { selected: h.controller.selectedMapId, mode: h.controller.planningMode,
+    view: h.controller.view, collection: structuredClone(h.controller.collection) };
+  assert.equal((await h.controller.navigationMap('plan'))?.id, 'plan');
+  assert.equal(await h.controller.navigationMap('absent'), undefined);
+  h.collection = { ...h.collection, revision: 2, maps: [{ ...original, revision: 1 }] };
+  assert.equal((await h.controller.navigationMap('plan'))?.revision, 1);
+  h.collection = { ...h.collection, revision: 3, maps: [] };
+  assert.equal(await h.controller.navigationMap('plan'), undefined);
+  assert.deepEqual({ selected: h.controller.selectedMapId, mode: h.controller.planningMode,
+    view: h.controller.view, collection: h.controller.collection }, before);
+});
+
 test('Planning Work launch uses revisioned service and blocks human, stale and reserved scope', async () => {
   const launches: unknown[] = [];
   const agent = { async attach() { return { projectHandle: 'agent-handle' }; },

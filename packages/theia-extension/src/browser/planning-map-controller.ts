@@ -76,6 +76,17 @@ export class PlanningMapController {
     }
     select(id: string): void { if (this.collection?.maps.some(map => map.id === id)) { this.preview = undefined; this.adoptionPreview = undefined; this.rebasePreview = undefined; this.stale = undefined; this.selectedMapId = id;
         this.selectedWorkItemId = undefined; this.linkedTasks = []; this.selectedTransformationId = undefined; this.suggestions = undefined; this.notify(); void this.refreshStale(); } }
+    /** Fresh owner read for exact Session navigation; leaves Planning presentation and drafts untouched. */
+    async navigationMap(id: string): Promise<PlanningMap | undefined> {
+        const connection = this.connection, handle = this.handle, workspace = this.workspace;
+        if (!connection || !handle || !workspace || this.map.workspace !== workspace || !this.collection) return;
+        try {
+            const snapshot = await connection.read(handle);
+            if (this.disposed || this.workspace !== workspace || this.map.workspace !== workspace ||
+                snapshot.projectId !== this.collection?.projectId) return;
+            return snapshot.maps.find(map => map.id === id);
+        } catch { return; }
+    }
     async refreshStale(): Promise<void> {
         const connection = this.connection, handle = this.handle, workspace = this.workspace, map = this.selected, request = ++this.staleRequest;
         if (!connection || !handle || !workspace || !map || this.map.status?.state !== 'ready') { this.stale = undefined; this.notify(); return; }

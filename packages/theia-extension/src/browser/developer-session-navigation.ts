@@ -9,6 +9,10 @@ export interface SessionNavigationOwners {
     focusWork(workspace: string, selection: WorkSelection): boolean;
     openChat(workspace: string, id: string, current: () => boolean): Promise<boolean>;
     openWork(workspace: string, selection: WorkSelection, current: () => boolean): Promise<boolean>;
+    openPlanning(workspace: string, ref: { kind: 'planning-map'; mapId: string } |
+        { kind: 'work-item'; mapId: string; workItemId: string }, current: () => boolean): Promise<boolean>;
+    openProjectMind(workspace: string, artifactId: string, artifactType: 'decision' | 'idea',
+        projectMindId: string | null, current: () => boolean): Promise<boolean>;
 }
 
 /** Navigation consumes fresh Session resolution, but never treats membership as owner authority. */
@@ -51,6 +55,11 @@ export async function navigateSessionArtifact(context: {
                 focused = await owners.openWork(workspace, selection, current);
                 if (!focused && current()) focused = owners.focusWork(workspace, selection);
             }
+        } else if (ref.kind === 'planning-map' || ref.kind === 'work-item') {
+            focused = await owners.openPlanning(workspace, ref, current);
+        } else if (ref.kind === 'project-mind') {
+            focused = await owners.openProjectMind(workspace, ref.artifactId, ref.artifactType,
+                collection.project.projectMindId, current);
         } else return { opened: false, message: 'Exact navigation for this link is not available yet.' };
     } catch { return { opened: false, message: 'The owner panel could not open this exact linked artifact.' }; }
     if (!current()) return { opened: false, message: 'Project or Session changed before navigation completed.' };

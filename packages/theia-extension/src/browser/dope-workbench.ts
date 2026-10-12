@@ -120,7 +120,11 @@ export class ProjectMindWidget extends BaseWidget {
         this.editor.querySelector<HTMLInputElement | HTMLTextAreaElement>('input, textarea')?.focus();
     }
 
-    async openArtifact(id: string): Promise<void> { await this.loadPromise; await this.navigate(id); }
+    async openArtifact(id: string, readOnlyNavigation = false): Promise<void> {
+        await this.loadPromise;
+        if (readOnlyNavigation && !this.controller.canLeave) return;
+        await this.navigate(id);
+    }
 
     private render(): void {
         const mind = this.controller;
