@@ -14,7 +14,7 @@ Dope is a fresh project. It is not George v2 and has no compatibility requiremen
 
 Foundation Spike 0 qualified Eclipse Theia 1.75.0 as Dope's initial IDE substrate at package `0.0.6`.
 
-**Phase 9 Developer Continuity / History is OWNER-CLOSED / GREEN / QUALIFIED** at committed `0.9.35` source `af3447c` ([final qualification](docs/tasks/p9d/final-qualification.md), [owner closeout](docs/planning/p9/phase-9-closeout.md)). The repo now has coherent **`0.10.0` as a version baseline only** ([baseline](docs/planning/p10/baseline.md)). Phase 10 Unified Roadmap & Local-First AI Planning is design-approved under ADR 0036 but **NOT ACTIVATED or qualified**; Phase 11 Human-Centered UI and Phase 12 Living Software Knowledge Model are inactive. Original P13/repair Not Green evidence remains historical.
+**Phase 9 Developer Continuity / History is OWNER-CLOSED / GREEN / QUALIFIED** at committed `0.9.35` source `af3447c` ([final qualification](docs/tasks/p9d/final-qualification.md), [owner closeout](docs/planning/p9/phase-9-closeout.md)). The repo now has coherent **`0.10.0` as a version baseline only** ([baseline](docs/planning/p10/baseline.md)). Phase 10 Unified Roadmap & Local-First AI Planning is design-approved under ADR 0036 but **OWNER-ACTIVATED for P1–P16 (2026-10-12), not yet implemented or qualified**; Phase 11 Human-Centered UI and Phase 12 Living Software Knowledge Model are inactive. Original P13/repair Not Green evidence remains historical.
 
 Dope prefers a dark default presentation while preserving persistent user theme choice.
 
@@ -38,7 +38,7 @@ Each build retains `build.json` beside its AppImage. `~/.local/opt/dope/history.
 
 ## Forward roadmap design (documentation only)
 
-[ADR 0036](docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md) and [Phase 10 plan](docs/planning/p10/phase-10-plan.md) approve a future collaborative Roadmap with checkpoints, detached Ideas/Issues, in-place inspector and shared validated human/local-AI planning. Manual zero-model use and real short-context local inference are release gates. Former Living Software Knowledge Model is now Phase 12; Phase 11 is the Human-Centered UI audit. Phase 9 is owner-closed with an established `0.10.0` baseline; this future Roadmap design has not yet been implemented, activated or qualified.
+[ADR 0036](docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md) and [Phase 10 plan](docs/planning/p10/phase-10-plan.md) approve a future collaborative Roadmap with checkpoints, detached Ideas/Issues, in-place inspector and shared validated human/local-AI planning. Manual zero-model use and real short-context local inference are release gates. Former Living Software Knowledge Model is now Phase 12; Phase 11 is the Human-Centered UI audit. Phase 9 is owner-closed with an established `0.10.0` baseline; this Roadmap design is now separately owner-activated for implementation under [Phase 10 activation](docs/planning/p10/activation.md), but remains unimplemented and unqualified.
 
 ## Core docs
 

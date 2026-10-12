@@ -1,8 +1,8 @@
 # p10 — Unified Roadmap & Local-First AI Planning
 
-**Status 2026-10-12:** /prompt-ass + /prompt-plan + /prompt-write completed as documentation; NOT OWNER-ACTIVATED / NOT IMPLEMENTED / NOT QUALIFIED.
-**Entry:** Phase 9: owner-closed Green at qualified 0.9.35 source af3447c; Phase 10 coherent version-only 0.10.0 baseline 2fc3b93c01ed56b5c848e80181d630c390f3e551. Phase 10 DESIGN APPROVED only, not owner-activated or qualified.
-**Hard preflight:** `docs/planning/p10/activation.md` must have a separate explicit owner approval before any prompt execution. This task stack and baseline do NOT count as that approval.
+**Status 2026-10-12:** /prompt-ass + /prompt-plan + /prompt-write completed; **P1–P16 OWNER-ACTIVATED (2026-10-12) / NOT YET IMPLEMENTED / NOT QUALIFIED**.
+**Entry:** Phase 9: owner-closed Green at qualified 0.9.35 source af3447c; Phase 10 coherent version-only 0.10.0 baseline 2fc3b93c01ed56b5c848e80181d630c390f3e551. Phase 10 design is approved and its P1–P16 implementation is separately owner-activated; no prompt execution or qualification is claimed.
+**Activation preflight SATISFIED:** the separate explicit owner decision `/activate p10` is recorded in `docs/planning/p10/activation.md`. P1 must inspect that file plus coherent Git-proven `0.10.0`/worktree before implementation; do not block on earlier design-only historical labels. This task stack/baseline alone did not confer approval.
 
 | Prompt | Version | Tier | Model | Browser |
 | --- | --- | --- | --- | --- |
@@ -29,7 +29,7 @@ P1–P5 preserve external sources and build safe shared planning action authorit
 
 `p10` is historical pre-1.0 runner folder: version `0.10.0` -> `0.10.1` through `0.10.16`, exactly 13 manifests and 20 internal pins updated during every step, no pre-bump, yarn.lock changes or root package-lock. Runner owns ordinary P1–P15 commits and stops for P16. Manual P16 must create a real committed 0.10.16 source before evidence-only closeout.
 
-**After separate owner activation only:**
+**After safe local sync and preflight (owner activation now recorded):**
 
 ```sh
 npm run codex:phase:validate -- p10

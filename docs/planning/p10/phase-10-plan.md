@@ -1,9 +1,9 @@
 # Phase 10 Plan — Unified Roadmap & Local-First AI Planning
 
-**Status:** DESIGN APPROVED / DOCUMENTATION ONLY / NOT ACTIVATED / NOT QUALIFIED
+**Status:** DESIGN APPROVED / P1–P16 OWNER-ACTIVATED (2026-10-12) / NOT IMPLEMENTED / NOT QUALIFIED
 **Date:** 2026-10-12 (America/Chicago)
 **Authority:** ADR 0036; ADR 0016 (2026-10-12 current theme), 0017, 0022–0026, 0028–0030, 0034–0035.
-**Entry:** Only after separate owner activation and independently scoped Phase 9 completion/qualification.
+**Entry:** Phase 9 is owner-closed/qualified, and `docs/planning/p10/activation.md` records the separate 2026-10-12 owner activation for P1–P16. The `0.10.0` baseline remains unchanged until P1.
 
 ## Goal
 
@@ -26,7 +26,7 @@ Open a real project's roadmap; click an existing checkpoint and edit it in the l
 
 Phase 9 was OWNER-CLOSED / GREEN / QUALIFIED on 2026-10-12 at `0.9.35` / `af3447c`; a coherent `0.10.0` successor baseline now exists (see `docs/planning/p9/phase-9-closeout.md` and `docs/planning/p10/baseline.md`). That is not Phase 10 activation or qualification. Historical `c9-codex-chat` and `c9-theme-fix` fixed-version targets/evidence and 9A/9B/9C records are unaffected; do not execute their old version-specific stacks unreviewed on the successor baseline. Plan richly but prompt sparsely using `/prompt-ass -> /prompt-plan -> /prompt-write` **only after a separate owner implementation activation**, ordinary <=8-minute prompt targets and appropriate T1/T2/T3 security/local/GUI gates. This plan performs no implementation, activation or version change.
 
-The former Living Software Knowledge Model moves to **Phase 12** after the newly designed **Phase 11 Human-Centered UI** (ADR 0037); its deterministic-first/local-only Background constraints remain inactive. Phase 10 Roadmap remains the same approved, not yet activated design and will be reviewed in Phase 11 after implementation.
+The former Living Software Knowledge Model moves to **Phase 12** after the newly designed **Phase 11 Human-Centered UI** (ADR 0037); its deterministic-first/local-only Background constraints remain inactive. Phase 10 Roadmap remains the same approved design, now separately owner-activated for its P1–P16 implementation stack; its actual source and qualification remain pending. Phase 11 usability review follows only when separately activated.
 
 ## Existing ChatPanel integration contract and qualification
 
@@ -39,3 +39,7 @@ The user's normal Chat can be in any Theia area (left, right, bottom, center), a
 ## Prompt stack authoring — 2026-10-12 (documentation only)
 
 The approved design has been source-assessed and decomposed into the **unactivated** `docs/tasks/p10/` stack: assessment, implementation plan, README and P1–P16 targeting `0.10.1`–`0.10.16`. P16 is the sole manual exact-source final qualification/closeout. No source, manifest, project version, qualification or Phase 10 activation changes occur from writing prompts. Implementation requires a separate explicitly owner-approved `docs/planning/p10/activation.md`; the `0.10.0` baseline remains intact. The stack retains the one existing ChatPanel across all positions, real center split, local/no-model gates and independent Phase 11/12 boundaries.
+
+## Owner implementation activation — 2026-10-12
+
+The owner explicitly issued `/activate p10` after the P1–P16 task stack was authored. `docs/planning/p10/activation.md` authorizes ordered implementation from the clean `0.10.0` baseline; it does not implement features, rerun tests, qualify Phase 10, or authorize Phase 11/12. The preexisting design-only statements above describe the earlier planning state where applicable. The first authorized prompt is `docs/tasks/p10/P1-source-import.txt`, which advances the manifests to `0.10.1` during real implementation, never at activation.
