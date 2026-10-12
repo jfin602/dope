@@ -24,6 +24,7 @@ export class DeveloperSessionWidget extends BaseWidget {
     private readonly status = element('p');
     private readonly list = element('div');
     private readonly overview = element('section');
+    private readonly createForm = element('form');
     private readonly filter = element('input');
     private attachedOnce = false;
 
@@ -44,6 +45,7 @@ export class DeveloperSessionWidget extends BaseWidget {
         refresh.addEventListener('click', () => void this.controller.refresh());
         const toolbar = element('header');
         toolbar.append(heading, refresh);
+        this.createForm.addEventListener('submit', event => { event.preventDefault(); void this.controller.create(); });
         const label = element('label', 'Filter sessions');
         this.filter.type = 'search';
         this.filter.placeholder = 'Find by title';
@@ -53,7 +55,7 @@ export class DeveloperSessionWidget extends BaseWidget {
         const layout = element('div', undefined, 'dope-session-layout');
         const selector = element('nav');
         selector.setAttribute('aria-label', 'Project sessions');
-        selector.append(label, this.status, this.list);
+        selector.append(label, this.status, this.createForm, this.list);
         this.overview.setAttribute('aria-label', 'Selected session overview');
         layout.append(selector, this.overview);
         this.node.append(toolbar, layout);
@@ -63,7 +65,16 @@ export class DeveloperSessionWidget extends BaseWidget {
     private render(): void {
         const controller = this.controller;
         const sessions = visibleSessions(controller.snapshot?.sessions ?? [], this.filter.value);
-        this.status.textContent = sessionListState(controller, sessions);
+        this.status.textContent = controller.pending ? 'Saving Session…' : sessionListState(controller, sessions);
+        this.createForm.replaceChildren();
+        const createTitle = this.input('New Session title', controller.createDraft.title, 160,
+            value => controller.setCreateDraft('title', value));
+        const createObjective = this.input('New Session objective', controller.createDraft.objective, 4000,
+            value => controller.setCreateDraft('objective', value), true);
+        const createButton = element('button', controller.pending ? 'Saving…' : 'New Session');
+        createButton.type = 'submit';
+        createButton.disabled = !controller.attached || controller.pending || controller.loading;
+        this.createForm.append(createTitle, createObjective, createButton);
         this.list.replaceChildren();
         for (const session of sessions) {
             const row = element('button', undefined, 'dope-session-row');
@@ -83,16 +94,51 @@ export class DeveloperSessionWidget extends BaseWidget {
         }
         const overview = sessionOverview(selected);
         this.overview.append(element('h3', overview.title), element('p', `Status: ${overview.status}`),
-            element('p', `Last updated: ${dateLabel(overview.updatedAt)}`),
-            element('h4', 'Objective'), element('p', overview.objective || 'No objective recorded.'),
-            element('h4', 'Notes'), element('p', overview.notes || 'No notes recorded.'),
-            element('h4', 'Next actions'));
+            element('p', `Last updated: ${dateLabel(overview.updatedAt)}`));
+        if (selected.status !== 'closed') {
+            const draft = controller.selectedDraft!;
+            this.editor('Title', draft.title, 160, value => controller.setSelectedDraft('title', value), 'title');
+            this.editor('Objective', draft.objective, 4000, value => controller.setSelectedDraft('objective', value), 'objective', true);
+            this.editor('Notes', draft.notes, 16000, value => controller.setSelectedDraft('notes', value), 'notes', true);
+            this.editor('Next actions (one per line)', draft.nextActions.join('\n'), 50050,
+                value => controller.setSelectedDraft('nextActions', value.split('\n').filter(line => line.length > 0)),
+                'nextActions', true);
+        } else {
+            this.overview.append(element('p', 'Closed Session: read-only.'),
+                element('h4', 'Objective'), element('p', overview.objective || 'No objective recorded.'),
+                element('h4', 'Notes'), element('p', overview.notes || 'No notes recorded.'),
+                element('h4', 'Next actions'));
+        }
         if (overview.nextActions.length) {
             const actions = element('ul');
             for (const action of overview.nextActions) actions.append(element('li', action));
             this.overview.append(actions);
         } else this.overview.append(element('p', 'No next actions recorded.'));
         this.overview.append(element('p', `${overview.links} linked artifact${overview.links === 1 ? '' : 's'}.`));
+    }
+
+    private input(label: string, value: string, maxLength: number, changed: (value: string) => void,
+        multiline = false): HTMLLabelElement {
+        const wrapper = element('label', label);
+        const control = multiline ? element('textarea') : element('input');
+        control.value = value;
+        control.maxLength = maxLength;
+        control.disabled = this.controller.pending;
+        control.addEventListener('input', () => changed(control.value));
+        wrapper.append(control);
+        return wrapper;
+    }
+
+    private editor(label: string, value: string, maxLength: number, changed: (value: string) => void,
+        field: 'title' | 'objective' | 'notes' | 'nextActions', multiline = false): void {
+        const form = element('form');
+        form.append(this.input(label, value, maxLength, changed, multiline));
+        const save = element('button', this.controller.pending ? 'Saving…' : `Save ${label.split(' (')[0]}`);
+        save.type = 'submit';
+        save.disabled = this.controller.pending;
+        form.append(save);
+        form.addEventListener('submit', event => { event.preventDefault(); void this.controller.saveSelected(field); });
+        this.overview.append(form);
     }
 
     protected override onAfterAttach(msg: Message): void {

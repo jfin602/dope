@@ -3,6 +3,27 @@ import type { DeveloperSessionService, SessionMutationResult, SessionOperation, 
 import type { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 
 type SessionConnection = DeveloperSessionService & { dispose(): void | Promise<void> };
+export interface SessionDraft { title: string; objective: string; notes: string; nextActions: string[] }
+type SessionField = keyof SessionDraft;
+
+function draftOf(session: DeveloperSession): SessionDraft {
+    return { title: session.title, objective: session.objective, notes: session.notes,
+        nextActions: [...session.nextActions] };
+}
+
+function valid(field: SessionField, value: string | string[]): string {
+    if (field === 'nextActions') {
+        const actions = value as string[];
+        if (actions.length > 50 || actions.some(action => !action.trim() || action.length > 1000))
+            return 'Next actions need 1–50 nonempty entries, each at most 1000 characters.';
+        return '';
+    }
+    const text = value as string;
+    const limit = { title: 160, objective: 4000, notes: 16000 }[field];
+    if (text.length > limit || field === 'title' && !text.trim())
+        return `${field === 'title' ? 'Title' : field === 'objective' ? 'Objective' : 'Notes'} must be ${field === 'title' ? 'nonempty and ' : ''}at most ${limit} characters.`;
+    return '';
+}
 
 /** Presentation state only. The backend snapshot and its revisions remain authoritative. */
 export class DeveloperSessionController {
@@ -13,6 +34,8 @@ export class DeveloperSessionController {
     loading = false;
     pending = false;
     error = '';
+    createDraft = { title: '', objective: '' };
+    private readonly drafts = new Map<string, SessionDraft>();
     private connection?: SessionConnection;
     private handle?: string;
     private token = 0;
@@ -29,6 +52,47 @@ export class DeveloperSessionController {
         return this.snapshot?.sessions.find(session => session.id === this.selectedId);
     }
     get attached(): boolean { return !!this.handle; }
+    get selectedDraft(): SessionDraft | undefined {
+        const selected = this.selected;
+        const project = this.snapshot?.project;
+        if (!selected || !project) return undefined;
+        const key = `${project.canonicalRoot}\0${project.projectMindId ?? ''}\0${selected.id}`;
+        let draft = this.drafts.get(key);
+        if (!draft) { draft = draftOf(selected); this.drafts.set(key, draft); }
+        return draft;
+    }
+
+    setCreateDraft(field: 'title' | 'objective', value: string): void {
+        this.createDraft[field] = value;
+    }
+
+    setSelectedDraft(field: SessionField, value: string | string[]): void {
+        const draft = this.selectedDraft;
+        if (draft) (draft as unknown as Record<SessionField, string | string[]>)[field] = value;
+    }
+
+    async create(): Promise<boolean> {
+        const { title, objective } = this.createDraft;
+        this.error = valid('title', title) || valid('objective', objective);
+        if (this.error) { this.changed(); return false; }
+        const saved = await this.mutate({ type: 'create', title, objective });
+        if (saved) { this.createDraft = { title: '', objective: '' }; this.changed(); }
+        return saved;
+    }
+
+    async saveSelected(field: SessionField): Promise<boolean> {
+        const session = this.selected;
+        const draft = this.selectedDraft;
+        if (!session || !draft || session.status === 'closed') return false;
+        const value = draft[field];
+        this.error = valid(field, value);
+        if (this.error) { this.changed(); return false; }
+        const operation: SessionOperation = field === 'title' ? { type: 'rename', sessionId: session.id, title: draft.title }
+            : field === 'objective' ? { type: 'set-objective', sessionId: session.id, objective: draft.objective }
+            : field === 'notes' ? { type: 'set-notes', sessionId: session.id, notes: draft.notes }
+            : { type: 'set-next-actions', sessionId: session.id, nextActions: [...draft.nextActions] };
+        return this.mutate(operation);
+    }
 
     private retire(): number {
         const token = ++this.token;
@@ -37,6 +101,7 @@ export class DeveloperSessionController {
         this.handle = undefined;
         if (connection) void Promise.resolve(connection.dispose()).catch(() => {});
         this.workspace = undefined;
+        this.createDraft = { title: '', objective: '' };
         this.snapshot = undefined;
         this.selectedId = undefined;
         this.resolution = undefined;
@@ -162,7 +227,7 @@ export class DeveloperSessionController {
         const snapshot = this.snapshot;
         const selected = this.selected;
         if (this.disposed || !connection || !handle || !snapshot || this.loading || this.pending ||
-            operation.type !== 'create' && (!selected || operation.sessionId !== selected.id)) return false;
+            operation.type !== 'create' && (!selected || operation.sessionId !== selected.id || selected.status === 'closed')) return false;
         const token = ++this.token;
         this.pending = true;
         this.error = '';
@@ -194,7 +259,9 @@ export class DeveloperSessionController {
                 return false;
             }
             this.pending = false;
-            this.error = String(error);
+            this.error = /revision conflict/i.test(String(error))
+                ? `${String(error)}. Refresh and review the saved Session before retrying; your draft is preserved.`
+                : String(error);
             this.changed();
             return false;
         }

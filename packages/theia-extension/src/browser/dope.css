@@ -9,10 +9,12 @@
 .dope-session-layout nav { min-width: 0; border-right: 1px solid var(--theia-widget-border, var(--theia-input-border)); padding-right: 14px; }
 .dope-session-layout section { min-width: 0; overflow-wrap: anywhere; }
 .dope-session-view label { display: block; }
-.dope-session-view input { display: block; box-sizing: border-box; width: 100%; margin: 5px 0 10px; padding: 6px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border); }
+.dope-session-view :is(input, textarea) { display: block; box-sizing: border-box; width: 100%; margin: 5px 0 10px; padding: 6px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border); }
+.dope-session-view textarea { min-height: 5em; resize: vertical; }
+.dope-session-view form { margin: 10px 0 18px; }
 .dope-session-view button, .dope-session-launcher button { cursor: pointer; color: var(--theia-button-foreground); background: var(--theia-button-background); border: 1px solid var(--theia-button-background); padding: 6px 9px; }
 .dope-session-view button:hover, .dope-session-launcher button:hover { background: var(--theia-button-hoverBackground); }
-.dope-session-view :is(button, input):focus-visible, .dope-session-launcher button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-session-view :is(button, input, textarea):focus-visible, .dope-session-launcher button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-session-view .dope-session-row { display: flex; flex-direction: column; gap: 3px; width: 100%; margin: 3px 0; text-align: left; white-space: normal; overflow-wrap: anywhere; color: var(--theia-foreground); background: var(--theia-button-secondaryBackground, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border, var(--theia-input-border)); border-left: 3px solid transparent; }
 .dope-session-row span, .dope-session-view nav p { color: var(--theia-descriptionForeground); }
 .dope-session-view .dope-session-row[aria-current="true"] { background: var(--theia-list-activeSelectionBackground); border-left-color: var(--dope-action-background, var(--theia-focusBorder)); }

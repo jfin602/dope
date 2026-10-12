@@ -185,3 +185,105 @@ test('invalid handle is retired; disposal drops late reads and causes no owner w
     assert.equal(next.disposed, true);
     assert.deepEqual(next.calls.map(call => call.method), ['attach']);
 });
+
+test('explicit create and field saves use revisions and fresh attachment reads saved metadata', async () => {
+    const id = 'c433482f-9576-4402-af45-ef246414c9c0';
+    const ws = workspace('file:///A');
+    let saved = collection('/A', [], 0);
+    const backend = connection('opaque', saved);
+    backend.read = () => Promise.resolve(saved);
+    backend.mutate = (request: any) => {
+        backend.calls.push({ method: 'mutate', request });
+        const old = saved.sessions[0];
+        const operation = request.operation;
+        const made = operation.type === 'create'
+            ? { ...session(id, '/A', 1), title: operation.title, objective: operation.objective }
+            : { ...old, revision: old.revision + 1,
+                [({ rename: 'title', 'set-objective': 'objective', 'set-notes': 'notes',
+                    'set-next-actions': 'nextActions' } as any)[operation.type]]:
+                    operation.title ?? operation.objective ?? operation.notes ?? operation.nextActions };
+        saved = collection('/A', [made], saved.revision + 1);
+        return Promise.resolve({ snapshot: saved, session: made });
+    };
+    const controller = new DeveloperSessionController(() => backend, ws as any, () => {});
+    await controller.attach();
+    controller.setCreateDraft('title', 'Build parser');
+    controller.setCreateDraft('objective', 'Understand syntax');
+    assert.equal(backend.calls.filter(call => call.method === 'mutate').length, 0);
+    assert.equal(await controller.create(), true);
+    assert.equal(controller.selectedId, id);
+    controller.setSelectedDraft('title', 'Parser work');
+    controller.setSelectedDraft('objective', 'Parse expressions');
+    controller.setSelectedDraft('notes', 'Investigate tokens');
+    controller.setSelectedDraft('nextActions', ['Read lexer', 'Write tests']);
+    assert.equal(await controller.saveSelected('title'), true);
+    assert.equal(await controller.saveSelected('objective'), true);
+    assert.equal(await controller.saveSelected('notes'), true);
+    assert.equal(await controller.saveSelected('nextActions'), true);
+    assert.deepEqual(backend.calls.filter(call => call.method === 'mutate').map(call =>
+        [call.request.expectedCollectionRevision, call.request.expectedSessionRevision,
+            call.request.operation.type]), [[0, null, 'create'], [1, 1, 'rename'],
+        [2, 2, 'set-objective'], [3, 3, 'set-notes'], [4, 4, 'set-next-actions']]);
+    const fresh = new DeveloperSessionController(() => backend, ws as any, () => {});
+    backend.attach = (uri: string) => Promise.resolve({ projectHandle: 'opaque', project: saved.project, snapshot: saved });
+    await fresh.attach();
+    fresh.select(id);
+    assert.equal(fresh.selected?.title, 'Parser work');
+    assert.equal(fresh.selected?.objective, 'Parse expressions');
+    assert.equal(fresh.selected?.notes, 'Investigate tokens');
+    assert.deepEqual(fresh.selected?.nextActions, ['Read lexer', 'Write tests']);
+    fresh.dispose(); controller.dispose();
+});
+
+test('oversized values never mutate; conflict retains project-scoped drafts and closed Session is read-only', async () => {
+    const id = 'c433482f-9576-4402-af45-ef246414c9c0';
+    const ws = workspace('file:///A');
+    const backend = connection('opaque', collection('/A', [session(id, '/A')]));
+    const controller = new DeveloperSessionController(() => backend, ws as any, () => {});
+    await controller.attach(); controller.select(id);
+    controller.setSelectedDraft('title', 'x'.repeat(161));
+    assert.equal(await controller.saveSelected('title'), false);
+    assert.match(controller.error, /160/);
+    controller.setSelectedDraft('title', 'Draft after conflict');
+    controller.setSelectedDraft('objective', 'x'.repeat(4001));
+    assert.equal(await controller.saveSelected('objective'), false);
+    controller.setSelectedDraft('objective', 'Local objective');
+    controller.setSelectedDraft('notes', 'Local notes');
+    controller.setSelectedDraft('notes', 'x'.repeat(16001));
+    assert.equal(await controller.saveSelected('notes'), false);
+    controller.setSelectedDraft('notes', 'Local notes');
+    controller.setSelectedDraft('nextActions', ['x'.repeat(1001)]);
+    assert.equal(await controller.saveSelected('nextActions'), false);
+    backend.mutate = (request: any) => { backend.calls.push({ method: 'mutate', request });
+        return Promise.reject(new Error('Revision conflict')); };
+    assert.equal(await controller.saveSelected('title'), false);
+    assert.match(controller.error, /conflict/i);
+    assert.equal(controller.selectedDraft?.title, 'Draft after conflict');
+    assert.equal(controller.selectedDraft?.notes, 'Local notes');
+    controller.select(undefined); controller.select(id);
+    assert.equal(controller.selectedDraft?.title, 'Draft after conflict');
+    assert.equal(backend.calls.filter(call => call.method === 'mutate').length, 1);
+    backend.read = () => Promise.resolve(collection('/A', [{ ...session(id, '/A', 3), status: 'closed' }], 5));
+    await controller.refresh();
+    assert.equal(controller.selected?.status, 'closed');
+    assert.equal(await controller.saveSelected('notes'), false);
+    assert.equal(await controller.mutate({ type: 'rename', sessionId: id, title: 'Nope' }), false);
+    assert.equal(backend.calls.filter(call => call.method === 'mutate').length, 1);
+    controller.dispose();
+});
+
+test('same Session ID in another project cannot inherit an unsaved draft', async () => {
+    const id = 'c433482f-9576-4402-af45-ef246414c9c0';
+    const ws = workspace('file:///A');
+    const backends = [connection('A', collection('/A', [session(id, '/A')])),
+        connection('B', collection('/B', [session(id, '/B')]))];
+    const controller = new DeveloperSessionController(() => backends.shift()!, ws as any, () => {});
+    await controller.attach(); controller.select(id);
+    controller.setSelectedDraft('notes', 'Only A');
+    ws.change('file:///B');
+    await Promise.resolve(); await Promise.resolve();
+    controller.select(id);
+    assert.equal(controller.selectedDraft?.notes, '');
+    assert.equal(controller.selected?.project.canonicalRoot, '/B');
+    controller.dispose();
+});
