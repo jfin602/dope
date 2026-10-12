@@ -14,9 +14,6 @@ import { SoftwareMapBackend } from './software-map-backend';
 import { visualPlanningServicePath } from '@dope/visual-planning/lib/service';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { VisualPlanningBackend } from './visual-planning-backend';
-import { developerSessionServicePath } from '@dope/contracts/lib/developer-session-service';
-import { DeveloperSessionStore } from './developer-session-store';
-import { DeveloperSessionBackend } from './developer-session-backend';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { chatServicePath, type ChatClient } from '@dope/chat/lib/service';
 import { ChatBackend } from './chat-backend';
@@ -74,7 +71,6 @@ export default new ContainerModule(bind => {
     })).inSingletonScope();
     bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
     bind(PlanningStore).toSelf().inSingletonScope();
-    bind(DeveloperSessionStore).toSelf().inSingletonScope();
     bind(ChatRepository).toSelf().inSingletonScope();
     bind(ChatContextComposer).toDynamicValue(context => new ChatContextComposer(
         context.container.get(ProjectMindStore), context.container.get(PlanningStore),
@@ -130,12 +126,6 @@ export default new ContainerModule(bind => {
     })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<object>(visualPlanningServicePath, client => {
         const backend = new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex));
-        client.onDidCloseConnection(() => backend.dispose());
-        return backend;
-    })).inSingletonScope();
-    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<object>(developerSessionServicePath, client => {
-        const backend = new DeveloperSessionBackend(context.container.get(DeveloperSessionStore),
-            context.container.get(SoftwareMapIndex));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();
