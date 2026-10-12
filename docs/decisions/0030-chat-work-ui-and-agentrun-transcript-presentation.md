@@ -62,3 +62,9 @@ Codex may become selectable for ordinary Chat without joining Chat and Work into
 ## Forward amendment — ADR 0036 (2026-10-12)
 
 Roadmap is a center checkpoint canvas with Software Map-style in-place **left inspector**, not a standalone checkpoint details page. Keep the reusable ChatPanel dockable alongside it, preserving single ownership, accessible narrow/resized panes and the current ADR 0016 restrained-orange central token contract. This future UI is not covered by historical Chat/Work GUI qualification.
+
+## Forward clarification — 2026-10-12: Chat placement is user-owned
+
+Roadmap and Planning Map collaboration uses the **existing** Chat presentation with no alternate Roadmap Chat view, Chat/Planning toggle, fixed right-hand layout or second composer. The user may dock ordinary ChatPanel in the left/right sidebars, bottom panel or a center editor-like tab; center Chat must cooperate with normal Theia tab splitting while allowing the editor/map canvas to remain visible. Opening or selecting a map cannot spawn, relocate, focus, reset or commandeer the ChatPanel. The Software Map-style checkpoint inspector defaults left, but does not reserve that workbench area against user-placed Chat. Existing panel lifecycle, narrow-pane rendering, layout restoration, transcript, model selector and keyboard accessibility remain authoritative.
+
+Phase 10 qualification must directly verify real left/right/bottom/center placement, center split/editor-map visibility, restoring the same saved conversation, single-owner behavior and non-hijacking map navigation. These are correctness gates, not evidence provided by the historical Chat/Work UI qualification.
