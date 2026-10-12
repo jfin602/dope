@@ -27,9 +27,9 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
-**Current roadmap scope:** Phase 8 OWNER-CLOSED / GREEN at `0.8.47` / `bcc5cb8`. Phase 9 ACTIVE with 9A BOUNDED GREEN at `0.9.6` / `6b51ee96` and **9B BOUNDED GREEN at `0.9.13` / `5aa0bac`** (`docs/tasks/p9b/closeout.md`). 9C–9E inactive; Phase 9 overall NOT QUALIFIED. 9B added v2 links, read-only owner resolution and a genuine targeted Planning-to-Work replay; no new authority.
+**Current roadmap scope (2026-10-11):** Phase 8 OWNER-CLOSED / GREEN at `0.8.47`; Phase 9 design replaced by **Developer Continuity and right-toolbar History** (ADR 0034), replacement implementation NOT ACTIVATED and Phase 9 overall NOT QUALIFIED. Old 9A/9B bounded Green preserved at `0.9.6`/`0.9.13`; original 9C P1–P9 source committed through `0.9.22` / `0752415`, P10 unexecuted. Phase 10 inactive.
 
-**Phase 9 routing (2026-10-11):** ADR 0033 and `docs/planning/p9/phase-9-plan.md` govern optional Sessions. 9A `0.9.6` provides strict v1 identity, persistence, lifecycle and backend RPC. Separately owner-activated 9B `0.9.13` provides v2 typed references, non-mutating v1 migration, read-only Chat/Planning/Agent/Project Mind resolution and revision-safe membership. Its targeted real Planning-to-Work replay does not retroactively relabel Phase 5 Green. 9C–9E require separate activation and qualification.
+**Phase 9 routing (2026-10-11):** ADR 0034 and `docs/planning/p9/phase-9-plan.md` govern. History is a right-toolbar/right-side read-only activity projection with one-click exact continuation and optional explicit local-first understanding. No manually managed Session or hidden Session-like index. **STOP old p9c P10**, no automatic `0.9.23` advance; new stack and separate activation required to retire legacy code. Keep `.dope/development-sessions.json` user data recoverable and historical 9A/9B evidence. No automatic model work, hosted egress or Phase 10 background alignment.
 
 Product Phase 5 — Visual Software Planning is **OWNER-CLOSED FOR SEQUENCING**. Its retained P11 result is Not Green and P12 was not executed; see `docs/tasks/p5/closeout.md`. Product Phase 6 — Flow is owner-closed for sequencing at `0.6.8`; P8 remains Not Qualified. Product Phase 4 — Physical Map remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`) for its approved core scope. Architecture-discovery follow-ons remain historical evidence; `c4-smap-storage` and `c4-color-theme` remain GREEN / QUALIFIED at unchanged `0.4.6`.
 
@@ -171,7 +171,7 @@ Foundation Spike 0 must not add actual model integration, Agent Mind runtime beh
 ## Product laws
 
 - The developer is the protagonist; the agent is an augmenting collaborator.
-- The development session, not the prompt, is the fundamental unit.
+- The developer's ongoing effort and understanding, not the prompt or a managed Session artifact, is the fundamental experience.
 - Durable Project Mind / Project Intelligence is authoritative product state; chat history is not.
 - Agent Mind is structured working state, not raw hidden chain-of-thought.
 - Continuous steering must update shared task state without requiring mental restarts.

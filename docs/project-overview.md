@@ -144,11 +144,11 @@ THINK includes:
 
 These are views into the same project.
 
-## Session over prompt
+## Developer continuity over prompts
 
-The development session is the fundamental interaction unit.
+The fundamental experience is sustained developer work and understanding, not a prompt or managed Session entity.
 
-A session can include manual coding, AI-assisted coding, delegated work, research, decisions, plan changes, tests, runtime inspection, ideas, review, and multiple durable Chats.
+Manual coding, AI-assisted work, research, decisions, Planning, validation and multiple durable Chats remain independent. A project-scoped right-toolbar History panel reconstructs relevant activity and helps resume exact work without manual Session links.
 
 Phase 7 makes Chat history durable project context under `.dope/chats/` so useful conversation survives panel/app restart and can be found again. That does **not** make conversation synonymous with Project Mind or other canonical project truth. Decisions, Architecture, Planning intent, validation and implementation facts continue to use their own explicit product authorities.
 
@@ -161,7 +161,7 @@ First-class compatibility targets include:
 - local models and local inference runtimes
 - future providers through replaceable capability-based adapters
 
-Project Mind, Agent Mind, Sessions, Decisions, Authority, and Validation are Dope-owned state. Phase 3 Plans/PlanSteps/Tasks are Dope-owned state for the qualified `0.3.6` implementation, but are not guaranteed as the forward planning ontology. Phase 7 Chats are also Dope-owned durable project context, but their transcript is not automatically canonical Project Mind/Architecture/Planning truth.
+Project Mind, Agent Mind, Decisions, Authority, and Validation are Dope-owned state. History is a read-only projection over those owners plus minimal project-scoped focus state; the former DeveloperSession store is historical. Phase 3 Plans/PlanSteps/Tasks are Dope-owned state for the qualified `0.3.6` implementation, but are not guaranteed as the forward planning ontology. Phase 7 Chats are also Dope-owned durable project context, but their transcript is not automatically canonical Project Mind/Architecture/Planning truth.
 
 Provider-specific IDs, context formats, sessions, and capabilities remain adapter concerns. One Dope Chat may route different messages to different connected models without adopting any provider-native session as conversation identity.
 
@@ -198,10 +198,10 @@ Foundation Spike 0 — qualify Theia
 -> Phase 7B — AI Center
 -> Phase 7C — AI Roles & Routing
 -> Phase 8 — Coding Agent / Scoped Delegation (owner-closed Green at 0.8.47)
--> Phase 9 — Development Sessions (9A bounded Green at 0.9.6; 9B planned/inactive; Phase 9 not qualified)
+-> Phase 9 — Developer Continuity / History (ADR 0034 design approved; Phase 9 not qualified)
 -> Phase 10 — Living Software Knowledge Model
 
-Phase 8 establishes Dope-owned Coding Agent execution, bounded delegation from WorkItems, Prompt Stack recovery, explicit developer authority, frozen-candidate validation/review, and provider-independent hosted and local agent adapters. Phase 9A was owner-activated and subsequently qualified for bounded headless identity/persistence at `0.9.6` / `6b51ee96` (`docs/tasks/p9a/closeout.md`). Phase 9B design is approved but not activated (`docs/planning/p9/phase-9b-plan.md`); 9C–9E remain inactive and Phase 9 overall is not qualified. Phase 10 will then build the Living Software Knowledge Model: continuous source/runtime, canonical map, documentation and contract alignment using deterministic-first evidence and resource-aware local semantic checks, with hosted escalation only by explicit approval.
+Phase 8 qualified Dope-owned agent execution, WorkItem delegation and candidate review. Phase 9's current product goal is **Developer Continuity**: right-toolbar History, automatic factual activity, exact one-click return and opt-in local-first understanding (ADR 0034). Original Session 9A/9B bounded Green remains history; Session 9C P1–P9 reached `0.9.22` / `0752415` but P10 is superseded/unexecuted. Phase 9 remains unqualified, replacement implementation inactive. Phase 10 owns separately authorized continuous knowledge alignment.
 
 Phase 3 is a completed provider-free planning experiment/product increment. Its live Planning instruments were removed by completed correction `c3-remove-planning-instruments`. Phase 4's approved Physical Map core remains Qualified/Green at committed `0.4.6` (`fac88712bb55176d3d6d54fbe6034de8b0f801ff`). The later architecture-synthesis corrections remain truthful owner-closed Not Qualified history with useful implementation retained; `c4-smap-storage` and `c4-color-theme` closed Green. Owner closeout advanced only the package baseline to `0.5.0` at `016bd8780e89081dfdb5746eae981183dc945baa`. Product Phase 5 — Visual Software Planning was subsequently owner-closed for sequencing with P11 still Not Green and P12 unexecuted; the retained implementation remains available without a retroactive Green claim. The owner-close transition established coherent `0.6.0` for Product Phase 6 — Flow under ADR 0020. The fresh provider comparison remains deferred; general AI Presence is Product Phase 7.
 

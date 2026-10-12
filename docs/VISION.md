@@ -59,11 +59,11 @@ Conversation is useful, but conversation is one interface among many for manipul
 
 The prompt is not the product unit.
 
-The development session is.
+The developer's ongoing development **effort** is. It is not a required Session record or workspace.
 
-A single session can move fluidly among understanding, manual coding, ambient AI observations, delegated implementation, research, architecture exploration, plan changes, debugging, validation, review, and idea capture.
+An effort moves among understanding, manual coding, AI observations, delegation, research, architecture exploration, planning, debugging, validation, review and idea capture.
 
-Dope should preserve continuity across those modes without forcing the developer to repeatedly restate context.
+Dope preserves continuity automatically across these modes, without requiring manual Session maintenance or repeated context restatement.
 
 ## Desired experience
 
@@ -138,7 +138,7 @@ OpenAI/ChatGPT/Codex compatibility is a first-class requirement.
 
 Local-model compatibility is also a first-class requirement.
 
-Future providers should be adoptable through replaceable capability-based adapters without rewriting Project Mind, Planning, Agent Mind, authority, sessions, or other canonical product state.
+Future providers should be adoptable through replaceable capability-based adapters without rewriting Project Mind, Planning, Agent Mind, authority, continuity references, or other canonical product state.
 
 Provider abstraction should preserve useful provider-specific capabilities rather than forcing all models into the same lowest-common-denominator behavior.
 

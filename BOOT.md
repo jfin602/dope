@@ -11,9 +11,9 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 ## Current state
 
-**CURRENT STATE — PRODUCT PHASE 8 OWNER-CLOSED / GREEN / QUALIFIED (2026-10-10).** Owner closeout `docs/planning/p8/phase-8-closeout.md` accepts the approved 8A–8E scope on committed `0.8.47` source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06`. P14 recorded real local Qwen GUI/OS sandbox/Dope validation, 506/506 full aggregate and 67/67 additional security tests. Original 8D P13 Not Green and earlier owner-sequencing waivers remain historical. **Phase 9 Development Sessions is ACTIVE; bounded 9A is GREEN at `0.9.6` / `6b51ee96` and bounded 9B is GREEN at `0.9.13` / `5aa0bac`, while Phase 9 overall is NOT QUALIFIED.** 9C–9E and Phase 10 are not activated. See `docs/tasks/p9a/closeout.md` and `docs/tasks/p9b/closeout.md`.
+**CURRENT STATE (2026-10-11) — Phase 8 OWNER-CLOSED / GREEN at `0.8.47` / `bcc5cb8`. Phase 9 design is now **Developer Continuity with right-toolbar History** under ADR 0034; replacement implementation is NOT ACTIVATED or qualified. Historical 9A Green `0.9.6` and 9B Green `0.9.13` remain scoped evidence; Session 9C P1–P9 committed through `0.9.22` / `0752415`, but old P10 was unexecuted and superseded. Phase 9 overall NOT QUALIFIED; Phase 10 inactive.
 
-**CURRENT PHASE — PHASE 9 DEVELOPMENT SESSIONS / 9A AND 9B BOUNDED GREEN, PHASE 9 NOT QUALIFIED.** The owner separately authorized `p9a` P1–P6 and `p9b` P1–P7. Their scoped closeouts are `docs/tasks/p9a/closeout.md` at `0.9.6` / `6b51ee96` and `docs/tasks/p9b/closeout.md` at `0.9.13` / `5aa0bac`. Sessions remain optional project-scoped organizational state, not sources of agent authority. The targeted 9B Planning-to-Work replay passed; Phase 5's original P11 Not Green/P12 unexecuted evidence remains historical. 9C–9E are not activated.
+**CURRENT PHASE — DEVELOPER CONTINUITY/HISTORY DESIGN-APPROVED, NOT IMPLEMENTED.** The old Session UI/backend still exists in `0.9.22` source until separately authorized removal. Do not run superseded p9c P10 or advance to `0.9.23` under that stack; do not delete `.dope/development-sessions.json`. Preserve Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green as historical.
 
 **Product Phase 5 — Visual Software Planning is OWNER-CLOSED FOR SEQUENCING.** The retained Phase 5 source at `0.5.11` remained Not Green because P11 never completed one clean end-to-end A-I qualification replay and P12 was not executed. The owner explicitly accepted those gaps for sequencing on 2026-10-02; no failed or missing evidence is relabeled Green. The closeout transition commit `710edb362f9881ab41215705db4f08d8daca6293` established the coherent `0.6.0` successor baseline.
 
@@ -102,6 +102,7 @@ Current authority:
 - docs/planning/p7/phase-7-plan.md
 - docs/planning/p9/phase-9-plan.md
 - docs/planning/p9/phase-9b-plan.md
+- docs/decisions/0034-developer-continuity-and-right-toolbar-history.md
 
 ## Product premise
 
@@ -113,7 +114,7 @@ Dope is an AI-native software development environment in which the programmer re
 
 Dope should feel like an exoskeleton for programming, not a replacement programmer.
 
-The fundamental interaction unit is the development session, not the prompt.
+The fundamental experience is the developer's sustained work and understanding, not a prompt or mandatory Development Session record.
 
 ## Initial roadmap
 
@@ -138,7 +139,7 @@ Foundation Spike 0 — qualify Theia
 -> correction c6-branch-seam — synthesis strategy / Model Runtime seam
 -> Phase 7 — AI Presence
 -> Phase 8 — Scoped Delegation / Coding Agent
--> Phase 9 — Development Sessions
+-> Phase 9 — Developer Continuity / right-toolbar History
 -> Phase 10 — Living Software Knowledge Model
 
 Do not pull later-phase concepts forward merely because they already exist in the long-term product model.
@@ -194,7 +195,7 @@ Initial Project Mind scope begins with:
 - Question
 - Decision
 
-Phase 3 added Plan/PlanStep/Task as an internal planning model; correction `c3-remove-planning-instruments` has removed that live implementation. Phase 4 now adds the Physical Map from the clean `0.4.0` baseline; Phase 5 designs the forward Visual Software Planning/work model from scratch. Later phases add Agent Mind, DeveloperSession, ChangeSet, Validation, and Research according to the roadmap.
+Phase 3 added Plan/PlanStep/Task as an internal planning model; correction `c3-remove-planning-instruments` has removed that live implementation. Phase 4 now adds the Physical Map from the clean `0.4.0` baseline; Phase 5 designs the forward Visual Software Planning/work model from scratch. Later phases add Agent Mind, Developer Continuity, ChangeSet, Validation and Research; DeveloperSession is a superseded historical product implementation.
 
 Chat is one interface for manipulating project state. Chat history is not canonical product state.
 
@@ -272,4 +273,4 @@ Foundation Spike 0 uses task folder p0 and package versions 0.0.x. The ported ru
 
 ## Current routing
 
-**Current routing: Phase 8 owner-closed Green at `0.8.47` / `bcc5cb8`; Phase 9 ACTIVE, 9A BOUNDED GREEN at `0.9.6` / `6b51ee96` and 9B BOUNDED GREEN at `0.9.13` / `5aa0bac`; Phase 9 NOT QUALIFIED.** 9C–9E and Phase 10 inactive. Preserve Phase 5 Not Green and Phase 8 Green.
+**Current routing (2026-10-11):** Phase 9 design is **Developer Continuity + right-toolbar History** (ADR 0034), with new implementation NOT ACTIVATED. Old 9A/9B bounded Green preserved; Session 9C P1–P9 reached `0.9.22` / `0752415`, P10 unexecuted/superseded. Phase 9 NOT QUALIFIED, Phase 10 inactive. Protect legacy Session files; do not run old p9c.
