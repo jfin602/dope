@@ -1153,3 +1153,8 @@ Initial layout is deterministic layered directional layout implemented in Dope p
 ### Persistence
 
 Physical flow facts/projections are rebuildable derived state. Phase 6 introduces no required `.dope/data-flow.json`. Repository source plus canonical `.dope` state must be sufficient to regenerate equivalent flow from identical supported inputs.
+
+
+## Codex subscription Chat adapter — ADR 0035 (planned, 2026-10-12)
+
+AI Center retains one managed ChatGPT-plan Codex account and immutable connection/model identity. Models may independently advertise conversationalText + streaming for Interactive Chat and agentExecution for Coding Agent Work, based on supported capabilities and account/catalog evidence rather than provider name. Chat uses a separate tool-free OAuth-authorized Responses API ConversationalModelRuntime adapter with bounded Dope-composed context and store:false/stream:true. Work retains the Codex App Server AgentExecutionAdapter, isolated execution/validation/promotion and grant authority. Neither path makes provider threads canonical Dope state. Hosted egress consent, token secrecy, no fallback to API-key billing and shared Work/Codex allowance are explicit. This correction changes neither Chat/Work placement nor p9d History. See ADR 0035 and docs/tasks/c9-codex-chat/.
