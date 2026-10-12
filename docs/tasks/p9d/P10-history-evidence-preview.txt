@@ -1,0 +1,35 @@
+TASK: Phase 9 / P10 — Prepare bounded inspectable recent-work evidence preview
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.32`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.31`, advance all 13 root/app/package package.json versions and pinned internal @dope/* references to `0.9.32` DURING THIS PROMPT. Runner checks but does not bump. Runner owns implementation checkpoints, do not commit manually. Do not pre-bump; preserve yarn.lock, unrelated dependencies, developer changes and no root package-lock.json.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0034, docs/planning/p9/phase-9-plan.md, docs/tasks/p9d/README.md, docs/tasks/p9d/implementation-plan.md and historical docs/tasks/p9b/closeout.md. p9d is final Phase9 subphase; historical p9c P10 is superseded. Require separate explicitly owner-approved docs/planning/p9/phase-9d-activation.md before any implementation; when absent STOP with zero files changed. Verify correct predecessor, actual source/version, safe worktree.
+
+GOAL / IMPLEMENT
+Implement explicit on-demand preview for Understand Recent Work using P4–P6 read-only History owner metadata; no model call during preview or panel opening. User can inspect exactly which project-local items (IDs, types, actual observation times/fingerprints and bounded short source summaries) will be sent. Apply strict entry/byte/token budget, omit full Chat transcripts, provider/tool prompts, candidate diffs, secrets, protected files or unselected context. Distinguish Observations, Unknown/Unavailable and snapshot-only Git evidence; detect changed project/evidence basis and invalidate preview instead of silently sending stale content. Provide visible privacy/egress diagnostic.
+
+PRESERVE
+History is a project-bound, bounded read-only owner projection, not a DeveloperSession, model context entitlement, action permission or second activity database. Preserve Chat/Work one-live-owner, Planning and Mind authority, no-AI function, unchanged user legacy .dope/development-sessions.json, and separate WorkItem/run/validation/review truths. No automatic inference/execution, silent hosted egress/fallback, Chat recovery-write, source/Git mutation, WorkItem completion or Architecture adoption. Keep original 9A/9B historical bounded Green, old 9C unqualified, Phase5 Not Green, Phase8 Green, and Phase10 inactive.
+
+VALIDATION — T1
+T1 new test/unit/history-context-preview.test.ts registered once: on-demand only, explicit selection, capped bytes/tokens, unknown timestamp, stale basis, excludes sensitive text/transcripts and no provider/owner write. Minimal required compiled libs, focused node --test and git diff --check.
+
+EFFICIENCY
+Target <=8 minutes including smallest focused tests (10-minute soft, 15-minute hard); T2 may exceed for justified bounded safety checks. Minimal changed-lib builds only; no unconditional npm run check/npm test, browser/Electron/native packaging or live model call except explicit P11 approved local-only test.
+
+DEFER
+P11 local inference, P13 final real GUI.
+
+DONE WHEN
+Coherent `0.9.32` source, bounded direct evidence, documented unqualified behavior, no premature Phase9 Green.
+
+FINAL RESPONSE
+Files changed, exact source/version, focused tests, remaining gaps.

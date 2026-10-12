@@ -1,0 +1,35 @@
+TASK: Phase 9 / P12 — Qualify History integration owner isolation and retired Session wiring
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.34`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.33`, advance all 13 root/app/package package.json versions and pinned internal @dope/* references to `0.9.34` DURING THIS PROMPT. Runner checks but does not bump. Runner owns implementation checkpoints, do not commit manually. Do not pre-bump; preserve yarn.lock, unrelated dependencies, developer changes and no root package-lock.json.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0034, docs/planning/p9/phase-9-plan.md, docs/tasks/p9d/README.md, docs/tasks/p9d/implementation-plan.md and historical docs/tasks/p9b/closeout.md. p9d is final Phase9 subphase; historical p9c P10 is superseded. Require separate explicitly owner-approved docs/planning/p9/phase-9d-activation.md before any implementation; when absent STOP with zero files changed. Verify correct predecessor, actual source/version, safe worktree.
+
+GOAL / IMPLEMENT
+Run bounded cross-system integration on real-shaped project/Dope fixtures spanning P1–P11: legacy v1/v2 Session export still works after runtime deletion with unchanged bytes; no Session launcher/backend/RPC; History derives grounded Chat interaction, Planning/WorkItem, Task/Run/Sequence, Dope validation/review, Mind, Git committed vs dirty snapshot; Continue uses exact owner and last meaningful project focus after restart/project switch. Test late response cancellation, missing/stale/foreign refs and existing no-History Chat/Work/Planning flows. No implicit Chat recovery, AI call, AgentRun start, WorkItem completion or hosted egress. Repair only observed affected boundaries; do not claim real GUI solely from headless tests.
+
+PRESERVE
+History is a project-bound, bounded read-only owner projection, not a DeveloperSession, model context entitlement, action permission or second activity database. Preserve Chat/Work one-live-owner, Planning and Mind authority, no-AI function, unchanged user legacy .dope/development-sessions.json, and separate WorkItem/run/validation/review truths. No automatic inference/execution, silent hosted egress/fallback, Chat recovery-write, source/Git mutation, WorkItem completion or Architecture adoption. Keep original 9A/9B historical bounded Green, old 9C unqualified, Phase5 Not Green, Phase8 Green, and Phase10 inactive.
+
+VALIDATION — T2
+T2 single bounded targeted node --test suite of legacy export, History projection/metadata/UI/focus/nav/context/local-model tests plus directly affected Chat/Work/Planning owner regressions. Compile only changed package libs/typecheck as needed, test:product registration exactly once, production Session-reference negative guard, 13 coherent manifests, git diff --check. No full npm run check here.
+
+EFFICIENCY
+Target <=8 minutes including smallest focused tests (10-minute soft, 15-minute hard); T2 may exceed for justified bounded safety checks. Minimal changed-lib builds only; no unconditional npm run check/npm test, browser/Electron/native packaging or live model call except explicit P11 approved local-only test.
+
+DEFER
+P13 real GUI + full exact-candidate Phase9 closeout.
+
+DONE WHEN
+Coherent `0.9.34` source, bounded direct evidence, documented unqualified behavior, no premature Phase9 Green.
+
+FINAL RESPONSE
+Files changed, exact source/version, focused tests, remaining gaps.

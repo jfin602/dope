@@ -1,0 +1,35 @@
+TASK: Phase 9 / P13 — Real History GUI qualification and final Phase 9 closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- The assigned project version is `0.9.35`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.34`, advance all 13 root/app/package package.json versions and pinned internal @dope/* references to `0.9.35` DURING THIS PROMPT. Runner checks but does not bump. P13 is MANUAL: create real separately committed source/version checkpoint before evidence-only closeout, never fabricate SHA. Do not pre-bump; preserve yarn.lock, unrelated dependencies, developer changes and no root package-lock.json.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0034, docs/planning/p9/phase-9-plan.md, docs/tasks/p9d/README.md, docs/tasks/p9d/implementation-plan.md and historical docs/tasks/p9b/closeout.md. p9d is final Phase9 subphase; historical p9c P10 is superseded. Require separate explicitly owner-approved docs/planning/p9/phase-9d-activation.md before any implementation; when absent STOP with zero files changed. Verify correct predecessor, actual source/version, safe worktree.
+
+GOAL / IMPLEMENT
+SOLE MANUAL FINAL PHASE 9 CLOSEOUT. After P12 committed source at 0.9.34, create a legitimate separately committed coherent 0.9.35 source/version checkpoint BEFORE evidence-only closeout. On exact candidate directly use real Theia GUI on Dope repository AND disposable project: right-toolbar History beside Chat/Work, repeated open one right panel, actual chronological Chat/Planning/Agent/validation/decision and Git commit vs dirty snapshot, one-click exact Continue into existing Chat/Work/Planning/Mind/editor, no Sessions UI, normal no-History workflows, keyboard/dark/light, restart, A/B project isolation, missing/stale cases. Verify user-invoked opt-in legacy v1/v2 export unchanged original bytes, no residual Session runtime, no owner writes from History reads, no unauthorized agent/review actions or hosted egress. Exercise one genuine connected eligible LOCAL model explanation from visible bounded context with explicit confirmation; verify local-only denial/failure behavior. Run full npm run check ONCE on exact 0.9.35 candidate plus independent GUI/restart/security proof and recorded actual test/build results; reconcile current docs once. Write docs/tasks/p9d/closeout.md with exact source SHA and Phase 9 GREEN/NOT GREEN/Evidence Gap. Missing GUI, local model, aggregate or authority proof means NOT GREEN. Owner closure and Phase 10 activation require separate approval; do not silently declare Phase10 active or invent p9e.
+
+PRESERVE
+History is a project-bound, bounded read-only owner projection, not a DeveloperSession, model context entitlement, action permission or second activity database. Preserve Chat/Work one-live-owner, Planning and Mind authority, no-AI function, unchanged user legacy .dope/development-sessions.json, and separate WorkItem/run/validation/review truths. No automatic inference/execution, silent hosted egress/fallback, Chat recovery-write, source/Git mutation, WorkItem completion or Architecture adoption. Keep original 9A/9B historical bounded Green, old 9C unqualified, Phase5 Not Green, Phase8 Green, and Phase10 inactive.
+
+VALIDATION — T3
+T3 MANUAL browser GUI is required. Exact 0.9.35 source/version commit and evidence-only closeout, one full npm run check, direct Theia user actions, real local explanation, restart/security/legacy export/no-session regression, git diff --check, truthful Phase9-wide disposition and outstanding scope.
+
+EFFICIENCY
+MANUAL T3 final qualification can exceed normal prompt budget. No replacing actual GUI/exact-candidate aggregate/local-model evidence with fixture claims; Green only if observed gates pass.
+
+DEFER
+Phase 10 Living Software Knowledge Model separately planned/activated, no p9e.
+
+DONE WHEN
+A real committed `0.9.35` source/version candidate and evidence-only final Phase9 closeout document exist, truthfully GREEN/NOT GREEN with remaining gaps; no owner-close/Phase10 activation inferred.
+
+FINAL RESPONSE
+Files changed, exact source/version, real GUI/local-model/full aggregate evidence, remaining gaps.

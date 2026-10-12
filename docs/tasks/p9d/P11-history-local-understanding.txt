@@ -1,0 +1,35 @@
+TASK: Phase 9 / P11 — Add consented local-only contextual explanations with no side effects
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.9.33`.
+
+VERSION TRANSITION — REQUIRED
+After Git-proven predecessor `0.9.32`, advance all 13 root/app/package package.json versions and pinned internal @dope/* references to `0.9.33` DURING THIS PROMPT. Runner checks but does not bump. Runner owns implementation checkpoints, do not commit manually. Do not pre-bump; preserve yarn.lock, unrelated dependencies, developer changes and no root package-lock.json.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0034, docs/planning/p9/phase-9-plan.md, docs/tasks/p9d/README.md, docs/tasks/p9d/implementation-plan.md and historical docs/tasks/p9b/closeout.md. p9d is final Phase9 subphase; historical p9c P10 is superseded. Require separate explicitly owner-approved docs/planning/p9/phase-9d-activation.md before any implementation; when absent STOP with zero files changed. Verify correct predecessor, actual source/version, safe worktree.
+
+GOAL / IMPLEMENT
+Use explicit developer confirmation of a CURRENT P10 preview to request ephemeral read-only explanation through existing connected ConversationalModelRuntime / ModelConnectionsRegistry / AIRoleRoutingService (reuse current local provider adapters; no new model stack). Restrict to known eligible LOCAL target, hard locality local-only and hostedProjectDataAuthorized=false, with no fallback to hosted or a different billing path. Cancel, timeout, bound response and handle missing local capability without breaking History. Render fact/interpretation/unknown separately with grounded citations and model provenance; never persist a Chat turn, AgentTask, Project Mind decision or inferred completion, grant tools or mutate Git/source/Architecture. No automatic calls on History open, refresh or return.
+
+PRESERVE
+History is a project-bound, bounded read-only owner projection, not a DeveloperSession, model context entitlement, action permission or second activity database. Preserve Chat/Work one-live-owner, Planning and Mind authority, no-AI function, unchanged user legacy .dope/development-sessions.json, and separate WorkItem/run/validation/review truths. No automatic inference/execution, silent hosted egress/fallback, Chat recovery-write, source/Git mutation, WorkItem completion or Architecture adoption. Keep original 9A/9B historical bounded Green, old 9C unqualified, Phase5 Not Green, Phase8 Green, and Phase10 inactive.
+
+VALIDATION — T2
+T2 test/unit/history-local-understanding.test.ts registered once: local fake completion, hosted-only denial, role fallback isolation, explicit consent, stale preview, cancellation/timeout, malicious model output, no Chat/Agent/Mind/Git writes or execution. Minimal changed-lib build, focused routing/provider tests and git diff --check.
+
+EFFICIENCY
+Target <=8 minutes including smallest focused tests (10-minute soft, 15-minute hard); T2 may exceed for justified bounded safety checks. Minimal changed-lib builds only; no unconditional npm run check/npm test, browser/Electron/native packaging or live model call except explicit P11 approved local-only test.
+
+DEFER
+Real local-model GUI run and release evidence P13.
+
+DONE WHEN
+Coherent `0.9.33` source, bounded direct evidence, documented unqualified behavior, no premature Phase9 Green.
+
+FINAL RESPONSE
+Files changed, exact source/version, focused tests, remaining gaps.
