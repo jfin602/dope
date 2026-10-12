@@ -53,3 +53,8 @@ The earlier command/validation blocker was repaired and the final `c8-work-mode`
 ## Forward theme clarification — 2026-10-12
 
 ADR 0016's October 12 restrained-orange amendment is the **current palette authority**, superseding this ADR's October 8 blue-primary references for future implementations. The qualified `c8-chat-work-ui` at `0.8.20` remains historically accurate, including its blue palette evidence. The enduring **visual grammar** in this ADR remains unchanged: AI Center-like compact dark hierarchy, neutral secondary inputs/buttons, subdued borders, keyboard-visible but restrained focus, accessible selection states, and safely rendered Chat/Work/AgentRun surfaces. Orange is reserved for intentional primary actions and emphasis, not every widget. Current color allocation comes only from theme-scoped semantic tokens, and compatible user theme overrides remain uncontaminated. The palette return requires separate implementation and visual qualification under `c9-theme-fix`; it is not retroactive evidence.
+
+
+## Clarification — ADR 0035 (2026-10-12)
+
+Codex may become selectable for ordinary Chat without joining Chat and Work into one panel or adding a Chat | Agent mode switch. ChatPanel uses conversational capability and .dope/chats; Work uses agentExecution and .dope/agent. The shared AI Center account is not a shared UI mode or mutation authority. See ADR 0035; no presentation implementation or qualification is claimed here.

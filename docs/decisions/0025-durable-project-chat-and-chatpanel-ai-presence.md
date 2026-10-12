@@ -309,3 +309,8 @@ A Work composer may start direct tasks only through the Coding Agent/ExecutionGr
 Chat and Work have separate toolbar launchers and separate panel content. The Chat | Work header toggle is removed. Select Chat remains a Chat navigation surface; Select Work lists Running, History and discovered Prompt Stacks. A selected Work item opens a control/observation detail in its Work panel. Reuse of panel layout, scrolling and restoration conventions does not merge their state or authority.
 
 Opening or selecting Work in a sidebar leaves the center editor and visualizations as they are. The explicit Open Transcript action may open a read-only AgentRun center tab. Closing Work does not stop execution; Stop remains explicit. Legacy saved combined-panel layouts restore deterministically to their saved Chat or Work module.
+
+
+## Amendment — ADR 0035 (2026-10-12): conversational Codex eligibility
+
+Ordinary Dope Chat may select a model on the existing signed-in Codex connection if its verified conversationalText/streaming capabilities are eligible. The conversation stays Dope-owned under .dope/chats with its current per-message selection, immutable actual provider/model provenance, restart, cancellation, hosted-data consent and no-silent-fallback contracts. No Codex AgentTask/AgentRun, command or executable provider tool may be created through Chat. This is approved design pending correction c9-codex-chat; no Phase 7 qualification claim is changed.

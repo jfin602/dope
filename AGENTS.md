@@ -28,6 +28,8 @@ Dope must preserve the developer as the protagonist. Automation exists to increa
 
 ## Phase and gate scope
 
+**2026-10-12 approved design, implementation pending:** ADR 0035 and `c9-codex-chat` add ordinary Chat eligibility to the existing Codex sign-in through an independent tool-free ConversationalModelRuntime; Codex Work agentExecution, authorization and validated mutation remain separate. Fixed correction version `0.9.23`, no version bump. `p9d` is independently owner-activated with P1 Green and P2–P13 pending; no concurrent conflicting worktree or historical-evidence rewrite. See ADR 0035.
+
 **Current roadmap scope (2026-10-11):** Phase 8 OWNER-CLOSED / GREEN at `0.8.47`; Phase 9 design replaced by **Developer Continuity and right-toolbar History** (ADR 0034), replacement implementation NOT ACTIVATED and Phase 9 overall NOT QUALIFIED. Old 9A/9B bounded Green preserved at `0.9.6`/`0.9.13`; original 9C P1–P9 source committed through `0.9.22` / `0752415`, P10 unexecuted. Phase 10 inactive.
 
 **Phase 9 routing (2026-10-11):** ADR 0034 and `docs/planning/p9/phase-9-plan.md` govern. History is a right-toolbar/right-side read-only activity projection with one-click exact continuation and optional explicit local-first understanding. No manually managed Session or hidden Session-like index. **STOP old p9c P10**, no automatic `0.9.23` advance; new stack and separate activation required to retire legacy code. Keep `.dope/development-sessions.json` user data recoverable and historical 9A/9B evidence. No automatic model work, hosted egress or Phase 10 background alignment.

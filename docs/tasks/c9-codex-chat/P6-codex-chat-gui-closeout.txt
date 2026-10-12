@@ -1,0 +1,28 @@
+TASK: Correction 9 / P6 — Real Codex Chat qualification and closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.9.23`.
+
+GOAL
+Qualify c9-codex-chat on one coherent real Dope source candidate, or close NOT GREEN with precise blocked gates. This is the SOLE final correction closeout, T3 MANUAL/browser-required, not a routine eight-minute implementation task.
+
+PREFLIGHT
+Before edits read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0035 and the correction assessment/implementation plan. Inspect actual local Git status/HEAD, all package versions, affected producers/consumers and test imports. This is a fixed-0.9.23 correction; p9d is separately ACTIVE. If p9d/another owner has advanced the local version beyond 0.9.23, STOP WITHOUT EDITS and report the needed explicit rebase/replan. Preserve uncommitted user work and .dope user data. Do not force-pull, reset, clean, rewrite p9d evidence, or execute superseded p9c P10. No version bump or root package-lock.
+Inspect P1–P5 commits, tests and remaining risks; confirm source and manifest identity, version 0.9.23 and no concurrent p9d runner. Use a disposable project for authority probes; protect the developer's projects and any Session recovery data. If prior code has moved to another version, STOP pending approved replan.
+
+LIVE QUALIFICATION — T3
+1. Validate stack grammar: npm run codex:phase:validate -- c9-codex-chat. Run one full `npm run check` against the FINAL code candidate (it nests builds, tests and browser/Electron builds). Run only directly affected focused tests that aggregate does NOT include; no duplicate typecheck/npm test/build after check. Run git diff --check and inspect package manifests (all still 0.9.23), Git status and root lockfile.
+2. In a REAL Dope GUI (supported Electron or directly interactive browser-hosted workbench), sign in using an eligible ChatGPT Plus/Pro plan/account through the existing Codex AI Center connection. Confirm a Codex model is selectable in ordinary Chat, is eligible for Interactive only under truthful capability/known capacity, and shares the one authenticated account with Work. Demonstrate two consecutive genuine streamed assistant responses; record provider terminal events, selected/actual model, durable transcript and project-scoped context source refs. Switch to another connected model and back without forking Chat.
+3. Exercise hosted project-data consent denial then explicit approval, supported reasoning controls, cancellation/Stop and retry, sign-out or controlled account refresh (without dumping secrets), unavailable model and real or safe simulated subscription-limit after partial streamed text. No silent API-key billing path, invented remaining-usage meter or normal ChatGPT-web chat allowance claim.
+4. Verify no executable tool/command/patch/MCP/AgentTask/AgentRun/ExecutionGrant occurs from the Chat interaction, including attempted provider tool emission; no cross-project Chat leak. Separately run or directly inspect an existing qualifying Codex Work path in disposable project to prove the original agent adapter, grant, promotion/validation, cancellation and history remain unbroken without dangerous probes. Restart/reopen Chat and Work, preserve transcript, per-turn model and provenance.
+5. Preserve historical Phase 7/8/9 and p9d evidence and never launch superseded p9c P10. If live account or GUI unavailable, failed safety boundary, missing completed response, skipped aggregate or unresolved concurrency, record NOT GREEN. Do not invent screenshots, live IDs, limits or pass counts.
+
+CLOSEOUT / EVIDENCE
+Write docs/tasks/c9-codex-chat/closeout.md with exact source SHA/dirty patch, package, real account entitlement check (NO secrets), real GUI and Work observations, test/build counts, negative-tool/billing evidence, pass/fail/blocked matrix and final **GREEN / QUALIFIED** or **NOT GREEN** disposition. Correct any source defect only in a separate reviewed implementation checkpoint and rerun invalidated checks on a new final candidate; never disguise code repair as evidence-only closeout. Manual closeout evidence commit must be limited to appropriate new docs; runner does not commit manual gate. Do not bump project versions or activate p9d/Phase 10.
+
+FINAL RESPONSE
+Report exact candidate, test and real-GUI results, Chat vs Work isolation, usage account/path, blockers and final disposition with evidence path.

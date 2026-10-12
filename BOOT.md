@@ -11,6 +11,8 @@ Before substantial repository-aware planning, implementation, review, architectu
 
 ## Current state
 
+**2026-10-12 correction:** ADR 0035 accepts Codex as an ordinary Chat provider using the same secure ChatGPT-plan connection and a distinct no-tools Responses adapter. Correction `c9-codex-chat` is documentation/prompt-authoring only at unchanged `0.9.23`, NOT IMPLEMENTED or Green. The separately OWNER-ACTIVATED `p9d` History stack has P1 bounded/requalified Green; P2–P13 pending and Phase 9 overall NOT QUALIFIED. Keep their versions and worktrees separate; do not run superseded p9c P10 or activate Phase 10. See docs/decisions/0035-codex-conversational-chat.md and docs/tasks/c9-codex-chat/.
+
 **CURRENT STATE (2026-10-11) — Phase 8 OWNER-CLOSED / GREEN at `0.8.47` / `bcc5cb8`. Phase 9 design is now **Developer Continuity with right-toolbar History** under ADR 0034; replacement implementation is NOT ACTIVATED or qualified. Historical 9A Green `0.9.6` and 9B Green `0.9.13` remain scoped evidence; Session 9C P1–P9 committed through `0.9.22` / `0752415`, but old P10 was unexecuted and superseded. Phase 9 overall NOT QUALIFIED; Phase 10 inactive.
 
 **CURRENT PHASE — DEVELOPER CONTINUITY/HISTORY DESIGN-APPROVED, NOT IMPLEMENTED.** The old Session UI/backend still exists in `0.9.22` source until separately authorized removal. Do not run superseded p9c P10 or advance to `0.9.23` under that stack; do not delete `.dope/development-sessions.json`. Preserve Phase 5 P11 Not Green/P12 unexecuted and Phase 8 Green as historical.
