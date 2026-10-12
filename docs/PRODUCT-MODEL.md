@@ -1008,3 +1008,8 @@ Initial Flow is System-first with Subsystem focus. The whole repository is not e
 ### Provider boundary
 
 Phase 6 is fully useful without a model provider. AI may later explain physical flow in Phase 7, but model output cannot silently create physical flow facts.
+
+
+## Codex model use in normal Chat — ADR 0035 (approved design, not implemented)
+
+An existing signed-in Codex AI Center connection can be eligible for both ordinary conversational Chat and delegated Work if the selected model independently supports the required feature capability. A normal Chat turn remains durable Dope-owned .dope/chats context, with its existing exact/Interactive selection, hosted-data consent and provenance; it cannot create AgentTask, AgentRun or execute tools. Work remains a distinct agent-execution product. Both use shared Work/Codex subscription allowance, not ordinary ChatGPT web-chat usage. See correction c9-codex-chat for qualification; do not infer implementation from this decision.
