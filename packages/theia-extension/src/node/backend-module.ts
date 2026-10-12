@@ -46,9 +46,10 @@ import type { AgentExecutionAdapter } from '@dope/agent-core';
 import { historyServicePath, historyFocusServicePath } from '@dope/contracts/lib/history-service';
 import { HistoryBackend } from './history-backend';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
-import { ProjectPlanningActions } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import { RoadmapOwnerLinks } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
+import { createRoadmapActionRuntime } from './roadmap-action-runtime';
+import { RoadmapPlanningLinks } from './roadmap-planning-links';
 
 export default new ContainerModule(bind => {
     bind(NoteStore).toSelf().inSingletonScope();
@@ -80,10 +81,11 @@ export default new ContainerModule(bind => {
     bind(RoadmapStore).toSelf().inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<RoadmapClient>(
         roadmapServicePath, client => {
-            const actions = new ProjectPlanningActions(context.container.get(RoadmapStore));
+            const { actions, dispose } = createRoadmapActionRuntime(context.container.get(RoadmapStore),
+                () => new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex)));
             const handles = new Set<string>();
             const off = context.container.get(RoadmapStore).onChange(change => client.notifyRoadmapChanged(change));
-            client.onDidCloseConnection(() => { off(); for (const handle of handles) actions.detach(handle); });
+            client.onDidCloseConnection(() => { off(); for (const handle of handles) actions.detach(handle); dispose(); });
             const backend: RoadmapService = {
                 read: async (uri) => context.container.get(RoadmapStore).read(await context.container.get(PlanningStore).root(uri)),
                 owners: async (uri) => new RoadmapOwnerLinks().list(await context.container.get(PlanningStore).root(uri)),
@@ -115,7 +117,11 @@ export default new ContainerModule(bind => {
     bind(ChatContextComposer).toDynamicValue(context => new ChatContextComposer(
         context.container.get(ProjectMindStore), context.container.get(PlanningStore),
         context.container.get(SoftwareMapIndex), context.container.get(ChatRepository),
-        context.container.get(RoadmapStore))).inSingletonScope();
+        context.container.get(RoadmapStore), async (root, link) => {
+            const service = new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex));
+            try { return !!await new RoadmapPlanningLinks(root, service).resolve(root, link); }
+            finally { service.dispose(); }
+        })).inSingletonScope();
     bind(ChatProjectGrounder).toDynamicValue(context => new ChatProjectGrounder(
         context.container.get(SoftwareMapIndex))).inSingletonScope();
     bind(AIRegistryStore).toSelf().inSingletonScope();
@@ -159,11 +165,13 @@ export default new ContainerModule(bind => {
         return backend;
     })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<ChatClient>(`${chatServicePath}/:panelId`, client => {
+        const { actions, dispose } = createRoadmapActionRuntime(context.container.get(RoadmapStore),
+            () => new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex)));
         const backend = new ChatBackend(context.container.get(ChatRepository), client,
             context.container.get(ModelConnectionsRegistry), context.container.get(ChatContextComposer),
             context.container.get(AIRoleRoutingService), context.container.get(ChatProjectGrounder),
-            new ProjectPlanningActions(context.container.get(RoadmapStore)));
-        client.onDidCloseConnection(() => backend.dispose());
+            actions);
+        client.onDidCloseConnection(() => { backend.dispose(); dispose(); });
         return backend;
     })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<object>(visualPlanningServicePath, client => {

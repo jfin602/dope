@@ -11,7 +11,7 @@ import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-inde
 import { ProjectMindStore } from '@dope/project-intelligence/lib/node/project-mind-store';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { ChatRepository } from '@dope/chat/lib/node';
-import { RoadmapStore, type RoadmapCheckpoint } from '@dope/project-intelligence/lib/node/roadmap-store';
+import { RoadmapStore, type RoadmapCheckpoint, type RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { GroundingResult } from './chat-project-grounder';
 
 export const GROUNDED_CHAT_INSTRUCTION = 'Project facts are verified only when supported by the supplied project evidence. Do not claim to have read, listed, searched, or inspected project state beyond that evidence. State what is missing or unknown.';
@@ -24,7 +24,8 @@ export interface ComposedChatContext { messages: ConversationMessage[]; refs: Ch
 export class ChatContextComposer {
     constructor(private readonly mind: ProjectMindStore, private readonly planning: PlanningStore,
         private readonly index: SoftwareMapIndex, private readonly chats: ChatRepository,
-        private readonly roadmap?: RoadmapStore) {}
+        private readonly roadmap?: RoadmapStore,
+        private readonly planningLinkCurrent?: (root: string, link: RoadmapLink) => Promise<boolean>) {}
 
     private async roadmapContext(root: string, source: ChatContextSelection): Promise<{ label: string; text: string; omitted?: string }> {
         if (!this.roadmap) throw new Error('Roadmap context unavailable');
@@ -54,6 +55,8 @@ export class ChatContextComposer {
         if (planningLinks.length) {
             const planning = await this.planning.read(root);
             for (const link of planningLinks) {
+                if (this.planningLinkCurrent && !await this.planningLinkCurrent(root, link))
+                    throw new Error('Stale Planning Map basis in Roadmap context');
                 const map = planning.maps.find(item => item.id === link.targetId);
                 if (link.ownerProjectId !== planning.projectId || !map || map.revision !== link.ownerRevision ||
                     JSON.stringify(map.basis) !== JSON.stringify(link.basis))
