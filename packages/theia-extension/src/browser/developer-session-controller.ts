@@ -1,10 +1,38 @@
-import type { DeveloperSession, SessionCollection } from '@dope/contracts/lib/developer-session';
+import { parseSessionArtifactRef } from '@dope/contracts/lib/developer-session';
+import type { DeveloperSession, SessionArtifactRef, SessionCollection } from '@dope/contracts/lib/developer-session';
 import type { DeveloperSessionService, SessionMutationResult, SessionOperation, SessionResolveResult } from '@dope/contracts/lib/developer-session-service';
 import type { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 
 type SessionConnection = DeveloperSessionService & { dispose(): void | Promise<void> };
 export interface SessionDraft { title: string; objective: string; notes: string; nextActions: string[] }
 type SessionField = keyof SessionDraft;
+export interface SessionLinkDraft {
+    kind: SessionArtifactRef['kind'];
+    chatId: string; mapId: string; workItemId: string; taskId: string; runId: string;
+    sequenceId: string; artifactId: string; artifactType: 'decision' | 'idea';
+}
+
+export function emptyLinkDraft(): SessionLinkDraft {
+    return { kind: 'chat', chatId: '', mapId: '', workItemId: '', taskId: '', runId: '',
+        sequenceId: '', artifactId: '', artifactType: 'decision' };
+}
+
+/** Accept only the fields of the selected v2 variant; the shared contract checks ID grammar. */
+export function linkRefFromDraft(draft: SessionLinkDraft): SessionArtifactRef {
+    switch (draft.kind) {
+        case 'chat': return parseSessionArtifactRef({ kind: draft.kind, chatId: draft.chatId.trim() });
+        case 'planning-map': return parseSessionArtifactRef({ kind: draft.kind, mapId: draft.mapId.trim() });
+        case 'work-item': return parseSessionArtifactRef({ kind: draft.kind, mapId: draft.mapId.trim(),
+            workItemId: draft.workItemId.trim() });
+        case 'agent-task': return parseSessionArtifactRef({ kind: draft.kind, taskId: draft.taskId.trim() });
+        case 'agent-run': return parseSessionArtifactRef({ kind: draft.kind, taskId: draft.taskId.trim(),
+            runId: draft.runId.trim() });
+        case 'agent-sequence': return parseSessionArtifactRef({ kind: draft.kind, sequenceId: draft.sequenceId.trim() });
+        case 'project-mind': return parseSessionArtifactRef({ kind: draft.kind, artifactId: draft.artifactId.trim(),
+            artifactType: draft.artifactType });
+        default: throw new Error('Invalid session reference kind');
+    }
+}
 
 function draftOf(session: DeveloperSession): SessionDraft {
     return { title: session.title, objective: session.objective, notes: session.notes,
@@ -34,8 +62,10 @@ export class DeveloperSessionController {
     loading = false;
     pending = false;
     error = '';
+    notice = '';
     createDraft = { title: '', objective: '' };
     private readonly drafts = new Map<string, SessionDraft>();
+    private readonly linkDrafts = new Map<string, SessionLinkDraft>();
     private connection?: SessionConnection;
     private handle?: string;
     private token = 0;
@@ -60,6 +90,20 @@ export class DeveloperSessionController {
         let draft = this.drafts.get(key);
         if (!draft) { draft = draftOf(selected); this.drafts.set(key, draft); }
         return draft;
+    }
+    get selectedLinkDraft(): SessionLinkDraft | undefined {
+        const selected = this.selected;
+        const project = this.snapshot?.project;
+        if (!selected || !project) return undefined;
+        const key = `${project.canonicalRoot}\0${project.projectMindId ?? ''}\0${selected.id}`;
+        let draft = this.linkDrafts.get(key);
+        if (!draft) { draft = emptyLinkDraft(); this.linkDrafts.set(key, draft); }
+        return draft;
+    }
+
+    setLinkDraft<K extends keyof SessionLinkDraft>(field: K, value: SessionLinkDraft[K]): void {
+        const draft = this.selectedLinkDraft;
+        if (draft) draft[field] = value;
     }
 
     setCreateDraft(field: 'title' | 'objective', value: string): void {
@@ -108,6 +152,7 @@ export class DeveloperSessionController {
         this.loading = false;
         this.pending = false;
         this.error = '';
+        this.notice = '';
         this.changed();
         return token;
     }
@@ -155,6 +200,7 @@ export class DeveloperSessionController {
         this.resolution = undefined;
         this.loading = false;
         this.error = '';
+        this.notice = '';
         this.changed();
         return true;
     }
@@ -167,6 +213,7 @@ export class DeveloperSessionController {
         this.loading = true;
         this.resolution = undefined;
         this.error = '';
+        this.notice = '';
         this.changed();
         try {
             const snapshot = await connection.read(handle);
@@ -199,6 +246,7 @@ export class DeveloperSessionController {
         const token = ++this.token;
         this.resolution = undefined;
         this.error = '';
+        this.notice = '';
         this.changed();
         try {
             const result = await connection.resolve({ projectHandle: handle, sessionId });
@@ -231,6 +279,7 @@ export class DeveloperSessionController {
         const token = ++this.token;
         this.pending = true;
         this.error = '';
+        this.notice = '';
         this.changed();
         try {
             const result: SessionMutationResult = await connection.mutate({ projectHandle: handle,
@@ -262,6 +311,69 @@ export class DeveloperSessionController {
             this.error = /revision conflict/i.test(String(error))
                 ? `${String(error)}. Refresh and review the saved Session before retrying; your draft is preserved.`
                 : String(error);
+            this.changed();
+            return false;
+        }
+    }
+
+    async attachLink(): Promise<boolean> {
+        const draft = this.selectedLinkDraft;
+        if (!draft) return false;
+        let ref: SessionArtifactRef;
+        try { ref = linkRefFromDraft(draft); }
+        catch (error) { this.error = String(error); this.notice = ''; this.changed(); return false; }
+        return this.changeLink('attach', ref);
+    }
+
+    async detachLink(ref: SessionArtifactRef): Promise<boolean> {
+        let parsed: SessionArtifactRef;
+        try { parsed = parseSessionArtifactRef(ref); }
+        catch (error) { this.error = String(error); this.notice = ''; this.changed(); return false; }
+        return this.changeLink('detach', parsed);
+    }
+
+    private async changeLink(action: 'attach' | 'detach', ref: SessionArtifactRef): Promise<boolean> {
+        const connection = this.connection;
+        const handle = this.handle;
+        const snapshot = this.snapshot;
+        const selected = this.selected;
+        if (this.disposed || !connection || !handle || !snapshot || !selected ||
+            selected.status === 'closed' || this.loading || this.pending) return false;
+        const token = ++this.token;
+        this.pending = true;
+        this.error = '';
+        this.notice = '';
+        this.changed();
+        try {
+            const request = { projectHandle: handle, sessionId: selected.id,
+                expectedCollectionRevision: snapshot.revision, expectedSessionRevision: selected.revision, ref };
+            const result = await (action === 'attach' ? connection.attachLink(request) : connection.detachLink(request));
+            if (this.disposed || token !== this.token || this.selectedId !== selected.id) {
+                this.settleInvalidatedMutation(connection, handle);
+                return false;
+            }
+            this.snapshot = result.snapshot;
+            this.resolution = undefined;
+            this.pending = false;
+            this.notice = action === 'attach'
+                ? result.snapshot.revision === snapshot.revision ? 'Artifact was already linked.' : 'Artifact linked.'
+                : 'Link detached. The original artifact is unchanged.';
+            this.changed();
+            return true;
+        } catch (error) {
+            if (this.disposed || token !== this.token) {
+                this.settleInvalidatedMutation(connection, handle);
+                return false;
+            }
+            if (/Invalid or disposed Development Sessions handle/i.test(String(error))) {
+                this.retire();
+                this.error = String(error);
+                this.changed();
+                return false;
+            }
+            this.pending = false;
+            this.error = /revision conflict|\bStale\b/i.test(String(error))
+                ? `${String(error)}. Refresh and review the saved Session before retrying.` : String(error);
             this.changed();
             return false;
         }

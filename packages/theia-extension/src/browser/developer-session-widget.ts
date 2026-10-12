@@ -1,6 +1,7 @@
 import { BaseWidget, Message, codicon } from '@theia/core/lib/browser/widgets/widget';
 import type { DeveloperSessionService } from '@dope/contracts/lib/developer-session-service';
 import type { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
+import type { SessionArtifactRef } from '@dope/contracts/lib/developer-session';
 import { DeveloperSessionController } from './developer-session-controller';
 import { visibleSessions, sessionListState, sessionOverview } from './developer-session-presentation';
 
@@ -17,6 +18,21 @@ function element<K extends keyof HTMLElementTagNameMap>(tag: K, text?: string, c
 function dateLabel(value: string): string {
     const time = Date.parse(value);
     return Number.isFinite(time) ? new Date(time).toLocaleString() : value;
+}
+
+const linkKinds: SessionArtifactRef['kind'][] = ['chat', 'planning-map', 'work-item', 'agent-task',
+    'agent-run', 'agent-sequence', 'project-mind'];
+
+function linkLabel(ref: SessionArtifactRef): string {
+    switch (ref.kind) {
+        case 'chat': return `Chat · ${ref.chatId}`;
+        case 'planning-map': return `Planning Map · ${ref.mapId}`;
+        case 'work-item': return `WorkItem · ${ref.mapId} / ${ref.workItemId}`;
+        case 'agent-task': return `AgentTask · ${ref.taskId}`;
+        case 'agent-run': return `AgentRun · ${ref.taskId} / ${ref.runId}`;
+        case 'agent-sequence': return `AgentTaskSequence · ${ref.sequenceId}`;
+        case 'project-mind': return `Project Mind ${ref.artifactType} · ${ref.artifactId}`;
+    }
 }
 
 export class DeveloperSessionWidget extends BaseWidget {
@@ -115,6 +131,83 @@ export class DeveloperSessionWidget extends BaseWidget {
             this.overview.append(actions);
         } else this.overview.append(element('p', 'No next actions recorded.'));
         this.overview.append(element('p', `${overview.links} linked artifact${overview.links === 1 ? '' : 's'}.`));
+        if (controller.notice) {
+            const notice = element('p', controller.notice);
+            notice.setAttribute('role', 'status');
+            this.overview.append(notice);
+        }
+        const links = element('ul');
+        for (const ref of selected.links) {
+            const row = element('li');
+            row.append(element('span', linkLabel(ref)));
+            if (selected.status !== 'closed') {
+                const detach = element('button', 'Detach');
+                detach.type = 'button';
+                detach.disabled = controller.pending;
+                detach.setAttribute('aria-label', `Detach ${linkLabel(ref)}`);
+                detach.addEventListener('click', () => void controller.detachLink(ref));
+                row.append(detach);
+            }
+            links.append(row);
+        }
+        this.overview.append(links);
+        if (selected.status !== 'closed') this.renderLinkForm();
+    }
+
+    private renderLinkForm(): void {
+        const draft = this.controller.selectedLinkDraft!;
+        const form = element('form');
+        form.setAttribute('aria-label', 'Link existing artifact by ID');
+        form.append(element('h4', 'Link existing artifact'));
+        const kindLabel = element('label', 'Artifact type');
+        const kind = element('select');
+        for (const value of linkKinds) {
+            const option = element('option', value);
+            option.value = value;
+            kind.append(option);
+        }
+        kind.value = draft.kind;
+        kind.disabled = this.controller.pending;
+        kind.addEventListener('change', () => {
+            this.controller.setLinkDraft('kind', kind.value as SessionArtifactRef['kind']);
+            this.render();
+        });
+        kindLabel.append(kind);
+        form.append(kindLabel);
+        const field = (label: string, key: 'chatId' | 'mapId' | 'workItemId' | 'taskId' | 'runId' |
+            'sequenceId' | 'artifactId') => form.append(this.input(label, draft[key], 4096,
+            value => this.controller.setLinkDraft(key, value)));
+        switch (draft.kind) {
+            case 'chat': field('Existing Chat ID', 'chatId'); break;
+            case 'planning-map': field('Existing Planning Map ID', 'mapId'); break;
+            case 'work-item': field('Planning Map ID', 'mapId'); field('WorkItem ID', 'workItemId'); break;
+            case 'agent-task': field('Existing AgentTask ID', 'taskId'); break;
+            case 'agent-run': field('AgentTask ID', 'taskId'); field('AgentRun ID', 'runId'); break;
+            case 'agent-sequence': field('Existing AgentTaskSequence ID', 'sequenceId'); break;
+            case 'project-mind': {
+                const typeLabel = element('label', 'Project Mind artifact type');
+                const type = element('select');
+                for (const value of ['decision', 'idea'] as const) {
+                    const option = element('option', value);
+                    option.value = value;
+                    type.append(option);
+                }
+                type.value = draft.artifactType;
+                type.disabled = this.controller.pending;
+                type.addEventListener('change', () => this.controller.setLinkDraft('artifactType',
+                    type.value as 'decision' | 'idea'));
+                typeLabel.append(type);
+                form.append(typeLabel);
+                field('Existing Project Mind artifact ID', 'artifactId');
+                break;
+            }
+        }
+        const submit = element('button', this.controller.pending ? 'Linking…' : 'Attach link');
+        submit.type = 'submit';
+        submit.disabled = this.controller.pending;
+        form.append(submit);
+        form.addEventListener('submit', event => { event.preventDefault(); void this.controller.attachLink(); });
+        this.overview.append(form);
     }
 
     private input(label: string, value: string, maxLength: number, changed: (value: string) => void,
