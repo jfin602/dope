@@ -49,6 +49,10 @@ import { AICenterWidget, AI_CENTER_ID } from './ai-center-widget';
 import { AICenterContribution } from './ai-center-contribution';
 import { AICenterBottomMenuWidget } from './ai-center-launcher';
 import { SidebarBottomMenuWidget } from '@theia/core/lib/browser/shell/sidebar-bottom-menu-widget';
+import { developerSessionServicePath, type DeveloperSessionService } from '@dope/contracts/lib/developer-session-service';
+import { DeveloperSessionWidget, DeveloperSessionsLauncherWidget, DEVELOPER_SESSION_ID,
+    DEVELOPER_SESSION_LAUNCHER_ID } from './developer-session-widget';
+import { revealSessionWidget } from './developer-session-presentation';
 import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, workLauncherIds, workLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
 
 const modelInventoryChanged = new Emitter<void>();
@@ -112,6 +116,30 @@ class LeftWorkLauncher extends WorkLauncherView { constructor() { super('left');
 @injectable()
 class RightWorkLauncher extends WorkLauncherView { constructor() { super('right'); } }
 
+@injectable()
+class SessionsLauncherView extends AbstractViewContribution<DeveloperSessionsLauncherWidget> implements FrontendApplicationContribution {
+    constructor() { super({ widgetId: DEVELOPER_SESSION_LAUNCHER_ID, widgetName: 'Sessions',
+        defaultWidgetOptions: { area: 'left', rank: 252 } }); }
+    async onDidInitializeLayout(): Promise<void> {
+        const widget = await this.openView();
+        const tabBar = this.shell.getTabBarFor(widget);
+        if (!tabBar) return;
+        const activated = (_sender: typeof tabBar, { title }: { title: typeof widget.title }) => {
+            if (title.owner === widget) void this.openSessions();
+        };
+        tabBar.tabActivateRequested.connect(activated);
+        widget.disposed.connect(() => tabBar.tabActivateRequested.disconnect(activated));
+    }
+    async openSessions(): Promise<DeveloperSessionWidget> {
+        return openDeveloperSessions(this.shell, this.widgetManager);
+    }
+}
+
+async function openDeveloperSessions(shell: ApplicationShell, manager: WidgetManager): Promise<DeveloperSessionWidget> {
+    return revealSessionWidget(() => manager.getOrCreateWidget<DeveloperSessionWidget>(DEVELOPER_SESSION_ID),
+        widget => shell.addWidget(widget, { area: 'main' }), id => shell.activateWidget(id));
+}
+
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     rebind(SidebarBottomMenuWidget).to(AICenterBottomMenuWidget);
     bind(AICenterContribution).toSelf().inSingletonScope();
@@ -152,11 +180,24 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bindViewContribution(bind, RightChatLauncher);
     bindViewContribution(bind, LeftWorkLauncher);
     bindViewContribution(bind, RightWorkLauncher);
+    bindViewContribution(bind, SessionsLauncherView);
     bind(FrontendApplicationContribution).toService(SoftwareMapView);
     bind(FrontendApplicationContribution).toService(LeftChatLauncher);
     bind(FrontendApplicationContribution).toService(RightChatLauncher);
     bind(FrontendApplicationContribution).toService(LeftWorkLauncher);
     bind(FrontendApplicationContribution).toService(RightWorkLauncher);
+    bind(FrontendApplicationContribution).toService(SessionsLauncherView);
+    bind(WidgetFactory).toDynamicValue(context => ({ id: DEVELOPER_SESSION_ID, createWidget: () =>
+        new DeveloperSessionWidget(() => ServiceConnectionProvider.createProxy<DeveloperSessionService & RpcServer<never>>(
+            context.container, developerSessionServicePath),
+        context.container.get(WorkspaceService)) })).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({ id: DEVELOPER_SESSION_LAUNCHER_ID, createWidget: () =>
+        new DeveloperSessionsLauncherWidget(() => openDeveloperSessions(context.container.get(ApplicationShell),
+            context.container.get(WidgetManager))) })).inSingletonScope();
+    bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) =>
+        commands.registerCommand({ id: 'dope.sessions.open', label: 'Dope: Open Sessions' },
+            { execute: () => openDeveloperSessions(context.container.get(ApplicationShell),
+                context.container.get(WidgetManager)) }) })).inSingletonScope();
     const openPhysicalMap = async (manager: WidgetManager, shell: ApplicationShell,
         map?: SoftwareMapController, options?: PhysicalMapTabOptions) => {
         const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID, options);

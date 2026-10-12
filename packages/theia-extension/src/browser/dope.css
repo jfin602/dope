@@ -1,6 +1,23 @@
 .dope-ai-launcher { width: 100%; border: 0; padding: 0; color: inherit; background: transparent; cursor: pointer; position: relative; }
 .dope-ai-launcher:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: -2px; }
 .dope-ai-launcher-warning { position: absolute; top: 0; right: 0; min-width: 12px; font-weight: 700; color: var(--theia-editor-foreground); background: var(--theia-editor-background); border: 1px solid var(--theia-focusBorder); border-radius: 50%; }
+.dope-session-view { box-sizing: border-box; height: 100%; overflow: auto; padding: 20px; color: var(--theia-editor-foreground); background: var(--theia-editor-background); }
+.dope-session-view header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dope-session-view h2 { margin: 0; }
+.dope-session-view h3 { margin-top: 0; overflow-wrap: anywhere; }
+.dope-session-layout { display: grid; grid-template-columns: minmax(190px, 30%) minmax(0, 1fr); gap: 20px; margin-top: 16px; }
+.dope-session-layout nav { min-width: 0; border-right: 1px solid var(--theia-widget-border, var(--theia-input-border)); padding-right: 14px; }
+.dope-session-layout section { min-width: 0; overflow-wrap: anywhere; }
+.dope-session-view label { display: block; }
+.dope-session-view input { display: block; box-sizing: border-box; width: 100%; margin: 5px 0 10px; padding: 6px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border); }
+.dope-session-view button, .dope-session-launcher button { cursor: pointer; color: var(--theia-button-foreground); background: var(--theia-button-background); border: 1px solid var(--theia-button-background); padding: 6px 9px; }
+.dope-session-view button:hover, .dope-session-launcher button:hover { background: var(--theia-button-hoverBackground); }
+.dope-session-view :is(button, input):focus-visible, .dope-session-launcher button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-session-view .dope-session-row { display: flex; flex-direction: column; gap: 3px; width: 100%; margin: 3px 0; text-align: left; white-space: normal; overflow-wrap: anywhere; color: var(--theia-foreground); background: var(--theia-button-secondaryBackground, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border, var(--theia-input-border)); border-left: 3px solid transparent; }
+.dope-session-row span, .dope-session-view nav p { color: var(--theia-descriptionForeground); }
+.dope-session-view .dope-session-row[aria-current="true"] { background: var(--theia-list-activeSelectionBackground); border-left-color: var(--dope-action-background, var(--theia-focusBorder)); }
+.dope-session-launcher { padding: 12px; color: var(--theia-editor-foreground); background: var(--theia-editor-background); }
+@media (max-width: 700px) { .dope-session-layout { grid-template-columns: 1fr; } .dope-session-layout nav { border-right: 0; border-bottom: 1px solid var(--theia-widget-border, var(--theia-input-border)); padding-bottom: 12px; } }
 .dope-ai-center { box-sizing: border-box; height: 100%; overflow: auto; padding: 20px; color: var(--theia-editor-foreground); background: var(--theia-editor-background); }
 .dope-ai-center h2 { margin: 0 0 8px; }
 .dope-ai-center h3 { margin: 0 0 12px; }
