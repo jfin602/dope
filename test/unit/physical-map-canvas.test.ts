@@ -126,7 +126,7 @@ test('React Flow stays in presentation and registration preserves workbench plac
   assert.match(frontend, /shell\.addWidget\(widget, \{ area: 'main' \}\)/);
   assert.match(inspector, /Open Physical Map/);
   assert.match(inspector, /defaultWidgetOptions: \{ area: 'left', rank: 200 \}/);
-  assert.match(frontend, /bindViewContribution\(bind, ProjectMindView\)/);
+  assert.doesNotMatch(frontend, /bindViewContribution\(bind, ProjectMindView\)/);
   assert.match(frontend, /id: PROJECT_MIND_ID, createWidget/);
   assert.doesNotMatch(canvas, /area: 'left'|area: 'right'|nodesDraggable: true/);
   assert.match(canvas, /Fit current map at a readable scale/);
