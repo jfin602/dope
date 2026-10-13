@@ -2,7 +2,7 @@
 
 Status: INITIAL PRODUCT CONTRACT
 
-Current implementation gate (2026-10-12): Phase 10 P16 is **Not Green** at committed `0.10.16` source `27ab84e`; see `docs/tasks/p10/closeout.md`. The accepted ADR 0036 design remains authority, while the observed Roadmap import and local Chat planning gaps prevent qualification. Phase 11/12 are inactive.
+Current implementation gate (2026-10-12): Phase 10 P16 is **Not Green** at committed `0.10.16` source `27ab84e`; see `docs/tasks/p10/closeout.md`. ADR 0036 remains authority; its linked Roadmap creation/sync amendment is **design-approved only**. The real Roadmap import/create and local Chat planning gates remain blocked, and historical gate-truth, authority and direct Electron evidence need repair. Phase 10 is not owner-closed; Phase 11/12 are inactive.
 
 This document is the compact routing contract for Dope's product identity. Deeper authority lives in VISION.md, PRINCIPLES.md, PRODUCT-MODEL.md, ARCHITECTURE.md, THEIA-SPIKE.md, and the accepted ADRs.
 
@@ -201,7 +201,7 @@ Foundation Spike 0 — qualify Theia
 -> Phase 7C — AI Roles & Routing
 -> Phase 8 — Coding Agent / Scoped Delegation (owner-closed Green at 0.8.47)
 -> Phase 9 — Developer Continuity / History (owner-closed Green at 0.9.35; successor baseline 0.10.0)
--> Phase 10 — Unified Roadmap & Local-First AI Planning (ADR 0036; owner-activated 2026-10-12, not yet implemented/qualified)
+-> Phase 10 — Unified Roadmap & Local-First AI Planning (ADR 0036; P1–P15 implemented, P16 Not Green at `0.10.16`; linked Markdown creation/sync correction approved as design only)
 -> Phase 11 — Human-Centered UI / Usability Qualification (ADR 0037; design only)
 -> Phase 12 — Living Software Knowledge Model (ADR 0023; inactive)
 
