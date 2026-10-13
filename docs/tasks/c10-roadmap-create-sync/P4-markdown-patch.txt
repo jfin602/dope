@@ -1,0 +1,33 @@
+TASK: Correction 10 / P4 — Guard mapped Markdown Roadmap field writes
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 including linked-document/runner/canvas amendments, docs/planning/p10/phase-10-plan.md, this correction assessment/plan/README and prior P16 closeout. Confirm separately approved correction activation before mutation, exact coherent unchanged 0.10.16 manifests/internal pins, actual HEAD and safely clean or explicitly accepted dirty tree; protect the reported unrelated checkout deletions. Inspect actual owner APIs/tests, not assumed paths. No reset, silent stash, version bump, dependency churn or manual agent commits.
+
+INSPECT
+roadmap-import.ts source section metadata, roadmap-store.ts source readOnly/title checks, project-planning-actions.ts preview/apply authority, current Roadmap link/revision fields and existing checked filesystem helpers.
+
+IMPLEMENT
+Introduce one deterministic source-aware patch planner/writer only for explicitly supported mapped title/objective/order/prose in the accepted linked roadmap document. Use project-root containment, no symlinks, expected source fingerprint and Roadmap revision, preserve all unmapped text, formatting and line endings; atomically publish one document file change with revalidation. Route approved edit through ProjectPlanningActions and validate a minimal diff/consent for broad/destructive changes. Do not relax direct RoadmapStore source-owner immutability as an alternative backdoor. Source-backed gate/closeout status is never a writable checkmark from Chat.
+
+PRESERVE
+One existing saved ChatPanel across all docks; one validated ProjectPlanningActions authority; linked Markdown document owns supported mapped prose, .dope Roadmap owns IDs/links, other owners and historical Not Green unchanged. No model filesystem/process/Git/MCP/agent grant, no automatic hosted fallback, no hidden status Green or implicit Work run. Use current restrained dark-orange themes for affected UI.
+
+VALIDATION — T2
+Compile changed project-intelligence outputs if needed, then node --test test/unit/project-planning-actions.test.ts test/unit/roadmap-store.test.ts and new test/unit/roadmap-document-patch.test.ts. Prove byte-preserving unrelated prose, CRLF, stale concurrent edit, unsupported section, symlink/foreign path, write refusal and no false Green. git diff --check.
+Ordinary implementation plus checks target <=8 minutes (10-minute soft, 15-minute hard). No routine npm run check, npm test, full builds, AppImage, GUI or release qualification; P17/P18 own those gates. If a mandatory security/safety test cannot pass, report a blocker instead of proceeding unsafely.
+
+DEFER
+External edit watching and merge P5; crash recovery P6; greenfield creation P7; no whole-file LLM rewrite.
+
+DONE WHEN
+The single owned seam works with focused evidence and compatibility, source/authority preservation is proved, and the next prompt may build safely. Runner owns checkpoint commits; do not commit within the implementation agent.
+
+FINAL RESPONSE
+Report source/HEAD, exact changed files, focused tests/builds actually run, unchanged version, risks and the next prompt.
