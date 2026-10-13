@@ -2,6 +2,8 @@
 
 Status: INITIAL PRODUCT CONTRACT
 
+Current implementation gate (2026-10-12): Phase 10 P16 is **Not Green** at committed `0.10.16` source `27ab84e`; see `docs/tasks/p10/closeout.md`. The accepted ADR 0036 design remains authority, while the observed Roadmap import and local Chat planning gaps prevent qualification. Phase 11/12 are inactive.
+
 This document is the compact routing contract for Dope's product identity. Deeper authority lives in VISION.md, PRINCIPLES.md, PRODUCT-MODEL.md, ARCHITECTURE.md, THEIA-SPIKE.md, and the accepted ADRs.
 
 ## Single-sentence definition

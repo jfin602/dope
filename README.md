@@ -12,6 +12,8 @@ Dope is a fresh project. It is not George v2 and has no compatibility requiremen
 
 ## Current gate
 
+**Phase 10 P16 is NOT GREEN at committed `0.10.16` source `27ab84e`.** The exact-source aggregate passes, but direct Roadmap import and local Chat planning are blocked in the real UI; see [P16 closeout](docs/tasks/p10/closeout.md). P1–P15 implementation is retained. Phase 10 awaits a separate repair and owner decision; Phase 11 and Phase 12 remain inactive. The baseline and activation account below describes the earlier entry state.
+
 Foundation Spike 0 qualified Eclipse Theia 1.75.0 as Dope's initial IDE substrate at package `0.0.6`.
 
 **Phase 9 Developer Continuity / History is OWNER-CLOSED / GREEN / QUALIFIED** at committed `0.9.35` source `af3447c` ([final qualification](docs/tasks/p9d/final-qualification.md), [owner closeout](docs/planning/p9/phase-9-closeout.md)). The repo now has coherent **`0.10.0` as a version baseline only** ([baseline](docs/planning/p10/baseline.md)). Phase 10 Unified Roadmap & Local-First AI Planning is design-approved under ADR 0036 but **OWNER-ACTIVATED for P1–P16 (2026-10-12), not yet implemented or qualified**; Phase 11 Human-Centered UI and Phase 12 Living Software Knowledge Model are inactive. Original P13/repair Not Green evidence remains historical.

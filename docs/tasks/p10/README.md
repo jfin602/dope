@@ -1,6 +1,6 @@
 # p10 — Unified Roadmap & Local-First AI Planning
 
-**Status 2026-10-12:** /prompt-ass + /prompt-plan + /prompt-write completed; **P1–P16 OWNER-ACTIVATED (2026-10-12) / NOT YET IMPLEMENTED / NOT QUALIFIED**.
+**Status 2026-10-12:** /prompt-ass + /prompt-plan + /prompt-write completed; **P1–P16 OWNER-ACTIVATED / P1–P15 IMPLEMENTED / P16 NOT GREEN at `0.10.16` source `27ab84e` / NOT OWNER-CLOSED**. See [closeout](closeout.md). Earlier activation-only statements below describe the entry state.
 **Entry:** Phase 9: owner-closed Green at qualified 0.9.35 source af3447c; Phase 10 coherent version-only 0.10.0 baseline 2fc3b93c01ed56b5c848e80181d630c390f3e551. Phase 10 design is approved and its P1–P16 implementation is separately owner-activated; no prompt execution or qualification is claimed.
 **Activation preflight SATISFIED:** the separate explicit owner decision `/activate p10` is recorded in `docs/planning/p10/activation.md`. P1 must inspect that file plus coherent Git-proven `0.10.0`/worktree before implementation; do not block on earlier design-only historical labels. This task stack/baseline alone did not confer approval.
 

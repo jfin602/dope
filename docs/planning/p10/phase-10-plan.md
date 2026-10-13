@@ -1,9 +1,11 @@
 # Phase 10 Plan — Unified Roadmap & Local-First AI Planning
 
-**Status:** DESIGN APPROVED / P1–P16 OWNER-ACTIVATED (2026-10-12) / NOT IMPLEMENTED / NOT QUALIFIED
+**Status:** DESIGN APPROVED / P1–P16 OWNER-ACTIVATED / P1–P15 IMPLEMENTED / P16 NOT GREEN at committed `0.10.16` source `27ab84e` (2026-10-12); NOT OWNER-CLOSED
 **Date:** 2026-10-12 (America/Chicago)
 **Authority:** ADR 0036; ADR 0016 (2026-10-12 current theme), 0017, 0022–0026, 0028–0030, 0034–0035.
 **Entry:** Phase 9 is owner-closed/qualified, and `docs/planning/p10/activation.md` records the separate 2026-10-12 owner activation for P1–P16. The `0.10.0` baseline remains unchanged until P1.
+
+**Qualification record:** `docs/tasks/p10/closeout.md` records the exact-source passing aggregate and the blocking real-UI/local-planning gates. The entry/baseline language below describes the historical activation point; it is not a current qualification claim.
 
 ## Goal
 
