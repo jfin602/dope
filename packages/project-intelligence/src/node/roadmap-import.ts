@@ -129,6 +129,8 @@ export async function discoverRoadmapCandidates(root: string): Promise<RoadmapCa
     return { candidates, diagnostics };
 }
 function status(raw: string): RoadmapStatus {
+    if (/\bqualification remains not[ -]green\b/i.test(raw)) return 'not-green';
+    if (/\bowner.closed for sequencing\b/i.test(raw)) return 'waived';
     if (/\b(not[ -]green|not qualified|unqualified|failed)\b/i.test(raw) && !/\bnot (?:implemented|activated) or qualified\b/i.test(raw)) return 'not-green';
     if (/\b(not implemented|not activated|not executed)\b/i.test(raw)) return 'not-implemented';
     if (/\b(waived|waiver|owner.closed for sequencing)\b/i.test(raw)) return 'waived';
@@ -151,12 +153,20 @@ function verdict(line: string): string {
     }
     return prefix;
 }
-function evidenceVerdict(content: string): string | undefined {
+function evidenceVerdict(content: string): { text: string; line: number } | undefined {
     const first = content.split(/\r?\n/).slice(0, 24);
-    const explicit = first.find(line => /^(?:\*\*)?(?:Status|Disposition):/i.test(line.trim()));
-    if (explicit) return verdict(explicit);
-    const heading = first.find(line => /^# /.test(line));
-    return heading && status(heading) !== 'unknown' ? heading : undefined;
+    const line = first.findIndex(value => /(?:^|\*\*)\s*(?:Status|Disposition|Decision):/i.test(value));
+    if (line >= 0) return { text: first[line].trim(), line: line + 1 };
+    const heading = first.findIndex(value => /^# /.test(value) && status(value) !== 'unknown');
+    return heading >= 0 ? { text: first[heading], line: heading + 1 } : undefined;
+}
+function evidencePriority(path: string, text: string): number {
+    // An explicit final owner disposition supersedes an earlier evidence-only audit.
+    if (/\bowner.closed for sequencing\b|\bowner approved\s*\/\s*qualified\s*\/\s*closed\b/i.test(text))
+        return /(?:\/closeout|\/final-qualification)\.md$/.test(path) ? 4 : 3;
+    if (/(?:\/closeout|\/final-qualification)\.md$/.test(path)) return 2;
+    if (/\bqualified\s*\/\s*closed\b/i.test(text)) return 2;
+    return 1;
 }
 
 /** Read a bounded, source-backed import proposal. This never initializes or writes any owner. */
@@ -279,15 +289,27 @@ export async function previewRoadmapImport(root: string, selectedPath = roadmapP
             if (!source) { localDiagnostics.push(`Missing reference: ${ref}`); continue; }
             const evidenceText = contents.get(ref)!;
             const evidenceStatus = evidenceVerdict(evidenceText);
-            evidence.push({ path: ref, sha256: source.sha256, line: 1, text: evidenceText.split(/\r?\n/, 1)[0],
-                ...(evidenceStatus ? { status: status(evidenceStatus), statusText: evidenceStatus } : {}) });
+            evidence.push({ path: ref, sha256: source.sha256, line: evidenceStatus?.line ?? 1,
+                text: evidenceStatus?.text ?? evidenceText.split(/\r?\n/, 1)[0],
+                ...(evidenceStatus ? { status: status(evidenceStatus.text), statusText: evidenceStatus.text } : {}) });
         }
-        const closeout = evidence.filter(ref => /(?:\/closeout|\/final-qualification)\.md$/.test(ref.path) && ref.status && ref.status !== 'unknown');
-        const closeoutStatuses = [...new Set(closeout.map(ref => ref.status!))];
-        if (closeoutStatuses.some(value => value !== resolvedStatus)) localDiagnostics.push('Status differs from linked closeout evidence');
-        if (closeoutStatuses.length > 1) localDiagnostics.push('Conflicting closeout evidence');
-        const effectiveStatus = closeoutStatuses.length === 1 ? closeoutStatuses[0] : resolvedStatus;
-        const waived = [statusText, ...closeout.map(ref => ref.statusText)].some(value => /\b(waived|waiver|owner.closed for sequencing)\b/i.test(value ?? ''));
+        const decisions = evidence.filter(ref => ref.status && ref.status !== 'unknown' &&
+            (/(?:\/closeout|\/final-qualification)\.md$/.test(ref.path) ||
+                /\bowner.closed for sequencing\b|\bowner approved\s*\/\s*qualified\s*\/\s*closed\b/i.test(ref.statusText ?? '')));
+        const priority = Math.max(0, ...decisions.map(ref => evidencePriority(ref.path, ref.statusText ?? '')));
+        const latest = decisions.filter(ref => evidencePriority(ref.path, ref.statusText ?? '') === priority);
+        const latestStatuses = [...new Set(latest.map(ref => ref.status!))];
+        if (decisions.some(ref => ref.status !== resolvedStatus)) localDiagnostics.push('Status differs from linked owner evidence');
+        if (new Set(decisions.map(ref => ref.status)).size > 1) localDiagnostics.push('Conflicting historical status evidence');
+        if (latestStatuses.length > 1) localDiagnostics.push('Conflicting current owner evidence');
+        const effectiveStatus = latestStatuses.length === 1 ? latestStatuses[0] : resolvedStatus;
+        const waived = [statusText, ...decisions.map(ref => ref.statusText)].some(value => /\b(waived|waiver|owner.closed for sequencing)\b/i.test(value ?? ''));
+        if (statusText) {
+            const offset = span.findIndex(line => line.trim() === explicit[0]);
+            const source = byPath.get(selectedPath)!;
+            evidence.unshift({ path: selectedPath, sha256: source.sha256, line: section.line + offset, text: explicit[0],
+                status: resolvedStatus, statusText });
+        }
         const source = byPath.get(selectedPath)!;
         checkpoints.push({ id: `roadmap:${selectedPath}#${item.key}`, sectionKey: item.key, kind: item.kind, title: section.heading,
             status: effectiveStatus, roadmapStatus: resolvedStatus, waived, statusText, readOnly: localDiagnostics.length > 0, diagnostics: [...new Set(localDiagnostics)],

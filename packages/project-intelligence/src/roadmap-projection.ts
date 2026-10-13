@@ -64,13 +64,21 @@ export function projectRoadmap(index: RoadmapIndex, owners: readonly RoadmapOwne
     presentation: RoadmapPresentation = {}): RoadmapProjection {
     const nodes: CheckpointNode[] = index.checkpoints.map((item): CheckpointNode => ({
         id: item.id, kind: item.kind, title: item.title, order: item.order, status: item.status,
-        statusLabel: statusLabel[item.status], evidence: item.evidence.map(citation => ({ ...citation })),
+        statusLabel: item.status === 'waived' && item.evidence.some(citation =>
+            citation.status === 'waived' && /owner.closed for sequencing/i.test(citation.statusText ?? ''))
+            ? 'Owner-closed for sequencing' : statusLabel[item.status],
+        evidence: item.evidence.map(citation => ({ ...citation })),
         source: item.source && { ...item.source }, readOnly: item.readOnly,
         lane: item.kind === 'phase' ? 'path' : 'branch',
     })).sort(nodeOrder);
     const byId = new Map(nodes.map(node => [node.id, node]));
     const edges: CheckpointEdge[] = [];
     const diagnostics: string[] = [];
+    for (const item of index.checkpoints) {
+        const differing = item.evidence.filter(citation => citation.status && citation.status !== 'unknown' && citation.status !== item.status);
+        if (differing.length) diagnostics.push(`Historical status differs for ${item.id}: ${differing.map(citation =>
+            `${citation.path}:${citation.line} (${citation.status})`).sort(compare).join(', ')}`);
+    }
     const knownOwners = new Map(owners.map(record => [ownerKey(record.owner, record.targetId), record]));
     const linkedOwners = new Set<string>();
     for (const item of index.checkpoints) {
