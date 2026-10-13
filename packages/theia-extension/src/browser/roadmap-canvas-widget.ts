@@ -1,9 +1,10 @@
 import * as React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { ReactFlow, Background, Handle, Position, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react';
+import { ReactFlow, Background, Handle, Position, type Edge, type Node, type NodeChange, type ReactFlowInstance } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { BaseWidget, Message, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
+import { StorageService } from '@theia/core/lib/browser/storage-service';
 import type { CheckpointNode } from '@dope/project-intelligence/lib/roadmap-projection';
 import { projectRoadmapTasks, type TaskRoadmapProjection } from '@dope/project-intelligence/lib/roadmap-task-projection';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
@@ -17,6 +18,8 @@ import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/p
 import { roadmapCanvasOrder, roadmapNextId, roadmapSpatialLayout, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
+import { readRoadmapViewport, roadmapGestures, roadmapKeyboardAction, roadmapViewportKey, roadmapViewportSnapshot,
+    type RoadmapViewportState } from './roadmap-viewport';
 import './dope.css';
 
 function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean; relation: string; omitted: number;
@@ -60,12 +63,20 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly zoomIn = document.createElement('button');
     private readonly zoomOut = document.createElement('button');
     private readonly fitButton = document.createElement('button');
+    private readonly arrangeButton = document.createElement('button');
     private readonly expandButton = document.createElement('button');
     private readonly collapseButton = document.createElement('button');
     private readonly focusButton = document.createElement('button');
     private readonly nextPromptsButton = document.createElement('button');
     private readonly detailLabel = document.createElement('span');
     private detail: RoadmapDetail = 'phase';
+    private arranging = false;
+    private viewport?: RoadmapViewportState['viewport'];
+    private readonly placements = new Map<string, { x: number; y: number }>();
+    private saveTimer?: ReturnType<typeof setTimeout>;
+    private saveWrite: Promise<unknown> = Promise.resolve();
+    private saveKey?: string;
+    private projectId?: string;
     private readonly expanded = new Set<string>();
     private readonly collapsed = new Set<string>();
     private promptWindow?: { stackId: string; start: number };
@@ -88,7 +99,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     constructor(private readonly service: RoadmapService, private readonly workspaces: WorkspaceService,
         private readonly inspector: RoadmapInspectorModel, private readonly openInspector: () => Promise<unknown>,
         private readonly openMind: (id?: string, workspace?: string) => Promise<boolean> = async () => false,
-        private readonly savedChats: (workspace: string) => { id: string; title: string }[] = () => []) {
+        private readonly savedChats: (workspace: string) => { id: string; title: string }[] = () => [],
+        private readonly storage?: Pick<StorageService, 'getData' | 'setData'>) {
         super();
         this.id = ROADMAP_CANVAS_ID;
         this.title.label = this.title.caption = 'Roadmap';
@@ -120,6 +132,18 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const glyph = document.createElement('span'); glyph.className = codicon(icon); glyph.setAttribute('aria-hidden', 'true');
             button.append(glyph); button.onclick = action;
         }
+        this.arrangeButton.type = 'button';
+        this.arrangeButton.textContent = 'Arrange';
+        this.arrangeButton.title = 'Move checkpoint cards without changing their order or dependencies';
+        this.arrangeButton.setAttribute('aria-pressed', 'false');
+        this.arrangeButton.onclick = () => {
+            this.arranging = !this.arranging;
+            this.arrangeButton.setAttribute('aria-pressed', String(this.arranging));
+            this.path.classList.toggle('dope-roadmap-arranging', this.arranging);
+            this.status.textContent = this.arranging ? 'Arrange on: drag a card or use Alt+Arrow on a focused card.' :
+                'Arrange off: drag the background to pan.';
+            this.renderFlow();
+        };
         for (const [button, label, action] of [
             [this.expandButton, 'Expand selected Roadmap branch', () => this.setExpansion(true)],
             [this.collapseButton, 'Collapse selected Roadmap branch', () => this.setExpansion(false)],
@@ -132,12 +156,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.nextPromptsButton.textContent = 'Next prompts';
         this.nextPromptsButton.setAttribute('aria-label', 'Show next prompts in selected stack');
         this.nextPromptsButton.onclick = () => this.nextPrompts();
-        this.toolbar.append(heading, this.details, this.mind, this.zoomIn, this.zoomOut, this.fitButton,
+        this.toolbar.append(heading, this.details, this.mind, this.zoomIn, this.zoomOut, this.fitButton, this.arrangeButton,
             this.expandButton, this.collapseButton, this.focusButton, this.nextPromptsButton, this.detailLabel, this.reload);
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.path.className = 'dope-roadmap-stage';
         this.path.setAttribute('aria-label', 'Roadmap checkpoints canvas');
+        this.path.tabIndex = 0;
+        this.path.title = 'Shift+Arrow pans. In Arrange mode, Alt+Arrow moves the selected card.';
         this.path.onkeydown = event => this.onPathKey(event);
         this.pools.className = 'dope-roadmap-pools';
         this.pools.setAttribute('aria-label', 'Detached Ideas and Issues');
@@ -153,6 +179,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.modelListener = inspector.onChange(() => {
             if (!this.projectUri || inspector.projectUri !== this.projectUri || !inspector.index) return;
             this.selectedId = inspector.selectedId;
+            this.schedulePresentation();
             this.projection = projectRoadmapTasks(inspector.index, this.taskStacks, this.owners, { projectId: inspector.index.projectId, selectedId: this.selectedId });
             this.render();
         });
@@ -185,7 +212,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const roots = await this.workspaces.roots;
             if (this.isDisposed || request !== this.request) return;
             if (roots.length !== 1 || roots[0].resource.scheme !== 'file') {
+                this.flushPresentation();
                 this.projectUri = undefined;
+                this.projectId = undefined;
+                this.saveKey = undefined;
                 this.selectedId = undefined;
                 this.status.textContent = 'Open one local project folder to view its Roadmap.';
                 this.inspector.setSnapshot(undefined, undefined);
@@ -196,13 +226,38 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.service.discoverTasks(projectUri).then(tasks => ({ tasks, error: undefined as string | undefined }),
                     error => ({ tasks: [] as RoadmapTaskStack[], error: String(error) }))]);
             if (this.isDisposed || request !== this.request) return;
+            const switched = this.projectUri !== projectUri || this.projectId !== index.projectId;
+            if (switched) {
+                this.flushPresentation();
+                const nextKey = roadmapViewportKey(projectUri, index.projectId);
+                this.projectUri = undefined;
+                this.projectId = undefined;
+                this.saveKey = undefined;
+                let stored: unknown;
+                try { stored = await this.storage?.getData(nextKey); } catch { /* Default layout remains available. */ }
+                if (this.isDisposed || request !== this.request) return;
+                this.saveKey = nextKey;
+                this.projectId = index.projectId;
+                const state = readRoadmapViewport(stored, index.projectId);
+                this.selectedId = state.selectedId;
+                this.viewport = state.viewport;
+                this.expanded.clear(); this.collapsed.clear(); this.placements.clear();
+                state.expanded.forEach(id => this.expanded.add(id));
+                state.collapsed.forEach(id => this.collapsed.add(id));
+                Object.entries(state.placements).forEach(([id, position]) => this.placements.set(id, position));
+                this.promptWindow = undefined;
+                this.detail = roadmapDetailAtZoom(this.viewport?.zoom ?? 0.85, 'phase');
+                this.arranging = false;
+                this.arrangeButton.setAttribute('aria-pressed', 'false');
+                this.path.classList.remove('dope-roadmap-arranging');
+            }
             const tasks = taskResult.tasks;
             this.taskDiscoveryError = taskResult.error;
-            if (this.projectUri !== projectUri) { this.selectedId = undefined; this.poolQuery = ''; this.poolFilter.value = '';
-                this.expanded.clear(); this.collapsed.clear(); this.promptWindow = undefined; this.detail = 'phase'; }
+            if (switched) { this.poolQuery = ''; this.poolFilter.value = ''; }
             this.owners = owners;
             this.taskStacks = tasks;
             this.projectUri = projectUri;
+            if (switched && this.flow) void this.flow.setViewport(this.viewport ?? { x: 20, y: 20, zoom: 0.85 });
             if (this.createState && (this.createState.uri !== projectUri || this.createState.projectId !== index.projectId || index.revision !== 0)) {
                 void this.service.cancelDraft(this.createState.handle); this.createState = undefined; ++this.createSerial;
             }
@@ -211,7 +266,12 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 if (draft.revision !== this.createState.draft.revision) this.createState.preview = undefined;
                 this.createState.draft = draft;
             }
+            const restoredId = switched ? this.selectedId : undefined;
             this.inspector.setSnapshot(projectUri, index);
+            if (switched && restoredId) {
+                if (index.checkpoints.some(item => item.id === restoredId)) this.inspector.select(restoredId);
+                else this.selectedId = restoredId; // Prompt nodes are presentation-only and absent from the inspector index.
+            }
             if (index.revision === 0) this.status.textContent = 'No Roadmap yet. Import one, create manually, or plan with an existing Chat.';
             if (priorProjectUri === projectUri && selectedTaskId &&
                 projectRoadmapTasks(index, tasks).nodes.some(node => node.id === selectedTaskId)) this.selectedId = selectedTaskId;
@@ -252,7 +312,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const projection = this.projection;
         if (!projection) return;
         const nodes = roadmapCanvasOrder(projection);
-        if (!nodes.some(node => node.id === this.selectedId)) this.selectedId = undefined;
+        if (this.selectedId && !nodes.some(node => node.id === this.selectedId)) {
+            this.selectedId = undefined;
+            this.schedulePresentation();
+        }
         this.renderFlow();
         this.renderPools();
         const diagnostic = projection.diagnostics.length ? ` · ${projection.diagnostics.length} unresolved reference(s)` : '';
@@ -276,11 +339,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
         for (const edge of projection?.edges ?? []) relations.set(edge.to, [...(relations.get(edge.to) ?? []),
             `${edge.kind === 'branch' ? 'Branches from' : 'Depends on'} ${titles.get(edge.from) ?? edge.from}`]);
         const nodes: Node[] = (visible?.nodes ?? []).map(item => ({
-            id: item.id, type: 'checkpoint', position: positions.get(item.id) ?? { x: 64, y: 64 },
+            id: item.id, type: 'checkpoint', position: this.placements.get(item.id) ?? positions.get(item.id) ?? { x: 64, y: 64 },
             data: { item, selected: item.id === this.selectedId, relation: (relations.get(item.id) ?? []).join(', '),
                 omitted: visible?.omittedByStack.get(item.id) ?? 0,
                 select: (id: string) => this.select(id) },
-            selected: item.id === this.selectedId, draggable: false, selectable: true,
+            selected: item.id === this.selectedId, draggable: this.arranging, selectable: true,
             className: item.id === this.selectedId ? 'dope-roadmap-selected' : undefined,
         }));
         const edges: Edge[] = (visible?.edges ?? []).map(item => ({
@@ -289,13 +352,35 @@ export class RoadmapCanvasWidget extends BaseWidget {
         }));
         this.root.render(React.createElement(ReactFlow, {
             id: 'dope-roadmap-flow', nodes, edges, nodeTypes: roadmapNodeTypes,
-            defaultViewport: { x: 20, y: 20, zoom: 0.85 }, minZoom: 0.2, maxZoom: 2,
-            nodesDraggable: false, nodesConnectable: false, elementsSelectable: true,
+            defaultViewport: this.viewport ?? { x: 20, y: 20, zoom: 0.85 }, minZoom: 0.2, maxZoom: 2,
+            ...roadmapGestures(this.arranging), elementsSelectable: true,
             nodesFocusable: false, edgesFocusable: false,
-            panOnDrag: true, zoomOnScroll: true, zoomOnPinch: true, zoomOnDoubleClick: false,
+            zoomOnDoubleClick: false, nodeDragThreshold: 5,
             onNodeClick: (_event: React.MouseEvent, node: Node) => this.select(node.id),
-            onInit: (flow: ReactFlowInstance) => { this.flow = flow; },
-            onMoveEnd: (_event: unknown, viewport: { zoom: number }) => {
+            onNodesChange: (changes: NodeChange[]) => {
+                if (!this.arranging || !this.projection) return;
+                let changed = false;
+                for (const change of changes) if (change.type === 'position' && change.position &&
+                    this.projection.nodes.some(item => item.id === change.id)) {
+                    this.placements.set(change.id, { x: change.position.x, y: change.position.y });
+                    changed = true;
+                }
+                if (changed) this.renderFlow();
+            },
+            onNodeDragStop: (_event: MouseEvent | TouchEvent, node: Node) => {
+                if (!this.arranging || !this.projection?.nodes.some(item => item.id === node.id)) return;
+                this.placements.set(node.id, { x: node.position.x, y: node.position.y });
+                this.schedulePresentation();
+                this.renderFlow();
+            },
+            onInit: (flow: ReactFlowInstance) => { this.flow = flow;
+                if (this.viewport) void flow.setViewport(this.viewport); },
+            onMoveEnd: (_event: unknown, viewport: { x: number; y: number; zoom: number }) => {
+                if (!this.projectId || !this.projectUri) return;
+                if (!this.viewport || this.viewport.x !== viewport.x || this.viewport.y !== viewport.y || this.viewport.zoom !== viewport.zoom) {
+                    this.viewport = { x: viewport.x, y: viewport.y, zoom: viewport.zoom };
+                    this.schedulePresentation();
+                }
                 const next = roadmapDetailAtZoom(viewport.zoom, this.detail);
                 if (next !== this.detail) { this.detail = next; this.renderFlow(); }
             },
@@ -312,12 +397,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (!target) return;
         (expand ? this.collapsed : this.expanded).delete(target);
         (expand ? this.expanded : this.collapsed).add(target);
+        this.schedulePresentation();
         this.renderFlow();
     }
 
     private focusSelection(): void {
         if (!this.selectedId || !this.flow || !this.projection) return;
-        const position = roadmapSpatialLayout(this.projection).get(this.selectedId);
+        const position = this.placements.get(this.selectedId) ?? roadmapSpatialLayout(this.projection).get(this.selectedId);
         if (!position) return;
         void this.flow.setCenter(position.x + 140, position.y + 40, { zoom: Math.max(1.4, this.flow.getZoom()), duration: 320 });
     }
@@ -331,6 +417,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.promptWindow = { stackId: id, start: ((this.promptWindow?.stackId === id ? this.promptWindow.start : 0) + 96) % count };
         this.expanded.add(id);
         this.collapsed.delete(id);
+        this.schedulePresentation();
         this.renderFlow();
     }
 
@@ -828,6 +915,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (node.taskSource) this.inspector.select(undefined);
         if (this.promptWindow && this.promptWindow.stackId !== id) this.promptWindow = undefined;
         this.selectedId = id;
+        this.schedulePresentation();
         if (!node.taskSource) this.inspector.select(id);
         this.render();
         if (focus) requestAnimationFrame(() => [...this.path.querySelectorAll<HTMLButtonElement>('button')]
@@ -837,7 +925,25 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private onPathKey(event: KeyboardEvent): void {
         const target = event.target as HTMLElement;
         const current = target.closest<HTMLButtonElement>('button[data-checkpoint-id]');
-        if (!current || !this.path.contains(current)) return;
+        const action = roadmapKeyboardAction(event.key, event.shiftKey, event.altKey, this.arranging);
+        if (action && (target === this.path || (current && this.path.contains(current)))) {
+            event.preventDefault();
+            const kind = action.startsWith('move') ? 'move' : 'pan';
+            const direction = action.slice(kind.length + 1);
+            const dx = direction === 'left' ? -40 : direction === 'right' ? 40 : 0;
+            const dy = direction === 'up' ? -40 : direction === 'down' ? 40 : 0;
+            if (kind === 'pan' && this.flow) {
+                const view = this.flow.getViewport();
+                void this.flow.setViewport({ ...view, x: view.x - dx, y: view.y - dy });
+            } else if (kind === 'move' && current && this.projection) {
+                const id = current.dataset.checkpointId!;
+                const position = this.placements.get(id) ?? roadmapSpatialLayout(this.projection).get(id);
+                if (position) { this.placements.set(id, { x: position.x + dx, y: position.y + dy });
+                    this.schedulePresentation(); this.renderFlow(); current.focus(); }
+            }
+            return;
+        }
+        if (!current || !this.path.contains(current) || event.altKey || event.shiftKey) return;
         const ids = this.projection ? roadmapCanvasOrder({ ...this.projection,
             ...roadmapVisibleGraph(this.projection, this.detail, this.selectedId, this.expanded, this.collapsed, 96, this.promptWindow) })
             .map(node => node.id) : [];
@@ -847,7 +953,34 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.select(next, true);
     }
 
+    private presentation(): RoadmapViewportState | undefined {
+        if (!this.projectId) return undefined;
+        return roadmapViewportSnapshot(this.projectId, this.viewport, this.selectedId,
+            this.expanded, this.collapsed, this.placements);
+    }
+
+    private schedulePresentation(): void {
+        if (!this.saveKey || !this.storage) return;
+        if (this.saveTimer) clearTimeout(this.saveTimer);
+        this.saveTimer = setTimeout(() => this.flushPresentation(), 350);
+    }
+
+    private flushPresentation(): void {
+        if (!this.saveTimer) return;
+        clearTimeout(this.saveTimer);
+        this.saveTimer = undefined;
+        const state = this.presentation();
+        if (this.saveKey && state && this.storage) {
+            const key = this.saveKey;
+            this.saveWrite = this.saveWrite.catch(() => undefined).then(() => this.storage?.setData(key, state));
+            void this.saveWrite.catch(() => {
+                if (!this.isDisposed) this.status.textContent = 'Roadmap view could not be saved. Try moving a card or the map again.';
+            });
+        }
+    }
+
     override dispose(): void { ++this.request; ++this.importSerial; ++this.createSerial;
+        this.flushPresentation();
         if (this.createState) void this.service.cancelDraft(this.createState.handle).catch(() => undefined);
         window.removeEventListener('focus', this.focusRecheck);
         void this.service.observeLinkedDocument(undefined).catch(() => undefined); this.rootsListener.dispose(); this.modelListener(); super.dispose(); }

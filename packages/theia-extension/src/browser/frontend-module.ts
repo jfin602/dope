@@ -335,7 +335,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                     chats.set(widget.controller.chat.id, widget.controller.chat.title);
                 }
                 return [...chats].map(([id, title]) => ({ id, title }));
-            }) })).inSingletonScope();
+            }, context.container.get(StorageService)) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_INSPECTOR_ID, createWidget: () =>
         new RoadmapInspectorWidget(context.container.get(RoadmapInspectorModel)) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_REVIEW_ID, createWidget: () =>
