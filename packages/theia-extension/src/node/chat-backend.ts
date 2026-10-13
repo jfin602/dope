@@ -12,6 +12,7 @@ import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEv
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import { localPlanningJson, roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
 import { RoadmapGreenfield, type GreenfieldEdit, type GreenfieldEditPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 
 const draftInstruction = 'You are editing a noncanonical Roadmap draft. Propose exactly one small step using only the supplied IDs: {"type":"roadmap-draft-proposal","projectId":"<projectId>","draftRevision":<revision>,"action":<one create-phase/create-checkpoint/edit-phase/edit-checkpoint/reorder-phase/reorder-checkpoint action>}. Return only JSON. This requires developer approval. If no safe edit is justified, return {"type":"no-action","message":"brief reason"}. Never claim an edit was applied.';
 
@@ -179,23 +180,40 @@ export class ChatBackend implements ChatService {
                     revision: draft.revision, changedIds, action: { type: action.type, id: changedIds[0] },
                     summary: JSON.stringify({ action, before: preview.before.phases, after: preview.after.phases }) } };
             }
-            if (Object.keys(raw).sort().join(',') !== 'action,ownerRevision,projectId,type' ||
-                raw.type !== 'roadmap-proposal' || typeof raw.projectId !== 'string' ||
-                !Number.isSafeInteger(raw.ownerRevision) || !raw.action || typeof raw.action !== 'object' ||
-                Array.isArray(raw.action)) throw new Error('Invalid planning proposal schema');
             const context = refs.filter(ref => ref.kind === 'roadmap-checkpoint');
-            if (context.length !== 1 || context[0].projectId !== raw.projectId ||
-                context[0].ownerRevision !== raw.ownerRevision) throw new Error('Stale or foreign planning proposal');
-            const action = raw.action as PlanningAction;
-            if (action.type !== 'create' && action.id !== context[0].id)
-                throw new Error('Planning proposal targets an unselected checkpoint');
-            // The action is untrusted. P3 validates every field, identity, source and owner transition.
+            if (context.length !== 1) throw new Error('Select exactly one Roadmap checkpoint');
             const attached = await this.planning!.attach(root);
             handle = attached.projectHandle;
-            if (attached.snapshot.projectId !== raw.projectId || attached.snapshot.revision !== raw.ownerRevision)
+            if (attached.snapshot.projectId !== context[0].projectId || attached.snapshot.revision !== context[0].ownerRevision)
                 throw new Error('Stale or foreign planning proposal');
-            const request: PlanningActionRequest = { projectHandle: handle, ownerId: raw.projectId,
-                expectedRevision: raw.ownerRevision as number, actions: [action],
+            const selected = attached.snapshot.checkpoints.find(item => item.id === context[0].id);
+            if (!selected || selected.source?.sha256 !== context[0].sourceHash)
+                throw new Error('Stale or foreign Roadmap source');
+            const linked = !!attached.snapshot.linkedDocument && !!selected.source &&
+                selected.source.path === attached.snapshot.linkedDocument.path;
+            let action: PlanningAction;
+            if (linked) {
+                if (raw.type !== 'roadmap-intent' || Object.keys(raw).sort().join(',') !== 'intent,type,value' ||
+                    raw.intent !== 'set-objective' || typeof raw.value !== 'string' ||
+                    raw.value.length > 8192 || /[\r\n\0]/.test(raw.value))
+                    throw new Error('Linked Roadmap requires one eligible field intent');
+                const capabilities = await readRoadmapDocumentCapabilities(root, attached.snapshot, selected.id);
+                if (!capabilities.fields.objective.editable || capabilities.sourceHash !== context[0].sourceHash)
+                    throw new Error(capabilities.fields.objective.reason ?? 'Stale linked Roadmap source');
+                action = { type: 'document-edit', id: selected.id, objective: raw.value };
+            } else {
+                if (Object.keys(raw).sort().join(',') !== 'action,ownerRevision,projectId,type' ||
+                    raw.type !== 'roadmap-proposal' || raw.projectId !== context[0].projectId ||
+                    raw.ownerRevision !== context[0].ownerRevision || !raw.action ||
+                    typeof raw.action !== 'object' || Array.isArray(raw.action))
+                    throw new Error('Invalid planning proposal schema');
+                action = raw.action as PlanningAction;
+                if (action.type !== 'create' && action.id !== selected.id)
+                    throw new Error('Planning proposal targets an unselected checkpoint');
+            }
+            // The action is untrusted. ProjectPlanningActions validates fields, owner, source and revision.
+            const request: PlanningActionRequest = { projectHandle: handle, ownerId: attached.snapshot.projectId,
+                expectedRevision: attached.snapshot.revision, actions: [action],
                 ...(context[0].sourceHash ? { sourceHashes: { [context[0].id]: context[0].sourceHash } } : {}) };
             const preview = await this.planning!.preview(request);
             const id = randomUUID();
@@ -305,6 +323,25 @@ export class ChatBackend implements ChatService {
         if (budget) verifyRoadmapLocalInput(this.withDraft(composed.messages, draft), budget);
         if (roadmapTurn && !draft && !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
             throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
+        let localMode: 'linked' | 'unlinked' | 'draft' = draft ? 'draft' : 'unlinked';
+        let eligibleObjective = true;
+        if (localRoadmap && !draft && this.planning) {
+            const ref = composed.refs.filter(item => item.kind === 'roadmap-checkpoint');
+            if (ref.length !== 1) throw new Error('Select exactly one Roadmap checkpoint');
+            const attached = await this.planning.attach(root);
+            try {
+                if (attached.snapshot.projectId !== ref[0].projectId || attached.snapshot.revision !== ref[0].ownerRevision)
+                    throw new Error('Stale or foreign Roadmap context');
+                const selected = attached.snapshot.checkpoints.find(item => item.id === ref[0].id);
+                if (!selected || selected.source?.sha256 !== ref[0].sourceHash)
+                    throw new Error('Stale Roadmap source');
+                if (attached.snapshot.linkedDocument && selected.source?.path === attached.snapshot.linkedDocument.path) {
+                    localMode = 'linked';
+                    eligibleObjective = (await readRoadmapDocumentCapabilities(root, attached.snapshot, selected.id))
+                        .fields.objective.editable;
+                }
+            } finally { this.planning.detach(attached.projectHandle); }
+        }
         let preview: ChatContextPreview = { refs: composed.refs, diagnostics: composed.diagnostics,
             usedTokens: composed.usedTokens, budgetTokens: composed.budgetTokens };
         if (priorRefs && JSON.stringify(preview.refs.filter(ref => ref.origin !== 'automatic')) !==
@@ -386,7 +423,7 @@ export class ChatBackend implements ChatService {
                         { maxOutputTokens: budget?.output ?? chat.settings.context.reservedOutputTokens } : {}) },
                 localRoadmap ? { localOnly: true } : undefined);
             const events = localRoadmap ? (async function* () {
-                yield await localPlanningJson(generate, abort.signal, budget!.output);
+                yield await localPlanningJson(generate, abort.signal, budget!.output, localMode, eligibleObjective);
             })() : generate();
             for await (const event of events) {
                 if (event.type === 'delta') {

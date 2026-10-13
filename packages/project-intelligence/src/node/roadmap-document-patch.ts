@@ -14,6 +14,10 @@ export interface RoadmapDocumentPatch {
     prose?: string;
     requiresApproval: boolean;
 }
+export interface RoadmapDocumentCapabilities {
+    sourceHash: string;
+    fields: Record<'objective' | 'order' | 'prose', { editable: boolean; reason?: string }>;
+}
 
 export async function checkedRoadmapDocumentFile(root: string, path: string): Promise<{ file: string; directory: string; bytes: Buffer; mode: number }> {
     if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root || !(await stat(root)).isDirectory() ||
@@ -38,6 +42,56 @@ export async function checkedRoadmapDocumentFile(root: string, path: string): Pr
     } finally { await handle.close(); }
 }
 const checkedFile = checkedRoadmapDocumentFile;
+
+/** Uses the same checked source and section rules as the patch preview. */
+export async function readRoadmapDocumentCapabilities(root: string, index: RoadmapIndex,
+    checkpointId: string): Promise<RoadmapDocumentCapabilities> {
+    const linked = index.linkedDocument;
+    const checkpoint = index.checkpoints.find(item => item.id === checkpointId);
+    if (!linked || linked.syncState !== 'synced' || linked.projectRoot !== root || linked.projectId !== index.projectId ||
+        linked.lastSynced.sourceHash !== linked.sourceHash || !checkpoint?.source ||
+        checkpoint.source.path !== linked.path || checkpoint.source.sha256 !== linked.sourceHash ||
+        !linked.sections.some(section => section.checkpointId === checkpointId))
+        throw new Error('Stale or unsupported linked Roadmap section');
+    const source = await checkedFile(root, linked.path);
+    if (hash(source.bytes) !== linked.sourceHash) throw new Error('Stale linked Roadmap source fingerprint');
+    const before = source.bytes.toString('utf8');
+    if (!Buffer.from(before).equals(source.bytes)) throw new Error('Unsupported linked Roadmap encoding');
+    const lines = before.split(/\r\n|\n|\r/);
+    const line = checkpoint.source.line - 1;
+    if (line < 0 || line >= lines.length || lines[line] !== checkpoint.source.text || !/^#{2,3} /.test(lines[line]))
+        throw new Error('Stale linked Roadmap section heading');
+    if (checkpoint.readOnly) {
+        const unsupported = { editable: false, reason: 'Linked section requires explicit structure review' };
+        return { sourceHash: linked.sourceHash, fields: { objective: unsupported, order: unsupported, prose: unsupported } };
+    }
+    let end = line + 1;
+    let fence: string | undefined;
+    const fenced = new Set<number>();
+    for (; end < lines.length; end++) {
+        const marker = /^\s*(`{3,}|~{3,})/.exec(lines[end]);
+        if (marker) {
+            fenced.add(end);
+            if (!fence) fence = marker[1][0];
+            else if (fence === marker[1][0]) fence = undefined;
+            continue;
+        }
+        if (fence) { fenced.add(end); continue; }
+        if (/^#{2,3} /.test(lines[end])) break;
+    }
+    if (fence) throw new Error('Unsupported unclosed Roadmap fence');
+    const capability = (label: 'Objective' | 'Order' | 'Prose') => {
+        const matches: string[] = [];
+        for (let at = line + 1; at < end; at++)
+            if (!fenced.has(at) && new RegExp(`^\\s*${label}:\\s*`, 'i').test(lines[at])) matches.push(lines[at]);
+        if (matches.length !== 1) return { editable: false, reason: `Requires one ${label}: line in the linked section` };
+        if (label === 'Order' && !/^\s*Order:\s*\d+\s*$/i.test(matches[0]))
+            return { editable: false, reason: 'Order: must contain one integer' };
+        return { editable: true };
+    };
+    return { sourceHash: linked.sourceHash, fields: {
+        objective: capability('Objective'), order: capability('Order'), prose: capability('Prose') } };
+}
 
 export async function planRoadmapDocumentPatch(root: string, index: RoadmapIndex, edit: RoadmapDocumentEdit): Promise<RoadmapDocumentPatch> {
     const linked = index.linkedDocument;

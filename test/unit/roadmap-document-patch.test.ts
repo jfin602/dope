@@ -6,7 +6,7 @@ import test from 'node:test';
 import { ProjectPlanningActions } from '../../packages/project-intelligence/lib/node/project-planning-actions.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { previewRoadmapImport } from '../../packages/project-intelligence/lib/node/roadmap-import.js';
-import { planRoadmapDocumentPatch } from '../../packages/project-intelligence/lib/node/roadmap-document-patch.js';
+import { planRoadmapDocumentPatch, readRoadmapDocumentCapabilities } from '../../packages/project-intelligence/lib/node/roadmap-document-patch.js';
 
 const sourcePath = 'docs/roadmap/mvp-roadmap.md';
 const fixture = async (content: string, run: (root: string, store: RoadmapStore, actions: ProjectPlanningActions, file: string) => Promise<void>) => {
@@ -66,6 +66,10 @@ test('concurrent source edit and Roadmap revision refuse publication', async () 
 
 test('unsupported field/section and direct owner writes refuse changes', async () => fixture(initial.replace('Objective: old prose\r\n', ''), async (root, store, actions, file) => {
     const { imported, projectHandle, item } = await setup(root, store, actions);
+    const capabilities = await readRoadmapDocumentCapabilities(root, imported, item.id);
+    assert.equal(capabilities.fields.objective.editable, false);
+    assert.equal(capabilities.fields.order.editable, true);
+    assert.equal(capabilities.fields.prose.editable, true);
     const request = { projectHandle, ownerId: imported.projectId, expectedRevision: imported.revision,
         sourceHashes: { [item.id]: item.source!.sha256 }, actions: [{ type: 'document-edit' as const, id: item.id, objective: 'new' }] };
     await assert.rejects(actions.preview(request), /Unsupported or ambiguous Roadmap Objective field/);
@@ -74,6 +78,20 @@ test('unsupported field/section and direct owner writes refuse changes', async (
     await assert.rejects(actions.preview({ ...request, actions: [{ type: 'status' as const, id: item.id, status: 'green' as never }] }), /gate promotion/);
     assert.deepEqual(await readFile(file, 'utf8'), initial.replace('Objective: old prose\r\n', ''));
 }));
+
+test('duplicate mapped labels remain unsupported while a structured source is eligible', async () => {
+    await fixture(initial, async (root, store, actions) => {
+        const { imported, item } = await setup(root, store, actions);
+        const capability = await readRoadmapDocumentCapabilities(root, imported, item.id);
+        assert.deepEqual(Object.values(capability.fields).map(field => field.editable), [true, true, true]);
+    });
+    await fixture(initial.replace('Objective: old prose\r\n', 'Objective: old prose\r\nObjective: duplicate\r\n'),
+        async (root, store, actions) => {
+            const { imported, item } = await setup(root, store, actions);
+            await assert.rejects(readRoadmapDocumentCapabilities(root, imported, item.id),
+                /Stale or unsupported linked Roadmap section/);
+        });
+});
 
 test('foreign and symlink source paths fail closed', async () => fixture(initial, async (root, store, actions, file) => {
     const { imported, projectHandle, item } = await setup(root, store, actions);

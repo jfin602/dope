@@ -32,7 +32,8 @@ export function verifyRoadmapLocalInput(messages: readonly ConversationMessage[]
 
 /** Completed output is buffered so invalid attempts cannot become actionable Chat text. */
 export async function localPlanningJson<T extends { type: string; text: string; finishReason?: string }>(
-    generate: () => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = 512): Promise<T> {
+    generate: () => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = 512,
+    mode: 'linked' | 'unlinked' | 'draft' = 'unlinked', eligibleObjective = true): Promise<T> {
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         if (signal.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         let complete: T | undefined;
@@ -52,17 +53,51 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             const value: unknown = JSON.parse(complete.text);
             if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('object required');
             const raw = value as Record<string, unknown>;
-            const proposal = (raw.type === 'roadmap-proposal' &&
+            const proposal = (raw.type === 'roadmap-proposal' && mode === 'unlinked' &&
                 Object.keys(raw).sort().join(',') === 'action,ownerRevision,projectId,type' &&
-                Number.isSafeInteger(raw.ownerRevision) || raw.type === 'roadmap-draft-proposal' &&
+                Number.isSafeInteger(raw.ownerRevision) || raw.type === 'roadmap-draft-proposal' && mode === 'draft' &&
                 Object.keys(raw).sort().join(',') === 'action,draftRevision,projectId,type' &&
                 Number.isSafeInteger(raw.draftRevision)) &&
                 typeof raw.projectId === 'string' &&
-                !!raw.action && typeof raw.action === 'object' && !Array.isArray(raw.action);
+                validNestedAction(raw.action, mode);
+            const intent = mode === 'linked' && eligibleObjective && raw.type === 'roadmap-intent' &&
+                Object.keys(raw).sort().join(',') === 'intent,type,value' && raw.intent === 'set-objective' &&
+                typeof raw.value === 'string' && raw.value.length <= 8192 && !/[\r\n\0]/.test(raw.value);
             const noAction = raw.type === 'no-action' && Object.keys(raw).sort().join(',') === 'message,type' &&
                 typeof raw.message === 'string' && raw.message.length <= 1000;
-            if (proposal || noAction) return complete;
+            if (proposal || intent || noAction) return complete;
         } catch { /* One bounded repair attempt; no mutation or provider switch. */ }
     }
     return fail('Local planning did not return strict JSON after two attempts');
+}
+
+function validNestedAction(value: unknown, mode: 'linked' | 'unlinked' | 'draft'): boolean {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const action = value as Record<string, unknown>;
+    const specs: Record<string, [string[], string[]]> = mode === 'draft' ? {
+        'create-phase': [['type', 'title'], ['objective']],
+        'create-checkpoint': [['type', 'phaseId', 'title'], ['objective']],
+        'edit-phase': [['type', 'phaseId'], ['title', 'objective']],
+        'edit-checkpoint': [['type', 'phaseId', 'checkpointId'], ['title', 'objective']],
+        'reorder-phase': [['type', 'phaseId', 'order'], []],
+        'reorder-checkpoint': [['type', 'phaseId', 'checkpointId', 'order'], []]
+    } : {
+        create: [['type', 'id', 'kind', 'title', 'objective', 'order'], []],
+        edit: [['type', 'id'], ['title', 'objective']],
+        link: [['type', 'id', 'link'], []], unlink: [['type', 'id', 'link'], []],
+        depend: [['type', 'id', 'dependencyId'], []], undepend: [['type', 'id', 'dependencyId'], []],
+        reorder: [['type', 'id', 'order'], []], status: [['type', 'id', 'status'], []]
+    };
+    if (typeof action.type !== 'string' || !Object.hasOwn(specs, action.type)) return false;
+    const [required, optional] = specs[action.type];
+    if (!required.every(key => Object.hasOwn(action, key)) ||
+        !Object.keys(action).every(key => required.includes(key) || optional.includes(key))) return false;
+    for (const [key, field] of Object.entries(action)) {
+        if (key === 'link') {
+            if (!field || typeof field !== 'object' || Array.isArray(field)) return false;
+        } else if (key === 'order') {
+            if (!Number.isSafeInteger(field) || (field as number) < 0) return false;
+        } else if (typeof field !== 'string') return false;
+    }
+    return true;
 }

@@ -12,10 +12,11 @@ import { ProjectMindStore } from '@dope/project-intelligence/lib/node/project-mi
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { RoadmapStore, type RoadmapCheckpoint, type RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
+import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 import type { GroundingResult } from './chat-project-grounder';
 
 export const GROUNDED_CHAT_INSTRUCTION = 'Project facts are verified only when supported by the supplied project evidence. Do not claim to have read, listed, searched, or inspected project state beyond that evidence. State what is missing or unknown.';
-const ROADMAP_ACTION_INSTRUCTION = 'If proposing one Roadmap edit, reply with only compact JSON: {"type":"roadmap-proposal","projectId":"<context projectId>","ownerRevision":<context ownerRevision>,"action":<one validated planning action>}. For a source-backed linked Markdown checkpoint, use document-edit for mapped title, objective, order or prose; never use edit or status to change its source-owned fields. Use only IDs and revision from supplied context. This is a proposal requiring human approval; never claim it was applied. If no edit is justified, reply {"type":"no-action","message":"brief reason or missing context"}. Never claim an edit was applied.';
+const ROADMAP_ACTION_INSTRUCTION = 'For a linked Markdown checkpoint, only if capabilities.objective.editable is true, propose {"type":"roadmap-intent","intent":"set-objective","value":"one line"}. Otherwise reply {"type":"no-action","message":"brief reason"}. For an unlinked checkpoint, a validated roadmap-proposal action may be used. All proposals require developer approval. Never claim an edit was applied.';
 
 export interface ComposedChatContext { messages: ConversationMessage[]; refs: ChatContextRef[];
     diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }
@@ -77,8 +78,13 @@ export class ChatContextComposer {
         const current = await this.roadmap.read(root);
         if (current.projectId !== index.projectId || current.revision !== index.revision)
             throw new Error('Roadmap changed during context reading; preview again');
+        const capabilities = index.linkedDocument && checkpoint.source?.path === index.linkedDocument.path
+            ? await readRoadmapDocumentCapabilities(root, index, checkpoint.id) : undefined;
         return { label: `Roadmap checkpoint: ${checkpoint.title}`, text: JSON.stringify({
-            projectId: index.projectId, ownerRevision: index.revision, checkpoint: fact(checkpoint),
+            projectId: index.projectId, ownerRevision: index.revision,
+            capabilities: capabilities?.fields ?? { objective: { editable: false, reason: 'No linked editable source' } },
+            allowedIntent: capabilities?.fields.objective.editable ? 'set-objective' : null,
+            checkpoint: fact(checkpoint),
             neighbors: neighbors.map(fact), planningMaps: maps }),
             ...(index.checkpoints.length > neighbors.length + 1 || checkpoint.links.length > planningLinks.length ||
                 checkpoint.evidence.length > 2 ? { omitted: 'Roadmap neighbors, links or evidence omitted by query bound' } : {}) };

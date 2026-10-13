@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -8,20 +8,26 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { ProjectPlanningActions } from '../../packages/project-intelligence/lib/node/project-planning-actions.js';
+import { previewRoadmapImport } from '../../packages/project-intelligence/lib/node/roadmap-import.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 
 const proposal = (projectId: string, ownerRevision: number, action: unknown) => JSON.stringify({
     type: 'roadmap-proposal', projectId, ownerRevision, action });
 
-async function fixture(run: (f: Awaited<ReturnType<typeof setup>>) => Promise<void>) {
-    const f = await setup();
+async function fixture(run: (f: Awaited<ReturnType<typeof setup>>) => Promise<void>, linked = false,
+    sourceOverride?: string) {
+    const f = await setup(linked, sourceOverride);
     try { await run(f); } finally { f.backend.dispose(); await rm(f.root, { recursive: true, force: true }); }
 }
-async function setup() {
+async function setup(linked = false, sourceOverride?: string) {
     const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-chat-action-'));
     const store = new RoadmapStore();
-    await store.mutate(root, 0, { type: 'create', id: 'a', kind: 'milestone', title: 'A', objective: 'Before', order: 0 });
+    const source = sourceOverride ?? '# Roadmap\n\n## Product Phase 1 — A\nStatus: **NOT GREEN**\nObjective: Before\nOrder: 1\nProse: prior\n';
+    if (linked) {
+        await writeFile(join(root, 'ROADMAP.md'), source);
+        await store.acceptImport(root, 0, await previewRoadmapImport(root, 'ROADMAP.md'));
+    } else await store.mutate(root, 0, { type: 'create', id: 'a', kind: 'milestone', title: 'A', objective: 'Before', order: 0 });
     const repository = new ChatRepository();
     const composer = new ChatContextComposer({} as never, {} as never, {} as never, repository, store);
     const outputs: string[] = [];
@@ -51,25 +57,67 @@ async function setup() {
     const current = () => store.read(root);
     const turn = async (revision: number, content = 'Propose a change') => backend.runTurn({ projectHandle,
         chatId, leaseToken: lease.token, selectedModel: { connectionId: 'local', modelId: 'short' }, content,
-        context: [{ kind: 'roadmap-checkpoint', id: 'a', projectId: (await current()).projectId,
-            ownerRevision: revision }] });
-    return { root, store, repository, backend, outputs, sent, current, turn, projectHandle, chatId, leaseToken: lease.token };
+        context: [{ kind: 'roadmap-checkpoint', id: (await current()).checkpoints[0].id,
+            projectId: (await current()).projectId, ownerRevision: revision,
+            ...(linked ? { sourceHash: (await current()).checkpoints[0].source!.sha256 } : {}) }] });
+    return { root, store, repository, backend, outputs, sent, current, turn, projectHandle, chatId,
+        leaseToken: lease.token, source };
 }
 
 test('only complete strict proposals preview; malformed, fake ID, Green and tool escape do not write', async () => fixture(async f => {
     const initial = await f.current();
     f.outputs.push('{bad json', '{bad json', proposal(initial.projectId, 1, { type: 'edit', id: 'fake', objective: 'Wrong' }),
         proposal(initial.projectId, 1, { type: 'status', id: 'a', status: 'green' }),
+        proposal(initial.projectId, 1, { type: 'shell', id: 'a', command: 'touch file' }),
         proposal(initial.projectId, 1, { type: 'shell', id: 'a', command: 'touch file' }));
     await assert.rejects(f.turn(1), /strict JSON/);
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
         const result = await f.turn(1);
         assert.equal(result.proposal, undefined);
         assert.match(result.proposalError ?? '', /rejected/);
         assert.equal((await f.current()).revision, 1);
     }
-    assert.equal(f.sent.length, 5);
+    await assert.rejects(f.turn(1), /strict JSON/);
+    assert.equal(f.sent.length, 6);
 }));
+
+test('linked intent binds checked document edit; mismatch, denial and stale source do not write', async () => fixture(async f => {
+    const initial = await f.current();
+    const id = initial.checkpoints[0].id;
+    const intent = (value: string) => JSON.stringify({ type: 'roadmap-intent', intent: 'set-objective', value });
+    f.outputs.push(proposal(initial.projectId, initial.revision, { type: 'edit', id, objective: 'Wrong' }),
+        proposal(initial.projectId, initial.revision, { type: 'edit', id, objective: 'Wrong' }));
+    await assert.rejects(f.turn(initial.revision), /strict JSON/);
+    f.outputs.push(intent('Rejected'));
+    const denied = (await f.turn(initial.revision)).proposal!;
+    assert.ok(denied);
+    assert.match(denied.summary, /documentDiff/);
+    assert.equal(await readFile(join(f.root, 'ROADMAP.md'), 'utf8'), f.source);
+    await f.backend.decidePlanningProposal(f.projectHandle, f.chatId, f.leaseToken, denied.id, false);
+    assert.equal(await readFile(join(f.root, 'ROADMAP.md'), 'utf8'), f.source);
+    f.outputs.push(intent('Approved'));
+    const approved = (await f.turn(initial.revision)).proposal!;
+    assert.ok(approved);
+    await f.backend.decidePlanningProposal(f.projectHandle, f.chatId, f.leaseToken, approved.id, true);
+    assert.match(await readFile(join(f.root, 'ROADMAP.md'), 'utf8'), /Objective: Approved/);
+    assert.equal((await f.current()).checkpoints[0].objective, 'Approved');
+    f.outputs.push('{"type":"no-action","message":"No edit"}');
+    const next = await f.turn((await f.current()).revision);
+    assert.equal(next.proposal, undefined);
+    assert.equal((await f.current()).checkpoints[0].id, id);
+}, true));
+
+test('narrative linked section without Objective is visibly ineligible and cannot produce an edit', async () => fixture(async f => {
+    const initial = await f.current();
+    const intent = '{"type":"roadmap-intent","intent":"set-objective","value":"Not mapped"}';
+    f.outputs.push(intent, intent);
+    await assert.rejects(f.turn(initial.revision), /strict JSON/);
+    assert.match(f.sent.at(-1) ?? '', /"editable":false/);
+    assert.equal((await f.current()).revision, initial.revision);
+    assert.equal(await readFile(join(f.root, 'ROADMAP.md'), 'utf8'), f.source);
+    f.outputs.push('{"type":"no-action","message":"Objective is read-only"}');
+    assert.equal((await f.turn(initial.revision)).proposal, undefined);
+}, true, '# Roadmap\n\n## Product Phase 1 — A\nStatus: **NOT GREEN**\nNarrative goal without a mapped label.\n'));
 
 test('developer rejects or approves one completed proposal; stale manual race rejects and next turn refreshes', async () => fixture(async f => {
     const owner = (await f.current()).projectId;

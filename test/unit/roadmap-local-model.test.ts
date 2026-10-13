@@ -45,6 +45,23 @@ test('abort stops retries; strict fallback rejects tool and multiple-action enve
     }, new AbortController().signal), /strict JSON/);
 });
 
+test('linked intent contract rejects missing action type, wrong operation, extra keys and unknown intent before completion', async () => {
+    const valid = '{"type":"roadmap-intent","intent":"set-objective","value":"Checked goal"}';
+    for (const malformed of [
+        '{"type":"roadmap-proposal","projectId":"p","ownerRevision":1,"action":{"id":"a","objective":"x"}}',
+        '{"type":"roadmap-proposal","projectId":"p","ownerRevision":1,"action":{"type":"edit","id":"a","objective":"x"}}',
+        '{"type":"roadmap-intent","intent":"set-status","value":"green"}',
+        '{"type":"roadmap-intent","intent":"set-objective","value":"x","actions":[]}'
+    ]) {
+        let calls = 0;
+        await assert.rejects(localPlanningJson(async function* () { calls++; yield complete(malformed); },
+            new AbortController().signal, 512, 'linked'), /strict JSON/);
+        assert.equal(calls, 2);
+    }
+    assert.equal((await localPlanningJson(async function* () { yield complete(valid); },
+        new AbortController().signal, 512, 'linked')).text, valid);
+});
+
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
