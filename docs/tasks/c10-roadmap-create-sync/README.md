@@ -1,6 +1,6 @@
 # c10-roadmap-create-sync — Phase 10 Roadmap correction stack
 
-**Status:** DOCUMENTS ASSESSED / PLANNED / EXECUTABLE PROMPTS AUTHORED; **NOT IMPLEMENTED / NOT QUALIFIED / NOT OWNER-ACTIVATED**
+**Status (2026-10-13):** **OWNER-ACTIVATED FOR P1–P18 IMPLEMENTATION / P19 MANUAL T3 / NOT EXECUTED OR QUALIFIED**; Phase 10 P16 remains **NOT GREEN / NOT OWNER-CLOSED**.
 **Date:** 2026-10-12 (America/Chicago)
 **Source baseline for planning:** `0.10.16`, P16 source `27ab84e2aaf424b17e1d90ccc5016f8af858661f` is **NOT GREEN / NOT OWNER-CLOSED**. ADR 0036 + linked Markdown + runner-aware interactive canvas amendments are approved designs.
 **Execution folder:** `docs/tasks/c10-roadmap-create-sync/`; mode: **Correction 10**, package version **`0.10.16` UNCHANGED** (all 13 manifests and 20 internal pins).
@@ -33,14 +33,14 @@ Repair visible Roadmap creation/import and ordinary Chat planning; maintain a pe
 
 ## Execution and evidence law
 
-**Separate explicit owner activation is required before execution.** Prompt authoring and ADR approval do not authorize running tasks. Verify actual Git HEAD/ancestry, clean or deliberately accepted dirty worktree, fixed `0.10.16` version across root/workspaces and internal pins, source freshness, and no concurrent mutating correction stack. Preserve pre-existing shared checkout deletions and uncommitted work. Do not reset, blindly pull, clean, stash-and-forget or force-update. This is unchanged-version correction; do not pre-bump manifests, add root `package-lock.json` or rewrite `yarn.lock`.
+**Explicit owner activation is recorded** in [the 2026-10-13 correction activation](../../planning/p10/c10-roadmap-create-sync-activation.md). Activation authorizes P1–P18 only after safe local preflight; P19 remains manual T3. Prompt authoring and activation do not themselves execute or qualify work. Verify actual Git HEAD/ancestry, clean or deliberately accepted dirty worktree, fixed `0.10.16` version across root/workspaces and internal pins, source freshness, and no concurrent mutating correction stack. Preserve pre-existing shared checkout deletions and uncommitted work. Do not reset, blindly pull, clean, stash-and-forget or force-update. This is unchanged-version correction; do not pre-bump manifests, add root `package-lock.json` or rewrite `yarn.lock`.
 
 Validate the prompts after authoring:
 ```sh
 npm run codex:phase:validate -- c10-roadmap-create-sync
 ```
 
-After explicit activation and safe preflight, execute ordinary prompts:
+After verifying the activated source and safe local preflight, execute ordinary prompts:
 ```sh
 npm run codex:phase -- c10-roadmap-create-sync
 ```
