@@ -17,9 +17,8 @@ import { RoadmapInspectorModel } from '../../packages/theia-extension/lib/browse
 
 const basis = { architectureRevision: 1, architectureFingerprint: 'architecture',
     physicalInputFingerprint: 'physical', physicalGeneration: 7 };
-const proposal = (projectId: string, ownerRevision: number, id: string, objective: string) =>
-    JSON.stringify({ type: 'roadmap-proposal', projectId, ownerRevision,
-        action: { type: 'document-edit', id, objective } });
+const intent = (objective: string) =>
+    JSON.stringify({ type: 'roadmap-intent', intent: 'set-objective', value: objective });
 
 test('imported Roadmap, original owners, manual inspector, Planning Map and saved Chat share guarded authority', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-integration-'));
@@ -133,13 +132,13 @@ test('imported Roadmap, original owners, manual inspector, Planning Map and save
         const turn = async (revision: number) => backend.runTurn({ projectHandle: attached.projectHandle,
             chatId, leaseToken: lease.token, selectedModel: { connectionId: 'local', modelId: 'short' },
             content: 'Plan one step', context: await context(revision) });
-        outputs.push(proposal(index.projectId, index.revision, checkpoint.id, 'AI objective'));
+        outputs.push(intent('AI objective'));
         const pending = (await turn(index.revision)).proposal;
         assert.ok(pending);
         assert.equal((await roadmap.read(root)).checkpoints[0].objective, 'Manual objective');
         assert.equal(await backend.decidePlanningProposal(attached.projectHandle, chatId, lease.token, pending.id, false), undefined);
         await assert.rejects(backend.decidePlanningProposal(attached.projectHandle, chatId, lease.token, pending.id, true), /unavailable/);
-        outputs.push(proposal(index.projectId, index.revision, checkpoint.id, 'Stale AI objective'));
+        outputs.push(intent('Stale AI objective'));
         const stale = (await turn(index.revision)).proposal;
         assert.ok(stale);
         inspector.change('objective', 'Second manual objective');
@@ -151,7 +150,7 @@ test('imported Roadmap, original owners, manual inspector, Planning Map and save
         await assert.rejects(backend.runTurn({ projectHandle: attached.projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'short' }, content: 'Foreign',
             context: [{ ...(await context(index.revision))[0], projectId: 'foreign' }] }), /Stale or foreign Roadmap context/);
-        outputs.push(proposal(index.projectId, index.revision, checkpoint.id, 'Approved AI objective'));
+        outputs.push(intent('Approved AI objective'));
         const fresh = (await turn(index.revision)).proposal;
         assert.ok(fresh);
         const changed = await backend.decidePlanningProposal(attached.projectHandle, chatId, lease.token, fresh.id, true);
