@@ -1,0 +1,25 @@
+TASK: Correction 10 / P1 — Make Roadmap progression horizontal with vertical branches
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036 and ADRs 0016/0037, Phase 10 plan, this stack README/assessment/implementation-plan, current c10-roadmap-qualify manual P12/P14 and historical P16/P19 closeouts. Verify local HEAD, all-manifest version and pinned references, target files and dirty user state. No reset/clean/stash, no concurrent mutating runner, no hidden source edits or agent-made commits. Starting the selected stack is sufficient authorization; no /activate.
+
+INSPECT
+`packages/theia-extension/src/browser/roadmap-canvas-model.ts` (`roadmapSpatialLayout`, `roadmapCanvasOrder`, semantic zoom), `roadmap-canvas-widget.ts` (React Flow handles/edges, selection/Focus/Arrange), `roadmap-viewport.ts` (v1 layout persistence), `packages/project-intelligence/src/roadmap-projection.ts`, and focused spatial/viewport/prompt-open tests. Inspect actual styles and current target types before coding.
+
+IMPLEMENT
+Replace vertical primary placement with deterministic left-to-right phase progression at stable baseline Y. Corrections and qualification branches rise above the path; ordinary supporting task/prompt/evidence branches descend below. Allow room for dense/long descendants without node overlap, disconnected/missing source relationships without fake edges, and world/phase/checkpoint disclosure without exposing unbounded prompt children. Update React Flow edge/handle placement only as needed so vertical branches clearly attach to actual parent nodes, not invented reconnect or dependency edges. Preserve existing inspector opening, Fit/Focus, pan/zoom/pinch, Arrange-only drag and the one independent ChatPanel. Make Tab/Arrow/Home/End logical and consistent with displayed path/branch order; retain noncolor accessible focus.
+
+Guard saved v1 viewport/placements: detect orientation and version presentation persistence, translate intentional placements/offsets when defensible, otherwise preserve recoverable legacy snapshot and intentionally use a fresh fitted default without changing canonical Roadmap revision or cross-project settings. Explicitly test refresh/restart-compatible round trip and stable selection. Do not introduce a new map engine or alter semantic projection, evidence, Markdown sync or ProjectPlanningActions.
+
+FOCUSED VALIDATION — T2
+Update the CURRENT vertical assertion in `test/unit/roadmap-spatial-canvas.test.ts`; add bounded phase X monotonicity, correction above/support below, nested prompt density/collision, real edge source/target, deterministic repeat and no input mutation cases. Extend `roadmap-viewport.test.ts` for v1 compatibility/migration/project isolation, and `roadmap-prompt-open.test.ts` only if keyboard navigation changes. Run only the affected node --test files; rebuild changed theia-extension output only if tests require compiled lib. `git diff --check`. Target <=8 minutes; explain narrowly if density/migration warrants a bounded T2 exception. No full npm run check, all-project build, browser/Electron packaging or manual matrix.
+
+PRESERVE / DONE
+Same model/provider, statuses, authority, linked Markdown owner, existing saved Chat, historical Not Green and unchanged version. Report actual changed files, tests and unresolved risk for P2. Layout implementation alone is not Green qualification; runner owns commits.

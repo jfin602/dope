@@ -29,6 +29,10 @@ Codex CLI and Dope may alternate on **one accepted linked Markdown file in the s
 
 P8 owns focused disposable shared-file regression; **manual P9** now owns the **required real Codex CLI → Markdown → Dope UI → Markdown → fresh Codex read**, repeat/restart and conflict/relink replay with hashes, stable IDs, revisions and evidence. No new prompts or second sync service. Mock Codex-like edits alone do not qualify a live handoff; missing Codex/GUI evidence is Not Green / Evidence Gap.
 
+## Prequalification presentation dependency — c10-horizontal-color
+
+Owner-authorized `../c10-horizontal-color/` contains P1 horizontal phase path / vertical correction-support branches, P2 six-state completion colors and P3 **implementation-only** closeout. Execute and source-checkpoint this correction on coherent unchanged `0.10.16` before starting the manual browser matrix below. This is not an `/activate` gate and does NOT itself qualify Phase 10. Manual P12 tests its actual browser/native placement, colors and migrated layout; P13 guards false Green/authority; P14 validates the exact final source. Reuse already recorded manual P9–P11 evidence only after checking whether the UI changes invalidate any part of it; preserve every original result.
+
 ## Manual browser qualification P9–P14 (outside runner)
 
 P1–P8 are committed runner checkpoints. To avoid forcing browser-tool work through the CLI runner, keep the root P9 as its **single final manual handoff file** for parser compatibility. The actual qualification prompts are authored under `manual/` and must be run individually in the browser-enabled interactive environment, **not** through `npm run codex:phase` or artificial Git prompt checkpoints:

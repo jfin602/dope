@@ -1,0 +1,25 @@
+TASK: Correction 10 / P2 — Add truthful qualification-aware Roadmap status colors
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read this stack README/assessment/implementation-plan, ADR 0036, theme ADR 0016 and human usability ADR 0037, and inspect P1's actual result/current dirty state before mutation. Check source/version; do not reset developer changes, rerun P1, overlap runners, commit in agent or require /activate.
+
+INSPECT
+`packages/project-intelligence/src/roadmap-projection.ts` status/statusLabel/evidence/edge contracts; `packages/theia-extension/src/browser/roadmap-canvas-widget.ts` RoadmapNode and edge rendering; existing `dope.css` theme tokens and theme registration; `roadmap-status-truth.test.ts`, `roadmap-canvas.test.ts`, and `dope-theme.test.ts` if shared palette changes. Keep P1 geometry and viewport behavior intact.
+
+IMPLEMENT
+Add automatic, presentation-only styles for all six existing statuses: green=muted earned green; active=restrained orange; not-green=muted red; waived=distinct muted violet; not-implemented=neutral gray; unknown=muted neutral. Preserve special `Owner-closed for sequencing` text without promoting waived to Green. Use centralized theme-semantic variables compatible with restrained dark-orange and alternate light/user themes; no locally hardcoded brand hex palettes, garish default borders, or orange on neutral cards. Keep selected/keyboard focus visually distinct from status. Provide readable status text plus appropriate noncolor indicator/pattern so colorblind/low-contrast modes retain meaning.
+
+Color dependencies/branches only using actual semantic graph and statuses; never paint an edge as a completed connection across a not-green, waived, active, unknown or unimplemented endpoint, and never interpret task prompt completion as phase Green. Do not create an authoritative status transition, change RoadmapStore, infer completion percentages without trustworthy denominator, add hidden approvals or synthesize edges. Keep visual details compact/readable beside dockable Chat.
+
+FOCUSED VALIDATION — T1
+Use focused existing Roadmap canvas/status tests plus minimal explicit positive/negative six-state style/edge classification coverage; run `dope-theme.test.ts` only if modifying centralized theme registration. Check unknown/waived/not-green never receive Green styling, branch and dependency behavior, selection nonoverride, accessible labels and fallback tokens. Build only changed theia-extension output if necessary; `git diff --check`. Target <=8 minutes including tests; no full aggregate, packaging, new theme system or live browser claim.
+
+PRESERVE / DONE
+P1 spatial truth, source/document sync and approvals, historical P16/P19 NOT GREEN, manual P12/P13 authority and the unchanged version. Report actual code/tests and any remaining T3 theme/readability risk. Runner owns commits; P3 owns implementation handoff, not Phase 10 qualification.
