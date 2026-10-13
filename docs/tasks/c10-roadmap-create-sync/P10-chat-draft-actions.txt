@@ -1,0 +1,33 @@
+TASK: Correction 10 / P10 — Route completed Chat planning proposals into greenfield drafts
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036 (both linked-document and runner/canvas amendments), docs/planning/p10/phase-10-plan.md, this correction README/assessment/plan and P16 closeout. Require explicit separate owner activation; verify actual Git HEAD/version/dirty-tree, all 13 manifests/20 pins unchanged at 0.10.16, and reconcile any worktree/source conflicts safely. Do not reset/clean/stash-away unrelated local work, bump versions or manually commit when runner owns changes.
+
+INSPECT
+Existing ChatBackend completed-turn strict roadmap proposals, roadmap-action-runtime, ProjectPlanningActions approval and P7 greenfield draft; test/unit/roadmap-chat-actions.test.ts, roadmap-local-model.test.ts, roadmap-chat-context.test.ts.
+
+IMPLEMENT
+Extend the existing saved Chat completed-turn planning proposal handling to one small typed greenfield draft action per turn (phase/checkpoint add/edit/reorder) with Dope-owned validation, visible preview and explicit developer approval. Keep noncanonical draft and compact confirmed decisions, next-turn freshness, measured local 4,096 TOTAL tokens incl system/output reserve and strict JSON fallback without native tools. Reject malformed, canceled, stale, unapproved, foreign or wrong-project proposals with NO draft/canonical/document mutation. Draft acceptance/document creation remains a separate user-approved action through P7; no new Chat widget, agent shell, direct filesystem or silent hosted inference.
+
+PRESERVE
+Existing ChatPanel left/right/bottom/center, Dope-owned ProjectPlanningActions with preview/approval and unchanged owner authorities; Markdown mapped fields source-owned, .dope Roadmap owns IDs/links; historical P16 Not Green remains. No agent/Work execution or Chat shell/filesystem/Git/MCP grants, silent hosted inference, false Green status, phase advancement or Phase 12 background alignment. Use restrained dark-orange semantic theme and accessible UI for presentation changes.
+
+VALIDATION — T2
+Build theia-extension changed outputs only as needed; run node --test test/unit/roadmap-chat-actions.test.ts test/unit/roadmap-local-model.test.ts and new test/unit/roadmap-chat-drafts.test.ts. Prove approved one-step edits, stale denial, bad JSON/cancel, exact selected Chat identity and absence of AgentRun/hosted fallback; git diff --check.
+Target <=8 minutes including focused implementation and tests, with 10-minute soft / 15-minute hard ceiling. Only compile changed dependencies for lib-consuming tests. No npm run check, npm test, full browser/Electron build, packaging, general restart or native GUI; P17/P18 own broad evidence. Report inability to meet a safety requirement instead of dropping it.
+
+DEFER
+P17 covers integration and P18 real model/egress. No background planner or long-context wholesale Roadmap injection.
+
+DONE WHEN
+The bounded owned change and security/compatibility invariants pass focused checks, with unchanged version, safe worktree and a precise next-prompt handoff. Runner owns commits; do not commit from the agent.
+
+FINAL RESPONSE
+List actual modified files, tests/builds run and outcomes, source/version identity, preserved behavior and unresolved risks.
