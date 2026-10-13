@@ -24,11 +24,12 @@ Repair visible Roadmap creation/import and ordinary Chat planning; maintain a pe
 | [P11](P11-runner-prompt-discovery.txt) | Shared strict runner prompt discovery | T2 | GPT-6 Sol High | no |
 | [P12](P12-prompt-graph-projection.txt) | Prompt/slice/correction graph | T1 | GPT-6 Sol Medium | no |
 | [P13](P13-spatial-roadmap-canvas.txt) | Replace list with React Flow canvas | T1 | GPT-6 Sol High | no |
-| [P14](P14-roadmap-zoom-layout.txt) | Semantic zoom/touch/viewport/Arrange | T1 | GPT-6 Sol High | no |
-| [P15](P15-prompt-source-navigation.txt) | Double-click/Enter open prompt source | T1 | GPT-6 Sol Medium | no |
-| [P16](P16-historical-gate-truth.txt) | Correct current phase status precedence | T2 | GPT-6 Sol High | no |
-| [P17](P17-create-sync-integration.txt) | Focused integrated authority regressions | T2 | GPT-6 Sol High | no |
-| [P18](P18-roadmap-closeout.txt) | Real GUI/local-model/egress qualification and closeout | T3 | GPT-6 Sol High | **yes** |
+| [P14](P14-roadmap-semantic-zoom.txt) | Semantic world/phase/checkpoint zoom | T1 | GPT-6 Sol High | no |
+| [P15](P15-roadmap-viewport-gestures.txt) | Touch/viewport restore/Arrange mode | T1 | GPT-6 Sol High | no |
+| [P16](P16-prompt-source-navigation.txt) | Double-click/Enter open prompt source | T1 | GPT-6 Sol Medium | no |
+| [P17](P17-historical-gate-truth.txt) | Correct historical status precedence | T2 | GPT-6 Sol High | no |
+| [P18](P18-create-sync-integration.txt) | Focused integrated authority regressions | T2 | GPT-6 Sol High | no |
+| [P19](P19-roadmap-closeout.txt) | Real GUI/local-model/egress qualification and closeout | T3 | GPT-6 Sol High | **yes** |
 
 ## Execution and evidence law
 
@@ -43,10 +44,10 @@ After explicit activation and safe preflight, execute ordinary prompts:
 ```sh
 npm run codex:phase -- c10-roadmap-create-sync
 ```
-The runner owns P1–P17 checkpoints, commits and manual browser handoff; do not manually commit during agent prompts. P18 is the **sole manual T3** with exact-source `npm run check`, real local model, browser **and direct Electron GUI**, restart, authority/evidence and independently observed no-hosted-egress. A completed stack/run is not Phase 10 Green. P18 writes a new correction `closeout.md` truthfully; historical `docs/tasks/p10/closeout.md` remains unchanged, and Phase 11 stays inactive until separate owner decision.
+The runner owns P1–P18 checkpoints, commits and manual browser handoff; do not manually commit during agent prompts. P19 is the **sole manual T3** with exact-source `npm run check`, real local model, browser **and direct Electron GUI**, restart, authority/evidence and independently observed no-hosted-egress. A completed stack/run is not Phase 10 Green. P19 writes a new correction `closeout.md` truthfully; historical `docs/tasks/p10/closeout.md` remains unchanged, and Phase 11 stays inactive until separate owner decision.
 
 ## Safety and efficiency
 
-Manual zero-model and local 4,096-total-token model workflows must work; no silent hosted fallback. Only normal ChatPanel, no Roadmap-specific transcript/mode or agent grants. Prompt discovery remains read-only and double-click opens a source document, **never executes it**. Linked Markdown mapped prose remains document-owned; unsupported sections preserve bytes/read-only behavior. All Green/Not Green/waived truth is evidence-backed. Ordinary prompts use focused tests/changed-package builds, not repetitive full checks; P17 runs narrow T2 integration, P18 alone owns direct GUI and aggregate.
+Manual zero-model and local 4,096-total-token model workflows must work; no silent hosted fallback. Only normal ChatPanel, no Roadmap-specific transcript/mode or agent grants. Prompt discovery remains read-only and double-click opens a source document, **never executes it**. Linked Markdown mapped prose remains document-owned; unsupported sections preserve bytes/read-only behavior. All Green/Not Green/waived truth is evidence-backed. Ordinary prompts use focused tests/changed-package builds, not repetitive full checks; P18 runs narrow T2 integration, P19 alone owns direct GUI and aggregate.
 
 See [assessment](prompt-assessment.md) and [implementation plan](implementation-plan.md).
