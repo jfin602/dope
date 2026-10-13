@@ -1,0 +1,33 @@
+TASK: Correction 10 / P6 — Recover interrupted linked Roadmap synchronization
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 including linked-document/runner/canvas amendments, docs/planning/p10/phase-10-plan.md, this correction assessment/plan/README and prior P16 closeout. Confirm separately approved correction activation before mutation, exact coherent unchanged 0.10.16 manifests/internal pins, actual HEAD and safely clean or explicitly accepted dirty tree; protect the reported unrelated checkout deletions. Inspect actual owner APIs/tests, not assumed paths. No reset, silent stash, version bump, dependency churn or manual agent commits.
+
+INSPECT
+RoadmapStore atomic replacement and lock recovery, P4/P5 document adapter and sync states, relevant Theia workspace lifecycle and project switch behavior.
+
+IMPLEMENT
+Make cross-file document/index changes crash-recoverable without claiming distributed atomicity: persist bounded pending-sync basis/operation/outcome, surface partially applied writes, detect stale conflicts on retry and reconcile after restart. Add bounded/debounced file observation for the explicitly linked source with fallback recheck on focus, refresh and edit; avoid self-trigger loops, duplicate writes and background inference. Attach watcher to the active project only, cancel on workspace switch/dispose, and preserve user data if pending state cannot safely reconcile. Missing source and unsafe relink require explicit approval.
+
+PRESERVE
+One existing saved ChatPanel across all docks; one validated ProjectPlanningActions authority; linked Markdown document owns supported mapped prose, .dope Roadmap owns IDs/links, other owners and historical Not Green unchanged. No model filesystem/process/Git/MCP/agent grant, no automatic hosted fallback, no hidden status Green or implicit Work run. Use current restrained dark-orange themes for affected UI.
+
+VALIDATION — T2
+Run node --test test/unit/roadmap-document-sync.test.ts and new test/unit/roadmap-sync-recovery.test.ts with changed output built only if imported through lib. Fault-inject after each owner write, restart, stale retry, watcher dedup, project switch and fail closed on unsafe link; git diff --check.
+Ordinary implementation plus checks target <=8 minutes (10-minute soft, 15-minute hard). No routine npm run check, npm test, full builds, AppImage, GUI or release qualification; P17/P18 own those gates. If a mandatory security/safety test cannot pass, report a blocker instead of proceeding unsafely.
+
+DEFER
+P17 owns cross-owner integration and P18 real restart/browser/Electron; no broad filesystem watcher.
+
+DONE WHEN
+The single owned seam works with focused evidence and compatibility, source/authority preservation is proved, and the next prompt may build safely. Runner owns checkpoint commits; do not commit within the implementation agent.
+
+FINAL RESPONSE
+Report source/HEAD, exact changed files, focused tests/builds actually run, unchanged version, risks and the next prompt.
