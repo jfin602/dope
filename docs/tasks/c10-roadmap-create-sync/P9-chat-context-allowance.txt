@@ -1,0 +1,33 @@
+TASK: Correction 10 / P9 — Enable roadmap-checkpoint in ordinary Chat context
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036 (both linked-document and runner/canvas amendments), docs/planning/p10/phase-10-plan.md, this correction README/assessment/plan and P16 closeout. Require explicit separate owner activation; verify actual Git HEAD/version/dirty-tree, all 13 manifests/20 pins unchanged at 0.10.16, and reconcile any worktree/source conflicts safely. Do not reset/clean/stash-away unrelated local work, bump versions or manually commit when runner owns changes.
+
+INSPECT
+packages/theia-extension/src/node/chat-context-composer.ts and chat-backend.ts, existing Chat settings/allowance catalog, roadmap context integration and test/unit/roadmap-chat-context.test.ts / roadmap-chat-panel.test.ts. P16 error was 'Context source disabled: roadmap-checkpoint'.
+
+IMPLEMENT
+Expose roadmap-checkpoint as a legitimate selectable/default-eligible typed context source in the existing Chat settings/preview and runtime, with the same enabled-state, source identity, revision, consent and bounded token budget rules as other project context. Revalidate active project/selected Follow or Pin and source fingerprint at preview and send/retry; prevent stale/wrong-root leakage, mismatch between preview and actual turn, unbounded whole-roadmap/history stuffing or hosted fallback. Fix only the pre-inference allowance blocker; no separate Roadmap Chat or model provider.
+
+PRESERVE
+Existing ChatPanel left/right/bottom/center, Dope-owned ProjectPlanningActions with preview/approval and unchanged owner authorities; Markdown mapped fields source-owned, .dope Roadmap owns IDs/links; historical P16 Not Green remains. No agent/Work execution or Chat shell/filesystem/Git/MCP grants, silent hosted inference, false Green status, phase advancement or Phase 12 background alignment. Use restrained dark-orange semantic theme and accessible UI for presentation changes.
+
+VALIDATION — T2
+Build theia-extension and changed contracts only if focused lib imports require them; run node --test test/unit/roadmap-chat-context.test.ts test/unit/roadmap-chat-panel.test.ts test/unit/chat-backend.test.ts. Add negative disabled/wrong-project/preview-send parity and 4,096-token reserve checks where missing. git diff --check.
+Target <=8 minutes including focused implementation and tests, with 10-minute soft / 15-minute hard ceiling. Only compile changed dependencies for lib-consuming tests. No npm run check, npm test, full browser/Electron build, packaging, general restart or native GUI; P17/P18 own broad evidence. Report inability to meet a safety requirement instead of dropping it.
+
+DEFER
+P10 owns greenfield conversational actions; P18 owns real LM Studio/network and GUI.
+
+DONE WHEN
+The bounded owned change and security/compatibility invariants pass focused checks, with unchanged version, safe worktree and a precise next-prompt handoff. Runner owns commits; do not commit from the agent.
+
+FINAL RESPONSE
+List actual modified files, tests/builds run and outcomes, source/version identity, preserved behavior and unresolved risks.
