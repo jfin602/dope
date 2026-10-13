@@ -344,7 +344,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const relations = new Map<string, string[]>();
         for (const edge of projection?.edges ?? []) relations.set(edge.to, [...(relations.get(edge.to) ?? []),
             `${edge.kind === 'branch' ? 'Branches from' : 'Depends on'} ${titles.get(edge.from) ?? edge.from}`]);
-        const nodes: Node[] = (visible?.nodes ?? []).map(item => ({
+        const nodes: Node[] = (visible ? roadmapCanvasOrder(visible) : []).map(item => ({
             id: item.id, type: 'checkpoint', position: this.placements.get(item.id) ?? positions.get(item.id) ?? { x: 64, y: 64 },
             data: { item, selected: item.id === this.selectedId, relation: (relations.get(item.id) ?? []).join(', '),
                 omitted: visible?.omittedByStack.get(item.id) ?? 0,

@@ -75,7 +75,7 @@ export function roadmapVisibleGraph(projection: RoadmapProjection, detail: Roadm
 }
 
 /** DOM order and keyboard order are the same, including correction branches. */
-export function roadmapCanvasOrder(projection: RoadmapProjection): CheckpointNode[] {
+export function roadmapCanvasOrder(projection: Pick<RoadmapProjection, 'nodes' | 'edges'>): CheckpointNode[] {
     const phases = projection.nodes.filter(node => node.lane === 'path');
     const branches = projection.nodes.filter(node => node.lane === 'branch');
     const byId = new Map(projection.nodes.map(node => [node.id, node]));

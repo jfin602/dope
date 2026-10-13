@@ -3,7 +3,8 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
-import { roadmapSpatialLayout } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
+import { roadmapCanvasOrder, roadmapDetailAtZoom, roadmapSpatialLayout, roadmapVisibleGraph } from
+    '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, '../..', path), 'utf8');
 const node = (id: string, kind: 'phase' | 'correction' | 'task-stack' | 'prompt', order: number) => ({
@@ -61,4 +62,37 @@ test('Roadmap mounts React Flow with selection, pan, zoom and fit but no graph m
     assert.match(rules, /var\(--theia-editor-background\)/);
     assert.match(rules, /var\(--theia-editor-foreground\)/);
     assert.doesNotMatch(rules, /#[0-9a-fA-F]{3,8}\b/);
+});
+
+test('rendered Tab order follows the same branch traversal as arrow keys', () => {
+    const graph: RoadmapProjection = { projectId: 'project', revision: 1,
+        nodes: [node('phase-1', 'phase', 1), node('phase-2', 'phase', 2), node('correction', 'correction', 1)],
+        edges: [{ id: 'branch', from: 'phase-1', to: 'correction', kind: 'branch', label: 'Correction' }],
+        pools: { ideas: [], issues: [] }, diagnostics: [] };
+    assert.deepEqual(roadmapCanvasOrder(graph).map(item => item.id), ['phase-1', 'correction', 'phase-2']);
+    const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
+    assert.match(widget, /const nodes: Node\[\] = \(visible \? roadmapCanvasOrder\(visible\) : \[\]\)\.map/);
+    assert.match(widget, /roadmapNextId\(ids, current\.dataset\.checkpointId, event\.key\)/);
+});
+
+test('world, phase and checkpoint detail disclose a correction stack without changing source graph', () => {
+    const graph: RoadmapProjection = { projectId: 'project', revision: 4,
+        nodes: [node('phase-1', 'phase', 1), node('correction', 'correction', 2),
+            node('stack', 'task-stack', 3), node('prompt', 'prompt', 4)],
+        edges: [
+            { id: 'branch-1', from: 'phase-1', to: 'correction', kind: 'branch', label: 'Correction' },
+            { id: 'task-parent:correction:stack', from: 'correction', to: 'stack', kind: 'branch', label: 'Stack' },
+            { id: 'branch-3', from: 'stack', to: 'prompt', kind: 'branch', label: 'Prompt' },
+        ], pools: { ideas: [], issues: [] }, diagnostics: [] };
+    const original = JSON.stringify(graph);
+    assert.equal(roadmapDetailAtZoom(0.5, 'phase'), 'world');
+    assert.equal(roadmapDetailAtZoom(0.85, 'world'), 'phase');
+    assert.equal(roadmapDetailAtZoom(1.5, 'phase'), 'checkpoint');
+    assert.deepEqual(roadmapVisibleGraph(graph, 'world').nodes.map(item => item.id), ['phase-1', 'correction']);
+    assert.deepEqual(roadmapVisibleGraph(graph, 'phase').nodes.map(item => item.id), ['phase-1', 'correction', 'stack']);
+    assert.deepEqual(roadmapVisibleGraph(graph, 'checkpoint').nodes.map(item => item.id),
+        ['phase-1', 'correction', 'stack', 'prompt']);
+    assert.deepEqual(roadmapVisibleGraph(graph, 'world', undefined, new Set(['correction'])).nodes.map(item => item.id),
+        ['phase-1', 'correction', 'stack']);
+    assert.equal(JSON.stringify(graph), original);
 });
