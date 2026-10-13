@@ -1,0 +1,33 @@
+TASK: Correction 10 / P1 — Discover and preview project roadmap sources
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 including linked-document/runner/canvas amendments, docs/planning/p10/phase-10-plan.md, this correction assessment/plan/README and prior P16 closeout. Confirm separately approved correction activation before mutation, exact coherent unchanged 0.10.16 manifests/internal pins, actual HEAD and safely clean or explicitly accepted dirty tree; protect the reported unrelated checkout deletions. Inspect actual owner APIs/tests, not assumed paths. No reset, silent stash, version bump, dependency churn or manual agent commits.
+
+INSPECT
+packages/project-intelligence/src/node/roadmap-import.ts, current previewRoadmapImport caller(s), test/unit/roadmap-import.test.ts, the fixed docs/roadmap/mvp-roadmap.md path.
+
+IMPLEMENT
+Add a bounded project-root-local candidate discovery/selectable preview surface in the existing read-only importer. Preserve Dope-shaped original behavior, but accept a user-selected safe Markdown roadmap path (e.g. ROADMAP.md, docs/roadmap.md) without assuming one canonical filename. Parse deterministic supported phase/correction/checklist structure into a reviewable proposal with exact source hash, source lines, stable section keys and explicit unsupported/ambiguous status diagnostics. Detect missing file, unsafe symlink/path, duplicate heading and oversized source; no state initialization or source file write.
+
+PRESERVE
+One existing saved ChatPanel across all docks; one validated ProjectPlanningActions authority; linked Markdown document owns supported mapped prose, .dope Roadmap owns IDs/links, other owners and historical Not Green unchanged. No model filesystem/process/Git/MCP/agent grant, no automatic hosted fallback, no hidden status Green or implicit Work run. Use current restrained dark-orange themes for affected UI.
+
+VALIDATION — T2
+Build @dope/project-intelligence only if required for lib consumers, then run node --test test/unit/roadmap-import.test.ts and a new narrowly scoped roadmap candidate-discovery test. Include default real Dope import and selected generic Markdown, missing source, duplicates, symlink/outside-root. git diff --check.
+Ordinary implementation plus checks target <=8 minutes (10-minute soft, 15-minute hard). No routine npm run check, npm test, full builds, AppImage, GUI or release qualification; P17/P18 own those gates. If a mandatory security/safety test cannot pass, report a blocker instead of proceeding unsafely.
+
+DEFER
+Persistent binding belongs to P2; the visible chooser belongs to P3; no LLM interpretation, large repository crawl or markdown rewrite.
+
+DONE WHEN
+The single owned seam works with focused evidence and compatibility, source/authority preservation is proved, and the next prompt may build safely. Runner owns checkpoint commits; do not commit within the implementation agent.
+
+FINAL RESPONSE
+Report source/HEAD, exact changed files, focused tests/builds actually run, unchanged version, risks and the next prompt.
