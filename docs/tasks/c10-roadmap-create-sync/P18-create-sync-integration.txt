@@ -1,0 +1,33 @@
+TASK: Correction 10 / P18 — Integrate Roadmap creation sync and prompt safety
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 (including linked-document and runner/canvas amendments), ADR 0016, docs/planning/p10/phase-10-plan.md, docs/tasks/p10/closeout.md and this correction README/assessment/plan. Confirm explicit owner correction activation, actual Git HEAD/ancestry, exactly coherent 0.10.16 manifests/internal pins, and a clean or deliberately approved dirty tree; protect unrelated pre-existing deletions/unstaged work. Do not reset, unapproved overwrite, version bump, change yarn.lock/unrelated deps or add root package-lock. Runner owns P1–P18 commits; do not manually commit within agent work.
+
+INSPECT
+Committed P1–P17 seams, roadmap-integration.test.ts, project-planning-actions.test.ts, roadmap-chat-actions/context, roadmap-store/import, agent-sequence/work, Roadmap canvas/inspector and source navigation. Use exact current Git basis.
+
+IMPLEMENT
+Wire and exercise the bounded end-to-end local project flow: discover/import Markdown -> preview/accept linked index -> edit via inspector/Chat approved action -> document round-trip -> external changed/conflict/relink -> restart and recover; manually draft new roadmap with document creation; discovered prompt children and correction branch selectable and safely opened in ordinary editor; historical P6/P7 gate truth. Reject stale/foreign/malformed/model denied actions, unexpected file/source changes, unsafe root/links and unauthorized Green, with no agent/fs/shell/MCP/hosted escalation, duplicate Chat or automatic Work execution. Fix only integration defects justified by evidence, avoid broad owner refactors. Register all new focused tests ONCE in root test:product if absent.
+
+PRESERVE
+One normal saved Chat system with arbitrary left/right/center/bottom placement; validated ProjectPlanningActions ownership and real human approval; linked Markdown mapped prose document-owned, .dope identities/links and presentation separate, task files independent runner-owned definitions. Do not rewrite Project Mind/Planning Maps/Architecture/History/Work or historical P16 failures. No ordinary Chat shell/filesystem/Git/MCP/agent grants or hidden hosted fallback; no false Green or automatic prompt execution. Preserve restrained dark-orange theme and keyboard/touch accessibility.
+
+VALIDATION — T2
+Build only changed lib-consuming packages as required; run node --test test/unit/roadmap-integration.test.ts test/unit/project-planning-actions.test.ts and new test/unit/roadmap-create-sync-integration.test.ts, adding nearest existing focused Chat/Work/runner regression only for actual affected seams. Run git diff --check and manual static check of stack grammar; no npm run check, browser/Electron packaging or live provider.
+Ordinary implementation+focused validation target <=8 minutes, 10-minute soft / 15-minute hard. T2 cross-owner security evidence can justify bounded extra time but cannot skip safeguards. Compile only changed packages if selected tests need fresh lib output; no routine npm run check, full build, AppImage, real GUI or provider calls before P19. Report blockers instead of claiming unsupported Green.
+
+DEFER
+P19 is sole exact-source full aggregate plus real GUI/local model/egress/restart closeout. Integration mocks are not live qualification.
+
+DONE WHEN
+One coherent seam and the smallest required focused checks pass at unchanged 0.10.16, preserving original user work, with a safe handoff to the next prompt.
+
+FINAL RESPONSE
+Report changed files, focused tests/builds actually observed, unchanged version, security/UX boundaries and next prompt. Runner owns commits; do not self-commit.
