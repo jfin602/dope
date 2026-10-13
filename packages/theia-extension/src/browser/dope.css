@@ -35,7 +35,9 @@
 .dope-roadmap-node[aria-current="true"] { border-left: 4px solid var(--dope-primary, var(--theia-focusBorder)); background: var(--dope-selected-background, var(--theia-list-activeSelectionBackground)); font-weight: 600; }
 .dope-roadmap-node :is(small, strong, span) { overflow-wrap: anywhere; white-space: normal; }
 .dope-roadmap-node small, .dope-roadmap-status { color: var(--theia-descriptionForeground); font-weight: normal; }
-.dope-roadmap-node strong { max-height: 9rem; overflow: auto; font-size: 14px; }
+.dope-roadmap-node strong { font-size: 14px; }
+.dope-roadmap-omitted { color: var(--theia-descriptionForeground); font-size: 12px; }
+.dope-roadmap-detail { color: var(--theia-descriptionForeground); }
 .dope-roadmap-edge .react-flow__edge-path { stroke: var(--theia-descriptionForeground); stroke-width: 2; }
 .dope-roadmap-edge-branch .react-flow__edge-path { stroke-dasharray: 6 4; }
 .dope-roadmap-pools { flex: 0 1 auto; max-height: 24%; overflow: auto; }
