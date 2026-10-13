@@ -1,0 +1,20 @@
+# Manual P10 — Local AI action, approval and greenfield
+
+**Mode:** manually executed, browser-enabled T3 qualification/repair; NOT a codex:phase runner prompt.
+**Model guidance:** GPT-6 Sol High.
+**Version:** 0.10.16 unchanged. This prompt does not advance the product phase or authorize Phase 11/12.
+
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 and docs/planning/p10/phase-10-plan.md, the correction README and prior cycle records. Verify actual local HEAD/ancestry/version/dirty state before work; preserve developer changes, historical original P16 and c10 P19 Not Green evidence, all 13 manifests/20 pinned internal versions, yarn.lock and absence of root package-lock. Test mutations only in disposable projects. Browser/tool-driven manual execution is deliberate: DO NOT invoke codex:phase to execute P9–P14 and do NOT manufacture Git commit subjects merely to advance the runner.
+
+**Loop algorithm (at most 3 repair cycles for this gate family):** On each cycle record actual product source SHA, working-tree changes, fixture/setup, prior gates and earliest unresolved check. Attempt a real, minimal live observation first. Record PASS / FAIL / BLOCKED / NOT RUN with supporting screenshots, command traces, file hashes and revisions; a mock or passing unit test never substitutes for a required live observation. If a source bug is reproduced, make a narrow in-scope repair with focused tests and separate explicit source checkpoint; re-run only affected proof. Avoid blind resets, broad refactors, repeated npm run check, or false Green. Stop immediately if this family is fully Green; otherwise at cycle 3 record Not Green and exact blockers, and independently proceed to later manual families only where safe. Preserve append-only cycle records; never rewrite passed historical evidence. Final P14 alone determines total Green/Not Green and owns one exact-source aggregate.
+
+## Required family gates
+1. On a verified loaded local-only model and a genuinely editable linked Objective: (plus supported-field capability), run an ordinary existing saved ChatPanel turn. Obtain one strictly validated source-aware intent/value; Dope computes trusted project ID, checkpoint, revision, source fingerprint and document-edit operation. Show actual before/after linked Markdown preview. Reject first proposal with no write, then accept a fresh valid proposal. Observe changed Markdown bytes, graph revision and the model's NEW next turn reflecting the accepted change; reject in-flight stale proposals. No model shell/Git/fs/MCP/AgentTask authority or hosted fallback.
+2. Test malformed/nested/multiple/unsupported/foreign/stale/denied/cancelled proposals with non-mutation, bounded retry/cancel and explicit error feedback. A completed model response lacking a valid approved action is NOT Green.
+3. In disposable greenfield projects, exercise **Create Manually** and **Plan with existing Chat** separately: create/checkpoint edit -> preview -> Accept -> new approved unused Markdown -> linked .dope roadmap -> restart. Cancel/denial leaves no write. Preserve the same Chat identity/store and normal leases, project isolation, no forced docking.
+4. Confirm supported vs unsupported prose/eligibility and historically Not Green labels remain honest. Do not reproduce full P9 cross-tool replay or P11 context comparison except when a repair invalidates them.
+
+## Validation and evidence
+Use affected roadmap-local-model, roadmap-chat-actions, roadmap-document-patch, roadmap-greenfield, roadmap-chat-drafts and roadmap-chat-context tests and requisite affected package outputs. Capture real selected model/capacity, actual completed output, approvals, source SHA/revisions, no-write and NEXT-turn context. Use one verified practical context size without setting a universal default; P11 compares all sizes after this happy path.
+
+Write `qualification/loop-2-local-ai/cycle-N.md` and family summary. If no valid real model mutation completes, mark family Not Green; P11 can still collect independent setup/resource evidence but must not claim full comparative action success.

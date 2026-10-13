@@ -1,0 +1,20 @@
+# Manual P9 — Linked Markdown and Codex ↔ Dope handoff
+
+**Mode:** manually executed, browser-enabled T3 qualification/repair; NOT a codex:phase runner prompt.
+**Model guidance:** GPT-6 Sol High.
+**Version:** 0.10.16 unchanged. This prompt does not advance the product phase or authorize Phase 11/12.
+
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 and docs/planning/p10/phase-10-plan.md, the correction README and prior cycle records. Verify actual local HEAD/ancestry/version/dirty state before work; preserve developer changes, historical original P16 and c10 P19 Not Green evidence, all 13 manifests/20 pinned internal versions, yarn.lock and absence of root package-lock. Test mutations only in disposable projects. Browser/tool-driven manual execution is deliberate: DO NOT invoke codex:phase to execute P9–P14 and do NOT manufacture Git commit subjects merely to advance the runner.
+
+**Loop algorithm (at most 3 repair cycles for this gate family):** On each cycle record actual product source SHA, working-tree changes, fixture/setup, prior gates and earliest unresolved check. Attempt a real, minimal live observation first. Record PASS / FAIL / BLOCKED / NOT RUN with supporting screenshots, command traces, file hashes and revisions; a mock or passing unit test never substitutes for a required live observation. If a source bug is reproduced, make a narrow in-scope repair with focused tests and separate explicit source checkpoint; re-run only affected proof. Avoid blind resets, broad refactors, repeated npm run check, or false Green. Stop immediately if this family is fully Green; otherwise at cycle 3 record Not Green and exact blockers, and independently proceed to later manual families only where safe. Preserve append-only cycle records; never rewrite passed historical evidence. Final P14 alone determines total Green/Not Green and owns one exact-source aggregate.
+
+## Required family gates
+1. In ONE Git-backed disposable local checkout, use actual Dope UI to import/accept real Dope-shaped AND generic non-Dope Markdown. Record accepted original bytes/SHA-256, linked path, graph revision, stable checkpoint IDs, read-only unsupported sections and historical gate labels.
+2. From real Codex CLI, modify a unique supported mapped title/Objective:/Order:/Prose: and unrelated narrative in the SAME accepted file. Prove disk bytes changed; Dope watcher/focus/Refresh discovers source-changed and shows precise reviewable diff, NOT silent application. Click **Apply source changes** and confirm only supported fields update the same checkpoint/revision while the source bytes and unrelated prose remain untouched.
+3. From Dope inspector perform another eligible edit -> source-aware preview -> explicit required approval -> minimal linked Markdown patch, no new independent document. Prove a FRESH Codex CLI file read/turn sees the new bytes; repeat Codex -> Dope -> Codex -> Dope and after Dope restart. No assumption that existing in-flight Codex context automatically updates. Other clones would need Git exchange.
+4. Exercise overlapping same-field/source/index edit, stale preview, duplicate/ambiguous headings, unsupported narrative, symlink/outside-root, source move/missing -> explicit checked relink, and interrupted/pending-sync recovery. Observe no clobber, silent replacement, checkpoint duplication, loss of stable ID or fabricated status Green. Reuse P3/P4/P8 regressions if relevant.
+
+## Validation and evidence
+Only directly invalidated roadmap-document-sync/patch, roadmap-sync-recovery and roadmap-create-sync-integration focused tests and affected builds; no full aggregate. Record actual Codex CLI request/read evidence, real Dope UI screenshots, hashes and exact before/after, mapped fields, revision/IDs, file visibility and restart, supported vs unsupported case truth. Record absence of Codex CLI/browser as BLOCKED not simulated PASS.
+
+Write `docs/tasks/c10-roadmap-qualify/qualification/loop-1-markdown/cycle-N.md`, then a family summary. Pass results/fixture information to manual P10. Do not close out Phase 10.

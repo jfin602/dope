@@ -1,6 +1,6 @@
 # /prompt-ass — c10-roadmap-qualify
 
-**Status:** SOURCE-ASSESSED / DOCUMENTATION-APPROVED / READY FOR DIRECT RUN; NOT IMPLEMENTED OR QUALIFIED
+**Status:** P1–P8 IMPLEMENTED/COMMITTED on GitHub through `bcf2b628f`; manual browser qualification P9–P14 pending / NOT GREEN
 **Date:** 2026-10-13 (America/Chicago)
 **Entry:** P19 `c10-roadmap-create-sync` tested product source `71d91efb3668e57816bb031f82ab309acea17cfc`, evidence-only commit `c620bc0a3be714b7dc329dc5c872a064b1f8003a`, package `0.10.16`. Exact aggregate **671/671 and browser/Electron builds PASS**, but P19 **NOT GREEN**. P16 predecessor NOT GREEN. Actual local Git/worktree status was not independently observed during prompt authoring.
 **Authority:** ADR 0036 including 2026-10-13 compact-intent and supported-field amendment, current ADR 0016, ADR 0025/28/29, ADR 0037, `docs/planning/p10/phase-10-plan.md`, `docs/workflow.md`, `BOOT.md`, `AGENTS.md`, P19 closeout.
@@ -27,23 +27,28 @@
 | P6 | Reproduce saved Chat lease/restart/stream issue and guard or repair narrowly | T2 | GPT-6 Sol High | No parallel lease owner |
 | P7 | Focused canvas/gesture/accessibility/editor navigation regressions | T1 | GPT-6 Sol Medium | No broad UI redesign |
 | P8 | Cross-owner/adversarial and shared-local-Markdown round-trip integration gate | T2 | GPT-6 Sol High | No aggregate |
-| P9 | **Sole manual T3: live Codex↔Dope handoff, 16K/32K/64K and full closeout** | T3 | GPT-6 Sol High | Final exact source |
+| P9 (manual) | Real Codex↔Dope four-hop linked Markdown/import/relink/conflict loop | T3 | GPT-6 Sol High | Up to 3 cycles |
+| P10 (manual) | Local-model action/approval/next turn plus manual/Chat greenfield | T3 | GPT-6 Sol High | Up to 3 cycles |
+| P11 (manual) | Same-model real 16K/32K/64K comparison and default decision | T3 | GPT-6 Sol High | Up to 3 cycles |
+| P12 (manual) | Browser+native Electron, Roadmap gestures, Chat four docks and restart | T3 | GPT-6 Sol High | Up to 3 cycles |
+| P13 (manual) | Authority/recovery/whole-app egress and historical gate truth | T3 | GPT-6 Sol High | Up to 3 cycles |
+| P14 (manual) | One exact-source aggregate, evidence reconciliation and sole final closeout | T3 | GPT-6 Sol High | Final disposition |
 
-P1 before P2 because context/intent agree on allowed operations. P3/P4 are owner-file integrity before wide UI acceptance. P5/P6/P7 are reproduction-first: **Evidence Gap is not proof of a source bug**. P8 integrates all including the shared-file fixture; P9 alone qualifies actual Codex↔Dope live handoff, chooses the best measured 16K/32K/64K profile or records an unresolved decision, and runs the final check. Do not preselect a default in P2; retain 4K only as optional narrow stress.
+P1 before P2 because context/intent agree on allowed operations. P3/P4 are owner-file integrity before wide UI acceptance. P5/P6/P7 are reproduction-first: **Evidence Gap is not proof of a source bug**. P8 integrates the shared-file fixture. Manual P9 qualifies actual Codex↔Dope live handoff; P10 proves valid local planning first; P11 chooses the best measured 16K/32K/64K profile or records a deferred decision; P12 owns UI/Chat/native; P13 owns authority/egress. Manual P14 reconciles live gates on one exact candidate and runs the final check. Do not preselect the context default in P2; retain 4K only as optional narrow stress.
 
 ## Codex ↔ Dope qualification boundary
 
-External editing is source-file interoperability, **not** a new Codex adapter or automatic background merge. One accepted Markdown file is shared in the same checkout; different checkouts need Git exchange. The supported title/Objective/Order/Prose fields round-trip after explicit review; the `.dope/` graph/identity/layout and historic qualification status do not become Markdown-owned. P8 covers file-driven simulated external edit → detected preview → explicit apply → Dope approved patch → fresh file read, including repeated edits/restart, ambiguous/moved/conflicting/stale denial and unchanged unsupported bytes. P9 must independently use **actual Codex CLI and Dope UI** on one checkout, verify the fresh Codex read and restart and record hashes/revisions/stable IDs. Synthetic tests are insufficient for live Green; no silent auto-apply, duplicate checkpoint, second synchronization service, or new prompt.
+External editing is source-file interoperability, **not** a new Codex adapter or automatic background merge. One accepted Markdown file is shared in the same checkout; different checkouts need Git exchange. The supported title/Objective/Order/Prose fields round-trip after explicit review; the `.dope/` graph/identity/layout and historic qualification status do not become Markdown-owned. P8 covers file-driven simulated external edit → detected preview → explicit apply → Dope approved patch → fresh file read, including repeated edits/restart, ambiguous/moved/conflicting/stale denial and unchanged unsupported bytes. manual P9 must independently use **actual Codex CLI and Dope UI** on one checkout, verify the fresh Codex read and restart and record hashes/revisions/stable IDs. Synthetic tests are insufficient for live Green; no silent auto-apply, duplicate checkpoint, second synchronization service, or new prompt.
 
-## Mandatory P9 qualification instrumentation
+## Mandatory manual qualification instrumentation (P12 native, P13 egress)
 
-The final **P9 T3** operator must demonstrate a controllable/capturable native Electron window (not just a process or build), browser inputs and keyboard/touch-equivalent gestures, and browser/backend/renderer/Electron/child-process/network observation during successful local inference. Record methods, OS environment and limits. Missing capabilities block the relevant Green claim, **not** P1–P8 source implementation. Keep the actual live gates unchanged.
+The manual **P12/P13 T3** operators must demonstrate a controllable/capturable native Electron window (not just a process or build), browser inputs and keyboard/touch-equivalent gestures, and browser/backend/renderer/Electron/child-process/network observation during successful local inference. Record methods, OS environment and limits. Missing capabilities block the relevant Green claim, **not** P1–P8 source implementation. Keep the actual live gates unchanged.
 
 ## Adaptive-context qualification questions
 
 - Compare verified **16,384 / 32,768 / 65,536** loaded tokens using the same Qwen model, quantization and comparable runtime/offload settings; do not infer loaded context from model name. When a profile cannot be loaded or measured, record the limitation rather than asserting equivalence.
 - Compare simple approved edits, Phase-10-sized multi-checkpoint comprehension, post-approval next-turn freshness, extended Chat continuity, invalid/stale denial, response/first-token latency, actual or estimated usage, RAM/memory pressure and repeated-run stability.
-- P2 implements capability-derived budgets and separate output-token/JSON-byte limits with an optional 4K stress regression. P9 decides on evidence: **smallest reliably sufficient** profile, 64K only for material gains over 32K; absent comparative proof means **default not yet determined**.
+- P2 implements capability-derived budgets and separate output-token/JSON-byte limits with an optional 4K stress regression. manual P11 decides on evidence: **smallest reliably sufficient** profile, 64K only for material gains over 32K; absent comparative proof means **default not yet determined**.
 
 ## Preserved behavior and non-goals
 
@@ -55,6 +60,10 @@ The final **P9 T3** operator must demonstrate a controllable/capturable native E
 
 ## Efficiency gate
 
-Eight ordinary narrow implementation/integration tasks (target <=8 minutes, 10 soft / 15 hard); source-aware safety and T2 integration may justify limited extra, but no habitual `npm run check`. P9 manual T3 is exempt and must contain hard stopping gates. Focused tests use actual existing `test/unit/roadmap-*.test.ts` and directly affected Chat/Store/Map suites; tests importing compiled `@dope/*/lib` need only changed package output rebuilt in dependency order, not `npm run build:extension` for every prompt. Register new tests in root `test:product` once. Final `npm run check` includes typecheck, tests, browser/Electron builds; run once per final candidate after changes. Runner validator must be executed locally after writing stack; static consistency alone is not runtime validation.
+Eight now-committed runner implementation/integration tasks (target <=8 minutes, 10 soft / 15 hard); source-aware safety and T2 integration may justify limited extra. Manual P9–P13 own browser-led family qualification, each capped at three focused repair cycles; P14 alone owns the final full `npm run check` and terminal decision. The manual prompts are outside root runner discovery and carry no synthetic runner completion checkpoints. Focused tests use actual existing `test/unit/roadmap-*.test.ts` and directly affected Chat/Store/Map suites; tests importing compiled `@dope/*/lib` need only changed package output rebuilt in dependency order, not `npm run build:extension` for every prompt. Register new tests in root `test:product` once. Final `npm run check` includes typecheck, tests, browser/Electron builds; run once per final candidate after changes. Runner validator must be executed locally after writing stack; static consistency alone is not runtime validation.
 
-**Grammar:** `P1`–`P9` contiguous; `TASK: Correction 10 / P<n> — <title>`; fixed unchanged version metadata in each; one sole final `P9-...-closeout.txt` with closeout also in TASK title and Browser required yes. All P1–P8 browser no. This document authors prompts but does **not** execute the correction; selecting the stack to run needs no separate activation.
+**Runner grammar preserved:** only the root `P1`–`P9` files are runner-discovered and contiguous, with root P9 the one browser-required closeout **handoff**. P1–P8 are committed. Manual `manual/P9-*.md` through `manual/P14-*.md` are distinct, individually executed browser-tool instructions and NOT runner-discovered; manual P14 solely owns the real final closeout. No separate `/activate`, runner parsing changes, fabricated checkpoint commits, or duplicate final decisions.
+
+## Five independent manual gate-family loops — approved routing
+
+The old monolithic root P9 is replaced by a short runner-compatible handoff pointer. Manual P9–P13 separate linked-file/Codex, local planning, context profiling, GUI/Chat/native, and authority/egress families; up to **three iterations per family**, earliest failing gate first, narrow source fixes, affected focused tests and append-only per-cycle evidence. An unsuccessful family remains Not Green after three cycles; unrelated families can continue only when safe. Manual P14 validates the final coherent product SHA and performs the sole end-to-end closeout/aggregate. Previous P16/P19 are immutable historical Not Green records. Manual browser evidence is required; no fake runner progression.

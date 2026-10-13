@@ -1,0 +1,20 @@
+# Manual P11 — Measured 16K / 32K / 64K context profiles
+
+**Mode:** manually executed, browser-enabled T3 qualification/repair; NOT a codex:phase runner prompt.
+**Model guidance:** GPT-6 Sol High.
+**Version:** 0.10.16 unchanged. This prompt does not advance the product phase or authorize Phase 11/12.
+
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 and docs/planning/p10/phase-10-plan.md, the correction README and prior cycle records. Verify actual local HEAD/ancestry/version/dirty state before work; preserve developer changes, historical original P16 and c10 P19 Not Green evidence, all 13 manifests/20 pinned internal versions, yarn.lock and absence of root package-lock. Test mutations only in disposable projects. Browser/tool-driven manual execution is deliberate: DO NOT invoke codex:phase to execute P9–P14 and do NOT manufacture Git commit subjects merely to advance the runner.
+
+**Loop algorithm (at most 3 repair cycles for this gate family):** On each cycle record actual product source SHA, working-tree changes, fixture/setup, prior gates and earliest unresolved check. Attempt a real, minimal live observation first. Record PASS / FAIL / BLOCKED / NOT RUN with supporting screenshots, command traces, file hashes and revisions; a mock or passing unit test never substitutes for a required live observation. If a source bug is reproduced, make a narrow in-scope repair with focused tests and separate explicit source checkpoint; re-run only affected proof. Avoid blind resets, broad refactors, repeated npm run check, or false Green. Stop immediately if this family is fully Green; otherwise at cycle 3 record Not Green and exact blockers, and independently proceed to later manual families only where safe. Preserve append-only cycle records; never rewrite passed historical evidence. Final P14 alone determines total Green/Not Green and owns one exact-source aggregate.
+
+## Prerequisite and candidate setup
+Do not claim full workflow context qualification until manual P10 proves a real local proposal -> approval -> persisted linked change -> fresh next turn. Use the SAME Qwen model and quantization with comparable runtime/offload configuration. Load and independently VERIFY 16,384; 32,768; 65,536 total context. Do not infer loaded capacity from model name or conflate a software request limit with actual loaded capacity. An optional narrow 4K stress test is not a default/full-workflow requirement.
+
+## Required family gates
+For each verified profile replay comparable normal selected-checkpoint edits, larger Phase-10-sized multi-checkpoint context and dependencies, multi-turn next-step freshness, longer saved Chat and a relevant-context-heavy planning request that actually exercises expanded headroom. Include stale/malformed/unsupported/no-write negatives, provider locality and bounded retries. Do not fill the context simply because it is available.
+Record full system/user/history/grounding input use (actual tokens when provider supports, otherwise explicitly conservative estimates), output-token reservation vs JSON byte cap, truncation/omission, first token latency, completion time, RAM/VRAM/process pressure where observable, errors, crash/reload and model provenance. Repeat significant scenarios sufficiently to distinguish outliers.
+Choose **smallest reliably sufficient** profile on success, usefulness, latency, stability and resource impact; adopt 64K only if it gives material gains over 32K. If a candidate cannot be loaded, compared fairly or exercised after P10 failure, document exact evidence gap and default UNDECIDED rather than claiming a win. Up to 3 repair cycles address actual context/accounting defects; do not repeat all three expensive matrices after a narrow unaffected repair.
+
+## Validation and evidence
+Focused roadmap-local-model, roadmap-chat-context, roadmap-chat-actions, changed-package tests; no full aggregate. Write `qualification/loop-3-context/cycle-N.md` and `qualification/loop-3-context/comparison.md` including model configuration, per-profile data and selected/deferred default. Do not silently retarget developer's configured model or change provider policy.

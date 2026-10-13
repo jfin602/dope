@@ -1,0 +1,19 @@
+# Manual P12 — Roadmap interface, Chat continuity and native Electron
+
+**Mode:** manually executed, browser-enabled T3 qualification/repair; NOT a codex:phase runner prompt.
+**Model guidance:** GPT-6 Sol High.
+**Version:** 0.10.16 unchanged. This prompt does not advance the product phase or authorize Phase 11/12.
+
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 and docs/planning/p10/phase-10-plan.md, the correction README and prior cycle records. Verify actual local HEAD/ancestry/version/dirty state before work; preserve developer changes, historical original P16 and c10 P19 Not Green evidence, all 13 manifests/20 pinned internal versions, yarn.lock and absence of root package-lock. Test mutations only in disposable projects. Browser/tool-driven manual execution is deliberate: DO NOT invoke codex:phase to execute P9–P14 and do NOT manufacture Git commit subjects merely to advance the runner.
+
+**Loop algorithm (at most 3 repair cycles for this gate family):** On each cycle record actual product source SHA, working-tree changes, fixture/setup, prior gates and earliest unresolved check. Attempt a real, minimal live observation first. Record PASS / FAIL / BLOCKED / NOT RUN with supporting screenshots, command traces, file hashes and revisions; a mock or passing unit test never substitutes for a required live observation. If a source bug is reproduced, make a narrow in-scope repair with focused tests and separate explicit source checkpoint; re-run only affected proof. Avoid blind resets, broad refactors, repeated npm run check, or false Green. Stop immediately if this family is fully Green; otherwise at cycle 3 record Not Green and exact blockers, and independently proceed to later manual families only where safe. Preserve append-only cycle records; never rewrite passed historical evidence. Final P14 alone determines total Green/Not Green and owns one exact-source aggregate.
+
+## Required family gates
+1. Directly operate the actual Dope browser UI AND an independently controllable/screenshot-capturable native Electron app window. An Electron process or successful bundle alone does not prove native GUI. Record window/OS/controller availability; if unavailable, mark the native gate BLOCKED, not a product defect without proof.
+2. On real Roadmap canvas exercise world/phase/checkpoint zoom, branches/corrections/Ideas/Issues visibility, Fit/Focus, pointer pan/wheel, touch/pinch or clearly grounded touch-equivalent, Arrange-only drag, persistent viewport/selection, accessible text/noncolor cues, keyboard/tab/Enter and inspector/double-click exact Pn .txt editor opening WITHOUT executing the prompt. Narrow panes, dark/light theme and restart must be observed.
+3. Reposition ONE existing saved Chat across right, left, bottom and center split beside Roadmap/editor while preserving identity/model/settings. Verify Follow/Pin selection, streaming/status/cancel, keyboard, focus, single owner lease, reopened/restarted backend, project isolation, and no duplicate Chat transcript/runtime or forced dock.
+4. Revisit visible manual/Chat greenfield flows to check actual human UI affordances and post-restart links; reuse P10 persistence evidence unless a new UI change invalidates it.
+
+## Validation and evidence
+Use only affected roadmap-spatial-canvas, roadmap-viewport, roadmap-prompt-open, roadmap-chat-panel/chat-panel/lease and theme/accessibility tests plus needed builds. Capture GUI screenshots/interaction records, native window proof, IDs and restart evidence. Preserve restrained dark-orange theme and independent Chat user organization.
+Write `qualification/loop-4-interface/cycle-N.md` and family summary. A browser-only PASS cannot satisfy native Electron.

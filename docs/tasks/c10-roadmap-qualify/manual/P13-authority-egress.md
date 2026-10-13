@@ -1,0 +1,19 @@
+# Manual P13 — Authority, security, egress and integrated recovery
+
+**Mode:** manually executed, browser-enabled T3 qualification/repair; NOT a codex:phase runner prompt.
+**Model guidance:** GPT-6 Sol High.
+**Version:** 0.10.16 unchanged. This prompt does not advance the product phase or authorize Phase 11/12.
+
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 and docs/planning/p10/phase-10-plan.md, the correction README and prior cycle records. Verify actual local HEAD/ancestry/version/dirty state before work; preserve developer changes, historical original P16 and c10 P19 Not Green evidence, all 13 manifests/20 pinned internal versions, yarn.lock and absence of root package-lock. Test mutations only in disposable projects. Browser/tool-driven manual execution is deliberate: DO NOT invoke codex:phase to execute P9–P14 and do NOT manufacture Git commit subjects merely to advance the runner.
+
+**Loop algorithm (at most 3 repair cycles for this gate family):** On each cycle record actual product source SHA, working-tree changes, fixture/setup, prior gates and earliest unresolved check. Attempt a real, minimal live observation first. Record PASS / FAIL / BLOCKED / NOT RUN with supporting screenshots, command traces, file hashes and revisions; a mock or passing unit test never substitutes for a required live observation. If a source bug is reproduced, make a narrow in-scope repair with focused tests and separate explicit source checkpoint; re-run only affected proof. Avoid blind resets, broad refactors, repeated npm run check, or false Green. Stop immediately if this family is fully Green; otherwise at cycle 3 record Not Green and exact blockers, and independently proceed to later manual families only where safe. Preserve append-only cycle records; never rewrite passed historical evidence. Final P14 alone determines total Green/Not Green and owns one exact-source aggregate.
+
+## Required family gates
+1. Validate real negative conditions for wrong project/root, stale revision/source hash, ambiguous supported field, approval denial, rollback, unsafe path/symlink, changed input during patch, source move/explicit relink, pending-sync crash/restart, and Planning Map basis/adoption; all fail closed with no source loss. Use safe disposable fixtures for destructive probes.
+2. Demonstrate model and Codex handoff cannot implicitly launch an AgentTask, grant shell/Git/MCP/filesystem, trigger prompt execution, promote CandidateDelta/Work state or silently use hosted model. Historical Phase 5 Not Green; Phase 6 owner-closed-for-sequencing; Phase 7 qualified; Phase 9 Green; Phase 10 Not Green remain evidence-true until independent Phase 10 closeout.
+3. During at least ONE actual successful local inference AND approved source write, instrument relevant browser/backend/renderer/Electron/child process network activity, with PID/time/process coverage; show no unauthorized hosted egress. Backend localhost-only trace or app build alone does not establish whole-app proof. If native/network visibility unavailable, mark full egress Evidence Gap instead of falsely Green.
+4. Check cross-owner and checkpoint persistence/restart contracts across loops P9–P12; re-exercise only gates plausibly invalidated by later repairs. Keep source/agent/read permissions unchanged except for explicit approved product changes.
+
+## Validation and evidence
+Run directly affected project-planning-actions, roadmap-integration, roadmap-sync-recovery, roadmap-status-truth, roadmap-planning-links and security tests; no needless full aggregate. Record denied calls, SHA/revision/PID/network traces, real model provenance, restart and gate truth. Protect unrelated paths and historical closeouts.
+Write `qualification/loop-5-authority/cycle-N.md` and family summary. Finish with a complete unresolved-gates register for P14.
