@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -115,4 +115,62 @@ test('source or Roadmap changes after preview deny stale apply; missing file ask
     await rm(file);
     assert.equal((await store.previewDocumentSync(root)).state, 'relink-needed');
     assert.equal((await store.read(root)).checkpoints.length, 2);
+}));
+
+test('explicit relink of identical moved bytes changes only owner references after approval', async () => fixture(async (root, file, store) => {
+    const first = await accepted(root, store);
+    const moved = join(root, 'docs/roadmap/MOVED.md');
+    await rename(file, moved);
+    const preview = await store.previewRelink(root, 'docs/roadmap/MOVED.md');
+    assert.equal(preview.state, 'ready');
+    assert.equal(preview.sourceHash, first.linkedDocument?.sourceHash);
+    assert.equal(preview.sections[0].checkpointId, first.linkedDocument?.sections[0].checkpointId);
+    assert.equal((await store.applyRelink(root, preview, false)).revision, first.revision);
+    assert.equal((await store.read(root)).linkedDocument?.path, path);
+    const next = await store.applyRelink(root, preview, true);
+    assert.equal(next.revision, first.revision + 1);
+    assert.equal(next.linkedDocument?.path, 'docs/roadmap/MOVED.md');
+    assert.equal(next.linkedDocument?.syncState, 'synced');
+    assert.equal(next.checkpoints[0].source?.path, 'docs/roadmap/MOVED.md');
+    assert.deepEqual(next.checkpoints.map(item => [item.id, item.title, item.status]),
+        first.checkpoints.map(item => [item.id, item.title, item.status]));
+    assert.equal(await readFile(moved, 'utf8'), original);
+    assert.equal((await store.previewDocumentSync(root)).state, 'unchanged');
+    await assert.rejects(store.applyRelink(root, preview, true), /Stale Roadmap revision/);
+}));
+
+test('relink rejects unsafe, missing, changed and stale candidates without touching either owner', async () => fixture(async (root, file, store) => {
+    const first = await accepted(root, store);
+    const moved = join(root, 'docs/roadmap/MOVED.md');
+    await rename(file, moved);
+    await assert.rejects(store.previewRelink(root, '../foreign.md'), /Unsafe linked Roadmap path/);
+    await assert.rejects(store.previewRelink(root, '/tmp/foreign.md'), /Unsafe linked Roadmap path/);
+    await assert.rejects(store.previewRelink(root, '.dope/roadmap.md'), /Unsafe linked Roadmap path/);
+    await assert.rejects(store.previewRelink(root, 'missing.md'), /ENOENT/);
+    await symlink(moved, join(root, 'alias.md'));
+    await assert.rejects(store.previewRelink(root, 'alias.md'), /Unsafe linked Roadmap symlink/);
+    const ready = await store.previewRelink(root, 'docs/roadmap/MOVED.md');
+    await writeFile(moved, original.replace('Objective: old', 'Objective: changed'));
+    assert.equal((await store.previewRelink(root, 'docs/roadmap/MOVED.md')).state, 'review');
+    await assert.rejects(store.applyRelink(root, ready, true), /Stale linked Roadmap relink preview/);
+    await writeFile(moved, original);
+    const fresh = await store.previewRelink(root, 'docs/roadmap/MOVED.md');
+    await store.mutate(root, first.revision, { type: 'create', id: 'manual', kind: 'milestone',
+        title: 'Manual', objective: '', order: 2 }, first.projectId);
+    await assert.rejects(store.applyRelink(root, fresh, true), /Stale Roadmap revision/);
+    assert.equal((await store.read(root)).linkedDocument?.path, path);
+    assert.equal(await readFile(moved, 'utf8'), original);
+}));
+
+test('same bytes with ambiguous mapped section identities require separate review', async () => fixture(async (root, file, store) => {
+    await writeFile(file, `${original}## Phase 1 — alternate\r\nObjective: other\r\n`);
+    const first = await accepted(root, store);
+    const moved = join(root, 'docs/roadmap/MOVED.md');
+    await rename(file, moved);
+    const preview = await store.previewRelink(root, 'docs/roadmap/MOVED.md');
+    assert.equal(preview.state, 'review');
+    assert.match(preview.diagnostics.join(' '), /ambiguous/i);
+    await assert.rejects(store.applyRelink(root, preview, true), /safe approved preview/);
+    assert.equal((await store.read(root)).revision, first.revision);
+    assert.equal((await store.read(root)).linkedDocument?.path, path);
 }));

@@ -13,7 +13,7 @@ import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roa
 import type { RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
-import type { RoadmapSyncPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
+import type { RoadmapSyncPreview, RoadmapRelinkPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { roadmapCanvasOrder, roadmapNextId, roadmapSpatialLayout, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail } from './roadmap-canvas-model';
@@ -86,6 +86,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private request = 0;
     private importSerial = 0;
     private syncPreview?: RoadmapSyncPreview;
+    private relink?: { uri: string; path: string; preview?: RoadmapRelinkPreview; error?: string; busy: boolean };
     private importState?: { uri: string; projectId: string; revision: number; discovery: RoadmapCandidateDiscovery;
         preview?: RoadmapImportPreview; path?: string; busy: boolean; showChooser: boolean; message?: string };
     private createState?: { uri: string; projectId: string; handle: string; draft: GreenfieldDraft;
@@ -258,6 +259,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.owners = owners;
             this.taskStacks = tasks;
             this.projectUri = projectUri;
+            if (this.relink && (this.relink.uri !== projectUri || this.relink.preview?.revision !== index.revision))
+                this.relink = undefined;
             if (switched && this.flow) void this.flow.setViewport(this.viewport ?? { x: 20, y: 20, zoom: 0.85 });
             if (this.createState && (this.createState.uri !== projectUri || this.createState.projectId !== index.projectId || index.revision !== 0)) {
                 void this.service.cancelDraft(this.createState.handle); this.createState = undefined; ++this.createSerial;
@@ -461,6 +464,39 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 warning.textContent = `${sync.state === 'relink-needed' ? 'Relink needed' : 'Sync conflict'}: ${sync.diagnostics.concat(sync.changes.filter(change => change.conflict).map(change => `${change.checkpointId} ${change.field}`)).join('; ')}. Review the Markdown and Refresh.`;
                 this.importEntry.append(warning);
             }
+            if (sync?.state === 'relink-needed') {
+                const open = document.createElement('button'); open.type = 'button'; open.textContent = 'Relink Markdown';
+                open.onclick = () => { this.relink = { uri: this.projectUri!, path: '', busy: false }; this.renderImportEntry(); };
+                this.importEntry.append(open);
+                if (this.relink?.uri === this.projectUri) {
+                    const label = document.createElement('label'); label.textContent = 'New project-relative .md path';
+                    const input = document.createElement('input'); input.type = 'text'; input.value = this.relink.path;
+                    input.setAttribute('aria-label', 'New project-relative Markdown path');
+                    input.oninput = () => { if (this.relink) { this.relink.path = input.value; this.relink.preview = undefined; } };
+                    input.onchange = () => this.renderImportEntry();
+                    label.append(input); this.importEntry.append(label);
+                    const preview = document.createElement('button'); preview.type = 'button'; preview.textContent = 'Preview relink';
+                    preview.disabled = this.relink.busy;
+                    preview.onclick = () => void this.previewRelink(); this.importEntry.append(preview);
+                    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel relink';
+                    cancel.onclick = () => { this.relink = undefined; this.renderImportEntry(); }; this.importEntry.append(cancel);
+                    const choice = this.relink.preview;
+                    if (choice) {
+                        const summary = document.createElement('p');
+                        summary.textContent = `${choice.previousPath} → ${choice.path}; SHA-256 ${choice.sourceHash ?? 'unavailable'}; ${choice.sections.length} mapped sections. ` +
+                            (choice.state === 'ready' ? 'Same accepted bytes and section identities; only the link and source references will change.' : 'Review required; relink cannot be accepted.');
+                        this.importEntry.append(summary);
+                        if (choice.diagnostics.length) this.appendImportDiagnostics('Relink mismatches', choice.diagnostics);
+                        if (choice.state === 'ready') {
+                            const approve = document.createElement('button'); approve.type = 'button'; approve.textContent = 'Approve Relink';
+                            approve.disabled = this.relink.busy;
+                            approve.onclick = () => void this.applyRelink(choice); this.importEntry.append(approve);
+                        }
+                    }
+                    if (this.relink.error) { const error = document.createElement('p'); error.setAttribute('role', 'alert');
+                        error.textContent = this.relink.error; this.importEntry.append(error); }
+                }
+            }
             return;
         }
         if (index.revision !== 0) return;
@@ -531,6 +567,27 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.renderImportEntry();
             }
         }
+    }
+
+    private async previewRelink(): Promise<void> {
+        const state = this.relink, uri = this.projectUri;
+        if (!state || !uri || state.uri !== uri || state.busy) return;
+        state.busy = true; state.error = undefined; state.preview = undefined; this.renderImportEntry();
+        try { const preview = await this.service.previewRelink(uri, state.path);
+            if (this.relink === state && this.projectUri === uri) state.preview = preview;
+        } catch (error) { if (this.relink === state) state.error = String(error); }
+        finally { if (this.relink === state) { state.busy = false; this.renderImportEntry(); } }
+    }
+
+    private async applyRelink(preview: RoadmapRelinkPreview): Promise<void> {
+        const state = this.relink, uri = this.projectUri;
+        if (!state || !uri || state.uri !== uri || state.preview !== preview || state.busy) return;
+        state.busy = true; this.renderImportEntry();
+        try { await this.service.applyRelink(uri, preview, true);
+            if (this.relink === state) { this.relink = undefined; await this.refresh(); }
+        } catch (error) { if (this.relink === state) { state.preview = undefined;
+            state.error = `Relink failed: ${String(error)}. Refresh and review before retrying.`; } }
+        finally { if (this.relink === state) { state.busy = false; this.renderImportEntry(); } }
     }
 
     private appendImportDiagnostics(title: string, diagnostics: string[]): void {

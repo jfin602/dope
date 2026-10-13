@@ -30,6 +30,16 @@ export interface RoadmapSyncPreview {
     changes: RoadmapSyncDiff[];
     diagnostics: string[];
 }
+export interface RoadmapRelinkPreview {
+    state: 'ready' | 'review';
+    projectId: string;
+    revision: number;
+    previousPath: string;
+    path: string;
+    sourceHash?: string;
+    sections: { checkpointId: string; sectionKey: string; line: number }[];
+    diagnostics: string[];
+}
 
 const digest = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex');
 const fields = ['title', 'objective', 'order', 'prose'] as const;

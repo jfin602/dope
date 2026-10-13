@@ -5,7 +5,7 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { previewRoadmapImport } from './roadmap-import';
 import { planRoadmapDocumentPatch, publishRoadmapDocumentPatch } from './roadmap-document-patch';
 import { readRoadmapMappedSections, previewRoadmapDocumentSync } from './roadmap-document-sync';
-import type { RoadmapMappedSection, RoadmapSyncPreview } from './roadmap-document-sync';
+import type { RoadmapMappedSection, RoadmapSyncPreview, RoadmapRelinkPreview } from './roadmap-document-sync';
 import type { RoadmapDocumentPatch } from './roadmap-document-patch';
 import type { RoadmapCitation, RoadmapImportPreview, RoadmapStatus } from './roadmap-import';
 
@@ -505,6 +505,57 @@ export class RoadmapStore {
         await this.recoverGreenfield(root);
         await this.recoverDocumentSync(root);
         return previewRoadmapDocumentSync(root, await this.read(root));
+    }
+
+    /** Relink changes only the accepted owner reference. A changed document needs separate reconciliation. */
+    async previewRelink(root: string, path: string): Promise<RoadmapRelinkPreview> {
+        const current = await this.read(root);
+        const linked = current.linkedDocument;
+        if (!linked || linked.projectRoot !== root || linked.projectId !== current.projectId)
+            throw new Error('Roadmap has no linked document for this project');
+        if (linked.syncState === 'pending-sync') throw new Error('Pending linked Roadmap sync requires recovery');
+        if (linked.syncState === 'conflict' || linked.syncState === 'source-changed')
+            throw new Error('Linked Roadmap conflict requires separate reconciliation before relink');
+        const previous = await previewRoadmapDocumentSync(root, current);
+        if (previous.state !== 'relink-needed') throw new Error('Linked Roadmap source is still available; reconcile it first');
+        if (path === linked.path) throw new Error('Choose a different project Markdown path');
+        if (typeof path !== 'string' || path.length > 512 || path.split('/')[0] === '.dope')
+            throw new Error('Unsafe linked Roadmap path');
+        const base: RoadmapRelinkPreview = { state: 'review', projectId: current.projectId,
+            revision: current.revision, previousPath: linked.path, path, sections: [], diagnostics: [] };
+        // The checked reader rejects absolute, foreign, traversal and symlink paths before reading bytes.
+        const mapped = await readRoadmapMappedSections(root, { ...linked, path });
+        base.sourceHash = mapped.hash;
+        base.sections = linked.sections.map(section => ({ ...section,
+            line: mapped.sections.find(item => item.checkpointId === section.checkpointId)?.line ?? 0 }));
+        if (mapped.hash !== linked.sourceHash || mapped.hash !== linked.lastSynced.sourceHash)
+            base.diagnostics.push('Candidate contents differ from the accepted source; review and reconcile separately.');
+        base.diagnostics.push(...mapped.diagnostics);
+        if (mapped.sections.length !== linked.sections.length || base.sections.some(section => !section.line))
+            base.diagnostics.push('Mapped section identities are missing or ambiguous.');
+        if (!linked.lastSynced.fields || mapped.sections.some(section => {
+            const accepted = linked.lastSynced.fields!.find(field => field.checkpointId === section.checkpointId);
+            const { line: _line, heading: _heading, ...fields } = section;
+            return !accepted || JSON.stringify(fields) !== JSON.stringify(accepted);
+        })) base.diagnostics.push('Mapped fields differ from the accepted basis.');
+        if (!base.diagnostics.length) base.state = 'ready';
+        return base;
+    }
+
+    async applyRelink(root: string, expected: RoadmapRelinkPreview, approved: boolean): Promise<RoadmapIndex> {
+        if (!approved) return this.read(root);
+        if (expected.state !== 'ready' || !expected.sourceHash) throw new Error('Relink requires a safe approved preview');
+        return this.commit(root, expected.revision, expected.projectId, async current => {
+            const fresh = await this.previewRelink(root, expected.path);
+            if (fresh.state !== 'ready' || JSON.stringify(fresh) !== JSON.stringify(expected))
+                throw new Error('Stale linked Roadmap relink preview');
+            const linked = current.linkedDocument!;
+            const lines = new Map(fresh.sections.map(section => [section.checkpointId, section.line]));
+            const checkpoints = current.checkpoints.map(item => item.source?.path === linked.path && lines.has(item.id) ?
+                { ...item, source: { ...item.source, path: fresh.path, line: lines.get(item.id)!, sha256: fresh.sourceHash! } } : item);
+            return { checkpoints, changedIds: checkpoints.filter((item, at) => item !== current.checkpoints[at]).map(item => item.id),
+                linkedDocument: { ...linked, path: fresh.path, sourceHash: fresh.sourceHash!, syncState: 'synced' } };
+        });
     }
 
     /** Finish an approved edit after restart. Unknown source bytes are never overwritten. */

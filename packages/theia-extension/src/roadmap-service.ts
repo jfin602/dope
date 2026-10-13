@@ -2,7 +2,7 @@ import type { RoadmapIndex, RoadmapChange } from '@dope/project-intelligence/lib
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import type { PlanningActionRequest, PlanningActionPreview, PlanningUndoRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
-import type { RoadmapSyncPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
+import type { RoadmapSyncPreview, RoadmapRelinkPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 
@@ -27,6 +27,8 @@ export interface RoadmapService {
     acceptImport(projectUri: string, expectedRevision: number, expectedProjectId: string, preview: RoadmapImportPreview): Promise<RoadmapIndex>;
     previewDocumentSync(projectUri: string): Promise<RoadmapSyncPreview>;
     applyDocumentSync(projectUri: string, preview: RoadmapSyncPreview): Promise<RoadmapIndex>;
+    previewRelink(projectUri: string, path: string): Promise<RoadmapRelinkPreview>;
+    applyRelink(projectUri: string, preview: RoadmapRelinkPreview, approved: boolean): Promise<RoadmapIndex>;
     observeLinkedDocument(projectUri?: string): Promise<void>;
     attach(projectUri: string): Promise<{ projectHandle: string; snapshot: RoadmapIndex }>;
     detach(projectHandle: string): Promise<void>;

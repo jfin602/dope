@@ -143,6 +143,10 @@ export default new ContainerModule(bind => {
                     .previewDocumentSync(await context.container.get(PlanningStore).root(uri)),
                 applyDocumentSync: async (uri, preview) => context.container.get(RoadmapStore)
                     .applyDocumentSync(await context.container.get(PlanningStore).root(uri), preview),
+                previewRelink: async (uri, path) => context.container.get(RoadmapStore)
+                    .previewRelink(await context.container.get(PlanningStore).root(uri), path),
+                applyRelink: async (uri, preview, approved) => context.container.get(RoadmapStore)
+                    .applyRelink(await context.container.get(PlanningStore).root(uri), preview, approved),
                 observeLinkedDocument: async uri => observer.observe(uri ? await context.container.get(PlanningStore).root(uri) : undefined),
                 attach: async (uri) => {
                     const result = await actions.attach(await context.container.get(PlanningStore).root(uri));
