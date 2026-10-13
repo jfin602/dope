@@ -1,0 +1,33 @@
+TASK: Correction 10 / P7 — Create a zero-model Roadmap draft and linked document
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036 (both linked-document and runner/canvas amendments), docs/planning/p10/phase-10-plan.md, this correction README/assessment/plan and P16 closeout. Require explicit separate owner activation; verify actual Git HEAD/version/dirty-tree, all 13 manifests/20 pins unchanged at 0.10.16, and reconcile any worktree/source conflicts safely. Do not reset/clean/stash-away unrelated local work, bump versions or manually commit when runner owns changes.
+
+INSPECT
+Current RoadmapStore/ProjectPlanningActions create/edit operations, P2 link metadata and P4 file writer; inspect project identity creation and existing .dope persistence rather than making a competing draft schema.
+
+IMPLEMENT
+Add a bounded noncanonical greenfield Roadmap draft with explicit phase/checkpoint create/edit/reorder validation, preview and user acceptance; no model required. On accepted fresh basis only, create a new Markdown Roadmap at a user-approved UNUSED in-root path (safe defaults optional), then link that exact document and initialize structured state using existing authority. Refuse existing file, symlink, missing root, revision race, duplicate checkpoint and partial file/index failure; record recoverable pending state through P6. Draft cancellation, abandonment or model failure must not publish canonical Roadmap or create a document.
+
+PRESERVE
+Existing ChatPanel left/right/bottom/center, Dope-owned ProjectPlanningActions with preview/approval and unchanged owner authorities; Markdown mapped fields source-owned, .dope Roadmap owns IDs/links; historical P16 Not Green remains. No agent/Work execution or Chat shell/filesystem/Git/MCP grants, silent hosted inference, false Green status, phase advancement or Phase 12 background alignment. Use restrained dark-orange semantic theme and accessible UI for presentation changes.
+
+VALIDATION — T2
+Build only changed project-intelligence outputs needed by focused tests. Run node --test test/unit/roadmap-store.test.ts test/unit/project-planning-actions.test.ts and new test/unit/roadmap-greenfield.test.ts. Cover no-model draft/accept, cancel, duplicate headings, existing path denial, crash-safe retry and restart; git diff --check.
+Target <=8 minutes including focused implementation and tests, with 10-minute soft / 15-minute hard ceiling. Only compile changed dependencies for lib-consuming tests. No npm run check, npm test, full browser/Electron build, packaging, general restart or native GUI; P17/P18 own broad evidence. Report inability to meet a safety requirement instead of dropping it.
+
+DEFER
+Greenfield UI belongs to P8, Chat proposals to P10; no automatic model or arbitrary project file writes.
+
+DONE WHEN
+The bounded owned change and security/compatibility invariants pass focused checks, with unchanged version, safe worktree and a precise next-prompt handoff. Runner owns commits; do not commit from the agent.
+
+FINAL RESPONSE
+List actual modified files, tests/builds run and outcomes, source/version identity, preserved behavior and unresolved risks.
