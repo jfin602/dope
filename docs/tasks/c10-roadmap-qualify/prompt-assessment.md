@@ -1,6 +1,6 @@
 # /prompt-ass — c10-roadmap-qualify
 
-**Status:** SOURCE-ASSESSED / DOCUMENTATION-APPROVED / PROMPT WRITING ONLY; NOT IMPLEMENTED, ACTIVATED, OR QUALIFIED
+**Status:** SOURCE-ASSESSED / DOCUMENTATION-APPROVED / READY FOR DIRECT RUN; NOT IMPLEMENTED OR QUALIFIED
 **Date:** 2026-10-13 (America/Chicago)
 **Entry:** P19 `c10-roadmap-create-sync` tested product source `71d91efb3668e57816bb031f82ab309acea17cfc`, evidence-only commit `c620bc0a3be714b7dc329dc5c872a064b1f8003a`, package `0.10.16`. Exact aggregate **671/671 and browser/Electron builds PASS**, but P19 **NOT GREEN**. P16 predecessor NOT GREEN. Actual local Git/worktree status was not independently observed during prompt authoring.
 **Authority:** ADR 0036 including 2026-10-13 compact-intent and supported-field amendment, current ADR 0016, ADR 0025/28/29, ADR 0037, `docs/planning/p10/phase-10-plan.md`, `docs/workflow.md`, `BOOT.md`, `AGENTS.md`, P19 closeout.
@@ -47,4 +47,4 @@ P1 before P2 because context/intent agree on allowed operations. P3/P4 are owner
 
 Eight ordinary narrow implementation/integration tasks (target <=8 minutes, 10 soft / 15 hard); source-aware safety and T2 integration may justify limited extra, but no habitual `npm run check`. P9 manual T3 is exempt and must contain hard stopping gates. Focused tests use actual existing `test/unit/roadmap-*.test.ts` and directly affected Chat/Store/Map suites; tests importing compiled `@dope/*/lib` need only changed package output rebuilt in dependency order, not `npm run build:extension` for every prompt. Register new tests in root `test:product` once. Final `npm run check` includes typecheck, tests, browser/Electron builds; run once per final candidate after changes. Runner validator must be executed locally after writing stack; static consistency alone is not runtime validation.
 
-**Grammar:** `P1`–`P9` contiguous; `TASK: Correction 10 / P<n> — <title>`; fixed unchanged version metadata in each; one sole final `P9-...-closeout.txt` with closeout also in TASK title and Browser required yes. All P1–P8 browser no. This document authors prompts but does **not** activate or run the correction.
+**Grammar:** `P1`–`P9` contiguous; `TASK: Correction 10 / P<n> — <title>`; fixed unchanged version metadata in each; one sole final `P9-...-closeout.txt` with closeout also in TASK title and Browser required yes. All P1–P8 browser no. This document authors prompts but does **not** execute the correction; selecting the stack to run needs no separate activation.

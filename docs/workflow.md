@@ -55,6 +55,12 @@ Resolve the registry entry identified by its permanent ID. The ID determines whi
 - If the ID does not exist, make no registry mutation and report that it was not found.
 - `/resolve +ID` means the feature was completed/shipped. Deferred, rejected, superseded, or abandoned ideas require an explicit disposition rather than being falsely marked shipped.
 
+## Prompt-stack execution — no separate activation
+
+A deliberate owner/developer action to execute an authored prompt stack (for example, `npm run codex:phase -- <folder>`) is the implementation authorization for **that stack**. Do not require a preliminary `/activate` command, a second owner-activation approval, an `activation.md` record, or an activation-only STOP gate. This applies to corrections and future stacks alike. Authoring a stack with `/prompt-write` does **not** execute it; the explicit Run instruction does. Reconcile unexecuted legacy prompts against this current rule without rewriting historical activation or qualification evidence.
+
+Before mutations, still validate the stack and reconcile local Git HEAD/ancestry, coherent version/manifest state, dependencies, the dirty worktree and applicable permission boundaries. Keep substantive T1/T2/T3, native/GUI, local-model, security and exact-source qualification gates; move late-stage qualification instrumentation to its proper qualification step rather than blocking ordinary implementation solely because of missing T3 tooling. Execution of one stack does not waive failed evidence, close a product phase, authorize a different phase/stack, or imply an unrelated version transition.
+
 ## Implementation planning workflow
 
 /prompt-ass -> /prompt-plan -> /prompt-write <folder>

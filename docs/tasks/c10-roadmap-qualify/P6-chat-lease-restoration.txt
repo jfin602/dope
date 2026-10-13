@@ -8,7 +8,7 @@ VERSIONING
 - Required unchanged project version: `0.10.16`.
 
 PREFLIGHT / AUTHORIZATION
-Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 including final-qualification amendment, ADR 0016/0037, docs/planning/p10/phase-10-plan.md and this correction README/assessment/implementation-plan, plus historical docs/tasks/c10-roadmap-create-sync/closeout.md. This stack needs separate owner activation; if absent STOP without mutation. Before P1, prove a usable native Electron window capture/control path and meaningful browser/touch/keyboard plus process-tree/network observation for successful local-model requests; unresolved instrumentation blocks final Green, not a reason to weaken gates. Verify actual local Git HEAD and ancestry from product source 71d91ef, coherent all-manifest 0.10.16 and dirty/uncommitted work. No resets, destructive clean/stash, concurrent mutating stacks, version bump, lockfile/dependency churn or agent-made commits.
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 including final-qualification amendment, ADR 0016/0037, docs/planning/p10/phase-10-plan.md and this correction README/assessment/implementation-plan, plus historical docs/tasks/c10-roadmap-create-sync/closeout.md. Verify actual local Git HEAD and ancestry from product source 71d91ef, coherent all-manifest 0.10.16 and dirty/uncommitted work. No resets, destructive clean/stash, concurrent mutating stacks, version bump, lockfile/dependency churn or agent-made commits.
 
 SOURCE INSPECTION
 packages/theia-extension/src/browser/chat-panel-controller.ts attach/restore/claim/renew/release, ChatOpenOwners ownership, packages/chat/src/node persistence and lease backend, test/unit/roadmap-chat-panel.test.ts, chat-panel.test.ts, chat-repository.test.ts.

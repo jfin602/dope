@@ -1,6 +1,6 @@
 # c10-roadmap-qualify — Phase 10 final Roadmap qualification correction
 
-**Status (2026-10-13):** **/docs-apply + /prompt-ass + /prompt-plan + /prompt-write complete; NOT OWNER-ACTIVATED / NOT IMPLEMENTED / NOT QUALIFIED.**
+**Status (2026-10-13):** **/docs-apply + /prompt-ass + /prompt-plan + /prompt-write complete; READY FOR DIRECT RUN / NOT IMPLEMENTED / NOT QUALIFIED.**
 **Mode:** Correction 10. **Fixed package version: `0.10.16` UNCHANGED**, all 13 root/app/package manifests and 20 pinned `@dope/*` references.
 **Exact entry:** `71d91efb3668e57816bb031f82ab309acea17cfc` product source, subsequent `c620bc0a3be714b7dc329dc5c872a064b1f8003a` P19 evidence-only commit. P19 passed 671/671 automated tests and both builds but **NOT GREEN** live. Original P16 remains **NOT GREEN**. Phase 10 not owner-closed; Phase 11/12 inactive.
 **Authority:** ADR 0036 (2026-10-13 amendment), `docs/planning/p10/phase-10-plan.md`, `prompt-assessment.md` and `implementation-plan.md`.
@@ -19,9 +19,9 @@
 | [P8 — Integration](P8-qualification-integration.txt) | Cross-owner/adversarial regression integration | T2 | GPT-6 Sol High | no |
 | [P9 — Final closeout](P9-roadmap-qualification-closeout.txt) | **Manual actual browser/native Electron/local-model/egress qualification** | T3 | GPT-6 Sol High | **yes** |
 
-## Before activation or implementation
+## Execution preflight
 
-This stack is **not owner-activated**. Need separate explicit approval, followed by safe actual local HEAD/version/dirty-tree reconciliation. **Before P1** prove the independent native Electron window controls/capture, browser+touch/keyboard-equivalent actions and network/process-tree observation needed for P9. A process launch or Electron build is not sufficient. Do not silently weaken T3 gates due to tooling.
+Starting this selected stack via the runner is sufficient implementation authorization; no separate `/activate` command or activation record is needed. Reconcile actual local HEAD/version/dirty tree safely before mutation. Native Electron window controls/capture, browser+touch/keyboard-equivalent actions and network/process-tree observations remain mandatory P9 T3 qualification evidence, not a pre-P1 implementation gate. A process launch or Electron build is not sufficient. Do not weaken T3 qualification due to missing tooling.
 
 After local checkout contains the authored files, validate runner syntax:
 ```sh
@@ -29,7 +29,7 @@ npm run codex:phase:validate -- c10-roadmap-qualify
 ```
 This command is required at execution; static authoring checks do not substitute for it.
 
-Only after **separate owner activation** and satisfactory preflight:
+After satisfactory execution preflight:
 ```sh
 npm run codex:phase -- c10-roadmap-qualify
 ```
