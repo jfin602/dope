@@ -1,0 +1,33 @@
+TASK: Correction 10 / P12 — Project runner prompts and correction branches into Roadmap graph
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036 (both linked-document and runner/canvas amendments), docs/planning/p10/phase-10-plan.md, this correction README/assessment/plan and P16 closeout. Require explicit separate owner activation; verify actual Git HEAD/version/dirty-tree, all 13 manifests/20 pins unchanged at 0.10.16, and reconcile any worktree/source conflicts safely. Do not reset/clean/stash-away unrelated local work, bump versions or manually commit when runner owns changes.
+
+INSPECT
+packages/project-intelligence/src/roadmap-projection.ts CheckpointNode/CheckpointEdge, RoadmapPresentation, roadmap-canvas-model.ts keyboard ordering, P11 stack metadata and Roadmap owner/evidence links.
+
+IMPLEMENT
+Create a pure deterministic read-only graph enrichment: validated runner P1..Pn prompts become source-backed children of the matched strategic phase, continuation slices remain labeled segments of the same phase, correction stacks form separate lanes with child prompt nodes. c<phase>-slug proves ONLY parent phase; exact failed prompt linkage requires typed source/evidence proof, else attach at phase level or show unlinked pool. Preserve stable IDs project+stack+prompt number through reorder/restart, visible provenance, unknown/waived/Not Green status and no source overwrite. Keep detached Ideas/Issues distinct, projection bounded for large stacks, and do not infer completion or create AgentTasks.
+
+PRESERVE
+Existing ChatPanel left/right/bottom/center, Dope-owned ProjectPlanningActions with preview/approval and unchanged owner authorities; Markdown mapped fields source-owned, .dope Roadmap owns IDs/links; historical P16 Not Green remains. No agent/Work execution or Chat shell/filesystem/Git/MCP grants, silent hosted inference, false Green status, phase advancement or Phase 12 background alignment. Use restrained dark-orange semantic theme and accessible UI for presentation changes.
+
+VALIDATION — T1
+Build project-intelligence output only if needed; run node --test test/unit/roadmap-projection.test.ts and new test/unit/roadmap-task-projection.test.ts. Cover p10, p8a/p8b slices, c10 correction branch, unresolved/superseded stacks, selection and project-switch stability; git diff --check.
+Target <=8 minutes including focused implementation and tests, with 10-minute soft / 15-minute hard ceiling. Only compile changed dependencies for lib-consuming tests. No npm run check, npm test, full browser/Electron build, packaging, general restart or native GUI; P17/P18 own broad evidence. Report inability to meet a safety requirement instead of dropping it.
+
+DEFER
+P13–P15 own spatial rendering, semantic zoom and source opening. No status promotion from prompt file/runner names.
+
+DONE WHEN
+The bounded owned change and security/compatibility invariants pass focused checks, with unchanged version, safe worktree and a precise next-prompt handoff. Runner owns commits; do not commit from the agent.
+
+FINAL RESPONSE
+List actual modified files, tests/builds run and outcomes, source/version identity, preserved behavior and unresolved risks.
