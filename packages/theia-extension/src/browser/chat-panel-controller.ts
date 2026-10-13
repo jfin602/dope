@@ -86,6 +86,7 @@ export class ChatPanelController {
     private selection = 0;
     private lease?: { workspace: string; chatId: string; connection: ChatConnection; handle: string; token: string };
     private renewal?: ReturnType<typeof setInterval>;
+    private restoreRetry?: ReturnType<typeof setTimeout>;
     private restored?: { workspace: string; chatId: string };
     private restoredPlanning?: { workspace: string; selection: PlanningSelection };
     private departing?: Promise<void>;
@@ -105,6 +106,7 @@ export class ChatPanelController {
 
     async attach(workspace: string | undefined): Promise<void> {
         if (this.disposed || workspace && workspace === this.workspace && this.handle) return;
+        this.clearRestoreRetry();
         const generation = ++this.generation;
         ++this.request;
         ++this.selection;
@@ -178,6 +180,7 @@ export class ChatPanelController {
 
     restore(workspace: string, mode: ChatMode, chatId?: string): void {
         if (this.disposed) return;
+        this.clearRestoreRetry();
         this.restored = mode === 'chat' && chatId ? { workspace, chatId } : undefined;
         if (this.restored && this.workspace === workspace && this.handle) {
             const restored = this.restored;
@@ -187,6 +190,7 @@ export class ChatPanelController {
     }
 
     private async leave(): Promise<void> {
+        this.clearRestoreRetry();
         if (this.running) await this.cancel();
         if (this.renewal) clearInterval(this.renewal);
         this.renewal = undefined;
@@ -213,6 +217,7 @@ export class ChatPanelController {
     }
 
     private async doSelect(chatId: string | undefined, restoring: boolean): Promise<boolean> {
+        this.clearRestoreRetry();
         const selection = ++this.selection;
         const previous = [...this.selections];
         if (chatId && !this.snapshot?.chats.some(chat => chat.id === chatId)) {
@@ -244,8 +249,16 @@ export class ChatPanelController {
                 return false;
             }
             if (!claim.acquired) {
-                this.error = `Chat is open in another window (${claim.ownerId}).`;
+                this.error = restoring ? `Chat is open in another window (${claim.ownerId}); restore will retry after its lease expires.` :
+                    `Chat is open in another window (${claim.ownerId}).`;
                 this.owners.release(workspace, chatId, this.panelId);
+                if (restoring) {
+                    this.restoreRetry = setTimeout(() => {
+                        this.restoreRetry = undefined;
+                        if (!this.disposed && selection === this.selection && this.workspace === workspace &&
+                            this.handle === handle) void this.select(chatId, true);
+                    }, Math.max(1, Math.min(60_000, claim.retryAfterMs)));
+                }
                 this.changed();
                 return false;
             }
@@ -270,6 +283,11 @@ export class ChatPanelController {
             if (selection === this.selection && !this.disposed) { this.error = String(error); this.changed(); }
             return false;
         }
+    }
+
+    private clearRestoreRetry(): void {
+        if (this.restoreRetry) clearTimeout(this.restoreRetry);
+        this.restoreRetry = undefined;
     }
 
     async refresh(retainError = false): Promise<void> {
@@ -462,6 +480,7 @@ export class ChatPanelController {
         catch (error) { this.error = String(error); this.changed(); return false; }
     }
     dispose(): void {
+        this.clearRestoreRetry();
         if (this.disposed) return;
         this.disposed = true;
         this.planningListener?.dispose();

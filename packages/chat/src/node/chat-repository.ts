@@ -479,7 +479,8 @@ export class ChatRepository {
         return this.locked(root, async base => {
             if (!(await this.recover(root, base)).chats.some(c => c.id === chatId)) throw new Error('Chat not found');
             const old = await this.lease(base, chatId);
-            if (this.active(old)) return { acquired: false, ownerId: old.ownerId };
+            if (this.active(old)) return { acquired: false, ownerId: old.ownerId,
+                retryAfterMs: Math.max(1, old.expiresAt - Date.now() + 10) };
             await directory(join(base, '.leases'), true);
             const token = randomUUID();
             await syncedJson(join(base, '.leases', `${chatId}.json`), { schemaVersion: 1, chatId, ownerId, token,

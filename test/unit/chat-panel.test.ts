@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -278,6 +278,85 @@ test('saved panel selection waits for repository attach and never rewrites conve
         assert.equal(restored.mode, 'select-chat');
     } finally {
         original.dispose(); restored.dispose();
+        await rm(root, { recursive: true, force: true });
+        await rm(other, { recursive: true, force: true });
+    }
+});
+
+test('saved Chat restore reclaims an orphaned browser lease only after expiry', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-chat-orphan-'));
+    const workspace = pathToFileURL(root).href, repository = new ChatRepository();
+    const chatId = randomUUID();
+    const original = connect(repository), restored = new ChatPanelController(() => connect(repository), () => {},
+        new ChatOpenOwners(), 'restored-window');
+    try {
+        const state = await repository.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+        const attached = await original.attach(workspace);
+        const old = await original.claim({ projectHandle: attached.projectHandle, chatId, ownerId: 'orphaned-window' });
+        assert.equal(old.acquired, true);
+        if (!old.acquired) throw new Error('Expected original lease');
+        const leasePath = join(root, '.dope/chats/.leases', `${chatId}.json`);
+        const lease = JSON.parse(await readFile(leasePath, 'utf8'));
+        await writeFile(leasePath, JSON.stringify({ ...lease, expiresAt: Date.now() + 250 }));
+        restored.restore(workspace, 'chat', chatId);
+        await restored.attach(workspace);
+        await until(() => restored.error.includes('orphaned-window'));
+        assert.equal(restored.mode, 'select-chat');
+        assert.equal((await repository.claim(root, chatId, 'competitor')).acquired, false);
+        await until(() => restored.chatId === chatId);
+        assert.equal(restored.mode, 'chat');
+        assert.equal(restored.snapshot?.revision, state.revision);
+        await assert.rejects(repository.renew(root, chatId, old.token), /lost/);
+        assert.equal((await repository.claim(root, chatId, 'competitor')).acquired, false);
+    } finally {
+        restored.dispose(); original.dispose();
+        await rm(root, { recursive: true, force: true });
+    }
+});
+
+test('backend restart reclaims a dead owner while project switch cancels pending restore', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-chat-restart-'));
+    const other = await mkdtemp(join(tmpdir(), 'dope-chat-switch-'));
+    const workspace = pathToFileURL(root).href, repository = new ChatRepository();
+    const chatId = randomUUID();
+    const panel = new ChatPanelController(() => connect(new ChatRepository()), () => {},
+        new ChatOpenOwners(), 'new-window');
+    try {
+        await repository.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+        const old = await repository.claim(root, chatId, 'old-window');
+        assert.equal(old.acquired, true);
+        if (!old.acquired) throw new Error('Expected original lease');
+        const leasePath = join(root, '.dope/chats/.leases', `${chatId}.json`);
+        const lease = JSON.parse(await readFile(leasePath, 'utf8'));
+        await writeFile(leasePath, JSON.stringify({ ...lease, pid: 99999999 }));
+        panel.restore(workspace, 'chat', chatId);
+        await panel.attach(workspace);
+        await until(() => panel.chatId === chatId);
+        assert.equal(panel.chatId, chatId);
+        assert.equal((await repository.claim(root, chatId, 'competitor')).acquired, false);
+        await assert.rejects(repository.renew(root, chatId, old.token), /lost/);
+
+        await panel.select(undefined);
+        const orphan = await repository.claim(root, chatId, 'orphaned-again');
+        assert.equal(orphan.acquired, true);
+        const pending = new ChatPanelController(() => connect(repository), () => {},
+            new ChatOpenOwners(), 'pending-window');
+        try {
+            const current = JSON.parse(await readFile(leasePath, 'utf8'));
+            await writeFile(leasePath, JSON.stringify({ ...current, expiresAt: Date.now() + 200 }));
+            pending.restore(workspace, 'chat', chatId);
+            await pending.attach(workspace);
+            await until(() => pending.error.includes('orphaned-again'));
+            await pending.attach(pathToFileURL(other).href);
+            await new Promise(resolve => setTimeout(resolve, 250));
+            assert.equal(pending.chatId, undefined);
+            assert.equal(pending.workspace, pathToFileURL(other).href);
+            const available = await repository.claim(root, chatId, 'new-owner');
+            assert.equal(available.acquired, true);
+            if (available.acquired) await repository.release(root, chatId, available.token);
+        } finally { pending.dispose(); }
+    } finally {
+        panel.dispose();
         await rm(root, { recursive: true, force: true });
         await rm(other, { recursive: true, force: true });
     }

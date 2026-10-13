@@ -28,7 +28,7 @@ export interface ChatMutation { projectHandle: string; expectedRevision: number;
 export interface ChatSearchRequest { projectHandle: string; query: string; limit: number; excludeChatId?: ChatId }
 export interface ChatSearchHit { chatId: ChatId; messageId: string; title: string; excerpt: string; createdAt: string }
 export interface ChatLeaseRequest { projectHandle: string; chatId: ChatId; ownerId: string }
-export type ChatLeaseResult = { acquired: true; token: string } | { acquired: false; ownerId: string };
+export type ChatLeaseResult = { acquired: true; token: string } | { acquired: false; ownerId: string; retryAfterMs: number };
 export interface ChatDeltaRequest { projectHandle: string; chatId: ChatId; messageId: string;
     executionId: string; sequence: number; delta: string; leaseToken: string }
 export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseToken: string;

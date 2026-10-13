@@ -69,8 +69,11 @@ test('ownership gates turn writes and transient deltas; search reads saved Chat'
         const claim = await service.claim({ projectHandle, chatId, ownerId: 'panel-a' });
         assert.equal(claim.acquired, true);
         if (!claim.acquired) throw new Error('Expected ownership');
-        assert.deepEqual(await service.claim({ projectHandle, chatId, ownerId: 'panel-b' }),
-            { acquired: false, ownerId: 'panel-a' });
+        const denied = await service.claim({ projectHandle, chatId, ownerId: 'panel-b' });
+        assert.equal(denied.acquired, false);
+        if (denied.acquired) throw new Error('Expected denied lease');
+        assert.equal(denied.ownerId, 'panel-a');
+        assert.ok(denied.retryAfterMs > 0 && denied.retryAfterMs <= 60_010);
         state = await service.mutate({ projectHandle, expectedRevision: state.revision, leaseToken: claim.token,
             operation: { type: 'append-user', chatId, message: { schemaVersion: 1, id: userId, role: 'user',
                 createdAt: state.chats[0].createdAt, content: 'Find this saved conversation', contextRefs: [] } } });

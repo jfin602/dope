@@ -144,7 +144,11 @@ test('locks, leases and abandoned execution recovery retain truthful status', as
     assert.equal(state.chats[0].title, 'recovered');
     const first = await repo.claim(root, chatId, 'panel-a');
     assert.equal(first.acquired, true);
-    assert.deepEqual(await new ChatRepository().claim(root, chatId, 'panel-b'), { acquired: false, ownerId: 'panel-a' });
+    const denied = await new ChatRepository().claim(root, chatId, 'panel-b');
+    assert.equal(denied.acquired, false);
+    if (denied.acquired) throw new Error('Expected denied lease');
+    assert.equal(denied.ownerId, 'panel-a');
+    assert.ok(denied.retryAfterMs > 0 && denied.retryAfterMs <= 60_010);
     if (!first.acquired) throw new Error('claim failed');
     await repo.renew(root, chatId, first.token);
     const assistantId = id();
