@@ -37,12 +37,23 @@ export interface RoadmapCheckpoint {
     source?: RoadmapCitation;
     evidence: RoadmapCitation[];
 }
+/** Bookkeeping for one explicitly accepted Markdown owner. No document write is implied. */
+export interface RoadmapLinkedDocument {
+    projectRoot: string;
+    projectId: string;
+    path: string;
+    sourceHash: string;
+    sections: { sectionKey: string; checkpointId: string }[];
+    lastSynced: { sourceHash: string; roadmapRevision: number };
+    syncState: 'synced' | 'source-changed' | 'conflict' | 'pending-sync' | 'missing';
+}
 export interface RoadmapIndex {
     schemaVersion: 1;
     projectId: string;
     projectRoot: string;
     revision: number;
     checkpoints: RoadmapCheckpoint[];
+    linkedDocument?: RoadmapLinkedDocument;
 }
 export interface RoadmapChange { root: string; projectId: string; revision: number; changedIds: string[] }
 export type RoadmapMutation =
@@ -73,12 +84,46 @@ function link(value: unknown): value is RoadmapLink {
             typeof basis.physicalInputFingerprint === 'string' && !!basis.physicalInputFingerprint :
             item.ownerProjectId === undefined && item.basis === undefined);
 }
+function linkedDocument(value: unknown, raw: Record<string, unknown>, checkpoints: RoadmapCheckpoint[]): value is RoadmapLinkedDocument {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const item = value as Record<string, unknown>;
+    if (Object.keys(item).sort().join(',') !== 'lastSynced,path,projectId,projectRoot,sections,sourceHash,syncState' ||
+        item.projectRoot !== raw.projectRoot || item.projectId !== raw.projectId ||
+        !text(item.path, 512) || !item.path || isAbsolute(item.path) || !/\.md$/i.test(item.path) ||
+        item.path.includes('\\') || item.path.includes(':') ||
+        item.path.split('/').some(part => !part || part === '.' || part === '..') ||
+        typeof item.sourceHash !== 'string' || !/^[a-f0-9]{64}$/.test(item.sourceHash) ||
+        !['synced', 'source-changed', 'conflict', 'pending-sync', 'missing'].includes(item.syncState as string) ||
+        !Array.isArray(item.sections) || item.sections.length > MAX_CHECKPOINTS) return false;
+    const basis = item.lastSynced as Record<string, unknown> | undefined;
+    if (!basis || typeof basis !== 'object' || Array.isArray(basis) ||
+        Object.keys(basis).sort().join(',') !== 'roadmapRevision,sourceHash' ||
+        !revision(basis.roadmapRevision) || (basis.roadmapRevision as number) > (raw.revision as number) ||
+        typeof basis.sourceHash !== 'string' || !/^[a-f0-9]{64}$/.test(basis.sourceHash)) return false;
+    const keys = new Set<string>();
+    const ids = new Set<string>();
+    const byId = new Map(checkpoints.map(checkpoint => [checkpoint.id, checkpoint]));
+    for (const entry of item.sections) {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
+        const section = entry as Record<string, unknown>;
+        if (Object.keys(section).sort().join(',') !== 'checkpointId,sectionKey' ||
+            !id(section.sectionKey) || !id(section.checkpointId) ||
+            keys.has(section.sectionKey) || ids.has(section.checkpointId)) return false;
+        const checkpoint = byId.get(section.checkpointId);
+        if (!checkpoint?.source || checkpoint.source.path !== item.path) return false;
+        keys.add(section.sectionKey);
+        ids.add(section.checkpointId);
+    }
+    return true;
+}
 
 /** Reject unknown versions and malformed persisted state rather than normalizing it into new authority. */
 export function parseRoadmapIndex(value: unknown, root: string): RoadmapIndex {
     if (!value || typeof value !== 'object' || Array.isArray(value)) fail('document');
     const raw = value as Record<string, unknown>;
-    if (Object.keys(raw).sort().join(',') !== 'checkpoints,projectId,projectRoot,revision,schemaVersion' ||
+    if (Object.keys(raw).sort().join(',') !== (raw.linkedDocument === undefined ?
+        'checkpoints,projectId,projectRoot,revision,schemaVersion' :
+        'checkpoints,linkedDocument,projectId,projectRoot,revision,schemaVersion') ||
         raw.schemaVersion !== 1 || !id(raw.projectId) || raw.projectId === 'uninitialized' ||
         raw.projectRoot !== root || !revision(raw.revision) || raw.revision === 0 || !Array.isArray(raw.checkpoints) ||
         raw.checkpoints.length > MAX_CHECKPOINTS) fail('schema or project root');
@@ -114,6 +159,8 @@ export function parseRoadmapIndex(value: unknown, root: string): RoadmapIndex {
         visited.add(checkpointId);
     };
     for (const checkpointId of byId.keys()) visit(checkpointId);
+    if (raw.linkedDocument !== undefined && !linkedDocument(raw.linkedDocument, raw, checkpoints as RoadmapCheckpoint[]))
+        fail('linked document');
     return value as RoadmapIndex;
 }
 
@@ -226,20 +273,26 @@ export class RoadmapStore {
     }
 
     private async commit(root: string, expectedRevision: number, expectedProjectId: string | undefined,
-        transform: (current: RoadmapIndex) => Promise<{ checkpoints: RoadmapCheckpoint[]; changedIds: string[] }>): Promise<RoadmapIndex> {
+        transform: (current: RoadmapIndex) => Promise<{ checkpoints: RoadmapCheckpoint[]; changedIds: string[];
+            linkedDocument?: RoadmapLinkedDocument }>): Promise<RoadmapIndex> {
         if (!revision(expectedRevision)) throw new Error('Invalid Roadmap revision');
         const result = await this.locked(root, async () => {
             const current = await this.read(root);
             if (expectedProjectId && current.projectId !== expectedProjectId) throw new Error('Roadmap identity changed; reattach');
             if (current.revision !== expectedRevision) throw new Error(`Stale Roadmap revision; current ${current.revision}`);
-            const { checkpoints, changedIds } = await transform(current);
-            if (!changedIds.length) return { snapshot: current, changedIds };
-            const next = parseRoadmapIndex({ schemaVersion: 1, projectId: current.revision ? current.projectId : randomUUID(),
-                projectRoot: root, revision: current.revision + 1, checkpoints }, root);
+            const { checkpoints, changedIds, linkedDocument: proposedLink } = await transform(current);
+            const nextProjectId = current.revision ? current.projectId : randomUUID();
+            const nextRevision = current.revision + 1;
+            const nextLink = proposedLink ? { ...proposedLink, projectRoot: root, projectId: nextProjectId,
+                lastSynced: { sourceHash: proposedLink.sourceHash, roadmapRevision: nextRevision } } : current.linkedDocument;
+            if (!changedIds.length && JSON.stringify(nextLink) === JSON.stringify(current.linkedDocument))
+                return { snapshot: current, changedIds };
+            const next = parseRoadmapIndex({ schemaVersion: 1, projectId: nextProjectId,
+                projectRoot: root, revision: nextRevision, checkpoints, ...(nextLink ? { linkedDocument: nextLink } : {}) }, root);
             await this.replace(root, next);
             return { snapshot: next, changedIds };
         });
-        if (result.changedIds.length) this.publish({ root, projectId: result.snapshot.projectId,
+        if (result.snapshot.revision !== expectedRevision) this.publish({ root, projectId: result.snapshot.projectId,
             revision: result.snapshot.revision, changedIds: result.changedIds });
         return result.snapshot;
     }
@@ -248,16 +301,22 @@ export class RoadmapStore {
     async acceptImport(root: string, expectedRevision: number, preview: RoadmapImportPreview,
         expectedProjectId?: string): Promise<RoadmapIndex> {
         return this.commit(root, expectedRevision, expectedProjectId, async current => {
-            const fresh = await previewRoadmapImport(root);
+            const fresh = await previewRoadmapImport(root, preview.roadmapPath);
             if (JSON.stringify(preview) !== JSON.stringify(fresh)) throw new Error('Stale Roadmap import preview');
+            if (current.linkedDocument && current.linkedDocument.path !== fresh.roadmapPath)
+                throw new Error('Roadmap linked document differs; explicit relink is required');
+            const selected = fresh.sources.find(source => source.path === fresh.roadmapPath);
+            if (!selected) throw new Error('Selected Roadmap source missing');
             const checkpoints = [...current.checkpoints];
             const changedIds: string[] = [];
+            const sections: RoadmapLinkedDocument['sections'] = [];
             const duplicate = new Set<string>();
             for (const item of preview.checkpoints) {
                 if (duplicate.has(item.id)) continue;
                 if (preview.checkpoints.filter(other => other.id === item.id).length > 1) { duplicate.add(item.id); continue; }
                 const existing = checkpoints.find(checkpoint => checkpoint.id === item.id);
                 if (existing && !existing.source) continue; // A later import cannot overwrite a roadmap-owned checkpoint.
+                if (item.source.path === fresh.roadmapPath) sections.push({ sectionKey: item.sectionKey, checkpointId: item.id });
                 const imported: RoadmapCheckpoint = { id: item.id, kind: item.kind, title: item.title,
                     objective: existing?.objective ?? '',
                     order: existing?.order ?? checkpoints.length, dependencies: existing?.dependencies ?? [],
@@ -268,7 +327,16 @@ export class RoadmapStore {
                 } else checkpoints.push(imported);
                 changedIds.push(item.id);
             }
-            return { checkpoints, changedIds };
+            if (!sections.length) return { checkpoints, changedIds };
+            const linkedDocument: RoadmapLinkedDocument = { projectRoot: root, projectId: current.projectId,
+                path: fresh.roadmapPath, sourceHash: selected.sha256, sections,
+                lastSynced: { sourceHash: selected.sha256, roadmapRevision: current.revision + 1 }, syncState: 'synced' };
+            if (!changedIds.length && current.linkedDocument?.path === linkedDocument.path &&
+                current.linkedDocument.sourceHash === linkedDocument.sourceHash &&
+                current.linkedDocument.syncState === 'synced' &&
+                JSON.stringify(current.linkedDocument.sections) === JSON.stringify(sections))
+                return { checkpoints, changedIds };
+            return { checkpoints, changedIds, linkedDocument };
         });
     }
 
@@ -289,7 +357,7 @@ export class RoadmapStore {
                 if (checkpoints[index].readOnly) throw new Error('Source-backed Roadmap checkpoint is read-only');
                 if (checkpoints[index].source) {
                     if (operation.title !== checkpoints[index].title) throw new Error('Markdown owns the source checkpoint title');
-                    const fresh = await previewRoadmapImport(root);
+                    const fresh = await previewRoadmapImport(root, current.linkedDocument?.path);
                     const source = fresh.checkpoints.find(item => item.id === operation.id);
                     if (!source || source.readOnly || source.source.sha256 !== checkpoints[index].source.sha256 ||
                         source.title !== checkpoints[index].title || source.status !== checkpoints[index].status)
@@ -316,7 +384,7 @@ export class RoadmapStore {
             const changedIds = checkpoints.filter(item => JSON.stringify(item) !== JSON.stringify(before.get(item.id))).map(item => item.id);
             const sourceChanges = changedIds.filter(key => before.get(key)?.source);
             if (sourceChanges.length) {
-                const fresh = await previewRoadmapImport(root);
+                const fresh = await previewRoadmapImport(root, current.linkedDocument?.path);
                 for (const key of sourceChanges) {
                     const old = before.get(key)!;
                     const next = after.get(key)!;
