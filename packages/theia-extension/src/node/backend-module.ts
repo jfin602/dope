@@ -94,6 +94,10 @@ export default new ContainerModule(bind => {
                 previewImport: async (uri, path) => previewRoadmapImport(await context.container.get(PlanningStore).root(uri), path),
                 acceptImport: async (uri, revision, projectId, importPreview) => context.container.get(RoadmapStore)
                     .acceptImport(await context.container.get(PlanningStore).root(uri), revision, importPreview, projectId),
+                previewDocumentSync: async uri => context.container.get(RoadmapStore)
+                    .previewDocumentSync(await context.container.get(PlanningStore).root(uri)),
+                applyDocumentSync: async (uri, preview) => context.container.get(RoadmapStore)
+                    .applyDocumentSync(await context.container.get(PlanningStore).root(uri), preview),
                 attach: async (uri) => {
                     const result = await actions.attach(await context.container.get(PlanningStore).root(uri));
                     handles.add(result.projectHandle);

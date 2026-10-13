@@ -28,7 +28,8 @@ test('selected source binds on acceptance, survives restart and preserves docume
     assert.equal(link.projectId, accepted.projectId);
     assert.equal(link.sourceHash, sha256(before));
     assert.deepEqual(link.sections, [{ sectionKey: preview.checkpoints[0].sectionKey, checkpointId: preview.checkpoints[0].id }]);
-    assert.deepEqual(link.lastSynced, { sourceHash: sha256(before), roadmapRevision: accepted.revision });
+    assert.deepEqual(link.lastSynced, { sourceHash: sha256(before), roadmapRevision: accepted.revision,
+        fields: [{ checkpointId: preview.checkpoints[0].id, title: preview.checkpoints[0].title }] });
     assert.equal(link.syncState, 'synced');
     assert.equal(accepted.checkpoints[0].id, preview.checkpoints[0].id);
     assert.deepEqual(await readFile(path), before);

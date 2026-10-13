@@ -15,7 +15,7 @@ export interface RoadmapDocumentPatch {
     requiresApproval: boolean;
 }
 
-async function checkedFile(root: string, path: string): Promise<{ file: string; directory: string; bytes: Buffer; mode: number }> {
+export async function checkedRoadmapDocumentFile(root: string, path: string): Promise<{ file: string; directory: string; bytes: Buffer; mode: number }> {
     if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root || !(await stat(root)).isDirectory() ||
         !path || isAbsolute(path) || !/\.md$/i.test(path) || path.includes('\\') || path.includes(':') ||
         path.split('/').some(part => !part || part === '.' || part === '..')) throw new Error('Unsafe linked Roadmap path');
@@ -37,6 +37,7 @@ async function checkedFile(root: string, path: string): Promise<{ file: string; 
         return { file: current, directory: join(current, '..'), bytes, mode: opened.mode & 0o777 };
     } finally { await handle.close(); }
 }
+const checkedFile = checkedRoadmapDocumentFile;
 
 export async function planRoadmapDocumentPatch(root: string, index: RoadmapIndex, edit: RoadmapDocumentEdit): Promise<RoadmapDocumentPatch> {
     const linked = index.linkedDocument;

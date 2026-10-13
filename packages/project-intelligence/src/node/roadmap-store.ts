@@ -4,6 +4,8 @@ import { lstat, mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises
 import { isAbsolute, join, resolve } from 'node:path';
 import { previewRoadmapImport } from './roadmap-import';
 import { planRoadmapDocumentPatch, publishRoadmapDocumentPatch } from './roadmap-document-patch';
+import { readRoadmapMappedSections, previewRoadmapDocumentSync } from './roadmap-document-sync';
+import type { RoadmapMappedSection, RoadmapSyncPreview } from './roadmap-document-sync';
 import type { RoadmapDocumentPatch } from './roadmap-document-patch';
 import type { RoadmapCitation, RoadmapImportPreview, RoadmapStatus } from './roadmap-import';
 
@@ -46,7 +48,7 @@ export interface RoadmapLinkedDocument {
     path: string;
     sourceHash: string;
     sections: { sectionKey: string; checkpointId: string }[];
-    lastSynced: { sourceHash: string; roadmapRevision: number };
+    lastSynced: { sourceHash: string; roadmapRevision: number; fields?: Omit<RoadmapMappedSection, 'line' | 'heading'>[] };
     syncState: 'synced' | 'source-changed' | 'conflict' | 'pending-sync' | 'missing';
 }
 export interface RoadmapIndex {
@@ -99,9 +101,19 @@ function linkedDocument(value: unknown, raw: Record<string, unknown>, checkpoint
         !Array.isArray(item.sections) || item.sections.length > MAX_CHECKPOINTS) return false;
     const basis = item.lastSynced as Record<string, unknown> | undefined;
     if (!basis || typeof basis !== 'object' || Array.isArray(basis) ||
-        Object.keys(basis).sort().join(',') !== 'roadmapRevision,sourceHash' ||
+        Object.keys(basis).sort().join(',') !== (basis.fields === undefined ? 'roadmapRevision,sourceHash' : 'fields,roadmapRevision,sourceHash') ||
         !revision(basis.roadmapRevision) || (basis.roadmapRevision as number) > (raw.revision as number) ||
         typeof basis.sourceHash !== 'string' || !/^[a-f0-9]{64}$/.test(basis.sourceHash)) return false;
+    if (basis.fields !== undefined && (!Array.isArray(basis.fields) || basis.fields.length !== item.sections.length ||
+        basis.fields.some((value: unknown) => {
+            if (!value || typeof value !== 'object' || Array.isArray(value)) return true;
+            const field = value as Record<string, unknown>;
+            return !id(field.checkpointId) || !text(field.title, 512) ||
+                (field.objective !== undefined && !text(field.objective, 8192)) ||
+                (field.prose !== undefined && !text(field.prose, 8192)) ||
+                (field.order !== undefined && !revision(field.order)) ||
+                Object.keys(field).some(key => !['checkpointId', 'title', 'objective', 'order', 'prose'].includes(key));
+        }))) return false;
     const keys = new Set<string>();
     const ids = new Set<string>();
     const byId = new Map(checkpoints.map(checkpoint => [checkpoint.id, checkpoint]));
@@ -116,6 +128,8 @@ function linkedDocument(value: unknown, raw: Record<string, unknown>, checkpoint
         keys.add(section.sectionKey);
         ids.add(section.checkpointId);
     }
+    if (basis.fields && (new Set((basis.fields as RoadmapMappedSection[]).map(field => field.checkpointId)).size !== item.sections.length ||
+        (basis.fields as RoadmapMappedSection[]).some(field => !ids.has(field.checkpointId)))) return false;
     return true;
 }
 
@@ -286,11 +300,13 @@ export class RoadmapStore {
             const nextProjectId = current.revision ? current.projectId : randomUUID();
             const nextRevision = current.revision + 1;
             const nextLink = proposedLink ? { ...proposedLink, projectRoot: root, projectId: nextProjectId,
-                lastSynced: { sourceHash: proposedLink.sourceHash, roadmapRevision: nextRevision } } : current.linkedDocument;
+                lastSynced: { ...proposedLink.lastSynced, sourceHash: proposedLink.sourceHash, roadmapRevision: nextRevision } } : current.linkedDocument;
             if (!changedIds.length && JSON.stringify(nextLink) === JSON.stringify(current.linkedDocument))
                 return { snapshot: current, changedIds };
             const next = parseRoadmapIndex({ schemaVersion: 1, projectId: nextProjectId,
                 projectRoot: root, revision: nextRevision, checkpoints, ...(nextLink ? { linkedDocument: nextLink } : {}) }, root);
+            if (proposedLink && (await readRoadmapMappedSections(root, nextLink!)).hash !== nextLink!.sourceHash)
+                throw new Error('Linked Roadmap source changed before index publication');
             await this.replace(root, next);
             return { snapshot: next, changedIds };
         });
@@ -333,12 +349,65 @@ export class RoadmapStore {
             const linkedDocument: RoadmapLinkedDocument = { projectRoot: root, projectId: current.projectId,
                 path: fresh.roadmapPath, sourceHash: selected.sha256, sections,
                 lastSynced: { sourceHash: selected.sha256, roadmapRevision: current.revision + 1 }, syncState: 'synced' };
+            const mapped = await readRoadmapMappedSections(root, linkedDocument);
+            if (mapped.hash !== selected.sha256) throw new Error('Linked Roadmap changed during acceptance; preview again');
+            if (mapped.diagnostics.length || mapped.sections.length !== sections.length) linkedDocument.syncState = 'conflict';
+            else {
+                linkedDocument.lastSynced.fields = mapped.sections.map(({ line, heading, ...field }) => field);
+                for (const section of mapped.sections) {
+                    const target = checkpoints.find(checkpoint => checkpoint.id === section.checkpointId);
+                    if (target && !target.readOnly) {
+                        if (section.objective !== undefined) target.objective = section.objective;
+                        if (section.order !== undefined) target.order = section.order;
+                    }
+                }
+            }
             if (!changedIds.length && current.linkedDocument?.path === linkedDocument.path &&
                 current.linkedDocument.sourceHash === linkedDocument.sourceHash &&
                 current.linkedDocument.syncState === 'synced' &&
                 JSON.stringify(current.linkedDocument.sections) === JSON.stringify(sections))
                 return { checkpoints, changedIds };
             return { checkpoints, changedIds, linkedDocument };
+        });
+    }
+
+    async previewDocumentSync(root: string): Promise<RoadmapSyncPreview> {
+        return previewRoadmapDocumentSync(root, await this.read(root));
+    }
+
+    /** Explicit reconciliation; the preview is re-created under the owner lock before any index write. */
+    async applyDocumentSync(root: string, expected: RoadmapSyncPreview): Promise<RoadmapIndex> {
+        if (expected.state !== 'source-changed' || !expected.sourceHash) throw new Error('No applicable linked Roadmap change');
+        return this.commit(root, expected.revision, expected.projectId, async current => {
+            const fresh = await previewRoadmapDocumentSync(root, current);
+            if (fresh.state !== 'source-changed' || JSON.stringify(fresh) !== JSON.stringify(expected))
+                throw new Error('Stale linked Roadmap sync preview');
+            const linked = current.linkedDocument!;
+            const mapped = await readRoadmapMappedSections(root, linked);
+            if (mapped.hash !== expected.sourceHash || mapped.diagnostics.length) throw new Error('Stale linked Roadmap source');
+            const checkpoints = current.checkpoints.map(item => ({ ...item, source: item.source ? { ...item.source } : undefined }));
+            const byId = new Map(mapped.sections.map(section => [section.checkpointId, section]));
+            const changedIds: string[] = [];
+            for (const checkpoint of checkpoints) {
+                const section = byId.get(checkpoint.id);
+                if (!section) continue;
+                for (const change of fresh.changes.filter(change => change.checkpointId === checkpoint.id)) {
+                    if (change.field === 'prose') continue;
+                    if (change.field === 'title' && typeof change.source === 'string') checkpoint.title = change.source;
+                    if (change.field === 'objective' && typeof change.source === 'string') checkpoint.objective = change.source;
+                    if (change.field === 'order' && typeof change.source === 'number') checkpoint.order = change.source;
+                }
+                if (checkpoint.source) {
+                    checkpoint.source.sha256 = mapped.hash;
+                    checkpoint.source.line = section.line;
+                    checkpoint.source.text = section.heading;
+                }
+                if (JSON.stringify(checkpoint) !== JSON.stringify(current.checkpoints.find(item => item.id === checkpoint.id)))
+                    changedIds.push(checkpoint.id);
+            }
+            return { checkpoints, changedIds, linkedDocument: { ...linked, sourceHash: mapped.hash, syncState: 'synced',
+                lastSynced: { sourceHash: mapped.hash, roadmapRevision: current.revision + 1,
+                    fields: mapped.sections.map(({ line, heading, ...field }) => field) } } };
         });
     }
 
@@ -449,10 +518,14 @@ export class RoadmapStore {
                     throw new Error('Invalid linked Roadmap change set');
                 await publishRoadmapDocumentPatch(root, patch);
                 documentPublished = true;
+                const mapped = await readRoadmapMappedSections(root, current.linkedDocument!);
+                if (mapped.hash !== patch.afterHash || mapped.diagnostics.length)
+                    throw new Error('Linked Roadmap mapping changed after document publication');
                 return { checkpoints: next.checkpoints, changedIds, linkedDocument: {
                     ...current.linkedDocument, sourceHash: patch.afterHash,
                     syncState: 'synced' as const,
-                    lastSynced: { sourceHash: patch.afterHash, roadmapRevision: current.revision + 1 }
+                    lastSynced: { sourceHash: patch.afterHash, roadmapRevision: current.revision + 1,
+                        fields: mapped.sections.map(({ line, heading, ...field }) => field) }
                 } };
             });
         } catch (error) {
