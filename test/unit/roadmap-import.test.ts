@@ -106,7 +106,8 @@ test('actual Dope sources keep qualified Phase 9 distinct from retained Phase 5 
     assert.ok(phase5.evidence.some(ref => ref.path === 'docs/tasks/p5/closeout.md' && ref.status === 'not-green'));
     assert.equal(phase9.status, 'green');
     assert.ok(phase9.evidence.some(ref => ref.path === 'docs/tasks/p9d/final-qualification.md' && ref.status === 'green'));
-    assert.equal(phase10.status, 'not-implemented');
+    assert.equal(phase10.status, 'not-green');
+    assert.ok(phase10.evidence.some(ref => ref.path === 'docs/tasks/p10/closeout.md' && ref.status === 'not-green'));
     assert.equal(preview.checkpoints.find(item => item.id.endsWith('#c9-codex-chat'))?.status, 'not-implemented');
     assert.deepEqual(await readFile(path), before);
 });
