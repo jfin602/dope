@@ -16,12 +16,18 @@
 | [P5 — Greenfield](P5-greenfield-completion.txt) | Manual and saved Chat greenfield acceptance | T2 | GPT-6 Sol High | no |
 | [P6 — Chat lease](P6-chat-lease-restoration.txt) | Reproduce/recover Chat lease across restart | T2 | GPT-6 Sol High | no |
 | [P7 — Spatial UI](P7-roadmap-ui-gates.txt) | Touch/keyboard/prompt navigation and layout gates | T1 | GPT-6 Sol Medium | no |
-| [P8 — Integration](P8-qualification-integration.txt) | Cross-owner/adversarial regression integration | T2 | GPT-6 Sol High | no |
-| [P9 — Final closeout](P9-roadmap-qualification-closeout.txt) | **Manual browser/native Electron/local-model 16K/32K/64K comparison/egress qualification** | T3 | GPT-6 Sol High | **yes** |
+| [P8 — Integration](P8-qualification-integration.txt) | Cross-owner/adversarial and shared-Markdown handoff regression integration | T2 | GPT-6 Sol High | no |
+| [P9 — Final closeout](P9-roadmap-qualification-closeout.txt) | **Manual Codex↔Dope handoff, browser/native, local-model 16K/32K/64K and egress qualification** | T3 | GPT-6 Sol High | **yes** |
 
 ## Adaptive local context — default chosen in P9
 
 P2 removes the fixed 4,096-total-token ceiling from local Roadmap planning and uses the verified loaded model context with task-sized context, consistent preview/send/retry accounting, explicit omission diagnostics and bounded JSON output separately from reserved generation tokens. P2 does **not** select a permanent 16K/32K/64K default. P9 compares the same actual local model/quantization/runtime at loaded **16K, 32K and 64K** across real narrow/large/multi-turn tasks, latency, memory and stability; record limitations and choose the smallest reliably sufficient profile only after measuring. 4K is optional narrow compatibility stress, neither a production maximum nor a full-workflow requirement. Missing comparisons remain an evidence gap, not a fabricated winner. Preserve real local-only and approval/security boundaries.
+
+## Codex ↔ Dope linked Markdown acceptance
+
+Codex CLI and Dope may alternate on **one accepted linked Markdown file in the same local project working tree**. Codex edits the source directly; Dope watches/compares, shows the exact external difference, and requires **Apply source changes** for supported non-conflicting mappings. Dope edits require its existing deterministic preview/approval and minimal document patch; Codex sees the updated source on a fresh file read/turn. Different clones require Git exchange. `.dope/` owns checkpoint IDs, links/graph, layout and sync state; Markdown does not independently own those fields or historical Green/Not Green decisions. Unsupported prose remains source-owned/read-only, and ambiguity, stale edits, move/relink and conflict remain fail-closed review flows—not automatic reconciliation.
+
+P8 uses focused disposable shared-file integration regressions; P9 is the **required real Codex CLI → Markdown → Dope UI → Markdown → fresh Codex read**, repeat/restart and conflict/relink replay with hashes, stable IDs, revision/evidence. No new prompts or second sync service. Mock Codex-like edits alone do not qualify a live handoff; missing Codex/GUI evidence is Not Green / Evidence Gap.
 
 ## Execution preflight
 
