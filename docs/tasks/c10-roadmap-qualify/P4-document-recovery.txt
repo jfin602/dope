@@ -1,0 +1,33 @@
+TASK: Correction 10 / P4 — Reproduce and harden linked conflict and crash recovery
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT / AUTHORIZATION
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 including final-qualification amendment, ADR 0016/0037, docs/planning/p10/phase-10-plan.md and this correction README/assessment/implementation-plan, plus historical docs/tasks/c10-roadmap-create-sync/closeout.md. This stack needs separate owner activation; if absent STOP without mutation. Before P1, prove a usable native Electron window capture/control path and meaningful browser/touch/keyboard plus process-tree/network observation for successful local-model requests; unresolved instrumentation blocks final Green, not a reason to weaken gates. Verify actual local Git HEAD and ancestry from product source 71d91ef, coherent all-manifest 0.10.16 and dirty/uncommitted work. No resets, destructive clean/stash, concurrent mutating stacks, version bump, lockfile/dependency churn or agent-made commits.
+
+SOURCE INSPECTION
+roadmap-store.ts pending-sync publication/restart recovery, roadmap-document-sync.ts three-way diff/conflict, roadmap-document-patch.ts atomic file writes, current test/unit/roadmap-sync-recovery.test.ts and roadmap-document-sync.test.ts.
+
+GOAL / IMPLEMENT
+On a disposable project, replay overlapping external Markdown and Dope mapped-field edits, source deletion/move, fault injected before/after owner file/index writes and restart. First classify whether existing behavior is correct or a demonstrated defect. Add an exact permanent regression for each missing gate; change only the proved unsafe or nonrecoverable seam. Pending-sync/conflict is visible, no automatic overwrites, no false distributed transaction, successful no-conflict readmission after reviewed recovery, and no watch feedback loops. If recovery genuinely already passes, keep product behavior and record focused evidence rather than invent a refactor.
+
+PRESERVE
+One normal saved ChatPanel with user-controlled left/right/bottom/center docking, single lease, existing ProjectPlanningActions approval/revision/source-hash authority and distinct Work/AgentTask execution grants. Linked Markdown document owns only losslessly mapped prose, .dope owns structured identities/sync; unsupported narrative is read-only unless separately explicitly reviewed. Keep historical P16 and P19 NOT GREEN evidence, no fabricated qualified gates, no model-controlled filesystem/shell/Git/MCP/agent use, no automatic hosted fallback, no phase advancement. Use restrained dark-orange semantic tokens and current keyboard/touch accessibility for relevant UI.
+
+VALIDATION — T2
+Run node --test test/unit/roadmap-sync-recovery.test.ts test/unit/roadmap-document-sync.test.ts test/unit/roadmap-store.test.ts plus only new fault fixture if needed, after changed package output where relevant. Check deliberate conflict, rollback/no loss, post-crash consistency, missing/relinked input, malformed source and no silent Green; git diff --check.
+P1–P8 use only smallest necessary focused tests and changed-package build outputs, aiming <=8 minutes implementation+validation (10 soft/15 hard; bounded T2 exceptions require explanation). No recurring npm run check, full test:product, browser/Electron builds or AppImage; final manual P9 owns full exact-source validation. If safety proof fails, STOP and record the blocker rather than treating weak mocks as Green.
+
+DEFER
+P9 owns real browser/restart and exact-source aggregate. No broad background semantic document watcher (Phase 12).
+
+DONE WHEN
+The single bounded seam is implemented if defective, its focused regression and authority guards pass, version is still 0.10.16, and P5 has an explicit safe handoff. If reproduction finds no product defect, preserve code and report qualification evidence instead. The runner owns commits; do not commit in the agent.
+
+FINAL RESPONSE
+Report current source, changed files, tests/builds actually run, source owner and security preserved, unresolved evidence gap and next prompt.
