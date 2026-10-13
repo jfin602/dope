@@ -24,7 +24,7 @@ test('one canonical sMap Activity Bar contribution defaults left and preserves o
   }
   assert.doesNotMatch(widget, /area: 'right'|shell\.(?:addWidget|moveWidget)/);
   assert.doesNotMatch(widget, /\bsoftware model\b/i);
-  assert.match(frontend, /bindViewContribution\(bind, ProjectMindView\)/);
+  assert.doesNotMatch(frontend, /bindViewContribution\(bind, ProjectMindView\)/);
   assert.match(frontend, /id: PROJECT_MIND_ID, createWidget/);
   for (const app of ['browser', 'electron']) {
     const dependencies = JSON.parse(read(`apps/${app}/package.json`)).dependencies;
