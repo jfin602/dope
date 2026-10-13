@@ -1,0 +1,33 @@
+TASK: Correction 10 / P5 — Reconcile external linked roadmap edits
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 including linked-document/runner/canvas amendments, docs/planning/p10/phase-10-plan.md, this correction assessment/plan/README and prior P16 closeout. Confirm separately approved correction activation before mutation, exact coherent unchanged 0.10.16 manifests/internal pins, actual HEAD and safely clean or explicitly accepted dirty tree; protect the reported unrelated checkout deletions. Inspect actual owner APIs/tests, not assumed paths. No reset, silent stash, version bump, dependency churn or manual agent commits.
+
+INSPECT
+P2 linked source metadata, P4 patch adapter, previewRoadmapImport, RoadmapStore changed-object events, manual Refresh and relevant owner status evidence.
+
+IMPLEMENT
+Add a bounded explicit refresh/compare operation for the one linked Markdown document, using last accepted source basis to classify unchanged, unambiguous source-only edits, independent non-overlapping changes and overlapping/ambiguous conflicts. Produce a deterministic diff/reconciliation preview and visible sync state. Reconcile only supported mapped fields through checked owner revisions, retaining unsupported sections as read-only; no overwrite if source changed during a write, no auto-qualify and no AI calls. Missing/moved source becomes a relink-needed state rather than a new phantom roadmap.
+
+PRESERVE
+One existing saved ChatPanel across all docks; one validated ProjectPlanningActions authority; linked Markdown document owns supported mapped prose, .dope Roadmap owns IDs/links, other owners and historical Not Green unchanged. No model filesystem/process/Git/MCP/agent grant, no automatic hosted fallback, no hidden status Green or implicit Work run. Use current restrained dark-orange themes for affected UI.
+
+VALIDATION — T2
+Run node --test test/unit/roadmap-document-patch.test.ts and new test/unit/roadmap-document-sync.test.ts after only necessary package build. Cover external edit, source+Dope simultaneous changes, conflict preview/denial, moved/ambiguous section, stale basis and no source damage. git diff --check.
+Ordinary implementation plus checks target <=8 minutes (10-minute soft, 15-minute hard). No routine npm run check, npm test, full builds, AppImage, GUI or release qualification; P17/P18 own those gates. If a mandatory security/safety test cannot pass, report a blocker instead of proceeding unsafely.
+
+DEFER
+P6 owns watcher lifecycle, restart/pending-sync durable recovery. Do not scan all project docs or activate Phase 12.
+
+DONE WHEN
+The single owned seam works with focused evidence and compatibility, source/authority preservation is proved, and the next prompt may build safely. Runner owns checkpoint commits; do not commit within the implementation agent.
+
+FINAL RESPONSE
+Report source/HEAD, exact changed files, focused tests/builds actually run, unchanged version, risks and the next prompt.
