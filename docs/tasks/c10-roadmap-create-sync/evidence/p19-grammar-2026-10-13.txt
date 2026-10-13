@@ -1,0 +1,26 @@
+
+> dope@0.10.16 codex:phase:validate
+> node scripts/validate-codex-phase.mjs c10-roadmap-create-sync
+
+Correction stack c10-roadmap-create-sync (roadmap phase 10) prompt grammar: VALID
+Required unchanged version: 0.10.16
+P1 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P1-roadmap-candidates.txt
+P2 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P2-linked-roadmap-store.txt
+P3 | implementation | GPT-6 Sol Medium | Browser required: no | 0.10.16 (UNCHANGED) | P3-roadmap-import-ui.txt
+P4 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P4-markdown-patch.txt
+P5 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P5-document-reconciliation.txt
+P6 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P6-sync-recovery.txt
+P7 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P7-greenfield-draft.txt
+P8 | implementation | GPT-6 Sol Medium | Browser required: no | 0.10.16 (UNCHANGED) | P8-greenfield-ui.txt
+P9 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P9-chat-context-allowance.txt
+P10 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P10-chat-draft-actions.txt
+P11 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P11-runner-prompt-discovery.txt
+P12 | implementation | GPT-6 Sol Medium | Browser required: no | 0.10.16 (UNCHANGED) | P12-prompt-graph-projection.txt
+P13 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P13-spatial-roadmap-canvas.txt
+P14 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P14-roadmap-semantic-zoom.txt
+P15 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P15-roadmap-viewport-gestures.txt
+P16 | implementation | GPT-6 Sol Medium | Browser required: no | 0.10.16 (UNCHANGED) | P16-prompt-source-navigation.txt
+P17 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P17-historical-gate-truth.txt
+P18 | implementation | GPT-6 Sol High | Browser required: no | 0.10.16 (UNCHANGED) | P18-create-sync-integration.txt
+P19 | closeout | GPT-6 Sol High | Browser required: yes | 0.10.16 (UNCHANGED) | P19-roadmap-closeout.txt
+Manual closeout: P19

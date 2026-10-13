@@ -1,6 +1,7 @@
 # ADR 0036 — Unified Roadmap and local-first AI planning
 
 **Status:** ACCEPTED DESIGN / P1–P15 IMPLEMENTED / P16 NOT GREEN at `0.10.16`; linked-Roadmap amendment DOCUMENTATION ONLY
+**2026-10-13 applicability note:** The linked-Roadmap and runner/canvas amendments were subsequently implemented in activated correction `c10-roadmap-create-sync` P1–P18. Manual P19 is **NOT GREEN** at unchanged `0.10.16` / exact product source `71d91efb3668e57816bb031f82ab309acea17cfc`; see `docs/tasks/c10-roadmap-create-sync/closeout.md`. The status line above records the earlier design/P16 entry, not current qualification or Phase 10 owner closure.
 **Date:** 2026-10-12 (America/Chicago)
 **Related authority:** ADR 0016 (October 12 restrained-orange amendment), 0017, 0022–0026, 0028–0030, 0034–0035.
 

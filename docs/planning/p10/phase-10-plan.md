@@ -1,5 +1,7 @@
 # Phase 10 Plan — Unified Roadmap & Local-First AI Planning
 
+**2026-10-13 correction outcome:** Activated `c10-roadmap-create-sync` P1–P18 was implemented at unchanged `0.10.16`. Manual P19 is **NOT GREEN** at exact final product source `71d91efb3668e57816bb031f82ab309acea17cfc`; see `docs/tasks/c10-roadmap-create-sync/closeout.md` for the 671/671 aggregate, direct browser passes and remaining local-model/authority/native-GUI gaps. Historical P16 below remains Not Green. No owner-close or successor activation follows.
+
 **Status:** DESIGN APPROVED / P1–P16 OWNER-ACTIVATED / P1–P15 IMPLEMENTED / P16 NOT GREEN at committed `0.10.16` source `27ab84e` (2026-10-12); NOT OWNER-CLOSED
 **Date:** 2026-10-12 (America/Chicago)
 **Authority:** ADR 0036; ADR 0016 (2026-10-12 current theme), 0017, 0022–0026, 0028–0030, 0034–0035.

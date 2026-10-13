@@ -1,0 +1,7 @@
+369778c44b69d9cab5593466522a33be8f804669033b5dbe7406dc6d081ae2c6  /tmp/dope-c10-p19-connect-isolated.strace
+a4270b86832c054f5e06c236080e0480b64f1a601fa2af3c89e8dcf720538e27  docs/tasks/c10-roadmap-create-sync/evidence/p19-browser-backend-connects-2026-10-13.txt
+f483fdee3afac2070808527b563ce243850920f6aa1dd8d11bca9ee8c04294b5  /tmp/dope-c10-p19-project-l7t7TZ/.dope/roadmap.json
+22f72d60aad88def38d62331f75e68577fada91187e3c21ba63b754a8ce1ccec  /tmp/dope-c10-p19-project-l7t7TZ/docs/roadmap/mvp-roadmap.md
+996f657e51dfa387a25c4dfd4afe70635ba39c38d7307480705e070b975cb069  /tmp/dope-c10-p19-project-l7t7TZ/.dope/chats/index.json
+7b5db1e6fb6c55ea32f434da43e9c66f13f80182d2563a7b477037d3086dcc40  docs/tasks/c10-roadmap-create-sync/evidence/p19-local-chat-turns-2026-10-13.json
+e224964873dacf595df0abe724a45fd1c7d6ee96b32c76c41f52bcccc618ae84  docs/tasks/c10-roadmap-create-sync/evidence/p19-final-check-71d91ef-2026-10-13.log

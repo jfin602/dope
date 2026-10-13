@@ -1,0 +1,55 @@
+2026-10-13T17:37:13.894Z core:BackendApplication INFO configured all backend app contributions
+2026-10-13T17:37:13.910Z core:EnvVariablesServerImpl INFO Configuration directory URI: 'file:///home/jfin/.theia'
+2026-10-13T17:37:13.913Z core:BackendApplication INFO Theia app listening on http://127.0.0.1:33947.
+2026-10-13T17:37:13.916Z core:SettingServiceImpl INFO Settings file not found at '/home/jfin/.theia/backend-settings.json'. Falling back to defaults.
+2026-10-13T17:37:13.923Z core:Stopwatch INFO Backend application startup sequence completed (async work may still be pending): 35.9 ms [1.016 s since backend process start]
+2026-10-13T17:37:13.923Z core:Stopwatch INFO All backend contributions settled: 141.7 ms [1.016 s since backend process start]
+Starting backend: 1040.8 ms [1.635 s since electron main start]
+Attaching security token: 8.2 ms [1.643 s since electron main start]
+lf.onStart: 2.2 ms [1.646 s since electron main start]
+SE.onStart: 1.3 ms [1.646 s since electron main start]
+F2.onStart: 0.2 ms [1.646 s since electron main start]
+Starting contributions: 3.0 ms [1.646 s since electron main start]
+Startup sequence completed: 1052.7 ms [1.646 s since electron main start]
+2026-10-13T17:37:14.517Z core:WebsocketFrontendConnectionService INFO creating connection for 1
+2026-10-13T17:37:15.152Z core:PreferenceSchemaServiceImpl WARN Default overrides registered for these keys, but preferences not registered [ 'jestrunner.enableTestExplorer' ]
+Opening channel for service path '/services/electron-window'.
+2026-10-13T17:37:15.242Z core:FrontendStopwatch INFO Start frontend contributions: 205.8 ms [1.294 s since frontend page start]
+2026-10-13T17:37:15.243Z core:FrontendApplicationStateService INFO Changed application state from 'init' to 'started_contributions'.
+2026-10-13T17:37:15.245Z core:FrontendApplicationStateService INFO Changed application state from 'started_contributions' to 'attached_shell'.
+2026-10-13T17:37:15.245Z core:ShellLayoutRestorer INFO >>> Restoring the layout state...
+2026-10-13T17:37:15.271Z core:ShellLayoutRestorer INFO <<< Nothing to restore.
+2026-10-13T17:43:21.483Z core:WebsocketFrontendConnectionService INFO socket closed
+2026-10-13T17:43:21.484Z core:WebsocketFrontendConnectionService INFO closing connection for 1
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/localization-server'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/os'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/logger'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/commands'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/messageService'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/ChannelCloseService'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/remote-filesystem'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/envs'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/workspace'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/keyboard'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/quickInput'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/stopwatch'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/application'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/i18n'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/debug'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/task'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/quickPick'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/shell-terminal'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/search'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/hostedPlugin'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/plugin-ext'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/plugin-paths'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/vsx-registry'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/dope/ai-registry'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/dope/ai-role-policy'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/dope/history-focus'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/cli-preferences'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/mcpservermanagerserver'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/mcpservermanager'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/mcpOAuthFrontendDelegate'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/request-service'.
+2026-10-13T17:43:21.484Z core:DefaultMessagingService INFO Closing channel on service path '/services/search-in-workspace'.

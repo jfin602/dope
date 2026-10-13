@@ -1,0 +1,975 @@
+
+> dope@0.10.16 check
+> npm run typecheck && npm test && npm run build:browser && npm run build:electron
+
+
+> dope@0.10.16 typecheck
+> corepack yarn workspace @dope/ai build && corepack yarn workspace @dope/agent-core build && corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/chat build && corepack yarn workspace @dope/project-intelligence build && corepack yarn workspace @dope/software-map build && corepack yarn workspace @dope/visual-planning build && corepack yarn workspace @dope/code-analysis build && corepack yarn workspace @dope/code-analysis-typescript build && tsc -p packages/theia-extension --noEmit
+
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.68s.
+Done in 2.86s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 3.15s.
+Done in 3.31s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.69s.
+Done in 2.88s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.59s.
+Done in 2.76s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 3.01s.
+Done in 3.20s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.72s.
+Done in 2.88s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.59s.
+Done in 2.75s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.25s.
+Done in 2.41s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 1.72s.
+Done in 1.89s.
+
+> dope@0.10.16 test
+> npm run test:runner && npm run test:baseline && npm run test:local-install && npm run test:product && npm run test:ide
+
+
+> dope@0.10.16 test:runner
+> node --test test/unit/codex-phase-prompt-grammar.test.ts test/unit/codex-phase-runner.test.ts
+
+✔ Dope keeps legacy model configuration validation fail-closed (2.808248ms)
+✔ Browser required metadata parses canonically and defaults to no (0.821532ms)
+✔ implementation prose may mention closeout without changing prompt kind (0.296696ms)
+✔ closeout classification depends only on agreeing filename and TASK title signals (0.307065ms)
+✔ filenames use canonical one-based lower-kebab prompt form (0.152049ms)
+✔ TASK metadata is canonical and agrees with filename and folder (0.479713ms)
+✔ phase plan grammar fails closed on malformed parsed metadata (0.990854ms)
+✔ pre-1.0 continuation folders keep Phase identity and continue patch versions (0.27217ms)
+✔ pre-1.0 slice A may begin at patch 1 from the phase baseline (0.198696ms)
+✔ post-1.0 phase folders normalize Phase 0+ and validate their assigned versions (0.39708ms)
+✔ post-1.0 folder collisions and non-canonical forms fail closed (0.255731ms)
+✔ post-2.0 folders are an explicit third family without colliding with historical p2 (0.471628ms)
+✔ valid correction stacks expose explicit fixed-version plan semantics (0.325259ms)
+✔ correction folders and TASK metadata fail closed unless canonical and agreeing (0.706541ms)
+✔ correction Phase 0 is canonical contextual metadata with fixed-version semantics (0.243638ms)
+✔ phase and correction version metadata cannot be mixed or malformed (0.337641ms)
+✔ correction closeout classification uses only agreeing filename and TASK title signals (0.128576ms)
+✔ documented runner model labels stay explicit and finite (0.062395ms)
+✔ supported Luna and Medium recommendation labels parse without broadening unknown labels (0.162328ms)
+✔ Dope exposes explicit GPT-6 Sol routing labels (0.073805ms)
+✔ Dope supports Foundation Spike Phase 0 versioning (0.111956ms)
+✔ resolves every repository recommendation to its verified concrete CLI configuration (1.724022ms)
+✔ unknown recommendations still fail closed (0.754549ms)
+✔ capacity detection is narrow and retry continuation preserves dirty work (0.709135ms)
+✔ GPT-5.6 Codex CLI versions are parsed and compared numerically (1.085689ms)
+✔ incompatible GPT-5.6 CLI versions fail before Codex or run artifacts (57.149084ms)
+✔ resolves an invocable Windows native codex.exe before npm shims (0.453184ms)
+✔ resolves a Windows npm shim to Node plus its verified package entrypoint (0.535435ms)
+✔ native and Unix preflight invocations remain direct and shell-free (0.168971ms)
+✔ missing, ambiguous, and unusable Windows launchers fail closed (0.289263ms)
+✔ failed native discovery falls back to one usable npm launcher (0.327783ms)
+✔ preflight reports failed shell-free launcher invocation actionably (0.153903ms)
+✔ orders prompt numbers numerically and excludes closeout from execution (0.27194ms)
+✔ rejects duplicate, missing, and malformed prompt numbers (0.210969ms)
+✔ requires exactly one unambiguous final closeout (0.155886ms)
+✔ version and package-lock invariants fail closed (0.45084ms)
+✔ structured event lines are appended and observed in arrival order (0.552357ms)
+✔ event processing fully settles before completion (1.263385ms)
+✔ a malformed final partial JSONL event fails before completion (0.22773ms)
+✔ execution contract decorates normal roadmap and correction task text (0.338032ms)
+✔ runCodex sends the preflight snapshot and uses native final-response capture (4.468193ms)
+✔ runCodex rejects malformed output emitted immediately before child close (1.413942ms)
+✔ Codex arguments retain JSON events and exact model efforts (0.23892ms)
+✔ command lifecycle counts one logical command and tracks active elapsed time (0.828936ms)
+✔ latest non-empty agent message persists independently through command and file activity (0.34789ms)
+✔ normal agent presentation bounds whitespace and length without mutating event content (0.288871ms)
+✔ interactive dashboard colors semantic states while disabled output stays plain (0.660034ms)
+✔ color eligibility requires TTY, non-verbose output, and absent NO_COLOR (0.124209ms)
+✔ display strips ANSI when color is disabled and counts styled redraw lines safely (0.246073ms)
+✔ completed prompt durations and observed usage remain rendered (0.316532ms)
+✔ missing usage metadata is tolerated and omitted (0.101106ms)
+✔ elapsed redraw timer ticks and cleans up through injected timing functions (0.105995ms)
+✔ failure summary names failed, completed, not executed, and manual closeout prompts (0.340487ms)
+✔ failure summary reports previously completed resumed prompts as completed (0.227509ms)
+✔ correction dashboard, failure, and handoff use fixed-version correction semantics (0.500321ms)
+✔ parse-only validator reports correction identity and unchanged version without writes (71.041512ms)
+✔ parse-only validator identifies browser-required prompts without writes (65.613612ms)
+✔ runner-owned metadata, activity, errors, and paths are ASCII-safe (0.846788ms)
+✔ interactive display replaces its prior region and supports changing heights (0.303378ms)
+✔ interactive elapsed redraws skip identical dashboards and use cursor controls without clearing history (0.365352ms)
+✔ non-TTY display emits bounded transitions with no dashboards or cursor controls (0.30978ms)
+✔ display finalization leaves one stable final dashboard and restores append-only output (0.163371ms)
+✔ display session keeps runner output ASCII-safe while leaving source content untouched (0.112237ms)
+✔ phase loop commits each prompt before the next starts with exact multiline Unicode messages (166.311442ms)
+✔ resume planning selects the newest exact phase marker while preserving prefix and version safety (1.042619ms)
+✔ pre-1.0 continuation resume starts from the preceding patch and advances safely (0.399224ms)
+✔ post-1.0 resume uses the normalized roadmap family for baselines and prefixes (0.531358ms)
+✔ post-2.0 resume uses the shared roadmap version authority and fails closed (0.416626ms)
+✔ correction resume keeps duplicate exact-subject markers fail-closed (0.194408ms)
+✔ a synthetic post-2.0 repository resumes P1 by its exact semantic-version subject (105.370078ms)
+✔ roadmap resume skips a proven prefix across unrelated commits and records historical SHAs (153.779047ms)
+✔ roadmap resume after P1 starts P2 even when an unrelated commit is newer (149.251606ms)
+✔ all completed roadmap prompts launch no Codex process and retain manual closeout (83.106515ms)
+✔ browser-required implementation prompts stop before Codex and preserve the completed prefix (152.205631ms)
+✔ browser-required closeouts are blocked by --closeout without a Codex invocation (61.298549ms)
+✔ correction resume uses the exact subject and tolerates a newer unrelated commit (134.968285ms)
+✔ dirty resume may accept the pending prompt target version without changing Git-proven progress (0.927698ms)
+✔ dirty tree prompt fails closed without TTY (0.403844ms)
+✔ dirty working tree decision can decline before Codex launch (46.603095ms)
+✔ dirty working tree decision can continue the pending prompt from partial work (106.763068ms)
+✔ dirty working tree still fails closed without an interactive or injected decision (61.301815ms)
+✔ correction loop commits multiple prompts at one unchanged version and leaves closeout manual (177.424228ms)
+✔ correction version mutation fails before commit and blocks every later prompt (52.705205ms)
+✔ correction run refuses a mismatched starting version before Codex starts (54.864258ms)
+✔ correction post-commit version mismatch fails closed before the next prompt (97.027662ms)
+✔ capacity retry keeps partial dirty work and continues the same prompt (127.451031ms)
+✔ capacity retry stops after three cycles and preserves the dirty tree (64.308868ms)
+✔ a failed correction Codex process prevents every later implementation prompt (67.018544ms)
+✔ empty and interrupted prompt changes fail closed without a commit (53.106442ms)
+✔ a Codex-created commit is rejected because the runner owns the single commit boundary (63.170543ms)
+✔ commit failure prevents every later implementation prompt (91.029051ms)
+✔ commit verification and dirty-tree failures prevent every later prompt (219.109997ms)
+✔ package-lock creation fails before commit and prevents later prompts (67.503857ms)
+✔ Git process transport is an argument array and remains shell-free (0.677607ms)
+✔ successful handoff preserves exit-success manual-closeout semantics (0.529424ms)
+✔ auto-run closeout executes after implementation commits and ends terminal output with its full response (150.357522ms)
+✔ auto-run closeout resumes directly from an implementation-complete prefix (84.011096ms)
+✔ a one-prompt correction closeout runs only with --closeout and remains review required (75.133909ms)
+✔ auto-run closeout enforces normalized phase and correction version boundaries without committing it (420.491781ms)
+✔ auto-run closeout rejects HEAD drift, lockfiles, invalid versions, and incoherent diffs (580.532515ms)
+✔ runner-level closeout failure after a captured response stays nonzero and presents that response last (139.217096ms)
+✔ auto-run rendering and CLI validation distinguish review-required closeout state (2.719966ms)
+✔ GPT-6 Sol tasks require Codex CLI 0.155.0 or newer (0.615092ms)
+ℹ tests 103
+ℹ suites 0
+ℹ pass 103
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4164.034734
+
+> dope@0.10.16 test:baseline
+> node --test test/unit/theia-baseline.test.ts test/unit/dope-theme.test.ts test/unit/pre-phase4-clean-baseline.test.ts test/unit/smap-terminology.test.ts test/unit/smap-placement.test.ts
+
+(node:93783) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/dope-theme.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Dope Dark registers through the normal frontend contribution with the dark editor base (0.659484ms)
+✔ custom side panels use the Explorer background without recoloring center or bottom widgets (0.344935ms)
+✔ activation scope is removed on theme change (0.572984ms)
+✔ restrained-orange palette is centralized and widget rules consume semantic tokens (2.117036ms)
+✔ primary, hover, pressed, link, and keyboard focus colors meet their contrast roles (0.3587ms)
+✔ Dope Dark status bar uses a dark base, one continuous Git accent, and semantic diagnostics (0.523734ms)
+✔ current production and package wiring stays free of Phase 3 Planning instruments (33.923267ms)
+✔ one canonical sMap Activity Bar contribution defaults left and preserves ordinary workbench wiring (1.749149ms)
+✔ current Software Map package, public exports, and workbench IDs stay canonical (27.488185ms)
+✔ Theia stays on the qualified baseline and package versions stay coherent (1.421516ms)
+✔ both applications carry the required IDE composition (3.197434ms)
+✔ packaged entrypoint passes bundled plugins before starting Theia (1.65772ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 188.630616
+
+> dope@0.10.16 test:local-install
+> node --test test/unit/local-install.test.mjs
+
+✔ local install keeps releases, history, launcher, and safe rollback (453.428226ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 510.159936
+
+> dope@0.10.16 test:product
+> npm run build:extension && node --test test/unit/roadmap-task-discovery.test.ts test/unit/roadmap-chat-drafts.test.ts test/unit/roadmap-integration.test.ts test/unit/roadmap-create-sync-integration.test.ts test/unit/roadmap-mind-access.test.ts test/unit/roadmap-pools.test.ts test/unit/roadmap-inspector.test.ts test/unit/roadmap-canvas.test.ts test/unit/roadmap-prompt-open.test.ts test/unit/roadmap-viewport.test.ts test/unit/roadmap-semantic-zoom.test.ts test/unit/roadmap-spatial-canvas.test.ts test/unit/roadmap-create-ui.test.ts test/unit/roadmap-import-ui.test.ts test/unit/roadmap-projection.test.ts test/unit/roadmap-status-truth.test.ts test/unit/roadmap-planning-links.test.ts test/unit/project-planning-actions.test.ts test/unit/roadmap-owner-links.test.ts test/unit/roadmap-store.test.ts test/unit/roadmap-greenfield.test.ts test/unit/roadmap-document-patch.test.ts test/unit/roadmap-document-sync.test.ts test/unit/roadmap-sync-recovery.test.ts test/unit/roadmap-linked-store.test.ts test/unit/roadmap-import.test.ts test/unit/roadmap-candidates.test.ts test/unit/history-integration.test.ts test/unit/history-local-understanding.test.ts test/unit/history-context-preview.test.ts test/unit/history-navigation.test.ts test/unit/history-focus.test.ts test/unit/history-panel.test.ts test/unit/history-work-git.test.ts test/unit/history-owner-metadata.test.ts test/unit/legacy-session-export.test.ts test/unit/history-projection.test.ts test/unit/developer-session-backend-retirement.test.ts test/unit/developer-session-frontend-retirement.test.ts test/unit/local-agent-integration.test.ts test/unit/agent-core.test.ts test/unit/workitem-delegation.test.ts test/unit/agent-delegation-review.test.ts test/unit/agent-proposed-action.test.ts test/unit/agent-steering.test.ts test/unit/agent-map-impact.test.ts test/unit/agent-checkpoint.test.ts test/unit/agent-manual-gate.test.ts test/unit/agent-sequence.test.ts test/unit/agent-sequence-persistence.test.ts test/unit/agent-store.test.ts test/unit/agent-run-ui.test.ts test/unit/ai.test.ts test/unit/ai-inventory.test.ts test/unit/ai-registry-store.test.ts test/unit/ai-credentials.test.ts test/unit/model-connections.test.ts test/unit/chat.test.ts test/unit/chat-repository.test.ts test/unit/chat-backend.test.ts test/unit/roadmap-chat-context.test.ts test/unit/roadmap-chat-actions.test.ts test/unit/roadmap-local-model.test.ts test/unit/roadmap-chat-panel.test.ts test/unit/chat-panel.test.ts test/unit/chat-presentation.test.ts test/unit/physical-map-canvas.test.ts test/unit/smap-presentation-state.test.ts test/unit/note-persistence.test.ts test/unit/project-intelligence.test.ts test/unit/project-mind-storage.test.ts test/unit/project-mind-ui.test.ts test/unit/software-map.test.ts test/unit/software-map-flow.test.ts test/unit/software-map-flow-query.test.ts test/unit/visual-planning.test.ts test/unit/visual-planning-storage.test.ts test/unit/planning-rebase.test.ts test/unit/planning-reconciliation.test.ts test/unit/planning-map-ui.test.ts test/unit/smap-readability.test.ts test/unit/software-map-synthesis.test.ts test/unit/evidence-planner.test.ts test/unit/system-discovery.test.ts test/unit/system-challenge.test.ts test/unit/subsystem-stages.test.ts test/unit/reconciliation.test.ts test/unit/lmstudio-synthesis-provider.test.ts test/unit/gemini-synthesis-provider.test.ts test/unit/code-analysis-typescript.test.ts test/unit/architecture-evidence.test.ts test/unit/software-map-index-backend.test.ts test/unit/software-map-ui.test.ts && node --test test/unit/software-map-initialization.test.ts
+
+
+> dope@0.10.16 build:extension
+> corepack yarn workspace @dope/ai build && corepack yarn workspace @dope/agent-core build && corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/chat build && corepack yarn workspace @dope/project-intelligence build && corepack yarn workspace @dope/software-map build && corepack yarn workspace @dope/visual-planning build && corepack yarn workspace @dope/code-analysis build && corepack yarn workspace @dope/code-analysis-typescript build && corepack yarn workspace @dope/theia-extension build
+
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.30s.
+Done in 2.49s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.72s.
+Done in 2.88s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.38s.
+Done in 2.52s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.33s.
+Done in 2.48s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.59s.
+Done in 2.75s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.60s.
+Done in 2.76s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.55s.
+Done in 2.73s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.38s.
+Done in 2.55s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 1.60s.
+Done in 1.75s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p . && cp src/browser/dope.css lib/browser/dope.css
+Done in 3.71s.
+Done in 3.86s.
+✔ checkpoint scope preserves accepted bytes and excludes ambient/runtime paths (3.107877ms)
+✔ checkpoint subjects and body are deterministic and provider-response free (15.952865ms)
+✔ version coherence blocks root lock, workspace version and internal reference drift (41.43543ms)
+✔ single-package project keeps an unchanged tracked npm shrinkwrap (56.884617ms)
+✔ dirty basis captures actual HEAD and detects substituted acceptance (120.133501ms)
+✔ capacity classifier accepts explicit capacity only (2.233589ms)
+✔ task parsing is versioned, strict, portable and supports all origins (2.653121ms)
+✔ WorkItem task freezes project, map, basis and delegated scope with required review (1.401067ms)
+✔ run, event, provenance and evidence records reject unbounded and private fields (1.674921ms)
+✔ state transition table is exact and terminal statuses cannot resume (0.796304ms)
+✔ accepted grant is immutable, revisioned and fixed to the 8B profile (1.551885ms)
+✔ default grant separates workspace authority from authoritative promotion (1.258035ms)
+✔ WorkItem validated candidate is held with durable diff, fingerprint and bytes (4364.164477ms)
+✔ Planning launch uses the saved task ID through explicit Start, Dope validation and accepted review (3658.834147ms)
+✔ Planning-launched candidate can be rejected after a changed authoritative basis (2005.069026ms)
+✔ failed WorkItem validation cannot create a review hold (1595.84168ms)
+✔ direct task still promotes automatically after validation (1911.043721ms)
+✔ accept promotes the exact validated WorkItem candidate once and persists the decision (3497.149315ms)
+✔ ignored generated output is excluded from the frozen review candidate (3350.658953ms)
+✔ reject persists without applying and repeated rejection is idempotent (1780.305406ms)
+✔ stale revision, fingerprint and authoritative Git basis block accept (1835.038613ms)
+✔ tampered frozen bytes and failed validation never promote (4347.806964ms)
+✔ review hold survives backend restart and accepted candidate is applied once (3206.647866ms)
+✔ human-reserved SHARED path fails review and records a blocked action without promotion (1587.895879ms)
+✔ browser gate waits on the same entry and only a coherent external checkpoint advances it (57.293129ms)
+✔ terminal closeout requires its own external checkpoint and cannot be checkpointed twice (3.45177ms)
+✔ backend verifies an existing external Git checkpoint, persists its SHA and never duplicates it (616.233496ms)
+✔ applied paths resolve bounded physical IDs or remain unknown, with stale source evidence explicit (3.17493ms)
+✔ generation change never publishes IDs from an obsolete snapshot (0.594123ms)
+✔ impact receipt persists under its run and rejects a second decision (125.835621ms)
+✔ only blocked effects produce ProposedActions; acknowledgement never expands authority (10.607863ms)
+✔ parser rejects executable approvals, private targets and untrusted decision fields (1.929479ms)
+✔ project-local action survives restart and decision is revision checked (99.734889ms)
+✔ direct task displays eligible target and requires explicit grant before starting; Stop requests backend cancellation (14.109675ms)
+✔ direct task keeps validation bounded and requires a fresh grant after edits (1.909021ms)
+✔ Resume requests backend gate reconciliation and restart keeps the same pending prompt (1.318786ms)
+✔ persisted terminal run is inspectable after attach with change and validation evidence (1.906136ms)
+✔ Work uses the direct authority controller and aliases without a standalone Agent Run view (13.711311ms)
+✔ Work candidate review preserves held evidence and submits only a fresh explicit decision (4.094572ms)
+✔ Local exact and role targets require observed readiness and never grant hosted egress (22.4683ms)
+✔ sequence store is atomic, serialized, strict and portable (64.138882ms)
+✔ sequence rejects secret-shaped and private-path prompt fixtures (2.064668ms)
+✔ verified manual closeout completion persists its external checkpoint (27.141025ms)
+✔ reachable Git prefix, version and source/worktree drift block ambiguous resume (1.431193ms)
+✔ phase and correction imports preserve prompt text and classify gates (20.386831ms)
+✔ real p8c stack imports with continuation versions and final manual closeout (10.129853ms)
+✔ numbering, folder, mode, version and closeout grammar fail closed (3.337239ms)
+✔ Browser metadata requires exact yes. or no. and defaults to no (5.701458ms)
+✔ snapshot hash detects source drift and rejects tampering without modifying stored snapshot (2.761158ms)
+✔ sequence status transitions and strict position are versioned (6.058264ms)
+✔ unsupported active turn persists a scoped, truthful acknowledgement without executing it (98.758423ms)
+✔ stale steering revision cannot overwrite acknowledged intent (64.675208ms)
+✔ terminal run rejects steering (49.555696ms)
+✔ atomic task/run round trip, legal transitions, events and terminal restart truth (145.176317ms)
+✔ project isolation, canonical attach, handle isolation and move/copy portability (40.469582ms)
+✔ malformed and future-schema bytes remain untouched (40.969122ms)
+✔ JSONL bounds, sequence order, concurrent writer exclusion and corruption (158.879995ms)
+✔ path traversal, symlink escape and secret-shaped input never persist (40.898652ms)
+✔ environment declaration, precedence, replace/remove, restart and redacted notifications (4.963119ms)
+✔ selected sources cannot silently fall back; secure store fails closed and errors redact secrets (2.755108ms)
+✔ environment selection uses only adapter declarations, not registry-provided names or session values (0.860403ms)
+✔ legacy Gemini handoff requires explicit secure migration and never reveals a credential (0.936914ms)
+✔ legacy credential cannot be retired if a distinct central secret is present (0.430532ms)
+✔ Local Coding Agent eligibility requires synthetic tool continuation and live sandbox/context (320.907139ms)
+✔ inventory reconciles scoped identities without losing disabled preferences or known missing models (102.032262ms)
+✔ Test Connection uses one tiny synthetic turn, never falls back, and invalidates on changes (75.875719ms)
+✔ authentication and disabled lifecycle normalize without runtime probing (72.660104ms)
+✔ hosted test discloses potential cost and invalid configuration fails before provider use (112.26251ms)
+✔ invalid configuration is reported before attempting a provider request (0.969213ms)
+✔ connection creation schedules one bounded check and publishes health without polling (51.785036ms)
+✔ a transient execution failure stays quiet; authentication execution failure changes health (57.409071ms)
+✔ one-time legacy migration preserves identity and preference; copies and project changes do not change global identity (61.143291ms)
+✔ existing v1 registry bytes remain readable and acquire optional Codex fields only on explicit mutation (38.361615ms)
+✔ atomic reopen, expected revision, two processes and external events (231.460343ms)
+✔ two independent processes racing the same revision accept exactly one (251.536877ms)
+✔ two processes recovering one abandoned lock cannot overwrite each other (221.357334ms)
+✔ abandoned lock recovers, while malformed and future bytes fail closed without overwrite (39.896437ms)
+✔ unrecognized or corrupt legacy providers do not initialize or overwrite the legacy file (12.742228ms)
+✔ default registry resolves OS-user configuration without a project handle (20.320729ms)
+✔ legacy Chat mutations join global revision authority and reject stale writers (44.567038ms)
+✔ strict versioned parsing rejects unknown fields, secrets, malformed references and quality (3.699775ms)
+✔ Codex identity and non-secret account projection stay separate from API keys and model inference (4.699785ms)
+✔ connection IDs survive config, alias, credential and lifecycle changes; removal is explicit (1.46795ms)
+✔ model identity is scoped by connection, not label or inventory position (0.683427ms)
+✔ eligibility filters only and fails closed on unknown hard capabilities and context (10.841022ms)
+✔ health is lifecycle-aware and transient request failure does not persist as a warning (0.226206ms)
+✔ packet is deterministic, inspectable, source-backed, and collection does not publish a map (6655.432434ms)
+✔ root bootstrap and eligible docs stay documented, bounded and invalidate synthesis input (6427.007875ms)
+✔ Theia/Inversify facts are source-backed, stable, refinable, and exclude unrelated same-name APIs (6136.490831ms)
+✔ declarations are excluded; source, config and manifest changes invalidate packet inputs (5900.305047ms)
+✔ refinement accepts only packet targets, stays bounded, and rejects stale or unsafe inputs (9129.865328ms)
+✔ dedicated Chat connections share project changes without crossing projects (105.172371ms)
+✔ ownership gates turn writes and transient deltas; search reads saved Chat (116.243707ms)
+✔ Chat keeps follow-role, exact default and turn authority as shared inventory changes (2.143142ms)
+✔ Chat delegates connection repair to AI Center and listens for live registry changes (11.992189ms)
+✔ four area opens create distinct factory descriptions and widget identities (3.765887ms)
+✔ nested selector sorts saved Chats by real interaction within each folder (11.881015ms)
+✔ two panels share service changes while navigation remains panel-local and project scoped (182.830151ms)
+✔ late attach and read responses cannot replace a newer workspace or revision (10.767867ms)
+✔ restoration resolves duplicate panels, permits different Chats, and releases on switch, back and dispose (195.031264ms)
+✔ project switch waits for a late claim to release before disposing its connection (12.693169ms)
+✔ saved panel selection waits for repository attach and never rewrites conversation state (174.307398ms)
+✔ dispose during a late claim releases the token and ignores the late selection (26.172453ms)
+✔ selector and transcript retain keyboard and dark theme surfaces (3.509235ms)
+✔ scroll follow respects manual upward scrolling and jump to latest (0.740792ms)
+✔ side Chat launchers use stable separate identities and normal Select Chat release (4.327881ms)
+✔ transcript drag threshold and fast latest animation respect reduced motion (0.745532ms)
+✔ transcript drag starts on messages, links, code and disclosures but leaves controls clickable (0.349443ms)
+✔ touch drag follows vertical movement and leaves horizontal gestures to the browser (0.141931ms)
+✔ transcript wiring preserves manual reading and uses one centered latest action (7.969259ms)
+✔ each ChatPanel opens its own RPC channel on the backend Chat route (1.747024ms)
+✔ untrusted Markdown links permit web/mail destinations only (1.448314ms)
+✔ Theia Markdown path formats documents while escaping model-authored HTML (31.321314ms)
+✔ conversation surface keeps shell, roles, color and safe Markdown boundaries (8.314093ms)
+✔ Select Chat keeps nested disclosure and contextual actions separate from selection (6.029211ms)
+✔ nested folders and chats survive copy/reopen with stable ID, revisions and bounded search (332.770988ms)
+✔ set-color is lease-free durable metadata across rename, move and isolated projects (139.38992ms)
+✔ valid no-color Chats migrate once with transcript, settings, timestamps and ordering intact (221.661544ms)
+✔ locks, leases and abandoned execution recovery retain truthful status (1644.048899ms)
+✔ a second panel waits for a short live Chat lock (61.665707ms)
+✔ completed turns retain actual model and failure cannot masquerade as completion (143.847963ms)
+✔ corrupt/future data and symlink/traversal paths fail closed without modifying outside project (23.060918ms)
+✔ .dope/chats writes do not change Physical Map inputs or semantic Planning basis (972.867945ms)
+✔ versioned Chat round trips with explicit execution and context provenance (4.797244ms)
+✔ Chat color is bounded and default assignment is stable across all ten colors (4.607986ms)
+✔ strict parsing rejects unknown fields, malformed hierarchy and invalid execution lifecycle (1.03284ms)
+✔ all assistant lifecycle statuses are represented without invented completion (1.387111ms)
+✔ folder paths reject traversal and preserve segment boundaries (0.482358ms)
+✔ interaction order, title authority and context budget are pure (0.863378ms)
+✔ project invocations retain callable identity, call-site proof and deterministic output (11856.618889ms)
+✔ configured TS/JS projects, references and semantic edges are deterministic with source evidence (9023.261398ms)
+✔ unresolved imports are diagnostics without invented targets; exclusion restores complete status (5350.229518ms)
+✔ configured declarations and ambient or asset imports do not make complete analysis partial (399.258292ms)
+✔ Dope state is excluded even when tsconfig names its sources and project reference (903.081429ms)
+✔ Session contracts and Node runtime are absent from production source and RPC registration (8.743022ms)
+✔ legacy source data has no product writer; persisted AgentTask origin remains readable (1.851836ms)
+✔ retired Session workspace has no frontend module, factory, launcher, command or CSS (1.8702ms)
+✔ Chat and Work launchers, owners, and Planning map registration remain available (0.377624ms)
+✔ global skeleton is stable, bounded, whole, source-backed, and prioritizes production signals (590.227235ms)
+✔ source behavior cues and the global view do not disappear behind many exports in one source area (41.353458ms)
+✔ minimal skeleton fits exactly when possible and fails clearly below that (67.452255ms)
+✔ bootstrap and supporting documents leave room for source-backed System discovery (103.89052ms)
+✔ later stages use candidate refs and packet relationships, never arbitrary path requests (267.925092ms)
+✔ planner never reads canonical declarations into physical evidence (98.023628ms)
+✔ root manifest System scope includes production source behavior for Subsystem discovery (3.420932ms)
+✔ cross-area responsibility cues are deterministic, bounded, source-backed and non-authoritative (7.767017ms)
+✔ production planner policy contains no benchmark answer vocabulary (1.195228ms)
+✔ Gemini model discovery filters generation models and rejects undiscovered selection (46.748602ms)
+✔ Gemini SDK applies the API key, selected model, compact schema and provider usage (14.30331ms)
+✔ Gemini connection probe sends only synthetic readiness and sanitizes failure (8.235599ms)
+✔ failed selected model stays failed until a different model is manually selected (6.168427ms)
+✔ schema projection retains supported constraints and full Dope validation rejects surplus output (5.301262ms)
+✔ Gemini normalizes absent usage and sanitizes malformed response and JSON (8.601792ms)
+✔ Gemini reports stage truncation without exposing response text (3.625279ms)
+✔ Gemini reconciliation instructs one unresolved entry per candidate (3.746953ms)
+✔ Local instructions and Gemini schemas route the same three compact lower stages through Dope validation (14.983651ms)
+✔ Gemini configuration, auth, quota, upstream and arbitrary errors never expose the key (4.314106ms)
+✔ Gemini stage cancellation and timeout are sanitized (22.613587ms)
+✔ Gemini marks only sanitized stage transport and upstream failures retryable (9.237893ms)
+✔ on-demand preview selects metadata only, reports unknown times and never writes owners (133.585086ms)
+✔ panel does not preview on open and has no provider or owner mutation path (3.170542ms)
+✔ whole evidence package obeys caps and Git dirty evidence remains snapshot only (1.925031ms)
+✔ real owner focus is one bounded project-scoped record; History and incidental refresh never record it (128.170085ms)
+✔ missing, corrupt, foreign or replaced targets are never rebound after restart (79.064396ms)
+✔ late root attachment cannot replace a newer project or publish old focus (29.230818ms)
+✔ frontend samples only active editor, Chat, Work or Planning and debounces project changes (1.610622ms)
+✔ only exact selected owner targets in the current root become meaningful focus (0.671385ms)
+✔ legacy v1 and v2 export remains an in-process opt-in read with unchanged bytes (26.69788ms)
+✔ integrated History reads exact owners without mutation and restores focus only in its project (472.889315ms)
+✔ exact connected local model produces bounded, cited, ephemeral sections (4.352636ms)
+✔ uncited unknowns are omitted while cited model interpretation remains visible (1.617876ms)
+✔ hosted-only and role fallback cannot execute, even if routing returns a hosted target (1.090967ms)
+✔ registry local-only guard denies a hosted connection before provider execution (1.856906ms)
+✔ cancellation and timeout stop a stalled local request (15.104043ms)
+✔ malicious, ungrounded and oversized model output is rejected (3.719081ms)
+✔ a cited model claim about inference activity is rejected with an actionable location (0.941161ms)
+✔ backend requires consent and current preview, and writes no owner or Git state (151.691568ms)
+✔ exact Chat, Work, Planning and Mind owners; no stale, missing, foreign or unsupported substitution (17.643014ms)
+✔ History routing has no AgentRun execution, adoption, owner-store mutation or duplicate writer path (1.214034ms)
+✔ late switch and cancellation cannot open an owner (0.64151ms)
+✔ already-open Chat and Work reservations focus their sole existing owner (1.341878ms)
+✔ editor path validation rejects traversal, symlinks, foreign handles and changed project without source mutation (38.75002ms)
+✔ Chat metadata uses actual interaction, keeps interrupted and legacy bytes, and isolates roots (106.165306ms)
+✔ Planning status and Mind timestamps remain owner facts; absent Mind stays absent (75.395175ms)
+✔ bounded lists and corrupt, linked and foreign metadata give diagnostics without invented events (42.651966ms)
+✔ History uses one right activity-bar widget, a palette command, and safe inert panel content (1.768013ms)
+✔ History RPC is per-connection, root/handle checked, bounded and read-only (43.362654ms)
+✔ History sorts, deduplicates by source ID, caps, and isolates both project identity and root (13.328898ms)
+✔ unknown owner time stays unknown; dirty Git is only an observed snapshot (0.345666ms)
+✔ WorkItem and AgentRun status and validation/promotion remain independent owner facts (0.699126ms)
+✔ continuation distinguishes verified focus from recent suggestion and never crosses roots (0.358449ms)
+✔ Agent, validation, review, promotion, sequence and Git remain separate owner facts (271.257002ms)
+✔ Git root, canonical path and bounded command failures are diagnostic and read only (142.314189ms)
+✔ Git command timeout returns a diagnostic within the fixed bound (3008.128382ms)
+✔ Git output beyond the fixed byte budget is rejected (9.216312ms)
+✔ valid v1 exports exact author fields and preserves all source/owner bytes (226.041149ms)
+✔ valid v2 exports exact author fields and preserves all source/owner bytes (170.946656ms)
+✔ missing explicit target, traversal and foreign file target fail without reads or writes (235.157719ms)
+✔ corrupt, unsupported, duplicate and oversized input fail closed with byte preservation (874.08813ms)
+✔ symlinked project, .dope directory and Session file are rejected (188.495983ms)
+✔ copied or moved project identity and Project Mind mismatch fail without rebinding (206.612076ms)
+✔ standalone CLI imports no Session runtime and executes with package libraries unavailable (82.231557ms)
+✔ local adapter runs one structured per-System call and declares serial generation (105.664735ms)
+✔ staged adapter rejects malformed JSON and refusal after synthetic readiness (34.601618ms)
+✔ local usage distinguishes provider counts from conservative input estimate (19.283821ms)
+✔ endpoint and token validation rejects credentials and keeps diagnostics redacted (7.203861ms)
+✔ timeout, network, HTTP and invalid JSON failures stay visible without packet requests (52.186675ms)
+✔ synthetic Local probe gates exact routing; real broker edit reaches Dope validation and direct promotion (1434.830291ms)
+✔ connection inventory, readiness invalidation, exact routing and cancellation (3.641949ms)
+✔ AI Center model state controls Chat inventory and exact turn execution live (1.460456ms)
+✔ late discovery cannot restore a replaced connection (1.012482ms)
+✔ failed rediscovery clears readiness and backend announces changes (1.438266ms)
+✔ only safe metadata survives application storage and restart (21.430901ms)
+(node:94939) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/contracts/src/note.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/contracts/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ ProjectArtifact/Note round trip and reconstruction preserve identity (43.257579ms)
+✔ missing state is empty; corrupt and unsupported state cannot be overwritten (23.293988ms)
+✔ typed backend requests and backend events reach clients, then stop after disposal (10.320714ms)
+✔ legacy Note cannot write once a Project Mind snapshot exists (12.754261ms)
+✔ transport bindings and browser side keep filesystem access on Node (3.204635ms)
+(node:94951) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/physical-map-projection.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ project detail is deterministic and bounded to Systems and immediate Subsystems (5.04463ms)
+✔ one System is the main frame; state and edge meanings survive without color (1.312254ms)
+✔ focused detail expands only the active branch and keeps stable nested identities (1.01138ms)
+✔ selection reveals only its dependency neighborhood and long names reflow geometry (0.910184ms)
+✔ React Flow stays in presentation and registration preserves workbench placement (2.196931ms)
+✔ retained map tabs keep distinct dotted background patterns through view and focus changes (270.149204ms)
+✔ published map loads through the inspector handle; failures and stale queries settle (14.658032ms)
+✔ Current, Target and Diff preserve reality while labeling every planned meaning (14.844616ms)
+✔ move, contract and relationship states have textual target and diff semantics (2.58199ms)
+✔ Planning views share bounded detail and selection without changing target intent (1.276358ms)
+✔ adopted target remains visible without claiming Physical Map realization (0.850385ms)
+✔ Session navigation reads exact current Planning identity without changing workspace selection or owner state (12.254401ms)
+✔ Planning Work launch uses revisioned service and blocks human, stale and reserved scope (8.157455ms)
+✔ Adopt Target requires displayed diff acceptance and clears the preview after commit (2.523872ms)
+✔ unchanged generation refresh permits editing but rejects a late preview from the prior observation (1.827031ms)
+✔ creation, explicit branching, multiple active maps, lifecycle and history filtering (4.684016ms)
+✔ reconciliation is presented through controller state and closeout is an explicit action (3.548366ms)
+✔ focused tabs share one selected map and late project responses are ignored (2.258564ms)
+✔ late mutation after workspace switch or disposal cannot restore old planning state (1.559378ms)
+✔ stale map, branch, transformation and edge markers require an explicit three-way rebase (3.249948ms)
+✔ unrelated generation advances only global basis, with no affected branch or transformation (24.339952ms)
+✔ generation-only reanalysis keeps a Planning Map current and leaves target branches alone (1.91924ms)
+✔ creation accepts a semantically identical newer observation and stores its exact generation (35.015629ms)
+✔ a source edit stales only the owning branch when graph identities stay fixed (2.06054ms)
+✔ removed, replaced, parent, identity, contract and relationship changes are localized with evidence (2.946289ms)
+✔ already realized and differently realized remain distinct, while missing old graph is unresolved (0.919361ms)
+✔ cancel retains old basis; acceptance changes basis, revision and history only after every conflict is resolved (2.96875ms)
+✔ removed reference requires an explicit same-kind replacement, preserving target intent (1.260619ms)
+✔ store rebase rejects stale expected revision and invalid decisions without partial write (81.124794ms)
+✔ fresh source-backed comparison retains all outcomes, unexpected code, and rollups independent of WorkItem completion (17.183508ms)
+✔ explicit closeout requires reconciled dispositions and matching semantic basis; history retains target and realized evidence (129.689577ms)
+✔ accepted divergence, deferral linkage and abandonment remain explicit final dispositions (204.009624ms)
+✔ backend performs explicit reanalysis after process restart and rejects later source edits (1899.861776ms)
+✔ Planning Map persistence and unchanged reanalysis preserve the semantic basis (2090.815542ms)
+(node:95079) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/contracts/src/note.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/contracts/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ strict schema and all four types, including honest legacy dates (2.7993ms)
+✔ explicit lifecycle, answer and acceptance requirements (3.480683ms)
+✔ supersession is one revision with an incoming link to the historical decision (5.850542ms)
+✔ links validate targets, direction and paths; archive preserves links and identity (3.956728ms)
+✔ query is case-insensitive, stable and read-only with filters (0.894305ms)
+✔ all artifact types round trip, reconstruct and reject stale revisions and wrong handles (107.62493ms)
+✔ explicit migration retains source bytes, provenance, identity and unknown dates (24.225862ms)
+✔ corruption, unsupported schema and invalid legacy never create or overwrite state (15.862849ms)
+✔ failed temp write/rename do not replace committed bytes; retry checks revision (36.540594ms)
+✔ post-rename sync failure requires reading the committed revision before retry (21.262652ms)
+✔ file traversal and symlinks in links or storage paths are rejected (14.427969ms)
+✔ independent process holds exclusive lock; abandoned locks remain for manual recovery (61.472535ms)
+✔ second backend process commits first and the original revision cannot overwrite it (82.600248ms)
+✔ delayed attachment and committed save from A cannot render over B (3.971926ms)
+✔ peer event preserves dirty text; stale/conflict/failure retain draft until explicit reload (1.362997ms)
+✔ selection/close cannot lose draft and disposal silences callbacks and late reads (0.765548ms)
+✔ late read cannot replace a newly edited draft, and empty projects follow first peer creation (7.72536ms)
+✔ controller creates, transitions and archives through the real backend/store (50.189962ms)
+✔ preview is write-free; approval, events and next selected read use the committed revision (64.804785ms)
+✔ stale race, foreign handle, invalid type and gate promotion fail without writes (31.75954ms)
+✔ dependency cycle and invalid foreign link roll back an entire owner batch (17.71718ms)
+✔ typed link, approval for unlink, and revision-safe undo conflict (70.663111ms)
+✔ eligible edit undo restores one owner object and detects a changed source (62.997671ms)
+✔ deterministic audit catches cross-System duplicate ownership, overlapping support and dependencies (13.96626ms)
+✔ challenged Subsystem peers expose direct ownership and dependency conflicts (0.681604ms)
+✔ stage reuse requires exact packet, view, scope and prompt while retaining provider provenance (14.353753ms)
+✔ branch input and contract identities invalidate descendants without changing a sibling (1.951079ms)
+✔ a changed branch input or prompt contract reruns only that branch (10.920889ms)
+✔ recomputing System challenge keeps its successful discovery ancestor (4.379636ms)
+✔ targeted verification view remains small over a larger complete packet (16.239181ms)
+✔ failed stage has zero automatic retries and is never cached (1.985883ms)
+✔ retry decisions follow normalized failure, independent of provider identity (1.672556ms)
+✔ Normalized transient retry retains failed and consumed attempts with exact request/model identity (1.268103ms)
+✔ Normalized failure retries one malformed stage result and retains both attempts (1.524464ms)
+✔ Strategy retry caps and nonretryable provider failures remain explicit (1.899784ms)
+✔ failed provider calls retain duration and status without fabricated token spend (6.286283ms)
+✔ rejected stage JSON still accounts for provider-reported usage (4.303656ms)
+✔ orchestrator caps targeted verification, preserves uncertainty and assembles full-packet refs (48.289747ms)
+✔ clear boundaries skip reconciliation and verification model calls (8.546321ms)
+✔ typed zero descents survive reconciliation, coverage and final review without invented Components (30.249242ms)
+✔ discovers bounded project Markdown and previews selected phases, corrections and checklists without writes (56.45164ms)
+✔ missing, duplicate, ambiguous and unsupported selected source remains explicit (7.146075ms)
+✔ rejects selected symlinks, outside paths and oversized sources; discovery does not follow symlinks (12.036942ms)
+(node:95208) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/roadmap-canvas-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ one keyboard order follows the checkpoint path and attached branches (2.630819ms)
+✔ one ordinary center tab, safe labels, recovery, semantic dark/light tokens and no Chat docking effects (2.030074ms)
+✔ only complete strict proposals preview; malformed, fake ID, Green and tool escape do not write (520.330825ms)
+✔ developer rejects or approves one completed proposal; stale manual race rejects and next turn refreshes (920.370674ms)
+✔ failed stream never yields an actionable proposal (274.727722ms)
+✔ saved Chat previews and sends bounded revisioned Roadmap evidence through one composer (280.842514ms)
+✔ selected saved Chat previews one noncanonical draft edit; approval, stale, foreign and fallback gates (1780.714982ms)
+✔ one saved Chat follows current checkpoint, pins exact owner, restores and keeps its lease (131.278169ms)
+✔ selection resolver rejects missing and foreign owner state; map views never launch Chat (3.378444ms)
+✔ Planning Map Follow refreshes the same map and Pin rejects a changed map revision (0.691733ms)
+(node:95315) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/roadmap-inspector-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ selected Markdown, linked edits, external conflict and read-only correction prompt remain distinct owners (297.842741ms)
+✔ manual greenfield preview creates a linked document only after approval; historical gates retain source truth (137.426275ms)
+✔ blank Roadmap exposes model-free draft, preview, approval, cancellation and recovery (5.950817ms)
+✔ Chat entry associates an existing selected saved Chat without opening or moving a panel (1.682224ms)
+✔ creation controls have labels, keyboard forms, narrow layout and semantic theme tokens (0.831199ms)
+✔ approved mapped patch preserves CRLF, unrelated bytes and evidence status (91.999838ms)
+✔ concurrent source edit and Roadmap revision refuse publication (43.273399ms)
+✔ unsupported field/section and direct owner writes refuse changes (39.194326ms)
+✔ foreign and symlink source paths fail closed (33.463162ms)
+✔ read-only source section and denied document directory cannot publish a change (72.988516ms)
+✔ external mapped edit previews deterministically and applies without writing Markdown or changing status (72.858689ms)
+✔ independent Roadmap owner change and external prose reconcile at checked revision (46.748341ms)
+✔ unmapped document change updates only the source basis and preserves qualification truth (23.138251ms)
+✔ overlap, ambiguity and moved section refuse apply and leave source untouched (50.810041ms)
+✔ overlapping source and index edits produce a conflict preview without damaging either owner (40.787325ms)
+✔ source or Roadmap changes after preview deny stale apply; missing file asks for relink (79.624332ms)
+✔ model-free draft edits, preview and approved acceptance create one linked Markdown owner (87.815631ms)
+✔ cancellation and duplicate headings cannot publish a Roadmap (5.837277ms)
+✔ existing, symlinked, missing and stale targets are refused without overwriting (32.12433ms)
+✔ a Roadmap revision race invalidates an approved greenfield preview (16.956069ms)
+✔ pending accepted creation survives failed index finalization and restarts idempotently (85.95639ms)
+✔ empty Roadmap exposes three clear actions without moving or creating Chat (5.885035ms)
+✔ candidate choice is preview only; cancel and unsupported content cannot accept (0.58121ms)
+✔ acceptance is checked at UI and store boundaries; stale project or preview cannot write (0.610713ms)
+✔ chooser uses native keyboard controls and semantic focus tokens at narrow width (0.591808ms)
+✔ previews real shaped headings and linked evidence without initializing Mind or touching source bytes (20.457871ms)
+✔ reordering preserves path/section IDs while duplicate and unknown statuses stay read-only (14.861486ms)
+✔ unsafe and missing references remain read-only; symlink sources are not followed (17.844664ms)
+✔ ambiguous verdicts and unsupported fenced headings cannot become editable checkpoints (11.062408ms)
+✔ existing Mind is observed without changing its revision or bytes (15.747146ms)
+✔ actual Dope sources keep qualified Phase 9 distinct from retained Phase 5 Not Green evidence (172.683297ms)
+(node:95446) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/roadmap-inspector-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ selection, edit, preview, approval and undo synchronize without inferred Green (2.777569ms)
+✔ latency preserves draft and stale or foreign previews cannot apply (2.149353ms)
+✔ store events refresh the selected detail and keep an in-progress draft (0.694999ms)
+✔ errors stay visible, keyboard order is stable, and view never forces Chat placement (1.392992ms)
+✔ linked source edits use document authority and expose the exact line diff for approval (1.384476ms)
+✔ imported Roadmap, original owners, manual inspector, Planning Map and saved Chat share guarded authority (1221.995842ms)
+✔ selected source binds on acceptance, survives restart and preserves document bytes and checkpoint identity (59.91546ms)
+✔ legacy v1 without a link stays valid until explicit acceptance (30.436025ms)
+✔ stale, forged, unsafe and foreign acceptance fail closed without source edits (41.004785ms)
+✔ malformed link and newer schema reject; symlinked source cannot be accepted (28.581453ms)
+✔ measured 4096 profile reserves input, system and output; oversized context is denied (1.983989ms)
+✔ non-tools JSON fallback repairs once and never accepts a second malformed response (1.360713ms)
+✔ abort stops retries; strict fallback rejects tool and multiple-action envelopes (1.297337ms)
+✔ local Roadmap turn fails before transport when loaded capacity is unknown (86.926985ms)
+✔ Follow Roadmap planning denies implicit hosted fallback before transport (58.494616ms)
+✔ an exact hosted Roadmap turn requires explicit project-data consent (64.523836ms)
+✔ four Mind types remain discoverable and editable at their original owner, with byte-stable reads (94.020052ms)
+✔ corrupt Mind owner refuses exact navigation without rewriting its bytes (20.184568ms)
+✔ old layout widget factory and History exact owner route survive launcher retirement (1.2233ms)
+✔ detached original owners promote by link only, duplicate refs fail, and unlink restores detached records (86.457662ms)
+✔ changed owners, foreign IDs, unsupported Markdown and wrong handles fail closed (50.203004ms)
+✔ duplicate issue headings are refused without writing either owner (14.874971ms)
+✔ Question and Decision references resolve from Project Mind but stay outside detached Idea pool (52.963803ms)
+✔ Planning Map, transformation and WorkItem links use exact owner revision and current basis without owner writes (143.441088ms)
+✔ basis changes after Roadmap preview reject apply without Roadmap or Planning Map mutation (39.036986ms)
+✔ detached pools link, reject duplicates, unlink, and retain exact original bytes (131.183932ms)
+✔ stale owner and foreign project cannot promote or erase original records (44.056718ms)
+✔ pool controls expose native keyboard actions, labels, filter, and recovery (1.887822ms)
+✔ project handles and owner pools remain scoped to their root (22.587527ms)
+✔ stable phase path, explicit milestone/correction branches and status evidence (2.628485ms)
+✔ missing references remain diagnostics and detached pools preserve owner truth (0.920313ms)
+✔ selection payload is bounded and project switches do not carry a stale selection (0.733769ms)
+(node:95623) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/node/roadmap-prompt-open.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ prompt resolver opens only the exact current in-root source; stale, moved, foreign and symlink paths fail (18.175412ms)
+✔ inspector prompt selection and Open Prompt use validated URI without starting work (2.752753ms)
+✔ canvas has distinct click, double click and keyboard activation; inspector exposes accessible action (1.303698ms)
+(node:95624) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/roadmap-canvas-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ three semantic levels show strategic, grouped and individual detail on stable IDs (2.475674ms)
+✔ explicit disclosure and selected context override zoom without changing semantic selection (9.610077ms)
+✔ hysteresis avoids detail flicker at zoom boundaries (0.23332ms)
+✔ large prompt graphs keep a bounded visible neighborhood and report omitted children (4.015747ms)
+(node:95630) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/roadmap-canvas-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ phase, correction, and prompt coordinates are deterministic and leave the semantic graph untouched (10.411481ms)
+✔ Roadmap mounts React Flow with selection, pan, zoom and fit but no graph mutation gestures or Chat docking (1.133125ms)
+✔ current owner dispositions beat historical status without erasing failed gates (156.293749ms)
+✔ source order, reimport, linked Markdown edit and restart retain status provenance (84.287179ms)
+✔ contradictory current owner records fail closed independent of directory order (24.325494ms)
+✔ revisioned atomic writes publish only committed changed IDs and survive restart (94.205433ms)
+✔ corruption, unsupported version, oversized and symlink state fail closed (24.983555ms)
+✔ stale process lock from a crash is recovered without replacing a live lock (21.111463ms)
+✔ project copy and symlink root cannot adopt another project identity (14.90169ms)
+✔ explicit preview acceptance keeps stable IDs and original Markdown bytes (104.862286ms)
+✔ duplicate source headings cannot create duplicate IDs or editable prose (29.885732ms)
+✔ unsupported source status stays read-only after explicit import (31.920805ms)
+✔ restart recovers injected failure after owner write 1 (152.364612ms)
+✔ restart recovers injected failure after owner write 2 (92.898078ms)
+✔ restart recovers injected failure after owner write 3 (97.471912ms)
+✔ stale source after pending write remains a visible conflict and preserves both owners (80.670326ms)
+✔ missing and unsafe linked source never relink or overwrite on recovery (61.353854ms)
+✔ one observer debounces duplicate source events and detaches on project switch (635.129772ms)
+✔ approved local document write does not feed back as an external source event (335.900121ms)
+✔ real phase, continuation, and correction sources match strict runner plans (509.568588ms)
+✔ malformed, one-off, superseded, missing, foreign, ambiguous and symlink sources stay diagnostic (69.603679ms)
+✔ base phase and slice A with valid stacks are ambiguous (35.151848ms)
+✔ post-1.0 and post-2.0 folder families retain runner version rules and stable fingerprints (58.518118ms)
+(node:95718) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/roadmap-viewport.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ gesture policy keeps navigation separate from arrangement and semantic edges (1.696099ms)
+✔ viewport state restores only within matching project and rejects corrupt coordinates (0.679009ms)
+✔ keyboard navigation has pan and arrangement equivalents without overriding ordinary selection (0.208884ms)
+✔ versioned preferences restore by workspace and persist only curated keys (2.366924ms)
+✔ late restore from an old project cannot repaint a new project or undo an immediate edit (0.60909ms)
+✔ ten automatic colors resolve from stable System identity and nearest explicit ancestor (0.829186ms)
+✔ both map modes share one identity lookup and color cannot replace semantic cues (4.091336ms)
+✔ relative semantic zoom has a fitted baseline and hysteresis (0.67378ms)
+✔ fit identity changes for navigation but stays stable across LOD node changes (0.847709ms)
+✔ focused Flow fit centers a large graph at readable scale without restricting manual zoom (1.170172ms)
+✔ node identity renders in full with path breaks and theme-aware wrapping (7.169968ms)
+✔ Physical Map context shows the active workspace path beneath the toolbar (0.553779ms)
+✔ overview, clear trace, upstream and downstream retain stable Static Flow facts (19.543298ms)
+✔ continuous one-hop summaries preserve branch/join, semantics, origin and evidence; gaps remain gaps (1.327572ms)
+✔ endpoint selection and unresolved diagnostics stay visible (1.891439ms)
+✔ Component and Code focus disclose only adjacent evidenced invocation detail (1.007243ms)
+✔ queue continuation needs matching endpoint identity; unsupported hops are not stitched (0.993668ms)
+✔ hard node, fact and hop budgets report each exhaustion (9.514861ms)
+✔ dense overviews admit HTTP boundaries before hidden calls and report visible truncation (25.613304ms)
+✔ shared endpoint scope follows each fact and retains one physical store identity (1.129958ms)
+✔ System-owned code is reduced to its System in a System overview (0.595064ms)
+✔ Subsystem overview favors cross-scope invocation over interior calls (0.686212ms)
+✔ System relationship groups detail variants without inventing shared semantics (2.704174ms)
+✔ rich hierarchy projects a quiet System, a finer Subsystem, and exact detail without losing evidence (13.203116ms)
+✔ unassigned invocation evidence stays traceable without a false System connector (1.791245ms)
+✔ Flow IDs, endpoints and snapshot order are deterministic (11.885913ms)
+✔ Flow rejects missing references, structural proof, wrong interaction and conflicting identities (0.88613ms)
+✔ Flow aggregate origins, enrichment and runtime observation stay explicit (1.829465ms)
+✔ Flow coverage and diagnostics are separate, ordered and reference checked (0.811603ms)
+✔ anonymous callable identity is source-scoped and not a symbol (0.644546ms)
+✔ declaration read is local, strict, read-only and rejects unsafe paths (57.775622ms)
+✔ index invalidates source/config/declaration, matches clean rebuild, and retains violation provenance (11608.174282ms)
+✔ newest requested generation publishes even when older analysis finishes later (25.578552ms)
+✔ typed backend rebinds a connection across roots, bounds queries, resolves source and disposes (1042.978772ms)
+✔ accepted Software Map survives copy and fresh backend while physical state rebuilds independently (2410.683157ms)
+✔ schema and valid proposal retain temporary identities and confidence endpoints (2.700277ms)
+✔ schema rejects malformed, unsupported, missing and extra fields (0.680862ms)
+✔ hierarchy requires unique keys and exact System -> Subsystem -> Component parenting in any order (0.501973ms)
+✔ confidence is finite numeric 0..1 and never canonical authority (0.628606ms)
+✔ hard refs resolve only against the exact packet; prose cannot replace them (0.852719ms)
+✔ evidence requests are bounded, typed and path targeted (0.831128ms)
+✔ cache retries only classified transient or malformed runtime failures and reports the next attempt (6.136217ms)
+✔ capabilities reserve context and reject unsafe or malformed estimates (0.678428ms)
+✔ views retain whole parent items, deterministic identity and exact source refs (3.902508ms)
+✔ stage requests and outputs enforce stage, context, evidence and temporary identity (2.819657ms)
+✔ Software Map stage contract stays provider independent (1.01634ms)
+✔ System Challenge covers every source and validates keep, merge, split and reject (3.371783ms)
+✔ per-System trees, reconciliation, verification and final assembly preserve parent relationships (6.250638ms)
+✔ progress events expose only bounded safe stage metadata and honest known counts (1.022511ms)
+✔ late attach and query from A cannot render in B; disposal rejects late data (11.432139ms)
+✔ generation dry run discards a late project response and sanitizes service errors (1.666366ms)
+✔ first-use offer, decline, and later Analyze Project do not analyze on attach (0.622535ms)
+✔ reopened failed analysis keeps its run and invokes the retry operation (1.224703ms)
+✔ central target requires a Software Map probe; switching invalidates readiness (0.770477ms)
+✔ Software Map role suggests an exact run target; override and active run stay exact (12.907022ms)
+✔ Search Deeper setup takes the Software Map role suggestion when no exact target exists (1.867625ms)
+✔ Software Map probe failure stays on the suggested exact target despite role fallback (1.145497ms)
+✔ Software Map does not suggest an agent-only Codex target (1.093301ms)
+✔ generic connection test and missing target never authorize synthesis (0.539201ms)
+✔ missing-target repair opens AI Center and retains a return to synthesis setup (0.390869ms)
+✔ hosted evidence consent never carries into another project or target setup (0.387803ms)
+✔ failed-stage retry requires a fresh probe of the exact selected model (0.402881ms)
+✔ progress keeps text labels and theme tokens, with terminal heading from run state (0.522631ms)
+✔ legacy safe preference converges onto an exact AI Center model without copying secrets (0.82656ms)
+✔ unmatched safe Local preference creates one central connection, then retires feature preference (0.463643ms)
+✔ missing inventory fails closed and preserves the selected target for repair (0.337531ms)
+✔ draft validation, manual cancellation and existing acceptance are explicit (4.53402ms)
+✔ manual acceptance refreshes the canonical fingerprint used by Planning Maps (1.525747ms)
+✔ stale model discovery and proposal cannot render into a new project (0.857637ms)
+✔ controller accepts only current project progress and measures review delivery from Analyze invocation (1.28291ms)
+✔ setup/probe failures keep recovery controls usable and do not mark readiness (0.845846ms)
+✔ retry retains a successful probe when analysis fails without provider readiness loss (0.588473ms)
+✔ late review-source failure cannot report into another root (0.526608ms)
+✔ failed cancel keeps review available for retry (0.493969ms)
+✔ review and initialized editing share one center widget with focused detail and explicit accept/save (1.253075ms)
+✔ accepted Architecture read/save uses its canonical fingerprint and keeps selection local (4.041955ms)
+✔ workspace switches reject late accepted Architecture reads and saves (1.186462ms)
+✔ Edit Architecture remains one widget with an in-memory accepted draft and no map selection coupling (1.194878ms)
+✔ Search Deeper previews current edits, preserves siblings, rejects stale and switches roots safely (4.730391ms)
+✔ review edits coalesce and flush before acceptance and disposal (11.865896ms)
+✔ accepted Search Deeper suggestions avoid sibling IDs and leave a valid full draft (2.691651ms)
+✔ Subsystem refinement replaces only that Subsystem inside its parent System (0.97872ms)
+✔ accepted refinement is ready-only, preview-first, branch-local and drops late results (2.380549ms)
+✔ accepted refinement keeps conflicting file ownership in preview (2.727918ms)
+✔ attach reconciles analysis completed before handle was available (0.569106ms)
+✔ late aggregate origins from A cannot appear after a root switch (0.806965ms)
+✔ refresh clears old generation and stale query cannot publish (7.237002ms)
+✔ review ID suggestions satisfy the canonical contract without replacing a custom ID (3.343661ms)
+✔ strict declaration parser rejects malformed, future, duplicate and unsafe data (2.757242ms)
+✔ explicit longest root owns code; unmatched code stays unassigned (1.258635ms)
+✔ derived identities, order, dedupe and queries are deterministic (2.935299ms)
+✔ physical relationships require traceable evidence and valid references (1.430461ms)
+✔ aggregation retains concrete origins and forbidden rules take precedence over allow lists (1.453945ms)
+✔ technical tiers merge into one cross-layer responsibility while an execution platform survives (61.08974ms)
+✔ Subsystem Challenge coverage, parent, refs and compact shape fail closed (12.687127ms)
+✔ challenge recovers only an uncovered implementation cue under its System (4.017389ms)
+✔ Component parent escape and old combined result fail closed (18.283161ms)
+✔ empty Component descent requires one source-backed typed disposition for its exact parent and view (14.294222ms)
+✔ independent challenge merges Browser/Electron, rejects storage, splits services and keeps search (68.434579ms)
+✔ contradictory or unsupported decisions fail closed (201.812632ms)
+✔ challenge planning requires all cited facts and remains bounded (18.133946ms)
+✔ local provider sends independent structured challenge call after discovery without another warm-up (88.381458ms)
+✔ one cohesive responsibility survives, an umbrella splits, and technical directories can merge (6.477805ms)
+✔ System Challenge rejects a surviving System supported only by root start-script context (2.420723ms)
+✔ global view groups Browser and Electron packages under one responsibility without a count rule (86.6104ms)
+✔ one repository can return multiple independent Systems from one global view (26.717674ms)
+✔ strict stage result rejects lower hierarchy, fabricated refs and fixture-only production support (66.92949ms)
+✔ root manifest and start script are context, not direct System responsibility (22.406765ms)
+✔ warm failure blocks evidence; reconnect and model change require new probe and warm-up (33.40225ms)
+✔ empty collection, multiple maps, history, duplicate and reopen retain project identity (94.766543ms)
+✔ typed transformation and WorkItem mutations reject traversal and preserve revision (38.968388ms)
+✔ WorkItem split and merge commit atomically and reject illegal status changes (55.512809ms)
+✔ stale and simultaneous writers serialize; live and abandoned locks are handled (104.12164ms)
+✔ corrupt and future bytes refuse mutation without rewriting; unsafe entries stay untouched (30.493249ms)
+✔ separate projects and backend handles cannot redirect or survive disposal (54.63258ms)
+✔ strict parser rejects future/malformed schema, bad identities, paths, references and cycles (8.472595ms)
+✔ lifecycle, branch identity and explicit closeout (2.028542ms)
+✔ target projection is deterministic and preserves canonical/physical truth (1.638674ms)
+✔ contract and relationship changes project without retaining old edges (1.409022ms)
+✔ remove and split project intent; merge rejects a dangling dependency (1.229111ms)
+✔ active incompatible overlap yields stable conflicts and suggestions remain proposals (2.778681ms)
+✔ versioned conflict, stale, rebase and reconciliation results fail closed (2.38655ms)
+✔ launch derives a bounded immutable WorkItem task and inverse links from AgentStore (110.808901ms)
+✔ WorkItem launch refuses unapproved, absent, optional or malformed validation without persisting a task (75.67208ms)
+✔ saved legacy WorkItem task with empty completion cannot Start or create a run (57.411191ms)
+✔ same request key is idempotent, including concurrent retries; conflicting reuse fails (66.999929ms)
+✔ stale project or map revision cannot launch (40.134983ms)
+✔ human ownership and SHARED human-reserved paths deny launch (57.236751ms)
+ℹ tests 526
+ℹ suites 0
+ℹ pass 526
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 34815.902258
+✔ synthesis warms the selected runtime before its first repository-evidence request (693.646129ms)
+✔ generation dry run reads fresh, failed and review work without provider or project writes (2301.970365ms)
+✔ generation dry run rejects active analysis and safely reports malformed saved work (883.185297ms)
+✔ Gemini progress distinguishes an automatic retry from terminal exhaustion (935.444866ms)
+✔ failed branch resumes from its pinned evidence after restart and skips successful model calls (913.968892ms)
+✔ malformed stage output is never checkpointed and retry starts at that stage (403.252389ms)
+✔ attach and cancel leave the project uninitialized; failure stores only resumable analysis (362.564455ms)
+✔ existing declaration is uninitialized until explicit acceptance; restart reads marker and publishes dependencies (828.311309ms)
+✔ initialized Architecture read and save use the canonical marker and rerun analysis without edit work files (860.328124ms)
+✔ initialized Architecture save rejects stale, invalid, wrong-handle and cross-project requests without writes (814.835975ms)
+✔ Architecture save reports committed canonical state when deterministic re-analysis fails (384.040151ms)
+✔ generated review has valid suggested IDs, remains noncanonical, and accepts unchanged (1494.137598ms)
+✔ schema-1 review draft saves invalid work, rejects stale writes, and restores without a provider (412.544483ms)
+✔ accepted review clears saved draft work (1071.70098ms)
+✔ offline review checker reports text/JSON blockers and staleness without writes (6337.706788ms)
+✔ targeted backend call uses pending packet and edited branch, validates evidence and records purpose (394.181582ms)
+✔ accepted refinement uses fresh request evidence, explicit provider and canonical basis without review work (1795.522877ms)
+✔ manual greenfield acceptance needs no provider; malformed marker and symlinks reject without rewriting declaration (514.225476ms)
+✔ second-file failure restores exact original bytes and leaves no marker (5.568275ms)
+✔ project handle and review token isolate roots (429.967464ms)
+✔ hierarchical review revalidates source before acceptance (889.969635ms)
+✔ backend reports ordered hierarchy, known counts and measured time before transient review (497.490833ms)
+✔ exact AI Center Gemini target requires feature probe and rejects changed credentials (389.100244ms)
+✔ local synthesis refuses unknown capacity and never chooses another inventory model (1.694795ms)
+✔ central Gemini credential persists across backend connections without project state (1.515175ms)
+✔ normalized stage failures expose only fixed safe diagnostics (771.841976ms)
+✔ failure can retry; cancel and project switch discard late stage results (1420.242638ms)
+✔ mismatched marker and unsafe directory are never initialized (2.3069ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 26159.719918
+
+> dope@0.10.16 test:ide
+> node --test test/fixtures/ide-testing/sample.test.js
+
+✔ IDE test discovery fixture (0.469954ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 49.54348
+
+> dope@0.10.16 build:browser
+> corepack yarn build:extension && corepack yarn workspace @dope/browser build
+
+yarn run v1.22.22
+$ corepack yarn workspace @dope/ai build && corepack yarn workspace @dope/agent-core build && corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/chat build && corepack yarn workspace @dope/project-intelligence build && corepack yarn workspace @dope/software-map build && corepack yarn workspace @dope/visual-planning build && corepack yarn workspace @dope/code-analysis build && corepack yarn workspace @dope/code-analysis-typescript build && corepack yarn workspace @dope/theia-extension build
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p . && cp src/browser/dope.css lib/browser/dope.css
+Done in 27.63s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ theia rebuild:browser --cacheRoot ../.. && theia build
+native node modules are already rebuilt for browser
+[build/browser] Build started
+
+[build/browser] Finished with 0 errors in 835ms.
+
+[build/node] Build started
+
+[build/node] Finished with 0 errors in 800ms.
+
+Done in 3.79s.
+Done in 3.94s.
+
+> dope@0.10.16 build:electron
+> corepack yarn build:extension && corepack yarn workspace @dope/electron build
+
+yarn run v1.22.22
+$ corepack yarn workspace @dope/ai build && corepack yarn workspace @dope/agent-core build && corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/chat build && corepack yarn workspace @dope/project-intelligence build && corepack yarn workspace @dope/software-map build && corepack yarn workspace @dope/visual-planning build && corepack yarn workspace @dope/code-analysis build && corepack yarn workspace @dope/code-analysis-typescript build && corepack yarn workspace @dope/theia-extension build
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p .
+$ tsc -p . && cp src/browser/dope.css lib/browser/dope.css
+Done in 28.11s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ theia rebuild:electron --cacheRoot ../.. && theia build
+Module not found: find-git-repositories
+Processed "keytar"
+Processed "drivelist"
+Processed "native-keymap"
+Processed "node-pty"
+npm warn Unknown env config "version-commit-hooks". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "version-tag-prefix". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "version-git-message". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "argv". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "version-git-tag". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+Searching dependency tree
+Building modules: drivelist, keytar, native-keymap
+✔ Rebuild Complete
+Found cached ffmpeg library.
+Hashes are equal, not replacing the ffmpeg library.
+"/home/jfin/dev/dope/node_modules/electron/dist/libffmpeg.so" does not contain proprietary codecs (13 found).
+[build/browser] Build started
+
+[build/browser] Finished with 0 errors in 705ms.
+
+[build/node] Build started
+
+[build/node] Finished with 0 errors in 796ms.
+
+[build/electron] Build started
+
+[build/electron] Finished with 0 errors in 8ms.
+
+Done in 18.07s.
+Done in 18.22s.
