@@ -40,6 +40,16 @@ export interface RoadmapRelinkPreview {
     sections: { checkpointId: string; sectionKey: string; line: number }[];
     diagnostics: string[];
 }
+export interface RoadmapPendingRecoveryPreview {
+    state: 'ready' | 'review';
+    projectId: string;
+    revision: number;
+    path: string;
+    acceptedHash: string;
+    sourceHash?: string;
+    changes: RoadmapSyncDiff[];
+    diagnostics: string[];
+}
 
 const digest = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex');
 const fields = ['title', 'objective', 'order', 'prose'] as const;
@@ -137,4 +147,41 @@ export async function previewRoadmapDocumentSync(root: string, index: RoadmapInd
     if (base.diagnostics.length || base.changes.some(change => change.conflict)) base.state = 'conflict';
     else base.state = 'source-changed';
     return base;
+}
+
+/** A source-wins review for an interrupted document transaction. It never writes Markdown. */
+export async function previewRoadmapPendingRecovery(root: string, index: RoadmapIndex): Promise<RoadmapPendingRecoveryPreview> {
+    const linked = index.linkedDocument;
+    const pending = linked?.pending;
+    if (!linked || !pending || linked.projectRoot !== root || linked.projectId !== index.projectId)
+        throw new Error('No pending linked Roadmap sync for this project');
+    const preview: RoadmapPendingRecoveryPreview = { state: 'review', projectId: index.projectId,
+        revision: index.revision, path: linked.path, acceptedHash: pending.beforeHash,
+        changes: [], diagnostics: [] };
+    let mapped: Awaited<ReturnType<typeof readRoadmapMappedSections>>;
+    try { mapped = await readRoadmapMappedSections(root, linked); }
+    catch (error) { preview.diagnostics.push(`Linked source unavailable: ${String(error)}`); return preview; }
+    preview.sourceHash = mapped.hash;
+    preview.diagnostics.push(...mapped.diagnostics);
+    if (mapped.sections.length !== linked.sections.length || !linked.lastSynced.fields)
+        preview.diagnostics.push('Accepted section basis is incomplete; inspect the source before recovery.');
+    const accepted = new Map(linked.lastSynced.fields?.map(item => [item.checkpointId, item]) ?? []);
+    for (const section of mapped.sections) {
+        const before = accepted.get(section.checkpointId);
+        const current = index.checkpoints.find(item => item.id === section.checkpointId);
+        if (!before || !current || current.readOnly) { preview.diagnostics.push(`Unsupported checkpoint: ${section.checkpointId}`); continue; }
+        for (const field of fields) {
+            const source = section[field];
+            const prior = before[field];
+            const proposed = section.checkpointId === pending.checkpointId && field !== 'prose' ? pending[field] :
+                section.checkpointId === pending.checkpointId && field === 'prose' ? pending.prose ?? prior : prior;
+            if (prior !== undefined && source === undefined)
+                preview.diagnostics.push(`Mapped ${field} removed: ${section.checkpointId}`);
+            if (source !== prior || proposed !== prior)
+                preview.changes.push({ checkpointId: section.checkpointId, field, accepted: prior,
+                    source, roadmap: proposed, conflict: source !== prior && source !== proposed });
+        }
+    }
+    if (!preview.diagnostics.length) preview.state = 'ready';
+    return preview;
 }

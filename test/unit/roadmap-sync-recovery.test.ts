@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -53,6 +53,44 @@ for (const failAt of [1, 2, 3]) test(`restart recovers injected failure after ow
     await assert.rejects(apply(), /Stale Roadmap revision/);
 }));
 
+test('failure before pending index write leaves both owners unchanged', async () => fixture(async (root, file, store) => {
+    const apply = await approvedEdit(root, store);
+    const before = await store.read(root);
+    (store as any).replace = async () => { throw new Error('injected before owner index write'); };
+    await assert.rejects(apply(), /injected before owner index write/);
+    const restarted = new RoadmapStore();
+    assert.equal((await restarted.read(root)).revision, before.revision);
+    assert.equal((await restarted.read(root)).linkedDocument?.pending, undefined);
+    assert.equal(await readFile(file, 'utf8'), document);
+    assert.equal((await restarted.previewDocumentSync(root)).state, 'unchanged');
+}));
+
+test('source edit after document write needs reviewed recovery and preserves both edits until approval', async () => fixture(async (root, file, store) => {
+    const apply = await approvedEdit(root, store);
+    const original = (store as any).replace.bind(store);
+    let writes = 0;
+    (store as any).replace = async (...args: unknown[]) => {
+        if (++writes === 2) throw new Error('injected before document-written index write');
+        return original(...args);
+    };
+    await assert.rejects(apply());
+    assert.match(await readFile(file, 'utf8'), /Objective: approved/);
+    const external = (await readFile(file, 'utf8')).replace('Objective: approved', 'Objective: external');
+    await writeFile(file, external);
+    const restarted = new RoadmapStore();
+    assert.equal((await restarted.previewDocumentSync(root)).state, 'conflict');
+    const pending = await restarted.read(root);
+    assert.equal(pending.checkpoints[0].objective, 'old');
+    assert.equal(pending.linkedDocument?.pending?.outcome, 'conflict');
+    const preview = await restarted.previewPendingRecovery(root);
+    assert.equal(preview.state, 'ready');
+    const recovered = await restarted.applyPendingRecovery(root, preview, true);
+    assert.equal(recovered.checkpoints[0].objective, 'external');
+    assert.equal(recovered.checkpoints[0].status, 'not-green');
+    assert.equal(await readFile(file, 'utf8'), external);
+    assert.equal((await new RoadmapStore().previewDocumentSync(root)).state, 'unchanged');
+}));
+
 test('stale source after pending write remains a visible conflict and preserves both owners', async () => fixture(async (root, file, store) => {
     const apply = await approvedEdit(root, store);
     const original = (store as any).replace.bind(store);
@@ -73,6 +111,69 @@ test('stale source after pending write remains a visible conflict and preserves 
         { type: 'create', id: 'manual', kind: 'milestone', title: 'Manual', objective: '', order: 2 }), /Pending linked/);
 }));
 
+test('reviewed source-wins recovery clears a crash conflict without overwriting Markdown', async () => fixture(async (root, file, store) => {
+    const apply = await approvedEdit(root, store);
+    const original = (store as any).replace.bind(store);
+    let writes = 0;
+    (store as any).replace = async (...args: unknown[]) => {
+        const result = await original(...args);
+        if (++writes === 1) throw new Error('injected after pending index write');
+        return result;
+    };
+    await assert.rejects(apply());
+    const external = document.replace('Objective: old', 'Objective: external').replace('Other prose stays.', 'External note stays.');
+    await writeFile(file, external);
+    const restarted = new RoadmapStore();
+    assert.equal((await restarted.previewDocumentSync(root)).state, 'conflict');
+    const preview = await restarted.previewPendingRecovery(root);
+    assert.equal(preview.state, 'ready');
+    assert.deepEqual(preview.changes.filter(change => change.field === 'objective').map(change =>
+        [change.accepted, change.roadmap, change.source, change.conflict]), [['old', 'approved', 'external', true]]);
+    const pending = await restarted.read(root);
+    assert.equal((await restarted.applyPendingRecovery(root, preview, false)).revision, pending.revision);
+    assert.equal((await restarted.read(root)).linkedDocument?.syncState, 'pending-sync');
+    const final = await restarted.applyPendingRecovery(root, preview, true);
+    assert.equal(final.checkpoints[0].objective, 'external');
+    assert.equal(final.checkpoints[0].status, 'not-green');
+    assert.equal(final.linkedDocument?.syncState, 'synced');
+    assert.equal(final.linkedDocument?.pending, undefined);
+    assert.equal(await readFile(file, 'utf8'), external);
+    assert.equal((await new RoadmapStore().previewDocumentSync(root)).state, 'unchanged');
+    await assert.rejects(restarted.applyPendingRecovery(root, preview, true), /Stale pending Roadmap recovery/);
+    const actions = new ProjectPlanningActions(restarted);
+    const { projectHandle } = await actions.attach(root);
+    const request = { projectHandle, ownerId: final.projectId, expectedRevision: final.revision,
+        sourceHashes: { [final.checkpoints[0].id]: final.checkpoints[0].source!.sha256 },
+        actions: [{ type: 'document-edit' as const, id: final.checkpoints[0].id, objective: 'readmitted' }] };
+    const next = await actions.preview(request);
+    const readmitted = await actions.apply(request, next.token, true);
+    assert.equal(readmitted.checkpoints[0].objective, 'readmitted');
+    assert.equal(readmitted.checkpoints[0].status, 'not-green');
+    assert.match(await readFile(file, 'utf8'), /External note stays/);
+    assert.match(await readFile(file, 'utf8'), /Objective: readmitted/);
+}));
+
+test('pending recovery rejects stale preview, missing source and malformed mapped fields', async () => fixture(async (root, file, store) => {
+    const apply = await approvedEdit(root, store);
+    const original = (store as any).replace.bind(store);
+    (store as any).replace = async (...args: unknown[]) => { await original(...args); throw new Error('injected'); };
+    await assert.rejects(apply());
+    const external = document.replace('Objective: old', 'Objective: external');
+    await writeFile(file, external);
+    const restarted = new RoadmapStore();
+    const preview = await restarted.previewPendingRecovery(root);
+    assert.equal(preview.state, 'ready');
+    const malformed = external.replace('Objective: external', 'Objective: external\nObjective: duplicate');
+    await writeFile(file, malformed);
+    assert.equal((await restarted.previewPendingRecovery(root)).state, 'review');
+    await assert.rejects(restarted.applyPendingRecovery(root, preview, true), /Stale pending Roadmap recovery preview/);
+    assert.equal(await readFile(file, 'utf8'), malformed);
+    await rm(file);
+    assert.equal((await restarted.previewPendingRecovery(root)).state, 'review');
+    await assert.rejects(restarted.applyPendingRecovery(root, preview, true), /Stale pending Roadmap recovery preview/);
+    assert.equal((await restarted.read(root)).linkedDocument?.syncState, 'pending-sync');
+}));
+
 test('missing and unsafe linked source never relink or overwrite on recovery', async () => fixture(async (root, file, store) => {
     const apply = await approvedEdit(root, store);
     const original = (store as any).replace.bind(store);
@@ -87,6 +188,28 @@ test('missing and unsafe linked source never relink or overwrite on recovery', a
     assert.equal(preview.state, 'relink-needed');
     assert.equal((await restarted.read(root)).linkedDocument?.syncState, 'pending-sync');
     assert.equal(await readFile(other, 'utf8'), document);
+}));
+
+test('moved source during pending write waits for original-path restoration and reviewed recovery', async () => fixture(async (root, file, store) => {
+    const apply = await approvedEdit(root, store);
+    const original = (store as any).replace.bind(store);
+    (store as any).replace = async (...args: unknown[]) => { await original(...args); throw new Error('injected'); };
+    await assert.rejects(apply());
+    const moved = join(root, 'docs/roadmap/moved.md');
+    await rename(file, moved);
+    const restarted = new RoadmapStore();
+    assert.equal((await restarted.previewDocumentSync(root)).state, 'relink-needed');
+    assert.equal((await restarted.previewPendingRecovery(root)).state, 'review');
+    await assert.rejects(restarted.previewRelink(root, 'docs/roadmap/moved.md'), /Pending linked Roadmap sync/);
+    assert.equal(await readFile(moved, 'utf8'), document);
+    await rename(moved, file);
+    // A prior conflict outcome remains explicit even after the source returns.
+    const preview = await restarted.previewPendingRecovery(root);
+    assert.equal(preview.state, 'ready');
+    const recovered = await restarted.applyPendingRecovery(root, preview, true);
+    assert.equal(recovered.linkedDocument?.syncState, 'synced');
+    assert.equal(recovered.checkpoints[0].objective, 'old');
+    assert.equal(await readFile(file, 'utf8'), document);
 }));
 
 test('one observer debounces duplicate source events and detaches on project switch', async () => fixture(async (root, file, store) => {

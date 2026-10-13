@@ -143,6 +143,10 @@ export default new ContainerModule(bind => {
                     .previewDocumentSync(await context.container.get(PlanningStore).root(uri)),
                 applyDocumentSync: async (uri, preview) => context.container.get(RoadmapStore)
                     .applyDocumentSync(await context.container.get(PlanningStore).root(uri), preview),
+                previewPendingRecovery: async uri => context.container.get(RoadmapStore)
+                    .previewPendingRecovery(await context.container.get(PlanningStore).root(uri)),
+                applyPendingRecovery: async (uri, preview, approved) => context.container.get(RoadmapStore)
+                    .applyPendingRecovery(await context.container.get(PlanningStore).root(uri), preview, approved),
                 previewRelink: async (uri, path) => context.container.get(RoadmapStore)
                     .previewRelink(await context.container.get(PlanningStore).root(uri), path),
                 applyRelink: async (uri, preview, approved) => context.container.get(RoadmapStore)

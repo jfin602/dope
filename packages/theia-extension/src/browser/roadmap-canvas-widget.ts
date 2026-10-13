@@ -13,7 +13,7 @@ import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roa
 import type { RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
-import type { RoadmapSyncPreview, RoadmapRelinkPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
+import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { roadmapCanvasOrder, roadmapNextId, roadmapSpatialLayout, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail } from './roadmap-canvas-model';
@@ -86,6 +86,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private request = 0;
     private importSerial = 0;
     private syncPreview?: RoadmapSyncPreview;
+    private recovery?: { uri: string; preview?: RoadmapPendingRecoveryPreview; error?: string; busy: boolean };
     private relink?: { uri: string; path: string; preview?: RoadmapRelinkPreview; error?: string; busy: boolean };
     private importState?: { uri: string; projectId: string; revision: number; discovery: RoadmapCandidateDiscovery;
         preview?: RoadmapImportPreview; path?: string; busy: boolean; showChooser: boolean; message?: string };
@@ -464,7 +465,33 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 warning.textContent = `${sync.state === 'relink-needed' ? 'Relink needed' : 'Sync conflict'}: ${sync.diagnostics.concat(sync.changes.filter(change => change.conflict).map(change => `${change.checkpointId} ${change.field}`)).join('; ')}. Review the Markdown and Refresh.`;
                 this.importEntry.append(warning);
             }
-            if (sync?.state === 'relink-needed') {
+            if (sync?.state === 'conflict' && index.linkedDocument.pending) {
+                const open = document.createElement('button'); open.type = 'button'; open.textContent = 'Review interrupted sync';
+                open.onclick = () => void this.previewRecovery(); this.importEntry.append(open);
+                const recovery = this.recovery?.uri === this.projectUri ? this.recovery : undefined;
+                if (recovery?.preview) {
+                    const choice = recovery.preview;
+                    const detail = document.createElement('p');
+                    detail.textContent = `Source SHA-256 ${choice.sourceHash ?? 'unavailable'}; accepted ${choice.acceptedHash}. ` +
+                        choice.changes.map(change => `${change.checkpointId} ${change.field}: accepted ${String(change.accepted ?? 'absent').slice(0, 100)}, ` +
+                            `pending ${String(change.roadmap ?? 'absent').slice(0, 100)}, source ${String(change.source ?? 'absent').slice(0, 100)}`).join('; ');
+                    this.importEntry.append(detail);
+                    if (choice.diagnostics.length) this.appendImportDiagnostics('Recovery needs review', choice.diagnostics);
+                    if (choice.state === 'ready') {
+                        const approve = document.createElement('button'); approve.type = 'button';
+                        approve.textContent = 'Approve source as recovered Roadmap'; approve.disabled = recovery.busy;
+                        approve.onclick = () => void this.applyRecovery(choice); this.importEntry.append(approve);
+                    }
+                }
+                if (recovery?.error) { const error = document.createElement('p'); error.setAttribute('role', 'alert');
+                    error.textContent = recovery.error; this.importEntry.append(error); }
+            }
+            if (sync?.state === 'relink-needed' && index.linkedDocument.pending) {
+                const guidance = document.createElement('p'); guidance.setAttribute('role', 'alert');
+                guidance.textContent = 'An interrupted edit is pending. Restore the Markdown at its original path, then Refresh and review recovery before relinking.';
+                this.importEntry.append(guidance);
+            }
+            if (sync?.state === 'relink-needed' && !index.linkedDocument.pending) {
                 const open = document.createElement('button'); open.type = 'button'; open.textContent = 'Relink Markdown';
                 open.onclick = () => { this.relink = { uri: this.projectUri!, path: '', busy: false }; this.renderImportEntry(); };
                 this.importEntry.append(open);
@@ -567,6 +594,25 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.renderImportEntry();
             }
         }
+    }
+
+    private async previewRecovery(): Promise<void> {
+        const uri = this.projectUri;
+        if (!uri) return;
+        const state = { uri, busy: true } as { uri: string; preview?: RoadmapPendingRecoveryPreview; error?: string; busy: boolean };
+        this.recovery = state; this.renderImportEntry();
+        try { state.preview = await this.service.previewPendingRecovery(uri); }
+        catch (error) { state.error = String(error); }
+        finally { if (this.recovery === state) { state.busy = false; this.renderImportEntry(); } }
+    }
+
+    private async applyRecovery(preview: RoadmapPendingRecoveryPreview): Promise<void> {
+        const uri = this.projectUri, state = this.recovery;
+        if (!uri || !state || state.uri !== uri || state.preview !== preview || state.busy) return;
+        state.busy = true; this.renderImportEntry();
+        try { await this.service.applyPendingRecovery(uri, preview, true); this.recovery = undefined; await this.refresh(); }
+        catch (error) { if (this.recovery === state) { state.preview = undefined; state.error = String(error); } }
+        finally { if (this.recovery === state) { state.busy = false; this.renderImportEntry(); } }
     }
 
     private async previewRelink(): Promise<void> {

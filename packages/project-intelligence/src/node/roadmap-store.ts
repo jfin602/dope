@@ -4,8 +4,8 @@ import { link as hardLink, lstat, mkdir, open, realpath, rename, rm, stat } from
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { previewRoadmapImport } from './roadmap-import';
 import { planRoadmapDocumentPatch, publishRoadmapDocumentPatch } from './roadmap-document-patch';
-import { readRoadmapMappedSections, previewRoadmapDocumentSync } from './roadmap-document-sync';
-import type { RoadmapMappedSection, RoadmapSyncPreview, RoadmapRelinkPreview } from './roadmap-document-sync';
+import { readRoadmapMappedSections, previewRoadmapDocumentSync, previewRoadmapPendingRecovery } from './roadmap-document-sync';
+import type { RoadmapMappedSection, RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from './roadmap-document-sync';
 import type { RoadmapDocumentPatch } from './roadmap-document-patch';
 import type { RoadmapCitation, RoadmapImportPreview, RoadmapStatus } from './roadmap-import';
 
@@ -505,6 +505,53 @@ export class RoadmapStore {
         await this.recoverGreenfield(root);
         await this.recoverDocumentSync(root);
         return previewRoadmapDocumentSync(root, await this.read(root));
+    }
+
+    async previewPendingRecovery(root: string): Promise<RoadmapPendingRecoveryPreview> {
+        await this.recoverDocumentSync(root);
+        return previewRoadmapPendingRecovery(root, await this.read(root));
+    }
+
+    /** Explicitly accept checked source bytes after reviewing an interrupted write. */
+    async applyPendingRecovery(root: string, expected: RoadmapPendingRecoveryPreview,
+        approved: boolean): Promise<RoadmapIndex> {
+        if (!approved) return this.read(root);
+        if (expected.state !== 'ready' || !expected.sourceHash)
+            throw new Error('Pending Roadmap recovery requires a safe approved preview');
+        const result = await this.locked(root, async () => {
+            const current = await this.read(root);
+            if (current.revision !== expected.revision || current.projectId !== expected.projectId)
+                throw new Error('Stale pending Roadmap recovery revision or project identity');
+            const fresh = await previewRoadmapPendingRecovery(root, current);
+            if (fresh.state !== 'ready' || JSON.stringify(fresh) !== JSON.stringify(expected))
+                throw new Error('Stale pending Roadmap recovery preview');
+            const linked = current.linkedDocument!;
+            const mapped = await readRoadmapMappedSections(root, linked);
+            if (mapped.hash !== expected.sourceHash || mapped.diagnostics.length)
+                throw new Error('Stale pending Roadmap source');
+            const byId = new Map(mapped.sections.map(section => [section.checkpointId, section]));
+            const checkpoints = current.checkpoints.map(item => {
+                if (item.source?.path !== linked.path) return item;
+                const section = byId.get(item.id)!;
+                return { ...item, title: section.title, objective: section.objective ?? '',
+                    order: section.order ?? item.order,
+                    source: { ...item.source, sha256: mapped.hash, line: section.line, text: section.heading } };
+            });
+            const nextRevision = current.revision + 1;
+            const { pending: _pending, ...settled } = linked;
+            const next = parseRoadmapIndex({ ...current, revision: nextRevision, checkpoints,
+                linkedDocument: { ...settled, sourceHash: mapped.hash, syncState: 'synced',
+                    lastSynced: { sourceHash: mapped.hash, roadmapRevision: nextRevision,
+                        fields: mapped.sections.map(({ line, heading, ...field }) => field) } } }, root);
+            if ((await readRoadmapMappedSections(root, linked)).hash !== mapped.hash)
+                throw new Error('Stale pending Roadmap source');
+            await this.replace(root, next);
+            return { snapshot: next, changedIds: checkpoints.filter((item, at) =>
+                JSON.stringify(item) !== JSON.stringify(current.checkpoints[at])).map(item => item.id) };
+        });
+        if (result.changedIds.length) this.publish({ root, projectId: result.snapshot.projectId,
+            revision: result.snapshot.revision, changedIds: result.changedIds });
+        return result.snapshot;
     }
 
     /** Relink changes only the accepted owner reference. A changed document needs separate reconciliation. */
