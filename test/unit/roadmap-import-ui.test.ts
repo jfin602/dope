@@ -14,7 +14,7 @@ test('empty Roadmap exposes three clear actions without moving or creating Chat'
     assert.match(widget, /button\('Create Manually',/);
     assert.match(widget, /index\.revision !== 0\) return/);
     assert.doesNotMatch(widget, /openChatPanel|CHAT_PANEL_ID|ChatPanelWidget|shell\.addWidget/);
-    assert.match(widget, /Manual Roadmap creation arrives in P8/);
+    assert.match(widget, /No Roadmap yet\. Import one, create manually, or plan with an existing Chat/);
 });
 
 test('candidate choice is preview only; cancel and unsupported content cannot accept', () => {

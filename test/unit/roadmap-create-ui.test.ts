@@ -23,7 +23,7 @@ test('blank Roadmap exposes model-free draft, preview, approval, cancellation an
         assert.match(service, new RegExp(`${name}\\(`));
         assert.match(backend, new RegExp(`${name}:`));
     }
-    assert.match(backend, /new RoadmapGreenfield\(store\)/);
+    assert.match(backend, /new RoadmapGreenfield\(context\.container\.get\(RoadmapStore\)\)/);
 });
 
 test('Chat entry associates an existing selected saved Chat without opening or moving a panel', () => {
@@ -31,7 +31,8 @@ test('Chat entry associates an existing selected saved Chat without opening or m
     const module = read('packages/theia-extension/src/browser/frontend-module.ts');
     assert.match(widget, /button\('Plan with Chat', \(\) => \{ void this\.beginCreate\('chat'\)/);
     assert.match(widget, /this\.savedChats\(state\.uri\)/);
-    assert.match(widget, /state\.chatId = select\.value/);
+    assert.match(widget, /await this\.service\.bindDraftChat\(state\.uri, state\.handle, chatId\)/);
+    assert.match(widget, /state\.chatId = chatId \|\| undefined/);
     assert.match(widget, /Build the draft manually now|build the draft manually now/);
     assert.match(module, /getWidgets\(CHAT_PANEL_ID\)/);
     assert.match(module, /widget\.controller\.workspace !== workspace/);

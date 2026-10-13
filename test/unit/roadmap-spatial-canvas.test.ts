@@ -45,12 +45,14 @@ test('Roadmap mounts React Flow with selection, pan, zoom and fit but no graph m
     assert.match(backend, /discoverTasks: async \(uri\) => \{/);
     assert.match(backend, /return await discoverRoadmapTaskStacks\(root\)/);
     assert.match(widget, /onNodeClick: .*this\.select\(node\.id\)/);
-    assert.match(widget, /panOnDrag: true, zoomOnScroll: true, zoomOnPinch: true/);
-    assert.match(widget, /nodesDraggable: false, nodesConnectable: false/);
+    assert.match(widget, /\.\.\.roadmapGestures\(this\.arranging\)/);
+    assert.match(widget, /draggable: this\.arranging/);
     assert.match(widget, /this\.flow\?\.zoomIn\(\)/);
     assert.match(widget, /this\.flow\?\.zoomOut\(\)/);
     assert.match(widget, /this\.flow\?\.fitView/);
-    assert.doesNotMatch(widget, /onNodeDragStop|onConnect:|fitView\(\).*refresh/);
+    assert.match(widget, /onNodeDragStop:.*\{/);
+    assert.match(widget, /if \(!this\.arranging \|\| !this\.projection\?\.nodes\.some/);
+    assert.doesNotMatch(widget, /onConnect:|fitView\(\).*refresh/);
     assert.doesNotMatch(widget, /openChatPanel|CHAT_PANEL_ID|ChatPanelWidget|shell\.addWidget/);
     assert.match(css, /\.dope-roadmap-stage \{ flex: 1 1 auto; min-height: 160px; min-width: 0/);
     assert.match(css, /\.dope-roadmap-node :is\(small, strong, span\) \{ overflow-wrap: anywhere; white-space: normal/);
