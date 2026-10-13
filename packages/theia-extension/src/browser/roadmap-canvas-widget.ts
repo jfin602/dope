@@ -5,6 +5,7 @@ import type { RoadmapService } from '../roadmap-service';
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import type { RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
+import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import { roadmapCanvasOrder, roadmapNextId } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 
@@ -16,6 +17,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly path = document.createElement('ol');
     private readonly toolbar = document.createElement('header');
     private readonly pools = document.createElement('section');
+    private readonly importEntry = document.createElement('section');
     private readonly poolFilter = document.createElement('input');
     private owners: RoadmapOwnerRecord[] = [];
     private poolQuery = '';
@@ -26,6 +28,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly rootsListener;
     private readonly modelListener;
     private request = 0;
+    private importSerial = 0;
+    private importState?: { uri: string; projectId: string; revision: number; discovery: RoadmapCandidateDiscovery;
+        preview?: RoadmapImportPreview; path?: string; busy: boolean; showChooser: boolean; message?: string };
     private projectUri?: string;
     private projection?: RoadmapProjection;
     private selectedId?: string;
@@ -66,7 +71,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.poolFilter.setAttribute('aria-label', 'Filter Ideas and Issues');
         this.poolFilter.placeholder = 'Filter Ideas and Issues';
         this.poolFilter.oninput = () => { this.poolQuery = this.poolFilter.value; this.renderPools(); };
-        this.node.append(this.toolbar, this.status, this.path, this.pools);
+        this.importEntry.className = 'dope-roadmap-import';
+        this.importEntry.setAttribute('aria-label', 'Roadmap setup');
+        this.node.append(this.toolbar, this.status, this.importEntry, this.path, this.pools);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.refresh(); });
         this.modelListener = inspector.onChange(() => {
             if (!this.projectUri || inspector.projectUri !== this.projectUri || !inspector.index) return;
@@ -79,9 +86,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     async refresh(): Promise<void> {
         const request = ++this.request;
+        ++this.importSerial;
+        this.importState = undefined;
+        this.importEntry.replaceChildren();
         this.projection = undefined;
         this.owners = [];
         this.path.replaceChildren();
+        this.renderImportEntry();
         this.pools.replaceChildren();
         this.status.textContent = 'Loading Roadmap…';
         try {
@@ -101,7 +112,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.owners = owners;
             this.projectUri = projectUri;
             this.inspector.setSnapshot(projectUri, index);
-            if (index.revision === 0) this.status.textContent = 'No Roadmap index yet. Detached records remain visible; create or import a checkpoint to link them.';
+            if (index.revision === 0) this.status.textContent = 'No Roadmap index yet. Import a project Markdown Roadmap to begin.';
             this.projection = projectRoadmap(index, owners, { projectId: index.projectId, selectedId: this.selectedId });
             this.render();
         } catch (error) {
@@ -147,9 +158,153 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.renderPools();
         const diagnostic = projection.diagnostics.length ? ` · ${projection.diagnostics.length} unresolved reference(s)` : '';
         this.status.textContent = projection.revision === 0 ?
-            'No Roadmap index yet. Detached records remain visible; create or import a checkpoint to link them.' :
-            `${nodes.length} checkpoints · Roadmap revision ${projection.revision}${diagnostic}`;
+            'No Roadmap index yet. Import an existing project Markdown Roadmap to begin.' :
+            `${nodes.length} checkpoints · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.inspector.index.linkedDocument.syncState})` : ''}`;
     }
+
+    private renderImportEntry(): void {
+        this.importEntry.replaceChildren();
+        if (!this.projectUri || !this.inspector.index) return;
+        const index = this.inspector.index;
+        if (index.linkedDocument) {
+            const linked = document.createElement('p');
+            linked.textContent = `Linked Markdown: ${index.linkedDocument.path} · ${index.linkedDocument.syncState}`;
+            this.importEntry.append(linked);
+            return;
+        }
+        if (index.revision !== 0) return;
+        const heading = document.createElement('h3'); heading.textContent = 'Start your Roadmap';
+        const actions = document.createElement('div'); actions.className = 'dope-roadmap-import-actions';
+        const button = (label: string, action: () => void): HTMLButtonElement => {
+            const element = document.createElement('button'); element.type = 'button'; element.textContent = label;
+            element.onclick = action; return element;
+        };
+        const importButton = button('Import Roadmap', () => void this.discoverImport());
+        importButton.disabled = !!this.importState?.busy;
+        actions.append(importButton,
+            button('Plan with Chat', () => { this.showSetupMessage('Open an existing saved Chat from the Chat panel. Roadmap draft planning arrives in P8; Chat stays where you docked it.'); }),
+            button('Create Manually', () => { this.showSetupMessage('Manual Roadmap creation arrives in P8. You can import an existing Markdown Roadmap now.'); }));
+        this.importEntry.append(heading, actions);
+        const state = this.importState;
+        if (!state || state.uri !== this.projectUri || state.projectId !== index.projectId) return;
+        if (state.message) { const message = document.createElement('p'); message.setAttribute('role', 'status'); message.textContent = state.message; this.importEntry.append(message); }
+        if (!state.showChooser) return;
+        const chooser = document.createElement('div'); chooser.className = 'dope-roadmap-import-chooser';
+        const label = document.createElement('label'); label.textContent = 'Project Markdown file';
+        const select = document.createElement('select'); select.setAttribute('aria-label', 'Project Markdown Roadmap');
+        const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = 'Choose a Roadmap file'; select.append(placeholder);
+        for (const candidate of state.discovery.candidates) {
+            const option = document.createElement('option'); option.value = candidate.path;
+            option.textContent = `${candidate.path} (${candidate.bytes} bytes)`; select.append(option);
+        }
+        select.value = state.path ?? '';
+        select.disabled = state.busy;
+        select.onchange = () => void this.previewImport(select.value);
+        label.append(select);
+        const cancel = button('Cancel', () => this.cancelImport());
+        chooser.append(label, cancel);
+        this.importEntry.append(chooser);
+        if (state.discovery.diagnostics.length) this.appendImportDiagnostics('Discovery diagnostics', state.discovery.diagnostics);
+        if (!state.discovery.candidates.length) {
+            const empty = document.createElement('p'); empty.textContent = 'No supported Markdown candidates found in the project root or docs. Add a ROADMAP.md and refresh this list.';
+            this.importEntry.append(empty);
+        }
+        if (!state.preview) return;
+        const preview = state.preview;
+        const summary = document.createElement('p');
+        const unsupported = preview.diagnostics.filter(item => /unsupported/i.test(item)).length;
+        const notGreen = preview.checkpoints.filter(item => item.status === 'not-green').length;
+        summary.textContent = `Preview ${preview.roadmapPath}: ${preview.checkpoints.length} checkpoints, ${preview.sources.length} source files, ${unsupported} unsupported section(s), ${notGreen} Not Green checkpoint(s). ${preview.checkpoints.filter(item => item.readOnly).length} read-only checkpoint(s).`;
+        this.importEntry.append(summary);
+        if (preview.diagnostics.length) this.appendImportDiagnostics('Import diagnostics', preview.diagnostics);
+        const caution = preview.checkpoints.flatMap(item => item.diagnostics.map(detail => `${item.title}: ${detail}`));
+        if (caution.length) this.appendImportDiagnostics('Checkpoint diagnostics', caution);
+        const accept = button('Accept Import', () => void this.acceptImport());
+        accept.disabled = state.busy || !preview.checkpoints.length || !preview.checkpoints.some(item => !item.sectionKey.includes('/checklist-'));
+        this.importEntry.append(accept);
+    }
+
+    private appendImportDiagnostics(title: string, diagnostics: string[]): void {
+        const group = document.createElement('details');
+        const heading = document.createElement('summary'); heading.textContent = `${title} (${diagnostics.length})`;
+        const list = document.createElement('ul');
+        for (const diagnostic of diagnostics) { const item = document.createElement('li'); item.textContent = diagnostic; list.append(item); }
+        group.append(heading, list); this.importEntry.append(group);
+    }
+
+    private showSetupMessage(message: string): void {
+        const index = this.inspector.index, uri = this.projectUri;
+        if (!index || !uri) return;
+        ++this.importSerial;
+        this.importState = { uri, projectId: index.projectId, revision: index.revision,
+            discovery: this.importState?.discovery ?? { candidates: [], diagnostics: [] }, busy: false, showChooser: false, message };
+        this.renderImportEntry();
+    }
+
+    private async discoverImport(): Promise<void> {
+        const index = this.inspector.index, uri = this.projectUri;
+        if (!index || !uri || index.revision !== 0) return;
+        const serial = ++this.importSerial;
+        this.importState = { uri, projectId: index.projectId, revision: index.revision,
+            discovery: { candidates: [], diagnostics: [] }, busy: true, showChooser: false, message: 'Finding project Markdown Roadmaps…' };
+        this.renderImportEntry();
+        try {
+            const discovery = await this.service.discoverImports(uri);
+            if (!this.currentImport(serial, uri, index.projectId, index.revision)) return;
+            this.importState = { uri, projectId: index.projectId, revision: index.revision, discovery, busy: false, showChooser: true };
+            this.renderImportEntry();
+            this.importEntry.querySelector<HTMLSelectElement>('select')?.focus();
+        } catch (error) { this.importError(serial, `Could not list Roadmaps: ${String(error)}. Refresh and retry.`); }
+    }
+
+    private async previewImport(path: string): Promise<void> {
+        const state = this.importState;
+        if (!state) return;
+        const serial = ++this.importSerial;
+        this.importState = { ...state, path, preview: undefined, busy: !!path, message: path ? 'Reading import preview…' : undefined };
+        this.renderImportEntry();
+        if (!path) return;
+        try {
+            const preview = await this.service.previewImport(state.uri, path);
+            if (!this.currentImport(serial, state.uri, state.projectId, state.revision)) return;
+            this.importState = { ...this.importState!, preview, busy: false, message: undefined };
+            this.renderImportEntry();
+            this.importEntry.querySelector<HTMLSelectElement>('select')?.focus();
+        } catch (error) { this.importError(serial, `Import preview failed: ${String(error)}. Choose another file or retry.`); }
+    }
+
+    private async acceptImport(): Promise<void> {
+        const state = this.importState;
+        if (!state?.preview || state.busy || !state.preview.checkpoints.length) return;
+        const serial = ++this.importSerial;
+        this.importState = { ...state, busy: true, message: 'Checking Roadmap revision and source…' };
+        this.renderImportEntry();
+        try {
+            const current = await this.service.read(state.uri);
+            if (!this.currentImport(serial, state.uri, state.projectId, state.revision) ||
+                current.projectId !== state.projectId || current.revision !== state.revision)
+                throw new Error('Roadmap changed. Refresh, choose the file and preview again');
+            const result = await this.service.acceptImport(state.uri, state.revision, state.projectId, state.preview);
+            if (!this.currentImport(serial, state.uri, state.projectId, state.revision)) return;
+            this.inspector.setSnapshot(state.uri, result);
+            await this.refresh();
+            if (this.projectUri === state.uri && this.inspector.index?.revision === result.revision)
+                this.status.textContent = `Imported and linked ${result.linkedDocument?.path ?? state.preview.roadmapPath} · ${result.linkedDocument?.syncState ?? 'no supported sections'}.`;
+        } catch (error) { this.importError(serial, `Import was not accepted: ${String(error)}. Refresh and preview again.`); }
+    }
+
+    private currentImport(serial: number, uri: string, projectId: string, revision: number): boolean {
+        return !this.isDisposed && serial === this.importSerial && this.projectUri === uri &&
+            this.inspector.index?.projectId === projectId && this.inspector.index.revision === revision;
+    }
+
+    private importError(serial: number, message: string): void {
+        if (serial !== this.importSerial || !this.importState) return;
+        this.importState = { ...this.importState, busy: false, preview: undefined, message };
+        this.renderImportEntry();
+    }
+
+    private cancelImport(): void { ++this.importSerial; this.importState = undefined; this.renderImportEntry(); }
 
 
     private renderPools(): void {
@@ -292,5 +447,5 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.select(next, true);
     }
 
-    override dispose(): void { ++this.request; this.rootsListener.dispose(); this.modelListener(); super.dispose(); }
+    override dispose(): void { ++this.request; ++this.importSerial; this.rootsListener.dispose(); this.modelListener(); super.dispose(); }
 }

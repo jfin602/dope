@@ -1,6 +1,7 @@
 import type { RoadmapIndex, RoadmapChange } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import type { PlanningActionRequest, PlanningActionPreview, PlanningUndoRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
+import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 
 export const roadmapServicePath = '/services/dope/roadmap';
 export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): void }
@@ -9,6 +10,9 @@ export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): vo
 export interface RoadmapService {
     read(projectUri: string): Promise<RoadmapIndex>;
     owners(projectUri: string): Promise<RoadmapOwnerRecord[]>;
+    discoverImports(projectUri: string): Promise<RoadmapCandidateDiscovery>;
+    previewImport(projectUri: string, path: string): Promise<RoadmapImportPreview>;
+    acceptImport(projectUri: string, expectedRevision: number, expectedProjectId: string, preview: RoadmapImportPreview): Promise<RoadmapIndex>;
     attach(projectUri: string): Promise<{ projectHandle: string; snapshot: RoadmapIndex }>;
     detach(projectHandle: string): Promise<void>;
     preview(request: PlanningActionRequest): Promise<PlanningActionPreview>;

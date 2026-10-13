@@ -47,6 +47,7 @@ import { historyServicePath, historyFocusServicePath } from '@dope/contracts/lib
 import { HistoryBackend } from './history-backend';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import { RoadmapOwnerLinks } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
+import { discoverRoadmapCandidates, previewRoadmapImport } from '@dope/project-intelligence/lib/node/roadmap-import';
 import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
 import { createRoadmapActionRuntime } from './roadmap-action-runtime';
 import { RoadmapPlanningLinks } from './roadmap-planning-links';
@@ -89,6 +90,10 @@ export default new ContainerModule(bind => {
             const backend: RoadmapService = {
                 read: async (uri) => context.container.get(RoadmapStore).read(await context.container.get(PlanningStore).root(uri)),
                 owners: async (uri) => new RoadmapOwnerLinks().list(await context.container.get(PlanningStore).root(uri)),
+                discoverImports: async uri => discoverRoadmapCandidates(await context.container.get(PlanningStore).root(uri)),
+                previewImport: async (uri, path) => previewRoadmapImport(await context.container.get(PlanningStore).root(uri), path),
+                acceptImport: async (uri, revision, projectId, importPreview) => context.container.get(RoadmapStore)
+                    .acceptImport(await context.container.get(PlanningStore).root(uri), revision, importPreview, projectId),
                 attach: async (uri) => {
                     const result = await actions.attach(await context.container.get(PlanningStore).root(uri));
                     handles.add(result.projectHandle);
