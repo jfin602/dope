@@ -1,0 +1,33 @@
+TASK: Correction 10 / P8 — Expose manual and Chat-assisted greenfield planning UI
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036 (both linked-document and runner/canvas amendments), docs/planning/p10/phase-10-plan.md, this correction README/assessment/plan and P16 closeout. Require explicit separate owner activation; verify actual Git HEAD/version/dirty-tree, all 13 manifests/20 pins unchanged at 0.10.16, and reconcile any worktree/source conflicts safely. Do not reset/clean/stash-away unrelated local work, bump versions or manually commit when runner owns changes.
+
+INSPECT
+Current RoadmapCanvasWidget empty-state P3, RoadmapInspectorModel and existing ChatPanel opener/placement integration. Use current ADR 0016 and ADR 0037 human-task contract.
+
+IMPLEMENT
+Complete Create Manually and Plan with Chat entry paths for a blank Roadmap, showing the P7 draft, incremental manual checkpoint editor, previews, approval, source-path choice, cancellation and recovery. Chat entry must reuse/associate a developer-selected saved ChatPanel without creating a new transcript, forcing a dock/location, stealing focus or implicitly invoking an LLM. Expose a visible next step even when no model is configured; respect keyboard focus, narrow panes and accessibility. Keep imported Roadmaps and existing Project Mind/History routes intact.
+
+PRESERVE
+Existing ChatPanel left/right/bottom/center, Dope-owned ProjectPlanningActions with preview/approval and unchanged owner authorities; Markdown mapped fields source-owned, .dope Roadmap owns IDs/links; historical P16 Not Green remains. No agent/Work execution or Chat shell/filesystem/Git/MCP grants, silent hosted inference, false Green status, phase advancement or Phase 12 background alignment. Use restrained dark-orange semantic theme and accessible UI for presentation changes.
+
+VALIDATION — T1
+Run node --test test/unit/roadmap-canvas.test.ts and new test/unit/roadmap-create-ui.test.ts; build touched theia-extension output only if tests import compiled lib. Prove zero-model create/preview, cancel, no forced Chat movement, existing Chat identity and accessible error recovery; git diff --check.
+Target <=8 minutes including focused implementation and tests, with 10-minute soft / 15-minute hard ceiling. Only compile changed dependencies for lib-consuming tests. No npm run check, npm test, full browser/Electron build, packaging, general restart or native GUI; P17/P18 own broad evidence. Report inability to meet a safety requirement instead of dropping it.
+
+DEFER
+P9 fixes Chat context allowance; P10 enables conversational planning; P13 replaces list with spatial map.
+
+DONE WHEN
+The bounded owned change and security/compatibility invariants pass focused checks, with unchanged version, safe worktree and a precise next-prompt handoff. Runner owns commits; do not commit from the agent.
+
+FINAL RESPONSE
+List actual modified files, tests/builds run and outcomes, source/version identity, preserved behavior and unresolved risks.
