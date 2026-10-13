@@ -40,12 +40,26 @@
 .dope-roadmap-arranging .react-flow__node.dragging .dope-roadmap-node { cursor: grabbing; }
 .dope-roadmap-node[aria-current="true"] { border-left: 4px solid var(--dope-primary, var(--theia-focusBorder)); background: var(--dope-selected-background, var(--theia-list-activeSelectionBackground)); font-weight: 600; }
 .dope-roadmap-node :is(small, strong, span) { overflow-wrap: anywhere; white-space: normal; }
-.dope-roadmap-node small, .dope-roadmap-status { color: var(--theia-descriptionForeground); font-weight: normal; }
+.dope-roadmap-node small { color: var(--theia-descriptionForeground); font-weight: normal; }
+.dope-roadmap-status { display: inline-flex; align-items: baseline; gap: 5px; width: fit-content; max-width: 100%; font-size: 12px; font-weight: 600; color: var(--roadmap-status-color, var(--theia-descriptionForeground)); }
+.dope-roadmap-status-mark { flex: none; min-width: 1em; text-align: center; font-weight: 700; }
+.dope-roadmap-status-green { --roadmap-status-color: var(--dope-roadmap-green, var(--theia-testing-iconPassed, var(--theia-foreground))); }
+.dope-roadmap-status-active { --roadmap-status-color: var(--dope-roadmap-active, var(--theia-editorWarning-foreground, var(--theia-foreground))); }
+.dope-roadmap-status-not-green { --roadmap-status-color: var(--dope-roadmap-not-green, var(--theia-errorForeground, var(--theia-foreground))); }
+.dope-roadmap-status-waived { --roadmap-status-color: var(--dope-roadmap-waived, var(--theia-charts-purple, var(--theia-foreground))); }
+.dope-roadmap-status-not-implemented { --roadmap-status-color: var(--dope-roadmap-not-implemented, var(--theia-descriptionForeground)); }
+.dope-roadmap-status-unknown { --roadmap-status-color: var(--dope-roadmap-unknown, var(--theia-descriptionForeground)); }
 .dope-roadmap-node strong { font-size: 14px; }
 .dope-roadmap-omitted { color: var(--theia-descriptionForeground); font-size: 12px; }
 .dope-roadmap-detail { color: var(--theia-descriptionForeground); }
 .dope-roadmap-edge .react-flow__edge-path { stroke: var(--theia-descriptionForeground); stroke-width: 2; }
 .dope-roadmap-edge-branch .react-flow__edge-path { stroke-dasharray: 6 4; }
+.dope-roadmap-edge-green .react-flow__edge-path { stroke: var(--dope-roadmap-green, var(--theia-testing-iconPassed, var(--theia-foreground))); }
+.dope-roadmap-edge-active .react-flow__edge-path { stroke: var(--dope-roadmap-active, var(--theia-editorWarning-foreground, var(--theia-foreground))); stroke-dasharray: 8 4; }
+.dope-roadmap-edge-not-green .react-flow__edge-path { stroke: var(--dope-roadmap-not-green, var(--theia-errorForeground, var(--theia-foreground))); stroke-dasharray: 3 5; }
+.dope-roadmap-edge-waived .react-flow__edge-path { stroke: var(--dope-roadmap-waived, var(--theia-charts-purple, var(--theia-foreground))); stroke-dasharray: 2 5; }
+.dope-roadmap-edge-not-implemented .react-flow__edge-path { stroke: var(--dope-roadmap-not-implemented, var(--theia-descriptionForeground)); stroke-dasharray: 7 6; }
+.dope-roadmap-edge-unknown .react-flow__edge-path { stroke: var(--dope-roadmap-unknown, var(--theia-descriptionForeground)); stroke-dasharray: 2 6; }
 .dope-roadmap-pools { flex: 0 1 auto; max-height: 24%; overflow: auto; }
 @media (max-width: 480px) { .dope-roadmap-canvas { padding: 8px; } .dope-roadmap-canvas header { gap: 5px; } .dope-roadmap-stage { min-height: 160px; } .dope-roadmap-pools { max-height: 20%; } }
 .dope-history-panel { box-sizing: border-box; height: 100%; overflow: auto; padding: 12px; color: var(--theia-foreground); background: var(--theia-sideBar-background); font-family: var(--theia-ui-font-family); }
@@ -308,6 +322,12 @@
 .dope-rebase-workspace { display: grid; gap: 6px; border: 1px solid var(--theia-widget-border); padding: 8px; }
 .dope-rebase-conflict { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .dope-dark {
+    --dope-roadmap-green: color-mix(in srgb, var(--theia-testing-iconPassed, #8DBA98) 70%, white);
+    --dope-roadmap-active: var(--dope-highlight);
+    --dope-roadmap-not-green: color-mix(in srgb, var(--theia-errorForeground, #D98F8F) 75%, white);
+    --dope-roadmap-waived: color-mix(in srgb, var(--theia-charts-purple, #B9A0D9) 70%, white);
+    --dope-roadmap-not-implemented: color-mix(in srgb, var(--theia-foreground) 65%, var(--theia-editor-background));
+    --dope-roadmap-unknown: var(--theia-descriptionForeground);
     --dope-background: #1F1F1F;
     --dope-primary: #FF7A1A;
     --dope-highlight: #FFB15C;

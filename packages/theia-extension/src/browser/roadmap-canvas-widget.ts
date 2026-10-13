@@ -18,6 +18,7 @@ import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/p
 import { roadmapCanvasOrder, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
+import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
 import { readRoadmapViewport, roadmapGestures, roadmapKeyboardAction, roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot,
     type RoadmapViewportState } from './roadmap-viewport';
 import './dope.css';
@@ -29,14 +30,16 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement(Handle, { id: 'left', type: 'target', position: Position.Left, isConnectable: false }),
         React.createElement(Handle, { id: 'top', type: 'target', position: Position.Top, isConnectable: false }),
         React.createElement(Handle, { id: 'bottom', type: 'target', position: Position.Bottom, isConnectable: false }),
-        React.createElement('button', { type: 'button', className: 'dope-roadmap-node',
+        React.createElement('button', { type: 'button', className: `dope-roadmap-node dope-roadmap-status-${item.status}`,
             'data-checkpoint-id': item.id, 'aria-current': data.selected ? 'true' : undefined,
             'aria-label': `${item.kind}: ${item.title}; ${item.statusLabel}${data.relation ? `; ${data.relation}` : ''}${data.omitted ? `; ${data.omitted} prompts hidden` : ''}`,
             onClick: event => { event.stopPropagation(); data.select(item.id); },
             onDoubleClick: event => { event.stopPropagation(); data.activate(item.id); } },
         React.createElement('small', null, item.kind),
         React.createElement('strong', null, item.title),
-        React.createElement('span', { className: 'dope-roadmap-status' }, item.statusLabel),
+        React.createElement('span', { className: 'dope-roadmap-status' },
+            React.createElement('span', { className: 'dope-roadmap-status-mark', 'aria-hidden': true }, roadmapStatusMark[item.status]),
+            item.statusLabel),
         data.omitted > 0 ? React.createElement('span', { className: 'dope-roadmap-omitted' },
             `${data.omitted} prompt${data.omitted === 1 ? '' : 's'} hidden; expand or select stack for Next prompts`) : null),
         React.createElement(Handle, { id: 'right', type: 'source', position: Position.Right, isConnectable: false }),
@@ -363,11 +366,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
             className: item.id === this.selectedId ? 'dope-roadmap-selected' : undefined,
         }));
         const displayed = new Map(nodes.map(node => [node.id, node.position]));
+        const statuses = new Map(visible?.nodes.map(node => [node.id, node.status]) ?? []);
         const edges: Edge[] = (visible?.edges ?? []).map(item => {
+            const status = roadmapEdgeStatus(statuses.get(item.from), statuses.get(item.to));
             return { id: item.id, source: item.from, target: item.to,
                 ...roadmapEdgeHandles(item, displayed),
                 type: 'smoothstep', selectable: false,
-                className: `dope-roadmap-edge dope-roadmap-edge-${item.kind}` };
+                ariaLabel: `${item.label}; ${titles.get(item.from) ?? item.from} to ${titles.get(item.to) ?? item.to}; ${status}`,
+                className: `dope-roadmap-edge dope-roadmap-edge-${item.kind} dope-roadmap-edge-${status}` };
         });
         this.root.render(React.createElement(ReactFlow, {
             id: 'dope-roadmap-flow', nodes, edges, nodeTypes: roadmapNodeTypes,

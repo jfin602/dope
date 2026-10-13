@@ -31,6 +31,7 @@ test('current owner dispositions beat historical status without erasing failed g
                 status: item.status, readOnly: item.readOnly, source: item.source, evidence: item.evidence };
         }) };
     const projection = projectRoadmap(index);
+    assert.equal(projection.nodes[1].status, 'waived');
     assert.equal(projection.nodes[1].statusLabel, 'Owner-closed for sequencing');
     assert.ok(projection.diagnostics.some(message => message.includes('phase-7') && message.includes('docs/tasks/p7/closeout.md')));
 });
