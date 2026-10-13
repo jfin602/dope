@@ -1,0 +1,33 @@
+TASK: Correction 10 / P6 — Diagnose and guard saved Chat restart ownership
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT / AUTHORIZATION
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 including final-qualification amendment, ADR 0016/0037, docs/planning/p10/phase-10-plan.md and this correction README/assessment/implementation-plan, plus historical docs/tasks/c10-roadmap-create-sync/closeout.md. This stack needs separate owner activation; if absent STOP without mutation. Before P1, prove a usable native Electron window capture/control path and meaningful browser/touch/keyboard plus process-tree/network observation for successful local-model requests; unresolved instrumentation blocks final Green, not a reason to weaken gates. Verify actual local Git HEAD and ancestry from product source 71d91ef, coherent all-manifest 0.10.16 and dirty/uncommitted work. No resets, destructive clean/stash, concurrent mutating stacks, version bump, lockfile/dependency churn or agent-made commits.
+
+SOURCE INSPECTION
+packages/theia-extension/src/browser/chat-panel-controller.ts attach/restore/claim/renew/release, ChatOpenOwners ownership, packages/chat/src/node persistence and lease backend, test/unit/roadmap-chat-panel.test.ts, chat-panel.test.ts, chat-repository.test.ts.
+
+GOAL / IMPLEMENT
+Reproduce the P19 intermittent lost Chat lease across backend/browser restart in a controlled disposable project, distinguish the product lifecycle from isolated UI-controller instrumentation, and repair only a confirmed invalid restore/lease-race. Preserve one composer/writer per Chat across windows and right/left/bottom/center, same saved Chat ID/model, Follow/Pin, drafts and safe stream state. On an expired lease provide predictable recovery without hidden duplicate ownership or manual backend intervention. If no defect reproduces, do not alter product behavior: retain a focused race regression and report the evidence gap for the final live matrix.
+
+PRESERVE
+One normal saved ChatPanel with user-controlled left/right/bottom/center docking, single lease, existing ProjectPlanningActions approval/revision/source-hash authority and distinct Work/AgentTask execution grants. Linked Markdown document owns only losslessly mapped prose, .dope owns structured identities/sync; unsupported narrative is read-only unless separately explicitly reviewed. Keep historical P16 and P19 NOT GREEN evidence, no fabricated qualified gates, no model-controlled filesystem/shell/Git/MCP/agent use, no automatic hosted fallback, no phase advancement. Use restrained dark-orange semantic tokens and current keyboard/touch accessibility for relevant UI.
+
+VALIDATION — T2
+Build changed chat/theia-extension outputs only if lib users require; run node --test test/unit/roadmap-chat-panel.test.ts test/unit/chat-panel.test.ts test/unit/chat-repository.test.ts and a small targeted lease/restoration regression if reproducible. Exercise close/reopen, stale token, project switch, duplicate panel, backend restart and source identity; git diff --check.
+P1–P8 use only smallest necessary focused tests and changed-package build outputs, aiming <=8 minutes implementation+validation (10 soft/15 hard; bounded T2 exceptions require explanation). No recurring npm run check, full test:product, browser/Electron builds or AppImage; final manual P9 owns full exact-source validation. If safety proof fails, STOP and record the blocker rather than treating weak mocks as Green.
+
+DEFER
+P9 alone qualifies real four-dock drag/split and streaming. No second Chat lease owner or app-wide session rewrite.
+
+DONE WHEN
+The single bounded seam is implemented if defective, its focused regression and authority guards pass, version is still 0.10.16, and P7 has an explicit safe handoff. If reproduction finds no product defect, preserve code and report qualification evidence instead. The runner owns commits; do not commit in the agent.
+
+FINAL RESPONSE
+Report current source, changed files, tests/builds actually run, source owner and security preserved, unresolved evidence gap and next prompt.
