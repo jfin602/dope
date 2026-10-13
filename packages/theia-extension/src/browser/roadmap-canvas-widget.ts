@@ -319,6 +319,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         }
         this.renderFlow();
         this.renderPools();
+        this.renderImportEntry();
         const diagnostic = projection.diagnostics.length ? ` · ${projection.diagnostics.length} unresolved reference(s)` : '';
         this.status.textContent = projection.revision === 0 ?
             'No Roadmap yet. Import one, create manually, or plan with an existing Chat.' :
