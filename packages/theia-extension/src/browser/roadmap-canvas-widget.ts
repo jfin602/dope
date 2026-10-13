@@ -18,6 +18,7 @@ import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/p
 import { roadmapCanvasOrder, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
+import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
 import { readRoadmapViewport, roadmapGestures, roadmapKeyboardAction, roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot,
     type RoadmapViewportState } from './roadmap-viewport';
@@ -60,11 +61,26 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private taskDiscoveryError?: string;
     private readonly toolbar = document.createElement('header');
     private readonly stage = document.createElement('div');
+    private readonly stageResize = new ResizeObserver(() => {
+        if (this.stage.clientWidth < 1240 && this.sourceOpen && this.inspectionOpen &&
+            this.sourceView === 'expanded' && this.inspectionView === 'expanded') this.setSourceOpen(false);
+    });
     private readonly sourceButton = document.createElement('button');
     private readonly sourceLabel = document.createElement('span');
     private readonly poolButton = document.createElement('button');
     private readonly pools = document.createElement('section');
     private readonly importEntry = document.createElement('section');
+    private readonly inspection = document.createElement('section');
+    private readonly inspectionEditor: RoadmapInspectorWidget;
+    private readonly inspectionSummary = document.createElement('strong');
+    private readonly inspectionExpand = document.createElement('button');
+    private readonly inspectionCompact = document.createElement('button');
+    private readonly inspectionMinimize = document.createElement('button');
+    private readonly inspectionClose = document.createElement('button');
+    private inspectionView: 'expanded' | 'compact' | 'minimized' = 'compact';
+    private inspectionOpen = false;
+    private inspectionReturnFocus?: HTMLElement;
+    private inspectionFocus?: HTMLElement;
     private readonly sourceHeader = document.createElement('div');
     private readonly sourceSummary = document.createElement('strong');
     private readonly sourceExpand = document.createElement('button');
@@ -124,7 +140,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly focusRecheck = (): void => { if (!this.isDisposed && this.projectUri) void this.refresh(); };
 
     constructor(private readonly service: RoadmapService, private readonly workspaces: WorkspaceService,
-        private readonly inspector: RoadmapInspectorModel, private readonly openInspector: () => Promise<unknown>,
+        private readonly inspector: RoadmapInspectorModel,
         private readonly openMind: (id?: string, workspace?: string) => Promise<boolean> = async () => false,
         private readonly savedChats: (workspace: string) => { id: string; title: string }[] = () => [],
         private readonly storage?: Pick<StorageService, 'getData' | 'setData'>) {
@@ -134,6 +150,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.title.iconClass = codicon('milestone');
         this.title.closable = true;
         this.addClass('dope-roadmap-canvas');
+        this.inspectionEditor = new RoadmapInspectorWidget(inspector);
         this.toolbar.setAttribute('aria-label', 'Roadmap controls');
         const icon = (button: HTMLButtonElement, label: string, name: string): void => {
             button.type = 'button'; button.title = label; button.setAttribute('aria-label', label);
@@ -144,9 +161,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
         icon(this.reload, 'Refresh Roadmap', 'refresh');
         this.reload.onclick = () => { void this.refresh(); };
         this.details.type = 'button';
-        icon(this.details, 'Show Roadmap details in left sidebar', 'info');
-        this.details.setAttribute('aria-label', 'Show Roadmap details in left sidebar');
-        this.details.onclick = () => { void this.openInspector(); };
+        icon(this.details, 'Show Roadmap details on canvas', 'info');
+        this.details.onclick = () => this.openDetails();
+        this.details.setAttribute('aria-controls', 'dope-roadmap-inspection-panel');
         this.mind.type = 'button';
         icon(this.mind, 'Browse and edit Project Mind Notes, Ideas, Questions and Decisions', 'book');
         this.mind.setAttribute('aria-label', 'Browse and edit Project Mind Notes, Ideas, Questions and Decisions');
@@ -219,6 +236,30 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (target instanceof HTMLElement && !this.sourceHeader.contains(target)) this.sourceFocus = target;
         });
         this.importEntry.onkeydown = event => { if (event.key === 'Escape') { event.stopPropagation(); this.setSourceOpen(false); this.sourceButton.focus(); } };
+        this.inspection.className = 'dope-roadmap-inspection';
+        this.inspection.id = 'dope-roadmap-inspection-panel';
+        this.inspection.setAttribute('aria-label', 'Roadmap checkpoint details');
+        this.inspection.tabIndex = -1;
+        this.inspection.onkeydown = event => { if (event.key === 'Escape') { event.stopPropagation(); this.setInspectionOpen(false); } };
+        this.inspection.addEventListener('focusin', event => {
+            const target = event.target;
+            if (target instanceof HTMLElement && this.inspectionEditor.node.contains(target)) this.inspectionFocus = target;
+        });
+        const inspectionHeader = document.createElement('div');
+        inspectionHeader.className = 'dope-roadmap-inspection-header';
+        this.inspectionSummary.textContent = 'Checkpoint details';
+        this.inspectionSummary.setAttribute('aria-live', 'polite');
+        for (const [button, label, action] of [
+            [this.inspectionExpand, 'Expand Roadmap details', () => this.setInspectionView('expanded')],
+            [this.inspectionCompact, 'Compact Roadmap details', () => this.setInspectionView('compact')],
+            [this.inspectionMinimize, 'Minimize Roadmap details', () => this.setInspectionView('minimized')],
+            [this.inspectionClose, 'Close Roadmap details', () => this.setInspectionOpen(false)],
+        ] as const) { button.type = 'button'; button.textContent = label.slice(0, label.indexOf(' '));
+            button.setAttribute('aria-label', label); button.onclick = action; }
+        inspectionHeader.append(this.inspectionSummary, this.inspectionExpand, this.inspectionCompact,
+            this.inspectionMinimize, this.inspectionClose);
+        this.inspection.append(inspectionHeader, this.inspectionEditor.node);
+        this.setInspectionView('compact');
         this.sourceHeader.className = 'dope-roadmap-source-header';
         this.sourceSummary.textContent = 'Linked Markdown';
         for (const [button, label, action] of [
@@ -232,18 +273,29 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.setSourceView('compact');
         this.pools.onkeydown = event => { if (event.key === 'Escape') { event.stopPropagation(); this.setPoolOpen(false); this.poolButton.focus(); } };
         this.stage.className = 'dope-roadmap-stage-host dope-map-stage';
-        this.stage.append(this.path, this.status, this.importEntry, this.poolButton, this.pools);
+        this.stage.append(this.path, this.status, this.importEntry, this.inspection, this.poolButton, this.pools);
         this.node.append(this.toolbar, this.stage);
+        this.stageResize.observe(this.stage);
         this.setSourceOpen(false);
+        this.setInspectionOpen(false);
         this.setPoolOpen(false);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.refresh(); });
         window.addEventListener('focus', this.focusRecheck);
         this.modelListener = inspector.onChange(() => {
             if (!this.projectUri || inspector.projectUri !== this.projectUri || !inspector.index) return;
-            this.selectedId = inspector.selectedPrompt?.id ?? inspector.selectedId;
-            this.schedulePresentation();
-            this.projection = projectRoadmapTasks(inspector.index, this.taskStacks, this.owners, { projectId: inspector.index.projectId, selectedId: this.selectedId });
-            this.render();
+            const nextSelection = inspector.selectedPrompt?.id ?? inspector.selectedId;
+            const graphChanged = this.selectedId !== nextSelection || this.projection?.revision !== inspector.index.revision;
+            this.selectedId = nextSelection;
+            this.inspectionSummary.textContent = `${inspector.selectedPrompt?.title ?? inspector.selected?.title ?? 'Checkpoint details'}${inspector.requiresApproval ? ' · Approval pending' : inspector.dirty ? ' · Unsaved draft' : ''}`;
+            this.details.dataset.review = String(inspector.requiresApproval || inspector.dirty);
+            this.details.setAttribute('aria-label', inspector.requiresApproval ? 'Show Roadmap details: approval pending' :
+                inspector.dirty ? 'Show Roadmap details: unsaved draft' : 'Show Roadmap details on canvas');
+            if (graphChanged) {
+                this.schedulePresentation();
+                this.projection = projectRoadmapTasks(inspector.index, this.taskStacks, this.owners,
+                    { projectId: inspector.index.projectId, selectedId: this.selectedId });
+                this.render();
+            }
         });
         void this.refresh();
     }
@@ -395,6 +447,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.importEntry.hidden = !open;
         this.sourceButton.setAttribute('aria-expanded', String(open));
         if (open) {
+            if (this.stage.clientWidth < 1240 && this.inspectionOpen && this.inspectionView === 'expanded')
+                this.setInspectionOpen(false);
             this.setPoolOpen(false);
             if (this.sourceView === 'minimized') this.setSourceView('compact');
             if (this.sourceFocus?.isConnected && this.importEntry.contains(this.sourceFocus)) this.sourceFocus.focus();
@@ -405,6 +459,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private setSourceView(view: 'expanded' | 'compact' | 'minimized'): void {
+        if (view === 'expanded' && this.stage.clientWidth < 1240 && this.inspectionOpen)
+            this.setInspectionOpen(false);
         if (view === 'minimized' && this.importEntry.contains(document.activeElement)) {
             this.sourceButton.focus();
         }
@@ -417,6 +473,52 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (this.sourceFocus?.isConnected && this.importEntry.contains(this.sourceFocus)) this.sourceFocus.focus();
             else this.importEntry.focus();
         }
+    }
+
+    /** Presentation only: the editor stays mounted and the model retains drafts and pending previews. */
+    openDetails(): void {
+        this.setInspectionOpen(true, true);
+    }
+
+    private setInspectionOpen(open: boolean, focus = false): void {
+        if (open && !this.inspectionOpen) {
+            const active = document.activeElement;
+            this.inspectionReturnFocus = active instanceof HTMLElement && !this.inspection.contains(active) ? active : this.path;
+        }
+        this.inspectionOpen = open;
+        this.inspection.hidden = !open;
+        this.details.setAttribute('aria-expanded', String(open));
+        if (open) {
+            if (this.inspectionView === 'minimized') this.setInspectionView('compact');
+            if (this.stage.clientWidth < 1240 && this.sourceOpen && this.sourceView === 'expanded')
+                this.setSourceOpen(false);
+            if (focus) {
+                if (this.inspectionFocus?.isConnected && this.inspectionEditor.node.contains(this.inspectionFocus)) this.inspectionFocus.focus();
+                else this.inspection.focus();
+            }
+        } else if (this.inspection.contains(document.activeElement)) {
+            const target = this.inspectionReturnFocus;
+            if (target?.isConnected && !this.inspection.contains(target)) target.focus();
+            else this.path.focus();
+        }
+    }
+
+    private setInspectionView(view: 'expanded' | 'compact' | 'minimized'): void {
+        if (view === 'expanded' && this.stage.clientWidth < 1240 && this.sourceOpen)
+            this.setSourceOpen(false);
+        const focused = this.inspection.contains(document.activeElement);
+        const focusedEditor = this.inspectionEditor.node.contains(document.activeElement);
+        this.inspectionView = view;
+        this.inspection.dataset.state = view;
+        this.inspectionExpand.hidden = view === 'expanded';
+        this.inspectionCompact.hidden = view !== 'expanded';
+        this.inspectionMinimize.hidden = view === 'minimized';
+        if (focused && view === 'expanded') {
+            const editorFocus = this.inspectionFocus?.isConnected ? this.inspectionFocus :
+                this.inspectionEditor.node.querySelector<HTMLElement>('input:not(:disabled), textarea:not(:disabled), button');
+            editorFocus?.focus();
+        } else if (focused && (view === 'minimized' || focusedEditor ||
+            document.activeElement === this.inspectionCompact)) this.inspectionExpand.focus();
     }
 
     private setPoolOpen(open: boolean): void {
@@ -1187,11 +1289,18 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private select(id: string, focus = false): void {
         const node = this.projection?.nodes.find(candidate => candidate.id === id);
         if (!node) return;
+        if (id !== this.selectedId && (this.inspector.dirty || this.inspector.requiresApproval)) {
+            this.status.textContent = 'A Roadmap edit or approval is pending. Save or review it before selecting another checkpoint.';
+            this.setInspectionOpen(true);
+            return;
+        }
         if (this.promptWindow && this.promptWindow.stackId !== id) this.promptWindow = undefined;
         this.selectedId = id;
         this.schedulePresentation();
         if (node.taskSource) this.inspector.selectTask(node);
         else this.inspector.select(id);
+        this.setInspectionView('compact');
+        this.setInspectionOpen(true);
         this.render();
         if (focus) requestAnimationFrame(() => [...this.path.querySelectorAll<HTMLButtonElement>('button')]
             .find(button => button.dataset.checkpointId === id)?.focus());
@@ -1272,6 +1381,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     override dispose(): void { ++this.request; ++this.importSerial; ++this.createSerial;
         this.flushPresentation();
         if (this.createState) void this.service.cancelDraft(this.createState.handle).catch(() => undefined);
+        this.stageResize.disconnect();
         window.removeEventListener('focus', this.focusRecheck);
-        void this.service.observeLinkedDocument(undefined).catch(() => undefined); this.rootsListener.dispose(); this.modelListener(); super.dispose(); }
+        void this.service.observeLinkedDocument(undefined).catch(() => undefined); this.rootsListener.dispose(); this.modelListener();
+        this.inspectionEditor.dispose(); super.dispose(); }
 }

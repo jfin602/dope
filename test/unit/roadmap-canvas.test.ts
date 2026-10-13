@@ -56,6 +56,36 @@ test('one ordinary center tab, safe labels, recovery, semantic dark/light tokens
     assert.match(rules, /max-width: 480px/);
 });
 
+test('Details command and selection use one mounted inspector model in the canvas with safe overlay states', () => {
+    const module = read('packages/theia-extension/src/browser/frontend-module.ts');
+    const canvas = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
+    const inspector = read('packages/theia-extension/src/browser/roadmap-inspector-widget.ts');
+    const css = read('packages/theia-extension/src/browser/dope.css');
+    assert.match(canvas, /this\.inspectionEditor = new RoadmapInspectorWidget\(inspector\)/);
+    assert.match(canvas, /this\.stage\.append\(this\.path, this\.status, this\.importEntry, this\.inspection/);
+    assert.match(canvas, /this\.setInspectionView\('compact'\);\s*this\.setInspectionOpen\(true\)/);
+    assert.match(canvas, /this\.details\.onclick = \(\) => this\.openDetails\(\)/);
+    assert.match(module, /id: 'dope\.roadmap\.inspector'.*Show Roadmap Details/);
+    assert.match(module, /widget\.openDetails\(\)/);
+    assert.doesNotMatch(module, /RoadmapInspectorView/);
+    assert.match(module, /new RoadmapInspectorWidget\(context\.container\.get\(RoadmapInspectorModel\), false\)/);
+    assert.doesNotMatch(inspector, /AbstractViewContribution/);
+    assert.match(inspector, /this\.editable && !item\.readOnly && this\.model\.draft/);
+    assert.match(canvas, /this\.inspection\.onkeydown = event => \{ if \(event\.key === 'Escape'\)/);
+    assert.match(canvas, /this\.inspectionReturnFocus/);
+    assert.match(canvas, /this\.inspectionFocus/);
+    assert.match(canvas, /this\.inspectionExpand\.focus\(\)/);
+    assert.match(canvas, /else this\.path\.focus\(\)/);
+    assert.match(canvas, /this\.inspection\.hidden = !open/);
+    assert.match(canvas, /this\.inspection\.dataset\.state = view/);
+    assert.match(canvas, /this\.inspector\.dirty \|\| this\.inspector\.requiresApproval/);
+    assert.match(canvas, /this\.stage\.clientWidth < 1240/);
+    assert.match(canvas, /this\.setSourceOpen\(false\)/);
+    assert.match(css, /\.dope-roadmap-inspection\[data-state="compact"\]/);
+    assert.match(css, /\.dope-roadmap-inspection\[data-state="minimized"\]/);
+    assert.doesNotMatch(canvas, /openChatPanel|CHAT_PANEL_ID|ChatPanelWidget/);
+});
+
 test('all six status marks and semantic colors remain distinct from selection and keyboard focus', () => {
     const css = read('packages/theia-extension/src/browser/dope.css');
     const states: RoadmapStatus[] = ['green', 'active', 'not-green', 'waived', 'not-implemented', 'unknown'];

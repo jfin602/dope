@@ -90,7 +90,7 @@ test('store events refresh the selected detail and keep an in-progress draft', a
     assert.equal(model.index?.revision, 3);
 });
 
-test('errors stay visible, keyboard order is stable, and view never forces Chat placement', async () => {
+test('errors stay visible, keyboard order is stable, and the canvas editor never forces Chat placement', async () => {
     const state = { index: snapshot(), applied: 0, approved: false };
     const service = fake(state);
     service.preview = async () => { throw new Error('Stale planning revision'); };
@@ -101,10 +101,41 @@ test('errors stay visible, keyboard order is stable, and view never forces Chat 
     assert.equal(model.draft?.objective, 'Edited');
     assert.equal(roadmapNextId(['p1', 'p2'], 'p1', 'ArrowDown'), 'p2');
     const widget = readFileSync(resolve(import.meta.dirname, '../../packages/theia-extension/src/browser/roadmap-inspector-widget.ts'), 'utf8');
-    assert.match(widget, /area: 'left'/);
+    assert.doesNotMatch(widget, /AbstractViewContribution|area: 'left'/);
     assert.match(widget, /focus\(\)/);
     assert.match(widget, /role', this\.model\.error \? 'alert'/);
     assert.doesNotMatch(widget, /openChatPanel|activateWidget|CHAT_PANEL_ID/);
+});
+
+test('closing the editor can retain a pending preview, while explicit discard releases selection without a write', async () => {
+    const state = { index: snapshot(), applied: 0, approved: false };
+    const model = new RoadmapInspectorModel(fake(state));
+    model.setSnapshot(root, state.index); model.select('p1');
+    model.change('status', 'not-green');
+    await model.save();
+    assert.equal(model.requiresApproval, true);
+    assert.equal(model.draft?.status, 'not-green');
+    assert.equal(state.applied, 0);
+    model.discardEdit();
+    assert.equal(model.requiresApproval, false);
+    assert.equal(model.dirty, false);
+    assert.equal(model.draft?.status, 'unknown');
+    assert.equal(state.applied, 0);
+    const widget = readFileSync(resolve(import.meta.dirname, '../../packages/theia-extension/src/browser/roadmap-inspector-widget.ts'), 'utf8');
+    assert.match(widget, /Discard draft and preview/);
+    assert.match(widget, /this\.model\.discardEdit\(\)/);
+});
+
+test('a draft cannot grant Green without evidence authority', async () => {
+    const state = { index: snapshot(), applied: 0, approved: false };
+    const model = new RoadmapInspectorModel(fake(state));
+    model.setSnapshot(root, state.index); model.select('p1');
+    model.change('status', 'green');
+    await model.save();
+    assert.match(model.error ?? '', /require evidence authority/);
+    assert.equal(state.applied, 0);
+    assert.equal(model.requiresApproval, false);
+    assert.equal(model.draft?.status, 'green');
 });
 
 test('linked source edits use document authority and expose the exact line diff for approval', async () => {

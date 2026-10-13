@@ -1,19 +1,17 @@
-import { injectable } from '@theia/core/shared/inversify';
-import { AbstractViewContribution } from '@theia/core/lib/browser';
 import { BaseWidget, codicon } from '@theia/core/lib/browser/widgets/widget';
-import { CommandRegistry } from '@theia/core/lib/common';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 
 export const ROADMAP_INSPECTOR_ID = 'dope-roadmap-inspector';
+export const ROADMAP_CANVAS_INSPECTOR_ID = 'dope-roadmap-canvas-inspector';
 
 export class RoadmapInspectorWidget extends BaseWidget {
     private readonly content = document.createElement('div');
     private readonly off: () => void;
-    constructor(private readonly model: RoadmapInspectorModel) {
+    constructor(private readonly model: RoadmapInspectorModel, private readonly editable = true) {
         super();
-        this.id = ROADMAP_INSPECTOR_ID;
+        this.id = editable ? ROADMAP_CANVAS_INSPECTOR_ID : ROADMAP_INSPECTOR_ID;
         this.title.label = 'Roadmap';
-        this.title.caption = 'Roadmap details';
+        this.title.caption = 'Roadmap details in canvas';
         this.title.iconClass = codicon('milestone');
         this.title.closable = true;
         this.addClass('dope-roadmap-inspector');
@@ -77,7 +75,8 @@ export class RoadmapInspectorWidget extends BaseWidget {
         if (!item.links.length) links.append(this.element('p', 'None recorded.'));
         for (const link of item.links) links.append(this.element('p', `${link.owner} · ${link.targetId}${link.ownerRevision === undefined ? '' : ` · revision ${link.ownerRevision}`}`));
         this.content.append(heading, state, objective, evidence, dependencies, links);
-        if (!item.readOnly && this.model.draft) this.renderEditor(item.title);
+        if (this.editable && !item.readOnly && this.model.draft) this.renderEditor(item.title);
+        else if (!this.editable && !item.readOnly) this.content.append(this.element('p', 'Edit this checkpoint in Roadmap Details on the canvas.'));
         else this.content.append(this.element('p', 'This source checkpoint is read only.'));
         const feedback = this.element('p', this.model.error ?? (this.model.busy ? 'Checking Roadmap revision…' : ''));
         feedback.setAttribute('role', this.model.error ? 'alert' : 'status');
@@ -127,6 +126,11 @@ export class RoadmapInspectorWidget extends BaseWidget {
             approve.id = 'dope-roadmap-approve'; approve.disabled = this.model.busy;
             form.append(warning, approve);
         }
+        if (this.model.dirty || this.model.requiresApproval) {
+            const discard = this.button('Discard draft and preview', () => this.model.discardEdit());
+            discard.id = 'dope-roadmap-discard'; discard.disabled = this.model.busy;
+            form.append(discard);
+        }
         if (this.model.undo) {
             const undo = this.button('Undo last edit', () => void this.model.undoEdit());
             undo.id = 'dope-roadmap-undo'; undo.disabled = this.model.busy;
@@ -135,15 +139,4 @@ export class RoadmapInspectorWidget extends BaseWidget {
         this.content.append(form);
     }
     override dispose(): void { this.off(); super.dispose(); }
-}
-
-@injectable()
-export class RoadmapInspectorView extends AbstractViewContribution<RoadmapInspectorWidget> {
-    constructor() { super({ widgetId: ROADMAP_INSPECTOR_ID, widgetName: 'Roadmap', defaultWidgetOptions: { area: 'left', rank: 210 } }); }
-    show(): Promise<RoadmapInspectorWidget> { return this.openView({ activate: true }); }
-    override registerCommands(commands: CommandRegistry): void {
-        super.registerCommands(commands);
-        commands.registerCommand({ id: 'dope.roadmap.inspector', label: 'Dope: Show Roadmap Details' },
-            { execute: () => this.show() });
-    }
 }

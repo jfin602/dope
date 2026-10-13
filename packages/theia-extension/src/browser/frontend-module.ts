@@ -60,7 +60,7 @@ import { historyOwnerNavigation } from './history-owner-navigation';
 import { RoadmapCanvasWidget, ROADMAP_CANVAS_ID } from './roadmap-canvas-widget';
 import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
-import { RoadmapInspectorView, RoadmapInspectorWidget, ROADMAP_INSPECTOR_ID } from './roadmap-inspector-widget';
+import { RoadmapInspectorWidget, ROADMAP_INSPECTOR_ID } from './roadmap-inspector-widget';
 import type { RoadmapChange } from '@dope/project-intelligence/lib/node/roadmap-store';
 
 const modelInventoryChanged = new Emitter<void>();
@@ -177,7 +177,6 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         initialize: () => context.container.get(ThemeService).register(dopeDarkTheme),
     })).inSingletonScope();
     bindViewContribution(bind, SoftwareMapView);
-    bindViewContribution(bind, RoadmapInspectorView);
     bindViewContribution(bind, LeftChatLauncher);
     bindViewContribution(bind, RightChatLauncher);
     bindViewContribution(bind, LeftWorkLauncher);
@@ -225,6 +224,15 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             const widget = await manager.getOrCreateWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
             if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
             await shell.activateWidget(widget.id);
+        } }) })).inSingletonScope();
+    bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) =>
+        commands.registerCommand({ id: 'dope.roadmap.inspector', label: 'Dope: Show Roadmap Details' }, { execute: async () => {
+            const manager = context.container.get(WidgetManager);
+            const shell = context.container.get(ApplicationShell);
+            const widget = await manager.getOrCreateWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
+            if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
+            await shell.activateWidget(widget.id);
+            widget.openDetails();
         } }) })).inSingletonScope();
     const openMind = (context: { container: import('@theia/core/shared/inversify').interfaces.Context['container'] },
         id?: string, workspace?: string) => openProjectMindOwner(
@@ -330,7 +338,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             }) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_CANVAS_ID, createWidget: () =>
         new RoadmapCanvasWidget(context.container.get<RoadmapService>('RoadmapService'), context.container.get(WorkspaceService),
-            context.container.get(RoadmapInspectorModel), () => context.container.get(RoadmapInspectorView).show(),
+            context.container.get(RoadmapInspectorModel),
             (id, workspace) => openMind(context, id, workspace), workspace => {
                 const chats = new Map<string, string>();
                 for (const widget of context.container.get(WidgetManager).getWidgets(CHAT_PANEL_ID) as ChatPanelWidget[]) {
@@ -339,8 +347,9 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 }
                 return [...chats].map(([id, title]) => ({ id, title }));
             }, context.container.get(StorageService)) })).inSingletonScope();
+    // Saved pre-overlay workbench layouts may restore this sidebar. It shares the model but cannot edit.
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_INSPECTOR_ID, createWidget: () =>
-        new RoadmapInspectorWidget(context.container.get(RoadmapInspectorModel)) })).inSingletonScope();
+        new RoadmapInspectorWidget(context.container.get(RoadmapInspectorModel), false) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_REVIEW_ID, createWidget: () =>
         new SoftwareMapReviewWidget(context.container.get(SoftwareMapController), context.container.get(WorkspaceService),
             context.container.get(OpenerService), () => context.container.get(AICenterContribution).openFromSoftwareMapReview()) })).inSingletonScope();

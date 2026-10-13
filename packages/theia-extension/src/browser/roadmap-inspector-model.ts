@@ -139,6 +139,16 @@ export class RoadmapInspectorModel {
         this.emit();
     }
 
+    discardEdit(): void {
+        if (this.busy || (!this.dirty && !this.pending)) return;
+        ++this.serial;
+        this.pending = undefined;
+        this.dirty = false;
+        this.error = undefined;
+        this.resetDraft();
+        this.emit();
+    }
+
     async save(): Promise<void> {
         const item = this.selected, draft = this.draft, index = this.index, uri = this.projectUri;
         if (!item || !draft || !index || !uri || item.readOnly || this.busy) return;
