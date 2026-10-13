@@ -38,7 +38,7 @@ test('approved mapped patch preserves CRLF, unrelated bytes and evidence status'
     await assert.rejects(actions.apply(request, preview.token), /approval required/);
     assert.deepEqual(await readFile(file, 'utf8'), initial);
     const result = await actions.apply(request, preview.token, true);
-    assert.equal(result.revision, imported.revision + 1);
+    assert.equal(result.revision, imported.revision + 3); // prepared, document-written, settled index
     assert.equal(result.checkpoints[0].title, 'Product Phase 1 — Revised');
     assert.equal(result.checkpoints[0].status, 'not-green');
     assert.equal(result.checkpoints[1].status, 'not-green');
@@ -108,7 +108,9 @@ test('read-only source section and denied document directory cannot publish a ch
         await chmod(directory, 0o500);
         try { await assert.rejects(actions.apply(request, preview.token, true), /EACCES|EPERM/); }
         finally { await chmod(directory, 0o700); }
-        assert.equal((await store.read(root)).revision, imported.revision);
+        const pending = await store.read(root);
+        assert.equal(pending.revision, imported.revision + 1);
+        assert.equal(pending.linkedDocument?.syncState, 'pending-sync');
         assert.deepEqual(await readFile(file, 'utf8'), initial);
     });
 });

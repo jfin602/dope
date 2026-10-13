@@ -296,6 +296,9 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind<RoadmapService>('RoadmapService').toDynamicValue(context => ServiceConnectionProvider.createProxy<RoadmapService & RpcServer<RoadmapClient>>(
         context.container, roadmapServicePath, { notifyRoadmapChanged: (change: RoadmapChange) => {
             void context.container.get(RoadmapInspectorModel).remoteChange(change);
+        }, notifyLinkedDocumentChanged: (root: string, projectId: string) => {
+            void context.container.get(WidgetManager).getWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID)
+                .then(widget => widget?.linkedSourceChanged(root, projectId));
         } })).inSingletonScope();
     bind(RoadmapInspectorModel).toDynamicValue(context => new RoadmapInspectorModel(context.container.get<RoadmapService>('RoadmapService'))).inSingletonScope();
     bind(ChatPlanningSelection).toDynamicValue(context => new ChatPlanningSelection(context.container.get(RoadmapInspectorModel),

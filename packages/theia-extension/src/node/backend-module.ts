@@ -46,6 +46,7 @@ import type { AgentExecutionAdapter } from '@dope/agent-core';
 import { historyServicePath, historyFocusServicePath } from '@dope/contracts/lib/history-service';
 import { HistoryBackend } from './history-backend';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
+import { RoadmapLinkedObserver } from '@dope/project-intelligence/lib/node/roadmap-linked-observer';
 import { RoadmapOwnerLinks } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import { discoverRoadmapCandidates, previewRoadmapImport } from '@dope/project-intelligence/lib/node/roadmap-import';
 import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
@@ -85,8 +86,11 @@ export default new ContainerModule(bind => {
             const { actions, dispose } = createRoadmapActionRuntime(context.container.get(RoadmapStore),
                 () => new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex)));
             const handles = new Set<string>();
-            const off = context.container.get(RoadmapStore).onChange(change => client.notifyRoadmapChanged(change));
-            client.onDidCloseConnection(() => { off(); for (const handle of handles) actions.detach(handle); dispose(); });
+            const store = context.container.get(RoadmapStore);
+            const observer = new RoadmapLinkedObserver(root => store.read(root),
+                (root, projectId) => client.notifyLinkedDocumentChanged(root, projectId));
+            const off = store.onChange(change => client.notifyRoadmapChanged(change));
+            client.onDidCloseConnection(() => { off(); observer.dispose(); for (const handle of handles) actions.detach(handle); dispose(); });
             const backend: RoadmapService = {
                 read: async (uri) => context.container.get(RoadmapStore).read(await context.container.get(PlanningStore).root(uri)),
                 owners: async (uri) => new RoadmapOwnerLinks().list(await context.container.get(PlanningStore).root(uri)),
@@ -98,6 +102,7 @@ export default new ContainerModule(bind => {
                     .previewDocumentSync(await context.container.get(PlanningStore).root(uri)),
                 applyDocumentSync: async (uri, preview) => context.container.get(RoadmapStore)
                     .applyDocumentSync(await context.container.get(PlanningStore).root(uri), preview),
+                observeLinkedDocument: async uri => observer.observe(uri ? await context.container.get(PlanningStore).root(uri) : undefined),
                 attach: async (uri) => {
                     const result = await actions.attach(await context.container.get(PlanningStore).root(uri));
                     handles.add(result.projectHandle);

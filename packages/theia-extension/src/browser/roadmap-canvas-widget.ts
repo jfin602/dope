@@ -36,6 +36,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private projectUri?: string;
     private projection?: RoadmapProjection;
     private selectedId?: string;
+    private readonly focusRecheck = (): void => { if (!this.isDisposed && this.projectUri) void this.refresh(); };
 
     constructor(private readonly service: RoadmapService, private readonly workspaces: WorkspaceService,
         private readonly inspector: RoadmapInspectorModel, private readonly openInspector: () => Promise<unknown>,
@@ -77,6 +78,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.importEntry.setAttribute('aria-label', 'Roadmap setup');
         this.node.append(this.toolbar, this.status, this.importEntry, this.path, this.pools);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.refresh(); });
+        window.addEventListener('focus', this.focusRecheck);
         this.modelListener = inspector.onChange(() => {
             if (!this.projectUri || inspector.projectUri !== this.projectUri || !inspector.index) return;
             this.selectedId = inspector.selectedId;
@@ -88,6 +90,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     async refresh(): Promise<void> {
         const request = ++this.request;
+        try { await this.service.observeLinkedDocument(undefined); }
+        catch (error) { this.status.textContent = `Roadmap observation unavailable: ${String(error)}. Use Refresh to retry.`; return; }
+        if (this.isDisposed || request !== this.request) return;
         ++this.importSerial;
         this.importState = undefined;
         this.syncPreview = undefined;
@@ -122,8 +127,16 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 try {
                     const sync = await this.service.previewDocumentSync(projectUri);
                     if (this.isDisposed || request !== this.request || this.projectUri !== projectUri) return;
+                    if (sync.revision !== index.revision) {
+                        const recovered = await this.service.read(projectUri);
+                        if (this.isDisposed || request !== this.request || this.projectUri !== projectUri) return;
+                        this.inspector.setSnapshot(projectUri, recovered);
+                        this.projection = projectRoadmap(recovered, owners, { projectId: recovered.projectId, selectedId: this.selectedId });
+                        this.render();
+                    }
                     this.syncPreview = sync;
                     this.renderImportEntry();
+                    await this.service.observeLinkedDocument(projectUri);
                 } catch (error) {
                     if (this.isDisposed || request !== this.request || this.projectUri !== projectUri) return;
                     this.status.textContent = `Linked Markdown compare failed: ${String(error)}. Review the file and Refresh.`;
@@ -134,6 +147,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.status.textContent = `Roadmap unavailable: ${error instanceof Error ? error.message : 'Unable to read Roadmap'}. Use Refresh to retry.`;
             this.inspector.setSnapshot(undefined, undefined);
         }
+    }
+
+    linkedSourceChanged(root: string, projectId: string): void {
+        if (this.inspector.index?.projectRoot === root && this.inspector.index.projectId === projectId)
+            void this.refresh();
     }
 
     private render(): void {
@@ -492,5 +510,6 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.select(next, true);
     }
 
-    override dispose(): void { ++this.request; ++this.importSerial; this.rootsListener.dispose(); this.modelListener(); super.dispose(); }
+    override dispose(): void { ++this.request; ++this.importSerial; window.removeEventListener('focus', this.focusRecheck);
+        void this.service.observeLinkedDocument(undefined).catch(() => undefined); this.rootsListener.dispose(); this.modelListener(); super.dispose(); }
 }

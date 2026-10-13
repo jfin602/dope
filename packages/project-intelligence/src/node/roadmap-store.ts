@@ -50,6 +50,8 @@ export interface RoadmapLinkedDocument {
     sections: { sectionKey: string; checkpointId: string }[];
     lastSynced: { sourceHash: string; roadmapRevision: number; fields?: Omit<RoadmapMappedSection, 'line' | 'heading'>[] };
     syncState: 'synced' | 'source-changed' | 'conflict' | 'pending-sync' | 'missing';
+    pending?: { basisRevision: number; checkpointId: string; beforeHash: string; afterHash: string;
+        title: string; objective: string; order: number; prose?: string; outcome: 'prepared' | 'document-written' | 'conflict' };
 }
 export interface RoadmapIndex {
     schemaVersion: 1;
@@ -91,7 +93,9 @@ function link(value: unknown): value is RoadmapLink {
 function linkedDocument(value: unknown, raw: Record<string, unknown>, checkpoints: RoadmapCheckpoint[]): value is RoadmapLinkedDocument {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const item = value as Record<string, unknown>;
-    if (Object.keys(item).sort().join(',') !== 'lastSynced,path,projectId,projectRoot,sections,sourceHash,syncState' ||
+    if (Object.keys(item).sort().join(',') !== (item.pending === undefined ?
+        'lastSynced,path,projectId,projectRoot,sections,sourceHash,syncState' :
+        'lastSynced,path,pending,projectId,projectRoot,sections,sourceHash,syncState') ||
         item.projectRoot !== raw.projectRoot || item.projectId !== raw.projectId ||
         !text(item.path, 512) || !item.path || isAbsolute(item.path) || !/\.md$/i.test(item.path) ||
         item.path.includes('\\') || item.path.includes(':') ||
@@ -99,6 +103,20 @@ function linkedDocument(value: unknown, raw: Record<string, unknown>, checkpoint
         typeof item.sourceHash !== 'string' || !/^[a-f0-9]{64}$/.test(item.sourceHash) ||
         !['synced', 'source-changed', 'conflict', 'pending-sync', 'missing'].includes(item.syncState as string) ||
         !Array.isArray(item.sections) || item.sections.length > MAX_CHECKPOINTS) return false;
+    const pending = item.pending as Record<string, unknown> | undefined;
+    if ((item.syncState === 'pending-sync') !== !!pending) return false;
+    if (pending && (typeof pending !== 'object' || Array.isArray(pending) ||
+        Object.keys(pending).sort().join(',') !== (pending.prose === undefined ?
+            'afterHash,basisRevision,beforeHash,checkpointId,objective,order,outcome,title' :
+            'afterHash,basisRevision,beforeHash,checkpointId,objective,order,outcome,prose,title') ||
+        !revision(pending.basisRevision) || (raw.revision as number) - (pending.basisRevision as number) < 1 ||
+            (raw.revision as number) - (pending.basisRevision as number) > 3 ||
+        !id(pending.checkpointId) || !text(pending.title, 512) || !text(pending.objective, 8192) ||
+        !revision(pending.order) || pending.prose !== undefined && !text(pending.prose, 8192) ||
+        typeof pending.beforeHash !== 'string' || !/^[a-f0-9]{64}$/.test(pending.beforeHash) ||
+        typeof pending.afterHash !== 'string' || !/^[a-f0-9]{64}$/.test(pending.afterHash) ||
+        !['prepared', 'document-written', 'conflict'].includes(pending.outcome as string) ||
+        pending.beforeHash !== item.sourceHash || !checkpoints.some(checkpoint => (checkpoint as RoadmapCheckpoint).id === pending.checkpointId))) return false;
     const basis = item.lastSynced as Record<string, unknown> | undefined;
     if (!basis || typeof basis !== 'object' || Array.isArray(basis) ||
         Object.keys(basis).sort().join(',') !== (basis.fields === undefined ? 'roadmapRevision,sourceHash' : 'fields,roadmapRevision,sourceHash') ||
@@ -294,6 +312,7 @@ export class RoadmapStore {
         if (!revision(expectedRevision)) throw new Error('Invalid Roadmap revision');
         const result = await this.locked(root, async () => {
             const current = await this.read(root);
+            if (current.linkedDocument?.syncState === 'pending-sync') throw new Error('Pending linked Roadmap sync requires recovery');
             if (expectedProjectId && current.projectId !== expectedProjectId) throw new Error('Roadmap identity changed; reattach');
             if (current.revision !== expectedRevision) throw new Error(`Stale Roadmap revision; current ${current.revision}`);
             const { checkpoints, changedIds, linkedDocument: proposedLink } = await transform(current);
@@ -372,7 +391,75 @@ export class RoadmapStore {
     }
 
     async previewDocumentSync(root: string): Promise<RoadmapSyncPreview> {
+        await this.recoverDocumentSync(root);
         return previewRoadmapDocumentSync(root, await this.read(root));
+    }
+
+    /** Finish an approved edit after restart. Unknown source bytes are never overwritten. */
+    async recoverDocumentSync(root: string): Promise<RoadmapIndex> {
+        const result = await this.locked(root, async () => {
+            let current = await this.read(root);
+            const linked = current.linkedDocument;
+            const pending = linked?.pending;
+            if (!linked || !pending) return { snapshot: current, changedIds: [] as string[] };
+            const conflict = async (): Promise<RoadmapIndex> => {
+                if (pending.outcome === 'conflict') return current;
+                const next = parseRoadmapIndex({ ...current, revision: current.revision + 1,
+                    linkedDocument: { ...linked, pending: { ...pending, outcome: 'conflict' as const } } }, root);
+                await this.replace(root, next);
+                return next;
+            };
+            let mapped: Awaited<ReturnType<typeof readRoadmapMappedSections>>;
+            try { mapped = await readRoadmapMappedSections(root, linked); }
+            catch { return { snapshot: await conflict(), changedIds: [] as string[] }; }
+            if (mapped.diagnostics.length || mapped.sections.length !== linked.sections.length ||
+                ![pending.beforeHash, pending.afterHash].includes(mapped.hash))
+                return { snapshot: await conflict(), changedIds: [] as string[] };
+            if (mapped.hash === pending.beforeHash) {
+                if (pending.outcome === 'conflict') return { snapshot: current, changedIds: [] as string[] };
+                const patch = await planRoadmapDocumentPatch(root, { ...current,
+                    linkedDocument: { ...linked, syncState: 'synced', pending: undefined } }, {
+                    checkpointId: pending.checkpointId, sourceHash: pending.beforeHash,
+                    ...(current.checkpoints.find(item => item.id === pending.checkpointId)?.title !== pending.title ? { title: pending.title } : {}),
+                    ...(current.checkpoints.find(item => item.id === pending.checkpointId)?.objective !== pending.objective ? { objective: pending.objective } : {}),
+                    ...(current.checkpoints.find(item => item.id === pending.checkpointId)?.order !== pending.order ? { order: pending.order } : {}),
+                    ...(pending.prose !== undefined ? { prose: pending.prose } : {})
+                }).catch(() => undefined);
+                if (!patch || patch.afterHash !== pending.afterHash)
+                    return { snapshot: await conflict(), changedIds: [] as string[] };
+                try { await publishRoadmapDocumentPatch(root, patch); }
+                catch { return { snapshot: await conflict(), changedIds: [] as string[] }; }
+                mapped = await readRoadmapMappedSections(root, linked);
+                if (mapped.hash !== pending.afterHash || mapped.diagnostics.length)
+                    return { snapshot: await conflict(), changedIds: [] as string[] };
+            }
+            const target = mapped.sections.find(section => section.checkpointId === pending.checkpointId);
+            if (!target || target.title !== pending.title || target.objective !== pending.objective ||
+                target.order !== pending.order || pending.prose !== undefined && target.prose !== pending.prose)
+                return { snapshot: await conflict(), changedIds: [] as string[] };
+            const byId = new Map(mapped.sections.map(section => [section.checkpointId, section]));
+            const checkpoints = current.checkpoints.map(item => {
+                if (item.source?.path !== linked.path) return item;
+                const section = byId.get(item.id);
+                if (!section) return item;
+                return { ...item, title: item.id === pending.checkpointId ? pending.title : item.title,
+                    objective: item.id === pending.checkpointId ? pending.objective : item.objective,
+                    order: item.id === pending.checkpointId ? pending.order : item.order,
+                    source: { ...item.source, sha256: pending.afterHash, line: section.line, text: section.heading } };
+            });
+            const nextRevision = current.revision + 1;
+            const { pending: _resolved, ...settledLink } = linked;
+            const next = parseRoadmapIndex({ ...current, revision: nextRevision, checkpoints,
+                linkedDocument: { ...settledLink, sourceHash: pending.afterHash, syncState: 'synced',
+                    lastSynced: { sourceHash: pending.afterHash, roadmapRevision: nextRevision,
+                        fields: mapped.sections.map(({ line, heading, ...field }) => field) } } }, root);
+            await this.replace(root, next);
+            return { snapshot: next, changedIds: checkpoints.filter((item, i) =>
+                JSON.stringify(item) !== JSON.stringify(current.checkpoints[i])).map(item => item.id) };
+        });
+        if (result.changedIds.length) this.publish({ root, projectId: result.snapshot.projectId,
+            revision: result.snapshot.revision, changedIds: result.changedIds });
+        return result.snapshot;
     }
 
     /** Explicit reconciliation; the preview is re-created under the owner lock before any index write. */
@@ -474,12 +561,15 @@ export class RoadmapStore {
         });
     }
 
-    /** The document and index have separate atomic writes. A failed second write is an uncertain sync outcome. */
+    /** The document and index have separate atomic writes; persist intent before touching the document. */
     async transactDocument(root: string, expectedRevision: number, expectedProjectId: string,
         transform: (current: RoadmapIndex) => Promise<{ next: RoadmapIndex; patch: RoadmapDocumentPatch }>): Promise<RoadmapIndex> {
-        let documentPublished = false;
-        try {
-            return await this.commit(root, expectedRevision, expectedProjectId, async current => {
+        const prepared = await this.locked(root, async () => {
+                const current = await this.read(root);
+                if (current.projectId !== expectedProjectId || current.revision !== expectedRevision)
+                    throw new Error('Stale Roadmap revision or project identity');
+                if (current.linkedDocument?.syncState === 'pending-sync')
+                    throw new Error('Pending linked Roadmap sync requires recovery');
                 const { next, patch } = await transform(current);
                 if (!current.linkedDocument || current.linkedDocument.syncState !== 'synced' ||
                     patch.path !== current.linkedDocument.path || patch.beforeHash !== current.linkedDocument.sourceHash ||
@@ -516,21 +606,25 @@ export class RoadmapStore {
                 if (!changedIds.includes(patch.checkpointId) || changedIds.some(id =>
                     !current.linkedDocument!.sections.some(section => section.checkpointId === id)))
                     throw new Error('Invalid linked Roadmap change set');
-                await publishRoadmapDocumentPatch(root, patch);
-                documentPublished = true;
-                const mapped = await readRoadmapMappedSections(root, current.linkedDocument!);
-                if (mapped.hash !== patch.afterHash || mapped.diagnostics.length)
-                    throw new Error('Linked Roadmap mapping changed after document publication');
-                return { checkpoints: next.checkpoints, changedIds, linkedDocument: {
-                    ...current.linkedDocument, sourceHash: patch.afterHash,
-                    syncState: 'synced' as const,
-                    lastSynced: { sourceHash: patch.afterHash, roadmapRevision: current.revision + 1,
-                        fields: mapped.sections.map(({ line, heading, ...field }) => field) }
-                } };
-            });
-        } catch (error) {
-            if (documentPublished) throw new Error(`Linked Roadmap sync outcome uncertain; re-read before retrying: ${String(error)}`);
-            throw error;
-        }
+                const marker = parseRoadmapIndex({ ...current, revision: current.revision + 1,
+                    linkedDocument: { ...current.linkedDocument, syncState: 'pending-sync',
+                        pending: { basisRevision: current.revision, checkpointId: patch.checkpointId,
+                            beforeHash: patch.beforeHash, afterHash: patch.afterHash,
+                            title: target.title, objective: target.objective, order: target.order,
+                            ...(patch.prose !== undefined ? { prose: patch.prose } : {}),
+                            outcome: 'prepared' } } }, root);
+                await this.replace(root, marker);
+                try { await publishRoadmapDocumentPatch(root, patch); }
+                catch (error) { throw new Error(`Linked Roadmap pending sync; recover before retrying: ${String(error)}`); }
+                const written = parseRoadmapIndex({ ...marker, revision: marker.revision + 1,
+                    linkedDocument: { ...marker.linkedDocument, pending: { ...marker.linkedDocument!.pending!, outcome: 'document-written' } } }, root);
+                await this.replace(root, written);
+                return { marker, changedIds };
+        });
+        const recovered = await this.recoverDocumentSync(root);
+        if (recovered.linkedDocument?.syncState !== 'synced' ||
+            recovered.revision <= prepared.marker.revision)
+            throw new Error('Linked Roadmap pending sync; review recovery before retrying');
+        return recovered;
     }
 }

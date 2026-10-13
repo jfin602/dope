@@ -5,7 +5,7 @@ import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/proj
 import type { RoadmapSyncPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 
 export const roadmapServicePath = '/services/dope/roadmap';
-export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): void }
+export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): void; notifyLinkedDocumentChanged(root: string, projectId: string): void }
 
 /** Roadmap reads and a thin RPC bridge to Dope-owned ProjectPlanningActions. */
 export interface RoadmapService {
@@ -16,6 +16,7 @@ export interface RoadmapService {
     acceptImport(projectUri: string, expectedRevision: number, expectedProjectId: string, preview: RoadmapImportPreview): Promise<RoadmapIndex>;
     previewDocumentSync(projectUri: string): Promise<RoadmapSyncPreview>;
     applyDocumentSync(projectUri: string, preview: RoadmapSyncPreview): Promise<RoadmapIndex>;
+    observeLinkedDocument(projectUri?: string): Promise<void>;
     attach(projectUri: string): Promise<{ projectHandle: string; snapshot: RoadmapIndex }>;
     detach(projectHandle: string): Promise<void>;
     preview(request: PlanningActionRequest): Promise<PlanningActionPreview>;
