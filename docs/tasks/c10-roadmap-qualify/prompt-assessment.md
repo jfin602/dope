@@ -9,7 +9,7 @@
 ## Source/evidence reality
 
 - Real local Qwen `qwen3-coder-30b-a3b-instruct@q3_k_l`, 4,096 measured total tokens, completed two turns. First lacked nested action type; second supplied `type: edit` for linked Markdown, which Dope correctly rejected as needing `document-edit`. No accepted preview, human approval, durable model change or fresh NEXT turn. `chat-context-composer.ts` already says `document-edit`, so generic instruction reiteration alone cannot solve this.
-- `packages/theia-extension/src/node/roadmap-local-model.ts` `localPlanningJson` currently shape-checks outer proposal without rigorously checking the nested action before accepting a completed local response. Its conservative byte-based 4,096-budget path can reject verbose contexts before inference; `chat-backend.ts` uses the existing Chat lease/proposal/approval service.
+- `packages/theia-extension/src/node/roadmap-local-model.ts` `localPlanningJson` currently shape-checks outer proposal without rigorously checking the nested action before accepting a completed local response. Its observed 4,096 hard cap and conservative byte-based budget can reject requests even when a larger local model is loaded; `chat-backend.ts` uses the existing Chat lease/proposal/approval service.
 - `packages/project-intelligence/src/node/roadmap-document-patch.ts` only patches supported unambiguous `Objective:`, `Order:`, `Prose:` labels. Dope's own longform `docs/roadmap/mvp-roadmap.md` phase sections have no such `Objective:` mapping; even correct `document-edit` JSON cannot guarantee an edit there. An eligibility/capability check, and a positive editable fixture, are required. No arbitrary narrative rewrite.
 - P18 integration explicitly observed `relink-needed` on moved source without a relink action; `roadmap-document-sync.ts` and `roadmap-store.ts` have conflict/pending-sync machinery with fault injection tests, but live relink/conflict/crash is not qualified.
 - `roadmap-greenfield.ts` has approved previews, new file creation and draft Chat binding; the P19 browser only saw Create Manually and Plan with Chat, not a completed accepted greenfield. `chat-panel-controller.ts` had a one-off lease/restart problem; root cause is unproven.
@@ -20,20 +20,26 @@
 | Prompt | One coherent task | Tier | Model | Rule |
 | --- | --- | --- | --- | --- |
 | P1 | Source-aware, compact local planning intent contract, nested strict validation and editable-field capabilities | T2 | GPT-6 Sol High | No direct model write |
-| P2 | Measured 4,096-total-token compact context and NEXT-turn freshness | T2 | GPT-6 Sol High | No hosted fallback |
+| P2 | Adaptive verified-capacity context/output budgeting (16K/32K/64K) and NEXT-turn freshness | T2 | GPT-6 Sol High | No hosted fallback or fixed 4K cap |
 | P3 | Explicit secure moved-document relink | T2 | GPT-6 Sol High | No overwrite/dual source |
 | P4 | Focused conflict/pending-sync/crash reproduction, narrow evidence-backed repair | T2 | GPT-6 Sol High | Do not invent defects |
 | P5 | Greenfield manual and existing-Chat UI completion / narrow repair | T2 | GPT-6 Sol High | No second Chat |
 | P6 | Reproduce saved Chat lease/restart/stream issue and guard or repair narrowly | T2 | GPT-6 Sol High | No parallel lease owner |
 | P7 | Focused canvas/gesture/accessibility/editor navigation regressions | T1 | GPT-6 Sol Medium | No broad UI redesign |
 | P8 | One cross-owner/adversarial integration gate and test registration | T2 | GPT-6 Sol High | No aggregate |
-| P9 | **Sole manual direct T3 final qualification/closeout** | T3 | GPT-6 Sol High | Final exact source |
+| P9 | **Sole manual T3: 16K/32K/64K comparison, evidence-based default and full closeout** | T3 | GPT-6 Sol High | Final exact source |
 
-P1 before P2 because context/intent agree on allowed operations. P3/P4 are owner-file integrity before wide UI acceptance. P5/P6/P7 are reproduction-first: **Evidence Gap is not proof of a source bug**. P8 integrates all; P9 alone qualifies live behavior and final check.
+P1 before P2 because context/intent agree on allowed operations. P3/P4 are owner-file integrity before wide UI acceptance. P5/P6/P7 are reproduction-first: **Evidence Gap is not proof of a source bug**. P8 integrates all; P9 alone qualifies live behavior, chooses the best measured 16K/32K/64K profile or records an unresolved decision, and runs the final check. Do not preselect a default in P2; retain 4K only as optional narrow stress.
 
-## Mandatory qualification-instrumentation preflight
+## Mandatory P9 qualification instrumentation
 
-**Before running P1**, operator demonstrates a direct native Electron window can be controlled/captured (not merely launched or built), browser input and keyboard/touch-equivalent gesture capture works, and relevant browser/backend/renderer/Electron/child process/network observation can be attributed to a *successful* local inference. Record concrete commands/observation method, OS environment and limits. Missing capability blocks a full Green claim early and must not silently change approved acceptance.
+The final **P9 T3** operator must demonstrate a controllable/capturable native Electron window (not just a process or build), browser inputs and keyboard/touch-equivalent gestures, and browser/backend/renderer/Electron/child-process/network observation during successful local inference. Record methods, OS environment and limits. Missing capabilities block the relevant Green claim, **not** P1–P8 source implementation. Keep the actual live gates unchanged.
+
+## Adaptive-context qualification questions
+
+- Compare verified **16,384 / 32,768 / 65,536** loaded tokens using the same Qwen model, quantization and comparable runtime/offload settings; do not infer loaded context from model name. When a profile cannot be loaded or measured, record the limitation rather than asserting equivalence.
+- Compare simple approved edits, Phase-10-sized multi-checkpoint comprehension, post-approval next-turn freshness, extended Chat continuity, invalid/stale denial, response/first-token latency, actual or estimated usage, RAM/memory pressure and repeated-run stability.
+- P2 implements capability-derived budgets and separate output-token/JSON-byte limits with an optional 4K stress regression. P9 decides on evidence: **smallest reliably sufficient** profile, 64K only for material gains over 32K; absent comparative proof means **default not yet determined**.
 
 ## Preserved behavior and non-goals
 

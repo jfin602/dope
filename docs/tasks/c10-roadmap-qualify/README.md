@@ -10,14 +10,18 @@
 | Prompt | Responsibility | Tier | Model | Browser |
 | --- | --- | --- | --- | --- |
 | [P1 — Intent contract](P1-local-intent-contract.txt) | Compact source-aware model intent, nested strict validation, editable capabilities | T2 | GPT-6 Sol High | no |
-| [P2 — Local context](P2-local-context-budget.txt) | Bounded 4,096-token packet and NEXT-turn refresh | T2 | GPT-6 Sol High | no |
+| [P2 — Local context](P2-local-context-budget.txt) | Adaptive measured context, bounded output and NEXT-turn refresh | T2 | GPT-6 Sol High | no |
 | [P3 — Relink](P3-linked-document-relink.txt) | Explicit safe moved-file relink | T2 | GPT-6 Sol High | no |
 | [P4 — Recovery](P4-document-recovery.txt) | Conflict/crash fault replay and bounded repair | T2 | GPT-6 Sol High | no |
 | [P5 — Greenfield](P5-greenfield-completion.txt) | Manual and saved Chat greenfield acceptance | T2 | GPT-6 Sol High | no |
 | [P6 — Chat lease](P6-chat-lease-restoration.txt) | Reproduce/recover Chat lease across restart | T2 | GPT-6 Sol High | no |
 | [P7 — Spatial UI](P7-roadmap-ui-gates.txt) | Touch/keyboard/prompt navigation and layout gates | T1 | GPT-6 Sol Medium | no |
 | [P8 — Integration](P8-qualification-integration.txt) | Cross-owner/adversarial regression integration | T2 | GPT-6 Sol High | no |
-| [P9 — Final closeout](P9-roadmap-qualification-closeout.txt) | **Manual actual browser/native Electron/local-model/egress qualification** | T3 | GPT-6 Sol High | **yes** |
+| [P9 — Final closeout](P9-roadmap-qualification-closeout.txt) | **Manual browser/native Electron/local-model 16K/32K/64K comparison/egress qualification** | T3 | GPT-6 Sol High | **yes** |
+
+## Adaptive local context — default chosen in P9
+
+P2 removes the fixed 4,096-total-token ceiling from local Roadmap planning and uses the verified loaded model context with task-sized context, consistent preview/send/retry accounting, explicit omission diagnostics and bounded JSON output separately from reserved generation tokens. P2 does **not** select a permanent 16K/32K/64K default. P9 compares the same actual local model/quantization/runtime at loaded **16K, 32K and 64K** across real narrow/large/multi-turn tasks, latency, memory and stability; record limitations and choose the smallest reliably sufficient profile only after measuring. 4K is optional narrow compatibility stress, neither a production maximum nor a full-workflow requirement. Missing comparisons remain an evidence gap, not a fabricated winner. Preserve real local-only and approval/security boundaries.
 
 ## Execution preflight
 
