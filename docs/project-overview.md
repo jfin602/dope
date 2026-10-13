@@ -2,6 +2,8 @@
 
 Status: INITIAL PRODUCT CONTRACT
 
+**2026-10-13 Phase 10 next correction:** The `c10-roadmap-qualify` source-aware intent, linked relink/recovery and native GUI/egress qualification design is approved with **nine prompts authored** (`docs/tasks/c10-roadmap-qualify/`). It is **NOT OWNER-ACTIVATED, NOT IMPLEMENTED and NOT QUALIFIED**. P19 `c10-roadmap-create-sync` remains NOT GREEN at `71d91ef`, earlier P16 remains NOT GREEN; the package stays `0.10.16`, Phase 10 not owner-closed, Phases 11/12 inactive. No implementation/GUI test has been run as part of prompt authoring.
+
 Current correction gate (2026-10-13): `c10-roadmap-create-sync` P1–P18 is implemented at unchanged `0.10.16`; P19 is **Not Green** at exact product source `71d91efb3668e57816bb031f82ab309acea17cfc` despite a passing 671/671 aggregate. Direct browser import, linked external reconciliation and prompt navigation were observed; model approval/persistence, greenfield/conflict recovery, full authority/egress and native Electron GUI remain unqualified. See `docs/tasks/c10-roadmap-create-sync/closeout.md`. Phase 10 is not owner-closed; Phase 11/12 are inactive. The P16 paragraph below is historical.
 
 Current implementation gate (2026-10-12): Phase 10 P16 is **Not Green** at committed `0.10.16` source `27ab84e`; see `docs/tasks/p10/closeout.md`. ADR 0036 remains authority; its linked Roadmap creation/sync amendment is **design-approved only**. The real Roadmap import/create and local Chat planning gates remain blocked, and historical gate-truth, authority and direct Electron evidence need repair. Phase 10 is not owner-closed; Phase 11/12 are inactive.
