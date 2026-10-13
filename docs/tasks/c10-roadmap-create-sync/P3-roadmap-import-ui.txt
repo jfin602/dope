@@ -1,0 +1,33 @@
+TASK: Correction 10 / P3 — Expose Roadmap import and creation entry
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 including linked-document/runner/canvas amendments, docs/planning/p10/phase-10-plan.md, this correction assessment/plan/README and prior P16 closeout. Confirm separately approved correction activation before mutation, exact coherent unchanged 0.10.16 manifests/internal pins, actual HEAD and safely clean or explicitly accepted dirty tree; protect the reported unrelated checkout deletions. Inspect actual owner APIs/tests, not assumed paths. No reset, silent stash, version bump, dependency churn or manual agent commits.
+
+INSPECT
+packages/theia-extension/src/browser/roadmap-canvas-widget.ts, roadmap-inspector-model.ts, current RoadmapService service/backend/front-end wiring, test/unit/roadmap-canvas.test.ts and current ADR 0016 UI token rules.
+
+IMPLEMENT
+Replace the dead-end 'No Roadmap index yet' state with a visible Import Roadmap, Plan with Chat and Create Manually entry; implement the existing-file branch now. Discover/choose project Markdown candidates from P1, show import preview with counts/unsupported/Not Green diagnostics, accept explicitly using P2's revision-safe binding and import operation, and show linked path/status on success. Cancel/unsupported/foreign/stale cases make no writes. Do not auto-launch, relocate or clone existing Chat and do not build the full greenfield flow (P8). Preserve left inspector, normal Theia editor tab and focus/keyboard/narrow usability.
+
+PRESERVE
+One existing saved ChatPanel across all docks; one validated ProjectPlanningActions authority; linked Markdown document owns supported mapped prose, .dope Roadmap owns IDs/links, other owners and historical Not Green unchanged. No model filesystem/process/Git/MCP/agent grant, no automatic hosted fallback, no hidden status Green or implicit Work run. Use current restrained dark-orange themes for affected UI.
+
+VALIDATION — T1
+Run node --test test/unit/roadmap-canvas.test.ts and focused new test/unit/roadmap-import-ui.test.ts, building @dope/theia-extension only if the chosen tests import built lib. Source/string tests may need no build. Include no-index action, cancel, preview, stale rejection, keyboard and Chat-no-hijack. git diff --check.
+Ordinary implementation plus checks target <=8 minutes (10-minute soft, 15-minute hard). No routine npm run check, npm test, full builds, AppImage, GUI or release qualification; P17/P18 own those gates. If a mandatory security/safety test cannot pass, report a blocker instead of proceeding unsafely.
+
+DEFER
+P7/P8 own greenfield backend/UI, P13 owns spatial canvas. Leave current list presentation temporary.
+
+DONE WHEN
+The single owned seam works with focused evidence and compatibility, source/authority preservation is proved, and the next prompt may build safely. Runner owns checkpoint commits; do not commit within the implementation agent.
+
+FINAL RESPONSE
+Report source/HEAD, exact changed files, focused tests/builds actually run, unchanged version, risks and the next prompt.
