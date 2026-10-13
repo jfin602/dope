@@ -1,0 +1,33 @@
+TASK: Correction 10 / P16 — Open a prompt source from its checkpoint safely
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 (including linked-document and runner/canvas amendments), ADR 0016, docs/planning/p10/phase-10-plan.md, docs/tasks/p10/closeout.md and this correction README/assessment/plan. Confirm explicit owner correction activation, actual Git HEAD/ancestry, exactly coherent 0.10.16 manifests/internal pins, and a clean or deliberately approved dirty tree; protect unrelated pre-existing deletions/unstaged work. Do not reset, unapproved overwrite, version bump, change yarn.lock/unrelated deps or add root package-lock. Runner owns P1–P18 commits; do not manually commit within agent work.
+
+INSPECT
+P11 runner metadata verified in-root file refs, P12 prompt nodes, P13–P15 canvas event routing, RoadmapInspectorModel, physical-map-widget.ts Theia OpenerService/open and existing Theia editor URI patterns.
+
+IMPLEMENT
+Single click selects prompt checkpoint and updates existing left inspector without file open. Double-click an individual prompt node opens the exact validated .txt file via ordinary Theia editor; focused prompt Enter and accessible Open Prompt action in inspector do the same. Verify project root/path, source fingerprint/renamed target and symlink/outside-root rejection at open time; show relink/broken-source feedback instead of using a guessed stale path. Keep phase/correction node double-click semantics sensible (focus/expand, not execution). Neither click, double-click nor Enter calls Codex runner, AgentTask/Work Start, Chat, shell or any file mutation. Preserve selection when editor opens.
+
+PRESERVE
+One normal saved Chat system with arbitrary left/right/center/bottom placement; validated ProjectPlanningActions ownership and real human approval; linked Markdown mapped prose document-owned, .dope identities/links and presentation separate, task files independent runner-owned definitions. Do not rewrite Project Mind/Planning Maps/Architecture/History/Work or historical P16 failures. No ordinary Chat shell/filesystem/Git/MCP/agent grants or hidden hosted fallback; no false Green or automatic prompt execution. Preserve restrained dark-orange theme and keyboard/touch accessibility.
+
+VALIDATION — T1
+Run node --test test/unit/roadmap-canvas.test.ts and new test/unit/roadmap-prompt-open.test.ts, with changed extension compiled only if chosen tests require lib. Cover click vs double-click vs Enter, source opener exact path, stale/moved/foreign/symlink denial, inspector action, keyboard focus and NO work run; git diff --check.
+Ordinary implementation+focused validation target <=8 minutes, 10-minute soft / 15-minute hard. T2 cross-owner security evidence can justify bounded extra time but cannot skip safeguards. Compile only changed packages if selected tests need fresh lib output; no routine npm run check, full build, AppImage, real GUI or provider calls before P19. Report blockers instead of claiming unsupported Green.
+
+DEFER
+P18 handles cross-owner work/open regressions, P19 real GUI; never make source double-click an implicit execution grant.
+
+DONE WHEN
+One coherent seam and the smallest required focused checks pass at unchanged 0.10.16, preserving original user work, with a safe handoff to the next prompt.
+
+FINAL RESPONSE
+Report changed files, focused tests/builds actually observed, unchanged version, security/UX boundaries and next prompt. Runner owns commits; do not self-commit.
