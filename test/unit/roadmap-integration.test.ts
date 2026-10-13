@@ -19,7 +19,7 @@ const basis = { architectureRevision: 1, architectureFingerprint: 'architecture'
     physicalInputFingerprint: 'physical', physicalGeneration: 7 };
 const proposal = (projectId: string, ownerRevision: number, id: string, objective: string) =>
     JSON.stringify({ type: 'roadmap-proposal', projectId, ownerRevision,
-        action: { type: 'edit', id, objective } });
+        action: { type: 'document-edit', id, objective } });
 
 test('imported Roadmap, original owners, manual inspector, Planning Map and saved Chat share guarded authority', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-integration-'));
@@ -56,7 +56,7 @@ test('imported Roadmap, original owners, manual inspector, Planning Map and save
         undefined, undefined, runtime.actions);
     try {
         await mkdir(join(root, 'docs/roadmap'), { recursive: true });
-        const markdown = '# Roadmap\n\n## Product Phase 10 — Planning\nStatus: **NOT IMPLEMENTED**\n';
+        const markdown = '# Roadmap\n\n## Product Phase 10 — Planning\nStatus: **NOT IMPLEMENTED**\nObjective: Original objective\n';
         await writeFile(join(root, 'docs/roadmap/mvp-roadmap.md'), markdown);
         await writeFile(join(root, 'known-issues.md'), '# Known Issues\n\n## Open Issues\n\n### UBGG — 2026-10-12 — Real issue\n\n- **Status:** Open\n- Original issue\n');
         const now = '2026-10-12T12:00:00.000Z';
@@ -107,6 +107,8 @@ test('imported Roadmap, original owners, manual inspector, Planning Map and save
         inspector.select(checkpoint.id);
         inspector.change('objective', 'Manual objective');
         await inspector.save();
+        assert.equal(inspector.requiresApproval, true);
+        await inspector.approve();
         assert.equal(inspector.error, undefined);
         index = await roadmap.read(root);
         assert.equal(index.checkpoints[0].objective, 'Manual objective');
@@ -125,11 +127,12 @@ test('imported Roadmap, original owners, manual inspector, Planning Map and save
         const lease = await backend.claim({ projectHandle: attached.projectHandle, chatId, ownerId: 'panel' });
         assert.equal(lease.acquired, true);
         if (!lease.acquired) return;
-        const context = (revision: number) => [{ kind: 'roadmap-checkpoint' as const, id: checkpoint.id,
-            projectId: index.projectId, ownerRevision: revision, sourceHash: checkpoint.source!.sha256 }];
-        const turn = (revision: number) => backend.runTurn({ projectHandle: attached.projectHandle,
+        const context = async (revision: number) => [{ kind: 'roadmap-checkpoint' as const, id: checkpoint.id,
+            projectId: index.projectId, ownerRevision: revision,
+            sourceHash: (await roadmap.read(root)).checkpoints.find(item => item.id === checkpoint.id)!.source!.sha256 }];
+        const turn = async (revision: number) => backend.runTurn({ projectHandle: attached.projectHandle,
             chatId, leaseToken: lease.token, selectedModel: { connectionId: 'local', modelId: 'short' },
-            content: 'Plan one step', context: context(revision) });
+            content: 'Plan one step', context: await context(revision) });
         outputs.push(proposal(index.projectId, index.revision, checkpoint.id, 'AI objective'));
         const pending = (await turn(index.revision)).proposal;
         assert.ok(pending);
@@ -141,12 +144,13 @@ test('imported Roadmap, original owners, manual inspector, Planning Map and save
         assert.ok(stale);
         inspector.change('objective', 'Second manual objective');
         await inspector.save();
+        await inspector.approve();
         index = await roadmap.read(root);
         await assert.rejects(backend.decidePlanningProposal(attached.projectHandle, chatId, lease.token, stale.id, true), /Stale/);
         await assert.rejects(turn(index.revision - 1), /Stale or foreign Roadmap context/);
         await assert.rejects(backend.runTurn({ projectHandle: attached.projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'short' }, content: 'Foreign',
-            context: [{ ...context(index.revision)[0], projectId: 'foreign' }] }), /Stale or foreign Roadmap context/);
+            context: [{ ...(await context(index.revision))[0], projectId: 'foreign' }] }), /Stale or foreign Roadmap context/);
         outputs.push(proposal(index.projectId, index.revision, checkpoint.id, 'Approved AI objective'));
         const fresh = (await turn(index.revision)).proposal;
         assert.ok(fresh);
@@ -166,9 +170,11 @@ test('imported Roadmap, original owners, manual inspector, Planning Map and save
         await assert.rejects(turn(index.revision), /Stale Planning Map basis/);
         assert.equal(calls, 4);
         await assert.rejects(runtime.actions.preview({ ...linkRequest, expectedRevision: index.revision,
+            sourceHashes: { [checkpoint.id]: index.checkpoints[0].source!.sha256 },
             actions: [{ type: 'link', id: checkpoint.id,
                 link: { ...mapLink, targetId: 'foreign-map' } }] }), /Foreign or unresolved/);
-        assert.deepEqual(await readFile(join(root, 'docs/roadmap/mvp-roadmap.md')), markdownBefore);
+        assert.notDeepEqual(await readFile(join(root, 'docs/roadmap/mvp-roadmap.md')), markdownBefore);
+        assert.match(await readFile(join(root, 'docs/roadmap/mvp-roadmap.md'), 'utf8'), /Objective: Approved AI objective/);
         assert.deepEqual(await readFile(join(root, '.dope/project-mind.json')), mindBefore);
         assert.deepEqual(await readFile(join(root, 'known-issues.md')), issueBefore);
         assert.deepEqual(await readFile(join(root, '.dope/planning-maps.json')), mapBefore);

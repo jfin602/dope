@@ -546,8 +546,9 @@ export class RoadmapStore {
                     return { snapshot: await conflict(), changedIds: [] as string[] };
             }
             const target = mapped.sections.find(section => section.checkpointId === pending.checkpointId);
+            const priorOrder = current.checkpoints.find(item => item.id === pending.checkpointId)?.order;
             if (!target || target.title !== pending.title || target.objective !== pending.objective ||
-                target.order !== pending.order || pending.prose !== undefined && target.prose !== pending.prose)
+                (target.order ?? priorOrder) !== pending.order || pending.prose !== undefined && target.prose !== pending.prose)
                 return { snapshot: await conflict(), changedIds: [] as string[] };
             const byId = new Map(mapped.sections.map(section => [section.checkpointId, section]));
             const checkpoints = current.checkpoints.map(item => {

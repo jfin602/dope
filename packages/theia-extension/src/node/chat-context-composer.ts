@@ -15,7 +15,7 @@ import { RoadmapStore, type RoadmapCheckpoint, type RoadmapLink } from '@dope/pr
 import type { GroundingResult } from './chat-project-grounder';
 
 export const GROUNDED_CHAT_INSTRUCTION = 'Project facts are verified only when supported by the supplied project evidence. Do not claim to have read, listed, searched, or inspected project state beyond that evidence. State what is missing or unknown.';
-const ROADMAP_ACTION_INSTRUCTION = 'If proposing one Roadmap edit, reply with only compact JSON: {"type":"roadmap-proposal","projectId":"<context projectId>","ownerRevision":<context ownerRevision>,"action":<one P3 planning action>}. Use only IDs and revision from supplied context. This is a proposal requiring human approval; never claim it was applied. If no edit is justified, reply {"type":"no-action","message":"brief reason or missing context"}. Never claim an edit was applied.';
+const ROADMAP_ACTION_INSTRUCTION = 'If proposing one Roadmap edit, reply with only compact JSON: {"type":"roadmap-proposal","projectId":"<context projectId>","ownerRevision":<context ownerRevision>,"action":<one validated planning action>}. For a source-backed linked Markdown checkpoint, use document-edit for mapped title, objective, order or prose; never use edit or status to change its source-owned fields. Use only IDs and revision from supplied context. This is a proposal requiring human approval; never claim it was applied. If no edit is justified, reply {"type":"no-action","message":"brief reason or missing context"}. Never claim an edit was applied.';
 
 export interface ComposedChatContext { messages: ConversationMessage[]; refs: ChatContextRef[];
     diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }
@@ -39,7 +39,12 @@ export class ChatContextComposer {
             throw new Error('Stale Roadmap source; select the checkpoint again');
         const neighbors = index.checkpoints.filter(item => item.id !== checkpoint.id &&
             (checkpoint.dependencies.includes(item.id) || item.dependencies.includes(checkpoint.id))).slice(0, 4);
-        const citations = [checkpoint, ...neighbors].flatMap(item => [item.source, ...item.evidence.slice(0, 2)]).filter(item => item !== undefined);
+        // A checked linked-document edit changes its file hash without rewriting historical
+        // import evidence. The current source citation is authoritative for that file.
+        const currentEvidence = (item: RoadmapCheckpoint) => item.evidence.filter(citation =>
+            citation.path !== index.linkedDocument?.path);
+        const citations = [checkpoint, ...neighbors].flatMap(item =>
+            [item.source, ...currentEvidence(item).slice(0, 2)]).filter(item => item !== undefined);
         // Source-backed index entries may outlive the Markdown that produced them.
         for (const citation of citations) {
             const path = await this.file(root, citation.path, 2 * 1024 * 1024);
@@ -49,7 +54,7 @@ export class ChatContextComposer {
         }
         const fact = (item: RoadmapCheckpoint) => ({ id: item.id, kind: item.kind, title: item.title,
             objective: item.objective.slice(0, 1200), status: item.status, dependencies: item.dependencies.slice(0, 8),
-            source: item.source, evidence: item.evidence.slice(0, 2) });
+            source: item.source, evidence: currentEvidence(item).slice(0, 2) });
         const planningLinks = checkpoint.links.filter(link => link.owner === 'planning-map').slice(0, 2);
         const maps: unknown[] = [];
         if (planningLinks.length) {
