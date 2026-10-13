@@ -1,0 +1,33 @@
+TASK: Correction 10 / P17 — Reconcile historical phase qualification truth
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 (including linked-document and runner/canvas amendments), ADR 0016, docs/planning/p10/phase-10-plan.md, docs/tasks/p10/closeout.md and this correction README/assessment/plan. Confirm explicit owner correction activation, actual Git HEAD/ancestry, exactly coherent 0.10.16 manifests/internal pins, and a clean or deliberately approved dirty tree; protect unrelated pre-existing deletions/unstaged work. Do not reset, unapproved overwrite, version bump, change yarn.lock/unrelated deps or add root package-lock. Runner owns P1–P18 commits; do not manually commit within agent work.
+
+INSPECT
+packages/project-intelligence/src/node/roadmap-import.ts source status extraction/precedence, project-intelligence roadmap-projection.ts, current closeouts docs/tasks/p5/p6/p7/p9d/p10, docs/planning/p6 and p7 owner-close evidence; inspect test/unit/roadmap-import.test.ts/roadmap-projection.test.ts.
+
+IMPLEMENT
+Correct deterministic source-backed status precedence and provenance so latest authorized owner-close/qualified state can supersede older Active/Unknown projection WITHOUT pretending sequencing waivers or retained Not Green equal Green. Specifically repair P16-observed Phase 6 Active vs owner-closed-for-sequencing and Phase 7 Unknown vs qualified/closed; keep Phase 5 Not Green, Phase 9 qualified and Phase 10 P16 Not Green. Surface discrepancy/evidence links and maintain reproducible status on reimport, linked-doc changes and restart; no guess from prompt counts/checkmarks or model text.
+
+PRESERVE
+One normal saved Chat system with arbitrary left/right/center/bottom placement; validated ProjectPlanningActions ownership and real human approval; linked Markdown mapped prose document-owned, .dope identities/links and presentation separate, task files independent runner-owned definitions. Do not rewrite Project Mind/Planning Maps/Architecture/History/Work or historical P16 failures. No ordinary Chat shell/filesystem/Git/MCP/agent grants or hidden hosted fallback; no false Green or automatic prompt execution. Preserve restrained dark-orange theme and keyboard/touch accessibility.
+
+VALIDATION — T2
+Build changed project-intelligence output if tests import lib, then node --test test/unit/roadmap-import.test.ts test/unit/roadmap-projection.test.ts and new test/unit/roadmap-status-truth.test.ts. Verify latest owner-close precedence, waiver distinct from Green, historical failure preserved, contradictions flagged and source order independent. git diff --check.
+Ordinary implementation+focused validation target <=8 minutes, 10-minute soft / 15-minute hard. T2 cross-owner security evidence can justify bounded extra time but cannot skip safeguards. Compile only changed packages if selected tests need fresh lib output; no routine npm run check, full build, AppImage, real GUI or provider calls before P19. Report blockers instead of claiming unsupported Green.
+
+DEFER
+P19 proves actual UI historical labels; no modification of immutable closeouts, owner activation docs or Phase 11/12 gates.
+
+DONE WHEN
+One coherent seam and the smallest required focused checks pass at unchanged 0.10.16, preserving original user work, with a safe handoff to the next prompt.
+
+FINAL RESPONSE
+Report changed files, focused tests/builds actually observed, unchanged version, security/UX boundaries and next prompt. Runner owns commits; do not self-commit.
