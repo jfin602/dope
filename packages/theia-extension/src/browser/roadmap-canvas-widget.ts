@@ -15,10 +15,10 @@ import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
-import { roadmapCanvasOrder, roadmapNextId, roadmapSpatialLayout, roadmapDetailAtZoom, roadmapVisibleGraph,
+import { roadmapCanvasOrder, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
-import { readRoadmapViewport, roadmapGestures, roadmapKeyboardAction, roadmapViewportKey, roadmapViewportSnapshot,
+import { readRoadmapViewport, roadmapGestures, roadmapKeyboardAction, roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot,
     type RoadmapViewportState } from './roadmap-viewport';
 import './dope.css';
 
@@ -26,7 +26,9 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
     select: (id: string) => void; activate: (id: string) => void } }): React.ReactElement {
     const item = data.item;
     return React.createElement(React.Fragment, null,
-        React.createElement(Handle, { type: 'target', position: Position.Left, isConnectable: false }),
+        React.createElement(Handle, { id: 'left', type: 'target', position: Position.Left, isConnectable: false }),
+        React.createElement(Handle, { id: 'top', type: 'target', position: Position.Top, isConnectable: false }),
+        React.createElement(Handle, { id: 'bottom', type: 'target', position: Position.Bottom, isConnectable: false }),
         React.createElement('button', { type: 'button', className: 'dope-roadmap-node',
             'data-checkpoint-id': item.id, 'aria-current': data.selected ? 'true' : undefined,
             'aria-label': `${item.kind}: ${item.title}; ${item.statusLabel}${data.relation ? `; ${data.relation}` : ''}${data.omitted ? `; ${data.omitted} prompts hidden` : ''}`,
@@ -37,7 +39,9 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement('span', { className: 'dope-roadmap-status' }, item.statusLabel),
         data.omitted > 0 ? React.createElement('span', { className: 'dope-roadmap-omitted' },
             `${data.omitted} prompt${data.omitted === 1 ? '' : 's'} hidden; expand or select stack for Next prompts`) : null),
-        React.createElement(Handle, { type: 'source', position: Position.Right, isConnectable: false }));
+        React.createElement(Handle, { id: 'right', type: 'source', position: Position.Right, isConnectable: false }),
+        React.createElement(Handle, { id: 'top', type: 'source', position: Position.Top, isConnectable: false }),
+        React.createElement(Handle, { id: 'bottom', type: 'source', position: Position.Bottom, isConnectable: false }));
 }
 const roadmapNodeTypes = { checkpoint: RoadmapNode };
 
@@ -237,7 +241,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.projectId = undefined;
                 this.saveKey = undefined;
                 let stored: unknown;
-                try { stored = await this.storage?.getData(nextKey); } catch { /* Default layout remains available. */ }
+                try {
+                    stored = await this.storage?.getData(nextKey);
+                    if (stored === undefined) stored = await this.storage?.getData(roadmapLegacyViewportKey(projectUri, index.projectId));
+                } catch { /* Default layout remains available. */ }
                 if (this.isDisposed || request !== this.request) return;
                 this.saveKey = nextKey;
                 this.projectId = index.projectId;
@@ -262,7 +269,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.projectUri = projectUri;
             if (this.relink && (this.relink.uri !== projectUri || this.relink.preview?.revision !== index.revision))
                 this.relink = undefined;
-            if (switched && this.flow) void this.flow.setViewport(this.viewport ?? { x: 20, y: 20, zoom: 0.85 });
+            if (switched && this.flow) {
+                if (this.viewport) void this.flow.setViewport(this.viewport);
+                else requestAnimationFrame(() => { if (this.flow && this.projectUri === projectUri) void this.flow.fitView({ padding: 0.12 }); });
+            }
             if (this.createState && (this.createState.uri !== projectUri || this.createState.projectId !== index.projectId || index.revision !== 0)) {
                 void this.service.cancelDraft(this.createState.handle); this.createState = undefined; ++this.createSerial;
             }
@@ -352,10 +362,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
             selected: item.id === this.selectedId, draggable: this.arranging, selectable: true,
             className: item.id === this.selectedId ? 'dope-roadmap-selected' : undefined,
         }));
-        const edges: Edge[] = (visible?.edges ?? []).map(item => ({
-            id: item.id, source: item.from, target: item.to, type: 'smoothstep', selectable: false,
-            className: `dope-roadmap-edge dope-roadmap-edge-${item.kind}`,
-        }));
+        const displayed = new Map(nodes.map(node => [node.id, node.position]));
+        const edges: Edge[] = (visible?.edges ?? []).map(item => {
+            return { id: item.id, source: item.from, target: item.to,
+                ...roadmapEdgeHandles(item, displayed),
+                type: 'smoothstep', selectable: false,
+                className: `dope-roadmap-edge dope-roadmap-edge-${item.kind}` };
+        });
         this.root.render(React.createElement(ReactFlow, {
             id: 'dope-roadmap-flow', nodes, edges, nodeTypes: roadmapNodeTypes,
             defaultViewport: this.viewport ?? { x: 20, y: 20, zoom: 0.85 }, minZoom: 0.2, maxZoom: 2,
@@ -381,7 +394,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.renderFlow();
             },
             onInit: (flow: ReactFlowInstance) => { this.flow = flow;
-                if (this.viewport) void flow.setViewport(this.viewport); },
+                if (this.viewport) void flow.setViewport(this.viewport);
+                else requestAnimationFrame(() => { if (this.flow === flow) void flow.fitView({ padding: 0.12 }); }); },
             onMoveEnd: (_event: unknown, viewport: { x: number; y: number; zoom: number }) => {
                 if (!this.projectId || !this.projectUri) return;
                 if (!this.viewport || this.viewport.x !== viewport.x || this.viewport.y !== viewport.y || this.viewport.zoom !== viewport.zoom) {
@@ -1066,7 +1080,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const ids = this.projection ? roadmapCanvasOrder({ ...this.projection,
             ...roadmapVisibleGraph(this.projection, this.detail, this.selectedId, this.expanded, this.collapsed, 96, this.promptWindow) })
             .map(node => node.id) : [];
-        const next = roadmapNextId(ids, current.dataset.checkpointId, event.key);
+        const positions = this.projection ? roadmapSpatialLayout(this.projection) : new Map<string, { x: number; y: number }>();
+        for (const [id, position] of this.placements) positions.set(id, position);
+        const next = roadmapSpatialNextId(ids, positions, current.dataset.checkpointId, event.key);
         if (next === undefined) return;
         event.preventDefault();
         this.select(next, true);

@@ -58,8 +58,10 @@ test('explicit disclosure and selected context override zoom without changing se
     assert.ok(ids(selected).includes('prompt2'));
     assert.equal(selected.nodes.find(item => item.id === 'prompt2'), source.nodes.find(item => item.id === 'prompt2'));
     const layout = roadmapSpatialLayout(source);
-    assert.ok(layout.get('fix-stack')!.x > layout.get('stack')!.x);
-    assert.ok(layout.get('fix1')!.x > layout.get('prompt1')!.x);
+    assert.ok(layout.get('fix-stack')!.y < layout.get('phase')!.y);
+    assert.ok(layout.get('stack')!.y > layout.get('phase')!.y);
+    assert.ok(layout.get('fix1')!.y < layout.get('fix-stack')!.y);
+    assert.ok(layout.get('prompt1')!.y > layout.get('stack')!.y);
     assert.deepEqual(layout, roadmapSpatialLayout(source));
 });
 

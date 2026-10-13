@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
-import { roadmapCanvasOrder, roadmapDetailAtZoom, roadmapSpatialLayout, roadmapVisibleGraph } from
+import { roadmapCanvasOrder, roadmapDetailAtZoom, roadmapEdgeHandles, roadmapSpatialLayout, roadmapSpatialNextId, roadmapVisibleGraph } from
     '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, '../..', path), 'utf8');
@@ -29,11 +29,48 @@ test('phase, correction, and prompt coordinates are deterministic and leave the 
     assert.deepEqual(positions, roadmapSpatialLayout(graph));
     assert.equal(JSON.stringify(graph), original);
     assert.equal(positions.size, graph.nodes.length);
-    assert.equal(positions.get('phase-1')?.x, positions.get('phase-2')?.x);
+    assert.ok(positions.get('phase-1')!.x < positions.get('phase-2')!.x);
+    assert.equal(positions.get('phase-1')?.y, positions.get('phase-2')?.y);
     assert.ok(positions.get('correction')!.x > positions.get('phase-1')!.x);
+    assert.ok(positions.get('correction')!.y < positions.get('phase-1')!.y);
     assert.ok(positions.get('prompt-1')!.x > positions.get('stack')!.x);
     assert.equal(positions.get('prompt-1')?.x, positions.get('prompt-2')?.x);
-    assert.ok(positions.get('phase-2')!.y > positions.get('prompt-2')!.y);
+    assert.ok(positions.get('prompt-2')!.y < positions.get('prompt-1')!.y);
+});
+
+test('dense descendants, long titles, support lane, and disconnected sources have separate cards and true edges', () => {
+    const prompts = Array.from({ length: 80 }, (_, i) => ({ ...node(`prompt-${i}`, 'prompt', i),
+        title: `${i} ${'long prompt title '.repeat(14)}` }));
+    const graph: RoadmapProjection = { projectId: 'dense', revision: 5,
+        nodes: [node('phase-1', 'phase', 1), node('phase-2', 'phase', 2),
+            node('correction', 'correction', 1), node('support', 'task-stack', 2),
+            node('orphan', 'task-stack', 3), ...prompts],
+        edges: [
+            { id: 'path', from: 'phase-1', to: 'phase-2', kind: 'dependency', label: '' },
+            { id: 'upper', from: 'phase-1', to: 'correction', kind: 'branch', label: '' },
+            { id: 'lower', from: 'phase-1', to: 'support', kind: 'branch', label: '' },
+            ...prompts.map((item, i) => ({ id: `prompt-edge-${i}`, from: i ? prompts[i - 1].id : 'support',
+                to: item.id, kind: 'branch' as const, label: '' })),
+        ], pools: { ideas: [], issues: [] }, diagnostics: [] };
+    const original = JSON.stringify(graph);
+    const positions = roadmapSpatialLayout(graph);
+    assert.deepEqual(positions, roadmapSpatialLayout(graph));
+    assert.equal(JSON.stringify(graph), original);
+    assert.ok(positions.get('correction')!.y < positions.get('phase-1')!.y);
+    assert.ok(positions.get('support')!.y > positions.get('phase-1')!.y);
+    assert.ok(positions.get('phase-2')!.x > positions.get('prompt-79')!.x);
+    assert.ok(positions.get('orphan')!.x > positions.get('phase-2')!.x);
+    const boxes = graph.nodes.map(item => ({ id: item.id, ...positions.get(item.id)!,
+        height: Math.max(160, 100 + Math.ceil(item.title.length / 20) * 22) }));
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++)
+        assert.ok(boxes[i].x + 280 <= boxes[j].x || boxes[j].x + 280 <= boxes[i].x ||
+            boxes[i].y + boxes[i].height <= boxes[j].y || boxes[j].y + boxes[j].height <= boxes[i].y,
+            `${boxes[i].id} overlaps ${boxes[j].id}`);
+    assert.equal(graph.edges.some(edge => edge.to === 'orphan'), false);
+    assert.deepEqual(graph.edges.map(edge => [edge.from, edge.to]), JSON.parse(original).edges.map((edge: {from: string; to: string}) => [edge.from, edge.to]));
+    assert.deepEqual(roadmapEdgeHandles(graph.edges[0], positions), { sourceHandle: 'right', targetHandle: 'left' });
+    assert.deepEqual(roadmapEdgeHandles(graph.edges[1], positions), { sourceHandle: 'top', targetHandle: 'bottom' });
+    assert.deepEqual(roadmapEdgeHandles(graph.edges[2], positions), { sourceHandle: 'bottom', targetHandle: 'top' });
 });
 
 test('Roadmap mounts React Flow with selection, pan, zoom and fit but no graph mutation gestures or Chat docking', () => {
@@ -72,7 +109,14 @@ test('rendered Tab order follows the same branch traversal as arrow keys', () =>
     assert.deepEqual(roadmapCanvasOrder(graph).map(item => item.id), ['phase-1', 'correction', 'phase-2']);
     const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
     assert.match(widget, /const nodes: Node\[\] = \(visible \? roadmapCanvasOrder\(visible\) : \[\]\)\.map/);
-    assert.match(widget, /roadmapNextId\(ids, current\.dataset\.checkpointId, event\.key\)/);
+    assert.match(widget, /roadmapSpatialNextId\(ids, positions, current\.dataset\.checkpointId, event\.key\)/);
+    const positions = roadmapSpatialLayout(graph);
+    const ids = roadmapCanvasOrder(graph).map(item => item.id);
+    assert.equal(roadmapSpatialNextId(ids, positions, 'phase-1', 'ArrowRight'), 'phase-2');
+    assert.equal(roadmapSpatialNextId(ids, positions, 'phase-1', 'ArrowUp'), 'correction');
+    assert.equal(roadmapSpatialNextId(ids, positions, 'phase-2', 'Home'), 'phase-1');
+    assert.equal(roadmapSpatialNextId(ids, positions, 'phase-1', 'End'), 'phase-2');
+    assert.match(widget, /\.\.\.roadmapEdgeHandles\(item, displayed\)/);
 });
 
 test('world, phase and checkpoint detail disclose a correction stack without changing source graph', () => {

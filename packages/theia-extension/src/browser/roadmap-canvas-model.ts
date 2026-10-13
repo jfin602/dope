@@ -84,6 +84,9 @@ export function roadmapCanvasOrder(projection: Pick<RoadmapProjection, 'nodes' |
         const parent = projection.edges.find(edge => edge.to === node.id && edge.kind === 'branch')?.from;
         if (parent && byId.has(parent)) children.set(parent, [...(children.get(parent) ?? []), node]);
     }
+    const compare = (a: CheckpointNode, b: CheckpointNode): number =>
+        Number(roadmapUpperBranch(b)) - Number(roadmapUpperBranch(a)) || a.order - b.order || a.id.localeCompare(b.id);
+    for (const group of children.values()) group.sort(compare);
     const seen = new Set<string>();
     const ordered: CheckpointNode[] = [];
     const visit = (node: CheckpointNode): void => {
@@ -92,8 +95,8 @@ export function roadmapCanvasOrder(projection: Pick<RoadmapProjection, 'nodes' |
         ordered.push(node);
         for (const child of children.get(node.id) ?? []) visit(child);
     };
-    for (const phase of phases) visit(phase);
-    for (const branch of branches) visit(branch);
+    for (const phase of [...phases].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))) visit(phase);
+    for (const branch of [...branches].sort(compare)) visit(branch);
     return ordered;
 }
 
@@ -107,31 +110,84 @@ export function roadmapNextId(ids: readonly string[], current: string | undefine
     return undefined;
 }
 
-/** Stable presentation-only coordinates. Branch descendants reserve vertical space before the next phase. */
+const roadmapUpperBranch = (node: CheckpointNode): boolean => node.kind === 'correction' ||
+    (node.kind === 'task-stack' && (node.taskSource?.segment ?? node.title).startsWith('Correction ')) ||
+    /qualification/i.test(node.title) && node.kind !== 'phase';
+
+/** Arrow keys choose the closest displayed card in the requested direction; Tab follows canvas order. */
+export function roadmapSpatialNextId(ids: readonly string[], positions: ReadonlyMap<string, { x: number; y: number }>,
+    current: string | undefined, key: string): string | undefined {
+    if (key === 'Home' || key === 'End') return roadmapNextId(ids, current, key);
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) return undefined;
+    const origin = current && positions.get(current);
+    if (!origin) return ids[0];
+    const horizontal = key === 'ArrowLeft' || key === 'ArrowRight';
+    const sign = key === 'ArrowLeft' || key === 'ArrowUp' ? -1 : 1;
+    return ids.filter(id => id !== current && positions.has(id)).map(id => {
+        const point = positions.get(id)!;
+        const primary = (horizontal ? point.x - origin.x : point.y - origin.y) * sign;
+        const cross = Math.abs(horizontal ? point.y - origin.y : point.x - origin.x);
+        return { id, primary, cross };
+    }).filter(candidate => candidate.primary > 0).sort((a, b) =>
+        a.cross - b.cross || a.primary - b.primary || ids.indexOf(a.id) - ids.indexOf(b.id))[0]?.id;
+}
+
+/** A displayed edge retains its real graph endpoints; only its presentation handles change. */
+export function roadmapEdgeHandles(edge: CheckpointEdge,
+    positions: ReadonlyMap<string, { x: number; y: number }>): { sourceHandle: string; targetHandle: string } {
+    const from = positions.get(edge.from), to = positions.get(edge.to);
+    if (edge.kind === 'branch' && from && to && Math.abs(to.y - from.y) > 20)
+        return to.y < from.y ? { sourceHandle: 'top', targetHandle: 'bottom' } :
+            { sourceHandle: 'bottom', targetHandle: 'top' };
+    return { sourceHandle: 'right', targetHandle: 'left' };
+}
+
+/** Stable horizontal phase bands; each branch stays in its parent's band. */
 export function roadmapSpatialLayout(projection: RoadmapProjection): Map<string, { x: number; y: number }> {
     const placed = new Map<string, { x: number; y: number }>();
     const byId = new Map(projection.nodes.map(node => [node.id, node]));
     const children = new Map<string, CheckpointNode[]>();
+    const incoming = new Set<string>();
     for (const edge of projection.edges.filter(item => item.kind === 'branch')) {
         const child = byId.get(edge.to);
-        if (child) children.set(edge.from, [...(children.get(edge.from) ?? []), child]);
+        if (child && byId.has(edge.from)) {
+            children.set(edge.from, [...(children.get(edge.from) ?? []), child]);
+            incoming.add(child.id);
+        }
     }
     const compare = (a: CheckpointNode, b: CheckpointNode): number =>
         a.order - b.order || a.id.localeCompare(b.id, 'en');
     for (const group of children.values()) group.sort(compare);
-    let y = 64;
-    const visit = (node: CheckpointNode, depth: number, correctionLane = false): void => {
-        if (placed.has(node.id)) return;
-        const correction = correctionLane || node.kind === 'correction' ||
-            (node.kind === 'task-stack' && (node.taskSource?.segment ?? node.title).startsWith('Correction '));
-        const column = node.kind === 'phase' ? 0 : correction ? Math.max(3, depth + 2) :
-            node.kind === 'prompt' ? Math.max(2, depth) : depth;
-        placed.set(node.id, { x: 64 + column * 340, y });
-        y += Math.max(120, 65 + Math.ceil(Math.min(200, node.title.length) / 24) * 20) + 24;
-        for (const child of children.get(node.id) ?? [])
-            visit(child, node.kind === 'prompt' && child.kind === 'prompt' ? depth : depth + 1, correction);
+    const baseline = 640;
+    const column = 340;
+    const cardHeight = (node: CheckpointNode): number =>
+        Math.max(160, 100 + Math.ceil(node.title.length / 20) * 22);
+    let nextBandX = 64;
+    const visitBand = (root: CheckpointNode): void => {
+        const x = nextBandX;
+        const cursor = { upper: baseline - 120, lower: baseline + 180 };
+        let maxColumn = 0;
+        const visit = (node: CheckpointNode, depth: number, upper: boolean): void => {
+            if (placed.has(node.id)) return;
+            maxColumn = Math.max(maxColumn, depth);
+            const height = cardHeight(node);
+            const y = node === root ? baseline : upper ? cursor.upper - height : cursor.lower;
+            placed.set(node.id, { x: x + depth * column, y });
+            if (node !== root) {
+                if (upper) cursor.upper = y - 44;
+                else cursor.lower = y + height + 44;
+            }
+            for (const child of children.get(node.id) ?? [])
+                visit(child, node.kind === 'prompt' && child.kind === 'prompt' ? depth : depth + 1,
+                    node === root ? roadmapUpperBranch(child) : upper);
+        };
+        visit(root, 0, false);
+        nextBandX += (maxColumn + 1) * column + 100;
     };
-    for (const phase of projection.nodes.filter(node => node.lane === 'path').sort(compare)) visit(phase, 0);
-    for (const node of [...projection.nodes].sort(compare)) visit(node, node.lane === 'branch' ? 1 : 0);
+    for (const phase of projection.nodes.filter(node => node.lane === 'path').sort(compare)) visitBand(phase);
+    // A missing source stays disconnected. It gets its own band; no visual edge is synthesized.
+    for (const node of [...projection.nodes].filter(item => !incoming.has(item.id)).sort(compare))
+        if (!placed.has(node.id)) visitBand(node);
+    for (const node of [...projection.nodes].sort(compare)) if (!placed.has(node.id)) visitBand(node);
     return placed;
 }
