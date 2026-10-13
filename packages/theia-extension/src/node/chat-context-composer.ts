@@ -30,7 +30,7 @@ export class ChatContextComposer {
     private async roadmapContext(root: string, source: ChatContextSelection): Promise<{ label: string; text: string; omitted?: string }> {
         if (!this.roadmap) throw new Error('Roadmap context unavailable');
         const index = await this.roadmap.read(root);
-        if (!index.revision || !source.projectId || source.projectId !== index.projectId ||
+        if (index.projectRoot !== root || !index.revision || !source.projectId || source.projectId !== index.projectId ||
             !Number.isSafeInteger(source.ownerRevision) || source.ownerRevision !== index.revision)
             throw new Error('Stale or foreign Roadmap context; select the checkpoint again');
         const checkpoint = index.checkpoints.find(item => item.id === source.id);

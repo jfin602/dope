@@ -90,10 +90,16 @@ export class ChatPanelController {
     private restoredPlanning?: { workspace: string; selection: PlanningSelection };
     private departing?: Promise<void>;
     private readonly selections = new Set<Promise<boolean>>();
+    private readonly planningListener?: { dispose(): void };
+    private planningGeneration = 0;
 
     constructor(private readonly connect: () => ChatConnection, private readonly changed: () => void,
         private readonly owners = new ChatOpenOwners(), private readonly panelId: string = crypto.randomUUID(),
-        private readonly focus = () => {}, private readonly planning?: ChatPlanningSelection) { }
+        private readonly focus = () => {}, private readonly planning?: ChatPlanningSelection) {
+        this.planningListener = planning?.onChange(() => {
+            ++this.planningGeneration; this.lastContext = undefined; this.changed();
+        });
+    }
     get chat(): Chat | undefined { return this.snapshot?.chats.find(chat => chat.id === this.chatId); }
     get attached(): boolean { return !!this.handle; }
 
@@ -431,12 +437,16 @@ export class ChatPanelController {
     async previewContext(model: ChatModelSelection): Promise<void> {
         const lease = this.lease;
         if (!lease) throw new Error('Chat unavailable');
-        const generation = this.generation, chatId = this.chatId;
+        const generation = this.generation, chatId = this.chatId, planningGeneration = this.planningGeneration;
         const context = await this.turnContext();
-        if (lease !== this.lease) throw new Error('Chat changed while resolving planning selection');
+        if (generation !== this.generation || chatId !== this.chatId || lease !== this.lease)
+            throw new Error('Chat changed while resolving planning selection');
         const preview = await lease.connection.previewContext({ projectHandle: lease.handle, chatId: lease.chatId,
             selectedModel: model, content: this.draft, context });
-        if (generation === this.generation && chatId === this.chatId) { this.lastContext = preview; this.changed(); }
+        if (generation === this.generation && chatId === this.chatId && lease === this.lease &&
+            planningGeneration === this.planningGeneration) {
+            this.lastContext = preview; this.changed();
+        }
     }
     async searchSaved(query: string): Promise<ChatSearchHit[]> {
         const lease = this.lease;
@@ -454,6 +464,7 @@ export class ChatPanelController {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
+        this.planningListener?.dispose();
         ++this.generation; ++this.request;
         ++this.selection;
         const connection = this.connection;

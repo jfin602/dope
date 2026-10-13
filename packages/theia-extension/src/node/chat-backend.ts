@@ -100,7 +100,8 @@ export class ChatBackend implements ChatService {
         const capabilities = budget ? { ...model.capabilities, maxInputTokens: budget.composerInputTokens } : model.capabilities;
         const composed = await this.composer.compose(root, chat, request.content, request.context, capabilities, grounding);
         if (budget) verifyRoadmapLocalInput(composed.messages, budget);
-        if (localRoadmap && !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
+        if (request.context.some(item => item.kind === 'roadmap-checkpoint') &&
+            !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
             throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
         return { refs: composed.refs, diagnostics: composed.diagnostics,
             usedTokens: composed.usedTokens, budgetTokens: composed.budgetTokens };

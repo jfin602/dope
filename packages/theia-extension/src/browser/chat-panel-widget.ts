@@ -953,7 +953,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             field(label, input);
         }
         const sources: ChatContextKind[] = ['editor', 'selection', 'file', 'project-mind', 'architecture',
-            'physical-map', 'flow', 'planning-map', 'work-item', 'saved-chat'];
+            'physical-map', 'flow', 'planning-map', 'work-item', 'roadmap-checkpoint', 'saved-chat'];
         for (const source of sources) {
             const input = document.createElement('input'); input.type = 'checkbox';
             input.checked = draft.context.allowedSources.includes(source);
@@ -1340,7 +1340,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             state.turnModel = modelSelector.value ? JSON.parse(modelSelector.value) as ChatModelSelection : undefined;
             this.render();
         };
-        if (selected && state.context.length) menuButton('Preview context', () => {
+        if (selected && (state.context.length || state.activePlanning)) menuButton('Preview context', () => {
             void state.previewContext(selected).catch(error => { this.status.textContent = String(error); });
         });
         if (!selected && chat.settings.modelPolicy.type === 'exact')
