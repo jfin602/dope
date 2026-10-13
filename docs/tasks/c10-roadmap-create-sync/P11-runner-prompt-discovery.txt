@@ -1,0 +1,33 @@
+TASK: Correction 10 / P11 — Discover validated runner prompt stacks without execution
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036 (both linked-document and runner/canvas amendments), docs/planning/p10/phase-10-plan.md, this correction README/assessment/plan and P16 closeout. Require explicit separate owner activation; verify actual Git HEAD/version/dirty-tree, all 13 manifests/20 pins unchanged at 0.10.16, and reconcile any worktree/source conflicts safely. Do not reset/clean/stash-away unrelated local work, bump versions or manually commit when runner owns changes.
+
+INSPECT
+scripts/codex-phase-core.mjs parsePrompt/buildPlan, scripts/codex-phase.mjs and validate-codex-phase.mjs, existing Work Prompt Stack discovery in theia-extension backend, docs/workflow.md naming/version rules and test/unit/codex-phase-prompt-grammar.test.ts.
+
+IMPLEMENT
+Implement a read-only bounded task-stack metadata discovery service at the configured project-relative task root (default docs/tasks/) sharing STRICT runner parsing and Work discovery rather than duplicating grammar. Cover historical p<number>, continuation p<number><letter>, post1 p1-<phase>, post2 p2-<phase>, corrections c<phase>-<slug>, P<number>-<lower-kebab-slug>.txt, matching TASK, sequential numbers, phase/correction version rules and unique closeout. Classify malformed, one-off, superseded, missing, foreign and ambiguous stacks as explicit non-executable diagnostics. Stable in-root path/fingerprint and no symlink escape; watch/refresh only for safe reads and never create/launch Work, Git commits or rewrite Roadmap Markdown. Keep runner source executable from Node; browser imports only Dope-owned serializable metadata.
+
+PRESERVE
+Existing ChatPanel left/right/bottom/center, Dope-owned ProjectPlanningActions with preview/approval and unchanged owner authorities; Markdown mapped fields source-owned, .dope Roadmap owns IDs/links; historical P16 Not Green remains. No agent/Work execution or Chat shell/filesystem/Git/MCP grants, silent hosted inference, false Green status, phase advancement or Phase 12 background alignment. Use restrained dark-orange semantic theme and accessible UI for presentation changes.
+
+VALIDATION — T2
+Run node --test test/unit/codex-phase-prompt-grammar.test.ts and new test/unit/roadmap-task-discovery.test.ts with only necessary shared package build, plus narrow agent-sequence regression ONLY if modifying shared Work discovery. Include strict parity on actual p10/p8a/p8b and correction fixtures, unsafe/malformed/one-off/superseded. git diff --check.
+Target <=8 minutes including focused implementation and tests, with 10-minute soft / 15-minute hard ceiling. Only compile changed dependencies for lib-consuming tests. No npm run check, npm test, full browser/Electron build, packaging, general restart or native GUI; P17/P18 own broad evidence. Report inability to meet a safety requirement instead of dropping it.
+
+DEFER
+P12 owns graph projection; P15 owns editor opening; no interactive runner or new external execution runtime.
+
+DONE WHEN
+The bounded owned change and security/compatibility invariants pass focused checks, with unchanged version, safe worktree and a precise next-prompt handoff. Runner owns commits; do not commit from the agent.
+
+FINAL RESPONSE
+List actual modified files, tests/builds run and outcomes, source/version identity, preserved behavior and unresolved risks.
