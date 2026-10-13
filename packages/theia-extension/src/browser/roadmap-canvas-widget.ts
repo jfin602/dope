@@ -65,6 +65,17 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly poolButton = document.createElement('button');
     private readonly pools = document.createElement('section');
     private readonly importEntry = document.createElement('section');
+    private readonly sourceHeader = document.createElement('div');
+    private readonly sourceSummary = document.createElement('strong');
+    private readonly sourceExpand = document.createElement('button');
+    private readonly sourceCompact = document.createElement('button');
+    private readonly sourceMinimize = document.createElement('button');
+    private readonly sourceClose = document.createElement('button');
+    private sourceView: 'expanded' | 'compact' | 'minimized' = 'compact';
+    private sourceFocus?: HTMLElement;
+    private sourceError?: string;
+    private syncApplying = false;
+    private syncChecking = false;
     private readonly poolFilter = document.createElement('input');
     private owners: RoadmapOwnerRecord[] = [];
     private poolQuery = '';
@@ -176,8 +187,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.nextPromptsButton.onclick = () => this.nextPrompts();
         icon(this.sourceButton, 'Roadmap Markdown and setup', 'file-text');
         this.sourceButton.append(this.sourceLabel);
+        this.sourceLabel.setAttribute('aria-live', 'polite');
         this.sourceButton.setAttribute('aria-controls', 'dope-roadmap-source-panel');
-        this.sourceButton.onclick = () => this.setSourceOpen(!this.sourceOpen);
+        this.sourceButton.onclick = () => this.setSourceOpen(!this.sourceOpen || this.sourceView === 'minimized');
         icon(this.poolButton, 'Ideas, Issues and unlinked tasks', 'lightbulb');
         this.poolButton.append(' Ideas / Issues');
         this.poolButton.setAttribute('aria-controls', 'dope-roadmap-pool-panel');
@@ -200,9 +212,24 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.poolFilter.oninput = () => { this.poolQuery = this.poolFilter.value; this.renderPools(); };
         this.importEntry.className = 'dope-roadmap-import';
         this.importEntry.id = 'dope-roadmap-source-panel';
-        this.importEntry.setAttribute('aria-label', 'Roadmap setup');
+        this.importEntry.setAttribute('aria-label', 'Linked Markdown');
         this.importEntry.tabIndex = -1;
+        this.importEntry.addEventListener('focusin', event => {
+            const target = event.target;
+            if (target instanceof HTMLElement && !this.sourceHeader.contains(target)) this.sourceFocus = target;
+        });
         this.importEntry.onkeydown = event => { if (event.key === 'Escape') { event.stopPropagation(); this.setSourceOpen(false); this.sourceButton.focus(); } };
+        this.sourceHeader.className = 'dope-roadmap-source-header';
+        this.sourceSummary.textContent = 'Linked Markdown';
+        for (const [button, label, action] of [
+            [this.sourceExpand, 'Expand Linked Markdown', () => this.setSourceView('expanded')],
+            [this.sourceCompact, 'Compact Linked Markdown', () => this.setSourceView('compact')],
+            [this.sourceMinimize, 'Minimize Linked Markdown', () => this.setSourceView('minimized')],
+            [this.sourceClose, 'Close Linked Markdown', () => this.setSourceOpen(false)],
+        ] as const) { button.type = 'button'; button.textContent = label.replace(' Linked Markdown', '');
+            button.setAttribute('aria-label', label); button.onclick = action; }
+        this.sourceHeader.append(this.sourceSummary, this.sourceExpand, this.sourceCompact, this.sourceMinimize, this.sourceClose);
+        this.setSourceView('compact');
         this.pools.onkeydown = event => { if (event.key === 'Escape') { event.stopPropagation(); this.setPoolOpen(false); this.poolButton.focus(); } };
         this.stage.className = 'dope-roadmap-stage-host dope-map-stage';
         this.stage.append(this.path, this.status, this.importEntry, this.poolButton, this.pools);
@@ -234,6 +261,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (oldDraft && oldDraft.uri !== this.projectUri) this.createState = undefined;
         this.importState = undefined;
         this.syncPreview = undefined;
+        this.syncChecking = !!this.inspector.index?.linkedDocument;
         this.importEntry.replaceChildren();
         this.projection = undefined;
         this.owners = [];
@@ -300,6 +328,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.owners = owners;
             this.taskStacks = tasks;
             this.projectUri = projectUri;
+            if (switched) this.sourceError = undefined;
             if (this.relink && (this.relink.uri !== projectUri || this.relink.preview?.revision !== index.revision))
                 this.relink = undefined;
             if (switched && this.flow) {
@@ -337,13 +366,18 @@ export class RoadmapCanvasWidget extends BaseWidget {
                         this.render();
                     }
                     this.syncPreview = sync;
+                    this.syncChecking = false;
+                    this.sourceError = undefined;
                     this.renderImportEntry();
                     await this.service.observeLinkedDocument(projectUri);
                 } catch (error) {
                     if (this.isDisposed || request !== this.request || this.projectUri !== projectUri) return;
-                    this.status.textContent = `Linked Markdown compare failed: ${String(error)}. Review the file and Refresh.`;
+                    this.sourceError = `Linked Markdown compare failed: ${String(error)}. Review the file and Refresh.`;
+                    this.syncChecking = false;
+                    this.status.textContent = this.sourceError;
+                    this.renderImportEntry();
                 }
-            }
+            } else { this.syncChecking = false; this.sourceError = undefined; this.renderImportEntry(); }
         } catch (error) {
             if (this.isDisposed || request !== this.request) return;
             this.status.textContent = `Roadmap unavailable: ${error instanceof Error ? error.message : 'Unable to read Roadmap'}. Use Refresh to retry.`;
@@ -362,8 +396,27 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.sourceButton.setAttribute('aria-expanded', String(open));
         if (open) {
             this.setPoolOpen(false);
-            this.importEntry.focus();
-        } else if (this.importEntry.contains(document.activeElement)) this.sourceButton.focus();
+            if (this.sourceView === 'minimized') this.setSourceView('compact');
+            if (this.sourceFocus?.isConnected && this.importEntry.contains(this.sourceFocus)) this.sourceFocus.focus();
+            else this.importEntry.focus();
+        } else if (this.importEntry.contains(document.activeElement)) {
+            this.sourceButton.focus();
+        }
+    }
+
+    private setSourceView(view: 'expanded' | 'compact' | 'minimized'): void {
+        if (view === 'minimized' && this.importEntry.contains(document.activeElement)) {
+            this.sourceButton.focus();
+        }
+        this.sourceView = view;
+        this.importEntry.dataset.state = view;
+        this.sourceExpand.hidden = view === 'expanded';
+        this.sourceCompact.hidden = view !== 'expanded';
+        this.sourceMinimize.hidden = view === 'minimized';
+        if (view !== 'minimized' && this.sourceOpen) {
+            if (this.sourceFocus?.isConnected && this.importEntry.contains(this.sourceFocus)) this.sourceFocus.focus();
+            else this.importEntry.focus();
+        }
     }
 
     private setPoolOpen(open: boolean): void {
@@ -513,21 +566,44 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     private renderImportEntry(): void {
         this.importEntry.replaceChildren();
+        this.importEntry.append(this.sourceHeader);
         const linkedDocument = this.inspector.index?.linkedDocument;
         const sourceState = this.syncPreview?.state ?? linkedDocument?.syncState;
-        const needsReview = sourceState === 'conflict' || sourceState === 'relink-needed' || sourceState === 'source-changed' || !!linkedDocument?.pending;
-        this.sourceLabel.textContent = linkedDocument ? `Markdown · ${sourceState}` :
+        const approvalPending = !!this.importState?.preview || !!this.createState?.preview ||
+            !!this.relink?.preview || !!this.recovery?.preview;
+        const needsReview = sourceState === 'conflict' || sourceState === 'relink-needed' || sourceState === 'source-changed' ||
+            !!linkedDocument?.pending || approvalPending || !!this.sourceError || this.syncChecking;
+        const sourceNotice = this.sourceError ? 'Source check failed · review' :
+            sourceState === 'conflict' ? 'Conflict · review' : sourceState === 'relink-needed' ? 'Relink needed' :
+            linkedDocument?.pending ? 'Pending sync · review' :
+            sourceState === 'source-changed' ? 'Source changed · review' : approvalPending ? 'Approval required' :
+            this.syncChecking ? 'Checking source' : sourceState;
+        this.sourceLabel.textContent = linkedDocument ? `Markdown · ${sourceNotice}` :
+            approvalPending ? 'Markdown · Approval required' :
             this.inspector.index?.revision === 0 ? 'Markdown / Create' : 'Markdown';
         this.sourceButton.setAttribute('aria-label', linkedDocument ?
-            `Roadmap Markdown ${linkedDocument.path}: ${sourceState}${needsReview ? '; review required' : ''}` : 'Roadmap Markdown, import and create');
+            `Roadmap Markdown ${linkedDocument.path}: ${sourceNotice}${needsReview ? '; review required' : ''}` :
+            `Roadmap Markdown, import and create${approvalPending ? '; approval required' : ''}`);
         this.sourceButton.dataset.review = String(needsReview);
+        this.sourceSummary.textContent = linkedDocument ? `Linked Markdown · ${linkedDocument.path} · ${sourceNotice}` :
+            approvalPending ? 'Linked Markdown · Approval required' : 'Linked Markdown · Setup';
         if (!this.projectUri || !this.inspector.index) return;
+        if (this.sourceError) { const error = document.createElement('p'); error.setAttribute('role', 'alert');
+            error.textContent = this.sourceError; this.importEntry.append(error); }
         const index = this.inspector.index;
         if (index.linkedDocument) {
             const linked = document.createElement('p');
             const sync = this.syncPreview;
             linked.textContent = `Linked Markdown: ${index.linkedDocument.path} · ${sync?.state ?? index.linkedDocument.syncState}`;
             this.importEntry.append(linked);
+            const ownership = document.createElement('p');
+            ownership.textContent = 'The linked Markdown stays at its original path. Review external changes before applying supported title, objective, order or prose fields; status evidence is preserved.';
+            this.importEntry.append(ownership);
+            if (sync?.sourceHash && sync.sourceHash !== sync.acceptedHash) {
+                const hashes = document.createElement('p');
+                hashes.textContent = `Accepted source SHA-256 ${sync.acceptedHash}; current source SHA-256 ${sync.sourceHash}.`;
+                this.importEntry.append(hashes);
+            }
             if (sync?.state === 'source-changed') {
                 const detail = document.createElement('p');
                 detail.textContent = sync.changes.length ? sync.changes.slice(0, 12).map(change =>
@@ -536,6 +612,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                     'Only unsupported Markdown changed; its content will remain untouched.';
                 this.importEntry.append(detail);
                 const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = 'Apply source changes';
+                apply.disabled = this.syncApplying || this.syncChecking;
                 apply.onclick = () => { void this.applySync(sync); }; this.importEntry.append(apply);
             }
             if (sync && (sync.state === 'conflict' || sync.state === 'relink-needed')) {
@@ -651,6 +728,18 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const notGreen = preview.checkpoints.filter(item => item.status === 'not-green').length;
         summary.textContent = `Preview ${preview.roadmapPath}: ${preview.checkpoints.length} checkpoints, ${preview.sources.length} source files, ${unsupported} unsupported section(s), ${notGreen} Not Green checkpoint(s). ${preview.checkpoints.filter(item => item.readOnly).length} read-only checkpoint(s).`;
         this.importEntry.append(summary);
+        const mapped = document.createElement('details');
+        const mappedHeading = document.createElement('summary'); mappedHeading.textContent = 'Imported checkpoints and source mapping';
+        const mappedList = document.createElement('ul');
+        for (const item of preview.checkpoints.slice(0, 50)) {
+            const row = document.createElement('li');
+            row.textContent = `${item.kind}: ${item.title} · ${item.status} · ${item.readOnly ? 'read-only' : 'mapped'} · ${item.source.path}:${item.source.line}`;
+            mappedList.append(row);
+        }
+        if (preview.checkpoints.length > 50) { const rest = document.createElement('li');
+            rest.textContent = `${preview.checkpoints.length - 50} more checkpoint(s); review the source Markdown before approval.`;
+            mappedList.append(rest); }
+        mapped.append(mappedHeading, mappedList); this.importEntry.append(mapped);
         if (preview.diagnostics.length) this.appendImportDiagnostics('Import diagnostics', preview.diagnostics);
         const caution = preview.checkpoints.flatMap(item => item.diagnostics.map(detail => `${item.title}: ${detail}`));
         if (caution.length) this.appendImportDiagnostics('Checkpoint diagnostics', caution);
@@ -661,17 +750,19 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     private async applySync(preview: RoadmapSyncPreview): Promise<void> {
         const uri = this.projectUri;
-        if (!uri || this.syncPreview !== preview) return;
+        if (!uri || this.syncPreview !== preview || this.syncApplying || this.syncChecking) return;
+        this.syncApplying = true; this.renderImportEntry();
         try {
             await this.service.applyDocumentSync(uri, preview);
             if (this.projectUri === uri) await this.refresh();
         } catch (error) {
             if (this.projectUri === uri) {
-                this.status.textContent = `Linked Roadmap sync failed: ${String(error)}. Refresh and review before retrying.`;
+                this.sourceError = `Linked Roadmap sync failed: ${String(error)}. Refresh and review before retrying.`;
+                this.status.textContent = this.sourceError;
                 this.syncPreview = undefined;
                 this.renderImportEntry();
             }
-        }
+        } finally { this.syncApplying = false; this.renderImportEntry(); }
     }
 
     private async previewRecovery(): Promise<void> {
