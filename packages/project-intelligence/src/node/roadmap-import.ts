@@ -78,6 +78,10 @@ function genericIdentity(heading: string): { kind: RoadmapCheckpointPreview['kin
     if (/^Milestone\b/i.test(heading)) return { kind: 'milestone', key: key(heading) };
     return undefined;
 }
+/** Share the importer's exact heading identity rule with guarded document patches. */
+export function roadmapSectionKey(heading: string, generic: boolean): string | undefined {
+    return (generic ? genericIdentity(heading) : identity(heading))?.key;
+}
 async function checkedRoot(root: string): Promise<void> {
     if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root || !(await stat(root)).isDirectory())
         throw new Error('Unsafe roadmap project root');

@@ -3,6 +3,8 @@ import { realpath } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
 import { parseRoadmapIndex, RoadmapStore } from './roadmap-store';
 import type { RoadmapCheckpoint, RoadmapIndex, RoadmapLink } from './roadmap-store';
+import { planRoadmapDocumentPatch } from './roadmap-document-patch';
+import type { RoadmapDocumentPatch } from './roadmap-document-patch';
 import { RoadmapOwnerLinks } from './roadmap-owner-links';
 import type { RoadmapOwnerRecord } from './roadmap-owner-links';
 export interface RoadmapPlanningRecord { owner: 'planning-map' | 'transformation' | 'work-item' }
@@ -13,6 +15,7 @@ export interface RoadmapPlanningLinks {
 export type PlanningAction =
     | { type: 'create'; id: string; kind: RoadmapCheckpoint['kind']; title: string; objective: string; order: number }
     | { type: 'edit'; id: string; title?: string; objective?: string }
+    | { type: 'document-edit'; id: string; title?: string; objective?: string; order?: number; prose?: string }
     | { type: 'link'; id: string; link: RoadmapLink }
     | { type: 'unlink'; id: string; link: RoadmapLink }
     | { type: 'depend'; id: string; dependencyId: string }
@@ -35,6 +38,7 @@ export interface PlanningActionPreview {
     changedIds: string[];
     requiresApproval: boolean;
     next: RoadmapIndex;
+    documentDiff?: Pick<RoadmapDocumentPatch, 'path' | 'changedLines' | 'beforeHash' | 'afterHash'>;
 }
 export interface PlanningUndoRequest { projectHandle: string; ownerId: string; expectedRevision: number; token: string }
 export type PlanningLinkResolver = (root: string, link: RoadmapLink) => Promise<boolean>;
@@ -123,6 +127,45 @@ export class ProjectPlanningActions {
     private async project(current: RoadmapIndex, request: PlanningActionRequest, root: string): Promise<PlanningActionPreview> {
         if (current.projectId !== request.ownerId || current.revision !== request.expectedRevision)
             throw new Error('Stale or foreign planning owner revision');
+        if (request.actions.some(action => action.type === 'document-edit')) {
+            if (request.actions.length !== 1) throw new Error('Linked Roadmap edit must be a single action');
+            const action = object(request.actions[0]) as PlanningAction;
+            if (action.type !== 'document-edit') throw new Error('Invalid linked Roadmap action');
+            keys(action, ['type', 'id'], ['title', 'objective', 'order', 'prose']);
+            if (!validId(action.id) || action.title !== undefined && (!validText(action.title, 512) || !action.title.trim()) ||
+                action.objective !== undefined && !validText(action.objective, 8192) ||
+                action.prose !== undefined && !validText(action.prose, 8192) ||
+                action.order !== undefined && !validOrder(action.order)) throw new Error('Invalid linked Roadmap edit');
+            const sourceHash = request.sourceHashes?.[action.id];
+            if (!sourceHash) throw new Error('Expected linked Roadmap source hash required');
+            const patch = await planRoadmapDocumentPatch(root, current, {
+                checkpointId: action.id, sourceHash, title: action.title, objective: action.objective,
+                order: action.order, prose: action.prose
+            });
+            const next = copy(current);
+            next.revision++;
+            next.linkedDocument = { ...current.linkedDocument!, sourceHash: patch.afterHash,
+                lastSynced: { sourceHash: patch.afterHash, roadmapRevision: next.revision } };
+            for (const checkpoint of next.checkpoints) {
+                if (checkpoint.source?.path !== patch.path) continue;
+                checkpoint.source.sha256 = patch.afterHash;
+                if (checkpoint.id === action.id) {
+                    if (action.title !== undefined) {
+                        checkpoint.title = action.title;
+                        checkpoint.source.text = patch.after.split(/\r?\n/)[checkpoint.source.line - 1];
+                    }
+                    if (action.objective !== undefined) checkpoint.objective = action.objective;
+                    if (action.order !== undefined) checkpoint.order = action.order;
+                }
+            }
+            parseRoadmapIndex(next, root);
+            const changedIds = next.checkpoints.filter((item, index) => JSON.stringify(item) !== JSON.stringify(current.checkpoints[index])).map(item => item.id);
+            return { token: digest({ ownerId: current.projectId, revision: current.revision, actions: request.actions,
+                sourceHashes: request.sourceHashes, next, patchHash: patch.afterHash }), ownerId: current.projectId,
+                revision: current.revision, changedIds, requiresApproval: true, next,
+                documentDiff: { path: patch.path, beforeHash: patch.beforeHash, afterHash: patch.afterHash,
+                    changedLines: patch.changedLines } };
+        }
         const checkpoints = copy(current.checkpoints);
         let requiresApproval = false;
         for (const raw of request.actions) {
@@ -140,6 +183,8 @@ export class ProjectPlanningActions {
             const item = checkpoints.find(entry => entry.id === action.id);
             if (!item || item.readOnly) throw new Error('Unknown or read-only Roadmap checkpoint');
             if (item.source && request.sourceHashes?.[item.id] !== item.source.sha256) throw new Error('Stale Roadmap source hash');
+            if (item.source && (action.type === 'edit' || action.type === 'reorder'))
+                throw new Error('Linked Roadmap prose must use document-edit');
             switch (action.type) {
                 case 'edit':
                     keys(action, ['type', 'id'], ['title', 'objective']);
@@ -223,6 +268,22 @@ export class ProjectPlanningActions {
     async apply(request: PlanningActionRequest, token: string, approved = false): Promise<RoadmapIndex> {
         const { root } = this.validateRequest(request);
         if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw new Error('Invalid planning preview token');
+        if (request.actions[0]?.type === 'document-edit') {
+            const result = await this.store.transactDocument(root, request.expectedRevision, request.ownerId, async current => {
+                const preview = await this.project(current, request, root);
+                if (preview.token !== token || !approved) throw new Error('Planning preview or approval required');
+                const action = request.actions[0];
+                if (action.type !== 'document-edit') throw new Error('Invalid linked Roadmap edit');
+                const patch = await planRoadmapDocumentPatch(root, current, {
+                    checkpointId: action.id, sourceHash: request.sourceHashes![action.id],
+                    title: action.title, objective: action.objective, order: action.order, prose: action.prose
+                });
+                if (patch.afterHash !== preview.documentDiff?.afterHash) throw new Error('Stale linked Roadmap preview');
+                return { next: preview.next, patch };
+            });
+            this.undo.delete(request.projectHandle);
+            return copy(result);
+        }
         let undo: { before: RoadmapCheckpoint; after: RoadmapCheckpoint } | undefined;
         const result = await this.store.transact(root, request.expectedRevision, request.ownerId, async current => {
             const preview = await this.project(current, request, root);

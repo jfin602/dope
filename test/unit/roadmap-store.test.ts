@@ -111,17 +111,15 @@ test('explicit preview acceptance keeps stable IDs and original Markdown bytes',
     assert.equal((await store.read(root)).revision, 1);
     await assert.rejects(store.mutate(root, 1, { type: 'update', id: accepted.checkpoints[0].id,
         title: accepted.checkpoints[0].title, objective: 'Roadmap-owned objective', order: 0,
-        dependencies: [], links: [] }, accepted.projectId), /Stale Roadmap source/);
+        dependencies: [], links: [] }, accepted.projectId), /Markdown owns mapped/);
     const refreshed = await store.acceptImport(root, 1, await previewRoadmapImport(root), accepted.projectId);
     assert.equal(refreshed.revision, 2);
     assert.equal(refreshed.checkpoints[0].id, accepted.checkpoints[0].id);
     assert.equal(refreshed.checkpoints[0].status, 'green');
     assert.equal(refreshed.checkpoints[0].readOnly, false);
-    const edited = await store.mutate(root, 2, { type: 'update', id: refreshed.checkpoints[0].id,
+    await assert.rejects(store.mutate(root, 2, { type: 'update', id: refreshed.checkpoints[0].id,
         title: refreshed.checkpoints[0].title, objective: 'Roadmap-owned objective', order: 0,
-        dependencies: [], links: [] }, refreshed.projectId);
-    assert.equal(edited.checkpoints[0].objective, 'Roadmap-owned objective');
-    assert.equal(edited.checkpoints[0].title, refreshed.checkpoints[0].title);
+        dependencies: [], links: [] }, refreshed.projectId), /Markdown owns mapped/);
 }));
 
 test('duplicate source headings cannot create duplicate IDs or editable prose', async () => fixture(async root => {

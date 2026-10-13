@@ -36,6 +36,10 @@ export class RoadmapInspectorModel {
     get previewSummary(): string | undefined {
         const pending = this.pending;
         if (!pending) return undefined;
+        if (pending.preview.documentDiff) {
+            const diff = pending.preview.documentDiff;
+            return `Document: ${diff.path}\n${diff.changedLines.map(line => `- ${line.before}\n+ ${line.after}`).join('\n')}`;
+        }
         const next = pending.preview.next.checkpoints.find(item => item.id === this.selectedId);
         return next && `Proposed: ${next.title}; ${next.status.replaceAll('-', ' ')}; objective: ${next.objective}`;
     }
@@ -111,7 +115,7 @@ export class RoadmapInspectorModel {
                 this.handle = attached.projectHandle;
             }
             const actions: PlanningAction[] = [];
-            if (draft.title !== item.title || draft.objective !== item.objective) actions.push({ type: 'edit', id: item.id,
+            if (draft.title !== item.title || draft.objective !== item.objective) actions.push({ type: item.source ? 'document-edit' : 'edit', id: item.id,
                 ...(draft.title !== item.title ? { title: draft.title } : {}),
                 ...(draft.objective !== item.objective ? { objective: draft.objective } : {}) });
             if (draft.status !== item.status) {

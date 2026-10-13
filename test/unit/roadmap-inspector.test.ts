@@ -106,3 +106,28 @@ test('errors stay visible, keyboard order is stable, and view never forces Chat 
     assert.match(widget, /role', this\.model\.error \? 'alert'/);
     assert.doesNotMatch(widget, /openChatPanel|activateWidget|CHAT_PANEL_ID/);
 });
+
+test('linked source edits use document authority and expose the exact line diff for approval', async () => {
+    const state = { index: snapshot(), applied: 0, approved: false };
+    const source = state.index.checkpoints[0];
+    source.source = { path: 'docs/roadmap/mvp-roadmap.md', sha256: 'a'.repeat(64), line: 2,
+        text: '## Phase one' };
+    let requestType = '';
+    let sourceHash = '';
+    const service = fake(state);
+    service.preview = async request => {
+        requestType = request.actions[0].type;
+        sourceHash = request.sourceHashes?.p1 ?? '';
+        return { token: 'a'.repeat(64), ownerId: 'project', revision: 1, changedIds: ['p1'],
+            requiresApproval: true, next: snapshot(2, 'Edited'), documentDiff: {
+                path: source.source!.path, beforeHash: source.source!.sha256, afterHash: 'b'.repeat(64),
+                changedLines: [{ before: 'Objective: Original', after: 'Objective: Edited' }] } };
+    };
+    const model = new RoadmapInspectorModel(service);
+    model.setSnapshot(root, state.index); model.select('p1'); model.change('objective', 'Edited');
+    await model.save();
+    assert.equal(requestType, 'document-edit');
+    assert.equal(sourceHash, 'a'.repeat(64));
+    assert.match(model.previewSummary ?? '', /- Objective: Original\n\+ Objective: Edited/);
+    assert.equal(state.applied, 0);
+});

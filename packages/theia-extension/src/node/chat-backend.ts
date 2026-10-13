@@ -163,7 +163,8 @@ export class ChatBackend implements ChatService {
             return { proposal: { id, chatId, messageId, ownerId: preview.ownerId, revision: preview.revision,
                 changedIds: preview.changedIds, action: { type: action.type, id: action.id },
                 summary: JSON.stringify({ action, before: fields(attached.snapshot.checkpoints.find(item => item.id === action.id)),
-                    after: fields(preview.next.checkpoints.find(item => item.id === action.id)) }) } };
+                    after: fields(preview.next.checkpoints.find(item => item.id === action.id)),
+                    ...(preview.documentDiff ? { documentDiff: preview.documentDiff } : {}) }) } };
         } catch (error) {
             if (handle) this.planning.detach(handle);
             return { proposalError: `Planning proposal rejected: ${String(error)}` };

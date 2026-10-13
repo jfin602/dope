@@ -98,15 +98,15 @@ test('eligible edit undo restores one owner object and detects a changed source'
 
     await mkdir(join(root, 'docs/roadmap'), { recursive: true });
     const source = join(root, 'docs/roadmap/mvp-roadmap.md');
-    await writeFile(source, '# Roadmap\n## Product Phase 1 — One\nStatus: NOT GREEN\n');
+    await writeFile(source, '# Roadmap\n## Product Phase 1 — One\nStatus: NOT GREEN\nObjective: old\n');
     const before = await readFile(source);
     const imported = await store.acceptImport(root, 3, await previewRoadmapImport(root), snapshot.projectId);
     const item = imported.checkpoints.find(checkpoint => checkpoint.source)!;
-    const sourceEdit = { ...request(projectHandle, snapshot.projectId, 4, [{ type: 'edit', id: item.id, objective: 'plan' }]),
+    const sourceEdit = { ...request(projectHandle, snapshot.projectId, 4, [{ type: 'document-edit', id: item.id, objective: 'plan' }]),
         sourceHashes: { [item.id]: item.source!.sha256 } };
     const preview = await actions.preview(sourceEdit);
-    await writeFile(source, '# Roadmap\n## Product Phase 1 — One\nStatus: GREEN\n');
-    await assert.rejects(actions.apply(sourceEdit, preview.token), /Stale or immutable Roadmap source/);
+    await writeFile(source, '# Roadmap\n## Product Phase 1 — One\nStatus: GREEN\nObjective: old\n');
+    await assert.rejects(actions.apply(sourceEdit, preview.token, true), /Stale linked Roadmap source fingerprint/);
     assert.equal((await store.read(root)).revision, 4);
-    assert.deepEqual(before.toString(), '# Roadmap\n## Product Phase 1 — One\nStatus: NOT GREEN\n');
+    assert.deepEqual(before.toString(), '# Roadmap\n## Product Phase 1 — One\nStatus: NOT GREEN\nObjective: old\n');
 }));

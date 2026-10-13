@@ -82,7 +82,7 @@ export class RoadmapInspectorWidget extends BaseWidget {
         const titleLabel = this.element('label', 'Title');
         const titleInput = this.element('input');
         titleInput.id = 'dope-roadmap-title'; titleInput.value = draft.title; titleInput.maxLength = 512;
-        titleInput.disabled = !!this.model.selected?.source;
+        titleInput.disabled = !!this.model.selected?.readOnly;
         titleInput.oninput = () => this.model.change('title', titleInput.value);
         titleLabel.append(titleInput);
         const objectiveLabel = this.element('label', 'Objective');
@@ -105,7 +105,8 @@ export class RoadmapInspectorWidget extends BaseWidget {
         save.id = 'dope-roadmap-save'; save.type = 'submit'; save.disabled = !this.model.dirty || this.model.busy;
         form.append(titleLabel, objectiveLabel, statusLabel, save);
         if (this.model.requiresApproval) {
-            const warning = this.element('p', `This change affects a gate. ${this.model.previewSummary ?? ''} Approve explicitly.`);
+            const warning = this.element('p', `${this.model.selected?.source ? 'Review this linked Markdown change.' : 'This change affects a gate.'} ${this.model.previewSummary ?? ''} Approve explicitly.`);
+            warning.style.whiteSpace = 'pre-wrap';
             const approve = this.button('Approve change', () => void this.model.approve());
             approve.id = 'dope-roadmap-approve'; approve.disabled = this.model.busy;
             form.append(warning, approve);

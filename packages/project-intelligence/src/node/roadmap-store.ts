@@ -3,6 +3,8 @@ import { constants } from 'node:fs';
 import { lstat, mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { previewRoadmapImport } from './roadmap-import';
+import { planRoadmapDocumentPatch, publishRoadmapDocumentPatch } from './roadmap-document-patch';
+import type { RoadmapDocumentPatch } from './roadmap-document-patch';
 import type { RoadmapCitation, RoadmapImportPreview, RoadmapStatus } from './roadmap-import';
 
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -357,6 +359,8 @@ export class RoadmapStore {
                 if (checkpoints[index].readOnly) throw new Error('Source-backed Roadmap checkpoint is read-only');
                 if (checkpoints[index].source) {
                     if (operation.title !== checkpoints[index].title) throw new Error('Markdown owns the source checkpoint title');
+                    if (operation.objective !== checkpoints[index].objective || operation.order !== checkpoints[index].order)
+                        throw new Error('Markdown owns mapped Roadmap prose and order');
                     const fresh = await previewRoadmapImport(root, current.linkedDocument?.path);
                     const source = fresh.checkpoints.find(item => item.id === operation.id);
                     if (!source || source.readOnly || source.source.sha256 !== checkpoints[index].source.sha256 ||
@@ -391,6 +395,7 @@ export class RoadmapStore {
                     const source = fresh.checkpoints.find(item => item.id === key);
                     if (old.readOnly || !source || source.readOnly || source.source.sha256 !== old.source!.sha256 ||
                         source.title !== old.title || source.status !== old.status || next.title !== old.title ||
+                        next.objective !== old.objective || next.order !== old.order ||
                         next.status !== old.status || JSON.stringify(next.source) !== JSON.stringify(old.source) ||
                         JSON.stringify(next.evidence) !== JSON.stringify(old.evidence))
                         throw new Error('Stale or immutable Roadmap source');
@@ -398,5 +403,61 @@ export class RoadmapStore {
             }
             return { checkpoints, changedIds };
         });
+    }
+
+    /** The document and index have separate atomic writes. A failed second write is an uncertain sync outcome. */
+    async transactDocument(root: string, expectedRevision: number, expectedProjectId: string,
+        transform: (current: RoadmapIndex) => Promise<{ next: RoadmapIndex; patch: RoadmapDocumentPatch }>): Promise<RoadmapIndex> {
+        let documentPublished = false;
+        try {
+            return await this.commit(root, expectedRevision, expectedProjectId, async current => {
+                const { next, patch } = await transform(current);
+                if (!current.linkedDocument || current.linkedDocument.syncState !== 'synced' ||
+                    patch.path !== current.linkedDocument.path || patch.beforeHash !== current.linkedDocument.sourceHash ||
+                    patch.afterHash === patch.beforeHash || next.checkpoints.length !== current.checkpoints.length)
+                    throw new Error('Invalid linked Roadmap transaction');
+                const oldTarget = current.checkpoints.find(item => item.id === patch.checkpointId);
+                const target = next.checkpoints.find(item => item.id === patch.checkpointId);
+                if (!oldTarget?.source || !target || oldTarget.readOnly) throw new Error('Invalid linked Roadmap target');
+                const planned = await planRoadmapDocumentPatch(root, current, {
+                    checkpointId: patch.checkpointId, sourceHash: patch.beforeHash,
+                    ...(target.title !== oldTarget.title ? { title: target.title } : {}),
+                    ...(target.objective !== oldTarget.objective ? { objective: target.objective } : {}),
+                    ...(target.order !== oldTarget.order ? { order: target.order } : {}),
+                    ...(patch.prose !== undefined ? { prose: patch.prose } : {})
+                });
+                if (planned.after !== patch.after || planned.afterHash !== patch.afterHash)
+                    throw new Error('Invalid linked Roadmap document patch');
+                for (let index = 0; index < current.checkpoints.length; index++) {
+                    const old = current.checkpoints[index];
+                    const actual = next.checkpoints[index];
+                    const expected: RoadmapCheckpoint = JSON.parse(JSON.stringify(old)) as RoadmapCheckpoint;
+                    if (expected.source?.path === patch.path) expected.source.sha256 = patch.afterHash;
+                    if (expected.id === patch.checkpointId) {
+                        expected.title = target.title;
+                        expected.objective = target.objective;
+                        expected.order = target.order;
+                        if (expected.source && target.title !== oldTarget.title)
+                            expected.source.text = patch.after.split(/\r?\n/)[expected.source.line - 1];
+                    }
+                    if (JSON.stringify(actual) !== JSON.stringify(expected))
+                        throw new Error('Invalid linked Roadmap field change');
+                }
+                const changedIds = next.checkpoints.filter((item, index) => JSON.stringify(item) !== JSON.stringify(current.checkpoints[index])).map(item => item.id);
+                if (!changedIds.includes(patch.checkpointId) || changedIds.some(id =>
+                    !current.linkedDocument!.sections.some(section => section.checkpointId === id)))
+                    throw new Error('Invalid linked Roadmap change set');
+                await publishRoadmapDocumentPatch(root, patch);
+                documentPublished = true;
+                return { checkpoints: next.checkpoints, changedIds, linkedDocument: {
+                    ...current.linkedDocument, sourceHash: patch.afterHash,
+                    syncState: 'synced' as const,
+                    lastSynced: { sourceHash: patch.afterHash, roadmapRevision: current.revision + 1 }
+                } };
+            });
+        } catch (error) {
+            if (documentPublished) throw new Error(`Linked Roadmap sync outcome uncertain; re-read before retrying: ${String(error)}`);
+            throw error;
+        }
     }
 }
