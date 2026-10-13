@@ -1,35 +1,38 @@
-# /prompt-ass — c10-horizontal-color
+# /prompt-ass — c10-horizontal-color (revised full-canvas scope)
 
-**Date:** 2026-10-13 (America/Chicago).
-**Disposition:** bounded presentation correction before the `c10-roadmap-qualify` manual P9–P14 qualification; not a product-authority redesign. Unchanged `0.10.16`; Phase 10 NOT GREEN / NOT OWNER-CLOSED.
+**Date:** 2026-10-13. **Status:** owner-approved documents/prompts only; unchanged `0.10.16`; Phase 10 NOT GREEN.
+**Baseline:** `c10-roadmap-qualify` P1–P8 published; manual P9–P14 not qualified; last docs commit `628053adb1881a7277d333305cd6ee8ef466673c`. No published `c10-horizontal-color` implementation checkpoint; local private runner history must be checked before renumbering its former P3 closeout.
 
-## Current source and risk
+## Grounded code seams and UX problem
 
-- `packages/project-intelligence/src/roadmap-projection.ts` already separates `lane: path | branch`, projection `status` and `statusLabel`, and dependency/branch edges. Its six canonical statuses are `green`, `not-green`, `not-implemented`, `waived`, `active`, `unknown`. Layout/colors are caller presentation state; do NOT mutate `RoadmapIndex` or derive official status from prompt filenames/runner commits.
-- `packages/theia-extension/src/browser/roadmap-canvas-model.ts` `roadmapSpatialLayout` currently places phases in one X column and advances Y, while branch depth changes X. `roadmapCanvasOrder` governs DOM/keyboard order, and detail levels disclose/cap descendants. Rotate the presentation contract without losing that disclosure and boundedness.
-- `roadmap-canvas-widget.ts` uses the existing React Flow canvas, left/right source handles, Fit/Focus, selected state, Arrange placements, and `roadmapNextId`. `roadmap-viewport.ts` persists v1 coordinates, viewport, selection and expansion. Existing v1 placements require an explicit safe migration/compatibility policy, not a blind reinterpretation.
-- `dope.css` currently gives node and edge outlines neutral theme colors. Theme authority is ADR 0016; use centralized semantic tokens instead of hardcoded hex in components. ADR 0037 preserves the human entry point, visible state, feedback, focus and narrow screens.
-- Focused tests: `test/unit/roadmap-spatial-canvas.test.ts` (currently asserts vertical phases), `roadmap-viewport.test.ts`, `roadmap-canvas.test.ts`, `roadmap-status-truth.test.ts` and `dope-theme.test.ts` if theme registration changes. Update the first test rather than leaving contradictory assertions.
+The user-supplied GUI screenshot shows the Roadmap React Flow canvas squeezed between a tall, button-heavy heading, permanently visible linked-Markdown status box and a large always-visible Ideas/Issues panel. This yields a dashboard-like center strip rather than a primary editor visualization.
 
-## Assessment / split
+- `roadmap-canvas-widget.ts` appends `toolbar, status, importEntry, path, pools` as five vertical siblings. Its `renderImportEntry` owns linked source, import, greenfield, conflict/relink and recovery affordances; `renderPools` owns detached Idea/Issue associations. These services must survive **reparenting**, not being rewritten.
+- `roadmap-canvas-model.ts` defines the vertical `roadmapSpatialLayout`, disclosure and branch keyboard order. `roadmap-viewport.ts` stores v1 positions/selection/Arrange requiring safe orientation migration.
+- `roadmap-projection.ts` owns presentation-safe status/edge projection, with six statuses and evidence labels. Styles are currently neutral in `dope.css`.
+- `physical-map-widget.ts` / `dope.css` already provide a full-stage canvas, absolute-positioned map inspection, expanded/compact/minimized states and status overlay. Reuse **interaction conventions and styles**, not the Physical Map controller or separate React Flow instance.
+- `roadmap-inspector-widget.ts` currently owns the editable left-sidebar presentation bound to `RoadmapInspectorModel`. Editing uses `ProjectPlanningActions` preview, approval, undo; share that model/view behavior with the overlay, do not clone the mutation logic. `frontend-module.ts` binds both Roadmap widget and inspector view; preserve a coherent command route and avoid duplicate widget controllers.
+- Existing tests `roadmap-spatial-canvas.test.ts`, `roadmap-viewport.test.ts`, `roadmap-canvas.test.ts`, `roadmap-create-ui.test.ts`, `roadmap-inspector.test.ts`, `roadmap-chat-panel.test.ts` and document-sync/relink/recovery tests protect the dependent workflows.
 
-**P1 — layout, T2 / Sol High.** One coherent seam: horizontal monotonic main path; correction branches above, support below; nested task/prompt fan-out; no collisions in dense graphs; true existing edge relationships; keyboard/handle direction; legacy viewport/Arrange compatibility; stable identity across refresh/restart. Moderate algorithm and interaction risk justifies High. Narrow to graph layout + associated UI presentation/test code.
+## Six-prompt split and effort
 
-**P2 — colors, T1 / Sol Medium.** Render-only classes/tokens for six statuses, selected/focused contrast, noncolor cues, truthful dependency/branch path tinting, light/dark and custom theme fallback. No synthetic completion percentages or added persisted status. T1 tests and style source inspection.
+1. **P1 — layout (High/T2).** Monotonic horizontal phase path, dense above/below branches and v1 saved placement safety. Existing tests primarily spatial/viewport/keyboard.
+2. **P2 — status grammar (Medium/T1).** Color from six canonical statuses + accessible labels. Existing canvas/status/theme tests.
+3. **P3 — shell and Ideas/Issues (Medium/T1).** One full canvas editor stage, slim toolbar, floating owner-pool UI and status affordance. No linked-document editor refactor here. Tests focused on stage sizing/pool search/link/keyboard.
+4. **P4 — linked-document overlay (High/T2).** Existing `renderImportEntry` and greenfield/sync/recovery UI go into one context overlay; preserve every explicit approval/relink/conflict gate and no-write cancellation. Existing create/sync/recovery tests.
+5. **P5 — inspector overlay (High/T2).** Adapt one existing `RoadmapInspectorWidget` view to show within canvas while reusing a single `RoadmapInspectorModel` instance. Maintain input focus/draft/approval/undo and old details command as compatible route, no auto sidebar on selection. Existing inspector/prompt-open/Chat isolation tests.
+6. **P6 — implementation closeout (Medium/T2).** Focused cross-seam proof and handoff; not a fake browser/native closeout or second final Phase 10 decision. Manual P12/P13/P14 remain the live qualification owners.
 
-**P3 — implementation closeout, T2 / Sol Medium.** One focused cross-seam verification plus exact handoff to manual matrix, not a duplicate live GUI qualification. Do not run a full aggregate or claim Phase 10 Green. The runner requires one final `closeout` prompt; this is its only closeout, Browser required no. Manual P12/P13/P14 remain the sole live UI/authority/final qualification authority.
+## Mandatory Prompt Efficiency Gate
 
-## Prompt Efficiency and UI/Human gates
+- Each regular task targets <=8 minutes including relevant tests/builds (10-minute soft, 15-minute hard); T2 source-security repairs may be explicitly justified if evidence requires. P3/P4/P5 are split to avoid one overloaded UI + sync + model task; no Phase 11 sweeping redesign.
+- Run only changed package output compilation when source-consumer tests require it; `node --test` focused files for each seam, not `npm run check` in P1–P6. Manual P14 owns one final exact-source aggregate.
+- Physical Map overlay is a **pattern**, not shared runtime ownership. Keep existing Chat/inspector/document APIs, deterministic graph and original status owner. No duplicate backend or ambient AI.
+- UI design: ADR 0016 semantic dark-orange theme, neutral secondary controls, visible focus and status; ADR 0037 human goals, understandable next action, no loss of unsaved edits/preview on minimize, readable narrow-pane and keyboard interaction. Actual browser/native proof in manual P12.
+- UI authority: A red sync conflict/approval badge must be visible regardless of overlay state; closing/minimizing cannot confirm, dismiss or silently apply source. Editor input and role=status/alert announcements must remain accessible and cannot trap focus improperly.
+- New `P1..P6` contiguous correction grammar, identical unchanged version, exactly one closeout P6, one Sol recommendation and Browser-required flag per `.txt`, no `/activate`. Prior unpublished P3 closeout may be replaced **only if** local runner confirms no executed checkpoint.
+- Preserve historical P16/P19 NOT GREEN, current P9–P14 matrix, independent full application egress and real native Electron requirements.
 
-- Three prompt grammar, two implementation responsibilities, no speculative backend changes, no new runtime/library/provider.
-- P1 may need a bounded T2 exception to the <=8-minute target because dense branch placement and v1 migration must be correct; prefer minimal deterministic algorithm and existing React Flow mechanics over a rewrite.
-- P2 targets <=8 minutes including changed-source tests; no full browser/Electron build in ordinary prompts. Build only changed theia-extension outputs if tests require compiled artifacts; tests importing TS source can run directly under existing test conventions.
-- P3 reuses P1/P2 passing evidence on unchanged source, runs only meaningful focused cross-seam checks and `codex:phase:validate`; manual P14 owns the single exact-source `npm run check`. Do not invoke a full aggregate twice.
-- UI compliance: existing restrained dark-orange identity, theme tokens, no orange borders on every card, readable status in light/dark, clear focus, no status/selection conflation and no hardcoded local palette. Orange signals Active only; Green remains earned.
-- Human usability: developer sees phase progression when entering Roadmap, can follow branches without obscuring the main path, read status without color, use pan/zoom and keyboard, recover/fit in a narrow viewport, and retain saved Chat placement. Actual human/native behavior remains a T3 manual P12 test.
-- Runner grammar: `Correction 10 / P1..P3`, identical required unchanged version, one final closeout, exactly one Sol recommendation and Browser-required metadata per prompt. No `/activate` or activation-only failure gate.
-- Preserve historical P16/P19 Not Green and current P9–P14 append-only loop evidence; invalidated UI evidence is replayed on the final committed source rather than erased.
+## Explicit non-goals
 
-## Explicitly deferred
-
-No automatic percent/progress roll-ups lacking a trusted denominator, no animation dependency, no new roadmap data schema/status transitions, no invented correction reconnect edges, no rebuilt Chat or separate map engine, no real Electron/native qualification during these runner prompts, no Phase 11 usability overhaul.
+No automatic percent completion without trustworthy source, new canonical layouts/graph edges, new Roadmap data owner, animated unlock gates, new Chat panel, new saved modal/session store, reimplementation of ProjectPlanningActions or document source reconciliation, changing Work/AgentTask authority, standalone Roadmap details page, theme-system rewrite or false Green by UI styling.

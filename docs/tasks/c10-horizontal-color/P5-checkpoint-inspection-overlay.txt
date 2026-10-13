@@ -1,0 +1,25 @@
+TASK: Correction 10 / P5 — Bring Roadmap checkpoint inspection and editing into the canvas
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read current ADR 0016/0036/0037, this correction README/plan, P3/P4 checked output and historical P16/P19 non-Green. Verify clean/safe local source, unchanged manifests and runner checkpoints. No /activate, destructive worktree commands or agent-made commits.
+
+INSPECT
+`roadmap-inspector-widget.ts` current left-sidebar view and `RoadmapInspectorModel` (selection/draft, `save` preview, `approve`, `undoEdit`, Open Prompt), `roadmap-canvas-widget.ts` Details and `frontend-module.ts` inspector/view binding, physical map inspection expanded/compact/minimized conventions. Tests `roadmap-inspector.test.ts`, `roadmap-prompt-open.test.ts`, `roadmap-canvas.test.ts`; Chat isolation tests only if wiring touched.
+
+IMPLEMENT
+Present selected checkpoint/prompt details and editing inside a **contextual stage overlay** (upper-right normally), supporting expanded/compact/minimized and accessible open/close/focus/keyboard behaviors. Reuse ONE current `RoadmapInspectorModel` and current form, diff, preview, required explicit approval, undo, read-only evidence/links and read-only `Open Prompt` source navigation; refactor shared rendering if needed but do not instantiate a competing editing model or second authority. Selection should reveal compact inspection; expanding editing must not force left sidebar, move Chat, remount editor state unexpectedly or reset React Flow viewport. Details toolbar / existing `Dope: Show Roadmap Details` command must open/focus the overlay when Roadmap is available; preserve a sensible fallback for command access from outside its tab without creating two live editors. The legacy sidebar view may remain as a compatibility façade only if it uses the exact same model and is not opened automatically by map selection.
+
+Coordinate P4 document and P5 inspection surfaces: in narrow editor panes only one large editable overlay at once, with important warning badges remaining visible. Minimize/close while draft dirty or approval pending must preserve edit and preview or require explicit discard; never silently approve, delete draft or grant status Green. Restore previous focus on dismissal, retain readable contrast/noncolor cues and a safe return to map keyboard navigation. No new domain mutation APIs or hosted/coding-agent permissions.
+
+FOCUSED VALIDATION — T2
+Test same-model single editing authority and Details-command route; edit->preview->approval->undo plus denial/stale/no-write/read-only Prompt Open, expanded/compact/minimized, focus/draft retention and narrow-pane coexistence with independent existing Chat. Run nearest `roadmap-inspector.test.ts`, `roadmap-prompt-open.test.ts`, `roadmap-canvas.test.ts` and targeted UI contract; run Chat suite only if impacted. Compile only necessary changed package outputs, `git diff --check`. No broad npm run check or synthetic browser/native Green.
+
+DONE / HANDOFF
+Report code paths, focus/safety tests and P6 integration inputs, preserving `0.10.16` and historical Not Green. Runner owns commit.

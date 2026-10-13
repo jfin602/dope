@@ -1,0 +1,23 @@
+TASK: Correction 10 / P3 — Make the Roadmap a full-canvas editor with floating work pool
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, workflow, ADR 0016/0036/0037, this correction README/assessment/plan and P1/P2 checkpointed code. Verify local runner history: the former unexecuted P3 closeout was renamed to P6 by docs; if any old local P3 closeout was executed or staged as checkpoint, STOP and reconcile rather than overwriting. Verify unchanged manifests/dirty tree; never reset, stash, clean or self-commit. No /activate.
+
+SOURCE INSPECTION
+Inspect `packages/theia-extension/src/browser/roadmap-canvas-widget.ts` (`node.append(toolbar,status,importEntry,path,pools)`, `renderPools`, toolbar/renderer), `dope.css`, `physical-map-widget.ts` and `dope-map-stage` / inspection CSS for existing full-stage precedent. Inspect viewport/React Flow tests and current project/owner links; no second renderer.
+
+IMPLEMENT
+Make Roadmap fill its existing editor tab (NOT the whole IDE window) with React Flow stage taking all remaining height/width. Convert tall toolbar to one compact accessible icon-first toolbar; status/linked-document indicator occupies a small top/edge control and leaves normal canvas unblocked. Establish minimal overlay positioning/host for later P4/P5 without changing their approval/inspector models yet. Move current permanently visible `Ideas and Issues` / unlinked task pool into a collapsible (expandable) bottom-left stage overlay, hidden by default, preserving search/filter, link/unlink approval and Project Mind opens, selected checkpoint context and focus/keyboard return. Stage/overlay appearance must not trigger a Graph rerender, default Fit, persisted position rewrite or alter linked Markdown. Keep source/import actions operable until P4 moves them; avoid ever losing access. Reuse Physical Map established layout/tokens but no cloned controller, no new Chat or forced Chat docking. Keep enough narrow-pane space and visible focus.
+
+VALIDATE — T1
+Focused `test/unit/roadmap-spatial-canvas.test.ts`, `roadmap-canvas.test.ts`, plus smallest pool/search/owner-action presentation regression; adjust obsolete static assertions instead of removing safety. Run `roadmap-viewport.test.ts` only if affected. Rebuild only required changed package outputs; `git diff --check`. Target <=8 minutes including checks. No full npm run check, browser/Electron tests or ProjectPlanningActions rewrite.
+
+DONE / HANDOFF
+Show full-stage shell and preserved pool actions in focused tests; report P4 document-overlay seam/remaining visible vertical controls. Source/version/security unchanged. Runner owns commit; no fabricated GUI Green.

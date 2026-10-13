@@ -1,0 +1,23 @@
+TASK: Correction 10 / P4 — Move linked document and creation workflows into safe overlays
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read ADR 0016/0036/0037, this correction README/assessment/plan and actual P3 full-stage result; reconcile source/worktree before editing. Preserve unrelated user files and any real pending sync. No /activate, model grants, independent commits or overlapping runner.
+
+INSPECT
+`roadmap-canvas-widget.ts` `renderImportEntry`, `createState`, `importState`, `syncPreview`, `relink`, `recovery` and all click/cancel/preview state transitions; current source watcher/Service, `roadmap-document-sync.ts`, `roadmap-greenfield.ts`, `dope.css`. Tests `roadmap-create-ui.test.ts`, `roadmap-document-sync.test.ts`, `roadmap-sync-recovery.test.ts`, closest import/greenfield tests. Do not recreate source ownership logic.
+
+IMPLEMENT
+Reparent existing source/import/greenfield/sync affordances into a **Linked Markdown** overlay accessed from the compact toolbar/status control, not a permanent top document box. Surface current linked path, sync state, import, supported field preview, external source difference and explicit `Apply source changes`, source conflict/relink/recovery, empty-project Create Manually and Plan with SAME saved Chat, preview/Approve/Cancel. Use Physical Map compact/expanded/minimized overlay behavior with narrow-pane sizing; close/reopen must preserve form draft, preview, async states and focus without any write. Show source-changed/conflict/pending-sync/relink-needed/approval warning in a visible accessible status indicator even when overlay minimized; actionable review never hidden behind a neutral synced label. During required confirmation, prevent accidental stale approval or silent source overwrite; do NOT transform a needed approval into dismissal. Reuse existing deterministic revision/source hash checks and exact original source/Green histories, no new RPC/DB/sync implementation. No force-open Chat, second transcript, new automatic routing or prompt execution.
+
+FOCUSED VALIDATION — T2
+Smallest existing UI-source creation/reconciliation suites, especially `roadmap-create-ui.test.ts`, `roadmap-sync-recovery.test.ts` and `roadmap-document-sync.test.ts` if affected, plus one overlay-specific closed/reopen + warning visibility/no-write regression. Assert manual and Chat draft entry, explicit Approve/Cancel, changed source and conflict/relink paths remain accessible, stale failures do not mutate source. Build only changed outputs required; `git diff --check`, no full npm run check, browser/Electron or real model claim. T2 time exception only if a concrete security regression requires it.
+
+DONE
+Document original source authority and safe pending preview preserved, display feedback/keyboard behavior and P5 editor boundary. Runner owns commits, Phase 10 not Green.
