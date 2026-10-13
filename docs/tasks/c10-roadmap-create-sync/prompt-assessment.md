@@ -32,13 +32,14 @@
 | P11 | Shared read-only runner grammar/task-stack discovery | T2 | Sol High | P2 |
 | P12 | Source-backed prompt/continuation/correction projection | T1 | Sol Medium | P11 |
 | P13 | React Flow spatial Roadmap canvas in existing center tab | T1 | Sol High | P12 |
-| P14 | Semantic zoom, touch/viewport/Arrange presentation behavior | T1 | Sol High | P13 |
-| P15 | Safe prompt open navigation and inspector accessibility | T1 | Sol Medium | P12–P14 |
-| P16 | Historical phase status evidence precedence correction | T2 | Sol High | P1/P2 |
-| P17 | Focused cross-owner and adversarial integration coverage | T2 | Sol High | P1–P16 |
-| P18 | **Single manual real browser/Electron/local-model closeout** | T3 | Sol High | P17 |
+| P14 | Semantic world/phase/checkpoint zoom and stable branch layout | T1 | Sol High | P13 |
+| P15 | Touch/pointer gestures, viewport restoration and Arrange mode | T1 | Sol High | P14 |
+| P16 | Safe prompt source navigation and inspector accessibility | T1 | Sol Medium | P11–P15 |
+| P17 | Historical phase status evidence precedence correction | T2 | Sol High | P1/P2 |
+| P18 | Focused cross-owner and adversarial integration coverage | T2 | Sol High | P1–P17 |
+| P19 | **Single manual real browser/Electron/local-model closeout** | T3 | Sol High | P18 |
 
-**Why 18 instead of a single large prompt:** source import, durable link, source writes, reconciliation, browser UI, Chat allowance, Chat planning, runner schema, graph projection and canvas are distinct owners or risk boundaries. Consolidating them would exceed the <=8-minute ordinary target and obscure security/persistence failures. P17 is the only general integrated T2 matrix; P18 only final real-world T3 and aggregate. P18 may exceed the normal prompt time gate.
+**Why 19 instead of a single large prompt:** source import, durable link, source writes, reconciliation, browser UI, Chat allowance, Chat planning, runner schema, graph projection and canvas are distinct owners or risk boundaries. Consolidating them would exceed the <=8-minute ordinary target and obscure security/persistence failures. P18 is the only general integrated T2 matrix; P19 only final real-world T3 and aggregate. P19 may exceed the normal prompt time gate.
 
 ## Preservation and deferrals
 
@@ -46,6 +47,6 @@ One saved ChatPanel, fully user-dockable left/right/bottom/center including cent
 
 ## Efficiency and evidence distribution
 
-P1/P2/P4–P7/P9–P11/P16 protect their changed store/authority seam with focused T2; P3/P8/P12–P15 use targeted T1 presentation tests. Existing tests that import `packages/project-intelligence/lib/**` or `packages/theia-extension/lib/**` require rebuilding **only changed relevant package output(s)** before running; browser-source-string tests may not need a package build. No routine `npm run check`, browser/electron full builds, full test matrix or restart on P1–P17. P17 runs one bounded integrated safety pass; P18 runs one full `npm run check` on exact source candidate and real GUI/restart/model/egress. Register new tests once in `test:product` where appropriate. Keep the version `0.10.16` coherent, 13 manifests and 20 pins unchanged, `yarn.lock` and absent root package-lock unchanged. Agent does not commit when runner owns commits. Correct severe source uncertainty with a bounded plan reconciliation rather than hand-waving.
+P1/P2/P4–P7/P9–P11/P17 protect their changed store/authority seam with focused T2; P3/P8/P12–P16 use targeted T1 presentation tests. Existing tests that import `packages/project-intelligence/lib/**` or `packages/theia-extension/lib/**` require rebuilding **only changed relevant package output(s)** before running; browser-source-string tests may not need a package build. No routine `npm run check`, browser/electron full builds, full test matrix or restart on P1–P18. P18 runs one bounded integrated safety pass; P19 runs one full `npm run check` on exact source candidate and real GUI/restart/model/egress. Register new tests once in `test:product` where appropriate. Keep the version `0.10.16` coherent, 13 manifests and 20 pins unchanged, `yarn.lock` and absent root package-lock unchanged. Agent does not commit when runner owns commits. Correct severe source uncertainty with a bounded plan reconciliation rather than hand-waving.
 
-Prompt grammar: all files `P<number>-<lower-kebab-slug>.txt`, matching `TASK: Correction 10 / P<number> — ...`, exactly one final `P18-...-closeout.txt` whose TASK title includes closeout, every prompt `- Required unchanged project version: \`0.10.16\`.`, explicit Browser required only P18. The runner validator must be executed *after* prompt writing. Historical P16 remains NOT GREEN.
+Prompt grammar: all files `P<number>-<lower-kebab-slug>.txt`, matching `TASK: Correction 10 / P<number> — ...`, exactly one final `P19-...-closeout.txt` whose TASK title includes closeout, every prompt `- Required unchanged project version: \`0.10.16\`.`, explicit Browser required only P19. The runner validator must be executed *after* prompt writing. Historical P16 remains NOT GREEN.
