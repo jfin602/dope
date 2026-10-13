@@ -71,7 +71,8 @@ export class ProjectPlanningActions {
     async attach(root: string): Promise<{ projectHandle: string; snapshot: RoadmapIndex }> {
         if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root) throw new Error('Invalid planning root');
         const snapshot = await this.store.read(root);
-        if (!snapshot.revision) throw new Error('Roadmap must be initialized before planning actions');
+        if (!snapshot.revision || snapshot.pendingCreation)
+            throw new Error('Roadmap must be initialized before planning actions');
         const projectHandle = randomUUID();
         this.handles.set(projectHandle, { root, ownerId: snapshot.projectId });
         return { projectHandle, snapshot: copy(snapshot) };

@@ -1,7 +1,7 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { lstat, mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises';
-import { isAbsolute, join, resolve } from 'node:path';
+import { link as hardLink, lstat, mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { previewRoadmapImport } from './roadmap-import';
 import { planRoadmapDocumentPatch, publishRoadmapDocumentPatch } from './roadmap-document-patch';
 import { readRoadmapMappedSections, previewRoadmapDocumentSync } from './roadmap-document-sync';
@@ -60,6 +60,8 @@ export interface RoadmapIndex {
     revision: number;
     checkpoints: RoadmapCheckpoint[];
     linkedDocument?: RoadmapLinkedDocument;
+    /** Accepted creation intent. It is not a published Roadmap or a second draft store. */
+    pendingCreation?: { path: string; sourceHash: string; content: string };
 }
 export interface RoadmapChange { root: string; projectId: string; revision: number; changedIds: string[] }
 export type RoadmapMutation =
@@ -155,12 +157,26 @@ function linkedDocument(value: unknown, raw: Record<string, unknown>, checkpoint
 export function parseRoadmapIndex(value: unknown, root: string): RoadmapIndex {
     if (!value || typeof value !== 'object' || Array.isArray(value)) fail('document');
     const raw = value as Record<string, unknown>;
-    if (Object.keys(raw).sort().join(',') !== (raw.linkedDocument === undefined ?
-        'checkpoints,projectId,projectRoot,revision,schemaVersion' :
-        'checkpoints,linkedDocument,projectId,projectRoot,revision,schemaVersion') ||
+    if (Object.keys(raw).sort().join(',') !== ['checkpoints', 'projectId', 'projectRoot', 'revision', 'schemaVersion',
+        ...(raw.linkedDocument === undefined ? [] : ['linkedDocument']),
+        ...(raw.pendingCreation === undefined ? [] : ['pendingCreation'])].sort().join(',') ||
         raw.schemaVersion !== 1 || !id(raw.projectId) || raw.projectId === 'uninitialized' ||
         raw.projectRoot !== root || !revision(raw.revision) || raw.revision === 0 || !Array.isArray(raw.checkpoints) ||
         raw.checkpoints.length > MAX_CHECKPOINTS) fail('schema or project root');
+    if (raw.pendingCreation !== undefined) {
+        const pending = raw.pendingCreation as Record<string, unknown>;
+        if (!pending || typeof pending !== 'object' || Array.isArray(pending) ||
+            Object.keys(pending).sort().join(',') !== 'content,path,sourceHash' ||
+            !text(pending.path, 512) || !pending.path || isAbsolute(pending.path) ||
+            !/\.md$/i.test(pending.path) || pending.path.includes('\\') || pending.path.includes(':') ||
+            pending.path.split('/').some(part => !part || part === '.' || part === '..') ||
+            pending.path.split('/')[0] === '.dope' ||
+            !text(pending.content, 2 * 1024 * 1024) ||
+            Buffer.byteLength(pending.content as string) > 2 * 1024 * 1024 ||
+            createHash('sha256').update(pending.content as string).digest('hex') !== pending.sourceHash ||
+            raw.linkedDocument !== undefined || (raw.checkpoints as unknown[]).length !== 0 || raw.revision !== 1)
+            fail('pending creation');
+    }
     const checkpoints = raw.checkpoints as unknown[];
     const seen = new Set<string>();
     for (const value of checkpoints) {
@@ -312,6 +328,7 @@ export class RoadmapStore {
         if (!revision(expectedRevision)) throw new Error('Invalid Roadmap revision');
         const result = await this.locked(root, async () => {
             const current = await this.read(root);
+            if (current.pendingCreation) throw new Error('Pending greenfield Roadmap creation requires recovery');
             if (current.linkedDocument?.syncState === 'pending-sync') throw new Error('Pending linked Roadmap sync requires recovery');
             if (expectedProjectId && current.projectId !== expectedProjectId) throw new Error('Roadmap identity changed; reattach');
             if (current.revision !== expectedRevision) throw new Error(`Stale Roadmap revision; current ${current.revision}`);
@@ -390,7 +407,102 @@ export class RoadmapStore {
         });
     }
 
+    private async creationFile(root: string, path: string): Promise<string> {
+        await this.paths(root);
+        if (!path || path.length > 512 || isAbsolute(path) || !/\.md$/i.test(path) ||
+            path.includes('\\') || path.includes(':') ||
+            path.split('/').some(part => !part || part === '.' || part === '..') || path.split('/')[0] === '.dope')
+            throw new Error('Unsafe greenfield Roadmap path');
+        let directory = root;
+        for (const part of path.split('/').slice(0, -1)) {
+            directory = join(directory, part);
+            const info = await lstat(directory);
+            if (!info.isDirectory() || info.isSymbolicLink() || await realpath(directory) !== directory)
+                throw new Error('Unsafe greenfield Roadmap directory');
+        }
+        return join(root, path);
+    }
+
+    /** Approval is checked by the caller; persist intent before the first source-file effect. */
+    async acceptGreenfield(root: string, expectedRevision: number, path: string, content: string): Promise<RoadmapIndex> {
+        if (expectedRevision !== 0 || !text(content, 2 * 1024 * 1024) ||
+            Buffer.byteLength(content) > 2 * 1024 * 1024 || !content.startsWith('# Roadmap\n'))
+            throw new Error('Invalid greenfield Roadmap creation');
+        const result = await this.locked(root, async () => {
+            const current = await this.read(root);
+            if (current.revision !== expectedRevision || current.linkedDocument || current.pendingCreation)
+                throw new Error('Stale Roadmap revision or pending creation');
+            const file = await this.creationFile(root, path);
+            try { await lstat(file); throw new Error('Greenfield Roadmap path already exists'); }
+            catch (error) { if (!missing(error)) throw error; }
+            const marker = parseRoadmapIndex({ schemaVersion: 1, projectId: randomUUID(), projectRoot: root,
+                revision: 1, checkpoints: [], pendingCreation: { path, content,
+                    sourceHash: createHash('sha256').update(content).digest('hex') } }, root);
+            await this.replace(root, marker);
+            return marker;
+        });
+        this.publish({ root, projectId: result.projectId, revision: result.revision, changedIds: [] });
+        return this.recoverGreenfield(root);
+    }
+
+    /** Idempotent after a crash: only the exact reserved bytes may be accepted. */
+    async recoverGreenfield(root: string): Promise<RoadmapIndex> {
+        const result = await this.locked(root, async () => {
+            const current = await this.read(root);
+            const pending = current.pendingCreation;
+            if (!pending) return { snapshot: current, changedIds: [] as string[] };
+            const file = await this.creationFile(root, pending.path);
+            let exists = false;
+            try {
+                const info = await lstat(file);
+                if (!info.isFile() || info.isSymbolicLink()) throw new Error('Unsafe greenfield Roadmap file');
+                exists = true;
+            } catch (error) { if (!missing(error)) throw error; }
+            if (!exists) {
+                const temporary = join(dirname(file), `.dope-roadmap-${randomUUID()}.tmp`);
+                try {
+                    const handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+                    try { await handle.writeFile(pending.content); await handle.sync(); } finally { await handle.close(); }
+                    await hardLink(temporary, file); // Exclusive publication: an existing path is never replaced.
+                    const parent = await open(dirname(file), 'r');
+                    try { await parent.sync(); } finally { await parent.close(); }
+                } finally { await rm(temporary, { force: true }); }
+            }
+            const preview = await previewRoadmapImport(root, pending.path);
+            const source = preview.sources.find(item => item.path === pending.path);
+            if (source?.sha256 !== pending.sourceHash || !preview.checkpoints.length ||
+                preview.checkpoints.some(item => item.source.path === pending.path && item.readOnly))
+                throw new Error('Greenfield Roadmap source changed or cannot be mapped; pending creation requires review');
+            const checkpoints: RoadmapCheckpoint[] = preview.checkpoints.filter(item => item.source.path === pending.path)
+                .map((item, order) => ({ id: item.id, kind: item.kind, title: item.title, objective: '', order,
+                    dependencies: [], links: [], status: item.status, readOnly: false,
+                    source: item.source, evidence: item.evidence }));
+            const sections = checkpoints.map(item => ({ sectionKey: preview.checkpoints.find(entry => entry.id === item.id)!.sectionKey,
+                checkpointId: item.id }));
+            const linked: RoadmapLinkedDocument = { projectRoot: root, projectId: current.projectId, path: pending.path,
+                sourceHash: pending.sourceHash, sections, lastSynced: { sourceHash: pending.sourceHash, roadmapRevision: 2 },
+                syncState: 'synced' };
+            const mapped = await readRoadmapMappedSections(root, linked);
+            if (mapped.hash !== pending.sourceHash || mapped.diagnostics.length || mapped.sections.length !== sections.length)
+                throw new Error('Greenfield Roadmap mapping changed; pending creation requires review');
+            linked.lastSynced.fields = mapped.sections.map(({ line, heading, ...field }) => field);
+            for (const section of mapped.sections) {
+                const target = checkpoints.find(item => item.id === section.checkpointId)!;
+                target.objective = section.objective ?? '';
+                target.order = section.order ?? target.order;
+            }
+            const next = parseRoadmapIndex({ schemaVersion: 1, projectId: current.projectId, projectRoot: root,
+                revision: 2, checkpoints, linkedDocument: linked }, root);
+            await this.replace(root, next);
+            return { snapshot: next, changedIds: checkpoints.map(item => item.id) };
+        });
+        if (result.changedIds.length) this.publish({ root, projectId: result.snapshot.projectId,
+            revision: result.snapshot.revision, changedIds: result.changedIds });
+        return result.snapshot;
+    }
+
     async previewDocumentSync(root: string): Promise<RoadmapSyncPreview> {
+        await this.recoverGreenfield(root);
         await this.recoverDocumentSync(root);
         return previewRoadmapDocumentSync(root, await this.read(root));
     }
