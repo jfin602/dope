@@ -10,7 +10,7 @@ export interface RoadmapPresentation {
 }
 export interface CheckpointNode {
     id: string;
-    kind: RoadmapCheckpoint['kind'];
+    kind: RoadmapCheckpoint['kind'] | 'task-stack' | 'prompt';
     title: string;
     order: number;
     status: RoadmapCheckpoint['status'];
@@ -19,6 +19,8 @@ export interface CheckpointNode {
     source?: RoadmapCheckpoint['source'];
     readOnly: boolean;
     lane: 'path' | 'branch';
+    taskSource?: { stackPath: string; path?: string; fingerprint: string; number?: number; version?: string;
+        browserRequired?: boolean; segment?: string; diagnostic?: string };
 }
 export interface CheckpointEdge {
     id: string;
