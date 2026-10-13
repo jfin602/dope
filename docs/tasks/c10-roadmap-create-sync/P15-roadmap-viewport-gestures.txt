@@ -1,0 +1,33 @@
+TASK: Correction 10 / P15 — Persist accessible Roadmap pan zoom and arrangement
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 (including linked-document and runner/canvas amendments), ADR 0016, docs/planning/p10/phase-10-plan.md, docs/tasks/p10/closeout.md and this correction README/assessment/plan. Confirm explicit owner correction activation, actual Git HEAD/ancestry, exactly coherent 0.10.16 manifests/internal pins, and a clean or deliberately approved dirty tree; protect unrelated pre-existing deletions/unstaged work. Do not reset, unapproved overwrite, version bump, change yarn.lock/unrelated deps or add root package-lock. Runner owns P1–P18 commits; do not manually commit within agent work.
+
+INSPECT
+Existing RoadmapPresentation viewport/placements type, P13/P14 React Flow and MapViewport, Physical Map focus/fit controls, Theia workspace persistence and current ADR 0016/0037 UI constraints.
+
+IMPLEMENT
+Complete map navigation and restoration: drag empty background or one-finger touch to pan, wheel/trackpad zoom around pointer, pinch gesture for touch zoom, compact Zoom In/Out, Fit Map and Focus Selected controls, keyboard-accessible equivalent. Preserve per-project viewport, selected/focused checkpoint, expanded groups and deterministic custom positions over refresh/restart/resize/Chat center split without modifying Roadmap semantic revision or stealing Chat. Expose explicit Arrange mode for node positioning only, disabled during normal navigation and never a dependency/order edit. Handle pointer vs node dragging and touch-sized hit areas, avoid infinite fit/restore loop, project switch contamination and excessive write frequency.
+
+PRESERVE
+One normal saved Chat system with arbitrary left/right/center/bottom placement; validated ProjectPlanningActions ownership and real human approval; linked Markdown mapped prose document-owned, .dope identities/links and presentation separate, task files independent runner-owned definitions. Do not rewrite Project Mind/Planning Maps/Architecture/History/Work or historical P16 failures. No ordinary Chat shell/filesystem/Git/MCP/agent grants or hidden hosted fallback; no false Green or automatic prompt execution. Preserve restrained dark-orange theme and keyboard/touch accessibility.
+
+VALIDATION — T1
+Run node --test test/unit/roadmap-canvas.test.ts test/unit/physical-map-canvas.test.ts and new test/unit/roadmap-viewport.test.ts, compiling changed theia-extension only if tests import lib. Unit harness must prove gesture/event policies, arrange-only layout, viewport serialization/project isolation/restore and keyboard controls; real touch/native evidence belongs P19. git diff --check.
+Ordinary implementation+focused validation target <=8 minutes, 10-minute soft / 15-minute hard. T2 cross-owner security evidence can justify bounded extra time but cannot skip safeguards. Compile only changed packages if selected tests need fresh lib output; no routine npm run check, full build, AppImage, real GUI or provider calls before P19. Report blockers instead of claiming unsupported Green.
+
+DEFER
+P16 opens prompt source files; P19 qualifies actual browser/OS touch and Electron. No forced Chat docking or scroll-list reintroduction.
+
+DONE WHEN
+One coherent seam and the smallest required focused checks pass at unchanged 0.10.16, preserving original user work, with a safe handoff to the next prompt.
+
+FINAL RESPONSE
+Report changed files, focused tests/builds actually observed, unchanged version, security/UX boundaries and next prompt. Runner owns commits; do not self-commit.
