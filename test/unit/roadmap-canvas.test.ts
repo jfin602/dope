@@ -44,6 +44,11 @@ test('one ordinary center tab, safe labels, recovery, semantic dark/light tokens
     assert.match(widget, /aria-current/);
     assert.match(widget, /aria-live/);
     assert.match(widget, /Use Refresh to retry/);
+    assert.match(widget, /this\.node\.append\(this\.toolbar, this\.stage\)/);
+    assert.match(widget, /this\.sourceButton\.setAttribute\('aria-controls', 'dope-roadmap-source-panel'\)/);
+    assert.match(widget, /this\.sourceButton\.dataset\.review = String\(needsReview\)/);
+    assert.match(widget, /this\.importEntry\.hidden = !open/);
+    assert.match(css, /\.dope-roadmap-stage-host > \[hidden\] \{ display: none !important; \}/);
     assert.match(css, /\.dope-roadmap-canvas.*var\(--theia-editor-background\)/);
     assert.match(css, /\.dope-roadmap-node\[aria-current="true"\].*var\(--dope-primary, var\(--theia-focusBorder\)\)/);
     const rules = css.slice(css.indexOf('.dope-roadmap-canvas'), css.indexOf('.dope-history-panel'));

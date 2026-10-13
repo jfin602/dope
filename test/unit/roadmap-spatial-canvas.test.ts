@@ -92,9 +92,10 @@ test('Roadmap mounts React Flow with selection, pan, zoom and fit but no graph m
     assert.match(widget, /if \(!this\.arranging \|\| !this\.projection\?\.nodes\.some/);
     assert.doesNotMatch(widget, /onConnect:|fitView\(\).*refresh/);
     assert.doesNotMatch(widget, /openChatPanel|CHAT_PANEL_ID|ChatPanelWidget|shell\.addWidget/);
-    assert.match(css, /\.dope-roadmap-stage \{ flex: 1 1 auto; min-height: 160px; min-width: 0/);
+    assert.match(css, /\.dope-roadmap-stage-host \{ position: relative; flex: 1 1 auto; min-height: 0; min-width: 0/);
+    assert.match(css, /\.dope-roadmap-stage \{ position: absolute; inset: 0; min-height: 0; min-width: 0/);
     assert.match(css, /\.dope-roadmap-node :is\(small, strong, span\) \{ overflow-wrap: anywhere; white-space: normal/);
-    assert.match(css, /@media \(max-width: 480px\).*\.dope-roadmap-stage/);
+    assert.match(css, /@media \(max-width: 480px\).*\.dope-roadmap-stage-host/);
     const rules = css.slice(css.indexOf('.dope-roadmap-canvas'), css.indexOf('.dope-history-panel'));
     assert.match(rules, /var\(--theia-editor-background\)/);
     assert.match(rules, /var\(--theia-editor-foreground\)/);

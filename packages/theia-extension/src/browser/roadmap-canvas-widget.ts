@@ -59,6 +59,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private taskStacks: RoadmapTaskStack[] = [];
     private taskDiscoveryError?: string;
     private readonly toolbar = document.createElement('header');
+    private readonly stage = document.createElement('div');
+    private readonly sourceButton = document.createElement('button');
+    private readonly sourceLabel = document.createElement('span');
+    private readonly poolButton = document.createElement('button');
     private readonly pools = document.createElement('section');
     private readonly importEntry = document.createElement('section');
     private readonly poolFilter = document.createElement('input');
@@ -104,6 +108,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private projectUri?: string;
     private projection?: TaskRoadmapProjection;
     private selectedId?: string;
+    private sourceOpen = false;
+    private poolOpen = false;
     private readonly focusRecheck = (): void => { if (!this.isDisposed && this.projectUri) void this.refresh(); };
 
     constructor(private readonly service: RoadmapService, private readonly workspaces: WorkspaceService,
@@ -117,18 +123,21 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.title.iconClass = codicon('milestone');
         this.title.closable = true;
         this.addClass('dope-roadmap-canvas');
-        const heading = document.createElement('h2');
-        heading.textContent = 'Roadmap';
+        this.toolbar.setAttribute('aria-label', 'Roadmap controls');
+        const icon = (button: HTMLButtonElement, label: string, name: string): void => {
+            button.type = 'button'; button.title = label; button.setAttribute('aria-label', label);
+            const glyph = document.createElement('span'); glyph.className = codicon(name); glyph.setAttribute('aria-hidden', 'true');
+            button.append(glyph);
+        };
         this.reload.type = 'button';
-        this.reload.textContent = 'Refresh';
-        this.reload.setAttribute('aria-label', 'Refresh Roadmap');
+        icon(this.reload, 'Refresh Roadmap', 'refresh');
         this.reload.onclick = () => { void this.refresh(); };
         this.details.type = 'button';
-        this.details.textContent = 'Details';
+        icon(this.details, 'Show Roadmap details in left sidebar', 'info');
         this.details.setAttribute('aria-label', 'Show Roadmap details in left sidebar');
         this.details.onclick = () => { void this.openInspector(); };
         this.mind.type = 'button';
-        this.mind.textContent = 'Project Mind';
+        icon(this.mind, 'Browse and edit Project Mind Notes, Ideas, Questions and Decisions', 'book');
         this.mind.setAttribute('aria-label', 'Browse and edit Project Mind Notes, Ideas, Questions and Decisions');
         this.mind.onclick = () => { void this.openMind().catch(error => {
             this.status.textContent = `Project Mind unavailable: ${String(error)}. Retry from the command palette.`;
@@ -143,7 +152,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             button.append(glyph); button.onclick = action;
         }
         this.arrangeButton.type = 'button';
-        this.arrangeButton.textContent = 'Arrange';
+        icon(this.arrangeButton, 'Arrange checkpoint positions', 'move');
         this.arrangeButton.title = 'Move checkpoint cards without changing their order or dependencies';
         this.arrangeButton.setAttribute('aria-pressed', 'false');
         this.arrangeButton.onclick = () => {
@@ -158,15 +167,22 @@ export class RoadmapCanvasWidget extends BaseWidget {
             [this.expandButton, 'Expand selected Roadmap branch', () => this.setExpansion(true)],
             [this.collapseButton, 'Collapse selected Roadmap branch', () => this.setExpansion(false)],
             [this.focusButton, 'Focus selected Roadmap checkpoint', () => this.focusSelection()],
-        ] as const) { button.type = 'button'; button.textContent = label.substring(0, label.indexOf(' '));
-            button.title = label; button.setAttribute('aria-label', label); button.onclick = action; }
+        ] as const) { icon(button, label, button === this.focusButton ? 'target' : button === this.expandButton ? 'expand-all' : 'collapse-all');
+            button.onclick = action; }
         this.detailLabel.className = 'dope-roadmap-detail';
         this.detailLabel.setAttribute('aria-live', 'polite');
         this.nextPromptsButton.type = 'button';
-        this.nextPromptsButton.textContent = 'Next prompts';
-        this.nextPromptsButton.setAttribute('aria-label', 'Show next prompts in selected stack');
+        icon(this.nextPromptsButton, 'Show next prompts in selected stack', 'list-ordered');
         this.nextPromptsButton.onclick = () => this.nextPrompts();
-        this.toolbar.append(heading, this.details, this.mind, this.zoomIn, this.zoomOut, this.fitButton, this.arrangeButton,
+        icon(this.sourceButton, 'Roadmap Markdown and setup', 'file-text');
+        this.sourceButton.append(this.sourceLabel);
+        this.sourceButton.setAttribute('aria-controls', 'dope-roadmap-source-panel');
+        this.sourceButton.onclick = () => this.setSourceOpen(!this.sourceOpen);
+        icon(this.poolButton, 'Ideas, Issues and unlinked tasks', 'lightbulb');
+        this.poolButton.append(' Ideas / Issues');
+        this.poolButton.setAttribute('aria-controls', 'dope-roadmap-pool-panel');
+        this.poolButton.onclick = () => this.setPoolOpen(!this.poolOpen);
+        this.toolbar.append(this.sourceButton, this.details, this.mind, this.zoomIn, this.zoomOut, this.fitButton, this.arrangeButton,
             this.expandButton, this.collapseButton, this.focusButton, this.nextPromptsButton, this.detailLabel, this.reload);
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
@@ -176,14 +192,23 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.path.title = 'Shift+Arrow pans. In Arrange mode, Alt+Arrow moves the selected card.';
         this.path.onkeydown = event => this.onPathKey(event);
         this.pools.className = 'dope-roadmap-pools';
+        this.pools.id = 'dope-roadmap-pool-panel';
         this.pools.setAttribute('aria-label', 'Detached Ideas and Issues');
         this.poolFilter.type = 'search';
         this.poolFilter.setAttribute('aria-label', 'Filter Ideas and Issues');
         this.poolFilter.placeholder = 'Filter Ideas and Issues';
         this.poolFilter.oninput = () => { this.poolQuery = this.poolFilter.value; this.renderPools(); };
         this.importEntry.className = 'dope-roadmap-import';
+        this.importEntry.id = 'dope-roadmap-source-panel';
         this.importEntry.setAttribute('aria-label', 'Roadmap setup');
-        this.node.append(this.toolbar, this.status, this.importEntry, this.path, this.pools);
+        this.importEntry.tabIndex = -1;
+        this.importEntry.onkeydown = event => { if (event.key === 'Escape') { event.stopPropagation(); this.setSourceOpen(false); this.sourceButton.focus(); } };
+        this.pools.onkeydown = event => { if (event.key === 'Escape') { event.stopPropagation(); this.setPoolOpen(false); this.poolButton.focus(); } };
+        this.stage.className = 'dope-roadmap-stage-host dope-map-stage';
+        this.stage.append(this.path, this.status, this.importEntry, this.poolButton, this.pools);
+        this.node.append(this.toolbar, this.stage);
+        this.setSourceOpen(false);
+        this.setPoolOpen(false);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.refresh(); });
         window.addEventListener('focus', this.focusRecheck);
         this.modelListener = inspector.onChange(() => {
@@ -229,6 +254,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.selectedId = undefined;
                 this.status.textContent = 'Open one local project folder to view its Roadmap.';
                 this.inspector.setSnapshot(undefined, undefined);
+                this.setSourceOpen(false);
+                this.setPoolOpen(false);
+                this.renderImportEntry();
                 return;
             }
             const projectUri = roots[0].resource.toString();
@@ -238,6 +266,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (this.isDisposed || request !== this.request) return;
             const switched = this.projectUri !== projectUri || this.projectId !== index.projectId;
             if (switched) {
+                this.setSourceOpen(false);
+                this.setPoolOpen(false);
                 this.flushPresentation();
                 const nextKey = roadmapViewportKey(projectUri, index.projectId);
                 this.projectUri = undefined;
@@ -324,6 +354,26 @@ export class RoadmapCanvasWidget extends BaseWidget {
     linkedSourceChanged(root: string, projectId: string): void {
         if (this.inspector.index?.projectRoot === root && this.inspector.index.projectId === projectId)
             void this.refresh();
+    }
+
+    private setSourceOpen(open: boolean): void {
+        this.sourceOpen = open;
+        this.importEntry.hidden = !open;
+        this.sourceButton.setAttribute('aria-expanded', String(open));
+        if (open) {
+            this.setPoolOpen(false);
+            this.importEntry.focus();
+        } else if (this.importEntry.contains(document.activeElement)) this.sourceButton.focus();
+    }
+
+    private setPoolOpen(open: boolean): void {
+        this.poolOpen = open;
+        this.pools.hidden = !open;
+        this.poolButton.setAttribute('aria-expanded', String(open));
+        if (open) {
+            this.setSourceOpen(false);
+            this.poolFilter.focus();
+        } else if (this.pools.contains(document.activeElement)) this.poolButton.focus();
     }
 
     private render(): void {
@@ -463,6 +513,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     private renderImportEntry(): void {
         this.importEntry.replaceChildren();
+        const linkedDocument = this.inspector.index?.linkedDocument;
+        const sourceState = this.syncPreview?.state ?? linkedDocument?.syncState;
+        const needsReview = sourceState === 'conflict' || sourceState === 'relink-needed' || sourceState === 'source-changed' || !!linkedDocument?.pending;
+        this.sourceLabel.textContent = linkedDocument ? `Markdown · ${sourceState}` :
+            this.inspector.index?.revision === 0 ? 'Markdown / Create' : 'Markdown';
+        this.sourceButton.setAttribute('aria-label', linkedDocument ?
+            `Roadmap Markdown ${linkedDocument.path}: ${sourceState}${needsReview ? '; review required' : ''}` : 'Roadmap Markdown, import and create');
+        this.sourceButton.dataset.review = String(needsReview);
         if (!this.projectUri || !this.inspector.index) return;
         const index = this.inspector.index;
         if (index.linkedDocument) {

@@ -84,6 +84,16 @@ test('pool controls expose native keyboard actions, labels, filter, and recovery
     assert.match(widget, /unlink\.type = 'button'/);
     assert.match(widget, /service\.preview\(request\)/);
     assert.match(widget, /service\.apply\(request, preview\.token/);
+    assert.match(widget, /this\.stage\.append\(this\.path, this\.status, this\.importEntry, this\.poolButton, this\.pools\)/);
+    assert.match(widget, /this\.setPoolOpen\(false\)/);
+    assert.match(widget, /this\.pools\.hidden = !open/);
+    assert.match(widget, /this\.poolButton\.setAttribute\('aria-expanded', String\(open\)\)/);
+    assert.match(widget, /this\.poolFilter\.focus\(\)/);
+    assert.match(widget, /this\.poolButton\.focus\(\)/);
+    assert.match(widget, /event\.key === 'Escape'.*this\.setPoolOpen\(false\)/);
+    const toggle = widget.slice(widget.indexOf('private setPoolOpen('), widget.indexOf('private render(): void'));
+    assert.doesNotMatch(toggle, /renderFlow|fitView|schedulePresentation|service\.apply/);
+    assert.match(css, /\.dope-roadmap-pools \{ position: absolute; left: 8px; bottom: 48px/);
     assert.match(widget, /Refresh and retry/);
     assert.match(css, /\.dope-roadmap-pools :is\(input, button\):focus-visible/);
     assert.doesNotMatch(widget, /innerHTML|openChatPanel|ChatPanelWidget/);
