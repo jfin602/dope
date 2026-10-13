@@ -1,0 +1,50 @@
+# /prompt-ass — c10-roadmap-qualify
+
+**Status:** SOURCE-ASSESSED / DOCUMENTATION-APPROVED / PROMPT WRITING ONLY; NOT IMPLEMENTED, ACTIVATED, OR QUALIFIED
+**Date:** 2026-10-13 (America/Chicago)
+**Entry:** P19 `c10-roadmap-create-sync` tested product source `71d91efb3668e57816bb031f82ab309acea17cfc`, evidence-only commit `c620bc0a3be714b7dc329dc5c872a064b1f8003a`, package `0.10.16`. Exact aggregate **671/671 and browser/Electron builds PASS**, but P19 **NOT GREEN**. P16 predecessor NOT GREEN. Actual local Git/worktree status was not independently observed during prompt authoring.
+**Authority:** ADR 0036 including 2026-10-13 compact-intent and supported-field amendment, current ADR 0016, ADR 0025/28/29, ADR 0037, `docs/planning/p10/phase-10-plan.md`, `docs/workflow.md`, `BOOT.md`, `AGENTS.md`, P19 closeout.
+**Correction:** `c10-roadmap-qualify`, Correction 10, all prompts target **unchanged `0.10.16`**.
+
+## Source/evidence reality
+
+- Real local Qwen `qwen3-coder-30b-a3b-instruct@q3_k_l`, 4,096 measured total tokens, completed two turns. First lacked nested action type; second supplied `type: edit` for linked Markdown, which Dope correctly rejected as needing `document-edit`. No accepted preview, human approval, durable model change or fresh NEXT turn. `chat-context-composer.ts` already says `document-edit`, so generic instruction reiteration alone cannot solve this.
+- `packages/theia-extension/src/node/roadmap-local-model.ts` `localPlanningJson` currently shape-checks outer proposal without rigorously checking the nested action before accepting a completed local response. Its conservative byte-based 4,096-budget path can reject verbose contexts before inference; `chat-backend.ts` uses the existing Chat lease/proposal/approval service.
+- `packages/project-intelligence/src/node/roadmap-document-patch.ts` only patches supported unambiguous `Objective:`, `Order:`, `Prose:` labels. Dope's own longform `docs/roadmap/mvp-roadmap.md` phase sections have no such `Objective:` mapping; even correct `document-edit` JSON cannot guarantee an edit there. An eligibility/capability check, and a positive editable fixture, are required. No arbitrary narrative rewrite.
+- P18 integration explicitly observed `relink-needed` on moved source without a relink action; `roadmap-document-sync.ts` and `roadmap-store.ts` have conflict/pending-sync machinery with fault injection tests, but live relink/conflict/crash is not qualified.
+- `roadmap-greenfield.ts` has approved previews, new file creation and draft Chat binding; the P19 browser only saw Create Manually and Plan with Chat, not a completed accepted greenfield. `chat-panel-controller.ts` had a one-off lease/restart problem; root cause is unproven.
+- React Flow map, source-backed c10 P1–P19 nodes, exact P19 file double-click and phase gate truth were observed. Fit/mouse/touch/pinch/Arrange/keyboard, Chat left/right/bottom/center, prompt malicious cases, light theme and native Electron GUI were not exercised on this exact candidate. P19's loopback backend connect trace does not prove whole-app egress.
+
+## Recommended bounded sequence
+
+| Prompt | One coherent task | Tier | Model | Rule |
+| --- | --- | --- | --- | --- |
+| P1 | Source-aware, compact local planning intent contract, nested strict validation and editable-field capabilities | T2 | GPT-6 Sol High | No direct model write |
+| P2 | Measured 4,096-total-token compact context and NEXT-turn freshness | T2 | GPT-6 Sol High | No hosted fallback |
+| P3 | Explicit secure moved-document relink | T2 | GPT-6 Sol High | No overwrite/dual source |
+| P4 | Focused conflict/pending-sync/crash reproduction, narrow evidence-backed repair | T2 | GPT-6 Sol High | Do not invent defects |
+| P5 | Greenfield manual and existing-Chat UI completion / narrow repair | T2 | GPT-6 Sol High | No second Chat |
+| P6 | Reproduce saved Chat lease/restart/stream issue and guard or repair narrowly | T2 | GPT-6 Sol High | No parallel lease owner |
+| P7 | Focused canvas/gesture/accessibility/editor navigation regressions | T1 | GPT-6 Sol Medium | No broad UI redesign |
+| P8 | One cross-owner/adversarial integration gate and test registration | T2 | GPT-6 Sol High | No aggregate |
+| P9 | **Sole manual direct T3 final qualification/closeout** | T3 | GPT-6 Sol High | Final exact source |
+
+P1 before P2 because context/intent agree on allowed operations. P3/P4 are owner-file integrity before wide UI acceptance. P5/P6/P7 are reproduction-first: **Evidence Gap is not proof of a source bug**. P8 integrates all; P9 alone qualifies live behavior and final check.
+
+## Mandatory qualification-instrumentation preflight
+
+**Before running P1**, operator demonstrates a direct native Electron window can be controlled/captured (not merely launched or built), browser input and keyboard/touch-equivalent gesture capture works, and relevant browser/backend/renderer/Electron/child process/network observation can be attributed to a *successful* local inference. Record concrete commands/observation method, OS environment and limits. Missing capability blocks a full Green claim early and must not silently change approved acceptance.
+
+## Preserved behavior and non-goals
+
+- Do not modify historical `docs/tasks/p10/closeout.md` or `docs/tasks/c10-roadmap-create-sync/closeout.md`, their original source SHAs, P1–P19 files or evidence.
+- Current `0.10.16` version, 13 manifests, 20 pins, yarn.lock and root package-lock absence stay unchanged; no unrelated dirty-tree reset/clean/discard and no overlapping mutating runner.
+- Existing saved ChatPanel in all four docks; ProjectPlanningActions is the only planning mutation authority; separate Work/AgentTask/candidate gates. No new Chat, no model shell/Git/MCP/fs tools, no hidden hosted egress.
+- Linked Markdown owns supported mapped text, `.dope` owns IDs/basis/sync/projections; unknown/unsupported content is read-only unless developer-approved structural conversion is explicitly previewed. No AI repair of docs and no false source/runner derived Green.
+- Original Phase 10 P16 and correction P19 are historical NOT GREEN; Phase 10 not owner-closed, Phase 11 Human-Centered UI and Phase 12 alignment inactive.
+
+## Efficiency gate
+
+Eight ordinary narrow implementation/integration tasks (target <=8 minutes, 10 soft / 15 hard); source-aware safety and T2 integration may justify limited extra, but no habitual `npm run check`. P9 manual T3 is exempt and must contain hard stopping gates. Focused tests use actual existing `test/unit/roadmap-*.test.ts` and directly affected Chat/Store/Map suites; tests importing compiled `@dope/*/lib` need only changed package output rebuilt in dependency order, not `npm run build:extension` for every prompt. Register new tests in root `test:product` once. Final `npm run check` includes typecheck, tests, browser/Electron builds; run once per final candidate after changes. Runner validator must be executed locally after writing stack; static consistency alone is not runtime validation.
+
+**Grammar:** `P1`–`P9` contiguous; `TASK: Correction 10 / P<n> — <title>`; fixed unchanged version metadata in each; one sole final `P9-...-closeout.txt` with closeout also in TASK title and Browser required yes. All P1–P8 browser no. This document authors prompts but does **not** activate or run the correction.
