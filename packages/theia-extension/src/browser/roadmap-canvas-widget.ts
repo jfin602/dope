@@ -7,6 +7,7 @@ import type { RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-st
 import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
+import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { roadmapCanvasOrder, roadmapNextId } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 
@@ -33,14 +34,19 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private syncPreview?: RoadmapSyncPreview;
     private importState?: { uri: string; projectId: string; revision: number; discovery: RoadmapCandidateDiscovery;
         preview?: RoadmapImportPreview; path?: string; busy: boolean; showChooser: boolean; message?: string };
+    private createState?: { uri: string; projectId: string; handle: string; draft: GreenfieldDraft;
+        mode: 'manual' | 'chat'; chatId?: string; path: string; preview?: GreenfieldPreview; busy: boolean; error?: string };
+    private createSerial = 0;
+    private createStarting = false;
     private projectUri?: string;
     private projection?: RoadmapProjection;
     private selectedId?: string;
-    private readonly focusRecheck = (): void => { if (!this.isDisposed && this.projectUri) void this.refresh(); };
+    private readonly focusRecheck = (): void => { if (!this.isDisposed && this.projectUri && !this.createState) void this.refresh(); };
 
     constructor(private readonly service: RoadmapService, private readonly workspaces: WorkspaceService,
         private readonly inspector: RoadmapInspectorModel, private readonly openInspector: () => Promise<unknown>,
-        private readonly openMind: (id?: string, workspace?: string) => Promise<boolean> = async () => false) {
+        private readonly openMind: (id?: string, workspace?: string) => Promise<boolean> = async () => false,
+        private readonly savedChats: (workspace: string) => { id: string; title: string }[] = () => []) {
         super();
         this.id = ROADMAP_CANVAS_ID;
         this.title.label = this.title.caption = 'Roadmap';
@@ -94,6 +100,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
         catch (error) { this.status.textContent = `Roadmap observation unavailable: ${String(error)}. Use Refresh to retry.`; return; }
         if (this.isDisposed || request !== this.request) return;
         ++this.importSerial;
+        const oldDraft = this.createState;
+        if (oldDraft && oldDraft.uri !== this.projectUri) void this.service.cancelDraft(oldDraft.handle);
+        if (oldDraft && oldDraft.uri !== this.projectUri) this.createState = undefined;
         this.importState = undefined;
         this.syncPreview = undefined;
         this.importEntry.replaceChildren();
@@ -119,8 +128,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (this.projectUri !== projectUri) { this.selectedId = undefined; this.poolQuery = ''; this.poolFilter.value = ''; }
             this.owners = owners;
             this.projectUri = projectUri;
+            if (this.createState && (this.createState.uri !== projectUri || this.createState.projectId !== index.projectId || index.revision !== 0)) {
+                void this.service.cancelDraft(this.createState.handle); this.createState = undefined; ++this.createSerial;
+            }
             this.inspector.setSnapshot(projectUri, index);
-            if (index.revision === 0) this.status.textContent = 'No Roadmap index yet. Import a project Markdown Roadmap to begin.';
+            if (index.revision === 0) this.status.textContent = 'No Roadmap yet. Import one, create manually, or plan with an existing Chat.';
             this.projection = projectRoadmap(index, owners, { projectId: index.projectId, selectedId: this.selectedId });
             this.render();
             if (index.linkedDocument) {
@@ -190,7 +202,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.renderPools();
         const diagnostic = projection.diagnostics.length ? ` · ${projection.diagnostics.length} unresolved reference(s)` : '';
         this.status.textContent = projection.revision === 0 ?
-            'No Roadmap index yet. Import an existing project Markdown Roadmap to begin.' :
+            'No Roadmap yet. Import one, create manually, or plan with an existing Chat.' :
             `${nodes.length} checkpoints · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.inspector.index.linkedDocument.syncState})` : ''}`;
     }
 
@@ -228,11 +240,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
             element.onclick = action; return element;
         };
         const importButton = button('Import Roadmap', () => void this.discoverImport());
-        importButton.disabled = !!this.importState?.busy;
+        importButton.disabled = !!this.importState?.busy || !!this.createState || this.createStarting;
+        const chatButton = button('Plan with Chat', () => { void this.beginCreate('chat'); });
+        const manualButton = button('Create Manually', () => { void this.beginCreate('manual'); });
+        chatButton.disabled = manualButton.disabled = !!this.createState || this.createStarting || !!this.importState?.busy;
         actions.append(importButton,
-            button('Plan with Chat', () => { this.showSetupMessage('Open an existing saved Chat from the Chat panel. Roadmap draft planning arrives in P8; Chat stays where you docked it.'); }),
-            button('Create Manually', () => { this.showSetupMessage('Manual Roadmap creation arrives in P8. You can import an existing Markdown Roadmap now.'); }));
+            chatButton, manualButton);
         this.importEntry.append(heading, actions);
+        if (this.createState) { this.renderCreate(); return; }
         const state = this.importState;
         if (!state || state.uri !== this.projectUri || state.projectId !== index.projectId) return;
         if (state.message) { const message = document.createElement('p'); message.setAttribute('role', 'status'); message.textContent = state.message; this.importEntry.append(message); }
@@ -368,6 +383,157 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private cancelImport(): void { ++this.importSerial; this.importState = undefined; this.renderImportEntry(); }
+
+    private async beginCreate(mode: 'manual' | 'chat'): Promise<void> {
+        const uri = this.projectUri, index = this.inspector.index;
+        if (!uri || !index || index.revision !== 0 || this.createState || this.createStarting || this.importState?.busy) return;
+        const serial = ++this.createSerial;
+        this.createStarting = true; this.renderImportEntry();
+        try {
+            const started = await this.service.beginDraft(uri);
+            if (serial !== this.createSerial || this.projectUri !== uri || this.inspector.index?.projectId !== index.projectId ||
+                this.inspector.index.revision !== 0) { await this.service.cancelDraft(started.handle); return; }
+            this.importState = undefined;
+            this.createState = { uri, projectId: index.projectId, handle: started.handle, draft: started.draft,
+                mode, path: 'ROADMAP.md', busy: false };
+            this.createStarting = false; this.renderImportEntry();
+            this.importEntry.querySelector<HTMLInputElement>('.dope-roadmap-create input')?.focus();
+        } catch (error) { if (serial === this.createSerial && this.projectUri === uri && this.inspector.index?.projectId === index.projectId)
+            this.showSetupMessage(`Could not start a Roadmap draft: ${String(error)}. Refresh and retry.`); }
+        finally { if (serial === this.createSerial) { this.createStarting = false; this.renderImportEntry(); } }
+    }
+
+    private async editCreate(action: GreenfieldEdit): Promise<void> {
+        const state = this.createState;
+        if (!state || state.busy) return;
+        const serial = ++this.createSerial;
+        state.busy = true; state.error = undefined; this.renderImportEntry();
+        try {
+            const draft = await this.service.editDraft(state.handle, state.draft.revision, action);
+            if (serial !== this.createSerial || this.createState !== state) return;
+            state.draft = draft; state.preview = undefined;
+        } catch (error) { if (serial === this.createSerial && this.createState === state) state.error = `Draft edit failed: ${String(error)}. Correct the fields and retry.`; }
+        finally { if (serial === this.createSerial && this.createState === state) { state.busy = false; this.renderImportEntry(); } }
+    }
+
+    private async previewCreate(): Promise<void> {
+        const state = this.createState; if (!state || state.busy) return;
+        const serial = ++this.createSerial; state.busy = true; state.error = undefined; this.renderImportEntry();
+        try {
+            const preview = await this.service.previewDraft(state.handle, state.path);
+            if (serial === this.createSerial && this.createState === state) state.preview = preview;
+        } catch (error) { if (serial === this.createSerial && this.createState === state) state.error = `Preview failed: ${String(error)}. Choose an unused project Markdown path and retry.`; }
+        finally { if (serial === this.createSerial && this.createState === state) { state.busy = false; this.renderImportEntry(); } }
+    }
+
+    private async acceptCreate(): Promise<void> {
+        const state = this.createState; if (!state?.preview || state.busy) return;
+        const serial = ++this.createSerial; state.busy = true; state.error = undefined; this.renderImportEntry();
+        try {
+            const current = await this.service.read(state.uri);
+            if (current.projectId !== state.projectId || current.revision !== 0 || this.projectUri !== state.uri)
+                throw new Error('Roadmap changed. Refresh and start a new draft');
+            const result = await this.service.acceptDraft(state.handle, state.preview, true);
+            if (serial !== this.createSerial || this.createState !== state) return;
+            this.createState = undefined;
+            this.inspector.setSnapshot(state.uri, result);
+            await this.refresh();
+        } catch (error) { if (serial === this.createSerial && this.createState === state) state.error = `Creation failed: ${String(error)}. Review the preview and retry, or Refresh to recover.`; }
+        finally { if (serial === this.createSerial && this.createState === state) { state.busy = false; this.renderImportEntry(); } }
+    }
+
+    private cancelCreate(): void {
+        const state = this.createState; if (!state) return;
+        ++this.createSerial; this.createState = undefined;
+        void this.service.cancelDraft(state.handle).catch(() => undefined);
+        this.renderImportEntry();
+    }
+
+    private renderCreate(): void {
+        const state = this.createState; if (!state) return;
+        const section = document.createElement('section'); section.className = 'dope-roadmap-create';
+        const heading = document.createElement('h4'); heading.textContent = state.mode === 'chat' ? 'Plan with an existing Chat' : 'Create a Roadmap manually';
+        const note = document.createElement('p'); note.textContent = 'Build one phase and checkpoint at a time. Preview before approving a new Markdown file. No model is needed.';
+        section.append(heading, note);
+        const button = (label: string, action: () => void): HTMLButtonElement => {
+            const element = document.createElement('button'); element.type = 'button'; element.textContent = label;
+            element.disabled = state.busy; element.onclick = action; return element;
+        };
+        if (state.mode === 'chat') {
+            const chats = this.savedChats(state.uri);
+            if (state.chatId && !chats.some(chat => chat.id === state.chatId)) state.chatId = undefined;
+            const label = document.createElement('label'); label.textContent = 'Saved Chat for planning';
+            const select = document.createElement('select'); select.setAttribute('aria-label', 'Saved Chat for Roadmap planning');
+            const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'Choose an open saved Chat'; select.append(empty);
+            for (const chat of chats) { const option = document.createElement('option'); option.value = chat.id; option.textContent = chat.title; select.append(option); }
+            select.value = state.chatId ?? ''; select.onchange = () => { state.chatId = select.value || undefined;
+                this.renderImportEntry(); this.importEntry.querySelector<HTMLSelectElement>('.dope-roadmap-create select')?.focus(); };
+            label.append(select); section.append(label);
+            const guidance = document.createElement('p');
+            guidance.textContent = state.chatId ? 'Use the selected Chat where you placed it to discuss the plan. Add agreed phases and checkpoints below. Chat proposals arrive in P10.' :
+                'Open and select a saved Chat using the ordinary Chat panel, then choose it here. You can build the draft manually now.';
+            section.append(guidance);
+        }
+        const form = document.createElement('form');
+        const phaseLabel = document.createElement('label'); phaseLabel.textContent = 'New phase title';
+        const phase = document.createElement('input'); phase.required = true; phase.maxLength = 200; phaseLabel.append(phase);
+        const objectiveLabel = document.createElement('label'); objectiveLabel.textContent = 'Objective (optional)';
+        const objective = document.createElement('input'); objective.maxLength = 8192; objectiveLabel.append(objective);
+        form.onsubmit = event => { event.preventDefault(); void this.editCreate({ type: 'create-phase', title: phase.value, objective: objective.value }); };
+        const addPhase = document.createElement('button'); addPhase.type = 'submit'; addPhase.textContent = 'Add phase'; addPhase.disabled = state.busy;
+        form.append(phaseLabel, objectiveLabel, addPhase); section.append(form);
+        for (const item of state.draft.phases) {
+            const group = document.createElement('section');
+            const title = document.createElement('h5'); title.textContent = item.title;
+            const description = document.createElement('p'); description.textContent = item.objective || 'No objective yet.';
+            group.append(title, description);
+            const phaseEdit = document.createElement('form');
+            const phaseTitleLabel = document.createElement('label'); phaseTitleLabel.textContent = `Edit ${item.title} title`;
+            const phaseTitle = document.createElement('input'); phaseTitle.value = item.title; phaseTitle.required = true; phaseTitle.maxLength = 200; phaseTitleLabel.append(phaseTitle);
+            const phaseObjectiveLabel = document.createElement('label'); phaseObjectiveLabel.textContent = 'Phase objective';
+            const phaseObjective = document.createElement('input'); phaseObjective.value = item.objective; phaseObjective.maxLength = 8192; phaseObjectiveLabel.append(phaseObjective);
+            phaseEdit.onsubmit = event => { event.preventDefault(); void this.editCreate({ type: 'edit-phase', phaseId: item.id,
+                title: phaseTitle.value, objective: phaseObjective.value }); };
+            const savePhase = document.createElement('button'); savePhase.type = 'submit'; savePhase.textContent = 'Update phase'; savePhase.disabled = state.busy;
+            phaseEdit.append(phaseTitleLabel, phaseObjectiveLabel, savePhase); group.append(phaseEdit);
+            for (const checkpoint of item.checkpoints) {
+                const edit = document.createElement('form');
+                const checkpointTitleLabel = document.createElement('label'); checkpointTitleLabel.textContent = `Edit ${checkpoint.title} title`;
+                const checkpointTitle = document.createElement('input'); checkpointTitle.value = checkpoint.title;
+                checkpointTitle.required = true; checkpointTitle.maxLength = 200; checkpointTitleLabel.append(checkpointTitle);
+                const checkpointObjectiveLabel = document.createElement('label'); checkpointObjectiveLabel.textContent = 'Checkpoint objective';
+                const checkpointObjective = document.createElement('input'); checkpointObjective.value = checkpoint.objective;
+                checkpointObjective.maxLength = 8192; checkpointObjectiveLabel.append(checkpointObjective);
+                edit.onsubmit = event => { event.preventDefault(); void this.editCreate({ type: 'edit-checkpoint', phaseId: item.id,
+                    checkpointId: checkpoint.id, title: checkpointTitle.value, objective: checkpointObjective.value }); };
+                const save = document.createElement('button'); save.type = 'submit'; save.textContent = 'Update checkpoint'; save.disabled = state.busy;
+                edit.append(checkpointTitleLabel, checkpointObjectiveLabel, save); group.append(edit);
+            }
+            const checkpointForm = document.createElement('form');
+            const checkpointLabel = document.createElement('label'); checkpointLabel.textContent = `New checkpoint in ${item.title}`;
+            const checkpointInput = document.createElement('input'); checkpointInput.required = true; checkpointInput.maxLength = 200; checkpointLabel.append(checkpointInput);
+            const checkpointObjectiveLabel = document.createElement('label'); checkpointObjectiveLabel.textContent = 'Objective (optional)';
+            const checkpointObjective = document.createElement('input'); checkpointObjective.maxLength = 8192; checkpointObjectiveLabel.append(checkpointObjective);
+            checkpointForm.onsubmit = event => { event.preventDefault(); void this.editCreate({ type: 'create-checkpoint', phaseId: item.id,
+                title: checkpointInput.value, objective: checkpointObjective.value }); };
+            const add = document.createElement('button'); add.type = 'submit'; add.textContent = 'Add checkpoint'; add.disabled = state.busy;
+            checkpointForm.append(checkpointLabel, checkpointObjectiveLabel, add); group.append(checkpointForm); section.append(group);
+        }
+        const pathLabel = document.createElement('label'); pathLabel.textContent = 'New Markdown path in this project';
+        const path = document.createElement('input'); path.value = state.path; path.maxLength = 512;
+        path.oninput = () => { state.path = path.value; state.preview = undefined;
+            section.querySelector('[data-approve-draft]')?.remove(); section.querySelector('pre')?.remove(); };
+        pathLabel.append(path); section.append(pathLabel);
+        section.append(button('Preview Roadmap', () => void this.previewCreate()), button('Cancel draft', () => this.cancelCreate()));
+        if (state.preview) {
+            const summary = document.createElement('pre'); summary.setAttribute('aria-label', 'Roadmap creation preview');
+            summary.textContent = state.preview.markdown; section.append(summary);
+            const approve = button(`Approve and create ${state.preview.path}`, () => void this.acceptCreate());
+            approve.dataset.approveDraft = 'true'; section.append(approve);
+        }
+        if (state.error) { const error = document.createElement('p'); error.setAttribute('role', 'alert'); error.textContent = state.error; section.append(error); }
+        this.importEntry.append(section);
+    }
 
 
     private renderPools(): void {
@@ -510,6 +676,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.select(next, true);
     }
 
-    override dispose(): void { ++this.request; ++this.importSerial; window.removeEventListener('focus', this.focusRecheck);
+    override dispose(): void { ++this.request; ++this.importSerial; ++this.createSerial;
+        if (this.createState) void this.service.cancelDraft(this.createState.handle).catch(() => undefined);
+        window.removeEventListener('focus', this.focusRecheck);
         void this.service.observeLinkedDocument(undefined).catch(() => undefined); this.rootsListener.dispose(); this.modelListener(); super.dispose(); }
 }

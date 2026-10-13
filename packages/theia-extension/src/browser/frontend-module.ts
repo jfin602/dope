@@ -328,7 +328,14 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_CANVAS_ID, createWidget: () =>
         new RoadmapCanvasWidget(context.container.get<RoadmapService>('RoadmapService'), context.container.get(WorkspaceService),
             context.container.get(RoadmapInspectorModel), () => context.container.get(RoadmapInspectorView).show(),
-            (id, workspace) => openMind(context, id, workspace)) })).inSingletonScope();
+            (id, workspace) => openMind(context, id, workspace), workspace => {
+                const chats = new Map<string, string>();
+                for (const widget of context.container.get(WidgetManager).getWidgets(CHAT_PANEL_ID) as ChatPanelWidget[]) {
+                    if (widget.moduleKind !== 'chat' || widget.controller.workspace !== workspace || !widget.controller.chat) continue;
+                    chats.set(widget.controller.chat.id, widget.controller.chat.title);
+                }
+                return [...chats].map(([id, title]) => ({ id, title }));
+            }) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_INSPECTOR_ID, createWidget: () =>
         new RoadmapInspectorWidget(context.container.get(RoadmapInspectorModel)) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: SOFTWARE_MAP_REVIEW_ID, createWidget: () =>

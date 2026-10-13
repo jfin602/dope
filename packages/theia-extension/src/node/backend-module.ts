@@ -46,6 +46,7 @@ import type { AgentExecutionAdapter } from '@dope/agent-core';
 import { historyServicePath, historyFocusServicePath } from '@dope/contracts/lib/history-service';
 import { HistoryBackend } from './history-backend';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
+import { RoadmapGreenfield } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { RoadmapLinkedObserver } from '@dope/project-intelligence/lib/node/roadmap-linked-observer';
 import { RoadmapOwnerLinks } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import { discoverRoadmapCandidates, previewRoadmapImport } from '@dope/project-intelligence/lib/node/roadmap-import';
@@ -87,11 +88,27 @@ export default new ContainerModule(bind => {
                 () => new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex)));
             const handles = new Set<string>();
             const store = context.container.get(RoadmapStore);
+            const greenfield = new RoadmapGreenfield(store);
+            const draftHandles = new Set<string>();
             const observer = new RoadmapLinkedObserver(root => store.read(root),
                 (root, projectId) => client.notifyLinkedDocumentChanged(root, projectId));
             const off = store.onChange(change => client.notifyRoadmapChanged(change));
-            client.onDidCloseConnection(() => { off(); observer.dispose(); for (const handle of handles) actions.detach(handle); dispose(); });
+            client.onDidCloseConnection(() => { off(); observer.dispose(); for (const handle of handles) actions.detach(handle);
+                for (const handle of draftHandles) greenfield.cancel(handle); dispose(); });
             const backend: RoadmapService = {
+                beginDraft: async uri => { const result = await greenfield.begin(await context.container.get(PlanningStore).root(uri));
+                    draftHandles.add(result.handle); return result; },
+                editDraft: async (handle, revision, action) => {
+                    if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.edit(handle, revision, action);
+                },
+                previewDraft: async (handle, path) => {
+                    if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.preview(handle, path);
+                },
+                acceptDraft: async (handle, preview, approved) => {
+                    if (!draftHandles.has(handle)) throw new Error('Unknown draft');
+                    const result = await greenfield.accept(handle, preview, approved); draftHandles.delete(handle); return result;
+                },
+                cancelDraft: async handle => { if (draftHandles.delete(handle)) greenfield.cancel(handle); },
                 read: async (uri) => context.container.get(RoadmapStore).read(await context.container.get(PlanningStore).root(uri)),
                 owners: async (uri) => new RoadmapOwnerLinks().list(await context.container.get(PlanningStore).root(uri)),
                 discoverImports: async uri => discoverRoadmapCandidates(await context.container.get(PlanningStore).root(uri)),

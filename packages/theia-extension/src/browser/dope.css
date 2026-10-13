@@ -15,6 +15,14 @@
 .dope-roadmap-import select { box-sizing: border-box; width: 100%; min-width: 0; padding: 6px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border, var(--theia-widget-border)); }
 .dope-roadmap-import :is(p, li) { overflow-wrap: anywhere; }
 .dope-roadmap-import details { margin-top: 6px; color: var(--theia-descriptionForeground); }
+.dope-roadmap-create { display: grid; gap: 10px; min-width: 0; }
+.dope-roadmap-create :is(form, section) { display: grid; gap: 8px; min-width: 0; padding: 8px 0; border-top: 1px solid var(--theia-widget-border); }
+.dope-roadmap-create label { display: grid; gap: 4px; min-width: 0; }
+.dope-roadmap-create :is(input, select) { box-sizing: border-box; width: 100%; min-width: 0; padding: 7px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border, var(--theia-widget-border)); }
+.dope-roadmap-create pre { max-height: 24rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 10px; background: var(--theia-editor-background); border: 1px solid var(--theia-widget-border); }
+.dope-roadmap-create button { min-height: 36px; }
+.dope-roadmap-create button:last-of-type { justify-self: start; }
+.dope-roadmap-create :is(input, select):focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-roadmap-canvas header button { color: var(--theia-button-secondaryForeground, var(--theia-foreground)); background: var(--theia-button-secondaryBackground, var(--theia-button-background)); border: 1px solid var(--theia-widget-border); border-radius: 4px; padding: 5px 9px; cursor: pointer; }
 .dope-roadmap-canvas button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-roadmap-canvas ol { list-style: none; margin: 20px 0; padding: 0; display: grid; gap: 9px; max-width: 52rem; }
