@@ -39,7 +39,23 @@ export class RoadmapInspectorWidget extends BaseWidget {
         const selection = activeElement && typeof activeElement.selectionStart === 'number' ?
             [activeElement.selectionStart, activeElement.selectionEnd] : undefined;
         const item = this.model.selected;
+        const prompt = this.model.selectedPrompt;
         this.content.replaceChildren();
+        if (!item && prompt) {
+            this.content.append(this.element('h2', prompt.title), this.element('p', `${prompt.kind} · ${prompt.statusLabel}`),
+                this.element('p', prompt.taskSource?.path ?? prompt.taskSource?.stackPath ?? 'Source unavailable'));
+            if (prompt.kind === 'prompt' && prompt.taskSource?.path) {
+                const action = this.button('Open Prompt', () => void this.model.openPrompt());
+                action.id = 'dope-roadmap-open-prompt';
+                action.setAttribute('aria-label', `Open prompt source: ${prompt.title}`);
+                this.content.append(action);
+            }
+            this.content.append(this.element('p', 'Opening a prompt displays its source in the editor. It does not run the prompt.'));
+            const feedback = this.element('p', this.model.error ?? '');
+            feedback.setAttribute('role', this.model.error ? 'alert' : 'status');
+            this.content.append(feedback);
+            return;
+        }
         if (!item) { this.content.append(this.element('p', 'Select a checkpoint on the Roadmap to inspect it.')); return; }
         const heading = this.element('h2', item.title);
         const state = this.element('p', `${item.kind} · ${item.status.replaceAll('-', ' ')} · Roadmap revision ${this.model.index?.revision}`);

@@ -2,10 +2,12 @@ import type { RoadmapCheckpoint, RoadmapIndex } from '@dope/project-intelligence
 import type { RoadmapChange } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { PlanningAction, PlanningActionPreview, PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapService } from '../roadmap-service';
+import type { CheckpointNode } from '@dope/project-intelligence/lib/roadmap-projection';
 
 /** Presentation state only. All writes pass through the backend planning authority. */
 export class RoadmapInspectorModel {
     private readonly service: RoadmapService;
+    private readonly openSource: (uri: string) => Promise<void>;
     private readonly listeners = new Set<() => void>();
     private serial = 0;
     private handle?: string;
@@ -13,13 +15,17 @@ export class RoadmapInspectorModel {
     projectUri?: string;
     index?: RoadmapIndex;
     selectedId?: string;
+    selectedPrompt?: CheckpointNode;
     draft?: { title: string; objective: string; status: RoadmapCheckpoint['status'] };
     dirty = false;
     busy = false;
     error?: string;
     undo?: { token: string; revision: number };
 
-    constructor(service: RoadmapService) { this.service = service; }
+    constructor(service: RoadmapService, openSource: (uri: string) => Promise<void> = async () => {}) {
+        this.service = service;
+        this.openSource = openSource;
+    }
     onChange(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
     private emit(): void { for (const listener of this.listeners) listener(); }
     async remoteChange(change: RoadmapChange): Promise<void> {
@@ -51,6 +57,7 @@ export class RoadmapInspectorModel {
             if (this.handle) void this.service.detach(this.handle);
             this.handle = undefined;
             this.selectedId = undefined;
+            this.selectedPrompt = undefined;
             this.draft = undefined;
             this.dirty = false;
             this.undo = undefined;
@@ -77,12 +84,44 @@ export class RoadmapInspectorModel {
         if (id && !this.index?.checkpoints.some(item => item.id === id)) return;
         ++this.serial;
         this.selectedId = id;
+        this.selectedPrompt = undefined;
         this.pending = undefined;
         this.error = undefined;
         this.busy = false;
         this.dirty = false;
         this.resetDraft();
         this.emit();
+    }
+
+    selectTask(node: CheckpointNode): void {
+        if (!node.taskSource || !this.projectUri || !this.index) return;
+        ++this.serial;
+        this.selectedId = undefined;
+        this.selectedPrompt = node;
+        this.pending = undefined;
+        this.draft = undefined;
+        this.dirty = false;
+        this.error = undefined;
+        this.emit();
+    }
+
+    async openPrompt(node = this.selectedPrompt): Promise<void> {
+        const uri = this.projectUri, index = this.index, source = node?.taskSource;
+        if (!uri || !index || node?.kind !== 'prompt' || !source?.path || !source.fingerprint ||
+            this.selectedPrompt?.id !== node.id) return;
+        const serial = this.serial;
+        this.error = undefined; this.emit();
+        try {
+            const target = await this.service.resolvePromptSource(uri, source.path, source.fingerprint);
+            if (serial !== this.serial || uri !== this.projectUri || index.projectId !== this.index?.projectId ||
+                this.selectedPrompt?.id !== node.id) return;
+            await this.openSource(target);
+        } catch (error) {
+            if (serial === this.serial && uri === this.projectUri) {
+                this.error = error instanceof Error ? error.message : String(error);
+                this.emit();
+            }
+        }
     }
 
     private resetDraft(): void {

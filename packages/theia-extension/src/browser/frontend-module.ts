@@ -1,6 +1,7 @@
 import { ContainerModule } from '@theia/core/shared/inversify';
 import { injectable } from '@theia/core/shared/inversify';
-import { AbstractViewContribution, ApplicationShell, FrontendApplicationContribution, WidgetFactory, WidgetManager } from '@theia/core/lib/browser';
+import { AbstractViewContribution, ApplicationShell, FrontendApplicationContribution, WidgetFactory, WidgetManager, open } from '@theia/core/lib/browser';
+import URI from '@theia/core/lib/common/uri';
 import { CommandContribution, CommandRegistry, Emitter, MenuContribution } from '@theia/core/lib/common';
 import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-service';
 import { bindViewContribution } from '@theia/core/lib/browser/shell/view-contribution';
@@ -300,7 +301,9 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             void context.container.get(WidgetManager).getWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID)
                 .then(widget => widget?.linkedSourceChanged(root, projectId));
         } })).inSingletonScope();
-    bind(RoadmapInspectorModel).toDynamicValue(context => new RoadmapInspectorModel(context.container.get<RoadmapService>('RoadmapService'))).inSingletonScope();
+    bind(RoadmapInspectorModel).toDynamicValue(context => new RoadmapInspectorModel(
+        context.container.get<RoadmapService>('RoadmapService'),
+        async uri => { await open(context.container.get(OpenerService), new URI(uri)); })).inSingletonScope();
     bind(ChatPlanningSelection).toDynamicValue(context => new ChatPlanningSelection(context.container.get(RoadmapInspectorModel),
         context.container.get(PlanningMapController), context.container.get<RoadmapService>('RoadmapService'))).inSingletonScope();
     bind(SmapPresentationState).toDynamicValue(context => new SmapPresentationState(context.container.get(StorageService))).inSingletonScope();

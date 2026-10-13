@@ -23,14 +23,15 @@ import { readRoadmapViewport, roadmapGestures, roadmapKeyboardAction, roadmapVie
 import './dope.css';
 
 function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean; relation: string; omitted: number;
-    select: (id: string) => void } }): React.ReactElement {
+    select: (id: string) => void; activate: (id: string) => void } }): React.ReactElement {
     const item = data.item;
     return React.createElement(React.Fragment, null,
         React.createElement(Handle, { type: 'target', position: Position.Left, isConnectable: false }),
         React.createElement('button', { type: 'button', className: 'dope-roadmap-node',
             'data-checkpoint-id': item.id, 'aria-current': data.selected ? 'true' : undefined,
             'aria-label': `${item.kind}: ${item.title}; ${item.statusLabel}${data.relation ? `; ${data.relation}` : ''}${data.omitted ? `; ${data.omitted} prompts hidden` : ''}`,
-            onClick: event => { event.stopPropagation(); data.select(item.id); } },
+            onClick: event => { event.stopPropagation(); data.select(item.id); },
+            onDoubleClick: event => { event.stopPropagation(); data.activate(item.id); } },
         React.createElement('small', null, item.kind),
         React.createElement('strong', null, item.title),
         React.createElement('span', { className: 'dope-roadmap-status' }, item.statusLabel),
@@ -178,7 +179,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         window.addEventListener('focus', this.focusRecheck);
         this.modelListener = inspector.onChange(() => {
             if (!this.projectUri || inspector.projectUri !== this.projectUri || !inspector.index) return;
-            this.selectedId = inspector.selectedId;
+            this.selectedId = inspector.selectedPrompt?.id ?? inspector.selectedId;
             this.schedulePresentation();
             this.projection = projectRoadmapTasks(inspector.index, this.taskStacks, this.owners, { projectId: inspector.index.projectId, selectedId: this.selectedId });
             this.render();
@@ -342,7 +343,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             id: item.id, type: 'checkpoint', position: this.placements.get(item.id) ?? positions.get(item.id) ?? { x: 64, y: 64 },
             data: { item, selected: item.id === this.selectedId, relation: (relations.get(item.id) ?? []).join(', '),
                 omitted: visible?.omittedByStack.get(item.id) ?? 0,
-                select: (id: string) => this.select(id) },
+                select: (id: string) => this.select(id), activate: (id: string) => this.activateCheckpoint(id) },
             selected: item.id === this.selectedId, draggable: this.arranging, selectable: true,
             className: item.id === this.selectedId ? 'dope-roadmap-selected' : undefined,
         }));
@@ -357,6 +358,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             nodesFocusable: false, edgesFocusable: false,
             zoomOnDoubleClick: false, nodeDragThreshold: 5,
             onNodeClick: (_event: React.MouseEvent, node: Node) => this.select(node.id),
+            onNodeDoubleClick: (_event: React.MouseEvent, node: Node) => this.activateCheckpoint(node.id),
             onNodesChange: (changes: NodeChange[]) => {
                 if (!this.arranging || !this.projection) return;
                 let changed = false;
@@ -912,19 +914,32 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private select(id: string, focus = false): void {
         const node = this.projection?.nodes.find(candidate => candidate.id === id);
         if (!node) return;
-        if (node.taskSource) this.inspector.select(undefined);
         if (this.promptWindow && this.promptWindow.stackId !== id) this.promptWindow = undefined;
         this.selectedId = id;
         this.schedulePresentation();
-        if (!node.taskSource) this.inspector.select(id);
+        if (node.taskSource) this.inspector.selectTask(node);
+        else this.inspector.select(id);
         this.render();
         if (focus) requestAnimationFrame(() => [...this.path.querySelectorAll<HTMLButtonElement>('button')]
             .find(button => button.dataset.checkpointId === id)?.focus());
     }
 
+    private activateCheckpoint(id: string): void {
+        const node = this.projection?.nodes.find(candidate => candidate.id === id);
+        if (!node) return;
+        this.select(id);
+        if (node.kind === 'prompt') void this.inspector.openPrompt(node);
+        else { this.setExpansion(true); this.focusSelection(); }
+    }
+
     private onPathKey(event: KeyboardEvent): void {
         const target = event.target as HTMLElement;
         const current = target.closest<HTMLButtonElement>('button[data-checkpoint-id]');
+        if (event.key === 'Enter' && current && this.path.contains(current)) {
+            event.preventDefault();
+            this.activateCheckpoint(current.dataset.checkpointId!);
+            return;
+        }
         const action = roadmapKeyboardAction(event.key, event.shiftKey, event.altKey, this.arranging);
         if (action && (target === this.path || (current && this.path.contains(current)))) {
             event.preventDefault();

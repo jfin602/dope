@@ -21,6 +21,7 @@ export interface RoadmapService {
     read(projectUri: string): Promise<RoadmapIndex>;
     owners(projectUri: string): Promise<RoadmapOwnerRecord[]>;
     discoverTasks(projectUri: string): Promise<RoadmapTaskStack[]>;
+    resolvePromptSource(projectUri: string, path: string, fingerprint: string): Promise<string>;
     discoverImports(projectUri: string): Promise<RoadmapCandidateDiscovery>;
     previewImport(projectUri: string, path: string): Promise<RoadmapImportPreview>;
     acceptImport(projectUri: string, expectedRevision: number, expectedProjectId: string, preview: RoadmapImportPreview): Promise<RoadmapIndex>;
