@@ -17,6 +17,8 @@ export type GreenfieldEdit =
     | { type: 'reorder-checkpoint'; phaseId: string; checkpointId: string; order: number };
 export interface GreenfieldPreview { token: string; draftRevision: number; path: string; markdown: string;
     phases: GreenfieldPhase[]; requiresApproval: true }
+export interface GreenfieldEditPreview { token: string; draftRevision: number; before: GreenfieldDraft;
+    after: GreenfieldDraft; action: GreenfieldEdit; requiresApproval: true }
 
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const line = (value: unknown, max: number): value is string => typeof value === 'string' &&
@@ -28,7 +30,8 @@ const hash = (value: string): string => createHash('sha256').update(value).diges
 
 /** A local, disposable draft. Only an approved preview crosses into the Roadmap owner. */
 export class RoadmapGreenfield {
-    private readonly drafts = new Map<string, { root: string; value: GreenfieldDraft }>();
+    private readonly drafts = new Map<string, { root: string; projectId: string; value: GreenfieldDraft }>();
+    private readonly chats = new Map<string, { root: string; handle: string }>();
     constructor(private readonly store: RoadmapStore) {}
 
     async begin(root: string): Promise<{ handle: string; draft: GreenfieldDraft }> {
@@ -39,11 +42,40 @@ export class RoadmapGreenfield {
             throw new Error('Roadmap already initialized or creation pending');
         const handle = randomUUID();
         const value = { revision: 0, phases: [] };
-        this.drafts.set(handle, { root, value });
+        this.drafts.set(handle, { root, projectId: current.projectId, value });
         return { handle, draft: copy(value) };
     }
 
-    cancel(handle: string): void { this.drafts.delete(handle); }
+    cancel(handle: string): void {
+        this.drafts.delete(handle);
+        for (const [chatId, binding] of this.chats) if (binding.handle === handle) this.chats.delete(chatId);
+    }
+
+    bindChat(root: string, handle: string, chatId: string): void {
+        if (!chatId || this.drafts.get(handle)?.root !== root) throw new Error('Foreign greenfield draft');
+        for (const [id, binding] of this.chats) if (binding.handle === handle || id === chatId) this.chats.delete(id);
+        this.chats.set(chatId, { root, handle });
+    }
+
+    unbindChat(root: string, handle: string): void {
+        if (this.drafts.get(handle)?.root !== root) throw new Error('Foreign greenfield draft');
+        for (const [chatId, binding] of this.chats) if (binding.handle === handle) this.chats.delete(chatId);
+    }
+
+    chatDraft(root: string, chatId: string): { handle: string; draft: GreenfieldDraft } | undefined {
+        const binding = this.chats.get(chatId);
+        if (!binding || binding.root !== root) return undefined;
+        const entry = this.drafts.get(binding.handle);
+        return entry?.root === root ? { handle: binding.handle, draft: copy(entry.value) } : undefined;
+    }
+
+    owner(root: string): Promise<RoadmapIndex> { return this.store.read(root); }
+
+    draftProjectId(handle: string): string {
+        const entry = this.drafts.get(handle);
+        if (!entry) throw new Error('Unknown greenfield draft');
+        return entry.projectId;
+    }
 
     read(handle: string): GreenfieldDraft {
         const entry = this.drafts.get(handle);
@@ -51,7 +83,7 @@ export class RoadmapGreenfield {
         return copy(entry.value);
     }
 
-    edit(handle: string, expectedRevision: number, action: GreenfieldEdit): GreenfieldDraft {
+    private project(handle: string, expectedRevision: number, action: GreenfieldEdit): GreenfieldDraft {
         const entry = this.drafts.get(handle);
         if (!entry || entry.value.revision !== expectedRevision) throw new Error('Stale greenfield draft');
         const next = copy(entry.value);
@@ -114,8 +146,34 @@ export class RoadmapGreenfield {
             ...item.checkpoints.map(checkpoint => roadmapSectionKey(`Milestone ${checkpoint.title}`, true))]);
         if (keys.some(key => !key) || new Set(keys).size !== keys.length) throw new Error('Duplicate greenfield checkpoint heading');
         next.revision++;
-        entry.value = next;
         return copy(next);
+    }
+
+    edit(handle: string, expectedRevision: number, action: GreenfieldEdit): GreenfieldDraft {
+        const next = this.project(handle, expectedRevision, action);
+        this.drafts.get(handle)!.value = next;
+        return copy(next);
+    }
+
+    previewEdit(handle: string, expectedRevision: number, action: GreenfieldEdit): GreenfieldEditPreview {
+        const before = this.read(handle);
+        const after = this.project(handle, expectedRevision, action);
+        return { token: hash(JSON.stringify({ handle, before, after, action })), draftRevision: expectedRevision,
+            before, after, action: copy(action), requiresApproval: true };
+    }
+
+    async applyEdit(handle: string, preview: GreenfieldEditPreview, approved: boolean): Promise<GreenfieldDraft> {
+        const entry = this.drafts.get(handle);
+        if (!entry || !approved || !preview || entry.value.revision !== preview.draftRevision ||
+            JSON.stringify(entry.value) !== JSON.stringify(preview.before) ||
+            preview.after.revision !== preview.draftRevision + 1 ||
+            preview.token !== hash(JSON.stringify({ handle, before: preview.before, after: preview.after, action: preview.action })))
+            throw new Error('Stale greenfield preview or approval required');
+        const current = await this.store.read(entry.root);
+        if (current.projectId !== entry.projectId || current.revision || current.linkedDocument || current.pendingCreation)
+            throw new Error('Roadmap already initialized or creation pending');
+        entry.value = copy(preview.after);
+        return copy(entry.value);
     }
 
     preview(handle: string, path: string): GreenfieldPreview {
@@ -146,8 +204,11 @@ export class RoadmapGreenfield {
         if (!entry || !approved || !preview ||
             JSON.stringify(this.preview(handle, preview.path)) !== JSON.stringify(preview))
             throw new Error('Greenfield preview and approval required');
+        const current = await this.store.read(entry.root);
+        if (current.revision) throw new Error('Stale Roadmap revision');
+        if (current.projectId !== entry.projectId) throw new Error('Stale greenfield project identity');
         const result = await this.store.acceptGreenfield(entry.root, 0, preview.path, preview.markdown);
-        this.drafts.delete(handle);
+        this.cancel(handle);
         return result;
     }
 }

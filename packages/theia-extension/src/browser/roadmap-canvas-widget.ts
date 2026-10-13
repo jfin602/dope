@@ -41,7 +41,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private projectUri?: string;
     private projection?: RoadmapProjection;
     private selectedId?: string;
-    private readonly focusRecheck = (): void => { if (!this.isDisposed && this.projectUri && !this.createState) void this.refresh(); };
+    private readonly focusRecheck = (): void => { if (!this.isDisposed && this.projectUri) void this.refresh(); };
 
     constructor(private readonly service: RoadmapService, private readonly workspaces: WorkspaceService,
         private readonly inspector: RoadmapInspectorModel, private readonly openInspector: () => Promise<unknown>,
@@ -130,6 +130,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.projectUri = projectUri;
             if (this.createState && (this.createState.uri !== projectUri || this.createState.projectId !== index.projectId || index.revision !== 0)) {
                 void this.service.cancelDraft(this.createState.handle); this.createState = undefined; ++this.createSerial;
+            }
+            if (this.createState) {
+                const draft = await this.service.readDraft(this.createState.handle);
+                if (draft.revision !== this.createState.draft.revision) this.createState.preview = undefined;
+                this.createState.draft = draft;
             }
             this.inspector.setSnapshot(projectUri, index);
             if (index.revision === 0) this.status.textContent = 'No Roadmap yet. Import one, create manually, or plan with an existing Chat.';
@@ -461,16 +466,27 @@ export class RoadmapCanvasWidget extends BaseWidget {
         };
         if (state.mode === 'chat') {
             const chats = this.savedChats(state.uri);
-            if (state.chatId && !chats.some(chat => chat.id === state.chatId)) state.chatId = undefined;
+            if (state.chatId && !chats.some(chat => chat.id === state.chatId)) {
+                state.chatId = undefined;
+                void this.service.bindDraftChat(state.uri, state.handle, '').catch(() => undefined);
+            }
             const label = document.createElement('label'); label.textContent = 'Saved Chat for planning';
             const select = document.createElement('select'); select.setAttribute('aria-label', 'Saved Chat for Roadmap planning');
+            select.disabled = state.busy;
             const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'Choose an open saved Chat'; select.append(empty);
             for (const chat of chats) { const option = document.createElement('option'); option.value = chat.id; option.textContent = chat.title; select.append(option); }
-            select.value = state.chatId ?? ''; select.onchange = () => { state.chatId = select.value || undefined;
-                this.renderImportEntry(); this.importEntry.querySelector<HTMLSelectElement>('.dope-roadmap-create select')?.focus(); };
+            select.value = state.chatId ?? ''; select.onchange = () => { if (state.busy) return; state.busy = true; select.disabled = true; void (async () => {
+                const chatId = select.value;
+                try {
+                    await this.service.bindDraftChat(state.uri, state.handle, chatId);
+                    if (this.createState !== state) return;
+                    state.chatId = chatId || undefined; state.error = undefined;
+                } catch (error) { state.error = `Chat binding failed: ${String(error)}. Choose a saved Chat in this project.`; }
+                state.busy = false; this.renderImportEntry(); this.importEntry.querySelector<HTMLSelectElement>('.dope-roadmap-create select')?.focus();
+            })(); };
             label.append(select); section.append(label);
             const guidance = document.createElement('p');
-            guidance.textContent = state.chatId ? 'Use the selected Chat where you placed it to discuss the plan. Add agreed phases and checkpoints below. Chat proposals arrive in P10.' :
+            guidance.textContent = state.chatId ? 'Use the selected Chat where you placed it. Review each draft proposal there before applying it. Confirmed edits appear here after Refresh.' :
                 'Open and select a saved Chat using the ordinary Chat panel, then choose it here. You can build the draft manually now.';
             section.append(guidance);
         }

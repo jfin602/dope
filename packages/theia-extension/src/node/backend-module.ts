@@ -82,13 +82,14 @@ export default new ContainerModule(bind => {
     bind(SoftwareMapIndex).toDynamicValue(() => new SoftwareMapIndex(new TypeScriptAnalyzer())).inSingletonScope();
     bind(PlanningStore).toSelf().inSingletonScope();
     bind(RoadmapStore).toSelf().inSingletonScope();
+    bind(RoadmapGreenfield).toDynamicValue(context => new RoadmapGreenfield(context.container.get(RoadmapStore))).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<RoadmapClient>(
         roadmapServicePath, client => {
             const { actions, dispose } = createRoadmapActionRuntime(context.container.get(RoadmapStore),
                 () => new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex)));
             const handles = new Set<string>();
             const store = context.container.get(RoadmapStore);
-            const greenfield = new RoadmapGreenfield(store);
+            const greenfield = context.container.get(RoadmapGreenfield);
             const draftHandles = new Set<string>();
             const observer = new RoadmapLinkedObserver(root => store.read(root),
                 (root, projectId) => client.notifyLinkedDocumentChanged(root, projectId));
@@ -101,6 +102,9 @@ export default new ContainerModule(bind => {
                 editDraft: async (handle, revision, action) => {
                     if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.edit(handle, revision, action);
                 },
+                readDraft: async handle => {
+                    if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.read(handle);
+                },
                 previewDraft: async (handle, path) => {
                     if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.preview(handle, path);
                 },
@@ -109,6 +113,14 @@ export default new ContainerModule(bind => {
                     const result = await greenfield.accept(handle, preview, approved); draftHandles.delete(handle); return result;
                 },
                 cancelDraft: async handle => { if (draftHandles.delete(handle)) greenfield.cancel(handle); },
+                bindDraftChat: async (uri, handle, chatId) => {
+                    if (!draftHandles.has(handle)) throw new Error('Unknown draft');
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    if (!chatId) { greenfield.unbindChat(root, handle); return; }
+                    const chat = (await context.container.get(ChatRepository).read(root)).chats.find(item => item.id === chatId);
+                    if (!chat) throw new Error('Saved Chat not found in project');
+                    greenfield.bindChat(root, handle, chatId);
+                },
                 read: async (uri) => context.container.get(RoadmapStore).read(await context.container.get(PlanningStore).root(uri)),
                 owners: async (uri) => new RoadmapOwnerLinks().list(await context.container.get(PlanningStore).root(uri)),
                 discoverImports: async uri => discoverRoadmapCandidates(await context.container.get(PlanningStore).root(uri)),
@@ -201,7 +213,7 @@ export default new ContainerModule(bind => {
         const backend = new ChatBackend(context.container.get(ChatRepository), client,
             context.container.get(ModelConnectionsRegistry), context.container.get(ChatContextComposer),
             context.container.get(AIRoleRoutingService), context.container.get(ChatProjectGrounder),
-            actions);
+            actions, context.container.get(RoadmapGreenfield));
         client.onDidCloseConnection(() => { backend.dispose(); dispose(); });
         return backend;
     })).inSingletonScope();

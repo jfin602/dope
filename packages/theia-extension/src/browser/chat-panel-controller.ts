@@ -422,7 +422,7 @@ export class ChatPanelController {
                 lease.token, proposal.id, approve);
             this.planningProposal = undefined;
             this.planningProposalError = approve && result ?
-                `Roadmap updated at revision ${result.revision}: ${result.changedIds.join(', ')}` : 'Planning proposal rejected';
+                `${proposal.action.type.includes('phase') || proposal.action.type.includes('checkpoint') ? 'Roadmap draft' : 'Roadmap'} updated at revision ${result.revision}: ${result.changedIds.join(', ')}` : 'Planning proposal rejected';
         } catch (error) {
             this.planningProposal = undefined;
             this.planningProposalError = `Planning proposal was not applied: ${String(error)}. Refresh the selection for the next turn.`;

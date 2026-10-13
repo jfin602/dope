@@ -12,9 +12,11 @@ export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): vo
 export interface RoadmapService {
     beginDraft(projectUri: string): Promise<{ handle: string; draft: GreenfieldDraft }>;
     editDraft(handle: string, expectedRevision: number, action: GreenfieldEdit): Promise<GreenfieldDraft>;
+    readDraft(handle: string): Promise<GreenfieldDraft>;
     previewDraft(handle: string, path: string): Promise<GreenfieldPreview>;
     acceptDraft(handle: string, preview: GreenfieldPreview, approved: boolean): Promise<RoadmapIndex>;
     cancelDraft(handle: string): Promise<void>;
+    bindDraftChat(projectUri: string, handle: string, chatId: string): Promise<void>;
     read(projectUri: string): Promise<RoadmapIndex>;
     owners(projectUri: string): Promise<RoadmapOwnerRecord[]>;
     discoverImports(projectUri: string): Promise<RoadmapCandidateDiscovery>;

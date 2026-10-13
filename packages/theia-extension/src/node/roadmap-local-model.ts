@@ -52,9 +52,12 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             const value: unknown = JSON.parse(complete.text);
             if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('object required');
             const raw = value as Record<string, unknown>;
-            const proposal = raw.type === 'roadmap-proposal' &&
+            const proposal = (raw.type === 'roadmap-proposal' &&
                 Object.keys(raw).sort().join(',') === 'action,ownerRevision,projectId,type' &&
-                typeof raw.projectId === 'string' && Number.isSafeInteger(raw.ownerRevision) &&
+                Number.isSafeInteger(raw.ownerRevision) || raw.type === 'roadmap-draft-proposal' &&
+                Object.keys(raw).sort().join(',') === 'action,draftRevision,projectId,type' &&
+                Number.isSafeInteger(raw.draftRevision)) &&
+                typeof raw.projectId === 'string' &&
                 !!raw.action && typeof raw.action === 'object' && !Array.isArray(raw.action);
             const noAction = raw.type === 'no-action' && Object.keys(raw).sort().join(',') === 'message,type' &&
                 typeof raw.message === 'string' && raw.message.length <= 1000;
