@@ -1,0 +1,39 @@
+TASK: Phase 8 / P5 — Agent execution evidence and restart recovery
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.11`.
+
+GOAL
+Make each AgentRun independently inspectable from Git/filesystem/process evidence and reconcile abandoned in-flight state after restart without automatic continuation.
+
+PREFLIGHT
+Read P1-P4 results, current repository Git helper patterns if any, restart integration tests, `.gitignore` and the approved `.dope/agent` attribution rule.
+
+IMPLEMENT
+- Add Dope-owned read-only Git evidence helpers using fixed safe commands/arguments in the approved root.
+- Capture starting HEAD + clean/dirty basis before creating run metadata that can itself affect Git status.
+- 8B qualification path rejects a pre-existing dirty disposable repository; do not implement intentional dirty continuation.
+- Never stage, commit, reset, checkout, switch, rebase or rewrite Git history.
+- At terminal/cancelled/interrupted capture final HEAD, status/changed paths and a bounded diff/stat summary from Git/filesystem truth.
+- Keep paths project-relative and reject traversal/symlink escape.
+- Exclude Dope-owned `.dope/agent/**` persistence from task-authored changed-file/diff attribution without pretending the metadata does not exist.
+- Unexpected HEAD movement during an 8B run is a safety failure/evidence flag, not success.
+- Persist validation evidence from observed commands: bounded command summary, timing, exit/result and validation-target match. Model narration alone is not validation evidence.
+- On fresh backend attach/startup, reconcile orphaned persisted running/cancelling runs to interrupted when no live owned executor exists.
+- Preserve all prior modifications/events/provider recovery metadata; no auto-resume and no auto-revert.
+
+TESTS
+Use disposable Git repos. Cover clean preflight, metadata attribution exclusion, add/modify/delete/rename, bounded diff, unchanged HEAD, attempted/observed HEAD movement, validation pass/fail, partial changes after cancel, fresh-backend running/cancelling -> interrupted, terminal state unchanged and no automatic resume.
+
+VALIDATION
+T2 focused Git/evidence/restart integration + agent runtime/store tests + affected builds/typecheck + version/no-lock/diff checks.
+No live hosted provider/browser/package/full check yet.
+
+Do not create commits; the phase runner owns the commit boundary.
+
+FINAL RESPONSE
+Report Git-basis/evidence semantics, metadata attribution, validation truth, restart reconciliation and P6 readiness.

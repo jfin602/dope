@@ -1,0 +1,35 @@
+TASK: Correction 8 / P4 — Expose explicit grant and Start for pending WorkItem task
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.8.33`.
+
+GOAL
+Repair only this T1 P13 WorkItem execution seam, preserving exact task, validation and authority contracts.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0031 and ADR 0028/0029, the current Phase 8D plan and this correction assessment. Inspect affected source and nearest tests; this repo's GitHub main shows P12 committed at 0.8.32 while P13 at 0.8.33 was reported as a DIRTY LOCAL working tree. Inventory local Git status/HEAD, package manifests, three modified tests, original docs/tasks/p8d/closeout.md and evidence before editing; preserve every original local byte. Do not blindly git pull, clean/reset, stash-and-forget, overwrite user evidence or silently start on a 0.8.32 source. Correctly reconcile the 0.8.33 basis and deliberately accept any runner dirty-tree continuation first.
+
+IMPLEMENT
+1. Inspect ChatPanelWidget.renderWork branch for selection.kind task, current direct-work grant summary controls and WorkSelectionController P3 action. Render a concise pending WorkItem detail: task objective/origin/delegated paths, saved required Dope validation command, eligible Coding Agent readiness, hosted-data disclosure, fixed ExecutionGrant allowed/denied summary, one explicit approval control and Start WorkItem task button.
+2. Enable Start only for valid unstarted work-item task with explicit consent and accepted grant, and wire to P3 controller using same persisted ID. Display truthful disabled/error remediation for legacy P13 invalid empty-policy saved tasks. On success navigate to returned run/transcript/review status and avoid repeating Start from a stale panel.
+3. Keep New Work direct composer separate and unchanged, preserve panel owner/selection, keyboard/narrow layout, no hidden auto-execution on select/open/close and no change to prompt-stack manually gated work.
+
+PRESERVE
+Reuse the existing provider-neutral AgentRuntimeService.start and ExecutionGrant/Authority machinery, not a second execution primitive. WorkItem is Planning intent; AgentTask is execution; task creation is not a Codex run. Preserve explicit developer approval, hosted project-data egress consent, frozen CandidateDelta -> Dope-owned required CandidateValidation -> authorized promotion, fixed grant deny classes, project confinement, direct Work, Prompt Stacks and their checkpoint/restoration semantics. Never mutate old persisted WorkItem AgentTasks with empty validation, silently broaden permissions, adopt architecture, complete WorkItem automatically, rewrite original P13 Not Green or activate Phase 8E.
+
+VALIDATION — T1
+T1: build @dope/theia-extension once only if needed for compiled-lib tests; run one directly affected test, preferably test/unit/work-integration.test.ts or a focused new Work start UI/controller test. Prove visible control gating, grant/hosted approval, stable ID and legacy disabled state. No full theme/GUI/Electron. git diff --check.
+Implementation target <=8 minutes inclusive of focused tests, 10-minute soft and 15-minute hard limit. Record any unmet mandatory test honestly; do not broaden validation for reassurance.
+
+DEFER
+P5 tests full integration and P6 real GUI.
+
+DONE WHEN
+The assigned seam works under source-backed focused evidence, no permission rule was weakened, and the next prompt can build on the result. The runner owns implementation checkpoint commits; do not commit manually.
+
+FINAL RESPONSE
+Report changed files, focused build/test evidence, unchanged package version, preserved boundary and remaining risks.

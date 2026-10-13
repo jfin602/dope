@@ -1,0 +1,46 @@
+TASK: Phase 7 / P10 — Phase 7B AI Center closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.23`.
+
+GOAL
+
+Perform an evidence-only Phase 7B audit. Do not repair behavior, implement roles, or claim full Product Phase 7 qualification.
+
+PREFLIGHT
+
+Read p7b assessment/plan, exact P1-P9 identities/results/evidence, ADR 0026 7B section/stability gate and current manifests. Require coherent `0.7.22` predecessor.
+
+Advance all live versions/internal references coherently to `0.7.23`.
+
+AUDIT
+A. AIConnection/AIModel domain identity/lifecycle/provider independence;
+B. application-global registry persistence/revision/concurrency/migration;
+C. credential sources and zero-plaintext-secret boundary;
+D. provider setup/runtime activation and Local/hosted classification;
+E. inventory/health/Test Connection/filter-only eligibility;
+F. AI Center singleton/launcher/no-project UX;
+G. Chat + Software Map convergence without duplicate ownership or weakened feature authority;
+H. direct multi-window/restart/project isolation/release/package evidence.
+
+Classify each Green / Not Green / Evidence Gap. Preserve P12/P13/c7 and Phase 5/6 history exactly.
+
+VALIDATION
+
+P9 owns broad T3 evidence. For the `0.7.23` coherence/docs transition run only baseline/version/internal-reference checks, `npm run codex:phase:validate -- p7b`, no-root-lock and `git diff --check`; rerun a focused test/build only if the transition exposes a concrete inconsistency.
+
+OUTPUT
+
+Create `docs/tasks/p7b/closeout.md` and update the p7b README with exact P1-P9 identities, A-H decisions, P9 evidence reused, residuals and final Phase 7B Qualified / Not Qualified decision.
+
+If Qualified: Phase 7B is closed/qualified, Product Phase 7 remains ACTIVE/NOT FINAL because 7C is outstanding; route next to `/docs-review` or already-promoted `p7c` prompt planning. Do not create 7C implementation here.
+
+If Not Qualified: preserve blockers and route a bounded 7B correction/owner disposition without calling Product Phase 7 Green.
+
+FINAL RESPONSE
+
+Report A-H decision, whether Phase 7B is qualified, residual evidence and exact next route.

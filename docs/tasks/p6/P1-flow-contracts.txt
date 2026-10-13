@@ -1,0 +1,76 @@
+TASK: Phase 6 / P1 — Physical Flow contracts and snapshot truth
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.6.1`.
+
+GOAL
+
+Add the language-independent physical Flow domain to the existing Software Map / Physical Map truth boundary without creating a second graph authority.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, all current Phase 6 authority, ADR 0021, the p6 prompt assessment/implementation plan, current `@dope/software-map` contracts/graph/tests and live manifests.
+
+Require reachable activation transition `710edb362f9881ab41215705db4f08d8daca6293`, coherent `0.6.0` predecessor, clean intended Git state, Node 24, no root package-lock, Theia 1.75.0 and Electron 42.8.1.
+
+IMPLEMENT
+
+Extend `@dope/software-map`; do not add a new Flow package.
+
+Add presentation-independent contracts for:
+- `PhysicalFlowFact`;
+- `PhysicalFlowEndpoint`;
+- interaction kinds exactly `receives | invokes | reads | writes | calls-external | publishes | consumes | responds`;
+- derived endpoint kinds sufficient for HTTP input/output, store, queue/event/job, external service/client and conservative source-scoped boundaries;
+- optional independently evidenced data/type/schema/event enrichment;
+- optional async/retry/error metadata without adding new base interaction kinds;
+- `originFlowFactIds` for aggregates;
+- Flow-specific coverage/diagnostic records separate from overall Software Map `AnalysisStatus`;
+- Flow query/result DTO foundations needed by later prompts.
+
+Extend `PhysicalMapSnapshot` with first-class Flow facts, derived endpoints and Flow diagnostics/coverage. Empty Flow state must be valid.
+
+Add deterministic helpers for endpoint identity, Flow fact identity, and deterministic source-backed anonymous callable CodeEntity identity needed by callback/handler Flow without pretending an anonymous callable is a named symbol.
+
+Extend snapshot validation/dedupe/order so:
+- every Flow source/target references an existing GraphNode or derived endpoint;
+- every physical Flow fact has dedicated deterministic/framework/runtime evidence;
+- aggregate origins exist and do not self-reference;
+- duplicate IDs merge only semantically compatible evidence;
+- conflicting endpoint/fact identities fail closed;
+- conservative endpoint identity does not merge unrelated generic DB/external observations;
+- runtime evidence keeps explicit observation identity;
+- optional enrichment never upgrades unsupported evidence into physical truth.
+
+Do not emit analyzer Flow yet. Do not add persistence, Theia UI, React Flow, provider/model code or Planning Map semantics.
+
+INTEGRATION
+
+Advance root, browser/electron apps, all live internal package versions, internal `@dope/*` references and baseline version assertions coherently to `0.6.1`. Preserve Theia/Electron/TypeScript/external dependency baselines.
+
+Add the focused Flow contract test to the real aggregate product-test composition.
+
+TESTS
+
+Validation is T1.
+
+Add focused `test/unit/software-map-flow.test.ts` (or equivalent) covering stable IDs/order, invalid refs/evidence/origins, endpoint non-merge, aggregate provenance, runtime observation evidence, optional enrichment, anonymous callable identity and empty/non-empty snapshot determinism.
+
+Run only:
+- the new Flow contract test and directly changed Software Map core test;
+- `corepack yarn workspace @dope/software-map build`;
+- `node --test test/unit/theia-baseline.test.ts`;
+- explicit no-root-lock/version coherence checks;
+- `git diff --check`.
+
+Do not run aggregate product tests, `npm test`, root `npm run typecheck`, `npm run check`, browser/Electron builds, restart tests, packaging/native evidence or phase validation from inside this prompt.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report Flow contracts/snapshot truth, deterministic identity/evidence coverage, coherent version transition, focused validation and P2 eligibility.

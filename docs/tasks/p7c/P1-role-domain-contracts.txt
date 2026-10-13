@@ -1,0 +1,42 @@
+TASK: Phase 7 / P1 — AI role policy and routing domain contracts
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.24`.
+
+GOAL
+
+Define the complete provider-independent 7C policy/provenance language before persistence or execution.
+
+PREFLIGHT
+
+Read p7c assessment/plan, ADR 0026 7C, `@dope/ai` eligibility contracts and 7B closeout. Require coherent `0.7.23`.
+
+IMPLEMENT
+- exactly five fixed canonical role IDs: interactive, deep-reasoning, background, software-map, coding-agent; no custom/renamable role identities;
+- AIRolePolicy with one preferred entry plus ordered fallback entries; policy identity is role ID, revision belongs to policy snapshot;
+- policy entry is exact immutable connection/model target OR bounded constraint target;
+- typed hard constraints: required capabilities, typed locality `any | local-only | hosted-only`, minimum known context, enabled/usable requirements, and a feature-egress requirement representation that cannot manufacture consent;
+- typed soft preferences: prefer-local, prefer-hosted, prefer-reasoning-capable, prefer-larger-context; no price/latency/benchmark scoring;
+- request constraints compose by narrowing/intersection; contradictory constraints fail explicitly;
+- role health types Ready / Using fallback / Needs configuration / Broken / Unavailable;
+- bounded last-known non-secret descriptor for removed/unresolved exact targets;
+- RoutingProvenance covering resolution source, requested role, policy revision, effective non-secret hard constraints, preferred/actual target, execution-time labels and bounded attempt outcomes;
+- parser/validation helpers; no secrets/provider payload/chain-of-thought fields;
+- service DTO foundations for policy snapshot/mutation/resolve/execute/explain;
+- do not execute models or persist role state in P1.
+
+Advance all live versions/internal refs to `0.7.24`.
+
+TESTS
+
+T1 pure `ai-role-policy.test.ts`: fixed IDs, parsers, exact/constraint entries, constraint intersection, contradictions, tombstone safety and routing provenance immutability/secret rejection. Build `@dope/ai` + contracts; baseline/version/no-lock/diff check only.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report contracts/invariants and P2 eligibility.

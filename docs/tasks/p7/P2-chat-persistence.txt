@@ -1,0 +1,38 @@
+TASK: Phase 7 / P2 — Project-local ChatRepository persistence
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.2`.
+
+GOAL
+
+Implement safe durable `.dope/chats/` storage without Theia/RPC complexity.
+
+PREFLIGHT
+
+Use shared p7 preflight. Inspect P1 contracts plus ProjectMind/Visual Planning stores and ADR 0019 input isolation.
+
+IMPLEMENT
+- implement readable versioned ChatRepository persistence beneath `.dope/chats/` with real nested organization folders and Chat ID independent from path;
+- atomic durable writes/revisions, safe moves, root/traversal/symlink containment, corrupt/future fail-closed behavior, project isolation and copy/reopen portability;
+- cross-process mutation lock plus scoped Chat ownership lease primitive with stale/abandoned recovery;
+- persist turn lifecycle boundaries, not every streamed token; interrupted pending/streaming executions reopen visibly interrupted rather than complete;
+- provide deterministic bounded saved-chat search at repository/domain level for later context use;
+- install a regression that `.dope/chats/` changes are ignored by generic analysis inputs and cannot alter Physical Map semantic input identity/Planning staleness.
+
+No Theia service/backend and no provider code.
+
+Advance to `0.7.2`.
+
+TESTS
+
+T1 focused store/search/isolation tests for reopen/move identity/revision/locks/lease/recovery/corrupt/future/path/project isolation/interrupted turns plus the narrow `.dope/chats` analysis-isolation test. Build `@dope/chat`; run baseline/version/no-lock and diff check. No extension/browser build.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report repository/recovery/isolation evidence and P3 eligibility.

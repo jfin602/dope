@@ -1,0 +1,86 @@
+TASK: Phase 4 / P3 — Physical model indexing, architecture validation and typed backend
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.4.3`.
+
+GOAL
+
+Turn deterministic analyzer output plus developer-authored architecture declarations into a queryable current-state model with bounded incremental indexing, boundary violations and typed Theia backend transport.
+
+PREFLIGHT
+
+Read all Phase 4 authority/plans and exact successful P1-P2 source/tests. Inspect current ProjectMindStore/root safety, ProjectMindBackend connection binding, backend-module registration and restart harness as prior art only.
+
+Require reachable activation source `93a2b3152066029d28dabf73e5672e0663599e22`, exact successful P2 predecessor, clean intended Git state and coherent `0.4.2`.
+
+ARCHITECTURE LOADING
+
+Add a Node adapter at the software-model/code-analysis boundary to read one local project's `.dope/architecture.json`.
+
+Phase 4 does not write this file. Ordinary editor/Git authors it.
+
+Required behavior:
+- normalized canonical local root;
+- reject symlinked/unsafe `.dope` or architecture file;
+- strict schema parse;
+- missing file is valid and leaves implementation unassigned with no declared-boundary rules;
+- corrupt/future file is preserved untouched and reported;
+- no Project Mind mutation and no competing Project identity allocator.
+
+Create `docs/software-model-storage.md` documenting canonical declaration state, ordinary edit/Git workflow, missing/corrupt/future behavior, path safety/recovery and that the derived graph/index is in-memory/rebuildable.
+
+INDEX / MODEL ASSEMBLY
+
+Implement one backend-side per-project in-memory analysis coordinator/index.
+
+Support:
+- clean full analysis;
+- source/config fingerprints;
+- bounded reuse for unchanged analyzable units;
+- changed/added/deleted source invalidation;
+- clean rebuild fallback for tsconfig/project-reference/architecture topology changes;
+- explicit generation/status/diagnostics;
+- newest requested generation wins; late older analysis cannot replace it;
+- no on-disk graph cache.
+
+For every tested final source state, incremental output must equal clean rebuild output.
+
+Assemble declaration hierarchy + analyzer output:
+- explicit ownership assignment;
+- unassigned content remains visible;
+- architecture containment;
+- low-level -> Component/Subsystem/System dependency aggregation;
+- Subsystem rule violations;
+- aggregate dependency/violation retains concrete originating physical edge/evidence IDs.
+
+TYPED SERVICE
+
+Add framework-independent Software Model service/client contracts and service path/symbol outside Theia-specific types.
+
+Expose bounded attach/analyze/query operations for hierarchy, node detail, incoming/outgoing/direct/aggregated dependencies, evidence, violations, source-location resolution and analysis diagnostics/status.
+
+Register a per-connection backend in existing Theia backend module. Bind one canonical root/handle per connection and reject root redirection/invalid handles. Dispose cleanly and notify generation/status changes where needed.
+
+No frontend inspector yet beyond contracts required to compile.
+
+TESTS
+
+Add permanent focused tests for missing/valid/corrupt/future/unsafe declaration, two-root/handle isolation, concurrent generation ordering, add/change/delete invalidation, config/declaration rebuild fallback, incremental-vs-clean equivalence, aggregation provenance, exact rule violations, deterministic query transport and disposal.
+
+Extend the real aggregate product suite.
+
+VERSION / VALIDATION
+
+Advance all manifests/internal references/baseline assertions coherently to `0.4.3`.
+
+Run focused model/analyzer/index/backend tests, `npm run check`, `npm run test:restart` if affected and stable, p4 phase validation, no-root-lock/version/Theia coherence and `git diff --check`.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report canonical-vs-derived state handling, index invalidation/equivalence evidence, violations/provenance, typed backend isolation, docs/tests/checks, gaps and P4 eligibility.

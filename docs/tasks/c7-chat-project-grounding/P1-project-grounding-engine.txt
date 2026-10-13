@@ -1,0 +1,39 @@
+TASK: Correction 7 / P1 — Deterministic project grounding engine
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.7.31`.
+
+GOAL
+
+Implement the bounded backend Project Grounding layer authorized by ADR 0025 without changing Chat execution authority.
+
+PREFLIGHT
+
+Read BOOT, AGENTS, this correction assessment/plan, ADR 0025 grounding amendment, current Chat/context/map source and focused tests. Require clean intended tree and unchanged `0.7.31`.
+
+IMPLEMENT
+- add backend `ChatProjectGrounder` / `ProjectGroundingService` beside `ChatContextComposer`; no browser filesystem logic;
+- safe project-relative directory list, bounded file read, path/file search and text search;
+- canonical-root + realpath containment; reject absolute paths, traversal, control/NUL tricks, `.dope/` generic reads and symlink escape;
+- stable skip/bound policy for generic traversal/search; stable sort; explicit truncation/omission diagnostics;
+- deterministic intent selection for explicit paths, listing/existence, implementation-location/text lookup, Architecture, Physical Map and Flow questions; no LLM planner;
+- tiny always-on orientation without absolute host path;
+- Architecture from canonical reader; Physical Map/Flow only from current `SoftwareMapIndex` state with input-current/generation checks;
+- return bounded evidence blocks + typed refs/diagnostics;
+- extend `ChatContextRef` minimally for automatic origin and any directory/search ref kinds needed; existing persisted refs remain valid/manual by default;
+- do not tie automatic grounding to the existing default-empty manual `allowedSources` list;
+- no writes/process/Git/network/delegation.
+
+TESTS
+
+Focused only: new grounding tests plus directly affected Flow/index tests and narrow package builds. Cover root/test listing, existing/missing file, path/text search, map/Architecture evidence, bounds, `.dope/`, absolute/traversal, symlink escape and stale map. Run diff, unchanged-version and no-root-lock checks. No browser/provider/package/full check.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report grounding primitives, containment/bounds, ref contract and P2 eligibility.

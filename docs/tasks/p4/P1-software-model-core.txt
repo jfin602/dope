@@ -1,0 +1,62 @@
+TASK: Phase 4 / P1 — Physical Software Model contracts and core
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.4.1`.
+
+GOAL
+
+Create the language-independent Physical Software Model core and developer-authored architecture declaration semantics from the clean Phase 4 baseline.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, Phase 4 activation/plan, ADR 0007, PRODUCT-MODEL, ARCHITECTURE, roadmap/workflow/stability authority, p4 assessment/implementation plan, correction closeout, current manifests/tests and current Project Intelligence package pattern.
+
+Require reachable activation source `93a2b3152066029d28dabf73e5672e0663599e22`, coherent `0.4.0`, clean intended Git state, Node 24, no root package-lock, Theia 1.75.0 and Electron 42.8.1.
+
+IMPLEMENT
+
+Add one real framework-independent `@dope/software-model` package.
+
+Define strict versioned architecture declaration contracts/parser for canonical developer-authored `.dope/architecture.json` semantics:
+- stable explicit System, Subsystem and optional Component IDs;
+- names/purpose;
+- normalized project-relative ownership roots/selectors;
+- optional Subsystem allowed/forbidden dependency IDs;
+- global architecture-ID uniqueness;
+- unsafe/absolute/traversal/backslash/NUL roots rejected;
+- ambiguous equal-specificity ownership rejected, never guessed;
+- no second persistent Project UUID allocator.
+
+Define language-independent physical contracts for Project/System/Subsystem/Component/CodeEntity nodes, typed directed relationships, deterministic identity, ownership/unassigned state, evidence/provenance, analysis completeness/errors, physical model generation/snapshot metadata, architecture violations and renderer-independent query shapes.
+
+Implement pure deterministic core helpers for:
+- node/relationship validation/deduplication/order;
+- explicit-root architecture ownership;
+- unassigned entities;
+- hierarchy and incoming/outgoing relationship queries;
+- dependency aggregation retaining originating lower-level edge/evidence IDs;
+- Subsystem rules: explicit forbidden targets violate; when an allow-list exists, other cross-Subsystem targets violate; same-Subsystem dependencies remain internal.
+
+No filesystem, TypeScript compiler, Theia, graph-renderer or model/provider dependency in the pure core. No Phase 3 Planning compatibility and no target/planning graph.
+
+INTEGRATION
+
+Add the package to root workspace/build/typecheck/product-test ordering and `test/unit/theia-baseline.test.ts` manifest/version coherence.
+
+Advance root, apps, existing internal packages and the new package/internal references coherently to `0.4.1`.
+
+TESTS
+
+Add permanent focused software-model tests for malformed/future declarations, duplicate IDs, unsafe roots, ownership ambiguity/specificity, deterministic identities/order, evidence requirements, relationship dedupe, unassigned entities, aggregation provenance, deterministic queries and allowed/forbidden dependency violations.
+
+Run focused tests, `npm run check`, phase validation for p4 as applicable, no-root-lock/version/Theia coherence and `git diff --check`.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report exact source boundary, contracts/semantics added, tests/checks, version coherence, remaining gaps and P2 eligibility.

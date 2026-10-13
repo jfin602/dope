@@ -1,0 +1,29 @@
+TASK: Correction 8 / P4 — Reuse centered Chat Markdown for AgentRun transcript
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Use the same centered, unboxed, safe-Markdown assistant-message presentation for AgentRun center transcripts as Chat, without user bubbles, repeated role labels or provider-conversation fabrication.
+
+PREFLIGHT
+Read P3 handoff and inspect chat-panel-widget.ts assistant and streaming renderer, agent-transcript-widget.ts, chat-panel-presentation.ts safeChatLink/scroll, work-transcript-presentation.ts, dope.css transcript rules and affected focused tests.
+
+IMPLEMENT
+- Extract or reuse one minimal presentation helper for rendering untrusted assistant/agent Markdown with the existing Theia MarkdownRenderer and MarkdownStringImpl({ supportHtml: false, isTrusted: false }), safeChatLink filtering and noopener noreferrer. Both Chat assistant (including streaming) and AgentRun messages consume it; no raw HTML, command URI, new backend or new markdown parser/dependency.
+- Wrap AgentRun center transcript entries in the same constrained/centered reading column and message typography as Chat .dope-chat-transcript/.dope-chat-message-assistant; never render user bubbles, user turns, or repetitive Assistant headers for AgentRun.
+- Commands remain correctly ordered between messages as compact default-collapsed details, with command/status/exit/duration, bounded output/truncation and keyboard-accessible expand. Keep neutral system/validation/authority markers and explicit incomplete/legacy no-record fallback.
+- Ensure ordered/unordered Markdown lists retain markers despite generic .dope-chat-panel ul/ol reset; code/tables scroll within the column, not beyond viewport; preserve links and safe HTML behavior.
+- Preserve saved transcript paging from entry one, independent center scroll-follow/Latest/manual-scroll-away and project/restart isolation. Keep Work panel control state and Chat conversation scroll separate. No hidden reasoning or credential persistence.
+- Modify existing source-pattern tests as necessary to assert new shared helper plus the same actual Markdown safety; do not delete safety coverage because code moved.
+
+VALIDATION
+T2: one changed extension build if compiled tests require it, then node --test test/unit/chat-presentation.test.ts test/unit/work-transcript-presentation.test.ts test/unit/work-integration.test.ts plus a directly affected Chat guard only if changed. git diff --check, unchanged 0.8.20. No standalone browser build, npm run check, AppImage or live agent execution.
+
+DONE WHEN
+One safe rendering contract feeds Chat assistant and centered AgentRun prose, while structured commands and scroll/restart behavior survive. Do not commit; runner owns checkpoint.
+
+FINAL RESPONSE
+Report shared rendering path, Markdown/link safety, command/scroll evidence and P5 readiness.

@@ -1,0 +1,170 @@
+TASK: Correction 6 / P1 — Canvas-first map workspace shell
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.6.7`.
+
+ACTIVATION
+- Require activation source `561ad62678f6e20a6da21b3537d136290d07f0e3` reachable.
+- Require package `0.6.7` and a clean intended working tree.
+- P7 Green is not an entry prerequisite; this correction exists because P7 remains Not Green.
+
+GOAL
+
+Refactor the existing Physical/Flow/Planning map presentation into one compact Dope-owned map toolbar plus a maximized canvas stage, while preserving the current controllers, semantic zoom, Flow query behavior and Planning semantics.
+
+PREFLIGHT
+
+Read:
+- BOOT.md / AGENTS.md;
+- current PRODUCT-MODEL.md / ARCHITECTURE.md / roadmap / workflow;
+- docs/tasks/p6/README.md;
+- docs/tasks/p6/P7-flow-dogfooding-evidence.md;
+- docs/tasks/c6-flow-overview-priority/README.md;
+- this correction README, prompt-assessment.md and implementation-plan.md.
+
+Inspect current source/tests:
+- packages/theia-extension/src/browser/physical-map-widget.ts;
+- physical-map-controller.ts;
+- map-viewport.ts;
+- dope.css;
+- test/unit/physical-map-canvas.test.ts;
+- physical-map-navigation.test.ts;
+- physical-map-flow-ui.test.ts;
+- planning-map-ui.test.ts;
+- smap-readability.test.ts.
+
+LOCKED BOUNDARIES
+
+Do not change:
+- Flow facts/endpoints/extraction;
+- Flow query/aggregation/budgets;
+- trace semantics;
+- canonical architecture;
+- Software Map backend/state ownership;
+- PlanningMap/Transformation/WorkItem semantics;
+- .dope persistence;
+- package version.
+
+The left sMap inspector remains the deep provider-free inspection/source surface.
+
+IMPLEMENTATION
+
+1. Replace the current stacked map chrome with a shared canvas-first shell.
+
+   Current normal-flow structure includes header, planningBar, workPanel, flowBar, flowPanel, breadcrumbs, status, then canvas.
+
+   Refactor toward one compact toolbar plus a flex/grid canvas stage so the React Flow canvas consumes all remaining center-tab space.
+
+   The exact component extraction is implementation-owned.
+
+2. Establish one Dope-owned map toolbar.
+
+   Consolidate genuinely map-global controls, including where applicable:
+   - Planning Map toggle;
+   - Architecture / Flow mode;
+   - Up;
+   - Focus;
+   - Open selected tab;
+   - Open source;
+   - Fit;
+   - node color;
+   - Flow trace downstream/upstream/clear;
+   - Planning-map-global view/selection controls.
+
+   Do not move rich selected edge/work/evidence details into the toolbar.
+
+3. Remove the duplicate React Flow Controls cluster.
+
+   The widget currently renders React Flow `Controls` in addition to Dope controls.
+
+   Route required geometric map controls through the Dope toolbar using the existing `ReactFlowInstance`:
+   - zoom in;
+   - zoom out;
+   - fit current architecture/map context.
+
+   Preserve `MapViewport` semantic zoom behavior and fitted baseline.
+
+4. Preserve fit/no-snap semantics.
+
+   Structural rerenders and toolbar changes must not introduce extra `fitView` calls.
+
+   Preserve:
+   - `mapFitContext`;
+   - `fitRequested`;
+   - semantic LOD no-snap behavior;
+   - focus/up/explicit-fit semantics.
+
+   Toolbar zoom is geometric only. It must not focus nodes or mutate map/domain state.
+
+5. Compact orientation/status.
+
+   Breadcrumbs must remain complete and identity-based but should not remain a large independent row if that reduces canvas area.
+
+   Prefer integrating breadcrumbs into the toolbar or a compact canvas overlay/rail.
+
+   Preserve the accessible status live region. Its visible form may become a small floating status affordance instead of a permanent full-width row.
+
+6. Prepare the canvas stage for P2 overlays.
+
+   P1 does not need to implement the final inspection overlay, but the shell must make it possible for details to float without sizing the canvas.
+
+   Avoid fixed heights tied to Flow/Planning detail content.
+
+7. Preserve all mode behavior.
+
+   Architecture:
+   - normal map projection;
+   - focus/up/fit;
+   - source/open-tab/color.
+
+   Flow:
+   - current query/result;
+   - tracing;
+   - node/edge selection;
+   - edge inspection state.
+
+   Planning:
+   - current controller/mode semantics;
+   - Current/Target/Diff and edit behavior.
+
+PERMANENT TESTS
+
+Add/extend focused presentation tests to prove:
+- exactly one Dope-owned map toolbar shell;
+- no separate React Flow `Controls` cluster;
+- zoom in/out/fit call the existing ReactFlow instance;
+- canvas stage uses fill/flex behavior and is not sized by Flow/Planning detail rows;
+- breadcrumbs/status remain available;
+- mode switching still preserves controller focus/selection;
+- Flow trace controls still call current controller trace methods;
+- Planning controls still operate through current controller;
+- no Software Map/Flow/Planning domain contract gains layout/toolbar state;
+- no new automatic fit is triggered by ordinary shell rerender/LOD change.
+
+VALIDATION — T2
+
+Run:
+- npm run build:extension
+- node --test test/unit/physical-map-canvas.test.ts test/unit/physical-map-navigation.test.ts test/unit/physical-map-flow-ui.test.ts test/unit/planning-map-ui.test.ts test/unit/smap-readability.test.ts
+- any new focused map-workspace test you add
+- npm run build:browser
+- git diff --check
+- package-version/no-root-lock checks
+
+Do not run manual GUI qualification, npm run check, AppImage packaging or native launch.
+
+FINAL RESPONSE
+
+Report:
+- exact changed files;
+- final toolbar/canvas DOM ownership;
+- duplicate React Flow Controls removal;
+- zoom/fit routing;
+- fit/no-snap preservation;
+- Architecture/Flow/Planning regression evidence;
+- unchanged `0.6.7`;
+- bounded handoff concerns for P2.

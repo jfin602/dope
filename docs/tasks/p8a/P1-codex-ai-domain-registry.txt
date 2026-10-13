@@ -1,0 +1,39 @@
+TASK: Phase 8 / P1 — Codex AI domain and registry contract
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.1`.
+
+GOAL
+Establish the provider-neutral AI Center contract required for a Codex agent-runtime connection. Do not implement OAuth, App Server process execution, browser UI, or repository mutation yet.
+
+PREFLIGHT
+- Require committed coherent Phase 8 activation baseline `0.8.0`.
+- Read BOOT, AGENTS, ADR 0026 Codex amendment, ADR 0027, Phase 8 plan/assessment, current `@dope/ai`, AIRegistryStore, provider setup, role policy and focused tests.
+- If the repository is not at coherent `0.8.0`, stop without implementation.
+
+IMPLEMENT
+- Add an explicit Codex agent-runtime connection/config type distinct from generic OpenAI/OpenAI-compatible.
+- Add provider-neutral `agentExecution` model capability.
+- Codex inventory locality is always `hosted`.
+- Add only non-secret account/auth projection needed by AI Center; no access/refresh/ID token fields in registry contracts.
+- Extend strict parsers/mutations/provider setup descriptions and deterministic migration/version handling for existing registry bytes.
+- Preserve immutable connection/model IDs, multiple same-runtime connections, tombstone/provenance compatibility and old OpenAI/Local/Gemini behavior.
+- Extend eligibility validation so `agentExecution` can be a hard capability and unknown never satisfies it.
+- Do not make Codex models generic conversational models by provider inference.
+- Do not add AgentTask or mutation authority.
+
+VALIDATION
+T1 only:
+- focused `ai.test.ts`, `ai-registry-store.test.ts`, `provider-setup.test.ts`, and the narrow role capability test(s);
+- affected `@dope/ai` / contracts / extension build or typecheck;
+- version/internal-reference/no-root-lock and `git diff --check`.
+Do not run live OAuth, provider calls, browser, package build or `npm run check`.
+
+Do not create commits; the phase runner owns the commit boundary.
+
+FINAL RESPONSE
+Report schema/migration decisions, Codex locality/capability semantics, tests and P2 eligibility.

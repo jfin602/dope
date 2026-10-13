@@ -1,0 +1,10 @@
+✔ Running contains only active execution, groups stack children, and History sorts by latest activity (1.369149ms)
+✔ Work discovers default Prompt Stacks and reopens completed history without creating records (0.82265ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 81.934245

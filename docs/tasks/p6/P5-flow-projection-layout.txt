@@ -1,0 +1,88 @@
+TASK: Phase 6 / P5 — Directional Flow projection and layout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.6.5`.
+
+GOAL
+
+Create a pure deterministic presentation projection that turns bounded Flow query results into a readable directional canvas model without moving Flow truth into React Flow.
+
+PREFLIGHT
+
+Read all p6 authority/assessment/plan, exact P1-P4 source/tests and current `physical-map-projection.ts`, viewport/readability helpers and React Flow presentation boundary.
+
+Require coherent `0.6.4` predecessor and P4 Green affected-system evidence.
+
+IMPLEMENT
+
+Add a focused pure projection/layout module such as `flow-map-projection.ts`.
+
+Input:
+- bounded Flow query result;
+- necessary architecture identity/focus;
+- disposable presentation selection/trace state.
+
+Output must be React-Flow-neutral canvas objects; no React Flow `Node`/`Edge` type may become domain/application state.
+
+VISUAL MODEL
+
+Support contextual roles:
+- Input;
+- Boundary;
+- Processing;
+- Store;
+- External;
+- Output.
+
+Default layout is deterministic left-to-right.
+
+The initial System projection is quiet/high-level, not every code call.
+
+Preserve:
+- stable ordering for unchanged inputs;
+- Inputs easy to discover;
+- Outputs/Stores/External boundaries visually distinct without relying on color alone;
+- branch/fan-out;
+- join/fan-in;
+- cycle/back-edge representation;
+- ordinary async metadata;
+- explicit queue/event boundary shape when present;
+- retry/error treatment only when facts prove it;
+- selected/trace emphasis with unrelated known Flow subdued;
+- explicit truncated/unsupported state from the query result.
+
+Do not add base branch/join/retry interaction kinds in presentation.
+
+Do not add Dagre, ELK or another layout dependency.
+
+Do not persist coordinates/roles/trace state into Physical Map or project state.
+
+Preserve complete meaningful labels; do not shorten identity-bearing names into ambiguous ellipses.
+
+Advance all live versions/internal references coherently to `0.6.5`.
+
+TESTS
+
+Validation is T1.
+
+Add focused projection tests proving deterministic LTR positions/order, bounded System overview, roles, branch/join, cycle/back-edge, async/queue metadata, trace emphasis/subdued context, diagnostics/truncation, long-label readability and input immutability.
+
+Run only:
+- new Flow projection/layout tests;
+- directly affected physical-map projection/readability tests if shared helpers change;
+- `corepack yarn workspace @dope/theia-extension build`;
+- `node --test test/unit/theia-baseline.test.ts`;
+- no-root-lock/version checks;
+- `git diff --check`.
+
+Do not run browser/Electron builds, aggregate check, restart or package/native evidence.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report projection roles/layout/topology, truth/presentation separation, focused validation and P6 eligibility.

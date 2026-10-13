@@ -1,0 +1,37 @@
+TASK: Phase 7 / P7 — Chat convergence onto AI Center
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.20`.
+
+GOAL
+
+Make AI Center the sole global connection setup owner for Chat without changing Chat's exact-model authority.
+
+PREFLIGHT
+
+Read P1-P6 APIs plus current ChatPanel model selector/setup/reconnect code and c7 transcript/composer tests. Require coherent `0.7.19`.
+
+IMPLEMENT
+- remove Chat's inline global provider creation/credential setup/reconnect dialogs as connection owners;
+- Chat continues to consume the shared usable connected-model inventory and exact immutable connection/model IDs;
+- no-model/default-unavailable/setup-required states offer a focused `Manage AI connections` / equivalent action that opens AI Center and records enough presentation-only origin to return/focus the same ChatPanel after repair;
+- AI Center edits propagate live to open ChatPanels through the shared registry service without restart;
+- preserve Chat exact default model and per-turn override semantics, mixed-model transcript provenance, Local context capacity rules and no-silent-fallback failure;
+- do not add Follow Interactive role or any role selector; that is 7C;
+- remove obsolete Chat-only setup code/tests rather than maintaining dual setup paths.
+
+Advance to `0.7.20`.
+
+TESTS
+
+Focused T2 Chat/AI Center integration tests only: inventory refresh, broken default, open-AI-Center/return origin, model selector update, explicit turn authority/no fallback, no inline secret/setup owner. Extension build; baseline/version/no-lock/diff check. No live provider/browser replay.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report Chat convergence and P8 eligibility.

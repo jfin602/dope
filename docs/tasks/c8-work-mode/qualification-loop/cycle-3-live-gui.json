@@ -1,0 +1,108 @@
+{
+  "sourceHead": "9bb1f912303aef8da36205a2ea2c0fdf89f53f47",
+  "application": "real browser-hosted Dope/Theia at http://127.0.0.1:3000, Codex App Server connection tested ready",
+  "commandProject": {
+    "root": "/tmp/dope-p9-command-fjspgq",
+    "basisHead": "a10d3a928b640bc736bb4180bedde2d33a7b734f",
+    "finalHead": "a10d3a928b640bc736bb4180bedde2d33a7b734f",
+    "runId": "22f5f7fc-45af-4550-a07b-9b327b72552a",
+    "status": "completed",
+    "modelId": "gpt-5.6-sol",
+    "providerId": "codex",
+    "grantId": "90157948-e7ed-47e5-bb3c-d0ee6c3b6621",
+    "commandTranscript": [
+      {
+        "version": 1,
+        "runId": "22f5f7fc-45af-4550-a07b-9b327b72552a",
+        "sequence": 3,
+        "at": "2026-10-08T19:24:28.655Z",
+        "kind": "command",
+        "commandId": "exec-fcd77dc0-0c10-440e-807e-918ef9cbf58f",
+        "command": "[redacted] -lc 'printf hello'",
+        "commandTruncated": false,
+        "cwd": ".",
+        "status": "running"
+      },
+      {
+        "version": 1,
+        "runId": "22f5f7fc-45af-4550-a07b-9b327b72552a",
+        "sequence": 4,
+        "at": "2026-10-08T19:24:28.665Z",
+        "kind": "command-finish",
+        "commandId": "exec-fcd77dc0-0c10-440e-807e-918ef9cbf58f",
+        "status": "completed",
+        "exitCode": 0,
+        "durationMs": 25,
+        "output": "hello",
+        "outputTruncated": false
+      }
+    ],
+    "gui": "Work Running then History; center AgentRun opened; command collapsed by default; expansion showed cwd . and output (combined): hello; reload restored same transcript and collapsed command; Chat opened independently"
+  },
+  "candidateProject": {
+    "root": "/tmp/dope-p9-gui-candidate-UaQgdC",
+    "basisHead": "c0a5dbf610f34dbf40635d64ca6db97459d2d3a8",
+    "basisClean": true,
+    "finalHead": "c0a5dbf610f34dbf40635d64ca6db97459d2d3a8",
+    "gitStatus": "?? .dope/\n?? candidate.txt",
+    "runId": "c08da97e-1f64-47ba-853f-f549b5e78dcb",
+    "status": "completed",
+    "modelId": "gpt-5.6-sol",
+    "providerId": "codex",
+    "grantId": "af49559d-33a3-4bcd-b943-e7a47a1e34a7",
+    "candidateDelta": {
+      "version": 1,
+      "effects": [
+        {
+          "kind": "create",
+          "path": "candidate.txt",
+          "after": "f1734a68232317c6dc71cbf33eb5858bf56b703bc1aafd29b7ba4cf893da3f70"
+        }
+      ]
+    },
+    "candidateFingerprint": "93c31a1d75f3b769efb41abae1cec24b047985c668e8cff8aaf78c1812791ca7",
+    "validationResults": [
+      {
+        "version": 1,
+        "kind": "test",
+        "label": "Required validation",
+        "status": "passed",
+        "durationMs": 16,
+        "owner": "dope",
+        "command": "test -f candidate.txt",
+        "candidateFingerprint": "93c31a1d75f3b769efb41abae1cec24b047985c668e8cff8aaf78c1812791ca7",
+        "workspaceId": "85281829-953b-4b23-a581-645612258810",
+        "exitCode": 0,
+        "stdout": "",
+        "stderr": "",
+        "stdoutTruncated": false,
+        "stderrTruncated": false
+      }
+    ],
+    "authorityDecision": {
+      "allowed": true,
+      "blocked": []
+    },
+    "appliedFiles": [
+      "candidate.txt"
+    ],
+    "fileContent": "qualified\n",
+    "runDirs": 1,
+    "gui": "New Work required explicit grant; one create delta, Dope-owned required validation passed in ValidationWorkspace, Authority allowed, only candidate.txt promoted; reload restored completed Work detail"
+  },
+  "followAndPanel": {
+    "longRunId": "64d5f464-4611-4340-aa5a-cb26889b147e",
+    "longRunObservation": "Closed center Work panel during running sleep 12 command; reopened Work and saw same running run and Stop Work; run then completed without Stop",
+    "scrollRunId": "2e43979c-ba65-4b89-bb87-b5042d893d77",
+    "scrollObservation": "Real 100-item agent Markdown produced scrollHeight 2675/clientHeight 965; manual upward scroll exposed Latest; Latest returned to bottom and disappeared; reload restored one transcript tab for this run",
+    "commandProjectRunDirsAfterReload": 6
+  },
+  "adaptiveSeo": {
+    "root": "/home/jfin/dev/adaptive-seo-dope",
+    "head": "d4dfbf38628ba70726cf3b3610c2279643f500dc",
+    "gitStatus": "",
+    "runDirs": 12,
+    "sequenceSha256": "894e93b7276bfbda45c8e133df3f8a3de47991bbc7666d4f54dace35b0662469",
+    "gui": "Work discovered completed c4-dope-phase-stack-smoke; P1-P4 titles and four checkpoint SHAs displayed; P1 Open Transcript showed Transcript not recorded for this historical run."
+  }
+}

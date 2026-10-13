@@ -1,0 +1,37 @@
+TASK: Phase 7 / P4 — Multi-area ChatPanel and saved-chat selector
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.4`.
+
+GOAL
+
+Add the reusable ChatPanel shell and shared Select Chat navigator, without runtime/composer complexity.
+
+PREFLIGHT
+
+Use the shared p7 preflight. Inspect P3 service/client contracts, current WidgetFactory/ApplicationShell patterns, focused widget/controller files and Dope CSS.
+
+IMPLEMENT
+- create dedicated Chat controller/widget/presentation helpers; do not grow `dope-workbench.ts`, Project Mind or Software Map owners;
+- register multi-instance ChatPanel WidgetFactory/options plus explicit commands to open panels in left, right, main/center and bottom areas;
+- implement exactly two primary modes: Select Chat and Chat;
+- Select Chat renders nested folders, New Chat/New Folder, rename/move intents, titles/dates and last-interaction ordering from ChatService;
+- basic Chat mode renders top bar, Back/Chats, right-justified settings-cog seam and durable transcript; P9 owns the real composer;
+- shared ChatService events update all panels; no panel-local transcript repository;
+- guard project/workspace changes and stale async list/read responses.
+
+Advance to `0.7.4`.
+
+TESTS
+
+T2 focused ChatPanel/controller/factory tests for four area commands, multi-instance IDs, modes, hierarchy/order, service events, workspace guards and keyboard/theme basics. Build `@dope/theia-extension`; run baseline/version/no-lock and diff check. No browser build or direct GUI.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report shell/selector integration and P5 eligibility.

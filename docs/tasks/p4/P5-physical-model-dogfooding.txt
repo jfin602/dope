@@ -1,0 +1,101 @@
+TASK: Phase 4 / P5 — Direct Dope-maps-Dope physical model dogfooding
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.4.5`.
+
+GOAL
+
+Directly qualify the real Software Model user workflow on the actual Dope repository through the real Theia GUI with no model provider configured.
+
+This is the mandatory interactive Phase 4 gate. Headless/CDP-only assertions do not substitute for direct clicking, typing, navigation and observation.
+
+PREFLIGHT
+
+Read all Phase 4 authority/plans, exact successful P1-P4 source/tests, P4 restart/package evidence, repository `.dope/architecture.json`, historical closeouts and current Git state.
+
+Require reachable activation source `93a2b3152066029d28dabf73e5672e0663599e22`, exact successful P4 predecessor, coherent `0.4.4`, clean intended baseline apart from explicitly recorded unrelated user changes and a usable direct Theia GUI surface.
+
+DIRECT GUI MATRIX
+
+On the real Dope repository:
+
+1. Open the Software Model inspector and explicitly analyze/refresh.
+2. Inspect the declared System -> Subsystem -> Component hierarchy.
+3. Inspect at least three representative code/source nodes spanning distinct implementation boundaries.
+4. Trace at least three representative physical relationships to precise deterministic source evidence.
+5. Inspect at least one aggregated Subsystem dependency and follow its originating lower-level edge/evidence.
+6. Navigate from model/evidence to the ordinary source editor.
+7. Inspect real unassigned/unknown source and verify the UI does not fabricate architecture membership.
+8. Inspect analysis status/diagnostics and refresh behavior.
+9. Exercise keyboard operation plus dark default and readable explicit light theme.
+
+CONTROLLED VIOLATION / REALYSIS
+
+Create one clearly temporary TypeScript source probe inside a declared Subsystem that imports a target forbidden by the current architecture rule or outside an explicit allow-list.
+
+- refresh/analyze;
+- directly observe the resulting architecture violation;
+- inspect the exact rule, source/target identities and offending physical source evidence;
+- restore/delete the probe exactly;
+- refresh/analyze again;
+- directly verify the violation and stale dependency disappear.
+
+Also make one separate controlled relationship/source change and prove reanalysis updates current physical state without application restart, then restore it.
+
+The probe may temporarily make the working tree dirty and need not be a valid product change, but it must be bounded, recorded and completely restored.
+
+DECLARATION / ERROR / ISOLATION
+
+Use a disposable second local project or reversible noncanonical copy to directly exercise missing or invalid `.dope/architecture.json` behavior without corrupting the canonical Dope declaration.
+
+Switch between the second project and Dope and prove model/query state is project-isolated with no late cross-project rendering.
+
+RESTART
+
+Restart/reopen the same workbench/backend/profile as practical, reanalyze Dope and directly confirm equivalent useful hierarchy/evidence/violation-free restored state. Derived graph state should rebuild; do not claim it persisted.
+
+GIT / KNOWLEDGE PRESERVATION
+
+Record exact Git pre-state. Preserve unrelated user changes. Restore every temporary source/declaration probe exactly.
+
+The committed repository `.dope/architecture.json` is intended durable Phase 4 project knowledge; do not remove it during cleanup.
+
+EVIDENCE
+
+Create `docs/tasks/p4/P5-physical-model-dogfooding-evidence.md` with:
+- exact GUI surface and source/version;
+- architecture declaration identity/hash;
+- nodes/relationships/evidence actually inspected;
+- aggregated dependency provenance;
+- controlled violation rule/edge/evidence and post-restoration disappearance;
+- reanalysis behavior;
+- missing/invalid declaration behavior;
+- restart/isolation;
+- keyboard/theme;
+- package coverage relative to P4;
+- failures/repairs/gaps;
+- exact Git pre/post state.
+
+Any required failure or missing evidence blocks success absent a separate explicit audit-only waiver.
+
+REPAIRS
+
+If direct qualification exposes a bounded product defect, repair only that defect, add permanent executable regression coverage, rerun the failed GUI step and all affected focused/aggregate/restart/package evidence. Preserve every failed observation in the record.
+
+HANDOFF
+
+After Green applicable qualification, advance root/all workspaces/internal references/baseline assertions coherently to `0.4.5`.
+
+Run focused software-model/analyzer/UI checks, `npm run check`, current `npm run test:restart`, `npm run codex:phase:validate -- p4`, no-root-lock/version/Theia coherence and `git diff --check`.
+
+Record whether the P4 package still covers identical product source or whether a rebuilt package replaces it.
+
+Manual operator creates exactly one commit with subject `0.4.5` for the successful intended handoff and leaves a clean intended tree. Runner-invoked agents do not commit.
+
+FINAL RESPONSE
+
+Report candidate, direct GUI surface, full matrix, evidence traceability/usefulness, violation/reanalysis/restart/isolation results, Git preservation, repairs/gaps, package coverage and P6 eligibility. Do not claim Phase 4 Qualified before closeout.

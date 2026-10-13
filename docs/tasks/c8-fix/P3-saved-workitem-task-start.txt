@@ -1,0 +1,35 @@
+TASK: Correction 8 / P3 — Start the selected persisted WorkItem AgentTask safely
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.8.33`.
+
+GOAL
+Repair only this T2 P13 WorkItem execution seam, preserving exact task, validation and authority contracts.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0031 and ADR 0028/0029, the current Phase 8D plan and this correction assessment. Inspect affected source and nearest tests; this repo's GitHub main shows P12 committed at 0.8.32 while P13 at 0.8.33 was reported as a DIRTY LOCAL working tree. Inventory local Git status/HEAD, package manifests, three modified tests, original docs/tasks/p8d/closeout.md and evidence before editing; preserve every original local byte. Do not blindly git pull, clean/reset, stash-and-forget, overwrite user evidence or silently start on a 0.8.32 source. Correctly reconcile the 0.8.33 basis and deliberately accept any runner dirty-tree continuation first.
+
+IMPLEMENT
+1. Inspect WorkSelectionController, AgentRunController, AgentRuntimeService.start and AgentExecutionRuntime.startInternal. Add a narrow controller action to Start only the SELECTED pending saved AgentTask with origin kind work-item and matching current attached project/task identity. It must call existing runtime.start with that exact task.id, never createTask, never construct a different direct task and never reuse a phase-stack command.
+2. Require explicit per-start accepted ExecutionGrant (correct task ID, reviewable fixed permission profile), eligible Coding Agent target, and explicit hosted project-data authorization when hosted. Prevent duplicate or concurrent Start, stale/foreign handles, terminal/started tasks, and the historical P13 saved WorkItem tasks whose validation policy is empty. Show specific blocked reason and how developer may create a new valid task.
+3. After successful RPC, retain stable task ID and select its returned AgentRun. Refresh works/restart without duplicate creation. Preserve Stop/Close independence, direct Work composer and sequence UX.
+
+PRESERVE
+Reuse the existing provider-neutral AgentRuntimeService.start and ExecutionGrant/Authority machinery, not a second execution primitive. WorkItem is Planning intent; AgentTask is execution; task creation is not a Codex run. Preserve explicit developer approval, hosted project-data egress consent, frozen CandidateDelta -> Dope-owned required CandidateValidation -> authorized promotion, fixed grant deny classes, project confinement, direct Work, Prompt Stacks and their checkpoint/restoration semantics. Never mutate old persisted WorkItem AgentTasks with empty validation, silently broaden permissions, adopt architecture, complete WorkItem automatically, rewrite original P13 Not Green or activate Phase 8E.
+
+VALIDATION — T2
+T2: one directly affected WorkSelectionController or new saved-task-start test with fake AgentRuntimeService capturing exact selected task ID, explicit grant/egress, nonempty validation, duplicate and missing-policy refusal. Compile only touched package outputs when compiled lib is imported. git diff --check. Do not run full Work/Chat test matrix.
+Implementation target <=8 minutes inclusive of focused tests, 10-minute soft and 15-minute hard limit. Record any unmet mandatory test honestly; do not broaden validation for reassurance.
+
+DEFER
+P4 wires actual Work detail UI and P6 qualifies real provider/network/GUI.
+
+DONE WHEN
+The assigned seam works under source-backed focused evidence, no permission rule was weakened, and the next prompt can build on the result. The runner owns implementation checkpoint commits; do not commit manually.
+
+FINAL RESPONSE
+Report changed files, focused build/test evidence, unchanged package version, preserved boundary and remaining risks.

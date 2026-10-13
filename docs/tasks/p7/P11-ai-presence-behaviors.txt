@@ -1,0 +1,36 @@
+TASK: Phase 7 / P11 — Read-only AI Presence behaviors and automatic titles
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.11`.
+
+GOAL
+
+Integrate the stable Chat/runtime/context seams into the visible read-only AI Presence experience.
+
+PREFLIGHT
+
+Use shared p7 preflight. Inspect P9 composer/tool seam, P10 Context Composer and current Architecture/Flow/source-navigation actions only.
+
+IMPLEMENT
+- populate the composer context/tool seam with real actions for current file/selection and supported project-domain/saved-chat context; selected context is inspectable/removable before Send;
+- wire Ask / Explain / Trace / Find Related as read-only behaviors/templates through the same Chat send/runtime/context path; deterministic Dope services remain truth authority and model narration cannot create physical/canonical facts;
+- preserve project/model/context provenance in the resulting attempt;
+- after the first successful exchange of an auto-titled Chat, make a small non-blocking title request using the same actual selected model/provider; it cannot delay the answer and cannot switch/fallback providers;
+- deterministic bounded first-user-message fallback on title failure; once `titleSource=user`, never auto-overwrite;
+- ensure tool buttons remain context/observation only—no filesystem/process/Git/network mutation path.
+
+Advance to `0.7.11`.
+
+TESTS
+
+T2 focused integrated tests for context actions, Ask/Explain/Trace/Find Related routing, canonical-truth separation, provenance, title success/failure/user-lock and stale project/model guards. Run one `npm run build:browser` here as the first pre-qualification bundling proof; do not separately run extension/browser builds already included by that command. Also run baseline/version/no-lock and diff check. No live providers/restart/package.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report integrated read-only AI Presence/browser evidence and P12 qualification readiness.

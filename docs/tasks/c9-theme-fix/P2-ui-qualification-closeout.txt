@@ -1,0 +1,35 @@
+TASK: Correction 9 / P2 — Restrained-orange real GUI qualification closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- Required unchanged project version: `0.9.35`.
+
+GOAL
+MANUAL FINAL T3: on P1's exact committed candidate, verify that orange is the recognizable primary accent without returning to orange-washed panels. Record an honest c9-theme-fix GREEN / NOT GREEN closeout. No unrelated phase or provider qualification.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, current ADR 0016 October 12 amendment, ADR 0030, docs/ARCHITECTURE.md theme section, this stack README/assessment/plan and P1 checkpoint. Confirm coherent unchanged 0.9.35 source, clean intended candidate, no concurrent p9d mutation, original c8 and p9d history preserved. If version advanced, do not run this stale correction or reset source; retarget the unexecuted prompts separately.
+
+AUTOMATED T3
+- Run npm run codex:phase:validate -- c9-theme-fix.
+- Run ONE npm run check on exact final P1 candidate (inspect package.json scripts first; it already includes dope-theme.test.ts and builds).
+- Run only directly impacted presentation tests not included in that aggregate, if any; no duplicated broad suite. Run git diff --check, check coherent root/app/workspace version and absent root package-lock.json. No AppImage/native package for a CSS-only change.
+
+DIRECT REAL GUI
+1. In browser-hosted or Electron Dope, set Dope Dark. With AI Center as restrained grammar reference inspect primary actions and neutral utility controls; verify orange #FF7A1A, intended hover #FFB15C, pressed #C75100 and contrast-appropriate foreground using computed states/equivalent evidence where possible. Check subdued but visible keyboard focus, semantic selected states, inputs, tabs, badges and link contrast.
+2. Sample a Chat or Work view in a supported narrow placement for palette behavior: neutral controls, intentional orange actions, no loud persistent orange outlines, and independent Chat organizational colors. Full workflow usability is Phase 11 scope.
+3. Sample one available Map/Planning view and ordinary workbench chrome for theme leakage, map color independence and semantic status colors. Do not execute a panel-by-panel UX audit; that is Phase 11.
+4. Inspect status bar: dark full width, one bounded orange Git segment with readable foreground, regular text/icons neutral and error/warning/info/hint/SCM colors meaningful.
+5. Switch to a compatible alternate dark/light theme: .dope-dark scope must deactivate and orange Dope variables must not leak. Switch back and verify default palette and focus/selection. Check narrow layouts/contrast; do not alter real project data or run agents solely to demonstrate theme.
+6. Record screenshots/computed token values, available UI evidence, missing observations, exact candidate SHA/version, aggregate/focused check outcomes, and deviations. If any essential visual/contrast/theme-isolation gate fails or is unobserved, mark NOT GREEN / Evidence Gap with bounded remedy, never infer from CSS alone.
+
+CLOSEOUT
+Write docs/tasks/c9-theme-fix/closeout.md and update README with exact P1 source SHA, checks, direct GUI proof, remaining limits, and correction-only GREEN/NOT GREEN. Keep earlier c4-color-theme and c8-chat-work-ui qualifications, Phase 9 and p9d progress unchanged. Do not rewrite broad UI, bump version, claim provider/agent qualification, or commit implementation edits in an evidence-only Green pass. Manual operator owns final evidence review/commit.
+
+FINAL RESPONSE
+Report exact source/version, final aggregate/focused checks, observed orange vs neutral balance, contrast, status bar, alternate-theme isolation, panel coverage, residual gaps and correction disposition.
+
+## Execution clarification — 2026-10-12 after Phase 9 Green
+
+This originally drafted correction now uses **unchanged version `0.9.35`** (Phase 9 qualified source `af3447c`; GitHub main `adf5c073` theme CSS/test rechecked). Earlier `0.9.23` dates/source claims remain historical planning context, not executable version metadata. The task remains **palette/theme-only**: no every-panel human usability redesign, now separately planned as Phase 11 (ADR 0037). Verify actual checkout source and worktree before mutation.

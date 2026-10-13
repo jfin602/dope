@@ -1,0 +1,86 @@
+TASK: Phase 8 / P7 — Phase 8B Agent execution core closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+The assigned project version is `0.8.13`.
+
+GOAL
+Qualify and close only Phase 8B on one exact candidate: one real bounded mutation-capable AgentTask with enforceable authority, observable activity, real cancellation, durable restart inspection and trustworthy change/validation evidence.
+
+PREFLIGHT
+- Read ADR 0027 8B amendment, p8b assessment/plan and exact P1-P6 results.
+- Use a disposable eligible Codex/ChatGPT-plan application profile as appropriate.
+- Create a new disposable clean Git repository specifically for mutation/security tests.
+- Do not use the Dope repository itself as the first mutation target.
+
+AUTOMATED T3
+Run once on the exact candidate:
+- all focused Phase 8B agent-core/store/adapter/runtime/Git/restart/UI tests;
+- `npm run check`;
+- `npm run codex:phase:validate -- p8b`;
+- exact version/internal-reference/no-root-lock and `git diff --check`;
+- direct Electron/native evidence where required to prove real App Server child-process/sandbox/cancellation behavior.
+
+DIRECT HAPPY PATH
+In real Dope:
+- ensure a qualified Codex target is assigned/eligible for Coding Agent;
+- open Agent Run on the disposable repo;
+- create a simple direct task that changes one project file and runs a local validation command;
+- review and explicitly accept the default 8B ExecutionGrant once;
+- start the task;
+- observe status/agent activity plus command/file events supported by the verified adapter;
+- require honest completed state;
+- compare changed files, bounded diff summary and validation evidence with actual filesystem/Git truth;
+- verify repository HEAD is unchanged and there is no agent/Dope stage or commit;
+- restart Dope and inspect the same persisted task/run/events/result.
+
+AUTHORITY ADVERSARIAL EVIDENCE
+Using controlled disposable tasks/fixtures, attempt each denied class:
+- network;
+- outside-project write/read effect;
+- private HOME/credential-like access;
+- `.git` / Git history-control mutation;
+- destructive/system/package-administration effect.
+
+Require actual denial/enforcement and recorded authority-denied/unsupported truth with no prohibited effect. Prompt instructions alone are not evidence. If the installed reference harness cannot enforce a required boundary, mark 8B Not Green; do not relax the grant.
+
+CANCELLATION
+Run a second task that creates one observable permitted workspace modification and then continues long enough to stop.
+- request Stop;
+- observe cancelling -> cancelled or honest interrupted;
+- prove the active provider turn/process stopped and no later effects occur;
+- prove the pre-stop modification remains;
+- prove no auto-revert and no Git commit.
+
+RESTART INTERRUPTION
+Start a third task and force-close/restart Dope while it is active.
+- prior running/cancelling truth becomes interrupted on fresh backend ownership;
+- existing changes/events remain;
+- no automatic provider/task continuation occurs;
+- provider recovery metadata remains non-canonical.
+
+SECURITY / PERSISTENCE
+Inspect `.dope/agent/`, browser-visible state and relevant logs.
+Require no OAuth/access/refresh/ID tokens, no hidden reasoning, no arbitrary environment dump, no sensitive absolute private path leakage and no unbounded provider payload.
+
+CLOSEOUT
+Write `docs/tasks/p8b/closeout.md` with:
+- exact candidate SHA/version;
+- automated commands/results;
+- direct happy-path evidence;
+- each authority adversarial result;
+- cancellation and restart evidence;
+- residual gaps;
+- Green / Not Green / Evidence Gap decision.
+
+A tiny P7 repair is allowed only inside the approved 8B core. Rerun only invalidated evidence.
+
+If Green, route next to a fresh Phase 8C sequential task / phase-stack execution planning workflow. Do not add AgentTaskSequence, prompt-stack parsing, dirty-tree continuation or checkpoint commits in this closeout.
+
+Do not create commits; the phase runner/manual closeout process owns the checkpoint boundary.
+
+FINAL RESPONSE
+Report exact candidate, authority enforcement, mutation/change/validation truth, cancellation/restart evidence, security residuals and the Phase 8B decision.

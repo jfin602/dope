@@ -1,0 +1,31 @@
+TASK: Correction 8 / P2 — Refine Select Chat navigation and panel density
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Make Select Chat a compact, readable conversation/folder navigator following AI Center's subdued row grammar, without changing Chat persistence, ownership or behavior.
+
+PREFLIGHT
+Read P1 handoff and this correction plan. Inspect chat-panel-widget.ts renderTree/render, ChatTree/ChatOpenOwners behavior and dope.css .dope-chat-content-select/.dope-chat-row. Inspect test/unit/chat-panel.test.ts and chat-presentation.test.ts.
+
+IMPLEMENT
+- Make Select Chat header compact and stable; list independently scrollable with controlled padding. Chat row: organizational dot, readable wrapping title and muted last-interacted date, stable keyboard focus/hover/select affordance.
+- Remove the constant per-chat Rename/Move button crowd from the row's main visual line. Keep both operations available through a labeled keyboard/touch-accessible contextual disclosure/menu. Preserve dialogs/mutation handler and nested folder details/actions.
+- Keep folder disclosure independent from chat selection, with depth, long names and action discoverability in narrow side panels. No hover-only invisible functionality or event propagation that opens a Chat when asking to rename it.
+- Harmonize Chat secondary buttons, spacing, top bar, settings and existing fixed composer with the AI Center neutral style using existing semantic tokens; do not change send/model/streaming/context or color storage behavior.
+- Preserve folder ordering by interaction, Chat color selection, one-owner/focus-on-duplicate semantics and layout restoration.
+
+FOCUSED GUARDS
+Add/update small tests for selector semantic markup (title/date/dot, folder nesting), accessible contextual actions and no state mutation on selection. Retain existing Chat safe-Markdown, model and ownership tests. Do not substitute styling assertions for business logic.
+
+VALIDATION
+T1: if compiled output is needed, corepack yarn workspace @dope/theia-extension build once; node --test test/unit/chat-panel.test.ts test/unit/chat-presentation.test.ts; git diff --check. Confirm version 0.8.20. No full npm run check, restart, separate browser build or unrelated test suites.
+
+DONE WHEN
+Select Chat and Chat shell use quiet hierarchy and all existing actions remain available and accessible. Do not commit; runner owns checkpoint.
+
+FINAL RESPONSE
+Report UI change, focused evidence and P3 readiness.

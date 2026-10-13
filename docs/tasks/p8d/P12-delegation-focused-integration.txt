@@ -1,0 +1,30 @@
+TASK: Phase 8 / P12 — Focused delegation integration and legacy regression
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.32`.
+
+GOAL / IMPLEMENT
+Run a bounded set of new/changed delegation/review/steering/map tests plus directly affected existing direct-Work/Prompt Stack suite. Check narrow scoped safety, frozen review, stale basis and idempotency; fix actual defects only. Register any new test files exactly once in root `test:product` so final aggregate covers them.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031 and the Phase 8D plan; inspect only affected source and nearest tests. Preserve the qualified 8B/8C and c8-work-mode contracts, not their historical implementation details.
+
+PRESERVE
+WorkItem remains Planning intent; AgentTask remains execution. Keep fixed grants, ADR 0028/0029 isolated candidate validation/promotion, direct Work and Prompt Stack behavior, separate Chat/Work modules and Dope-owned Git checkpoints. No automatic WorkItem completion, hidden reasoning, unapproved write, 8E/9/10 features.
+
+VALIDATION — T2
+One targeted `node --test` invocation of changed test files and at most one existing directly affected regression suite. No unconditional build; only compile if changed source requires it. No `npm test`, `npm run check`, browser/Electron build, packaging or restart suite.
+Aim for <=8 minutes including essential focused testing, 15-minute maximum. Run `git diff --check`. Do not run blanket `build:extension`, `npm test`, `npm run check`, browser/Electron builds or packaging. Compile only changed package outputs once if focused tests import their `lib`; defer broader tests to P12/P13.
+
+DEFER
+Remaining features in later p8d prompts; no unrequested cross-cutting refactor or broad validation.
+
+DONE WHEN
+Complete this single bounded seam with narrow truthful test evidence; runner owns implementation checkpoint, do not manually commit.
+
+FINAL RESPONSE
+Report changed files, evidence, residual risks and actual version.

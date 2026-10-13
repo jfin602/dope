@@ -1,0 +1,39 @@
+TASK: Phase 7 / P10 — Bounded project context composer
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.10`.
+
+GOAL
+
+Build one bounded context-composition seam before user-facing AI behaviors depend on it.
+
+PREFLIGHT
+
+Use shared p7 preflight. Inspect P1 ChatContextRef contracts, P3 ChatService, editor/workspace APIs and existing Project Mind/Software Map Flow/Visual Planning read/query services.
+
+IMPLEMENT
+- create typed Context Composer producing model-facing context plus durable ChatContextRef provenance;
+- support explicit current file, current selection, project-relative file, Project Mind artifact, canonical Architecture identity, Physical Map/Flow selected evidence/query context, Planning Map/WorkItem and saved-Chat excerpt;
+- frontend captures editor/selection; backend validates project/root/path and resolves domain IDs through existing authorities; missing/stale context fails visibly;
+- enforce Chat allowed-source policy plus total/history budgets using selected-model capability/token estimation where available and conservative deterministic fallback otherwise;
+- active Chat history is direct context under budget; other Chats use P2 bounded lexical/title/content search and explicit selection, never wholesale injection;
+- return explicit omission/truncation diagnostics so budget pressure is visible;
+- persist only included typed context references/bounds, not hidden reasoning.
+
+Do not add Ask/Explain/Trace/Find Related templates or auto-title yet.
+
+Advance to `0.7.10`.
+
+TESTS
+
+T2 focused context tests for every source kind, containment, stale project/generation IDs, search bounds, budget/truncation diagnostics, history budgeting and durable provenance. Run only directly affected Project Mind/Flow/Planning query regressions plus Chat tests; build extension/chat as needed; baseline/version/no-lock and diff check. No browser build/live providers.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report context/budget/provenance behavior and P11 eligibility.

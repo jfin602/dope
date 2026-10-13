@@ -1,0 +1,40 @@
+TASK: Correction 7 / P2 — Grounded Chat composition and Auto context
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.7.31`.
+
+GOAL
+
+Integrate P1 grounding into ordinary Chat turns so project facts are evidenced, visible and retry-safe across exact and role-routed execution.
+
+PREFLIGHT
+
+Read P1 result, ChatBackend run/preview/retry/routing paths, ChatContextComposer, ChatRepository schema, ChatPanel transcript metadata and relevant tests. Require unchanged `0.7.31`.
+
+IMPLEMENT
+- run deterministic grounding locally for ordinary project turns before final model request;
+- combine manual + Auto context under the actual selected/resolved model budget; manual context remains explicit and existing history rules stay intact;
+- add a compact system instruction that project facts are verified only from supplied evidence and inspection/search claims must not exceed it;
+- persist Auto refs on the user message with origin/hash/generation/bounds metadata;
+- role-following fallback must preserve the same selected evidence identities; re-budgeting/truncation is allowed, re-grounding to different facts is not;
+- no project evidence reaches hosted role target until existing hosted-project-data authorization is satisfied;
+- retry recomputes automatic evidence and requires the same identity/hash/generation contract; changed/stale evidence fails and requires a fresh turn;
+- project switch invalidates all grounding state;
+- Preview Context includes Auto grounding truthfully where possible;
+- render automatic refs in a distinct compact `Auto context` disclosure; never show absolute project path;
+- preserve explicit exact-model/no-fallback, Interactive routing provenance, automatic title reuse, cancellation and manual context semantics;
+- grounding must not mutate Architecture/Project Mind/Planning or Physical Map input identity.
+
+TESTS
+
+Focused only: ordinary `test/` listing, implementation lookup, orientation-only non-project question, Auto context persistence/UI, manual context, retry stable/changed evidence, small-window truncation, routed fallback evidence stability, hosted-egress guard, project-switch isolation, system anti-fabrication instruction and canonical/map isolation. Build chat + extension; diff/version/no-lock checks. No `npm run check`, browser or package build.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report Chat grounding behavior, provenance/retry/routing guarantees and P3 readiness.

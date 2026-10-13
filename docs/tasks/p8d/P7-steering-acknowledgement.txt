@@ -1,0 +1,30 @@
+TASK: Phase 8 / P7 — Durable steering with truthful acknowledgement
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.27`.
+
+GOAL / IMPLEMENT
+Add version-checked developer steering request and persisted acknowledgement to Agent Runtime service/store. If adapter lacks active-turn steering, report queued/unsupported and require explicit stop/new task; never silently restart provider, alter grant or frozen candidate. Scope request to project/task/run.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031 and the Phase 8D plan; inspect only affected source and nearest tests. Preserve the qualified 8B/8C and c8-work-mode contracts, not their historical implementation details.
+
+PRESERVE
+WorkItem remains Planning intent; AgentTask remains execution. Keep fixed grants, ADR 0028/0029 isolated candidate validation/promotion, direct Work and Prompt Stack behavior, separate Chat/Work modules and Dope-owned Git checkpoints. No automatic WorkItem completion, hidden reasoning, unapproved write, 8E/9/10 features.
+
+VALIDATION — T2
+One focused `test/unit/agent-steering.test.ts` for unsupported turn, stale revision, terminal-run block. Build only changed compiled package(s) if needed. P12 covers cancel/restart races.
+Aim for <=8 minutes including essential focused testing, 15-minute maximum. Run `git diff --check`. Do not run blanket `build:extension`, `npm test`, `npm run check`, browser/Electron builds or packaging. Compile only changed package outputs once if focused tests import their `lib`; defer broader tests to P12/P13.
+
+DEFER
+Remaining features in later p8d prompts; no unrequested cross-cutting refactor or broad validation.
+
+DONE WHEN
+Complete this single bounded seam with narrow truthful test evidence; runner owns implementation checkpoint, do not manually commit.
+
+FINAL RESPONSE
+Report changed files, evidence, residual risks and actual version.

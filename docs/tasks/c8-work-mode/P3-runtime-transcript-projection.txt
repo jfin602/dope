@@ -1,0 +1,35 @@
+TASK: Correction 8 / P3 — Persist ordered Work transcript through Agent Runtime
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Connect P1 transcript storage and P2 provider observations to the real AgentRuntime service and paginated transcript reads.
+
+PREFLIGHT
+Read P1/P2 results; inspect runtime observation projection, transcript store, backend/RPC contract and the directly affected unit tests. Preserve ADR 0029 required-validation ownership.
+
+IMPLEMENT
+- Project sanitized visible messages, correlated command start/completion and compact system milestones into ordered durable transcript records.
+- Enforce ordered, bounded writes and stable item IDs; avoid duplicate final messages and mark incomplete commands truthfully.
+- Expose bounded readTranscript pagination through AgentRuntimeService and its backend; preserve old event history and historical run records.
+- Support reload/restart and project-switch isolation without discarding the beginning of a long transcript.
+- Make transcript read/update behavior efficient; avoid re-reading complete logs every poll.
+- Keep required Dope-owned candidate validation independent from provider-observed command entries.
+- Do not change provider permissions, execution grants, candidate promotion, checkpoint or manual gate logic.
+
+TESTS
+One focused runtime transcript test should exercise durable ordering/paging, paired and interrupted commands, a legacy run, and provider-command non-substitution. Existing isolated store/adapter edge cases remain P1/P2 evidence; defer UI/restart races to P8.
+
+VALIDATION
+T2 (narrow runtime/RPC seam): build changed packages in dependency order, then run the new runtime transcript test plus `test/unit/agent-execution-runtime.test.ts` only if its existing contracts are affected, and `git diff --check`. No unrelated Codex/store suites or browser/electron/aggregate builds.
+
+DONE WHEN
+The AgentRuntime API reopens and pages all retained transcript entries reliably, without modifying execution authority. Runner owns implementation checkpoint.
+
+FINAL RESPONSE
+Report API, persistence, restart and focused test evidence.

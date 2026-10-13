@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "runId": "a45bdf7f-2f0c-4c24-9081-711f3a85068c",
+  "taskId": "work-9495bd42c7939a1bd0cabe7d2b29dc19",
+  "projectId": "project-48bc8ba6-e9ba-475d-a2bc-15d659331eab",
+  "decisionFingerprint": "aca007293cd53653fcfb7a85d364ce5ff48b4730d08dd7be4c7c9b6e758357a9",
+  "generation": 0,
+  "reviewDecision": {
+    "kind": "accept",
+    "revision": 1
+  },
+  "recordedAt": "2026-10-09T19:33:30.922Z",
+  "reanalysisNeeded": true,
+  "paths": [
+    {
+      "path": "p13-qualification/accepted.txt",
+      "sourceFingerprint": "719f1faa6a3af429fcbb1193a013cf429ac1e3e79bec14b8eb98e249410713a0",
+      "status": "unknown",
+      "nodeIds": [],
+      "evidenceIds": [],
+      "reason": "missing-map"
+    }
+  ]
+}

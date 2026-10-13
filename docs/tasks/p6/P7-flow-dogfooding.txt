@@ -1,0 +1,123 @@
+TASK: Phase 6 / P7 — Adaptive SEO Flow dogfooding and qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.6.7`.
+
+GOAL
+
+Qualify the complete provider-free Phase 6 Flow experience in the real Dope GUI using a fresh disposable copy of the accepted mapped Adaptive SEO workspace, then prove exact-candidate restart/release/package evidence.
+
+PREFLIGHT
+
+Read all p6 authority, prompt assessment/implementation plan, exact reachable P1-P6 commits/results, current Phase 6 tests and retained Phase 5 owner-close truth.
+
+Require coherent `0.6.6` predecessor.
+
+Keep `/home/jfin/dev/adaptive-seo-dope` immutable as the accepted reference.
+
+Immediately before qualification recreate `/tmp/adaptive-seo-dope-p7` from the accepted reference, including `.dope/` state. Record source Git status, accepted architecture/sMap file hashes and `.dope/` inventory. Do not regenerate, Search Deeper, reaccept or otherwise rewrite accepted architecture merely to make Flow work.
+
+Verify the disposable copy opens with accepted canonical architecture and a usable Physical Map before assessing Flow.
+
+No model/provider is required for Flow. Do not start one merely for Phase 6 qualification.
+
+Advance root/apps/internal package versions/references coherently to `0.6.7` before final exact-candidate qualification.
+
+DIRECT GUI MATRIX
+
+Use the actual Theia GUI on `/tmp/adaptive-seo-dope-p7`.
+
+A. Architecture -> Flow
+- open the center Physical Map;
+- preserve a representative System focus/selection;
+- switch to Flow;
+- verify a quiet System-level overview rather than a code-call hairball;
+- identify visible Input/Output/Store/External roles as supported by evidence.
+
+B. One real continuously evidenced behavior
+Choose one real supported Adaptive SEO behavior and prove:
+- inbound HTTP boundary;
+- actual handler/callable;
+- resolved internal invocation chain;
+- persistence and/or deterministic external-service interaction;
+- output/response boundary;
+- at least one genuine branch/fan-out or join within the behavior.
+
+Do not bridge a missing hop by interpretation. If the chosen behavior cannot be continuous, select another real supported behavior or report Not Green.
+
+C. Tracing
+- select a real Input;
+- Trace downstream;
+- inspect a middle participant and Trace upstream;
+- Clear trace;
+- confirm unrelated known Flow is subdued rather than falsely removed from overall context;
+- focus into Subsystem/Component detail and observe progressive code-level detail.
+
+D. Edge truth
+Inspect representative `receives`, `invokes`, persistence/external and `responds` edges as applicable.
+
+For representative edges record source/target, interaction kind, origin facts if aggregated, evidence/provenance, optional annotation only where evidenced, and jump to ordinary source.
+
+E. Truthful coverage
+Inspect Flow coverage/diagnostics.
+
+Prove unsupported/unresolved/truncated state is explicit where applicable and that no partial view claims whole-program completeness.
+
+Missing payload annotation is acceptable. Hidden truncation or a connector across an evidence gap is Not Green.
+
+F. Identity/context
+- Flow -> Architecture preserves meaningful focus/selection;
+- Architecture -> Flow returns to the same architectural context;
+- source round-trip does not fork identity;
+- focused System/Subsystem tabs stay project-scoped.
+
+G. Non-linear fixtures
+The real Adaptive SEO behavior must supply the required branch/fan-out or join.
+
+Use a controlled fixture only for rarer supported shapes such as cycle/back-edge, retry or explicit async handoff if not naturally present. Fixture evidence cannot replace the real Adaptive SEO behavior.
+
+RESTART / ISOLATION
+
+For the exact candidate prove:
+- close/reopen or process restart;
+- fresh analysis reconstructs equivalent useful Flow facts/endpoints/selected behavior without any `.dope/flow.json` or other persisted Flow authority;
+- stable semantic Flow IDs for unchanged inputs;
+- a second project/workspace cannot receive the first project's Flow;
+- late/stale query results do not render across project/generation boundaries.
+
+HOST / REGRESSION
+
+Use the Dope repository separately as host/regression fixture.
+
+Verify ordinary Physical Map Architecture mode, retained Planning Map workflow and Project Mind remain usable. Do not reinterpret inherited Phase 5 Not Green evidence as repaired unless this phase directly proves the specific behavior.
+
+T3 RELEASE EVIDENCE
+
+Run:
+- focused Phase 6 suites;
+- `npm run check`;
+- `npm run test:restart`;
+- `npm run codex:phase:validate -- p6`;
+- Linux AppImage packaging, inspection and normal native launch/controlled close as supported by the qualification environment;
+- exact version/Theia 1.75.0/Electron 42.8.1/no-root-lock coherence;
+- `git diff --check`.
+
+`npm run check` already includes browser and Electron builds. Do not rerun them separately unless later changes invalidate that evidence.
+
+Do not weaken tests, hide unsupported diagnostics or fill a Flow gap manually to obtain Green.
+
+EVIDENCE
+
+Create `docs/tasks/p6/P7-flow-dogfooding-evidence.md` recording exact source/candidate identity, accepted/disposable workspace preflight, A-G direct matrix, chosen Adaptive SEO behavior and every representative evidenced hop, provenance/source navigation, coverage diagnostics, restart/reanalysis/isolation, Dope host/regression result, aggregate/package/native commands/results and residual Not Green/Evidence Gaps.
+
+If any required direct or T3 item fails, preserve truthful evidence and stop short of P8 eligibility.
+
+If Green, create exactly one manual commit with subject `0.6.7` after the final coherent candidate/evidence is ready so the runner can resume safely.
+
+FINAL RESPONSE
+
+Report exact candidate, real Flow behavior, direct tracing/evidence result, coverage truth, restart/package result, residual gaps and whether P8 is eligible.

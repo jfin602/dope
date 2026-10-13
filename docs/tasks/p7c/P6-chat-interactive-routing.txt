@@ -1,0 +1,40 @@
+TASK: Phase 7 / P6 — Chat Interactive role routing and explainability
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.29`.
+
+GOAL
+
+Make Chat use Interactive policy by default while preserving exact developer control and feature-level egress authority.
+
+PREFLIGHT
+
+Read P1-P5, Chat domain/repository migration, ChatBackend/ContextComposer, composer/settings UI, retained P12/c7 no-fallback behavior. Require coherent `0.7.28`.
+
+IMPLEMENT
+- change persistent Chat model policy to discriminated `exact` or `follow-interactive`; do not overload one optional defaultModel field ambiguously;
+- deterministic readable migration: every existing exact default stays exact; legacy Chat with no exact default may become Follow Interactive; new Chats default Follow Interactive;
+- per-turn composer model choice remains an exact one-turn override and never rewrites Chat/global role policy;
+- role-following turn resolves Interactive using current role policy + Chat context requirements, then composes against the resolved model limits before persistence/execution;
+- if role-following resolution selects hosted, obtain explicit Chat-feature/user hosted-egress confirmation before sending durable Chat/history/context; do not treat global Interactive configuration as consent. Cancellation/denial sends nothing and does not fallback to another locality unless already authorized/eligible;
+- exact hosted per-turn/pinned selection remains explicit developer target authority; its failure does not role-fallback;
+- persist RoutingProvenance on assistant execution for role-following and enough resolution-source metadata for exact executions; historical records immutable;
+- add concise `Why this model?` detail in transcript/provenance UI showing role/source/constraints/preferred/actual/fallback reasons;
+- automatic title keeps the triggering actual exact model and does not invoke Interactive again;
+- broken/unconfigured Interactive role fails clearly and deep-links Roles; exact usable per-turn model remains available.
+
+Advance to `0.7.29`.
+
+TESTS
+
+Focused migration/repository/Chat backend/composer tests: exact preservation, new Follow Interactive, policy changes affect following Chat not pinned Chat, one-turn exact override, hosted confirmation/denial, role fallback, explicit no-fallback, context budget from resolved target, durable provenance/Why explanation, title reuse and broken-role repair route. Build chat/AI/extension; no live GUI.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report Chat precedence/egress/provenance and P7 eligibility.

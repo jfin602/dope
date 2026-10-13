@@ -1,0 +1,96 @@
+TASK: Phase 4 / P4 — Software Model inspector, restart and package qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.4.4`.
+
+GOAL
+
+Expose the real Physical Software Model through a focused Theia inspection surface, qualify repeated/restart analysis, and produce exact packaged-app evidence without claiming the direct GUI dogfood reserved for P5.
+
+PREFLIGHT
+
+Read all Phase 4 authority/plans and exact successful P1-P3 source/tests/docs. Inspect current frontend-module, dope-workbench, Project Mind controller race protections, CSS/theme conventions, restart integration and Electron package harness.
+
+Require reachable activation source `93a2b3152066029d28dabf73e5672e0663599e22`, exact successful P3 predecessor, clean intended Git state and coherent `0.4.3`.
+
+PRESENTATION
+
+Add focused Software Model presentation files rather than substantially growing `dope-workbench.ts`, expected as:
+- `software-model-controller.ts`;
+- `software-model-widget.ts` or equivalent focused view.
+
+Register a real command/view/widget through the existing frontend module.
+
+The inspector is a projection of shared model/query state, not a graph editor or architecture database.
+
+Required user-visible behavior:
+- explicit Analyze / Refresh;
+- analysis status/generation/diagnostics;
+- System -> Subsystem -> Component -> relevant code hierarchy;
+- visible unassigned/unknown implementation;
+- selected node identity, purpose and ownership;
+- direct and aggregated incoming/outgoing dependencies;
+- relationship evidence/source location;
+- architecture violations with rule and offending physical edges;
+- jump to source through ordinary editor navigation;
+- honest missing declaration, partial/error, empty and reanalysis states;
+- keyboard-operable controls;
+- dark-default and explicit-light readable semantic styling.
+
+Do not add graph-layout/rendering libraries, drag/drop architecture design, target-state editing, PlanningGraph or task/work concepts.
+
+ASYNC SAFETY
+
+Controller/view must generation/project guard delayed attach, analysis, query/evidence responses, workspace switch, refresh-during-analysis and disposal.
+
+Late data from project A must never render in project B. A stale generation must never be presented as current.
+
+DOPE ARCHITECTURE DECLARATION
+
+Add a deliberately small accurate repository `.dope/architecture.json` sufficient to dogfood real Dope Systems/Subsystems/Components and dependency constraints.
+
+Base declarations on actual existing source/package boundaries. It is acceptable for shared/tooling/unowned paths to remain unassigned. Do not force all files into architecture and do not declare Phase 5/6 systems as implemented.
+
+The declaration is canonical developer-authored project state and should be suitable for ordinary Git review.
+
+INTEGRATED REANALYSIS / RESTART
+
+Extend `test/integration/restart.test.mjs` or equally real process integration to prove:
+- typed Software Model service attach/analyze in real Theia/Electron process;
+- architecture declaration reread after process replacement;
+- derived graph rebuilt rather than assumed persisted;
+- representative hierarchy/dependency/evidence/violation query after restart;
+- second-root isolation;
+- Project Mind restart behavior remains intact;
+- controlled source change + reanalysis updates relationships and removal clears stale edge.
+
+Instrumentation/CDP may inspect service/UI state as supplemental automated evidence. Do not claim P5 direct user interaction.
+
+PACKAGE
+
+Advance all manifests/internal references/baseline assertions coherently to `0.4.4`.
+
+Run focused model/analyzer/index/UI tests, `npm run check`, `npm run test:restart`, p4 phase validation, no-root-lock/version/Theia checks and `git diff --check`.
+
+Build/package the exact `0.4.4` Linux AppImage.
+
+Create `docs/tasks/p4/P4-software-model-restart-package-evidence.md` recording:
+- exact pre-task/source identity;
+- build environment, caches/plugins and any native build prerequisites;
+- AppImage mode/size/SHA-256;
+- embedded app/package versions/resources;
+- presence of software-model/analyzer/backend/frontend code;
+- normal native launch/readiness and controlled close where environment allows;
+- integrated restart/reanalysis results;
+- explicit distinction between automated evidence and unperformed direct P5 GUI use;
+- all failures/retries/gaps.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report inspector behavior, async guards, Dope declaration scope, restart/reanalysis evidence, exact package identity/native result, checks/gaps and P5 eligibility.

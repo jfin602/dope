@@ -1,0 +1,369 @@
+TASK: One-off manual correction — Repair Flow projection contract and replay blocked map-canvas P3 Flow evidence
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- This is a manual one-off correction prompt, NOT a codex phase/correction stack prompt.
+- Do not run this file through `codex:phase`.
+
+VERSIONING
+- Keep the complete Dope workspace exactly at `0.6.7`.
+- Do not create `0.6.8` work.
+- P7 remains Not Green and P8 remains blocked during this correction.
+
+ACTIVATION
+- Require activation source `0cd080b12a71f67a78ae53ea3d3da8523894454c` reachable.
+- Require coherent `0.6.7`.
+- Preserve the original Phase 6 P7 Not Green evidence.
+- Preserve `docs/tasks/c6-map-canvas-priority/closeout.md` as the historical P3 Not Green record.
+- Do not modify the accepted source workspace `/home/jfin/dev/adaptive-seo-dope`.
+
+GOAL
+
+Repair the proven Flow query-result -> canvas projection contract mismatch, restore aggregate-only System/SubSystem overview rendering, correct the stale backend test expectation, then immediately replay only the map-canvas P3 Flow evidence that was blocked by the empty canvas.
+
+PROVEN ROOT CAUSE
+
+The current contract already separates semantic overview from detail:
+
+- `FlowQueryResult.projectionLevel === 'system'` -> overview relationships are in `aggregates`;
+- `FlowQueryResult.projectionLevel === 'subsystem'` -> overview relationships are in `aggregates`;
+- `FlowQueryResult.projectionLevel === 'detail'` -> exact execution relationships are in `facts`.
+
+`projectFlowMap()` still starts from `result.facts` and attempts to recover overview summaries from raw origins.
+
+That is invalid when an overview correctly returns:
+
+```text
+facts: []
+aggregates: [semantic visible relationships]
+```
+
+This exact defect was observed in the real GUI:
+- Adaptive SEO Service: 31 summarized relationships in inspection, 0 canvas edges;
+- Adaptive Recommendations: 27 summarized relationships in inspection, 0 canvas participants / 0 edges.
+
+PREFLIGHT
+
+Read:
+- BOOT.md / AGENTS.md;
+- current PRODUCT-MODEL.md / ARCHITECTURE.md / roadmap / workflow;
+- docs/tasks/p6/README.md;
+- docs/tasks/c6-map-canvas-priority/README.md;
+- docs/tasks/c6-map-canvas-priority/closeout.md;
+- docs/tasks/c6-flow-projection-contract/README.md;
+- retained docs/tasks/p6/P7-flow-dogfooding-evidence.md;
+- current Flow query/projection/controller/widget source and focused tests.
+
+Inspect at minimum:
+- packages/software-map/src/contracts.ts;
+- packages/software-map/src/flow-query.ts;
+- packages/theia-extension/src/browser/flow-map-projection.ts;
+- packages/theia-extension/src/browser/physical-map-controller.ts;
+- packages/theia-extension/src/browser/physical-map-widget.ts;
+- test/unit/flow-map-projection.test.ts;
+- test/unit/software-map-flow-query.test.ts;
+- test/unit/software-map-index-backend.test.ts;
+- test/unit/physical-map-flow-ui.test.ts;
+- test/unit/map-workspace-shell.test.ts if present.
+
+LOCKED BOUNDARY
+
+The query layer chooses **what relationships are visible**.
+
+The projection layer chooses **how those relationships are drawn**.
+
+Do not re-aggregate Flow semantics inside `projectFlowMap()`.
+
+Do not change production query behavior merely to satisfy a stale test.
+
+IMPLEMENTATION
+
+A. PROJECT THE AUTHORITATIVE RELATIONSHIP SET
+
+Refactor `projectFlowMap()` so explicit `result.projectionLevel` controls the relationship source:
+
+```text
+system    -> result.aggregates
+subsystem -> result.aggregates
+detail    -> result.facts
+```
+
+Use the explicit result contract as authority.
+
+Do not infer System/SubSystem overview semantics from whether raw origin facts happen to be present.
+
+If old test fixtures omit `projectionLevel`, update those fixtures to state the intended level rather than preserving semantic ambiguity. Add only a minimal compatibility fallback if a real external/current caller requires it, and never let that fallback override an explicit `projectionLevel`.
+
+B. PRESERVE AGGREGATE PROVENANCE
+
+When projecting aggregate overview relationships, preserve:
+- `originFlowFactIds`;
+- `originParticipants`;
+- `projectionVariants`;
+- evidence IDs;
+- enrichment;
+- async/retry/error behavior metadata.
+
+Do not flatten or synthesize new semantics in the projector.
+
+C. TRACE EMPHASIS ACROSS AGGREGATE ORIGINS
+
+Overview emphasis must still work when the active raw trace contains an ID listed in an aggregate's `originFlowFactIds`.
+
+A traced raw fact may therefore activate the corresponding aggregate edge in an overview.
+
+Once the directional/detail query publishes `projectionLevel: 'detail'`, render the raw `facts` themselves.
+
+Do not show duplicate aggregate + raw edges for the same detail result.
+
+D. PARTICIPANT CONSTRUCTION
+
+Build visible participant IDs from the chosen relationship set plus the existing explicit groups/selection rules.
+
+An aggregate-only overview must produce the nodes/groups/endpoints required by those aggregate source/target IDs.
+
+A genuinely empty chosen relationship set must remain empty except for any participant the existing contract explicitly requires for selection/orientation. Do not invent Flow.
+
+E. STALE BACKEND ASSERTION
+
+Update `test/unit/software-map-index-backend.test.ts` so overview behavior is asserted through `aggregates`, not by requiring an `invokes` relationship in `facts`.
+
+For the existing focused overview request:
+- assert the expected overview `projectionLevel`;
+- assert an appropriate visible `invokes` relationship exists in `aggregates`;
+- compare stable aggregate identity across unchanged fresh analysis where that test currently compares `facts`.
+
+Keep detail/trace tests using raw `facts`.
+
+Do not change the backend/query implementation to repopulate overview `facts` just to satisfy this test.
+
+PERMANENT REGRESSION COVERAGE
+
+Add or strengthen tests proving:
+
+1. aggregate-only System overview:
+   - `projectionLevel: 'system'`;
+   - `facts: []`;
+   - non-empty `aggregates`;
+   - expected canvas participants and edges render.
+
+2. aggregate-only Subsystem overview:
+   - `projectionLevel: 'subsystem'`;
+   - `facts: []`;
+   - non-empty `aggregates`;
+   - expected canvas participants and edges render.
+
+3. detail trace:
+   - `projectionLevel: 'detail'`;
+   - raw `facts` render;
+   - overview aggregates are not substituted.
+
+4. trace emphasis:
+   - a raw traced fact ID contained in `originFlowFactIds` activates the corresponding aggregate edge.
+
+5. metadata preservation:
+   - origin participants;
+   - projection variants;
+   - compatible enrichment;
+   - behavior/evidence metadata.
+
+6. true empty Flow:
+   - no facts/aggregates -> no invented graph.
+
+7. repeat determinism:
+   - reversed/equivalent input ordering yields stable projected output.
+
+8. backend contract:
+   - overview uses aggregates;
+   - detail uses facts.
+
+FOCUSED VALIDATION
+
+Before browser replay, run the smallest affected surface:
+
+- `npm run build:extension`;
+- `node --test test/unit/flow-map-projection.test.ts test/unit/software-map-flow-query.test.ts test/unit/software-map-index-backend.test.ts test/unit/physical-map-flow-ui.test.ts`;
+- include `test/unit/map-workspace-shell.test.ts` if present and affected;
+- `git diff --check`;
+- verify all live manifests/internal references remain `0.6.7`;
+- verify no root `package-lock.json`.
+
+Then run:
+
+- `npm run check`.
+
+The previous P3 stopped at 203/204 product tests because of the stale backend assertion. This replay must prove the complete command now succeeds.
+
+If focused validation or `npm run check` is Not Green, stop. Do not proceed to GUI qualification and do not broaden scope.
+
+DIRECT GUI REPLAY
+
+Only after automated Green:
+
+Keep `/home/jfin/dev/adaptive-seo-dope` immutable.
+
+Create a fresh disposable copy, including accepted `.dope/` state. Record source/copy Git status and the accepted `.dope/architecture.json` / `.dope/smap.json` hashes. Do not regenerate or reaccept architecture.
+
+Use the real Dope Theia browser GUI.
+
+1. FOCUSED SUBSYSTEM OVERVIEW
+
+Open Adaptive SEO Service -> Adaptive Recommendations -> Flow.
+
+Confirm:
+- inspection still reports the semantic overview relationship count;
+- the canvas now renders real participants and edges from those aggregates;
+- the view is no longer the P3 empty-canvas failure.
+
+Record counts.
+
+2. GET OPPORTUNITIES PATH
+
+Locate/select:
+
+`GET /api/workspaces/:workspaceId/projects/:projectId/opportunities`
+
+Replay downstream Flow and directly prove the same behavior previously exposed by the overview-priority correction:
+
+```text
+HTTP Input
+-> route handler
+-> AdaptiveRepository.list
+-> PostgreSQL reads x3
+-> response branches
+```
+
+The prior successful semantic baseline was a 5-participant / 8-interaction focused trace. If exact counts differ, explain why from current source/query evidence and do not claim Green unless the same semantic path is continuously represented.
+
+Exercise:
+- downstream;
+- upstream from a useful middle participant;
+- clear trace.
+
+3. DETAIL CONTRACT
+
+While tracing, verify the detail canvas is driven by raw facts rather than overview summaries.
+
+Confirm representative raw `receives`, `invokes`, `reads`, and `responds` evidence is available where the behavior provides it.
+
+Do not manually bridge missing hops.
+
+4. EDGE INSPECTION / SOURCE
+
+Select representative Flow edges.
+
+Confirm the floating inspection overlay exposes:
+- kind;
+- source/target;
+- aggregate origins when in overview;
+- raw fact/evidence detail when tracing;
+- evidence/provenance;
+- enrichment only when evidenced;
+- Open edge source into the ordinary editor.
+
+5. READABILITY
+
+Now that the canvas contains Flow again, directly finish the previously blocked readability evidence:
+- selected/traced path is immediately legible under Dope Dark;
+- edge/node labels are readable;
+- subdued context remains perceptible;
+- state is not conveyed only by color.
+
+6. OVERLAY STATES WITH REAL FLOW
+
+With a real participant/edge selected and an active trace:
+- expanded -> compact -> minimized -> expanded;
+- confirm selected identity/edge survives as designed;
+- focus survives;
+- trace direction survives;
+- canvas size/viewport does not refit merely because overlay state changed.
+
+7. ALTERNATE THEME
+
+Switch to a compatible non-Dope theme.
+
+Recheck:
+- actual Flow participants/edges;
+- selected/traced emphasis;
+- subdued context;
+- overlay text/actions.
+
+8. SHORT REGRESSION SMOKE
+
+Do not repeat the entire nine-area map-canvas replay unless needed.
+
+Smoke-check only:
+- Architecture still fills the canvas;
+- one compact toolbar remains;
+- Planning Current/Target/Diff remains usable;
+- left sMap inspector/source navigation remains intact.
+
+CLOSEOUT
+
+Create:
+`docs/tasks/c6-flow-projection-contract/closeout.md`
+
+Update:
+`docs/tasks/c6-flow-projection-contract/README.md`
+
+Record:
+- activation source;
+- exact repair candidate SHA;
+- changed production/test files;
+- focused validation;
+- full `npm run check` result;
+- direct GUI replay observations;
+- residual gaps;
+- Green / Not Green decision.
+
+If Green, also:
+
+1. Preserve `docs/tasks/c6-map-canvas-priority/closeout.md` unchanged as the historical Not Green P3 record.
+2. Create a supplemental replay record such as:
+   `docs/tasks/c6-map-canvas-priority/P3-supplemental-replay.md`
+   containing the successful Flow-only replay evidence.
+3. Update `docs/tasks/c6-map-canvas-priority/README.md` to show the correction is Green by supplemental evidence while retaining the original failed closeout history.
+4. Update `docs/tasks/p6/README.md` routing back to fresh P7 requalification.
+
+Do not claim Phase 6 P7 itself is Green.
+
+NATIVE SHUTDOWN
+
+The packaged AppImage controlled-shutdown failure remains a separate unresolved P7 blocker.
+
+Do not package, repair, or relabel that issue in this correction unless this projection repair unexpectedly causes a new native-specific regression.
+
+NO BROADENING
+
+Do not:
+- change Flow ontology/base interaction kinds;
+- change TypeScript/Express/PostgreSQL/external extraction;
+- change semantic overview aggregation policy;
+- increase 100/200/32 hard limits;
+- add another projection DTO field;
+- alter accepted Adaptive SEO architecture/sMap state;
+- add Flow persistence;
+- redesign the toolbar/overlay;
+- change Planning semantics;
+- pull Phase 7 AI/provider behavior forward;
+- create `0.6.8` work.
+
+FINAL RESPONSE
+
+Report:
+- exact confirmed projector defect;
+- exact relationship-selection repair;
+- stale backend assertion repair;
+- permanent regressions;
+- focused validation and `npm run check`;
+- Adaptive Recommendations aggregate overview result;
+- GET opportunities trace result;
+- raw-detail vs aggregate-overview behavior;
+- edge inspection/source result;
+- readability/theme/overlay result;
+- correction closeout decision;
+- confirmation version remains `0.6.7`;
+- map-canvas correction disposition;
+- P7/P8 routing;
+- explicit separate AppImage controlled-shutdown blocker.

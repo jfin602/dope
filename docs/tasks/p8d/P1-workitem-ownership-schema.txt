@@ -1,0 +1,30 @@
+TASK: Phase 8 / P1 — WorkItem ownership schema and legacy defaults
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- The assigned project version is `0.8.21`.
+
+GOAL / IMPLEMENT
+Extend only Visual Planning `WorkItem` types, parser and defaults with HUMAN/AI/SHARED assignment plus bounded delegable/human-reserved paths. Preserve existing WorkItem status/identity, PlanningMap basis and old serialized maps; reject contradictory scopes/path escapes. Do not add runtime/service/UI.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0031 and the Phase 8D plan; inspect only affected source and nearest tests. Preserve the qualified 8B/8C and c8-work-mode contracts, not their historical implementation details.
+
+PRESERVE
+WorkItem remains Planning intent; AgentTask remains execution. Keep fixed grants, ADR 0028/0029 isolated candidate validation/promotion, direct Work and Prompt Stack behavior, separate Chat/Work modules and Dope-owned Git checkpoints. No automatic WorkItem completion, hidden reasoning, unapproved write, 8E/9/10 features.
+
+VALIDATION — T1
+Compile only changed `@dope/visual-planning` once for tests importing `lib`, then `node --test test/unit/planning-work.test.ts` with focused old-map/ownership assertions. No extension build or storage/restart suite.
+Aim for <=8 minutes including essential focused testing, 15-minute maximum. Run `git diff --check`. Do not run blanket `build:extension`, `npm test`, `npm run check`, browser/Electron builds or packaging. Compile only changed package outputs once if focused tests import their `lib`; defer broader tests to P12/P13.
+
+DEFER
+Remaining features in later p8d prompts; no unrequested cross-cutting refactor or broad validation.
+
+DONE WHEN
+Complete this single bounded seam with narrow truthful test evidence; runner owns implementation checkpoint, do not manually commit.
+
+FINAL RESPONSE
+Report changed files, evidence, residual risks and actual version.

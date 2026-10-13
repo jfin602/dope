@@ -1,0 +1,60 @@
+TASK: Correction 7 / P3 — Chat project grounding browser qualification closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.7.31`.
+
+GOAL
+
+Qualify and close only `c7-chat-project-grounding` on one exact unchanged `0.7.31` candidate.
+
+PREFLIGHT
+
+Read correction assessment/plan, exact P1/P2 results, ADR/stability grounding gates and retained Phase 7 closeouts. Use disposable projects only. Preserve historical Phase 7 evidence.
+
+AUTOMATED
+- run focused grounding/context suites;
+- run `npm run check` once;
+- run `npm run codex:phase:validate -- c7-chat-project-grounding`; 
+- exact `0.7.31` / internal-reference / no-root-lock checks;
+- `git diff --check`.
+
+DIRECT QUALIFICATION
+Use a disposable full Dope copy and real Local model. Without manually attaching context, ask:
+- `what is in test/?`;
+- `what is at the repository root?`;
+- `does package.json exist?`;
+- `does src/definitely-not-real.ts exist?`;
+- `where is Chat persistence implemented?`;
+- one real Architecture question;
+- one current Physical Map or Flow question.
+
+For each project-fact answer, inspect the actual model request/evidence path and persisted turn refs. Require visible `Auto context` that corresponds to real current project evidence; do not accept a plausible answer without evidence.
+
+ADVERSARIAL
+Exercise traversal (`../`), absolute external path, `/tmp` or equivalent, `.dope/` generic access, nonexistent path, symlink-to-outside and stale/nonexistent map identity. Require explicit rejected/unavailable evidence and prove no unrelated host/project content enters the model request.
+
+ISOLATION / REGRESSION
+- switch to a second disposable project and prove no prior Auto context/root facts leak;
+- manual context still works;
+- retry with unchanged auto evidence succeeds;
+- mutate referenced evidence then retry and require explicit failure/fresh-turn behavior;
+- exercise one Interactive-routed turn and one exact-model failed turn; preserve routing/hosted-egress/no-fallback semantics;
+- compare canonical Architecture/Project Mind/Planning hashes and Physical Map input fingerprint before/after;
+- inspect UI: Auto context distinct, project-relative only, no absolute host path.
+
+CLOSEOUT
+Write `docs/tasks/c7-chat-project-grounding/closeout.md` and update README with exact candidate, commands, focused/aggregate/direct evidence, any tiny bounded repair, residuals and Green / Not Green decision.
+
+A tiny repair is allowed only for an observed defect inside this grounding correction; rerun only invalidated gates. Do not add mutation tools or redesign role policy.
+
+If Green, route next to fresh Phase 8 Scoped Delegation `/docs-review`.
+
+Do not create Git commits; runner owns the correction commit boundary.
+
+FINAL RESPONSE
+
+Report exact candidate, direct question/adversarial results, evidence/provenance/isolation status, residuals and correction decision.

@@ -1,0 +1,63 @@
+TASK: Phase 3 / P5 — Interactive Planning dogfooding qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- This prompt's assigned project version is `0.3.5`.
+
+GOAL
+
+Prove the real developer-controlled Decision -> Plan -> Step -> Task -> coding loop through direct Theia GUI use on Dope and a second project, with no model configured.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, all p3 authority/plans/storage guide, exact P1-P4 source/evidence, P4 package identity and inherited Phase 1/2 closeouts.
+
+Require explicit owner Phase 3 activation, reachable activation source `95815b04977a229abfdfdba628eb9dddc9e55203`, exact committed P4 candidate and clean/intentionally understood Git state. Record current Dope Project Mind/Planning bytes and profile before interaction. Preserve unrelated edits.
+
+Use direct interactive browser-hosted Theia or Electron. P4 separately owns packaged native-launch evidence. Headless/CDP/DOM-query/screenshot-only assertions cannot replace direct clicking, typing and observing.
+
+INTERACTIVE MATRIX
+
+On the actual Dope repository, with no model configured:
+- open Planning through normal UI/PLAN mode and confirm ordinary IDE remains usable;
+- use an existing genuine Decision or create a genuine Project Mind Decision for an upcoming Dope change;
+- explicitly create a linked draft Plan from that Decision and verify the Decision remains Project Mind knowledge rather than converting into work;
+- edit/save/activate the Plan;
+- create at least three ordered Steps and reorder them;
+- exercise representative Step states including active, blocked with visible reason, unblock/reopen and complete/skip as appropriate;
+- create multiple real Tasks under Steps with objective, requirements and constraints;
+- exercise representative Task pending/active/blocked/complete/reopen or cancel/restore behavior as supported by the approved contract;
+- link/navigate genuine Project Mind artifacts;
+- add/follow real Dope working-set file links and preserve an unavailable file link visibly;
+- inspect document revision, per-Plan revision and concise history after explicit mutations; confirm editing keystrokes alone do not create history;
+- perform a small controlled real edit/test cycle using ordinary editor/terminal/test surfaces, then explicitly reflect progress in Task/Step state; retain only intentional approved source work and restore disposable probes exactly;
+- switch PLAN/BUILD modes and prove no canonical status/draft mutation occurs;
+- protect a dirty draft during Plan/Step/Task navigation and a same-renderer workspace switch using Save/Discard/Cancel behavior;
+- demonstrate a peer/stale revision conflict and explicit recovery without silent overwrite;
+- stop/restart the actual workbench/backend or Electron with the same project/profile and recover usable Planning, links and history;
+- open a second unrelated local project with a distinct Project Mind identity, establish separate Planning state, then return to Dope and recover Dope state;
+- exercise documented stopped-writer backup/recovery for Planning if safely practical;
+- operate key controls by keyboard; inspect dark-first default and readable explicit light choice.
+
+Use a genuine upcoming Dope task, but do **not** implement Phase 4 OpenAI/Codex runtime just because ADR 0006 exists.
+
+EVIDENCE AND REPAIR
+
+Create `docs/tasks/p3/P5-planning-dogfooding-evidence.md` with exact baseline/current/final SHA or checkpoint, version/surface/launch, every matrix disposition, project/plan/task IDs and revisions where useful, restart/isolation/recovery, intended .dope changes, Git pre/post and repairs.
+
+Distinguish intentional durable `.dope/planning.json`/Project Mind knowledge from temporary code probes. Never reset unrelated user changes to force cleanliness.
+
+A bounded product repair requires a permanent executable regression guard, replay of the failed direct GUI step and fresh affected package evidence. Preserve every failure/gap. Missing required evidence means no success marker; P6 remains blocked unless a separate explicit audit-only waiver is documented.
+
+HANDOFF
+
+After Green applicable qualification, set root/all workspace versions/internal references/baseline assertions coherently to `0.3.5`. Run focused Planning checks, `npm run check`, current restart integration, phase validation, no-root-lock and `git diff --check`. Record whether P4 package still covers final product source or a rebuilt artifact replaces it.
+
+Manual operator creates exactly one commit with subject `0.3.5` for the successful intended handoff and leaves a clean intended tree. Runner-invoked agents do not commit. Partial checkpoints are not success markers.
+
+FINAL RESPONSE
+
+Report candidate, GUI surface, full matrix, usefulness of the planning/coding loop, draft/conflict/restart/isolation/recovery results, package coverage, Git preservation, gaps and P6 eligibility. Do not claim Phase 3 Qualified before closeout.

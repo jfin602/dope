@@ -1,0 +1,20 @@
+
+> dope@0.8.47 codex:phase:validate
+> node scripts/validate-codex-phase.mjs p8e
+
+Historical pre-1.0 Phase 8 prompt grammar: VALID
+P1 | implementation | GPT-6 Sol High | Browser required: no | 0.8.34 | P1-local-tool-contracts.txt
+P2 | implementation | GPT-6 Sol High | Browser required: no | 0.8.35 | P2-local-os-sandbox.txt
+P3 | implementation | GPT-6 Sol High | Browser required: no | 0.8.36 | P3-local-read-tools.txt
+P4 | implementation | GPT-6 Sol High | Browser required: no | 0.8.37 | P4-local-file-edits.txt
+P5 | implementation | GPT-6 Sol High | Browser required: no | 0.8.38 | P5-local-process-broker.txt
+P6 | implementation | GPT-6 Sol Medium | Browser required: no | 0.8.39 | P6-lmstudio-tool-transport.txt
+P7 | implementation | GPT-6 Sol Medium | Browser required: no | 0.8.40 | P7-local-context-budget.txt
+P8 | implementation | GPT-6 Sol High | Browser required: no | 0.8.41 | P8-local-agent-turn-loop.txt
+P9 | implementation | GPT-6 Sol High | Browser required: no | 0.8.42 | P9-local-agent-adapter.txt
+P10 | implementation | GPT-6 Sol High | Browser required: no | 0.8.43 | P10-local-agent-capability.txt
+P11 | implementation | GPT-6 Sol High | Browser required: no | 0.8.44 | P11-local-agent-runtime-routing.txt
+P12 | implementation | GPT-6 Sol Medium | Browser required: no | 0.8.45 | P12-local-agent-work-controls.txt
+P13 | implementation | GPT-6 Sol High | Browser required: no | 0.8.46 | P13-local-agent-integration-safety.txt
+P14 | closeout | GPT-6 Sol High | Browser required: yes | 0.8.47 | P14-local-agent-qualification-closeout.txt
+Manual closeout: P14

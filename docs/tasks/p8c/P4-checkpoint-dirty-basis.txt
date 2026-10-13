@@ -1,0 +1,48 @@
+TASK: Phase 8 / P4 — Dirty-tree basis and Dope-owned checkpoint commits
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.17`.
+
+GOAL
+Add explicit dirty-tree continuation and the first Dope-owned Git checkpoint boundary without weakening ADR 0028 or staging unrelated work.
+
+PART A — ACCEPTED DIRTY BASIS
+- Default sequence task start requires a clean authoritative worktree.
+- Add an explicit developer-authorized dirty continuation input/state. Capture exact pre-task HEAD plus tracked/untracked status and bounded hashes/content identity needed to prove the accepted dirty basis.
+- Extend ExecutionWorkspace creation so a sequence task can derive from that exact accepted dirty worktree, not merely HEAD. Direct Phase 8B tasks keep their existing clean default.
+- CandidateDelta/promotion must remain relative to the accepted execution basis and must not reinterpret accepted pre-existing dirty bytes as model-created changes.
+- If authoritative files outside the accepted/task-owned basis change while the task runs, checkpoint must fail closed.
+
+PART B — CHECKPOINT SCOPE
+- A checkpoint may occur only after AgentRun completed, promotion succeeded, required validation passed, expected package/version state is correct and HEAD still matches the accepted pre-task HEAD.
+- Compute exact checkpoint scope = explicitly accepted pre-existing dirty paths + task applied authoritative paths.
+- Exclude `.dope/agent/**` runtime state and unrelated ambient changes.
+- Do not use unqualified ambient `git add -A`. Stage only verified scope and confirm the staged diff contains nothing else.
+- Enforce no forbidden root package-lock/npm-shrinkwrap and current internal-version coherence used by the repository workflow.
+- Commit subject: Phase = exact target version; Correction = `<folder>/P<n>: <task title>`.
+- Commit body must be a bounded deterministic Dope summary using task/run/validation/applied-change evidence. Never use raw provider final response as authoritative commit text.
+- Verify resulting commit/HEAD/staged-clean boundary before persisting checkpoint SHA and advancing exactly one sequence entry.
+- If commit/staging verification fails, stop sequence and do not claim the task checkpointed.
+
+GIT SAFETY
+- Model/provider still has no Git-write authority.
+- Reject unexpected HEAD movement, external stage changes, ambiguous dirty changes, commit results that violate expected scope, or duplicate checkpoint attempts.
+- Do not reset/rebase/checkout/switch to repair ambiguity.
+
+FOCUSED VALIDATION
+- Clean task checkpoint.
+- Explicit dirty-basis checkpoint including accepted pre-existing change + task change.
+- Unaccepted ambient dirty change blocks.
+- Staged scope excludes `.dope/agent/**` and unrelated files.
+- Unexpected HEAD movement blocks.
+- Phase/correction subjects and bounded body.
+- Version/root-lock/internal-reference failure blocks.
+- Commit verified before advancement; restart cannot duplicate the same checkpoint.
+- Affected builds/typechecks and git diff --check/version coherence.
+
+DEFER
+Manual/browser gate reconciliation and sequence UI.

@@ -1,0 +1,42 @@
+TASK: Phase 8 / P3 — Codex App Server adapter and zero-data Test Connection
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.3`.
+
+GOAL
+Implement the provider-specific Codex App Server runtime adapter and AI Center zero-project-data Test Connection. Do not add repository mutation authority.
+
+PREFLIGHT
+Read current official Codex App Server, models/inference and preview-limitations docs. Read P1/P2 result plus current AIInventoryController/registry backend/process lifecycle patterns.
+
+IMPLEMENT
+- Add Codex App Server process manager/adapter behind provider-neutral AI Center/runtime seams.
+- Resolve the supported Codex executable/version with clear unavailable/incompatible states.
+- Spawn `codex app-server --listen stdio://` using the documented ChatGPT-plan Responses provider configuration; pass access token only through the child environment.
+- Implement robust newline-delimited JSON-RPC request correlation and event handling.
+- Perform `initialize` then `initialized`; bounded startup timeout/failure cleanup.
+- Support `thread/start`, `turn/start`, terminal status and required message/event handling for Test Connection.
+- Retain provider thread ID only as adapter metadata.
+- On refreshed credentials, stop the old process cleanly, start/initialize replacement, and support `thread/resume` when appropriate.
+- Bound idle shutdown/application-disposal cleanup; no orphan children.
+- Discover account-specific display models using the authorized account catalog when appropriate; App Server `model/list` may supplement but is not entitlement.
+- Normalize Codex models as hosted, agentExecution-capable inventory with honest unknown metadata.
+- Test Connection uses a newly created scratch/empty directory, disables mutation authority, includes zero active-project data, sends one tiny synthetic task, and succeeds only on terminal completed status.
+- A ChatGPT-plan failure must not fall back to generic OpenAI API credentials/connections.
+- Map auth/usage/runtime/model failures to safe normalized states.
+
+TESTS
+Create deterministic fake App Server child/RPC fixtures and fake model-catalog endpoint.
+Cover initialize ordering, malformed/late RPC, delta/completion, failed/interrupted turn, process death, timeout, cleanup, token-refresh restart/resume, catalog/entitlement distinction, scratch-root Test Connection and no API-key fallback.
+
+VALIDATION
+T2 focused runtime/inventory/provider tests + affected builds, version/no-lock/diff checks. No live OAuth/provider/browser yet and no repository mutation.
+
+Do not create commits; the phase runner owns the commit boundary.
+
+FINAL RESPONSE
+Report App Server lifecycle/RPC/model/Test Connection behavior, process cleanup evidence and P4 readiness.

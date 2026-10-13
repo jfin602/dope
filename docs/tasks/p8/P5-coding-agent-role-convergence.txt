@@ -1,0 +1,43 @@
+TASK: Phase 8 / P5 — Coding Agent role convergence and consumer isolation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.5`.
+
+GOAL
+Integrate Codex agentExecution inventory with the existing Coding Agent role while preserving all Phase 7 routing/consumer authority.
+
+PREFLIGHT
+Read P1-P4 results, `@dope/ai` role policy/resolver, AI role store/routing, Chat Interactive routing and Software Map target selection tests.
+
+IMPLEMENT
+- Define the Phase 8A Coding Agent request constraint to require `agentExecution`.
+- Exact and constraint policy entries remain deterministic and immutable-ID based.
+- Codex models participate as hosted targets; existing locality/egress restrictions still narrow policy.
+- Multiple Codex connections can be preferred/fallback targets; fallback never changes billing path implicitly.
+- Generic OpenAI API models do not become Coding Agent targets unless a future adapter explicitly reports agentExecution.
+- Removed/unavailable Codex targets preserve existing bounded tombstone/repair behavior.
+- Ordinary Chat/Interactive and Software Map consumers must not select a Codex-only agentExecution target unless that exact connection/model independently satisfies their existing required capabilities.
+- Keep Coding Agent UI configurable but mark no active mutation consumer until 8B.
+- Do not implement AgentTask, ExecutionGrant or repository effects.
+
+TESTS
+Focused:
+- role eligibility agentExecution true/unknown/false;
+- hosted locality;
+- deterministic multiple-Codex ordering/fallback;
+- no implicit generic OpenAI fallback;
+- removed target repair;
+- Chat and Software Map isolation;
+- no new global warning solely because Coding Agent is unconfigured.
+
+VALIDATION
+T2 focused AI role/inventory/Chat/SMap tests + affected builds, version/no-lock/diff checks. No live OAuth/browser/package/full check.
+
+Do not create commits; the phase runner owns the commit boundary.
+
+FINAL RESPONSE
+Report role eligibility/isolation and P6 qualification readiness.

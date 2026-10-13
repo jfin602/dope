@@ -1,0 +1,37 @@
+TASK: Phase 7 / P6 — Conversational Model Runtime and connections registry
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.6`.
+
+GOAL
+
+Establish the provider-neutral conversational runtime and application Model Connections registry before touching individual provider adapters.
+
+PREFLIGHT
+
+Use shared p7 preflight. Inspect ADR 0022, current `model-runtime.ts`, synthesis-provider interfaces/tests, frontend StorageService/backend service patterns and P1 Chat provenance contracts.
+
+IMPLEMENT
+- extend Model Runtime contracts with future-extensible connection/model IDs and capabilities for conversational text, streaming, context limits and supported reasoning controls while preserving structured generation;
+- add provider-neutral conversational request/delta/completion/usage/failure contracts and AbortSignal cancellation;
+- keep existing sMap `generateStructured` API and semantics valid;
+- add application-level Model Connections registry/service, separate from project Chat and Software Map synthesis selection;
+- expose connected/usable model inventory/readiness to frontend;
+- persist only safe non-secret connection metadata/preferences; credentials/tokens are environment or session-only secret inputs, never `.dope/` or ordinary plaintext persisted StorageService;
+- no provider transport implementation changes beyond minimal compile adapters required for the new interface.
+
+Advance to `0.7.6`.
+
+TESTS
+
+T2 focused contract/registry tests for capability discovery, connection lifecycle, readiness invalidation, cancellation types, secret non-persistence and no-fallback routing. Run directly affected synthesis contract/provider tests only if interface changes touch them; build contracts + extension; baseline/version/no-lock and diff check. No provider HTTP calls or browser build.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report runtime/registry seam and P7 eligibility.

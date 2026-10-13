@@ -1,0 +1,60 @@
+TASK: Phase 4 / P2 — Deterministic TypeScript and JavaScript analysis
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.4.2`.
+
+GOAL
+
+Add the language-analysis boundary and a deterministic TypeScript/JavaScript analyzer that emits the Phase 4 language-independent physical graph with source evidence.
+
+PREFLIGHT
+
+Read all Phase 4 authority/plans and exact successful P1 source/tests. Require reachable activation source `93a2b3152066029d28dabf73e5672e0663599e22`, exact successful P1 predecessor, clean intended Git state and coherent `0.4.1`.
+
+IMPLEMENT
+
+Add:
+- `@dope/code-analysis`: language-independent analyzer/discovery/orchestration interfaces;
+- `@dope/code-analysis-typescript`: TypeScript/JavaScript adapter.
+
+Neither package may import Theia/provider/model code. The TypeScript adapter must declare TypeScript `5.9.3` as a runtime dependency.
+
+Use TypeScript compiler/project/module-resolution/type-checker semantics where authoritative.
+
+Discover configured local TS/JS projects from tsconfig/jsconfig, including project references/composite projects where applicable. Respect compiler inclusion/exclusion. Do not treat node_modules/build/generated/vendor material outside configured source as project code.
+
+Emit deterministic Dope-owned CodeEntity/relationship/evidence records for representative:
+- files/modules;
+- exports/public exposure;
+- class/interface/function/method or equivalent useful symbols;
+- imports/module dependencies;
+- resolved semantic references;
+- extends/implements/inheritance.
+
+Normalize project-relative paths. Identical inputs must yield identical IDs/order/evidence. TypeScript SyntaxKind numbers, compiler nodes and TS-native object shapes must not become canonical ontology.
+
+Unresolved imports/references and partial compiler failures are explicit diagnostics; never fabricate resolved physical relationships.
+
+TEST FIXTURES
+
+Add analyzer fixtures covering multiple modules, path alias/resolution, configured JS+TS, imports/exports, inheritance, symbol references, excluded/generated source, unresolved import and at least one referenced/multi-tsconfig case where supported.
+
+Add permanent analyzer tests proving repeat determinism, correct semantic resolution, evidence source spans, exclusion and honest diagnostics. Do not use the real Dope repository as the only fixture.
+
+INTEGRATION
+
+Wire both packages into workspaces/build/typecheck/product tests and baseline package coherence.
+
+Advance all manifests/internal references coherently to `0.4.2`.
+
+Run focused software-model/analyzer tests, `npm run check`, phase validation as applicable, no-root-lock/version/Theia coherence and `git diff --check`.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report analyzer discovery/resolution behavior, emitted physical semantics/evidence, fixture coverage, checks, version coherence, diagnostics/gaps and P3 eligibility.

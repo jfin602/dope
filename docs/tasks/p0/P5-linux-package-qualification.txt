@@ -1,0 +1,81 @@
+TASK: Phase 0 / P5 — Linux Electron packaging and launch smoke
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.0.5`.
+
+GOAL
+
+Prove that the exact P4 candidate can be packaged and launched as a real Linux Electron desktop application outside the development server.
+
+Read all Phase 0 authority, P4 evidence, current package/build scripts and current source before editing.
+
+PACKAGE
+
+Use the supported Electron packaging path available in the repository.
+
+Produce a real Linux distributable. Prefer AppImage when that is the supported configured output; another Linux artifact is acceptable if current source/tooling justifies it.
+
+Brand package metadata as Dope rather than generic Theia.
+
+Do not configure publishing, auto-update deployment, signing infrastructure, telemetry or cloud services.
+
+Record the exact Linux native/build prerequisites needed by the real build, including the X11 development-header/sysroot requirement already encountered by P2/P3 if it remains applicable.
+
+PACKAGE EVIDENCE
+
+Record:
+- exact source SHA/version/Theia version;
+- packaging command;
+- artifact path/name/type;
+- size;
+- SHA-256;
+- unpacked/preview path if generated;
+- required Linux native/build prerequisites;
+- packaging warnings/errors.
+
+NATIVE LAUNCH SMOKE
+
+Launch the produced application outside the dev server/source start command.
+
+Prove the strongest evidence available from the runner environment:
+- process starts successfully;
+- process remains alive long enough to establish startup viability or exits only through an intentional smoke harness;
+- startup/runtime logs contain no substrate-level fatal error;
+- packaged resources resolve without source-tree/dev-server dependence;
+- Dope package/application metadata is present;
+- if an existing clean CDP/renderer seam is available, use it for a minimal renderer-ready probe.
+
+Do not add a large automation framework solely to inspect the native window.
+
+Do not claim visual/native GUI behavior that was not actually observed. P4 already qualifies the shared workbench UI. Preserve any native-window-only observation as Evidence Gap.
+
+BOUNDED REPAIR
+
+Permit only the smallest packaging/runtime repair inside Phase 0 scope with permanent automated coverage where practical.
+
+EVIDENCE
+
+Create `docs/tasks/p0/P5-linux-package-evidence.md` with exact package/build/launch results and any native-GUI Evidence Gap.
+
+Set `package.json` version to `0.0.5`.
+
+VALIDATION
+
+Rerun:
+- package build;
+- affected focused tests;
+- browser build;
+- Electron build;
+- typecheck;
+- runner tests;
+- deterministic aggregate checks;
+- no-`package-lock.json` check;
+- `git diff --check`.
+
+FINAL RESPONSE
+
+Report package artifact/hash/size, Linux prerequisites, native launch/process evidence, any renderer probe, repairs, automated validation, Evidence Gaps, and whether P6 closeout is unblocked.

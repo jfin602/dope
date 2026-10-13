@@ -1,0 +1,40 @@
+TASK: Phase 7 / P5 — Model inventory health Test Connection and eligibility
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.18`.
+
+GOAL
+
+Complete the role-ready 7B backend semantics without selecting or routing a role target.
+
+PREFLIGHT
+
+Read P1-P4, ADR 0026 health/model/Test Connection sections and current execution failure classes. Require coherent `0.7.17`.
+
+IMPLEMENT
+- persist connection-scoped known model records by connectionId + providerModelKey; retain previously known models when discovery stops returning them, marking them unavailable/unknown rather than deleting identity;
+- support Dope model Enabled/Disabled preference independent from provider discovery;
+- normalize connection health: Unknown, Checking, Ready, Degraded, Needs Authentication, Unavailable, Invalid Configuration, Disabled;
+- normalize model state: Unknown, Ready, Unavailable, Disabled;
+- keep cold/unloaded Local health distinct from execution eligibility; a request needing known loaded context remains ineligible until preflight/load establishes the limit;
+- bounded discovery/Refresh Models/Reconnect lifecycle; no continuous polling while AI Center is open;
+- execution outcomes may update ephemeral/stale health conservatively; one transient failure does not create permanent launcher warning state;
+- implement Test Connection as one tiny zero-project-data conversational request through one usable/default model, with safe ephemeral latency/basic usage and hosted-cost disclosure metadata; it does not prove sMap structured output, large context, warm residency or feature readiness;
+- implement `findEligibleModels` filtering required capabilities/locality/minimum known context/enabled/usable; deterministic stable result ordering is allowed for presentation but MUST NOT choose/rank a role target;
+- expose enough normalized state to frontend/Chat/Software Map consumers.
+
+Advance to `0.7.18`.
+
+TESTS
+
+T2 focused inventory/health/test/eligibility tests: known-vs-usable refresh, model disable, cold Local eligibility, auth/config/transient outcomes, zero-project-data synthetic request, test invalidation, no fallback, capability-source quality and filter-only behavior. Build affected packages; baseline/version/no-lock/diff check. No live providers or browser.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report inventory/health/Test/eligibility evidence and P6 eligibility.

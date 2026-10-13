@@ -1,0 +1,35 @@
+TASK: Phase 8 / P2 — Sequence persistence and resume reconciliation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.15`.
+
+GOAL
+Make AgentTaskSequence durable and reconcile it safely with Git/version/worktree/stack truth before any sequence execution.
+
+REQUIREMENTS
+- Persist sequences atomically under `.dope/agent/sequences/<sequence-id>.json` with strict parsing, bounded bytes and project containment.
+- Extend AgentStore or add a narrowly owned sequence store; avoid a second unrelated persistence architecture.
+- Add service DTO/operations to import/create/read/list/reconcile sequences and notify frontend consumers.
+- Reconciliation inputs: stored sequence/checkpoints, reachable Git history, current HEAD, root package version, current worktree status/basis and current source-stack fingerprint.
+- Git checkpoint reality and durable sequence state must agree; neither silently overwrites the other.
+- Detect and block: unreachable stored checkpoint, later checkpoint with missing earlier task, duplicate ambiguous correction checkpoint, phase version mismatch, correction unchanged-version mismatch, source-stack drift, unexpected HEAD/worktree drift and persisted completion unsupported by Git.
+- A source-stack fingerprint mismatch never silently updates the imported snapshot.
+- On restart, stale sequence running state with no owned executor becomes interrupted/blocked truth as appropriate; do not auto-run.
+- Persist no secrets, hidden reasoning, arbitrary environment data or sensitive absolute private paths.
+
+RUNNER REFERENCE
+Reuse/extract pure completed-prefix/version logic where useful, but do not make the product runtime execute the external runner.
+
+FOCUSED VALIDATION
+- Sequence create/read/update/list and corruption/future schema.
+- Serialized/concurrent update behavior consistent with existing AgentStore expectations.
+- Git history prefix cases, version cases, stack drift and restart reconciliation.
+- Copy/move portability and secret-shaped fixture rejection.
+- Affected package builds/typechecks plus git diff --check/version/no-root-lock.
+
+DEFER
+Starting AgentTasks, retry, dirty-tree acceptance, staging/commit and manual-gate completion.

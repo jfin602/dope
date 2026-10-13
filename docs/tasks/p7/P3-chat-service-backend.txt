@@ -1,0 +1,35 @@
+TASK: Phase 7 / P3 — Chat service and backend transport
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.3`.
+
+GOAL
+
+Expose P1/P2 Chat behavior through one thin typed project-scoped service/backend.
+
+PREFLIGHT
+
+Use shared p7 preflight. Inspect P1 service DTOs, P2 repository, backend-module/service connection patterns and workspace handle validation.
+
+IMPLEMENT
+- implement ChatService operations/events for attach/list/read/create folder/create Chat/move/rename/settings, turn begin/complete/fail/cancel, saved-chat search and ownership claim/release;
+- bind a dedicated Theia backend/RPC path; do not put Chat on Project Mind/Software Map services;
+- validate project handle/root and expected revisions before every mutation;
+- keep streaming payloads provider-neutral and transport-only; provider execution starts later;
+- ensure change events are project-scoped and late/disposed clients cannot mutate another workspace.
+
+Advance to `0.7.3`.
+
+TESTS
+
+T2 focused service/backend tests plus directly affected ChatRepository tests; build `@dope/chat` and `@dope/theia-extension`; run baseline/version/no-lock and diff check. No browser build, restart or providers.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report service/RPC isolation and P4 eligibility.

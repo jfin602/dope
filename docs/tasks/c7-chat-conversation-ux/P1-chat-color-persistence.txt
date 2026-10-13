@@ -1,0 +1,56 @@
+TASK: Correction 7 / P1 — Chat color domain and persistence
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Required unchanged project version: `0.7.13`.
+
+GOAL
+
+Add durable ten-color Chat identity with the smallest safe domain/repository change. Do not touch Chat presentation yet.
+
+PREFLIGHT
+
+Read BOOT.md, AGENTS.md, ADR 0025 c7 amendment, this correction README/assessment/plan, and inspect current Chat domain/service/repository tests.
+
+IMPLEMENT
+
+- Add one Chat color type with exactly: blue, cyan, teal, green, yellow, orange, red, pink, purple, indigo.
+- Add top-level durable `Chat.color`; do not put color in `ChatSettings`.
+- Add one deterministic assignment helper based only on stable Chat ID. Use a stable hash/modulo over the ten colors; never use folder/title/time/order/randomness.
+- New Chat creation must persist its assigned color immediately.
+- Add a narrow `set-color` Chat mutation. It validates color, preserves `lastInteractedAt`, and does not require the live composer lease.
+- Safely migrate valid existing persisted Chats that predate color:
+  - derive from stable Chat ID;
+  - persist under existing repository locking/revision semantics;
+  - preserve title/titleSource, folder, settings, messages, created/updated/last-interacted meaning and ordering;
+  - migrate once/idempotently;
+  - keep corrupt/unsupported records fail-closed.
+- Use the smallest schema evolution that satisfies that behavior. Do not create a second color store.
+- Keep package version exactly 0.7.13.
+
+PERMANENT REGRESSIONS
+
+Cover only the focused defect class:
+- deterministic valid color assignment;
+- new Chat persistence;
+- set-color persistence across rename/move;
+- legacy no-color migration with transcript/settings/timestamps/order preserved;
+- invalid color rejection;
+- project isolation unchanged.
+
+VALIDATION
+
+T1 only. Run:
+- focused chat domain/repository tests;
+- corepack yarn workspace @dope/chat build;
+- git diff --check;
+- exact 0.7.13 and no-root-package-lock checks.
+
+Do not run npm run check, browser/manual tests, restart, packaging, live providers, or broad Phase 7 evidence.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report the final Chat color contract, migration strategy, focused validation, unchanged version, and P2 eligibility.

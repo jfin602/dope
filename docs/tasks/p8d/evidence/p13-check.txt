@@ -1,0 +1,257 @@
+
+> dope@0.8.33 check
+> npm run typecheck && npm test && npm run build:browser && npm run build:electron
+
+
+> dope@0.8.33 typecheck
+> corepack yarn workspace @dope/ai build && corepack yarn workspace @dope/agent-core build && corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/chat build && corepack yarn workspace @dope/project-intelligence build && corepack yarn workspace @dope/software-map build && corepack yarn workspace @dope/visual-planning build && corepack yarn workspace @dope/code-analysis build && corepack yarn workspace @dope/code-analysis-typescript build && tsc -p packages/theia-extension --noEmit
+
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.34s.
+Done in 2.53s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.54s.
+Done in 2.69s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.25s.
+Done in 2.40s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.32s.
+Done in 2.49s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.17s.
+Done in 2.32s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.73s.
+Done in 2.89s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.59s.
+Done in 2.74s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.32s.
+Done in 2.47s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 1.68s.
+Done in 1.83s.
+
+> dope@0.8.33 test
+> npm run test:runner && npm run test:baseline && npm run test:local-install && npm run test:product && npm run test:ide
+
+
+> dope@0.8.33 test:runner
+> node --test test/unit/codex-phase-prompt-grammar.test.ts test/unit/codex-phase-runner.test.ts
+
+✔ Dope keeps legacy model configuration validation fail-closed (2.206925ms)
+✔ Browser required metadata parses canonically and defaults to no (0.655181ms)
+✔ implementation prose may mention closeout without changing prompt kind (0.11403ms)
+✔ closeout classification depends only on agreeing filename and TASK title signals (0.176298ms)
+✔ filenames use canonical one-based lower-kebab prompt form (0.134382ms)
+✔ TASK metadata is canonical and agrees with filename and folder (0.457981ms)
+✔ phase plan grammar fails closed on malformed parsed metadata (1.147046ms)
+✔ pre-1.0 continuation folders keep Phase identity and continue patch versions (0.468718ms)
+✔ pre-1.0 slice A may begin at patch 1 from the phase baseline (0.317539ms)
+✔ post-1.0 phase folders normalize Phase 0+ and validate their assigned versions (0.538708ms)
+✔ post-1.0 folder collisions and non-canonical forms fail closed (0.269073ms)
+✔ post-2.0 folders are an explicit third family without colliding with historical p2 (0.467677ms)
+✔ valid correction stacks expose explicit fixed-version plan semantics (0.361098ms)
+✔ correction folders and TASK metadata fail closed unless canonical and agreeing (0.344242ms)
+✔ correction Phase 0 is canonical contextual metadata with fixed-version semantics (0.115001ms)
+✔ phase and correction version metadata cannot be mixed or malformed (0.36838ms)
+✔ correction closeout classification uses only agreeing filename and TASK title signals (0.128702ms)
+✔ documented runner model labels stay explicit and finite (0.067707ms)
+✔ supported Luna and Medium recommendation labels parse without broadening unknown labels (0.168515ms)
+✔ Dope exposes explicit GPT-6 Sol routing labels (0.098525ms)
+✔ Dope supports Foundation Spike Phase 0 versioning (0.13995ms)
+✔ resolves every repository recommendation to its verified concrete CLI configuration (1.654305ms)
+✔ unknown recommendations still fail closed (0.758003ms)
+✔ capacity detection is narrow and retry continuation preserves dirty work (0.722577ms)
+✔ GPT-5.6 Codex CLI versions are parsed and compared numerically (1.068563ms)
+✔ incompatible GPT-5.6 CLI versions fail before Codex or run artifacts (51.11396ms)
+✔ resolves an invocable Windows native codex.exe before npm shims (0.511825ms)
+✔ resolves a Windows npm shim to Node plus its verified package entrypoint (0.656244ms)
+✔ native and Unix preflight invocations remain direct and shell-free (0.167584ms)
+✔ missing, ambiguous, and unusable Windows launchers fail closed (0.320704ms)
+✔ failed native discovery falls back to one usable npm launcher (0.394621ms)
+✔ preflight reports failed shell-free launcher invocation actionably (0.193695ms)
+✔ orders prompt numbers numerically and excludes closeout from execution (0.292821ms)
+✔ rejects duplicate, missing, and malformed prompt numbers (0.189719ms)
+✔ requires exactly one unambiguous final closeout (0.163678ms)
+✔ version and package-lock invariants fail closed (0.36195ms)
+✔ structured event lines are appended and observed in arrival order (0.257826ms)
+✔ event processing fully settles before completion (0.10777ms)
+✔ a malformed final partial JSONL event fails before completion (0.829195ms)
+✔ execution contract decorates normal roadmap and correction task text (0.259789ms)
+✔ runCodex sends the preflight snapshot and uses native final-response capture (5.072146ms)
+✔ runCodex rejects malformed output emitted immediately before child close (1.265763ms)
+✔ Codex arguments retain JSON events and exact model efforts (0.246298ms)
+✔ command lifecycle counts one logical command and tracks active elapsed time (0.818489ms)
+✔ latest non-empty agent message persists independently through command and file activity (0.372977ms)
+✔ normal agent presentation bounds whitespace and length without mutating event content (0.29174ms)
+✔ interactive dashboard colors semantic states while disabled output stays plain (0.656163ms)
+✔ color eligibility requires TTY, non-verbose output, and absent NO_COLOR (0.121792ms)
+✔ display strips ANSI when color is disabled and counts styled redraw lines safely (0.258517ms)
+✔ completed prompt durations and observed usage remain rendered (0.311811ms)
+✔ missing usage metadata is tolerated and omitted (0.091504ms)
+✔ elapsed redraw timer ticks and cleans up through injected timing functions (0.108211ms)
+✔ failure summary names failed, completed, not executed, and manual closeout prompts (0.346115ms)
+✔ failure summary reports previously completed resumed prompts as completed (0.225825ms)
+✔ correction dashboard, failure, and handoff use fixed-version correction semantics (0.488709ms)
+✔ parse-only validator reports correction identity and unchanged version without writes (79.46542ms)
+✔ parse-only validator identifies browser-required prompts without writes (64.517374ms)
+✔ runner-owned metadata, activity, errors, and paths are ASCII-safe (1.008287ms)
+✔ interactive display replaces its prior region and supports changing heights (0.288754ms)
+✔ interactive elapsed redraws skip identical dashboards and use cursor controls without clearing history (0.4004ms)
+✔ non-TTY display emits bounded transitions with no dashboards or cursor controls (0.298981ms)
+✔ display finalization leaves one stable final dashboard and restores append-only output (0.16522ms)
+✔ display session keeps runner output ASCII-safe while leaving source content untouched (0.121682ms)
+✔ phase loop commits each prompt before the next starts with exact multiline Unicode messages (155.295736ms)
+✔ resume planning selects the newest exact phase marker while preserving prefix and version safety (0.756291ms)
+✔ pre-1.0 continuation resume starts from the preceding patch and advances safely (0.394772ms)
+✔ post-1.0 resume uses the normalized roadmap family for baselines and prefixes (0.626055ms)
+✔ post-2.0 resume uses the shared roadmap version authority and fails closed (0.438ms)
+✔ correction resume keeps duplicate exact-subject markers fail-closed (0.196189ms)
+✔ a synthetic post-2.0 repository resumes P1 by its exact semantic-version subject (95.87722ms)
+✔ roadmap resume skips a proven prefix across unrelated commits and records historical SHAs (137.808713ms)
+✔ roadmap resume after P1 starts P2 even when an unrelated commit is newer (120.010548ms)
+✔ all completed roadmap prompts launch no Codex process and retain manual closeout (82.899626ms)
+✔ browser-required implementation prompts stop before Codex and preserve the completed prefix (156.551913ms)
+✔ browser-required closeouts are blocked by --closeout without a Codex invocation (59.07768ms)
+✔ correction resume uses the exact subject and tolerates a newer unrelated commit (164.791231ms)
+✔ dirty resume may accept the pending prompt target version without changing Git-proven progress (0.872313ms)
+✔ dirty tree prompt fails closed without TTY (0.896271ms)
+✔ dirty working tree decision can decline before Codex launch (58.242514ms)
+✔ dirty working tree decision can continue the pending prompt from partial work (141.206684ms)
+✔ dirty working tree still fails closed without an interactive or injected decision (64.389711ms)
+✔ correction loop commits multiple prompts at one unchanged version and leaves closeout manual (230.854306ms)
+✔ correction version mutation fails before commit and blocks every later prompt (69.493776ms)
+✔ correction run refuses a mismatched starting version before Codex starts (65.727426ms)
+✔ correction post-commit version mismatch fails closed before the next prompt (112.938405ms)
+✔ capacity retry keeps partial dirty work and continues the same prompt (118.258111ms)
+✔ capacity retry stops after three cycles and preserves the dirty tree (66.047508ms)
+✔ a failed correction Codex process prevents every later implementation prompt (62.765312ms)
+✔ empty and interrupted prompt changes fail closed without a commit (58.553124ms)
+✔ a Codex-created commit is rejected because the runner owns the single commit boundary (64.110459ms)
+✔ commit failure prevents every later implementation prompt (93.556443ms)
+✔ commit verification and dirty-tree failures prevent every later prompt (231.389421ms)
+✔ package-lock creation fails before commit and prevents later prompts (70.917714ms)
+✔ Git process transport is an argument array and remains shell-free (0.604661ms)
+✔ successful handoff preserves exit-success manual-closeout semantics (0.619074ms)
+✔ auto-run closeout executes after implementation commits and ends terminal output with its full response (199.610275ms)
+✔ auto-run closeout resumes directly from an implementation-complete prefix (110.024076ms)
+✔ a one-prompt correction closeout runs only with --closeout and remains review required (100.489021ms)
+✔ auto-run closeout enforces normalized phase and correction version boundaries without committing it (421.723707ms)
+✔ auto-run closeout rejects HEAD drift, lockfiles, invalid versions, and incoherent diffs (489.563205ms)
+✔ runner-level closeout failure after a captured response stays nonzero and presents that response last (114.814644ms)
+✔ auto-run rendering and CLI validation distinguish review-required closeout state (2.583444ms)
+✔ GPT-6 Sol tasks require Codex CLI 0.155.0 or newer (0.760426ms)
+ℹ tests 103
+ℹ suites 0
+ℹ pass 103
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4264.18755
+
+> dope@0.8.33 test:baseline
+> node --test test/unit/theia-baseline.test.ts test/unit/dope-theme.test.ts test/unit/pre-phase4-clean-baseline.test.ts test/unit/smap-terminology.test.ts test/unit/smap-placement.test.ts
+
+(node:67992) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/dope-theme.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Dope Dark registers through the normal frontend contribution with the dark editor base (0.923453ms)
+✔ custom side panels use the Explorer background without recoloring center or bottom widgets (0.338132ms)
+✔ activation scope is removed on theme change (0.681523ms)
+✔ current dark palette is centralized and widget rules consume semantic tokens (2.412976ms)
+✔ Dope Dark status bar uses a dark base, one continuous Git accent, and semantic diagnostics (0.674831ms)
+✖ current production and package wiring stays free of Phase 3 Planning instruments (17.429921ms)
+✔ one canonical sMap Activity Bar contribution defaults left and preserves ordinary workbench wiring (1.808665ms)
+✔ current Software Map package, public exports, and workbench IDs stay canonical (14.399333ms)
+✖ Theia stays on the qualified baseline and package versions stay coherent (2.019056ms)
+✖ both applications carry the required IDE composition (0.508369ms)
+✔ packaged entrypoint passes bundled plugins before starting Theia (2.264502ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 8
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 155.977942
+
+✖ failing tests:
+
+test at test/unit/pre-phase4-clean-baseline.test.ts:19:1
+✖ current production and package wiring stays free of Phase 3 Planning instruments (17.429921ms)
+  AssertionError [ERR_ASSERTION]: packages/theia-extension/src/node/agent-runtime-backend.ts: removed Phase 3 Planning store
+      at TestContext.<anonymous> (file:///home/jfin/dev/dope/test/unit/pre-phase4-clean-baseline.test.ts:30:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: "import { createHash, randomUUID } from 'node:crypto';\nimport { readdir } from 'node:fs/promises';\nimport { AGENT_SCHEMA_VERSION, decideProposedAction, parseAgentTask, parseExecutionGrant, projectPath,\n    phaseStackFolder, phaseStackTaskMetadata, sequenceNeedsDirtyAcceptance, importPhaseStack } from '@dope/agent-core';\nimport type { AgentModelPolicy, AgentRun, AgentTask, AgentTaskSequence, ProposedAction, CompletionPolicy,\n    AgentSteeringRequest, AgentSteeringState,\n    ExecutionGrant, SequenceBlockReason } from '@dope/agent-core';\nimport { AgentStore } from '@dope/agent-core/lib/node/agent-store';\nimport { captureSequenceEvidence, checkedTasksRoot, snapshotTaskStack, readStackSources,\n    TaskStackSnapshotError, sequenceBlockReason, stackSourceDrift, verifyManualGate } from '@dope/agent-core/lib/node/sequence-reconciliation';\nimport type { ManualGateReconciliation } from '@dope/agent-core/lib/node/sequence-reconciliation';\nimport { assertDirtyBasis, captureDirtyBasis, safeGit } from '@dope/agent-core/lib/node/dirty-basis';\nimport { checkpointSequence as commitCheckpoint, verifyCommittedCheckpoint } from '@dope/agent-core/lib/node/sequence-checkpoint';\nimport type { AgentRuntimeClient, AgentRuntimeService, DiscoveredTaskStack, OpenTaskStackResult } from '@dope/contracts/lib/agent-runtime-service';\nimport type { WorkItemLaunchRequest } from '@dope/contracts/lib/agent-runtime-service';\nimport { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';\nimport type { AgentExecutionRuntime } from './agent-execution-runtime';\n\n// Shared by RPC backend instances in this process; persisted HEAD/checkpoint evidence owns restart safety.\nconst checkpointProjects = new Set<string>();\nconst openingTaskStacks = new Map<string, Promise<OpenTaskStackResult>>();\n\n/** One RPC connection attaches one canonical project root. The handle never enters durable state. */\nexport class AgentRuntimeBackend implements AgentRuntimeService {\n    private root: string | undefined;\n    private handle = randomUUID();\n    private attaching?: { root: string; promise: Promise<{ projectHandle: string }> };\n    private disposed = false;\n    private readonly unlisten: () => void;\n    private readonly pendingStarts = new Map<string, Promise<AgentRun>>();\n    private readonly sequenceObservers = new Map<string, Promise<void>>();\n\n    constructor(private readonly store: AgentStore, client: AgentRuntimeClient,\n        private readonly execution?: AgentExecutionRuntime, private readonly planning?: PlanningStore) {\n        this.unlisten = store.onChange((root, change) => {\n            if (!this.disposed && root === this.root) client.notifyAgentStateChanged(change);\n        });\n    }\n\n    async attach(folderUri: string): Promise<{ projectHandle: string }> {\n        if (this.disposed) throw new Error('Disposed Agent Runtime connection');\n        const root = await this.store.root(folderUri);\n        while (this.attaching) {\n            if (this.attaching.root === root) return this.attaching.promise;\n            await this.attaching.promise.catch(() => undefined);\n        }\n        if (this.disposed) throw new Error('Disposed Agent Runtime connection');\n        if (this.root === root) return { projectHandle: this.handle };\n        // A renderer has one channel, but its project can change. Retire the old\n        // handle before attaching the next root so delayed calls cannot cross it.\n        this.root = undefined;\n        this.handle = randomUUID();\n        const handle = this.handle;\n        const promise = (async () => {\n            await this.execution?.reconcile(root);\n            this.root = root;\n            try {\n                for (const sequence of await this.store.listSequences(root)) await this.reconcileStoredSequence(root, sequence);\n            } catch (error) {\n                this.root = undefined;\n                throw error;\n            }\n            return { projectHandle: handle };\n        })();\n        this.attaching = { root, promise };\n        try { return await promise; }\n        finally { if (this.attaching?.promise === promise) this.attaching = undefined; }\n    }\n\n    private active(handle: string): string {\n        if (this.disposed || !this.root || handle !== this.handle) throw new Error('Invalid or detached Agent Runtime project handle');\n        return this.root;\n    }\n\n    createTask(handle: string, task: AgentTask): Promise<AgentTask> {\n        if (task.origin.kind === 'work-item') throw new Error('WorkItem tasks require revision-checked launch');\n        return this.store.createTask(this.active(handle), task);\n    }\n    async launchWorkItem(handle: string, request: WorkItemLaunchRequest): Promise<AgentTask> {\n        const root = this.active(handle);\n        if (!this.planning) throw new Error('Planning service unavailable');\n        if (typeof request.requestKey !== 'string' || !/^[A-Za-z0-9._-]{1,128}$/.test(request.requestKey) ||\n            !Number.isSafeInteger(request.expectedProjectRevision) || request.expectedProjectRevision < 1 ||\n            !Number.isSafeInteger(request.expectedMapRevision) || request.expectedMapRevision < 0 ||\n            typeof request.planningMapId !== 'string' || typeof request.workItemId !== 'string' ||\n            !Array.isArray(request.delegablePaths) || !request.delegablePaths.length || request.delegablePaths.length > 100)\n            throw new Error('Invalid WorkItem launch request');\n        const paths = request.delegablePaths.map(path => projectPath(path));\n        if (new Set(paths).size !== paths.length) throw new Error('Duplicate delegated path');\n        const id = `work-${createHash('sha256').update(request.requestKey).digest('hex').slice(0, 32)}`;\n        const snapshot = await this.planning.read(root);\n        const sameRequest = (task: AgentTask): boolean => task.origin.kind === 'work-item' &&\n            task.projectId === snapshot.projectId &&\n            task.origin.planningMapId === request.planningMapId && task.origin.workItemId === request.workItemId &&\n            task.origin.mapRevision === request.expectedMapRevision &&\n            JSON.stringify(task.origin.scope.delegablePaths) === JSON.stringify(paths) &&\n            JSON.stringify(task.modelPolicy) === JSON.stringify(request.modelPolicy) &&\n            JSON.stringify(task.controls) === JSON.stringify(request.controls) &&\n            JSON.stringify(task.completion) === JSON.stringify(request.completion);\n        const existing = await this.store.readTask(root, id);\n        if (existing) {\n            if (!sameRequest(existing)) throw new Error('WorkItem request key already used for a different launch');\n            return existing;\n        }\n        if (snapshot.revision !== request.expectedProjectRevision) throw new Error('Stale Planning project revision');\n        const map = snapshot.maps.find(item => item.id === request.planningMapId);\n        if (!map || map.revision !== request.expectedMapRevision) throw new Error('Stale or missing Planning map revision');\n        if (map.status !== 'active') throw new Error('Planning map is not active');\n        const work = map.workItems.find(item => item.id === request.workItemId);\n        if (!work || !['ready', 'in-progress'].includes(work.status)) throw new Error('WorkItem is not ready for delegation');\n        if (work.assignment === 'HUMAN' || !work.assignment) throw new Error('Human-owned WorkItem cannot be delegated');\n        const contains = (parent: string, child: string): boolean => child === parent || child.startsWith(`${parent}/`);\n        if (paths.some(path => !work.delegablePaths?.some(allowed => contains(allowed, path)) ||\n            work.humanReservedPaths?.some(reserved => contains(path, reserved) || contains(reserved, path))))\n            throw new Error('Requested path is human-reserved or outside delegable scope');\n        const task = parseAgentTask({ version: AGENT_SCHEMA_VERSION, id, createdAt: new Date().toISOString(),\n            objective: work.objective, instructions: JSON.stringify({ title: work.title, requirements: work.requirements,\n                constraints: work.constraints, acceptanceCriteria: work.acceptanceCriteria,\n                validationTargets: work.validationTargets, transformationIds: work.transformationIds,\n                delegatedPaths: paths, humanReservedPaths: work.humanReservedPaths ?? [] }),\n            projectRoot: '.', projectId: snapshot.projectId,\n            modelPolicy: request.modelPolicy, controls: request.controls,\n            authority: { profile: 'phase-8b-project' }, completion: request.completion,\n            planningMapId: map.id, reviewPolicy: { kind: 'required' },\n            origin: { kind: 'work-item', projectId: snapshot.projectId, planningMapId: map.id,\n                workItemId: work.id, mapRevision: map.revision, basis: map.basis,\n                scope: { assignment: work.assignment, workingSet: work.workingSet,\n                    delegablePaths: paths, humanReservedPaths: work.humanReservedPaths ?? [] } } });\n        if ((await this.planning.read(root)).revision !== request.expectedProjectRevision)\n            throw new Error('Stale Planning project revision');\n        for (let attempt = 0; attempt < 8; attempt++) {\n            try { return await this.store.createTask(root, task); }\n            catch (error) {\n                const raced = await this.store.readTask(root, id);\n                if (raced) {\n                    if (!sameRequest(raced)) throw new Error('WorkItem request key already used for a different launch');\n                    return raced;\n                }\n                if (!(error instanceof Error) || !error.message.includes('Agent state locked by another writer') || attempt === 7)\n                    throw error;\n                await new Promise(resolve => setTimeout(resolve, 20));\n            }\n        }\n        throw new Error('WorkItem launch could not acquire AgentStore');\n    }\n    async listWorkItemTasks(handle: string, planningMapId: string, workItem"... 27553 more characters,
+    expected: /\bPlanningStore\b/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at test/unit/theia-baseline.test.ts:11:1
+✖ Theia stays on the qualified baseline and package versions stay coherent (2.019056ms)
+  AssertionError [ERR_ASSERTION]: package.json
+  
+  '0.8.33' !== '0.8.20'
+  
+      at TestContext.<anonymous> (file:///home/jfin/dev/dope/test/unit/theia-baseline.test.ts:19:51)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: '0.8.33',
+    expected: '0.8.20',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/unit/theia-baseline.test.ts:26:1
+✖ both applications carry the required IDE composition (0.508369ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  '0.8.33' !== '0.8.20'
+  
+      at TestContext.<anonymous> (file:///home/jfin/dev/dope/test/unit/theia-baseline.test.ts:34:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '0.8.33',
+    expected: '0.8.20',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

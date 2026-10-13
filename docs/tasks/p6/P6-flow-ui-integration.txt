@@ -1,0 +1,109 @@
+TASK: Phase 6 / P6 — Architecture and Flow UI integration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.6.6`.
+
+GOAL
+
+Integrate the provider-free Flow experience into the existing center Physical Map surface with tracing, evidence/source inspection and shared architectural identity.
+
+PREFLIGHT
+
+Read all p6 authority/assessment/plan, exact P1-P5 source/tests and current Physical Map controller/widget, Software Map controller/service wrappers, Planning Map mode, sMap inspector/source navigation and presentation-state code.
+
+Require coherent `0.6.5` predecessor and P5 Green focused evidence.
+
+IMPLEMENT
+
+Add `[ Architecture ] [ Flow ]` mode switching to Physical Map tabs only.
+
+Do not add Flow editing/mode to Planning Map tabs.
+
+Reuse the existing Physical Map / Software Map state owners:
+- same workspace/project;
+- same canonical/physical node identities;
+- same focus/breadcrumb context;
+- same node selection where representable;
+- same source-navigation intent.
+
+Do not create an independent Flow widget/service/backend authority.
+
+CONTROLLER / ASYNC SAFETY
+
+Fetch Flow through the P4 service/query seam.
+
+Generation/project/mode/focus/trace guard every asynchronous result.
+
+Late Flow results after project switch, refresh, mode switch, focus change, trace change or disposal must be ignored.
+
+FLOW DEFAULT EXPERIENCE
+
+At System scope show a quiet overview of major Inputs, Outputs, participating architectural scopes, Stores, External endpoints and high-level evidenced connections.
+
+Do not render all CodeEntity invocations by default.
+
+Known Inputs act as behavioral entry points.
+
+TRACING
+
+Selection highlights the relevant Static Flow neighborhood/path while unrelated known Flow remains subdued.
+
+Provide keyboard-operable:
+- `Trace downstream`;
+- `Trace upstream`;
+- `Clear trace`.
+
+Progressively disclose code-level invocation detail through System -> Subsystem -> Component -> Code focus.
+
+Architecture -> Flow -> Architecture must preserve focus/selection/source context.
+
+EDGE INSPECTION
+
+Make Flow edges inspectable.
+
+Show:
+- interaction kind;
+- source/target identity;
+- optional data/type/schema/event annotation;
+- origin Flow fact IDs where aggregated;
+- evidence/provenance;
+- unsupported/unresolved/truncated status where relevant.
+
+Provide ordinary jump-to-source from representative evidence.
+
+If data semantics are unresolved, say so in inspection without filling the canvas with fake unknown-payload labels.
+
+Keep Flow read-only.
+
+THEME / ACCESSIBILITY
+
+Use existing Dope theme tokens and non-color cues. Essential mode/trace/edge-inspection/source controls must be keyboard-operable. Do not claim formal accessibility certification.
+
+Advance all live versions/internal references coherently to `0.6.6`.
+
+TESTS
+
+Validation is T2 because service/controller/projection/widget seams are integrated.
+
+Add focused UI/controller tests for Architecture/Flow switching, selection/focus preservation, System overview, upstream/downstream/clear trace, edge inspection/evidence/source intent, explicit partial/truncated diagnostics, project/generation/mode race guards, keyboard/theme semantics and Planning Map non-interference.
+
+Run only:
+- new/changed Flow UI/controller tests;
+- directly affected Physical Map canvas/navigation and Planning Map UI regression tests;
+- `corepack yarn workspace @dope/theia-extension build`;
+- one affected browser build to prove real bundling;
+- `node --test test/unit/theia-baseline.test.ts`;
+- no-root-lock/version checks;
+- `git diff --check`.
+
+Do not run root `npm run check`, restart, Electron build/package or direct GUI qualification here.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report shared-state UI integration, tracing/edge evidence/source behavior, race/regression evidence and P7 eligibility.

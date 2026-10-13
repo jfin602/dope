@@ -1,0 +1,54 @@
+TASK: Phase 1 / P2 — IDE workflow completeness
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.1.2`.
+
+GOAL
+
+Complete the commodity IDE workflow needed for daily development, reusing supported Theia 1.75 capabilities rather than rebuilding them.
+
+Read Phase 1 authority/plans, exact P1 source/tests, current manifests and P0 IDE evidence.
+
+SUPPORTED THEIA REALITY
+
+Inspect the supported Eclipse Theia 1.75 composition for integrated testing before selecting packages/APIs. Do not guess from another version.
+
+IMPLEMENT / COMPLETE
+
+Ensure coherent support for:
+- integrated test discovery/execution/results;
+- Problems/markers;
+- preferences UI;
+- keybindings UI and editable user keybindings;
+- extension marketplace/install;
+- editor/language tooling;
+- Explorer/search;
+- terminal;
+- SCM/Git/diffs;
+- Node debugging.
+
+Add the smallest deterministic fixture/integration needed to prove at least one real test can be discovered and run. Do not couple product/domain code to the fixture.
+
+Extend composition guards so future cleanup cannot silently remove required Phase 1 IDE capabilities.
+
+Preserve P1 dark/default behavior, Theia 1.75 coherence, no root lock and P0 Note/WorkspaceMode contracts without deepening them.
+
+Set package versions coherently to `0.1.2`.
+
+VALIDATION
+
+Run focused tests, practical non-GUI test-discovery checks, `npm run check`, phase validation, no-root-lock check and `git diff --check`.
+
+Do not claim direct GUI behavior Green; P5 owns it.
+
+SCOPE GUARD
+
+No production Project Mind/Planning and no AI/provider/tool/authority/delegation work.
+
+FINAL RESPONSE
+
+Report Theia testing composition, IDE capabilities changed, fixture/result, guards, validation and direct-GUI evidence deferred to P5.

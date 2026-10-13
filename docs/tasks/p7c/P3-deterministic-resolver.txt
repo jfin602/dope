@@ -1,0 +1,40 @@
+TASK: Phase 7 / P3 — Deterministic role resolution and role health
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.26`.
+
+GOAL
+
+Implement deterministic target resolution over role policy and the qualified 7B inventory without executing a model.
+
+PREFLIGHT
+
+Read P1-P2, `findEligibleModels`, inventory observations and ADR 0026 deterministic/constraint rules. Require coherent `0.7.25`.
+
+IMPLEMENT
+- resolver accepts immutable role-policy snapshot/revision, AI inventory/observed loaded capacities, requested role and stronger feature/request constraints;
+- intersect global-entry hard constraints with request constraints; never weaken either side and reject contradictions;
+- hosted project-data candidate requires caller-supplied prior egress authorization; role policy alone cannot make it eligible;
+- walk preferred then ordered fallback policy entries; exact entry either qualifies or yields a concrete ineligibility reason;
+- constraint entry filters via 7B eligibility; Unknown never satisfies hard capability/context;
+- soft preferences resolve candidates only inside that entry; apply preferences deterministically and use immutable connection/model IDs as final tie-break; never jump lower policy entry ahead of a higher one;
+- no hidden latency/cost/quality scoring and no provider-name routing branches;
+- return ordered candidate plan plus excluded/ineligible reasons, effective constraints, preferred target and derived role health;
+- role health is derived, not separately persisted; unconfigured role returns Needs configuration and no arbitrary model;
+- Background/Coding/Deep Reasoning use the same generic resolver; no consumers yet.
+
+Advance to `0.7.26`.
+
+TESTS
+
+T1/T2 focused resolver tests: exact/constraint order, stable repeats, preference/ties, Unknown, minimum loaded Local context, locality intersection, hosted egress guard, disabled/removed target, fallback health, preferred recovery and five-role generic behavior. Build AI/contracts only unless service adapter touched.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report deterministic resolution guarantees and P4 eligibility.

@@ -1,0 +1,123 @@
+TASK: Correction 6 / P4 — Edit Architecture direct GUI qualification and closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- Execution: manual interactive T3 handoff.
+- Required unchanged project version: `0.6.7`.
+
+GOAL
+
+Qualify the exact Edit Architecture candidate in the real Dope GUI, including one real provider-backed accepted-map Search Deeper call, then close this bounded correction Green or Not Green.
+
+Do not repair unrelated Phase 6 P7 blockers.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, ADR 0024, correction README/assessment/plan, P1-P3 results, c6-smap-outline closeout and retained Phase 6 P7 evidence.
+
+Require P1-P3 Green, exact 0.6.7, and a clean intended candidate.
+
+QUALIFICATION WORKSPACE
+
+Create a fresh disposable copy of:
+
+/home/jfin/dev/adaptive-seo-dope
+
+Use its existing accepted .dope Architecture. Record source/candidate Git identity and relevant initial .dope fingerprints/hashes. Never mutate the source reference.
+
+AUTOMATED T3 GATE
+
+Run once on the exact candidate:
+- npm run check;
+- git diff --check;
+- exact package/internal-reference/no-root-lock checks;
+- npm run codex:phase:validate -- c6-edit-architecture if unchanged-version correction validation is supported.
+
+Do not rerun correction-focused tests separately when npm run check already includes them. Only run an extra focused test if a newly added correction test is not part of the aggregate command.
+
+Do not run AppImage/native shutdown qualification solely for this correction; retain that separate P7 blocker.
+
+DIRECT GUI EVIDENCE
+
+1. Entry / terminology / one tab
+- Initialized left actions show Open Physical Map, Refresh Software Map, Edit Architecture.
+- No live Edit Hierarchy product label.
+- Edit Architecture opens the center editor.
+- Repeated activation focuses the same tab.
+
+2. Canonical load + independent editor state
+- Compare representative Systems/Subsystems/Components, IDs, purposes and roots with .dope/architecture.json.
+- Verify any existing dependency constraints are preserved/editable.
+- Select a branch in Edit Architecture, then select/focus a different identity in the Physical Map/left outline.
+- Return and confirm Edit Architecture kept its own selection/expansion.
+- Confirm editor selection does not move map/outline selection.
+
+3. Draft/blocker/discard/save sequence
+- Record canonical architecture/marker fingerprints.
+- Create one invalid draft condition and confirm Save is blocked with deterministic diagnostics and no canonical write.
+- Repair it and make one harmless purpose edit.
+- Before Save, confirm canonical files remain unchanged.
+- Discard/reload once and confirm the unsaved edit disappears without new accepted-edit persistence.
+- Make the harmless edit again and Save Architecture.
+- Verify architecture + marker change only at Save, unchanged IDs remain stable, and ordinary deterministic re-analysis publishes a truthful status/generation.
+- Restart/reopen and confirm the saved value reloads.
+- Confirm no accepted edit/history file was created.
+
+4. Real accepted-map Search Deeper
+- Choose a representative accepted System or Subsystem.
+- Explicitly configure/select/test one available existing synthesis provider from Edit Architecture; record provider/model.
+- Run Search Deeper and inspect branch-local preview plus source-backed evidence/provenance.
+- Confirm no silent provider fallback.
+- Before Accept Refinement, canonical files remain unchanged.
+- Accept Refinement and confirm only the editor draft changes.
+- Canonical files remain unchanged until Save Architecture.
+- For this qualification, prefer **discarding** the refinement after proving draft-only behavior; P3 + the earlier manual Save already prove the save path. Save the refinement only if needed to diagnose a real integration issue.
+
+A real provider-backed accepted-map Search Deeper call is required for full Green. If no provider can be made ready, record an Evidence Gap / Not Green rather than substituting fake-provider evidence.
+
+5. Restart/project isolation + outline regression
+- Reopen/switch as needed and confirm stale accepted edit/refinement state does not appear in another project.
+- Confirm accepted editing/Search Deeper did not create smap-analysis.json solely for initialized editing.
+- Confirm the c6-smap-outline left outline <-> map selection behavior still works outside Edit Architecture.
+
+Pending-review mode does not need a fresh expensive synthesis replay here: P2/P3 focused regressions are the required evidence that the same Edit Architecture surface still supports pending review + Accept Architecture.
+
+TINY-FIX ALLOWANCE
+
+Allow one directly observed presentation-only repair limited to label wording, action spacing, dirty/save status, focus restoration, or compact provider-readiness wording.
+
+After a tiny fix, add/update the focused regression and rerun only evidence invalidated by that change.
+
+Do not use this allowance for persistence/service/refinement redesign, provider fallback, Flow/Planning semantics, or accepted-edit persistence/history.
+
+CLOSEOUT
+
+Write docs/tasks/c6-edit-architecture/closeout.md and update the correction README.
+
+Record:
+- source/prerequisite identities;
+- exact P1-P3 results and final candidate SHA;
+- automated gate;
+- GUI evidence above;
+- provider/model used;
+- any tiny fix;
+- residual gaps;
+- final Green / Not Green decision.
+
+Do not relabel earlier Phase 6 P7/map-canvas evidence.
+
+ROUTING
+
+If Green:
+- close c6-edit-architecture Green at unchanged 0.6.7;
+- route back to fresh Phase 6 P7 requalification;
+- P8 remains blocked until P7 is Green;
+- carry forward unrelated P7 blockers, including known native/package shutdown evidence.
+
+If Not Green:
+- keep P7/P8 blocked and identify the narrow failed Edit Architecture contract.
+
+FINAL RESPONSE
+
+Report exact candidate, automated gate, entry/one-tab result, canonical load/state-independence result, blocker/draft/save/restart result, live Search Deeper result, isolation/outline regression, closeout decision and P7/P8 routing.

@@ -1,0 +1,319 @@
+TASK: One-off manual correction — Repair and qualify Flow overview priority
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- This is a manual one-off correction prompt, NOT a codex phase/correction stack prompt.
+- Do not run this file through `codex:phase`.
+
+VERSIONING
+- Keep the complete Dope workspace exactly at `0.6.7`.
+- Do not create `0.6.8` work.
+- P8 remains blocked unless this one-off closes Green.
+
+GOAL
+
+Repair the Flow overview/query defect exposed by Phase 6 P7 and immediately qualify the repaired behavior in the real Dope GUI against the accepted Adaptive SEO workspace copy.
+
+The raw analyzer already proves the target behavior exists:
+
+```text
+GET /api/workspaces/:workspaceId/projects/:projectId/opportunities
+-> inline route handler
+-> AdaptiveRepository.list
+-> PostgreSQL reads x3
+-> response branches
+```
+
+The failure to repair is the bounded query/presentation path: System/Subsystem overviews budget hidden implementation detail before semantic reduction, can leak unrelated callers through a shared endpoint anchor, can starve HTTP Inputs, and currently gate tracing on overview survival.
+
+PREFLIGHT
+
+Read:
+- BOOT.md / AGENTS.md;
+- current Phase 6 plan and stability contract;
+- docs/tasks/p6/P7-flow-dogfooding-evidence.md;
+- docs/tasks/c6-flow-overview-priority/README.md;
+- exact current Flow query/projection/controller/widget source and focused tests.
+
+Inspect at minimum:
+- packages/software-map/src/flow-query.ts;
+- packages/theia-extension/src/browser/flow-map-projection.ts;
+- packages/theia-extension/src/browser/physical-map-controller.ts;
+- packages/theia-extension/src/browser/physical-map-widget.ts;
+- test/unit/software-map-flow-query.test.ts;
+- test/unit/flow-map-projection.test.ts;
+- test/unit/physical-map-flow-ui.test.ts.
+
+Require:
+- activation source `59573b0dd66935fc78ec1eb0cc34f60644e4f000` reachable;
+- coherent `0.6.7`;
+- P7 remains Not Green historical evidence;
+- P8 remains blocked;
+- accepted `/home/jfin/dev/adaptive-seo-dope` is not modified;
+- no root `package-lock.json`;
+- Theia remains `1.75.0`;
+- Electron remains `42.8.1`.
+
+IMPLEMENTATION
+
+A. FACT-RELATIVE FOCUS
+
+Stop using a shared endpoint's single `anchorNodeId` as generic architecture ownership for every Flow fact touching that endpoint.
+
+For focus membership:
+- node/code -> endpoint: derive scope from the node/code side;
+- endpoint -> node/code: derive scope from the node/code side;
+- node/code -> node/code: use the participating node ownership/hierarchy according to the current focus/context rules;
+- endpoint-only relations, if any, require direct evidenced relevance rather than inherited first-anchor ownership.
+
+Keep endpoint `anchorNodeId` as provenance/navigation metadata.
+
+Do not split one shared PostgreSQL endpoint into fake per-Subsystem endpoints.
+
+B. SEMANTIC OVERVIEW BEFORE VISIBLE BUDGET
+
+Directional traces continue traversing raw proven Flow facts.
+
+For an untraced System overview:
+1. select raw facts fact-relatively relevant to the System;
+2. map code participants to visible Subsystem identities;
+3. preserve derived endpoints as endpoints;
+4. drop same-Subsystem interior implementation interactions from the overview;
+5. create compatible visible semantic interactions;
+6. collapse equivalent visible interactions;
+7. prioritize behavioral anchors;
+8. only then apply the existing 100-visible-participant / 200-visible-interaction bounds.
+
+Do not let hidden raw CodeEntities/facts consume the visible System budget.
+
+For Subsystem overview:
+- map to Components when Components exist;
+- otherwise bounded code detail may remain visible;
+- still use fact-relative scope;
+- still preserve boundary/state/external anchors ahead of interior invocation volume;
+- preserve the same hard limits and truthful truncation.
+
+C. EXPLICIT DETERMINISTIC OVERVIEW PRIORITY
+
+Use a stable overview admission policy independent from Flow fact ID lexical order.
+
+Priority classes:
+1. `receives` / Input boundaries;
+2. `responds` / Output boundaries;
+3. `reads`, `writes`, `calls-external`, `publishes`, `consumes`;
+4. cross-visible-scope `invokes`;
+5. interior implementation `invokes`.
+
+Within each class use deterministic stable tie-breaking.
+
+This is an overview selection policy, not a change to physical Flow truth.
+
+Hard invariant:
+- if the focused scope contains evidenced HTTP Inputs, truncation must not remove every evidenced Input.
+
+D. COMPATIBLE OVERVIEW COLLAPSE
+
+Collapse repeated visible interactions only when all visible semantics match:
+- visible source;
+- visible target;
+- interaction kind;
+- normalized enrichment kind/label semantics;
+- async/retry/error semantics.
+
+The collapsed interaction must retain deterministic sorted unions of:
+- every `originFlowFactId`;
+- physical evidence IDs;
+- compatible enrichment evidence;
+- compatible behavior evidence.
+
+Use a deterministic aggregate ID from the visible semantic signature.
+
+Never merge:
+- `reads` with `writes`;
+- different interaction kinds;
+- incompatible schema/data/type/event annotations;
+- incompatible async/retry/error semantics.
+
+E. PROJECTION CONSUMES THE SEMANTIC OVERVIEW
+
+Adjust `projectFlowMap()` only as needed so System overview can render query-produced semantic aggregates directly without requiring each raw origin fact to remain in `result.facts`.
+
+Trace projections continue to render raw trace facts.
+
+Keep geometry and visual state disposable/presentation-only.
+
+F. TRACE DOES NOT DEPEND ON OVERVIEW SURVIVAL
+
+In `PhysicalMapController.refreshFlow()`, a valid retained selected Flow identity with a direction must be allowed to issue the directional query even if that ID is absent from the bounded overview.
+
+Let the existing backend/query project, generation, focus and identity checks fail closed.
+
+Preserve project/generation/mode/focus/trace/disposal race guards.
+
+G. BOUNDED TRUNCATION PRESENTATION
+
+Keep exact `continueFromIds` in the query result.
+
+Change default UI presentation to a bounded summary such as:
+
+`Coverage: truncated · 84 continuation points`
+
+Do not print the complete raw frontier inline.
+
+A bounded/collapsible short preview is acceptable if useful.
+
+PERMANENT REGRESSION COVERAGE
+
+Add focused regressions proving:
+- a dense System with >100 raw participants/hundreds of `invokes` remains truncated when appropriate but still shows an evidenced HTTP Input;
+- corresponding Output remains visible when semantic budget permits;
+- hidden interior calls are sacrificed before all behavioral anchors;
+- a shared-store A/B/C fixture focused on B does not admit A/C solely because the store endpoint anchor belongs to A;
+- one shared store endpoint identity is preserved;
+- compatible repeated reads collapse with all origin IDs/evidence;
+- read/write do not collapse;
+- incompatible enrichment does not collapse;
+- incompatible async/retry/error behavior does not collapse;
+- a valid selected endpoint/node can trace even when absent from the bounded overview;
+- a Subsystem without Components still prioritizes behavioral boundaries;
+- default truncation UI does not dump an unbounded raw-ID list;
+- repeat identical input produces deterministic output.
+
+Retain existing bounds/cycle/branch/join/generation/project/source/race coverage.
+
+FOCUSED IMPLEMENTATION VALIDATION
+
+Before GUI qualification, run the affected implementation surface:
+- test/unit/software-map-flow-query.test.ts;
+- test/unit/flow-map-projection.test.ts;
+- test/unit/physical-map-flow-ui.test.ts;
+- directly affected Software Map backend/index tests if service/query behavior changes;
+- `corepack yarn workspace @dope/software-map build`;
+- `corepack yarn workspace @dope/theia-extension build`;
+- browser build if widget/controller presentation changed;
+- exact `0.6.7` / no-root-lock / Theia / Electron coherence;
+- `git diff --check`.
+
+Do not use `codex:phase` validation for this one-off prompt.
+
+If focused implementation validation is not Green, stop and report the defect. Do not proceed to GUI qualification.
+
+DIRECT GUI QUALIFICATION
+
+Keep `/home/jfin/dev/adaptive-seo-dope` immutable.
+
+Recreate `/tmp/adaptive-seo-dope-p7` fresh from that accepted reference, including `.dope/` state.
+
+Record:
+- source/copy Git status;
+- `.dope/architecture.json` hash;
+- `.dope/smap.json` hash;
+- `.dope/` inventory;
+- confirmation that no `.dope/flow.json` exists.
+
+Do not regenerate, Search Deeper, reaccept or rewrite the accepted architecture.
+
+Using the actual Dope Theia GUI with no model/provider required for Flow:
+
+1. Open Adaptive SEO Service Architecture, preserve representative focus/selection, switch to Flow.
+2. Confirm the System overview is architecture-readable rather than a code-call hairball.
+3. Confirm evidenced HTTP Inputs are discoverable even if coverage is truncated.
+4. Focus Adaptive Recommendations and verify unrelated Collection/Feed/Installation/Integration/Project/Topic repository activity no longer appears merely through the shared PostgreSQL endpoint.
+5. Confirm PostgreSQL remains one shared physical endpoint.
+6. Locate and select:
+   `GET /api/workspaces/:workspaceId/projects/:projectId/opportunities`.
+7. Trace downstream and directly prove:
+   `receives -> inline route handler -> AdaptiveRepository.list -> PostgreSQL reads x3 -> response branches`.
+8. Trace upstream from a middle participant where useful.
+9. Clear trace.
+10. Inspect representative `receives`, `invokes`, `reads`, and `responds` edges.
+11. Record visible source/target, interaction kind, aggregate origins, evidence/provenance and optional enrichment only where evidenced.
+12. Use Open edge source into the ordinary editor.
+13. Directly observe the three-read fan-out and response branching in the real Adaptive SEO behavior.
+14. If coverage is truncated, confirm the UI reports the truncation and continuation count without dumping the raw frontier.
+15. Switch Flow -> Architecture -> Flow and prove focus/selection/source context remains coherent.
+
+Do not manually bridge a missing hop. If the required behavior is not continuously available in the real GUI, mark Not Green.
+
+RESTART / ISOLATION
+
+On the same exact candidate:
+- restart/reopen and fresh analysis;
+- prove equivalent useful Flow reconstruction without persisted Flow authority;
+- confirm stable semantic Flow IDs for unchanged inputs where practical;
+- verify a second project/workspace cannot receive the first project's Flow;
+- verify stale/late query results remain guarded using direct observation where practical plus permanent tests.
+
+HOST REGRESSION
+
+Use the Dope repository separately as host/regression fixture.
+
+Verify ordinary Architecture mode, retained Planning Map surface and Project Mind remain usable.
+
+Do not claim Phase 5 P11 repaired.
+
+FINAL T3 EVIDENCE
+
+Because this one-off changes production query/UI behavior, refresh:
+- focused Phase 6 suites;
+- `npm run check`;
+- `npm run test:restart`;
+- `npm run codex:phase:validate -- p6`;
+- Linux AppImage packaging/inspection/native launch and controlled close;
+- exact unchanged `0.6.7` coherence;
+- Theia 1.75.0 / Electron 42.8.1 / no-root-lock checks;
+- `git diff --check`.
+
+`npm run check` already includes browser and Electron builds; do not rerun them separately unless later changes invalidate that evidence.
+
+The inherited file-search `ENOTDIR` remains separate unless it directly blocks this correction.
+
+CLOSEOUT
+
+Create:
+`docs/tasks/c6-flow-overview-priority/closeout.md`
+
+Update:
+`docs/tasks/c6-flow-overview-priority/README.md`
+
+Audit Green / Not Green / Evidence Gap for:
+A. fact-relative focus;
+B. semantic-before-budget overview;
+C. behavioral anchor priority;
+D. compatible aggregate collapse/provenance;
+E. trace independence;
+F. bounded truncation presentation;
+G. real Adaptive SEO GUI replay;
+H. restart/release/package/native evidence.
+
+Preserve the original P7 Not Green record. A Green one-off is fresh evidence and does not rewrite historical P7.
+
+NO BROADENING
+
+Do not:
+- change Flow ontology/base interaction kinds;
+- increase 100/200/32 hard limits merely to make Adaptive SEO fit;
+- modify accepted Adaptive SEO architecture/sMap state;
+- add Flow persistence;
+- add a layout-engine dependency;
+- pull Phase 7 AI/provider behavior forward;
+- absorb the inherited file-search `ENOTDIR` unless it directly blocks qualification;
+- create `0.6.8` work.
+
+FINAL RESPONSE
+
+Report:
+- confirmed root causes;
+- exact query/controller/UI repair;
+- permanent regressions;
+- focused validation;
+- real GET opportunities GUI replay;
+- scope/truncation behavior;
+- restart/isolation results;
+- final check/package/native evidence;
+- correction closeout A-H decision;
+- confirmation version remains `0.6.7`;
+- whether Phase 6 P8 is now eligible.
+
+Do not claim the original P7 run was Green.

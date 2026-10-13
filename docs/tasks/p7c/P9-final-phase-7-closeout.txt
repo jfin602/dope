@@ -1,0 +1,48 @@
+TASK: Phase 7 / P9 — Final Product Phase 7 closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.32`.
+
+GOAL
+
+Perform the one final evidence-only Product Phase 7 audit over 7A AI Presence, 7B AI Center and 7C Roles/Routing. Do not repair behavior or implement Phase 8.
+
+PREFLIGHT
+
+Read current Phase 7 authority; P13; c7 closeout; p7b closeout; p7c P8 evidence and exact P1-P8 identities. Require coherent `0.7.31` predecessor.
+
+Advance all live versions/internal refs to `0.7.32`.
+
+AUDIT
+A. Durable Chat/ChatPanel/context authority and restart/project isolation (retained 7A/c7 evidence);
+B. provider-independent runtime + exact selection/no silent fallback + secure connection ownership;
+C. AI Center global identity/persistence/concurrency/credentials/inventory/health;
+D. role-policy global persistence, deterministic constraint resolution and inventory-change intent;
+E. bounded routed execution/fallback and immutable Why-this-model provenance;
+F. Chat Interactive/exact precedence and hosted egress authority;
+G. Software Map role default while exact run consent/probe/warm-up authority remains stronger;
+H. integrated GUI/multi-process/restart/package evidence and Phase 8/10 future seams without premature consumers.
+
+Classify Green / Not Green / Evidence Gap and explicitly retain all Phase 5/6 and historical P12/P13 observations without relabeling.
+
+FINAL PHASE 7 EXIT CONDITION
+
+Phase 7 is Qualified only if 7A durable read-only AI Presence, 7B global AI Center and 7C deterministic role routing work together on one coherent evidence chain without provider state, Chat or role policy becoming canonical project truth and without global policy granting mutation/egress authority.
+
+VALIDATION
+
+P8 owns broad T3 evidence. For `0.7.32`, run only baseline/version/internal-reference/no-lock, `npm run codex:phase:validate -- p7c`, and `git diff --check` unless the transition itself exposes a concrete inconsistency.
+
+OUTPUT
+- create/update final `docs/tasks/p7/closeout.md` preserving the earlier P13 Not Qualified audit as historical section/reference while adding the final decision;
+- create `docs/tasks/p7c/closeout.md` as the 7C/final evidence record and update p7c README;
+- if Qualified, update BOOT/roadmap/Phase 7 plan to **PHASE 7 QUALIFIED / CLOSED at 0.7.32** and route next to fresh Phase 8 Scoped Delegation `/docs-review`; do not create Phase 8 prompts;
+- if Not Qualified, keep Phase 7 active and route only the bounded remaining 7C/final evidence correction.
+
+FINAL RESPONSE
+
+Report A-H, final Product Phase 7 decision, exact residuals and next route.

@@ -1,0 +1,46 @@
+TASK: Phase 1 / P3 — restoration and extension/preference persistence
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.1.3`.
+
+GOAL
+
+Harden restart/resume behavior for presentation and IDE state that belongs in Phase 1.
+
+Read current P1/P2 implementation, packaging/plugin entrypoint, Theia preference/keybinding/theme handling and P0 restart evidence.
+
+RESTART CONTRACT
+
+Establish the strongest deterministic/integration evidence practical for:
+- reopening intended workspace/folder;
+- editor/workbench restoration supported by Theia;
+- explicit user theme choice surviving restart and overriding dark default;
+- user preferences and keybindings surviving restart;
+- runtime-installed extension remaining available after restart;
+- safe fallback when restored presentation state is stale/unavailable.
+
+Do not require production Project Mind or session restoration.
+
+EXTENSION PERSISTENCE
+
+Use Theia/VS Code extension mechanisms, not a Dope plugin database. Distinguish packaged built-ins, runtime user extensions and source-tree caches. The evidence extension must perform one observable non-AI function.
+
+STATE BOUNDARY
+
+Do not promote theme/keybinding/extension UI/workbench layout into canonical project-domain state.
+
+Add permanent regression coverage for Dope-owned restoration glue. Defer only genuinely visual confirmation to P5.
+
+Set package versions coherently to `0.1.3`.
+
+VALIDATION
+
+Run focused restart/persistence tests, `npm run check`, phase validation, no-root-lock check and `git diff --check`.
+
+FINAL RESPONSE
+
+Report each behavior Green / Not Green / Evidence Gap, extension evidence, repairs/tests and whether P4 is unblocked.

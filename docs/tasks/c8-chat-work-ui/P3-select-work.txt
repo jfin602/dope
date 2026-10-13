@@ -1,0 +1,31 @@
+TASK: Correction 8 / P3 — Refine Select Work and Work control hierarchy
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Align Select Work and Work detail with Select Chat/AI Center without changing actual work status, task selection, Coding Agent grants or run lifecycle.
+
+PREFLIGHT
+Read P2 handoff. Inspect chat-panel-widget.ts renderWork/renderWorkComposer, dope.css .dope-work-* rules, work-selection-controller.ts workRows/workTitle, shared-panel-state.ts and focused Work tests. Reuse P1/P2 theme/row styling instead of a parallel palette.
+
+IMPLEMENT
+- Replace giant concatenated Work button labels and separate orphan activity lines with accessible compact rows: primary task title, secondary status/activity/time, optional Prompt Stack progress, semantic state cue, selected/hover/focus.
+- Retain distinct Running, History and Prompt Stacks groups. WorkRows is the status truth: only actual active work goes under Running; pending/blocked/completed remain in History. Retain default docs/tasks/ discovery, refresh, invalid-stack warnings and stored-sequence identity.
+- Give selected Work its proper hierarchy: status/progress/current activity, visible Start/Resume/Stop/Open Transcript/manual gate/checkpoint/grant controls; verbose diagnostics and file/provenance details remain reachable in disclosures. Never hide critical denial/failure or grant acceptance behind a cosmetic control.
+- Style New Work's form as a compact, neutral, narrow-safe composer without visible browser-resize chrome. Keep Coding Agent model policy, exact validation command, explicit grant checkbox, disabled-start gating and submit/stop semantics unchanged. Do not invent mid-run steering.
+- Keep separate Chat/Work launchers, four panel placements, independent Chat and Work identities, one-Work owner and panel close != Stop.
+
+PERMANENT REGRESSIONS
+Add focused markup/status/action tests; preserve workRows truth, task-derived stable title, Prompt Stack auto-discovery, same-Work focus and no side-effectful selection. Include disabled controls and meaningful status/focus affordances. Do not modify AgentTask/AgentRun persistence merely to decorate labels.
+
+VALIDATION
+T1: changed extension package build only if needed; node --test test/unit/work-selection.test.ts test/unit/shared-panel-state.test.ts plus only the new focused Work presentation test; git diff --check; unchanged version/root-lock check. No full npm run check or T3 real GUI here.
+
+DONE WHEN
+Select Work and Work controls look cohesive and remain truthful/usable in narrow layouts. Do not commit; runner owns checkpoint.
+
+FINAL RESPONSE
+Report rendering, preserved controls, tests and P4 readiness.

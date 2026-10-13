@@ -1,0 +1,114 @@
+{
+  "mode": "candidate",
+  "project": "/tmp/dope-p9-candidate-S8pIip",
+  "startingHead": "0c4a40253be649bb28bbcf24d81a824400dd5c5a",
+  "startingStatus": "",
+  "finalHead": "0c4a40253be649bb28bbcf24d81a824400dd5c5a",
+  "finalStatus": "?? .dope/\n?? candidate.txt",
+  "runId": "d5fa46a5-f37b-4f0e-bea4-aef9c56829e5",
+  "status": "completed",
+  "commandEvidence": [
+    {
+      "version": 1,
+      "commandSummary": "Other project command",
+      "durationMs": 12,
+      "exitCode": 0,
+      "result": "passed",
+      "matchedTargets": []
+    }
+  ],
+  "candidateDelta": {
+    "version": 1,
+    "effects": [
+      {
+        "kind": "create",
+        "path": "candidate.txt",
+        "after": "f1734a68232317c6dc71cbf33eb5858bf56b703bc1aafd29b7ba4cf893da3f70"
+      }
+    ]
+  },
+  "candidateFingerprint": "51221e4b7881d5b5994c690ad6041d8af746c38a2cf8e3da9533cbe0e37548e2",
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Candidate file exists",
+      "status": "passed",
+      "durationMs": 5,
+      "owner": "dope",
+      "command": "test -f candidate.txt",
+      "candidateFingerprint": "51221e4b7881d5b5994c690ad6041d8af746c38a2cf8e3da9533cbe0e37548e2",
+      "workspaceId": "b7a22f5f-783a-483f-a481-2cd17799581c",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "stdoutTruncated": false,
+      "stderrTruncated": false
+    }
+  ],
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [
+    "candidate.txt"
+  ],
+  "candidate": "qualified\n",
+  "transcript": {
+    "state": "recorded",
+    "entries": [
+      {
+        "version": 1,
+        "runId": "d5fa46a5-f37b-4f0e-bea4-aef9c56829e5",
+        "sequence": 1,
+        "at": "2026-10-08T19:19:25.831Z",
+        "kind": "marker",
+        "code": "run-started"
+      },
+      {
+        "version": 1,
+        "runId": "d5fa46a5-f37b-4f0e-bea4-aef9c56829e5",
+        "sequence": 2,
+        "at": "2026-10-08T19:19:29.085Z",
+        "kind": "message",
+        "text": "I’ll create only `candidate.txt`, then run the requested command once. I’ll leave validation to you.",
+        "truncated": false
+      },
+      {
+        "version": 1,
+        "runId": "d5fa46a5-f37b-4f0e-bea4-aef9c56829e5",
+        "sequence": 3,
+        "at": "2026-10-08T19:19:31.064Z",
+        "kind": "command",
+        "commandId": "exec-c11ca215-a737-4241-bdb5-b1d9161cd5f3",
+        "command": "[redacted] -lc 'printf hello'",
+        "commandTruncated": false,
+        "cwd": ".",
+        "status": "completed",
+        "completedSequence": 4,
+        "exitCode": 0,
+        "durationMs": 9
+      },
+      {
+        "version": 1,
+        "runId": "d5fa46a5-f37b-4f0e-bea4-aef9c56829e5",
+        "sequence": 5,
+        "at": "2026-10-08T19:19:34.787Z",
+        "kind": "message",
+        "text": "Created `candidate.txt` and ran `printf hello` once.",
+        "truncated": false
+      },
+      {
+        "version": 1,
+        "runId": "d5fa46a5-f37b-4f0e-bea4-aef9c56829e5",
+        "sequence": 6,
+        "at": "2026-10-08T19:19:35.088Z",
+        "kind": "marker",
+        "code": "run-ended"
+      }
+    ],
+    "nextSequence": 6,
+    "hasMore": false,
+    "incomplete": false
+  }
+}

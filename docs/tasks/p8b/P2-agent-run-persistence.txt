@@ -1,0 +1,42 @@
+TASK: Phase 8 / P2 — Agent task and run persistence
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.8`.
+
+GOAL
+Persist inspectable AgentTask / AgentRun / AgentRunEvent truth beneath the project with a narrow typed service boundary. Do not execute a model yet.
+
+PREFLIGHT
+Read P1 result, current Project Mind / Planning project-local store patterns, RPC service patterns, restart tests and p8b persistence invariants.
+
+IMPLEMENT
+- Add project-local persistence under:
+  `.dope/agent/tasks/<task-id>.json`
+  `.dope/agent/runs/<run-id>/run.json`
+  `.dope/agent/runs/<run-id>/events.jsonl`.
+- Prefer the real `@dope/agent-core` boundary for Node store ownership; expose only a narrow service contract from `@dope/contracts`.
+- Canonicalize/validate attached file roots; reject traversal, mismatched project handles and outside-root paths.
+- Keep the durable root reference portable and project-local; do not require Project Mind initialization.
+- Atomic task/run writes; append-only bounded event writes; deterministic event sequence/order.
+- Serialize concurrent writers for the same run across backend windows/processes or fail clearly rather than interleave/corrupt.
+- Bound event count/page size/event payload and persisted summaries.
+- Never persist OAuth/provider secrets, hidden reasoning, arbitrary env dumps, raw unbounded provider payloads or sensitive absolute private paths.
+- Corrupt/future-schema data fails clearly and remains untouched.
+- Service supports attach, create/read/list task/run, legal run update, append/read paged events and change notifications needed by later UI/runtime.
+- Preserve terminal truth across ordinary restart. Do not yet auto-convert stale running state; P5 owns restart reconciliation.
+
+TESTS
+Cover atomic round trip, project isolation, move/copy portability, malformed/future bytes, bounded JSONL, append order, concurrent writer exclusion, legal transition enforcement, path traversal and secret-shaped fixture absence.
+
+VALIDATION
+T2 limited to agent-core/store/contracts/backend integration tests + affected builds/typecheck + version/no-lock/diff checks.
+No provider call, browser, packaging or broad `npm run check`.
+
+Do not create commits; the phase runner owns the commit boundary.
+
+FINAL RESPONSE
+Report on-disk schema/locking/bounds, RPC ownership, persistence security and P3 readiness.

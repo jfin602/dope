@@ -1,0 +1,40 @@
+TASK: Phase 7 / P5 — AI Center Roles workspace
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.28`.
+
+GOAL
+
+Make role policy first-class and understandable in AI Center without turning it into a generic policy IDE.
+
+PREFLIGHT
+
+Read P1-P4, current AI Center widget/contribution/CSS and ADR 0026 Roles UI. Require coherent `0.7.27`.
+
+IMPLEMENT
+- add top-level AI Center surfaces for Connections, Models and Roles while preserving existing 7B connection workflows;
+- Roles list shows all five fixed roles with canonical name/purpose, preferred target, fallback count, important constraints/preferences and derived health;
+- role editor supports preferred exact/constraint target, ordered fallback entries, hard constraints and soft preferences;
+- show currently eligible targets plus concrete ineligibility reasons such as capability, context, locality, disabled/unavailable or missing egress authority where meaningful;
+- pointer reorder plus keyboard Move Up/Down; no pointer-only semantics;
+- feature-imposed authority examples are displayed as read-only explanations and cannot be weakened in global editor;
+- Coding Agent visible/configurable with `No active consumer yet`; no global warning solely because it is unconfigured;
+- unconfigured/broken role deep-link/focus path supported for consumers;
+- no giant role-by-model matrix, custom roles or routing analytics dashboard;
+- warning launcher state includes only actionable roles with active current consumers; future unused Coding Agent/Background must not create noise.
+
+Advance to `0.7.28`.
+
+TESTS
+
+Focused AI Center role UI/controller tests for five roles, edit/reorder, eligibility explanations, keyboard controls, health, deep links, future-role warning suppression, dark/light and no secret/provider raw error exposure. Extension build + browser build only if needed for bundling; no direct GUI.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report Roles UI and P6 eligibility.

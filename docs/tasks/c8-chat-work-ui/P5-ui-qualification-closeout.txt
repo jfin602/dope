@@ -1,0 +1,37 @@
+TASK: Correction 8 / P5 — Chat and Work UI qualification closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Qualify the exact P1-P4 UI source in the real Dope GUI and record a truthful c8-chat-work-ui Green/Not Green closeout. This is the sole browser/manual T3 gate. It DOES NOT requalify c8-work-mode P9 or the authority-denied execution defect.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0016 October 8 amendment, ADR 0030, this correction README/assessment/plan, P1-P4 handoffs and c8-work-mode/closeout.md. Confirm coherent HEAD, clean intended candidate, unchanged 0.8.20, and preserved Not Green history. Use disposable Dope project for UI exercises; Adaptive SEO reference is read-only.
+
+AUTOMATED T3
+- Run npm run check ONCE against the final coherent candidate.
+- Then run ONLY UI-focused tests absent from that aggregate (inspect package.json first; likely node --test test/unit/work-selection.test.ts test/unit/work-transcript-presentation.test.ts test/unit/work-integration.test.ts test/unit/shared-panel-state.test.ts).
+- Run npm run codex:phase:validate -- c8-chat-work-ui, git diff --check, exact root/workspace version and no root package-lock.json checks.
+- No AppImage packaging unless source changes unexpectedly affect packaged/native behavior. Avoid rerunning P1-P4 tests already included by npm run check.
+
+DIRECT REAL GUI / VISUAL EVIDENCE
+1. In browser-hosted or native Electron Theia, open AI Center as the visual reference. Confirm dark neutrals, #336699 primary emphasis, subdued focus/selection and no orange-washing; switch to another supported theme then back and ensure no Dope Dark token leakage.
+2. Open Select Chat in narrow left/right panels and in center/bottom where supported. Confirm compact header, folder disclosure, chat titles/dates/color dots, long names, Rename/Move/New Chat/New Folder accessible via pointer and keyboard; navigation does not change Chat identity or lease.
+3. Open a Chat: fixed header/composer, Chat assistant Markdown, user-colored bubbles (still only for user turns), model/settings/context and scroll behavior unchanged.
+4. Open Select Work via both launchers and command palette in all supported areas. Check Running only actual active runs, History, discovered Prompt Stacks, task-derived titles, status/activity/date legibility, narrow-pane focus/actions and invalid/empty states.
+5. Enter Work detail: visible Stop/Start/Resume/manual gate/explicit grant, validation, checkpoint, authority denial and Open Transcript; secondary diagnostics reachable, controls not moved into inaccessible overflow. Closing/hiding/selecting Work must not start/stop a run.
+6. Open one existing recorded AgentRun center transcript and verify **centered assistant-style Markdown with no user bubbles**, headings/lists/inline/fenced code/links/blockquotes/tables, narrow responsiveness, safe raw HTML, chronological structured commands collapsed initially and expandable if saved. Validate truncated/missing/legacy transcript fallback honestly; no synthetic data called live.
+7. Scroll upward during added/streamed content where available and confirm follow pauses; Latest resumes. Verify independent scroll and center tab reuse, restart/reopen, Chat and Work project isolation. If a safe recorded test fixture supplies command detail, label this UI-only; it does NOT prove real provider command authority or c8-work-mode P9 gate.
+8. Open /home/jfin/dev/adaptive-seo-dope read-only. Verify historical c4-dope-phase-stack-smoke discovery, titles/checkpoint SHAs and legacy fallback without running the stack, creating a run, modifying project data or committing.
+
+TRUTHFUL CLOSEOUT
+- Record exact candidate SHA, P1-P4 checkpoints, one aggregate/focused results, direct GUI placements/themes/screens observed, known limitations, and final **GREEN / QUALIFIED** or **NOT GREEN** for THIS UI correction in docs/tasks/c8-chat-work-ui/closeout.md; update this correction README.
+- If a UI blocker remains, mark Not Green and specify a bounded repair; no cosmetic Green claim. Allow only tiny observed CSS/presentation fixes with narrow invalidated re-tests and truthful source identity. No provider/grant fix in this prompt.
+- Preserve c8-work-mode P9's prior Not Green records unchanged. Its real command expansion and Dope CandidateValidation/promotion gate are STILL separately unqualified after authority-denied; do not advance Phase 8D. A Green UI closeout routes to bounded authority-denied investigation and later original P9 requalification.
+- Do not change Adaptive SEO, launch deployments, or run production services. Do not commit implementation edits inside a Green evidence-only closeout. Manual closeout operator owns final review/commit.
+
+FINAL RESPONSE
+Report exact candidate, one T3 aggregate, uncovered tests, direct visuals, Markdown/commands/scroll behavior, theme override, history/restart and residual authority gate, final UI-only disposition and any evidence commit.

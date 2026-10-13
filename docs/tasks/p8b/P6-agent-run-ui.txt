@@ -1,0 +1,39 @@
+TASK: Phase 8 / P6 — Minimal Agent Run workbench
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.12`.
+
+GOAL
+Expose the stable Phase 8B single-task runtime in one small Dope workbench surface without pulling in phase sequences, WorkItems or Development Sessions.
+
+PREFLIGHT
+Read P1-P5 results, existing Theia widget/controller/contribution patterns, Dope Dark controls and AI Center role/model presentation.
+
+IMPLEMENT
+- Add an Agent Run controller/widget/contribution backed by the typed Agent Runtime service.
+- Provide an ordinary command/view entry such as `Dope: Open Agent Run`.
+- Direct-task form: objective and executable instructions; default model policy Follow Coding Agent; exact target option only when eligible inventory supports it.
+- Show resolved Coding Agent/target truth before start.
+- Render the full bounded 8B grant in readable categories and require explicit Accept Grant before Start.
+- Start/Stop buttons reflect real backend state; Stop calls runtime cancellation, not a presentation-only toggle.
+- Stream bounded activity with timestamps/type/status, changed files, validation results and bounded diff/change summary.
+- Reopen/restart can inspect persisted completed/cancelled/failed/interrupted runs.
+- Keep raw provider IDs/details secondary; never render tokens, hidden reasoning, arbitrary env dumps or raw unbounded provider payloads.
+- Follow existing calm Dope Dark styling and accessibility conventions. Do not redesign the shell.
+- Do not add WorkItem delegation, AgentTaskSequence, checkpoint Git UI, browser/manual gates, multi-agent UI, rich steering or Development Sessions.
+
+TESTS
+Focused controller/widget/source tests for command wiring, task creation, target display, grant-accept gating, start, real stop request, activity rendering, changed/validation/diff summaries, terminal/restart inspection, secret/raw-payload absence and accessible labels/status.
+
+VALIDATION
+T1/T2 limited to focused Agent Run UI/service tests + extension build/typecheck + version/no-lock/diff checks.
+No live hosted mutation, packaging or broad `npm run check`.
+
+Do not create commits; the phase runner owns the commit boundary.
+
+FINAL RESPONSE
+Report the minimal user workflow, grant/start/stop behavior, persisted inspection and P7 qualification readiness.

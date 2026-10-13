@@ -1,0 +1,119 @@
+TASK: Correction 6 / P3 — Accepted-map Search Deeper integration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Validation: T2.
+- Required unchanged project version: `0.6.7`.
+
+ENTRY
+
+Require P1 and P2 Green.
+
+Read the correction plan/results and inspect the current targeted-refinement pipeline, Software Map backend/controller, Edit Architecture widget, provider readiness code, and existing refinement tests.
+
+GOAL
+
+Extend existing branch-local Search Deeper to accepted Edit Architecture without creating a second refinement algorithm, fake review state, silent canonical mutation, or general AI Presence.
+
+LOCKED BOUNDARIES
+
+- Reuse planTargetedRefinement / parseTargetedRefinement behavior.
+- Accepted Architecture is not review_required and gets no fake durable review session.
+- No accepted-edit smap-analysis.json persistence.
+- Provider choice/readiness is explicit; no silent fallback.
+- Accept Refinement changes only the editor draft.
+- Save Architecture remains the only canonical mutation.
+- Manual Architecture editing remains provider-free.
+
+IMPLEMENT
+
+1. Support two explicit refinement bases
+
+Generalize the targeted-refinement request/result seam so it can operate from:
+- pending review: existing review ID + pinned review packet;
+- accepted edit: expected canonical fingerprint + current edited branch.
+
+For accepted edit include target kind/key, parent context, branch and branch fingerprint. Do not fabricate reviewId.
+
+Reuse the same refinement planner/parser; do not fork the algorithm.
+
+2. Fresh evidence for accepted Search Deeper
+
+At explicit accepted-map Search Deeper start:
+- collect a fresh deterministic ArchitectureEvidencePacket;
+- pin it only for that request;
+- use current edited branch roots/context to select bounded evidence through the existing refinement planner;
+- preserve enough evidence metadata/provenance for preview/source inspection;
+- do not persist the packet as review work.
+
+Before publishing the result, verify the canonical fingerprint still matches the captured basis.
+
+The frontend must also reject the result if the edited target branch changed while the request ran.
+
+3. Minimal provider-readiness UX
+
+Initialized Edit Architecture currently hides synthesis setup. Add only the provider setup/status needed to run Search Deeper, reusing existing Local/Gemini configuration, model discovery/selection, probe/readiness, warm-up and secret handling.
+
+Do not duplicate the whole onboarding UI unless reuse requires it.
+
+Rules:
+- explicit selected provider/model;
+- no silent fallback;
+- no project evidence before readiness/warm-up rules pass;
+- credentials stay out of project state/logs;
+- no chat/Agent Mind/tool/delegation behavior.
+
+4. Accepted preview/accept/reject
+
+For System/Subsystem:
+- start from current edited branch including manual edits;
+- show preview while current draft remains unchanged;
+- keep branch evidence/source association inspectable;
+- Reject changes nothing;
+- Accept Refinement replaces only the target branch in the editor draft;
+- preserve unrelated branches/manual edits and constraints outside the replaced branch;
+- do not write canonical Architecture/marker.
+
+Only later Save Architecture may call the P1 canonical save.
+
+5. Async/project guards
+
+Late results must not publish after workspace switch, editor discard/reload, canonical basis change, target-branch edit, or a newer refinement request.
+
+Keep existing pending-review Search Deeper behavior Green.
+
+PERMANENT REGRESSIONS
+
+Use fake providers/fixtures and cover:
+- accepted System refinement;
+- accepted Subsystem refinement/split;
+- manual branch edits are included;
+- unrelated edits remain;
+- stale branch and stale canonical basis reject;
+- provider-not-ready surfaces explicit setup/status;
+- selected provider does not silently change/fallback;
+- Accept Refinement is draft-only;
+- canonical files remain unchanged until Save;
+- no accepted smap-analysis.json is created;
+- workspace/newer-request race drops late preview;
+- pending-review Search Deeper still passes.
+
+VALIDATION
+
+Run:
+- focused targeted-refinement tests;
+- focused backend/initialization tests affected by accepted refinement;
+- focused Edit Architecture controller/widget tests;
+- npm run build:browser;
+- exact 0.6.7 / no-root-lock checks;
+- git diff --check.
+
+Do not separately run build:extension; build:browser already runs it.
+Do not make real provider calls, run npm run check, manual GUI, or package/native evidence.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report the two refinement bases, fresh-evidence behavior, minimal provider readiness UX, stale/no-fallback guards, draft-only preview/accept/reject proof, pending-review regression, focused validation, and P4 eligibility.

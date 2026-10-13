@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "projectId": "project-48bc8ba6-e9ba-475d-a2bc-15d659331eab",
+  "taskId": "work-19ceb4ea3e64b0aec6a9fd871e469428",
+  "runId": "10d4980e-9f78-4fca-9696-8bf04fedba19",
+  "revision": 1,
+  "entries": [
+    {
+      "revision": 1,
+      "requestedAt": "2026-10-09T20:46:11.033Z",
+      "request": {
+        "kind": "instruction",
+        "text": "Keep the change limited to the delegated rejected.txt path; leave the human-reserved path untouched."
+      },
+      "acknowledgement": {
+        "status": "unsupported",
+        "at": "2026-10-09T20:46:11.033Z",
+        "reason": "active-turn-steering-unavailable",
+        "nextStep": "explicit-stop-and-new-task"
+      }
+    }
+  ]
+}

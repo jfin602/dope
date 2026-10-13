@@ -1,0 +1,91 @@
+TASK: Phase 6 / P4 — Flow query, stitching and aggregation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.6.4`.
+
+GOAL
+
+Make published Static Flow queryable, bounded, generation-safe and architecture-readable without inventing continuity.
+
+PREFLIGHT
+
+Read all p6 authority/assessment/plan, exact P1-P3 source/tests, current Software Map pure queries/service/backend/index and Physical Map generation guards.
+
+Require coherent `0.6.3` predecessor and P3 Green affected-system evidence.
+
+IMPLEMENT
+
+Add provider-independent Flow query/path/aggregation helpers under `@dope/software-map` and expose them through the existing `SoftwareMapService` / `SoftwareMapBackend`.
+
+Do not create a second backend, Flow process or state owner.
+
+QUERY
+
+Support:
+- focused System/Subsystem overview;
+- selected GraphNode or derived Flow endpoint;
+- downstream trace;
+- upstream trace;
+- clear/no-trace overview;
+- deterministic ordering;
+- exact published generation in every result;
+- explicit coverage/unsupported/evidence-gap diagnostics;
+- explicit truncation/continue-deeper metadata.
+
+Default hard query budgets are:
+- at most 100 visible graph nodes/endpoints;
+- at most 200 Flow facts/edges;
+- at most 32 hops along one path.
+
+Budget exhaustion must be explicit. Never silently drop reachable Flow and present the result as complete.
+
+PATH STITCHING
+
+Traverse only proven Flow facts. Use visited node/fact guards for recursion/cycles.
+
+Continue through resolved ordinary calls, async/await with deterministic target, callback/promise continuation only with deterministic callback binding, and producer/consumer continuation only when queue/event/topic identity is deterministic.
+
+Argument/return propagation is not required for path construction.
+
+Return Static Flow as evidence-backed possible execution. Do not introduce runtime Observed Flow.
+
+ARCHITECTURE AGGREGATION
+
+Aggregate to System/Subsystem scope only when lower-level facts form a continuous evidenced origin path.
+
+Every aggregate retains `originFlowFactIds` and evidence.
+
+Never bridge an unsupported/missing hop. Preserve meaningful branch/fan-out/join shape. Do not merge materially different `reads`, `writes`, `invokes` or `calls-external` semantics when that would erase behavior. Do not combine distinct data annotations into an invented shared payload.
+
+SERVICE / BACKEND SAFETY
+
+Bind Flow queries to the existing attached project handle/current snapshot. Reject or return stale-safe failure for mismatched generation. Late requests from another project/generation must never publish current UI data.
+
+Advance all live versions/internal references coherently to `0.6.4`.
+
+TESTS
+
+Validation is T2.
+
+Add focused pure/service/backend tests for overview/upstream/downstream, stable order, 100/200/32 truncation, cycle termination, continuous-path aggregation, gap preservation, branch/join preservation, semantic distinction, aggregate origin/evidence, unsupported/unresolved diagnostics, project isolation and stale/superseded generation behavior.
+
+Run only:
+- new/changed Flow query tests;
+- directly affected Software Map/index/backend tests;
+- `corepack yarn workspace @dope/software-map build`;
+- `corepack yarn workspace @dope/theia-extension build`;
+- `node --test test/unit/theia-baseline.test.ts`;
+- no-root-lock/version checks;
+- `git diff --check`.
+
+Do not run aggregate check/restart/browser/Electron/package qualification.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report query contract, budgets, path/aggregation truth, generation guards, validation and P5 eligibility.

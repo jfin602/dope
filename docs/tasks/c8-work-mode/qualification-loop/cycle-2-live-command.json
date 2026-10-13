@@ -1,0 +1,91 @@
+{
+  "mode": "command",
+  "project": "/tmp/dope-p9-command-zieXBp",
+  "startingHead": "02b6c1066a6089758e0de1ec49f767c20cbc5265",
+  "startingStatus": "",
+  "finalHead": "02b6c1066a6089758e0de1ec49f767c20cbc5265",
+  "finalStatus": "?? .dope/",
+  "runId": "53b8b616-4202-42c1-ab7a-8cbb4b514042",
+  "status": "completed",
+  "commandEvidence": [
+    {
+      "version": 1,
+      "commandSummary": "Other project command",
+      "durationMs": 18,
+      "exitCode": 0,
+      "result": "passed",
+      "matchedTargets": []
+    }
+  ],
+  "candidateDelta": {
+    "version": 1,
+    "effects": []
+  },
+  "candidateFingerprint": "18769be2fcbcc0e15e441e37cfbbff1614124abf321fc0175ed5d3ac070a04dc",
+  "validationResults": [],
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [],
+  "candidate": null,
+  "transcript": {
+    "state": "recorded",
+    "entries": [
+      {
+        "version": 1,
+        "runId": "53b8b616-4202-42c1-ab7a-8cbb4b514042",
+        "sequence": 1,
+        "at": "2026-10-08T19:22:11.413Z",
+        "kind": "marker",
+        "code": "run-started"
+      },
+      {
+        "version": 1,
+        "runId": "53b8b616-4202-42c1-ab7a-8cbb4b514042",
+        "sequence": 2,
+        "at": "2026-10-08T19:22:14.564Z",
+        "kind": "message",
+        "text": "I’ll run exactly that command once.",
+        "truncated": false
+      },
+      {
+        "version": 1,
+        "runId": "53b8b616-4202-42c1-ab7a-8cbb4b514042",
+        "sequence": 3,
+        "at": "2026-10-08T19:22:16.251Z",
+        "kind": "command",
+        "commandId": "exec-6ff0d1c0-1cd8-47d5-b80c-7c5b3e11bdde",
+        "command": "[redacted] -lc 'printf hello'",
+        "commandTruncated": false,
+        "cwd": ".",
+        "status": "completed",
+        "completedSequence": 4,
+        "exitCode": 0,
+        "durationMs": 16,
+        "output": "hello",
+        "outputTruncated": false
+      },
+      {
+        "version": 1,
+        "runId": "53b8b616-4202-42c1-ab7a-8cbb4b514042",
+        "sequence": 5,
+        "at": "2026-10-08T19:22:18.700Z",
+        "kind": "message",
+        "text": "hello",
+        "truncated": false
+      },
+      {
+        "version": 1,
+        "runId": "53b8b616-4202-42c1-ab7a-8cbb4b514042",
+        "sequence": 6,
+        "at": "2026-10-08T19:22:18.738Z",
+        "kind": "marker",
+        "code": "run-ended"
+      }
+    ],
+    "nextSequence": 6,
+    "hasMore": false,
+    "incomplete": false
+  }
+}

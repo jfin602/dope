@@ -1,0 +1,50 @@
+TASK: Phase 8 / P2 — ChatGPT-plan OAuth account and session security
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.8.2`.
+
+GOAL
+Implement the protected Sign in with ChatGPT account/session boundary for Codex connections. Keep provider-specific OAuth details out of the AI registry/domain.
+
+PREFLIGHT
+Read current official OpenAI open-source Sign in with ChatGPT documentation, especially registration/sign-in, profiles/sessions and token reference. Inspect existing AICredentialManager/keytar/cross-process config patterns and P1 contracts.
+
+IMPLEMENT
+- Create a dedicated backend Codex/ChatGPT-plan auth service/profile manager rather than flattening OAuth into one API-key credential string.
+- Generate/persist one stable host identifier at the appropriate machine-local application scope.
+- Support first dynamic registration and reuse of the issued client ID for returning registration.
+- Implement PKCE, fresh state/nonce transaction state, callback validation and exact redirect/resource/client handling.
+- Verify ID-token signature/JWKS, issuer, audience, expiry and nonce; bind verified subject to the selected registration.
+- Require the granted plan-usage scope before marking plan inference authorized.
+- Store access/refresh/retained-ID token bundle only in protected OS secure storage for persistent auth; no plaintext fallback. Keep browser/frontend DTOs token-free.
+- Preserve only necessary non-secret account label/issued-client/host/auth-status projection outside secret storage.
+- Implement refresh using replacement access+refresh bundle, earliest-refresh/expiry awareness, and a serialized per-registration cross-process critical section so rotating refresh tokens cannot race.
+- Reauthorize and sign-out/disconnect safely.
+- Sanitize URLs/errors/loggable state so tokens, token hints and authorization payloads cannot leak.
+- Keep multiple account registrations independent even if display email matches.
+- Do not start App Server or mutate projects.
+
+TESTS
+Use deterministic fake authorization/token/JWKS endpoints and secure-store fixtures.
+Cover:
+- PKCE/state/nonce success and mismatch;
+- new issued-client vs returning-client validation;
+- wrong issuer/audience/account/client;
+- plan-usage scope missing;
+- refresh replacement and old-token rejection;
+- concurrent/two-process refresh exclusion;
+- secure-store unavailable;
+- sign out + reauthorization;
+- secret absence from registry/service DTOs/loggable error strings.
+
+VALIDATION
+T2 limited to auth/security + affected registry/backend tests and builds. No real browser login, live OpenAI request, package build or broad `npm run check`.
+
+Do not create commits; the phase runner owns the commit boundary.
+
+FINAL RESPONSE
+Report auth/session architecture, secret storage and refresh-concurrency guarantees, tests and P3 readiness.

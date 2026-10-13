@@ -1,0 +1,64 @@
+TASK: Phase 3 / P2 — Planning storage, project identity, recovery and transport
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.3.2`.
+
+GOAL
+
+Make Phase 3 Planning durable and project-bound without creating a second project identity or generic persistence framework.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, all Phase 3 authority/plans, P1 source/tests/result, Project Mind store/backend contracts and docs/project-mind-storage.md.
+
+Require reachable activation source `95815b04977a229abfdfdba628eb9dddc9e55203`, successful exact P1 predecessor, clean intended Git state and coherent `0.3.1`. Preserve inherited Phase 1/2 failures/gaps. No Phase 2 Green prerequisite exists beyond the recorded owner disposition.
+
+IMPLEMENT
+
+Add a focused Node storage adapter under `@dope/planning`.
+
+Persist readable `.dope/planning.json` with schemaVersion 1, existing Project Mind `projectId`, monotonic document revision, Plans, Tasks and history. Use separate `.dope/planning.lock`.
+
+Mirror the proven Project Mind durability discipline without extracting speculative infrastructure:
+- canonicalize one local file:// folder;
+- reject unsafe/symlinked .dope/store/lock paths;
+- missing read creates nothing;
+- first Planning write requires an existing supplied Project Mind projectId and never generates one;
+- exclusive cross-process lock;
+- reread/strict parse under lock;
+- expected revision and projectId match;
+- one typed mutation;
+- temp write + file sync + rename + parent-directory sync;
+- preserve prior committed bytes on pre-replace failures;
+- report post-replace uncertainty truthfully and require reread;
+- never auto-steal abandoned locks.
+
+Add Planning backend/typed RPC in `@dope/theia-extension`. Bind one connection handle to the attached canonical project. On attach, resolve/read Project Mind and obtain its canonical projectId. If Project Mind has no canonical snapshot, return a visible Planning prerequisite state and write nothing. If existing Planning projectId differs, fail closed and preserve both stores.
+
+Validate new Project Mind artifact links against the current same-project Project Mind snapshot immediately before Planning mutation. Archived artifacts remain valid. Do not mutate Project Mind to create reverse links.
+
+Validate project-relative file paths/optional positive lines and reject absolute, traversal, remote and symlink escapes. Missing later targets remain representable.
+
+Create `docs/planning-storage.md` covering format, identity prerequisite/mismatch, revisions, lock/recovery, backup/restore, stopped-writer external edits, Git implications, corrupt/future schema and full-snapshot scaling limits.
+
+CHECKS
+
+Add permanent storage/backend tests for missing identity, two distinct roots/IDs, mismatch, stale revision, independent-process lock contention, abandoned lock, corrupt/future schema, temp/rename/sync failures, symlink/traversal, artifact target validation, event/disposal and committed reread after uncertain acknowledgement.
+
+Wire the real suite into aggregate product checks.
+
+Set all versions/internal references/baseline assertions coherently to `0.3.2`. Run focused domain/storage/backend checks, `npm run check`, current `npm run test:restart` as a regression check, phase validation, no-root-lock and `git diff --check`.
+
+The runner owns staging/commit; do not commit.
+
+SCOPE
+
+No production Planning UI, provider/model runtime, generic persistence layer, Project Mind schema conversion, cross-store transaction, AI/delegation, Sessions, sync or framework upgrade.
+
+FINAL RESPONSE
+
+Report store format/identity behavior, conflict/failure/recovery semantics, transport boundary, docs/tests and evidence deferred to P3-P5.

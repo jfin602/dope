@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "id": "10d4980e-9f78-4fca-9696-8bf04fedba19",
+  "taskId": "work-19ceb4ea3e64b0aec6a9fd871e469428",
+  "status": "cancelled",
+  "grantId": "57f79eea-357f-415a-8221-eebd659963c3",
+  "grantRevision": 1,
+  "requestedPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "projectRoot": ".",
+  "projectId": "project-48bc8ba6-e9ba-475d-a2bc-15d659331eab",
+  "createdAt": "2026-10-09T20:46:09.041Z",
+  "startedAt": "2026-10-09T20:46:09.041Z",
+  "endedAt": "2026-10-09T20:46:41.311Z",
+  "executionWorkspace": {
+    "id": "66bb3561-5125-40a7-a675-d2f340f21bb8",
+    "basisHead": "fa42e9ea1e00e5b2a92c7616c66b92207a784975"
+  },
+  "provenance": {
+    "version": 1,
+    "connectionId": "6bb256ca-64fd-4054-a0c7-65da754acd68",
+    "modelId": "gpt-5.6-sol",
+    "providerId": "codex",
+    "runtimeKind": "hosted",
+    "adapterId": "codex-app-server-execution",
+    "policyRevision": 9
+  },
+  "basis": {
+    "head": "fa42e9ea1e00e5b2a92c7616c66b92207a784975",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required WorkItem validation",
+      "status": "passed",
+      "durationMs": 10,
+      "owner": "dope",
+      "command": "test \"$(cat p13-qualification/rejected.txt)\" = \"rejected from P6 qualification\"",
+      "candidateFingerprint": "47063afb02cf4469303f52489f51dc0282bcb3bb3a671677fc6191842d8778d5",
+      "workspaceId": "10b92c6d-f40c-406f-993f-8b9a56455486",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "stdoutTruncated": false,
+      "stderrTruncated": false
+    }
+  ],
+  "commandEvidence": [
+    {
+      "version": 1,
+      "commandSummary": "Other project command",
+      "durationMs": 20,
+      "exitCode": 0,
+      "result": "passed",
+      "matchedTargets": []
+    }
+  ],
+  "validationBasis": "execution-workspace",
+  "candidateDelta": {
+    "version": 1,
+    "effects": [
+      {
+        "kind": "create",
+        "path": "p13-qualification/rejected.txt",
+        "after": "a9b271274077aa08c8eecea191f561bbbf1c10eaea12172b1545476a22ba9d2d"
+      }
+    ]
+  },
+  "candidateFingerprint": "47063afb02cf4469303f52489f51dc0282bcb3bb3a671677fc6191842d8778d5",
+  "candidateReview": {
+    "state": "ready",
+    "revision": 0,
+    "candidateFingerprint": "47063afb02cf4469303f52489f51dc0282bcb3bb3a671677fc6191842d8778d5",
+    "diff": "diff --git a/p13-qualification/rejected.txt b/p13-qualification/rejected.txt\n--- (absent)\n+++ b/p13-qualification/rejected.txt\n@@ -1,0 +1,1 @@\n+rejected from P6 qualification\n",
+    "diffTruncated": false,
+    "changedPaths": [
+      "p13-qualification/rejected.txt"
+    ],
+    "validation": [
+      {
+        "version": 1,
+        "kind": "test",
+        "label": "Required WorkItem validation",
+        "status": "passed",
+        "durationMs": 10,
+        "owner": "dope",
+        "command": "test \"$(cat p13-qualification/rejected.txt)\" = \"rejected from P6 qualification\"",
+        "candidateFingerprint": "47063afb02cf4469303f52489f51dc0282bcb3bb3a671677fc6191842d8778d5",
+        "workspaceId": "10b92c6d-f40c-406f-993f-8b9a56455486",
+        "exitCode": 0,
+        "stdout": "",
+        "stderr": "",
+        "stdoutTruncated": false,
+        "stderrTruncated": false
+      }
+    ]
+  },
+  "reviewDecision": {
+    "kind": "reject",
+    "revision": 1,
+    "at": "2026-10-09T20:46:41.311Z",
+    "candidateFingerprint": "47063afb02cf4469303f52489f51dc0282bcb3bb3a671677fc6191842d8778d5"
+  },
+  "recovery": {
+    "adapterId": "codex-app-server-execution",
+    "handle": "01a1226a-8a5b-7a61-905a-01709dd95893"
+  },
+  "outcome": {
+    "code": "cancelled",
+    "summary": "Developer rejected candidate"
+  }
+}

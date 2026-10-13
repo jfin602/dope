@@ -1,0 +1,71 @@
+TASK: Phase 6 / P8 — Flow closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.6.8`.
+
+GOAL
+
+Perform an evidence-only Product Phase 6 closeout from the exact P7 qualified/authorized candidate. Do not repair product behavior and do not create Phase 7 implementation prompts.
+
+PREFLIGHT
+
+Read BOOT/AGENTS, all current Phase 6 authority, p6 assessment/implementation plan, exact reachable P1-P7 commits/results, P7 direct evidence, current manifests/tests and retained Phase 5 owner-close evidence.
+
+Require coherent `0.6.7` predecessor and an exact P7 evidence record. A version subject alone is not qualification evidence.
+
+Advance root/apps/all live internal package versions/internal references coherently to `0.6.8`.
+
+AUDIT
+
+Assess Green / Not Green / Evidence Gap for:
+
+A. Flow domain truth — fact/endpoint identity, snapshot ownership, evidence validation, no separate Flow authority.
+
+B. TypeScript invocation — named/anonymous caller identity, project-call resolution, negatives, determinism and no dependency-as-execution confusion.
+
+C. Boundary extraction — Express request/response, Adaptive SEO Database/QueryExecutor persistence, external HTTP/client calls, conservative endpoint identity and anti-hardcoding fixture.
+
+D. Query truth — bounded upstream/downstream stitching, cycles, explicit truncation/coverage diagnostics, continuous-path architectural aggregation and provenance.
+
+E. Projection — deterministic directional overview, progressive disclosure, roles, branch/join/back-edge semantics and no layout truth leakage.
+
+F. UI integration — Architecture/Flow identity preservation, tracing, edge evidence/source navigation, async project/generation guards and Planning Map non-interference.
+
+G. Direct qualification — one real continuously evidenced Adaptive SEO HTTP -> internal -> persistence/external -> response behavior with real branch/fan-out/join, restart reconstruction and project isolation.
+
+H. Regression/release — provider-free behavior, existing IDE/Project Mind/Physical/Planning Map preservation, exact P7 aggregate/restart/package/native evidence, Theia/Electron/version coherence.
+
+Preserve Phase 5 P11 Not Green/P12 unexecuted truth. Phase 6 qualification does not retroactively qualify Phase 5.
+
+RERUN
+
+P7 owns broad T3 evidence. Do not blindly repeat it.
+
+Run only:
+- focused Phase 6 domain/analyzer/query/projection/UI tests needed to prove the `0.6.8` coherence transition;
+- affected typecheck/build required by version/internal-reference changes;
+- `npm run codex:phase:validate -- p6`;
+- exact version/Theia/Electron/no-root-lock checks;
+- `git diff --check`.
+
+Repeat direct GUI, restart, aggregate check, packaging or native evidence only if this closeout transition or an observed failure invalidated P7 evidence.
+
+Do not repair failures during closeout.
+
+OUTPUT
+
+Create `docs/tasks/p6/closeout.md` with activation and exact P1-P7 candidate identities, A-H decision table, exact domain/analyzer/extractor/query/projection/UI evidence, P7 real Adaptive SEO path and direct matrix, restart/isolation/package/native result, retained historical evidence, residual gaps and final Qualified / Not Qualified decision.
+
+Update `docs/tasks/p6/README.md` truthfully.
+
+If Qualified, route to a fresh Product Phase 7 AI Presence `/docs-review`. Do not create Phase 7 prompts here.
+
+If Not Qualified, preserve blockers and route to a bounded Phase 6 correction.
+
+FINAL RESPONSE
+
+Report exact A-H decision, Phase 6 usefulness as provider-free behavioral Flow, qualification evidence, residual gaps, docs updated and next action.

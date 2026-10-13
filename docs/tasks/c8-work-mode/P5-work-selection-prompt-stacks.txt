@@ -1,0 +1,33 @@
+TASK: Correction 8 / P5 — Build Select Work and stable task titles
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.8.20`.
+
+GOAL
+Make Select Work list saved tasks/runs and automatically discovered Prompt Stacks, and resolve stable Work titles without introducing another import lifecycle.
+
+PREFLIGHT
+Read P4 handoff; inspect PhaseStackController discovery/selection, AgentRunController title lookup and directly affected selection tests. Keep parser/sequence semantics untouched.
+
+IMPLEMENT
+- In Work mode, provide `Select Work` with Work history and `Prompt Stacks` discovered from configurable project-relative tasks root (default `docs/tasks/`, simple Refresh). Reuse existing `listTaskStacks`/`openTaskStack`, stored sequence and Run IDs. No user-facing `Import Stack`.
+- Select one Work identity at a time; a Prompt Stack selection opens the existing AgentTaskSequence and its current gate. A run selection opens its actual AgentTask and transcript. Use explicit typed stable selection keys; do not create another sequence/run by selection or refreshing.
+- Provide pure title resolver: selected Prompt Stack entry uses its snapshotted `entry.title`; selected direct Run uses saved AgentTask objective; missing task gets `Work - <short runId>`. Prior run title must not change after sequence advances.
+- Preserve phase/correction metadata only as small secondary labels and user-facing Prompt Stack terminology everywhere in the new Work view.
+- Support current manual/browser gate, validation/grant/dirty acceptance and checkpoint controls by delegating to existing PhaseStackController/domain service rather than recreating its state machine. P6/P7 supply polished controls/entry points.
+
+TESTS
+Focused Work selection/title test for default discovery, existing completed stack, historic run title after sequence advances, and no task/run creation from selection. Existing parser/discovery tests need rerun only if the underlying parser changes.
+
+VALIDATION
+T1: build only the changed extension package; run the focused Work selection test and affected `phase-stack-ui.test.ts` cases, plus `git diff --check`. Defer multi-panel/restart integration to P8 and GUI inspection to P9.
+
+DONE WHEN
+Work can browse the real existing completed c4-dope-phase-stack-smoke sequence without creating commits/runs or changing titles. The runner owns commits.
+
+FINAL RESPONSE
+Report source reuse, selection/title semantics and test evidence.

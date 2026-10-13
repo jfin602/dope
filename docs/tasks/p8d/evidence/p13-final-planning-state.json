@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "projectId": "project-48bc8ba6-e9ba-475d-a2bc-15d659331eab",
+  "projectRevision": 11,
+  "map": {
+    "id": "map-e83dccae-745d-4463-ba56-5cbe2f428dc7",
+    "status": "active",
+    "revision": 10,
+    "basis": {
+      "architectureRevision": 0,
+      "architectureFingerprint": "b5a09a50397149f589a80c2f9987ec66c0023a85c75ad98b4a973ebd1d370208",
+      "physicalInputFingerprint": "5e05f4e4e4b347648eb7143f502b7428459f141befe699f7550f46e77e4bc5bd",
+      "physicalGeneration": 1
+    }
+  },
+  "workItem": {
+    "id": "work-b5c9c4fb-3d4e-4413-b242-9c683e12e79c",
+    "title": "add: p13-qualification",
+    "objective": "Create p13-qualification/rejected.txt with exactly rejected from P13 qualification followed by newline. Change no other project files.",
+    "transformationIds": [
+      "change-09d8d698-fb0a-403d-9911-f71cde5bfadb"
+    ],
+    "dependsOn": [],
+    "requirements": [],
+    "constraints": [],
+    "acceptanceCriteria": [],
+    "validationTargets": [],
+    "workingSet": [
+      "p13-qualification"
+    ],
+    "status": "ready",
+    "assignment": "SHARED",
+    "delegablePaths": [
+      "p13-qualification/rejected.txt"
+    ],
+    "humanReservedPaths": [
+      "p13-qualification/human.txt"
+    ]
+  }
+}

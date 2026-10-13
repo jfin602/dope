@@ -1,0 +1,36 @@
+TASK: Phase 7 / P7 — Local and Gemini conversational adapters
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.7`.
+
+GOAL
+
+Generalize the existing Local/LM Studio and Gemini transports for Chat without contaminating Software Map synthesis strategy.
+
+PREFLIGHT
+
+Use shared p7 preflight. Inspect P6 runtime contracts plus current LM Studio/Gemini synthesis providers/tests. Do not reread unrelated Chat UI code.
+
+IMPLEMENT
+- factor/reuse transport/runtime mechanics so Local and Gemini can satisfy conversational streaming capability contracts independently from sMap synthesis instructions;
+- Local: model discovery/selection/readiness, OpenAI-compatible chat streaming or bounded equivalent, cancellation, usage and safe errors;
+- Gemini: model discovery/selection, streaming text, cancellation, usage and safe errors through the existing SDK;
+- preserve separate sMap provider selection/readiness/warm-up/structured generation behavior;
+- never make Chat connection choice alter Software Map synthesis choice or vice versa;
+- normalize actual connection/model provenance and failures; no fallback between providers.
+
+Advance to `0.7.7`.
+
+TESTS
+
+T2 deterministic mocked-transport adapter tests for discovery, stream ordering, cancellation, usage/errors, reconnect invalidation and no fallback. Run existing LM Studio/Gemini synthesis tests because those adapters are directly refactored; build extension/contracts as needed; baseline/version/no-lock and diff check. No live calls/browser build.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report preserved synthesis plus conversational adapter evidence and P8 eligibility.

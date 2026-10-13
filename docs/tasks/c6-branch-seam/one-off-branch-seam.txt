@@ -1,0 +1,327 @@
+TASK: One-off manual correction — Establish the sMap / Model Runtime branch seam
+
+MODEL / REASONING / USAGE
+- Required configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- This is a manual architecture-sensitive one-off correction, NOT a codex phase/correction-stack prompt.
+- Do not run this file through `codex:phase`.
+- Validation tier: T2 affected-system integration.
+
+VERSIONING
+- Keep the complete Dope workspace exactly at `0.6.7`.
+- Do not create `0.6.8` or `0.7.0` work.
+- Do not relabel Phase 6 P7, unblock P8, close Phase 6 or activate Phase 7.
+
+GOAL
+
+Establish the clean seam required by ADR 0022 so:
+1. Software Map architecture-synthesis semantics are owned by Dope's provider-neutral sMap layer;
+2. LM Studio / Gemini own runtime and transport behavior only;
+3. the existing sMap path consumes a reusable provider-independent Model Runtime/session contract;
+4. Product Phase 7 and future Local sMap optimization can branch from this source without both rewriting the same provider lifecycle code.
+
+This is NOT Local synthesis optimization. Do not change architecture quality strategy beyond moving current shared strategy to its correct owner.
+
+PREFLIGHT
+
+Read:
+- BOOT.md;
+- AGENTS.md;
+- docs/ARCHITECTURE.md Model/provider boundary;
+- docs/PRODUCT-MODEL.md provider/Phase 7 boundary;
+- docs/decisions/0004-model-provider-independence.md;
+- docs/decisions/0011-local-first-smap-synthesis-bootstrap.md;
+- docs/decisions/0012-hierarchical-smap-synthesis-and-analysis-progress.md;
+- docs/decisions/0013-compact-smap-stage-contracts-and-local-gemini-providers.md including its ADR 0022 amendment;
+- docs/decisions/0022-smap-synthesis-model-runtime-seam.md;
+- docs/tasks/c6-branch-seam/prompt-assessment.md;
+- docs/tasks/c6-branch-seam/implementation-plan.md.
+
+Inspect actual current source/tests before editing, at minimum:
+- packages/contracts/src and package contract patterns;
+- packages/software-map/src/hierarchical-synthesis.ts;
+- packages/software-map/src/reconciliation.ts;
+- packages/software-map/src/evidence-planner.ts;
+- packages/software-map/src/refinement.ts;
+- packages/software-map/src/service.ts;
+- packages/theia-extension/src/node/lmstudio-synthesis-provider.ts;
+- packages/theia-extension/src/node/gemini-synthesis-provider.ts;
+- packages/theia-extension/src/node/software-map-backend.ts;
+- packages/theia-extension/src/node/backend-module.ts;
+- test/unit/lmstudio-synthesis-provider.test.ts;
+- test/unit/gemini-synthesis-provider.test.ts;
+- test/unit/software-map-synthesis.test.ts;
+- test/unit/reconciliation.test.ts;
+- test/unit/software-map-initialization.test.ts.
+
+Require:
+- ADR/docs activation commit `47fbcdeaa5e91906363f4ed95019d55ee95efa80` is reachable;
+- root/workspace package version remains coherent at `0.6.7`;
+- Theia remains `1.75.0`;
+- Electron remains `42.8.1`;
+- no root `package-lock.json`;
+- existing retained Phase 6 evidence is not rewritten.
+
+SOURCE FACTS TO CORRECT
+
+The current architecture has these concrete leaks:
+- shared System/Subsystem/Component synthesis instructions live in `lmstudio-synthesis-provider.ts`;
+- Gemini imports those semantic instructions from the LM Studio adapter;
+- `SoftwareMapBackend` keeps concrete `localProvider` / `geminiProvider` lifecycle state and branches refresh/select/probe/ready/warm-up/error behavior by provider;
+- `HierarchicalSynthesisOrchestrator` receives a Local-only `beforeFirstCall` warm-up callback from the backend;
+- `SynthesisStageCache` hard-codes automatic retry around `provider.kind === 'gemini'`;
+- provider-specific setup/credentials are genuinely different and MAY remain explicit.
+
+IMPLEMENTATION
+
+A. ADD THE MINIMAL GENERAL MODEL RUNTIME CONTRACT
+
+Use the existing provider/Theia-independent `@dope/contracts` package. Do NOT create a new package merely for ceremony.
+
+Add a compact Model Runtime/session contract that contains no Software Map concepts.
+
+It must cover the real current needs:
+- provider/runtime identity;
+- model discovery;
+- selected-model state/selection;
+- probe/readiness;
+- model/runtime capabilities including context/input capacity and token-estimate quality;
+- conservative token estimation;
+- optional pre-real-work warm-up;
+- structured JSON generation using a caller-supplied system instruction, input/user content, JSON schema and schema name;
+- normalized usage;
+- normalized safe failure classes;
+- a provider-neutral bounded retry decision/policy sufficient to preserve current behavior;
+- cancellation where the existing provider already supports it.
+
+Do not add chat history, Agent Mind, tools, sessions, mutation authority, OpenAI/Codex behavior or other Phase 7 product concepts.
+
+Keep the contract capability-based rather than encoding `local` / `gemini` as the entire future provider universe.
+
+B. MOVE SMAP SEMANTICS OUT OF LM STUDIO
+
+Create a provider-neutral Software Map synthesis-strategy module.
+
+Move current shared semantics there:
+- compact rules;
+- System Discovery;
+- System Challenge;
+- Subsystem Discovery;
+- Subsystem Challenge;
+- Component Discovery;
+- reconciliation;
+- verification;
+- targeted refinement;
+- stage/refinement schema and schema-name selection.
+
+The strategy may expose one typed function/spec that maps a current stage/refinement request to:
+- instruction;
+- strict Dope-owned schema;
+- schema/output name.
+
+Keep existing instructions materially unchanged in this correction unless moving them exposes a mechanical defect.
+
+Hard rule:
+- Gemini runtime must not import LM Studio runtime;
+- LM Studio/Gemini runtime adapters must not own System/Subsystem/Component synthesis instructions.
+
+Do NOT implement separate Local versus hosted prompts yet. ADR 0022 permits that later; this correction only creates the seam.
+
+C. MAKE ONE GENERIC RUNTIME-BACKED SMAP PROVIDER
+
+Create one provider-neutral adapter that combines:
+- a Model Runtime/session;
+- the current sMap provenance provider kind needed by retained synthesis work (`local` / `gemini`);
+- the Software Map synthesis strategy.
+
+It should satisfy the existing `SynthesisProvider` contract consumed by evidence planning, cache and hierarchy orchestration.
+
+Responsibilities:
+- derive current `SynthesisCapabilities` from runtime capabilities while preserving existing reserve/input-budget behavior;
+- serialize the stage/refinement request;
+- apply `assertSynthesisInputBudget`;
+- obtain instruction/schema/name from the sMap strategy;
+- call generic structured generation;
+- translate normalized runtime usage into existing `SynthesisStageUsage`;
+- translate normalized runtime failure into the existing safe synthesis failure boundary;
+- expose generic readiness/pre-evidence warm-up;
+- expose provider-neutral retry policy.
+
+Do not make the generic adapter inspect LM Studio or Gemini native response shapes.
+
+D. REFACTOR LM STUDIO TO RUNTIME / TRANSPORT ONLY
+
+Preserve current Local behavior:
+- endpoint normalization and optional token;
+- model discovery and explicit selection;
+- Qwen preferred ordering helper if still needed by setup UI;
+- configured context capacity validation;
+- probe with synthetic non-project structured output;
+- warm-state invalidation on reconnect/model change/error;
+- immediate pre-real-work warm-up with no project evidence;
+- OpenAI-compatible structured-output transport;
+- conservative token estimate;
+- provider-reported usage when present, estimated input usage otherwise;
+- safe timeout/network/HTTP/refusal/JSON failures.
+
+The adapter should accept caller-supplied instruction/schema/input for real generation. It must no longer know what System Discovery or Component Discovery means.
+
+Do not make Local automatically inherit Gemini retry semantics.
+
+E. REFACTOR GEMINI TO RUNTIME / TRANSPORT ONLY
+
+Preserve current Gemini behavior:
+- AI Studio API key boundary and sanitization;
+- model discovery/filtering/selection;
+- model metadata/context capacity;
+- Gemini JSON-schema projection;
+- synthetic readiness probe;
+- structured generation;
+- usage metadata;
+- cancellation/timeout;
+- current bounded automatic retry behavior for transient transport/upstream and the currently allowed invalid-JSON retry, but express the decision through provider-neutral runtime/provider policy rather than `provider.kind === 'gemini'`.
+
+Gemini must receive sMap instructions/schema from the generic runtime-backed provider/strategy.
+
+Never expose the API key or raw provider text in errors/progress/cache identity.
+
+F. CLEAN SOFTWARE MAP BACKEND LIFECYCLE OWNERSHIP
+
+Provider-specific CONFIGURATION may remain explicit:
+- Local endpoint/token/context settings;
+- Gemini credential lookup/storage/API-key construction;
+- explicit provider choice/disclosure.
+
+After configuration, ordinary lifecycle must use one active generic runtime/session:
+- refresh discovered models;
+- select model;
+- probe;
+- ready state;
+- capabilities;
+- warm-up/pre-evidence preparation.
+
+Remove concrete `localProvider` / `geminiProvider` lifecycle branching where that generic session now covers it.
+
+Keep direct test injection of a `SynthesisProvider` only if it remains the smallest clean test seam; do not preserve obsolete production coupling for tests.
+
+No silent Local <-> Gemini fallback.
+
+G. REMOVE PROVIDER-NAME LOGIC FROM ORDINARY ORCHESTRATION
+
+In `HierarchicalSynthesisOrchestrator`:
+- replace the backend-supplied Local-only first-call warm-up callback with a provider-neutral synthesis/provider hook such as pre-evidence preparation;
+- preserve the rule that project evidence is not sent before required readiness/warm-up succeeds;
+- preserve progress event semantics including `model-warm-up`.
+
+In `SynthesisStageCache`:
+- remove hard-coded `provider.kind === 'gemini'` retry selection;
+- ask the generic provider/runtime policy whether the normalized failure/attempt is retryable;
+- preserve the existing bounded Gemini attempt behavior and Local behavior;
+- keep attempt ledger/checkpoint/provenance semantics unchanged.
+
+In backend failure handling:
+- keep sMap validation/domain errors specific;
+- otherwise surface only normalized safe provider/runtime errors;
+- do not branch on provider names merely to sanitize errors.
+
+H. PRESERVE CURRENT PERSISTED / PRODUCT CONTRACTS
+
+Do not redesign persisted sMap analysis/checkpoint state just to generalize the runtime.
+
+Current persisted provenance may continue recording `local` / `gemini` for these existing sMap providers.
+
+Do not change:
+- ArchitectureEvidencePacket;
+- SynthesisStageRequest / result schema versions;
+- ArchitectureProposal schema;
+- deterministic evidence planner semantics;
+- checkpoint reuse identity;
+- review draft persistence;
+- canonical architecture;
+- Flow;
+- Planning Maps.
+
+Do not add an OpenAI provider in this correction.
+
+PERMANENT REGRESSION COVERAGE
+
+Update/add focused tests proving:
+1. shared sMap instructions/specs are provider-neutral and both current providers receive them through the generic adapter;
+2. Gemini code does not import LM Studio code for synthesis semantics;
+3. concrete runtime adapters contain no System/Subsystem/Component strategy constants;
+4. Local probe + warm-up occur before first real project-evidence generation, with synthetic requests containing no repository packet data;
+5. generic orchestration invokes pre-evidence preparation without knowing provider identity;
+6. Gemini transient/upstream retry and bounded invalid-JSON retry still work through generic retry policy;
+7. Local does not unexpectedly retry;
+8. generic refresh/select/probe/ready lifecycle works for the active runtime;
+9. Local and Gemini usage/provenance telemetry remains correct;
+10. Local/Gemini errors remain sanitized and no secret appears;
+11. provider failure never silently falls back;
+12. targeted Search Deeper/refinement uses the same strategy/runtime seam.
+
+Add one cheap architecture guard that is narrow enough to permit legitimate provider-specific setup/credential code but catches reintroduction of semantic ownership/cross-provider imports.
+
+T2 VALIDATION
+
+Run the smallest affected integration surface:
+
+Build:
+- `corepack yarn workspace @dope/contracts build`
+- `corepack yarn workspace @dope/software-map build`
+- `corepack yarn workspace @dope/theia-extension build`
+
+Focused tests after those builds:
+- `node --test test/unit/software-map-synthesis.test.ts test/unit/reconciliation.test.ts test/unit/lmstudio-synthesis-provider.test.ts test/unit/gemini-synthesis-provider.test.ts test/unit/software-map-initialization.test.ts`
+- include any new seam-specific test file in the same focused run.
+
+Also verify:
+- all live workspace/internal package versions remain `0.6.7`;
+- Theia remains `1.75.0`;
+- Electron remains `42.8.1`;
+- no root `package-lock.json`;
+- `git diff --check`.
+
+Do NOT run by default:
+- `npm run check`;
+- `npm test`;
+- restart matrix;
+- browser/Electron GUI qualification;
+- AppImage packaging;
+- real LM Studio/Gemini calls;
+- Local/Gemini benchmarks.
+
+Escalate beyond the focused T2 set only if the implementation itself reveals a concrete cross-cutting regression. State the reason before running an expensive extra check.
+
+TIME / SCOPE DISCIPLINE
+
+This one-off must remain within the ordinary implementation budget.
+
+If a proposed abstraction starts requiring:
+- a new package solely for Model Runtime;
+- general chat/session state;
+- OpenAI/Codex adapter work;
+- provider registry UI;
+- broad preference migration;
+- new persistent runtime state;
+- Local synthesis optimization;
+- provider benchmark/GUI/package qualification,
+
+stop and keep the smaller seam.
+
+Prefer a complete narrow interface over speculative Phase 7 infrastructure.
+
+FINAL RESPONSE
+
+Report:
+- source coupling confirmed;
+- final Model Runtime contract location and shape;
+- final sMap strategy owner;
+- Local and Gemini runtime responsibilities after the refactor;
+- how SoftwareMapBackend lifecycle was generalized;
+- how warm-up and retry became provider-neutral;
+- permanent regressions added;
+- exact T2 commands/results;
+- any evidence gaps/deferred qualification;
+- confirmation package version remains `0.6.7`;
+- confirmation no Phase 6 qualification status was changed;
+- whether the source is now safe to use as the shared branch point for Phase 7 and Local sMap work.

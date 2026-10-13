@@ -1,0 +1,82 @@
+TASK: Phase 0 / P3 — Typed backend and minimal Project Mind persistence
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.0.3`.
+
+GOAL
+
+Prove a Dope-owned product-state path through a typed Theia frontend/backend seam and restart-safe persistence without implementing Phase 2 Project Mind.
+
+Start from exact P2 source and read the Phase 0 authority, assessment, implementation plan and customization ledger.
+
+DOMAIN CONTRACT
+
+Implement the smallest framework-independent Dope domain required for the spike:
+- `ProjectArtifact`;
+- `Note`;
+- stable ID;
+- schema version;
+- title/body;
+- minimal provenance identifying developer-authored spike state;
+- only additional fields required for safe persistence.
+
+Do not implement Idea, Question, Decision, Plan, Task, DeveloperSession, Agent Mind, ChangeSet, or Validation product models.
+
+PERSISTENCE
+
+Implement a replaceable minimal persistence adapter.
+
+Prefer a transparent workspace-scoped `.dope/` representation in controlled fixture/test workspaces unless current source reveals a materially safer equivalent.
+
+Requirements:
+- stable round-trip identity;
+- deterministic serialization where practical;
+- defined missing-file behavior;
+- defined malformed/corrupt-state failure;
+- no silent overwrite of unusable state;
+- no dependency on Theia widget/layout/chat/session objects.
+
+FRONTEND / BACKEND
+
+Use a supported typed Theia frontend/backend service mechanism.
+
+Prove:
+- frontend request/response;
+- backend-originated state/change event reaches frontend;
+- connection/listener cleanup;
+- backend owns Node filesystem access;
+- frontend remains browser-safe;
+- Project Mind spike view renders Dope-owned Note state.
+
+Provide the smallest clearly spike-only interaction needed for P4 to create/update a Note and observe its stable identity/content.
+
+RESTART
+
+Add automated reconstruction coverage independent from rendering.
+
+Do not claim full application restart GUI evidence; P4 owns that.
+
+Set `package.json` version to `0.0.3`.
+
+REQUIRED PROOF
+
+Run:
+- ProjectArtifact/Note round-trip tests;
+- corruption/missing-state tests;
+- typed backend contract tests;
+- backend-event tests;
+- reconstruction tests;
+- WorkspaceMode/customization contract tests;
+- runner tests;
+- typecheck;
+- browser build;
+- Electron build;
+- deterministic aggregate checks;
+- no-`package-lock.json` check;
+- `git diff --check`.
+
+If the only viable implementation requires Theia-owned state to become canonical, stop `Planning needed`.

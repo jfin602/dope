@@ -1,0 +1,36 @@
+TASK: Phase 7 / P8 — OpenAI conversational adapter
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.8`.
+
+GOAL
+
+Add the first-reference OpenAI Chat execution path behind the already-stable P6 runtime contracts.
+
+PREFLIGHT
+
+Use shared p7 preflight. Inspect P6 runtime/registry, P1 Chat provenance and current package dependencies. Verify the current OpenAI Responses API contract from authoritative docs if implementation details are uncertain.
+
+IMPLEMENT
+- add an OpenAI provider adapter using the Responses API; Node 24 `fetch` is sufficient unless an SDK provides a concrete justified benefit;
+- keep Dope Chat transcript/context authoritative; provider response/conversation IDs are optional adapter metadata only;
+- conservatively discover/configure usable models or accept explicit configured model inventory where the API does not support safe generic discovery;
+- stream visible text, normalize usage/completion/cancellation/auth/quota/upstream/transport/provider-rejection failures;
+- expose only supported reasoning controls/capabilities;
+- no automatic retry on a different model/provider and no secret persistence in project/workbench plaintext.
+
+Advance to `0.7.8`.
+
+TESTS
+
+T2 deterministic mocked HTTP tests for request shape, streaming parse/order, model identity, usage, cancellation, error sanitization, secret handling and no fallback. Run Model Connections tests directly affected by adapter registration; build extension/contracts; baseline/version/no-lock and diff check. No live OpenAI call or browser build.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report OpenAI adapter evidence and P9 eligibility.

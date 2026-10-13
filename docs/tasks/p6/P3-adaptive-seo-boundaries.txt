@@ -1,0 +1,93 @@
+TASK: Phase 6 / P3 — Adaptive SEO Flow boundary extraction
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.6.3`.
+
+GOAL
+
+Add bounded deterministic HTTP, PostgreSQL and external-client Flow extraction that matches real Adaptive SEO patterns without hardcoding Adaptive SEO paths or names.
+
+PREFLIGHT
+
+Read all p6 authority/assessment/plan and exact P1-P2 source/tests.
+
+Inspect the current accepted Adaptive SEO source patterns before implementing, especially Express route registration/inline handlers, the `Database` / `QueryExecutor` abstraction, raw Node HTTP/HTTPS collection calls and current external provider/client calls.
+
+Require coherent `0.6.2` predecessor and P2 Green focused evidence.
+
+IMPLEMENT
+
+Create a dedicated TypeScript Flow-extractor seam. Keep it separate from the existing Theia/Inversify architecture-synthesis framework extractor and its `FrameworkFact` output.
+
+EXPRESS 5
+
+Recognize supported Express `Application`/Router HTTP method registrations from semantic import/type evidence, including calls inside helper registration functions.
+
+For deterministic literal route registrations:
+- create stable inbound/outbound HTTP endpoints from method/path;
+- connect the inbound boundary to the actual handler callable, including inline callbacks, with `receives`;
+- never attribute request execution to the startup-time route-registration function;
+- recognize supported `response.status(...).json/send/end`-style output from that handler and emit `responds`;
+- retain method/path and precise source evidence;
+- middleware/framework plumbing may remain outside the base path unless deterministic support is deliberately bounded and tested.
+
+POSTGRESQL
+
+Recognize Adaptive SEO's semantic `Database` / `QueryExecutor` query path, including transaction executors. Do not require direct `pg.Pool.query` application calls.
+
+Emit:
+- `reads` for deterministic read SQL;
+- `writes` for deterministic insert/update/delete-style SQL;
+- conservative proven-equivalent datastore endpoint identity;
+- directly parseable table/entity annotation only when evidence is unambiguous.
+
+Do not implement exhaustive SQL parsing or column lineage.
+
+EXTERNAL BOUNDARIES
+
+Recognize deterministic raw Node `http`/`https` request calls through import/type evidence and identifiable external client calls where library/type semantics prove the service, including current Google GenAI usage.
+
+Wrappers/helpers must not erase the actual external boundary. Use the strongest proven endpoint identity; if host/service is dynamic or unknown, use a stable source-scoped endpoint rather than merging unrelated calls.
+
+Emit `calls-external` with precise evidence.
+
+COVERAGE DIAGNOSTICS
+
+Emit Flow-specific unsupported/unresolved diagnostics when a candidate supported surface cannot be deterministically continued. Do not mark the whole Software Map complete merely because supported extractors ran.
+
+ANTI-HARDCODING
+
+Add a small synthetic TypeScript fixture with different names, route strings, classes and file layout exercising Express route + inline handler + response, DB wrapper/query and external call.
+
+Tests must prove semantic extraction rather than Adaptive SEO path/name matching.
+
+Worker/job/event Flow may be added only if it naturally reuses the same extractor architecture; it is not required for this prompt.
+
+Advance all live versions/internal references coherently to `0.6.3`.
+
+TESTS
+
+Validation is T2 because analyzer, framework-boundary semantics, assembly and Flow diagnostics cross package seams.
+
+Run only:
+- existing TypeScript analyzer tests;
+- new/changed Flow-boundary extractor tests including the anti-hardcoding fixture;
+- directly affected Software Map/index assembly tests;
+- `corepack yarn workspace @dope/software-map build`;
+- `corepack yarn workspace @dope/code-analysis build`;
+- `corepack yarn workspace @dope/code-analysis-typescript build`;
+- `node --test test/unit/theia-baseline.test.ts`;
+- no-root-lock/version checks;
+- `git diff --check`.
+
+Do not run `npm run check`, restart, browser/Electron builds or package/native evidence.
+
+Do not commit; runner owns commit boundaries.
+
+FINAL RESPONSE
+
+Report supported boundary semantics, wrapper behavior, diagnostics/anti-hardcoding evidence, validation and P4 eligibility.

@@ -1,0 +1,295 @@
+TASK: Phase 8A iterative qualification and repair loop
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: yes.
+- Maximum cycles: 5.
+- Keep the project version at 0.8.6 throughout this loop.
+
+PURPOSE
+
+Phase 8A is currently Not Green - Evidence Gap.
+
+Start from the existing exact candidate and preserve its work:
+- source HEAD: 4e73b6b;
+- coherent uncommitted 0.8.6 version updates;
+- existing bounded Codex App Server wire-compatibility repair;
+- do not reset, revert, checkout, discard, or recreate this candidate from an older baseline.
+
+The first blocker is the live Dope Sign in with ChatGPT lifecycle:
+- AI Center reached safe pending authorization;
+- a real eligible OAuth callback did not complete;
+- therefore authenticated account inventory, restart persistence, refresh, sign-out/reconnect, and authenticated App Server restart/resume remain unproven.
+
+Run an adaptive qualification/repair loop for at most five cycles.
+Stop early as soon as every Phase 8A qualification blocker is cleared.
+
+PHASE 8A TRUTH TO PRESERVE
+
+Already useful evidence:
+- focused 92-test suite passed before the final bounded wire repair;
+- npm run check passed once before that final repair;
+- 58 focused tests passed after the wire repair;
+- p8 and p8a validators, version/internal-reference/no-root-lock and diff checks passed;
+- real codex-cli 0.155.1 App Server initialized;
+- real model/list exposed gpt-6-astra;
+- a tiny scratch-directory turn completed with no mutation, no approval and no network;
+- App Server exited cleanly with no leftover files;
+- current App Server contract requires thread sandbox read-only and turn policy readOnly plus networkAccess:false;
+- controlled tests cover refresh-token serialization, no API-key fallback, repairable auth/usage failures, independent accounts, Coding Agent role eligibility, and Chat/Software Map isolation;
+- Coding Agent still has no mutation consumer.
+
+Do not relabel any unproven live gate Green merely because controlled tests exist.
+
+OFFICIAL CURRENT OAUTH CONTRACT TO VERIFY
+
+Use current official OpenAI documentation during the live diagnosis. Do not rely on memory if current docs differ.
+
+For the open-source ChatGPT-plan flow, verify at minimum:
+- start the loopback callback listener before opening the browser;
+- redirect URI uses HTTP 127.0.0.1, not localhost;
+- keep scheme, host, and path identical; only the port may vary;
+- use the exact same redirect URI, including port, in authorization and code exchange;
+- initial registration uses client_id=dynamic_agent_client;
+- include a stable ext_agent_host_id and initial agent_name_hint;
+- generate fresh state, nonce and PKCE verifier/challenge for each attempt;
+- validate returned state before using the callback;
+- successful new registration callback returns code, state and issued client_id;
+- never save dynamic_agent_client as the issued client ID;
+- token exchange uses the issued client ID, code, code_verifier, exact redirect_uri and resource=https://api.openai.com/v1;
+- validate ID-token signature/JWKS, issuer, audience, expiry and nonce;
+- require granted chatgpt.tokens.use.direct before plan inference;
+- retain the verified account identity, issued client ID, stable host ID and protected token bundle for restart/refresh;
+- serialize refresh for one session and atomically replace rotating access/refresh credentials;
+- after token refresh, restart App Server with the new ACCESS_TOKEN, initialize it, and resume the saved thread using thread/resume.
+
+Current official references:
+- https://developers.openai.com/siwc/token-sharing-open-source/sign-in
+- https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions
+- https://developers.openai.com/siwc/token-sharing-open-source/token-reference
+- https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference
+- https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server
+- https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery
+- https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations
+
+PRE-CYCLE BASELINE
+
+Before Cycle 1:
+1. Read BOOT.md, AGENTS.md, ADR 0026, ADR 0027, Phase 8 plan, Phase 8A closeout/README, and the current auth/App Server/AI Center source and tests.
+2. Inspect git status, HEAD and the full uncommitted diff.
+3. Confirm package/workspace/internal references are coherent for 0.8.6.
+4. Record a SHA-256 hash of the starting uncommitted diff.
+5. Do not clean the tree.
+6. Confirm no root package-lock.json.
+7. Record current Codex CLI version.
+8. Create or append a cycle evidence log under docs/tasks/c8-p8a-qualification-loop/cycle-evidence.md.
+
+CYCLE 1 - START WITH THE OAUTH CALLBACK BLOCKER
+
+First reproduce the live OAuth callback failure in the real no-project AI Center.
+
+Instrument only enough non-secret diagnostics to answer:
+- Was the loopback listener successfully bound before browser launch?
+- What exact callback scheme/host/path/port was selected?
+- Did the authorization request use that exact redirect URI?
+- Did the browser return to that listener?
+- Did the callback contain error, code, state, scope, and/or issued client_id?
+- Did state validation pass?
+- For initial registration, was an issued client_id returned and retained instead of dynamic_agent_client?
+- Did code exchange use the exact same redirect URI and issued client ID?
+- Did token exchange succeed?
+- Did ID-token verification and required-scope validation succeed?
+- At which exact boundary did the attempt stop?
+
+Do not log or render:
+- authorization code;
+- access token;
+- refresh token;
+- ID token;
+- full token-bearing or id_token_hint authorization URL;
+- PKCE verifier;
+- any other credential bytes.
+
+If the callback does not reach Dope, specifically verify the official loopback rules before changing anything:
+- 127.0.0.1, not localhost;
+- /auth/callback path consistency;
+- listener started before browser;
+- same selected port in authorization request and token exchange.
+
+Repair only the directly observed defect.
+
+After the smallest repair:
+1. run the focused auth/AI Center tests invalidated by the change;
+2. repeat real Continue with ChatGPT;
+3. require a completed callback, token exchange, verified identity and plan-usage permission;
+4. require the real account to appear in Dope AI Center;
+5. query account-specific model inventory with the same authorized account.
+
+If a new blocker appears, that becomes the next target in the same cycle.
+
+REMAINING LIVE LIFECYCLE GATES
+
+Once callback/account creation works, continue through these gates in order until another blocker appears or all are Green:
+
+A. Restart persistence
+- close/restart the relevant Dope process/application;
+- account identity and non-secret registration metadata return;
+- protected credentials remain available without appearing in registry, project files, browser state or logs;
+- no new registration is created solely because the app restarted.
+
+B. Refresh
+- exercise a real or safely forced near-expiry refresh using the saved issued client ID and refresh token;
+- serialize refresh ownership;
+- atomically store the replacement token set;
+- prove the old rotating refresh token is not reused;
+- temporary network/provider failures preserve otherwise valid credentials.
+
+C. App Server replacement/resume
+- start authenticated App Server with the current access token;
+- create/save a thread ID;
+- refresh credentials;
+- shut down the old App Server cleanly;
+- start and initialize replacement App Server with the replacement ACCESS_TOKEN;
+- thread/resume the saved thread;
+- complete another bounded read-only/no-network turn;
+- no orphan process and no project mutation.
+
+D. Sign out
+- sign out/disconnect from Dope;
+- clear local protected session credentials according to the approved contract;
+- no tokens remain in registry/browser/log/project state;
+- if remote revocation cannot be confirmed because of provider/network behavior, state that honestly rather than fabricating confirmation.
+
+E. Reconnect / reauthorization
+- reauthorize the saved registration/account correctly;
+- reuse the issued client ID for that account;
+- preserve stable host identity;
+- returning sign-in identity must match the selected saved account;
+- model inventory and Test Connection work again.
+
+F. Security and consumer isolation
+- no API-key billing fallback;
+- Codex stays hosted for egress semantics;
+- Coding Agent can target the Codex agentExecution model;
+- ordinary Chat and Software Map do not consume Codex-only agent targets;
+- Coding Agent still has no mutation consumer in Phase 8A.
+
+ITERATIVE CYCLE ALGORITHM
+
+For cycle = 1 through 5:
+
+1. QUALIFY
+   - Start with the first currently unproven Phase 8A gate.
+   - Observe it directly in the real Dope/browser/runtime path where required.
+   - If it passes, continue immediately to the next unproven gate.
+   - Stop qualification at the first newly observed blocker.
+
+2. DIAGNOSE
+   - Trace the blocker to exact source/runtime evidence.
+   - Compare with current official provider contract when provider behavior is involved.
+   - Record the observed failure boundary before editing.
+
+3. REPAIR
+   - Make the smallest bounded repair.
+   - Stay inside Phase 8A connection/auth/App Server/AI Center/role scope.
+   - Do not begin AgentTask, ExecutionGrant, repository mutation or Phase 8B work.
+   - Do not weaken auth, token storage, egress or no-fallback rules.
+
+4. FOCUSED REGRESSION
+   - Run only focused tests/builds invalidated by the repair.
+   - Add a permanent regression for the exact observed defect when feasible.
+   - Run git diff --check, no-root-lock and 0.8.6 coherence checks.
+   - Do not rerun npm run check after every tiny repair unless the repair invalidates broad integration behavior.
+
+5. REPLAY
+   - Repeat the live/direct gate that was blocked.
+   - If it passes, continue through the remaining live lifecycle gates in the same cycle until another blocker appears.
+   - Controlled tests never substitute for an explicitly required live gate.
+
+6. CHECKPOINT
+   - Update cycle-evidence.md with:
+     - cycle number;
+     - pre-cycle candidate HEAD/diff identity;
+     - blocker;
+     - direct evidence;
+     - diagnosis;
+     - files changed;
+     - focused validation;
+     - replay result;
+     - next blocker or all-Green state.
+   - If source/docs changed and the candidate is coherent, create one normal Git checkpoint commit for that cycle.
+   - Commit subject:
+     c8-p8a-qualification-loop/cycle-N: <short blocker/repair summary>
+   - Keep version 0.8.6.
+   - Never squash away earlier cycle evidence while the loop is active.
+
+7. STOP TEST
+   - If every Phase 8A gate is now Green, exit the loop immediately and perform FINAL GREEN CLOSEOUT.
+   - Otherwise proceed to the next cycle.
+   - After Cycle 5, do not start Cycle 6.
+
+FULL EXACT-CANDIDATE GATE
+
+When all live direct gates appear Green, before claiming Green:
+- run the full focused Phase 8A suite;
+- run npm run check on the exact final source candidate;
+- run both relevant stack validators if both p8 and p8a remain in the repository;
+- verify exact 0.8.6 coherence across root/workspaces/internal @dope references;
+- verify no root package-lock.json;
+- run git diff --check;
+- confirm no secret material in registry/project/browser/log/evidence outputs;
+- confirm no orphan App Server process;
+- confirm no active project mutation occurred during Test Connection qualification.
+
+Do not rely on an earlier npm run check if any source repair occurred afterward.
+
+FINAL GREEN CLOSEOUT
+
+If all gates are Green before or at Cycle 5:
+1. update the authoritative Phase 8A closeout to Decision: GREEN / QUALIFIED;
+2. preserve the earlier Not Green - Evidence Gap record as historical evidence rather than silently rewriting it away; if necessary add a supplemental final disposition section or separate final closeout record;
+3. update the Phase 8A task README/status;
+4. record exact final commit SHA and exact 0.8.6 candidate;
+5. list direct live evidence for:
+   - callback/account creation;
+   - inventory;
+   - restart persistence;
+   - refresh;
+   - authenticated App Server replacement/resume;
+   - sign-out;
+   - reconnect;
+   - security/no-fallback;
+   - Coding Agent role and Chat/SMap isolation;
+6. route next to a fresh Phase 8B Agent execution core /docs-review.
+
+FIVE-CYCLE STOP
+
+If blockers remain after Cycle 5:
+1. stop;
+2. do not begin Phase 8B;
+3. update the closeout as Not Green - Evidence Gap;
+4. preserve every cleared gate and remaining blocker;
+5. identify the exact last coherent candidate and cycle checkpoint;
+6. do not hide provider limitations or substitute controlled tests for missing direct evidence.
+
+EFFICIENCY RULES
+
+- Do not rerun already-valid expensive evidence unless a repair could invalidate it.
+- Do not package AppImage unless the repair affects packaged OAuth/App Server behavior and native packaging is required to prove the gate.
+- Prefer browser/Electron evidence only where the gate actually depends on that surface.
+- Keep each cycle bounded to the first observed blocker and its invalidated evidence.
+- Do not broaden scope because a nearby improvement is convenient.
+
+FINAL RESPONSE
+
+Report:
+- cycles used out of 5;
+- exact final candidate;
+- each cycle blocker and repair;
+- live OAuth/account lifecycle status;
+- App Server refresh/replacement/resume status;
+- focused and final aggregate validation;
+- any residuals;
+- final Phase 8A decision;
+- whether Phase 8B is eligible.
+

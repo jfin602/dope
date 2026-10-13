@@ -1,0 +1,40 @@
+TASK: Phase 7 / P6 — AI Center workspace and launcher
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.19`.
+
+GOAL
+
+Add the canonical global AI connection/model management surface over the P1-P5 backend.
+
+PREFLIGHT
+
+Read P1-P5 services, current frontend module, `c7` supported launcher/view contribution pattern, Dope theme CSS and available public Theia account/settings contribution APIs. Require coherent `0.7.18`.
+
+IMPLEMENT
+- add one singleton/revealable center-workspace `AI Center` widget/tab; repeated launch focuses the same widget;
+- repurpose the current bottom-left account/profile action into an AI launcher using supported Theia workbench/menu/view APIs only; move account/profile management under ordinary Settings. Do not DOM-patch/private-shell internals; if the exact substrate action cannot be replaced through a supported API, fail explicitly rather than silently shipping a fake duplicate;
+- two-pane layout: compact connection list + selected detail;
+- list row: provider/runtime, alias, normalized status, usable-model summary only;
+- detail: safe config, credential source/status, health, known/discovered models/capabilities, Refresh/Reconnect/Test Connection, Disable/Enable, Remove;
+- Add Connection onboarding with common shell and provider-contributed setup fields; no-connection state explains Local vs hosted succinctly;
+- models collapsed/compact by default; allow model enable/disable;
+- launcher stays quiet when healthy; restrained non-color-only warning only for actionable connection problems, no permanent green/spinner/model count;
+- usable with no project open; connection management does not depend on WorkspaceService root;
+- accessible keyboard/focus/dark/light behavior and sanitized errors; never render secret values.
+
+Advance to `0.7.19`.
+
+TESTS
+
+T2 focused AI Center widget/controller/presentation tests for singleton open/reveal, no-project state, list/detail/add/edit/disable/remove/model state/test actions, launcher warning semantics, Settings account route, accessibility and no secret rendering. Run extension build and one browser build only if required to prove new workbench contribution bundling. No direct GUI/live providers/package.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report AI Center/launcher behavior and P7 eligibility.

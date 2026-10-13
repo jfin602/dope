@@ -1,0 +1,13 @@
+
+> dope@0.8.33 codex:phase:validate
+> node scripts/validate-codex-phase.mjs c8-fix
+
+Correction stack c8-fix (roadmap phase 8) prompt grammar: VALID
+Required unchanged version: 0.8.33
+P1 | implementation | GPT-6 Sol High | Browser required: no | 0.8.33 (UNCHANGED) | P1-required-validation-launch-policy.txt
+P2 | implementation | GPT-6 Sol Medium | Browser required: no | 0.8.33 (UNCHANGED) | P2-planning-validation-input.txt
+P3 | implementation | GPT-6 Sol High | Browser required: no | 0.8.33 (UNCHANGED) | P3-saved-workitem-task-start.txt
+P4 | implementation | GPT-6 Sol Medium | Browser required: no | 0.8.33 (UNCHANGED) | P4-saved-task-start-ui.txt
+P5 | implementation | GPT-6 Sol High | Browser required: no | 0.8.33 (UNCHANGED) | P5-launch-start-review-integration.txt
+P6 | closeout | GPT-6 Sol High | Browser required: yes | 0.8.33 (UNCHANGED) | P6-five-cycle-qualification-repair-closeout.txt
+Manual closeout: P6

@@ -1,0 +1,37 @@
+TASK: Phase 7 / P5 — ChatPanel live ownership and restoration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- This prompt's assigned project version is `0.7.5`.
+
+GOAL
+
+Enforce one active Chat composer per Chat and restore panel state without making layout the source of conversation truth.
+
+PREFLIGHT
+
+Use shared p7 preflight. Inspect P4 panel/controller, P2 lease primitive and the public Theia 1.75 restoration/state seams actually used by current widgets.
+
+IMPLEMENT
+- add one project-scoped frontend open-owner registry shared by all ChatPanels;
+- opening an already-owned Chat reveals/focuses its existing panel and leaves the selecting panel in Select Chat;
+- back/switch/close/dispose/project-switch releases frontend ownership and backend lease;
+- backend lease conflict prevents a second process/window writer; do not silently steal;
+- restore area/mode/chat ID only as presentation state; conversation/settings remain ChatRepository state;
+- duplicate stale restoration resolves deterministically to one owner and Select Chat for the others with visible status;
+- guard delayed events, disposal, workspace switches and stale lease release.
+
+Advance to `0.7.5`.
+
+TESTS
+
+T2 focused ownership/restoration tests only: focus-existing, all release paths, duplicate restore, lease conflict, project switch, late events/disposal and different Chats in different panels. Build extension; baseline/version/no-lock and diff check. Defer process restart/direct GUI to P12.
+
+Do not commit; runner owns commits.
+
+FINAL RESPONSE
+
+Report exclusivity/restoration evidence and P6 eligibility.
