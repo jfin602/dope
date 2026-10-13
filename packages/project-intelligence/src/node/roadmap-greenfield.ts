@@ -178,7 +178,9 @@ export class RoadmapGreenfield {
 
     preview(handle: string, path: string): GreenfieldPreview {
         const entry = this.drafts.get(handle);
-        if (!entry || !entry.value.phases.length) throw new Error('Empty greenfield draft');
+        if (!entry) throw new Error('Unknown greenfield draft');
+        if (!entry.value.phases.length || !entry.value.phases.some(phase => phase.checkpoints.length))
+            throw new Error('Greenfield draft needs a phase and checkpoint');
         if (!path || path.length > 512 || isAbsolute(path) || !/\.md$/i.test(path) ||
             path.includes('\\') || path.includes(':') || path.split('/')[0] === '.dope' ||
             path.split('/').some(part => !part || part === '.' || part === '..'))

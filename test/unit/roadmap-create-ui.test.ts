@@ -16,6 +16,8 @@ test('blank Roadmap exposes model-free draft, preview, approval, cancellation an
     assert.match(widget, /type: 'edit-checkpoint'/);
     assert.match(widget, /previewDraft\(state\.handle, state\.path\)/);
     assert.match(widget, /acceptDraft\(state\.handle, state\.preview, true\)/);
+    assert.match(widget, /this\.createState = undefined;\s*this\.inspector\.setSnapshot\(state\.uri, result\);\s*await this\.refresh\(\)/);
+    assert.match(widget, /if \(this\.createState\) \{\s*const draft = await this\.service\.readDraft\(this\.createState\.handle\)/);
     assert.match(widget, /cancelDraft\(state\.handle\)/);
     assert.match(widget, /role', 'alert'/);
     assert.match(widget, /Refresh to recover/);

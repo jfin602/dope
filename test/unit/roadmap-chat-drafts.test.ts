@@ -125,6 +125,15 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
         greenfield.unbindChat(root, handle);
         assert.equal((await backend.runTurn({ projectHandle, chatId: unselected, leaseToken: otherLease.token,
             selectedModel: { connectionId: 'local', modelId: 'short' }, content: 'Hello' })).proposal, undefined);
+        const preview = greenfield.preview(handle, 'ROADMAP.md');
+        assert.equal((await store.read(root)).revision, 0);
+        const created = await greenfield.accept(handle, preview, true);
+        const reopened = await new RoadmapStore().read(root);
+        assert.equal(await readFile(join(root, 'ROADMAP.md'), 'utf8'), preview.markdown);
+        assert.equal(reopened.revision, created.revision);
+        assert.deepEqual(reopened.checkpoints.map(item => item.id), created.checkpoints.map(item => item.id));
+        assert.equal(reopened.linkedDocument?.syncState, 'synced');
+        assert.equal((await new ChatRepository().read(root)).chats.some(chat => chat.id === selected), true);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true });
         await rm(other, { recursive: true, force: true }); }
 });

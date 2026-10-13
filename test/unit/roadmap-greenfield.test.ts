@@ -17,6 +17,8 @@ test('model-free draft edits, preview and approved acceptance create one linked 
     const { handle } = await greenfield.begin(root);
     const phase = greenfield.edit(handle, 0, { type: 'create-phase', title: 'Build', objective: 'Ship it' });
     const phaseId = phase.phases[0].id;
+    assert.throws(() => greenfield.preview(handle, 'ROADMAP.md'), /phase and checkpoint/);
+    assert.deepEqual(await readdir(root), []);
     const checkpoint = greenfield.edit(handle, 1, { type: 'create-checkpoint', phaseId, title: 'First slice' });
     const checkpointId = checkpoint.phases[0].checkpoints[0].id;
     greenfield.edit(handle, 2, { type: 'edit-checkpoint', phaseId, checkpointId,
@@ -33,7 +35,11 @@ test('model-free draft edits, preview and approved acceptance create one linked 
     assert.deepEqual(accepted.checkpoints.map(item => item.kind), ['phase', 'milestone']);
     assert.deepEqual(accepted.checkpoints.map(item => item.objective), ['Ship it', 'Finish the first slice']);
     assert.equal((await readFile(join(root, 'ROADMAP.md'), 'utf8')), preview.markdown);
-    assert.equal((await new RoadmapStore().read(root)).linkedDocument?.syncState, 'synced');
+    const reopened = await new RoadmapStore().read(root);
+    assert.equal(reopened.revision, accepted.revision);
+    assert.deepEqual(reopened.checkpoints.map(item => item.id), accepted.checkpoints.map(item => item.id));
+    assert.equal(reopened.linkedDocument?.path, 'ROADMAP.md');
+    assert.equal(reopened.linkedDocument?.syncState, 'synced');
     assert.equal((await store.previewDocumentSync(root)).state, 'unchanged');
 }));
 
@@ -47,7 +53,7 @@ test('cancellation and duplicate headings cannot publish a Roadmap', async () =>
     assert.throws(() => greenfield.edit(handle, 2, { type: 'create-checkpoint', phaseId, title: 'Same' }), /Duplicate/);
     assert.equal(greenfield.read(handle).revision, 2);
     greenfield.cancel(handle);
-    assert.throws(() => greenfield.preview(handle, 'ROADMAP.md'), /Unknown|Empty/);
+    assert.throws(() => greenfield.preview(handle, 'ROADMAP.md'), /Unknown/);
     assert.deepEqual(await readdir(root), []);
     assert.equal((await store.read(root)).revision, 0);
 }));
@@ -56,7 +62,8 @@ test('existing, symlinked, missing and stale targets are refused without overwri
     const store = new RoadmapStore();
     const greenfield = new RoadmapGreenfield(store);
     const { handle } = await greenfield.begin(root);
-    greenfield.edit(handle, 0, { type: 'create-phase', title: 'Build' });
+    const phase = greenfield.edit(handle, 0, { type: 'create-phase', title: 'Build' });
+    greenfield.edit(handle, 1, { type: 'create-checkpoint', phaseId: phase.phases[0].id, title: 'First' });
     await writeFile(join(root, 'ROADMAP.md'), 'owned\n');
     const preview = greenfield.preview(handle, 'ROADMAP.md');
     await assert.rejects(greenfield.accept(handle, preview, true), /already exists/);
@@ -75,7 +82,8 @@ test('a Roadmap revision race invalidates an approved greenfield preview', async
     const store = new RoadmapStore();
     const greenfield = new RoadmapGreenfield(store);
     const { handle } = await greenfield.begin(root);
-    greenfield.edit(handle, 0, { type: 'create-phase', title: 'Build' });
+    const phase = greenfield.edit(handle, 0, { type: 'create-phase', title: 'Build' });
+    greenfield.edit(handle, 1, { type: 'create-checkpoint', phaseId: phase.phases[0].id, title: 'First' });
     const preview = greenfield.preview(handle, 'ROADMAP.md');
     await store.mutate(root, 0, { type: 'create', id: 'manual', kind: 'phase', title: 'Manual',
         objective: '', order: 0 });
@@ -88,7 +96,8 @@ test('pending accepted creation survives failed index finalization and restarts 
     const store = new RoadmapStore();
     const greenfield = new RoadmapGreenfield(store);
     const { handle } = await greenfield.begin(root);
-    greenfield.edit(handle, 0, { type: 'create-phase', title: 'Build' });
+    const phase = greenfield.edit(handle, 0, { type: 'create-phase', title: 'Build' });
+    greenfield.edit(handle, 1, { type: 'create-checkpoint', phaseId: phase.phases[0].id, title: 'First' });
     const preview = greenfield.preview(handle, 'ROADMAP.md');
     const internals = store as unknown as { replace: (root: string, next: { revision: number }) => Promise<void> };
     const original = internals.replace.bind(store);
