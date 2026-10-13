@@ -50,6 +50,7 @@ import { RoadmapGreenfield } from '@dope/project-intelligence/lib/node/roadmap-g
 import { RoadmapLinkedObserver } from '@dope/project-intelligence/lib/node/roadmap-linked-observer';
 import { RoadmapOwnerLinks } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import { discoverRoadmapCandidates, previewRoadmapImport } from '@dope/project-intelligence/lib/node/roadmap-import';
+import { discoverRoadmapTaskStacks } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
 import { createRoadmapActionRuntime } from './roadmap-action-runtime';
 import { RoadmapPlanningLinks } from './roadmap-planning-links';
@@ -123,6 +124,14 @@ export default new ContainerModule(bind => {
                 },
                 read: async (uri) => context.container.get(RoadmapStore).read(await context.container.get(PlanningStore).root(uri)),
                 owners: async (uri) => new RoadmapOwnerLinks().list(await context.container.get(PlanningStore).root(uri)),
+                discoverTasks: async (uri) => {
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    try { return await discoverRoadmapTaskStacks(root); }
+                    catch (error) {
+                        if (error instanceof Error && error.message.startsWith('Tasks folder not found:')) return [];
+                        throw error;
+                    }
+                },
                 discoverImports: async uri => discoverRoadmapCandidates(await context.container.get(PlanningStore).root(uri)),
                 previewImport: async (uri, path) => previewRoadmapImport(await context.container.get(PlanningStore).root(uri), path),
                 acceptImport: async (uri, revision, projectId, importPreview) => context.container.get(RoadmapStore)

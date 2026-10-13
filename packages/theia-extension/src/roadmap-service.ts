@@ -4,6 +4,7 @@ import type { PlanningActionRequest, PlanningActionPreview, PlanningUndoRequest 
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 
 export const roadmapServicePath = '/services/dope/roadmap';
 export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): void; notifyLinkedDocumentChanged(root: string, projectId: string): void }
@@ -19,6 +20,7 @@ export interface RoadmapService {
     bindDraftChat(projectUri: string, handle: string, chatId: string): Promise<void>;
     read(projectUri: string): Promise<RoadmapIndex>;
     owners(projectUri: string): Promise<RoadmapOwnerRecord[]>;
+    discoverTasks(projectUri: string): Promise<RoadmapTaskStack[]>;
     discoverImports(projectUri: string): Promise<RoadmapCandidateDiscovery>;
     previewImport(projectUri: string, path: string): Promise<RoadmapImportPreview>;
     acceptImport(projectUri: string, expectedRevision: number, expectedProjectId: string, preview: RoadmapImportPreview): Promise<RoadmapIndex>;

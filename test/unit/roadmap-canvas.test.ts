@@ -35,14 +35,14 @@ test('one ordinary center tab, safe labels, recovery, semantic dark/light tokens
     assert.match(module, /shell\.addWidget\(widget, \{ area: 'main' \}\)/);
     assert.match(module, /dope\.roadmap\.open/);
     assert.doesNotMatch(widget, /openChatPanel|CHAT_PANEL_ID|ChatPanelWidget|split/);
-    assert.match(widget, /title\.textContent = node\.title/);
-    assert.match(widget, /state\.textContent = node\.statusLabel/);
+    assert.match(widget, /React\.createElement\('strong', null, item\.title\)/);
+    assert.match(widget, /React\.createElement\('span', \{ className: 'dope-roadmap-status' \}, item\.statusLabel\)/);
     assert.doesNotMatch(widget, /innerHTML|insertAdjacentHTML/);
     assert.match(widget, /aria-current/);
     assert.match(widget, /aria-live/);
     assert.match(widget, /Use Refresh to retry/);
     assert.match(css, /\.dope-roadmap-canvas.*var\(--theia-editor-background\)/);
-    assert.match(css, /\.dope-roadmap-canvas li button\[aria-current="true"\].*var\(--dope-primary, var\(--theia-focusBorder\)\)/);
+    assert.match(css, /\.dope-roadmap-node\[aria-current="true"\].*var\(--dope-primary, var\(--theia-focusBorder\)\)/);
     const rules = css.slice(css.indexOf('.dope-roadmap-canvas'), css.indexOf('.dope-history-panel'));
     assert.doesNotMatch(rules, /#[0-9a-fA-F]{3,8}\b/);
     assert.match(rules, /max-width: 480px/);
