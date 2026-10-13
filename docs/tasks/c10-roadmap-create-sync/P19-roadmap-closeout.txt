@@ -1,0 +1,33 @@
+TASK: Correction 10 / P19 — Manual Phase 10 Roadmap correction qualification and closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 (including linked-document and runner/canvas amendments), ADR 0016, docs/planning/p10/phase-10-plan.md, docs/tasks/p10/closeout.md and this correction README/assessment/plan. Confirm explicit owner correction activation, actual Git HEAD/ancestry, exactly coherent 0.10.16 manifests/internal pins, and a clean or deliberately approved dirty tree; protect unrelated pre-existing deletions/unstaged work. Do not reset, unapproved overwrite, version bump, change yarn.lock/unrelated deps or add root package-lock. Runner owns P1–P18 commits; manual qualification source/evidence must be clearly separate.
+
+INSPECT
+Exact committed P1–P18 source, current P16 closeout, ADR 0036 amendments, test:product/check scripts, real browser/Electron app, disposable project and local LM Studio model. Treat original P16 failures as historical, not retroactively fixed by tests.
+
+QUALIFY / CLOSEOUT
+MANUAL SOLE FINAL T3. Before claiming any Green, record coherent unchanged package 0.10.16 and exact independently committed source SHA. Use actual Dope with a disposable project whose Markdown, task folders and Git/Work evidence are known: visibly import an existing non-Dope and Dope-shaped roadmap, preserve and link source; externally edit document then see deterministic reconciliation/conflict/no-clobber, sync after crash/restart; create greenfield through zero-model manual UI and one actual saved Chat with ready measured 4096-total-token LM Studio without native tools; complete at least one typed planning proposal, human approval, persisted doc/graph change and fresh NEXT turn. Exercise that same saved Chat in left/right/bottom/center with real center split beside Roadmap/editor, Follow/Pin, model/lease/stream retention. Inspect automatic p10/continuation/correction prompt nodes, labels and malformed/superseded/one-off diagnostics; pan with mouse and touch, wheel/pinch, world/phase/checkpoint LOD, Fit/Focus, Arrange-only drag, keyboard, prompt double-click/Enter opens exact editor file with ZERO runner/AgentRun. Prove Phase 5 Not Green, Phase 6 owner-closed for sequencing not Green, Phase 7 qualified, Phase 9 Green, P16 still Not Green. Check malformed/stale/foreign/denied/Planning Map basis/approval rollback. Independently monitor no silent hosted egress or agent grants over complete actual local-model turn, not just blocked pre-inference; compare selected hosted consent policy only if explicitly authorized. Directly inspect actual browser AND native Electron GUI (build success alone insufficient), restart, dark/light, narrow/touch/keyboard/accessibility. Run ONE full npm run check on the exact final source candidate; it already includes typecheck, product tests and browser/Electron builds. Repair only narrowly and rerun invalidated evidence on new exact source; if required direct evidence cannot be obtained, close NOT GREEN/Evidence Gap.
+
+PRESERVE
+One normal saved Chat system with arbitrary left/right/center/bottom placement; validated ProjectPlanningActions ownership and real human approval; linked Markdown mapped prose document-owned, .dope identities/links and presentation separate, task files independent runner-owned definitions. Do not rewrite Project Mind/Planning Maps/Architecture/History/Work or historical P16 failures. No ordinary Chat shell/filesystem/Git/MCP/agent grants or hidden hosted fallback; no false Green or automatic prompt execution. Preserve restrained dark-orange theme and keyboard/touch accessibility.
+
+VALIDATION — T3
+T3 manual real GUI/local model/network/restart and once-per-final-source npm run check, plus git diff --check and actual correction grammar validation. Save dated screenshots/logs/packet hashes under docs/tasks/c10-roadmap-create-sync/evidence as appropriate and author docs/tasks/c10-roadmap-create-sync/closeout.md with exact SHA, version, per-gate Green/Not Green/Evidence Gap and unresolved security, UI and owner-state blockers. Do not rewrite P16 closeout or claim Phase 10 owner-close.
+Missing required real GUI/model/authority/egress evidence is NOT GREEN, not inferred from mocks or builds. No automatic owner-close/Phase 11 activation.
+
+DEFER
+Phase 11/12 remain inactive; separate owner decision after qualified correction. Never waive missing live evidence merely because 611+ tests pass.
+
+DONE WHEN
+Truthful separately recorded correction closeout against exact qualified source exists, with every pass/failure/gap named. Any unresolved critical gate means NOT GREEN and no Phase 10 owner-close.
+
+FINAL RESPONSE
+Report exact source SHA/version, per-gate qualification/evidence and remaining blockers. Do not claim owner closure or Phase 11 activation.
