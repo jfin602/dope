@@ -1,30 +1,38 @@
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
-import type { ConversationMessage } from '@dope/contracts/lib/model-runtime';
+import type { ConversationMessage, ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
 
-const TOTAL_PROFILE = 4096;
 const SYSTEM_RESERVE = 512;
 const SAFETY_RESERVE = 256;
 const MAX_ATTEMPTS = 2;
+const MAX_PLANNING_OUTPUT_TOKENS = 4096;
+const MAX_PLANNING_JSON_BYTES = 32768;
 
 const fail = (message: string): never => { throw new ModelRuntimeFailure(message, 'invalid-json'); };
 
 /** The loaded local context is observed by model discovery, never inferred from a model name. */
-export function roadmapLocalBudget(measuredContext: number | undefined, requestedOutput: number) {
+export function roadmapLocalBudget(measuredContext: number | undefined, requestedOutput: number,
+    limits: Pick<ConversationModelCapabilities, 'maxInputTokens' | 'maxOutputTokens'> = {}) {
     if (!Number.isSafeInteger(measuredContext) || !measuredContext || measuredContext < 1024)
         throw new ModelRuntimeFailure('Local planning needs a measured loaded context capacity', 'unsupported-capability');
-    const total = Math.min(measuredContext, TOTAL_PROFILE);
-    const output = Math.min(Math.max(requestedOutput, 256), 512);
-    const inputBytes = total - output - SYSTEM_RESERVE - SAFETY_RESERVE;
+    if (!Number.isSafeInteger(requestedOutput) || requestedOutput < 1 ||
+        limits.maxInputTokens !== undefined && (!Number.isSafeInteger(limits.maxInputTokens) || limits.maxInputTokens < 1) ||
+        limits.maxOutputTokens !== undefined && (!Number.isSafeInteger(limits.maxOutputTokens) || limits.maxOutputTokens < 1))
+        throw new ModelRuntimeFailure('Invalid local planning input or output limit', 'unsupported-capability');
+    const total = measuredContext;
+    const output = Math.min(requestedOutput, limits.maxOutputTokens ?? Infinity, MAX_PLANNING_OUTPUT_TOKENS);
+    // Without an adapter tokenizer, one UTF-8 byte is charged as at least one token.
+    // This overestimates typical text but is a safe final check for serialized messages.
+    const inputBytes = Math.min(total - output - SYSTEM_RESERVE - SAFETY_RESERVE,
+        limits.maxInputTokens ?? Infinity);
     if (inputBytes < 512)
         throw new ModelRuntimeFailure('Local planning context is too small', 'unsupported-capability');
-    // Composer estimates UTF-8 bytes / 3. This lower cap makes its result fit even
-    // when each byte is a separate token; the final serialized request is checked too.
-    return { total, output, inputBytes, composerInputTokens: Math.floor(inputBytes / 3) };
+    return { total, output, inputBytes, composerInputTokens: Math.floor(inputBytes / 3),
+        maxOutputBytes: Math.min(MAX_PLANNING_JSON_BYTES, output * 4 + 256) };
 }
 
 export function verifyRoadmapLocalInput(messages: readonly ConversationMessage[],
     budget: ReturnType<typeof roadmapLocalBudget>): void {
-    const bytes = messages.reduce((sum, item) => sum + Buffer.byteLength(item.content, 'utf8') + 32, 0);
+    const bytes = Buffer.byteLength(JSON.stringify(messages), 'utf8');
     if (bytes > budget.inputBytes || bytes + budget.output + SYSTEM_RESERVE + SAFETY_RESERVE > budget.total)
         throw new ModelRuntimeFailure('Local planning context exceeds the measured budget; reduce the request',
             'unsupported-capability');
@@ -32,7 +40,7 @@ export function verifyRoadmapLocalInput(messages: readonly ConversationMessage[]
 
 /** Completed output is buffered so invalid attempts cannot become actionable Chat text. */
 export async function localPlanningJson<T extends { type: string; text: string; finishReason?: string }>(
-    generate: () => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = 512,
+    generate: () => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = MAX_PLANNING_JSON_BYTES,
     mode: 'linked' | 'unlinked' | 'draft' = 'unlinked', eligibleObjective = true): Promise<T> {
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         if (signal.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');

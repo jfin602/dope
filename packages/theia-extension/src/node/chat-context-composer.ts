@@ -38,14 +38,15 @@ export class ChatContextComposer {
         if (!checkpoint) throw new Error('Roadmap checkpoint missing');
         if (checkpoint.source?.sha256 !== source.sourceHash)
             throw new Error('Stale Roadmap source; select the checkpoint again');
-        const neighbors = index.checkpoints.filter(item => item.id !== checkpoint.id &&
-            (checkpoint.dependencies.includes(item.id) || item.dependencies.includes(checkpoint.id))).slice(0, 4);
+        const related = index.checkpoints.filter(item => item.id !== checkpoint.id &&
+            (checkpoint.dependencies.includes(item.id) || item.dependencies.includes(checkpoint.id)));
+        const neighbors = related.slice(0, 2);
         // A checked linked-document edit changes its file hash without rewriting historical
         // import evidence. The current source citation is authoritative for that file.
         const currentEvidence = (item: RoadmapCheckpoint) => item.evidence.filter(citation =>
             citation.path !== index.linkedDocument?.path);
         const citations = [checkpoint, ...neighbors].flatMap(item =>
-            [item.source, ...currentEvidence(item).slice(0, 2)]).filter(item => item !== undefined);
+            [item.source, ...currentEvidence(item).slice(0, 1)]).filter(item => item !== undefined);
         // Source-backed index entries may outlive the Markdown that produced them.
         for (const citation of citations) {
             const path = await this.file(root, citation.path, 2 * 1024 * 1024);
@@ -53,10 +54,11 @@ export class ChatContextComposer {
             if (createHash('sha256').update(bytes).digest('hex') !== citation.sha256)
                 throw new Error('Stale Roadmap source; refresh the import before using Chat context');
         }
-        const fact = (item: RoadmapCheckpoint) => ({ id: item.id, kind: item.kind, title: item.title,
-            objective: item.objective.slice(0, 1200), status: item.status, dependencies: item.dependencies.slice(0, 8),
-            source: item.source, evidence: currentEvidence(item).slice(0, 2) });
-        const planningLinks = checkpoint.links.filter(link => link.owner === 'planning-map').slice(0, 2);
+        const fact = (item: RoadmapCheckpoint, selected = false) => ({ id: item.id, kind: item.kind, title: item.title,
+            objective: item.objective.slice(0, selected ? 600 : 160), status: item.status,
+            dependencies: item.dependencies.slice(0, selected ? 6 : 2), source: item.source,
+            ...(selected ? { evidence: currentEvidence(item).slice(0, 1) } : {}) });
+        const planningLinks = checkpoint.links.filter(link => link.owner === 'planning-map').slice(0, 1);
         const maps: unknown[] = [];
         if (planningLinks.length) {
             const planning = await this.planning.read(root);
@@ -67,8 +69,8 @@ export class ChatContextComposer {
                 if (link.ownerProjectId !== planning.projectId || !map || map.revision !== link.ownerRevision ||
                     JSON.stringify(map.basis) !== JSON.stringify(link.basis))
                     throw new Error('Stale Planning Map basis in Roadmap context');
-                maps.push({ id: map.id, title: map.title, objective: map.objective.slice(0, 800),
-                    status: map.status, basis: map.basis, transformations: map.transformations.length,
+                maps.push({ id: map.id, title: map.title, objective: map.objective.slice(0, 160),
+                    status: map.status, transformations: map.transformations.length,
                     workItems: map.workItems.length });
             }
             const again = await this.planning.read(root);
@@ -84,10 +86,13 @@ export class ChatContextComposer {
             projectId: index.projectId, ownerRevision: index.revision,
             capabilities: capabilities?.fields ?? { objective: { editable: false, reason: 'No linked editable source' } },
             allowedIntent: capabilities?.fields.objective.editable ? 'set-objective' : null,
-            checkpoint: fact(checkpoint),
-            neighbors: neighbors.map(fact), planningMaps: maps }),
-            ...(index.checkpoints.length > neighbors.length + 1 || checkpoint.links.length > planningLinks.length ||
-                checkpoint.evidence.length > 2 ? { omitted: 'Roadmap neighbors, links or evidence omitted by query bound' } : {}) };
+            checkpoint: fact(checkpoint, true),
+            neighbors: neighbors.map(item => fact(item)), planningMaps: maps }),
+            ...(index.checkpoints.length > neighbors.length + 1 || related.length > neighbors.length ||
+                checkpoint.links.length > planningLinks.length ||
+                checkpoint.evidence.length > 1 || checkpoint.objective.length > 600 ||
+                neighbors.some(item => item.objective.length > 160) ?
+                { omitted: 'Roadmap objective, neighbors, links or evidence omitted by compact query bound' } : {}) };
     }
 
     private async file(root: string, path: string, maxBytes = 1_000_000): Promise<string> {
@@ -217,9 +222,13 @@ export class ChatContextComposer {
             const prefix = `[${source.kind}: ${resolved.label}]\n`;
             let text = resolved.text;
             if (tokens(prefix) >= remaining) {
+                if (source.kind === 'roadmap-checkpoint')
+                    throw new Error('Selected Roadmap identity and field capability do not fit; shorten the request or select a larger local model');
                 diagnostics.push({ kind: 'omitted', source: `${source.kind}:${source.id}`, message: 'Context budget exhausted' });
                 continue;
             }
+            if (tokens(prefix + text) > remaining && source.kind === 'roadmap-checkpoint')
+                throw new Error('Selected Roadmap identity, field capability or source does not fit; shorten the request or select a larger local model');
             if (tokens(prefix + text) > remaining) {
                 const bytes = Math.max(0, (remaining - tokens(prefix) - 4) * 3);
                 text = Buffer.from(text, 'utf8').subarray(0, bytes).toString('utf8').replace(/\uFFFD+$/, '');

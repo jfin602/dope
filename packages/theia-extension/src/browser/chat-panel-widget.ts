@@ -1432,7 +1432,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const details = document.createElement('details');
             details.className = 'dope-chat-context-diagnostics';
             const summary = document.createElement('summary');
-            summary.textContent = `Context · ${state.lastContext.refs.length} sources · ${state.lastContext.usedTokens}/${state.lastContext.budgetTokens} tokens`;
+            summary.textContent = `Context · ${state.lastContext.refs.length} sources · ~${state.lastContext.usedTokens}/${state.lastContext.budgetTokens} estimated tokens`;
             details.append(summary);
             const description = document.createElement('small');
             description.textContent = state.lastContext.diagnostics.map(item =>

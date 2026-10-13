@@ -5,16 +5,43 @@ import { localPlanningJson, roadmapLocalBudget, verifyRoadmapLocalInput } from '
 const noAction = '{"type":"no-action","message":"More project context is required"}';
 const complete = (text: string) => ({ type: 'complete' as const, text });
 
-test('measured 4096 profile reserves input, system and output; oversized context is denied', () => {
+test('measured 4096 narrow stress reserves serialized input, system and output', () => {
     const budget = roadmapLocalBudget(4096, 1024);
     assert.equal(budget.total, 4096);
-    assert.equal(budget.output, 512);
+    assert.equal(budget.output, 1024);
     assert.equal(budget.inputBytes + budget.output + 512 + 256, 4096);
     assert.ok(budget.composerInputTokens * 3 <= budget.inputBytes);
+    assert.ok(budget.maxOutputBytes > 512);
     verifyRoadmapLocalInput([{ role: 'system', content: 'Return JSON' },
         { role: 'user', content: 'Context'.repeat(100) }], budget);
     assert.throws(() => verifyRoadmapLocalInput([{ role: 'user', content: 'x'.repeat(3000) }], budget), /exceeds/);
     assert.throws(() => roadmapLocalBudget(undefined, 512), /measured/);
+});
+
+test('16K, 32K and 64K use measured capacity and independent model/developer limits', () => {
+    for (const total of [16384, 32768, 65536]) {
+        const budget = roadmapLocalBudget(total, 2048);
+        assert.equal(budget.total, total);
+        assert.equal(budget.output, 2048);
+        assert.equal(budget.inputBytes, total - 2048 - 512 - 256);
+        assert.ok(budget.maxOutputBytes > budget.output);
+        verifyRoadmapLocalInput([{ role: 'user', content: 'x'.repeat(9000) }], budget);
+    }
+    const limited = roadmapLocalBudget(65536, 2048, { maxInputTokens: 7000, maxOutputTokens: 768 });
+    assert.equal(limited.inputBytes, 7000);
+    assert.equal(limited.output, 768);
+    assert.throws(() => verifyRoadmapLocalInput([{ role: 'user', content: 'x'.repeat(7000) }], limited), /exceeds/);
+    assert.throws(() => roadmapLocalBudget(16384, 0), /limit/);
+});
+
+test('bounded JSON bytes are independent of output token reservation', async () => {
+    const value = JSON.stringify({ type: 'roadmap-intent', intent: 'set-objective', value: 'x'.repeat(700) });
+    const bytes = roadmapLocalBudget(16384, 1024).maxOutputBytes;
+    assert.ok(Buffer.byteLength(value, 'utf8') > 512);
+    assert.equal((await localPlanningJson(async function* () { yield complete(value); },
+        new AbortController().signal, bytes, 'linked')).text, value);
+    await assert.rejects(localPlanningJson(async function* () { yield complete(value); },
+        new AbortController().signal, 512, 'linked'), /strict JSON/);
 });
 
 test('non-tools JSON fallback repairs once and never accepts a second malformed response', async () => {

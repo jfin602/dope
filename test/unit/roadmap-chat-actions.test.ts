@@ -32,12 +32,14 @@ async function setup(linked = false, sourceOverride?: string) {
     const composer = new ChatContextComposer({} as never, {} as never, {} as never, repository, store);
     const outputs: string[] = [];
     const sent: string[] = [];
+    let beforeComplete: (() => Promise<void>) | undefined;
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
         models: [{ id: 'short', label: 'Short', usable: true,
             capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 4096 } }] }] }),
         async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
             sent.push(request.messages.at(-1)?.content ?? '');
             const text = outputs.shift() ?? 'No action';
+            await beforeComplete?.();
             yield { type: 'delta' as const, text: text.slice(0, 8) };
             yield { type: 'complete' as const, text };
         } };
@@ -61,6 +63,7 @@ async function setup(linked = false, sourceOverride?: string) {
             projectId: (await current()).projectId, ownerRevision: revision,
             ...(linked ? { sourceHash: (await current()).checkpoints[0].source!.sha256 } : {}) }] });
     return { root, store, repository, backend, outputs, sent, current, turn, projectHandle, chatId,
+        setBeforeComplete: (hook?: () => Promise<void>) => { beforeComplete = hook; },
         leaseToken: lease.token, source };
 }
 
@@ -101,10 +104,28 @@ test('linked intent binds checked document edit; mismatch, denial and stale sour
     await f.backend.decidePlanningProposal(f.projectHandle, f.chatId, f.leaseToken, approved.id, true);
     assert.match(await readFile(join(f.root, 'ROADMAP.md'), 'utf8'), /Objective: Approved/);
     assert.equal((await f.current()).checkpoints[0].objective, 'Approved');
+    assert.notEqual((await f.current()).checkpoints[0].source?.sha256, initial.checkpoints[0].source?.sha256);
+    await assert.rejects(f.backend.runTurn({ projectHandle: f.projectHandle, chatId: f.chatId,
+        leaseToken: f.leaseToken, selectedModel: { connectionId: 'local', modelId: 'short' },
+        content: 'Next', context: [{ kind: 'roadmap-checkpoint', id, projectId: initial.projectId,
+            ownerRevision: initial.revision, sourceHash: initial.checkpoints[0].source?.sha256 }] }), /Stale/);
     f.outputs.push('{"type":"no-action","message":"No edit"}');
     const next = await f.turn((await f.current()).revision);
     assert.equal(next.proposal, undefined);
+    assert.match(f.sent.at(-1) ?? '', /Approved/);
+    assert.match(f.sent.at(-1) ?? '', new RegExp((await f.current()).checkpoints[0].source!.sha256));
     assert.equal((await f.current()).checkpoints[0].id, id);
+}, true));
+
+test('a linked source changed during inference rejects the in-flight intent', async () => fixture(async f => {
+    const initial = await f.current();
+    f.outputs.push('{"type":"roadmap-intent","intent":"set-objective","value":"Model edit"}');
+    f.setBeforeComplete(async () => { await writeFile(join(f.root, 'ROADMAP.md'), f.source.replace('Before', 'External edit')); });
+    const result = await f.turn(initial.revision);
+    assert.equal(result.proposal, undefined);
+    assert.match(result.proposalError ?? '', /Stale|source|hash/i);
+    assert.match(await readFile(join(f.root, 'ROADMAP.md'), 'utf8'), /External edit/);
+    assert.equal((await f.current()).revision, initial.revision);
 }, true));
 
 test('narrative linked section without Objective is visibly ineligible and cannot produce an edit', async () => fixture(async f => {

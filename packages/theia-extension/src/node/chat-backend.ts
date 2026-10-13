@@ -3,7 +3,7 @@ import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, Chat
     ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal } from '@dope/chat/lib/service';
 import { suggestedChatTitle, type ChatAssistantMessage, type ChatModelProvenance, type ChatUserMessage } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
-import { ModelRuntimeFailure, type ConversationMessage } from '@dope/contracts/lib/model-runtime';
+import { ModelRuntimeFailure, type ConversationMessage, type ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
 import type { AIRoleHardConstraints, RoutingProvenance } from '@dope/ai';
 import { ModelConnectionsRegistry } from './model-connections';
 import { ChatContextComposer } from './chat-context-composer';
@@ -30,6 +30,13 @@ function sameRefIdentities(next: ChatUserMessage['contextRefs'], initial: ChatUs
     return next.length === initial.length && next.every((ref, index) =>
         JSON.stringify(evidenceIdentity(ref)) === JSON.stringify(evidenceIdentity(initial[index])) &&
         (ref.origin !== 'automatic' || !initial[index].includedBytes || !!ref.includedBytes));
+}
+function planningComposerCapabilities(capabilities: ConversationModelCapabilities,
+    budget: ReturnType<typeof roadmapLocalBudget> | undefined, draft?: { text: string }): ConversationModelCapabilities {
+    if (!budget) return capabilities;
+    // The draft is prepended after composition, so charge it before packing optional context.
+    const draftTokens = draft ? Math.ceil(Buffer.byteLength(JSON.stringify([{ role: 'system', content: draft.text }]), 'utf8') / 3) : 0;
+    return { ...capabilities, maxInputTokens: Math.max(0, budget.composerInputTokens - draftTokens) };
 }
 
 /** One RPC connection owns one project handle; the repository shares durable state and events. */
@@ -92,6 +99,20 @@ export class ChatBackend implements ChatService {
         return draft ? [{ role: 'system' as const, content: draft.text }, ...messages] : messages;
     }
 
+    private async verifyLoadedCapacity(selection: { connectionId: string; modelId: string },
+        expected: ReturnType<typeof roadmapLocalBudget>, requestedOutput: number): Promise<void> {
+        const connection = (await this.models!.list()).connections.find(item => item.id === selection.connectionId);
+        const model = connection?.models.find(item => item.id === selection.modelId && item.usable);
+        if (!connection?.ready || connection.providerId !== 'local' || !model ||
+            model.capabilities.contextWindowTokens !== expected.total)
+            throw new ModelRuntimeFailure('Loaded local context changed or is unknown; preview this turn again',
+                'unsupported-capability');
+        const current = roadmapLocalBudget(model.capabilities.contextWindowTokens, requestedOutput, model.capabilities);
+        if (current.inputBytes !== expected.inputBytes || current.output !== expected.output)
+            throw new ModelRuntimeFailure('Loaded local input or output limit changed; preview this turn again',
+                'unsupported-capability');
+    }
+
     read(projectHandle: string) { return this.repository.read(this.active(projectHandle)); }
     async list(projectHandle: string) { return (await this.read(projectHandle)).chats; }
     async get(projectHandle: string, chatId: string) {
@@ -122,10 +143,12 @@ export class ChatBackend implements ChatService {
         const localRoadmap = connection?.providerId === 'local' &&
             (request.context.some(item => item.kind === 'roadmap-checkpoint') || !!draft);
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
-            chat.settings.context.reservedOutputTokens) : undefined;
-        const capabilities = budget ? { ...model.capabilities, maxInputTokens: budget.composerInputTokens } : model.capabilities;
+            chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
+        const capabilities = planningComposerCapabilities(model.capabilities, budget, draft);
         const composed = await this.composer.compose(root, chat, request.content, request.context, capabilities, grounding);
         if (budget) verifyRoadmapLocalInput(this.withDraft(composed.messages, draft), budget);
+        if (budget) await this.verifyLoadedCapacity(request.selectedModel, budget,
+            chat.settings.context.reservedOutputTokens);
         if (request.context.some(item => item.kind === 'roadmap-checkpoint') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
             throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
@@ -159,7 +182,7 @@ export class ChatBackend implements ChatService {
         if (!output.trimStart().startsWith('{') || !draft && (!this.planning || !refs.some(ref => ref.kind === 'roadmap-checkpoint'))) return {};
         let handle: string | undefined;
         try {
-            if (Buffer.byteLength(output, 'utf8') > 4096) throw new Error('Planning proposal exceeds the size limit');
+            if (Buffer.byteLength(output, 'utf8') > 32768) throw new Error('Planning proposal exceeds the size limit');
             const value: unknown = JSON.parse(output);
             if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid planning proposal');
             const raw = value as Record<string, unknown>;
@@ -313,8 +336,8 @@ export class ChatBackend implements ChatService {
         if (!this.composer) throw new Error('Context composer unavailable');
         const localRoadmap = roadmapTurn && connection.providerId === 'local';
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
-            chat.settings.context.reservedOutputTokens) : undefined;
-        const capabilities = budget ? { ...model.capabilities, maxInputTokens: budget.composerInputTokens } : model.capabilities;
+            chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
+        const capabilities = planningComposerCapabilities(model.capabilities, budget, draft);
         const grounding = await this.grounder?.ground(root, content);
         const priorRefs = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs : undefined;
         if (priorRefs && !sameAutomaticEvidence(grounding, priorRefs))
@@ -401,9 +424,12 @@ export class ChatBackend implements ChatService {
                         if (!resolvedModel.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
                             throw new ModelRuntimeFailure('Role target does not support the saved reasoning control', 'unsupported-capability');
                     const nextBudget = localRoadmap ? roadmapLocalBudget(resolvedModel.capabilities.contextWindowTokens,
-                        chat.settings.context.reservedOutputTokens) : undefined;
-                    const nextCapabilities = nextBudget ? { ...resolvedModel.capabilities,
-                        maxInputTokens: nextBudget.composerInputTokens } : resolvedModel.capabilities;
+                        chat.settings.context.reservedOutputTokens, resolvedModel.capabilities) : undefined;
+                    if (nextBudget && (nextBudget.total !== budget?.total ||
+                        nextBudget.inputBytes !== budget.inputBytes || nextBudget.output !== budget.output))
+                        throw new ModelRuntimeFailure('Loaded local context or limits changed; preview this turn again',
+                            'unsupported-capability');
+                    const nextCapabilities = planningComposerCapabilities(resolvedModel.capabilities, nextBudget, draft);
                     const next = await this.composer!.compose(root, contextChat, content, request.context ?? [], nextCapabilities, grounding);
                     if (nextBudget) verifyRoadmapLocalInput(this.withDraft(next.messages, draft), nextBudget);
                     if (!sameRefIdentities(next.refs, preview.refs))
@@ -416,15 +442,24 @@ export class ChatBackend implements ChatService {
                         usedTokens: next.usedTokens, budgetTokens: next.budgetTokens };
                     return { messages: this.withDraft(next.messages, draft), controls, signal: abort.signal,
                         ...(chat.settings.context.reservedOutputTokens > 0 ?
-                        { maxOutputTokens: budget?.output ?? chat.settings.context.reservedOutputTokens } : {}) };
+                        { maxOutputTokens: nextBudget?.output ?? chat.settings.context.reservedOutputTokens } : {}) };
                 } }) : this.models!.generate(selectedModel!,
                 { messages: this.withDraft(composed.messages, draft), controls, signal: abort.signal,
                     ...(chat.settings.context.reservedOutputTokens > 0 ?
                         { maxOutputTokens: budget?.output ?? chat.settings.context.reservedOutputTokens } : {}) },
                 localRoadmap ? { localOnly: true } : undefined);
-            const events = localRoadmap ? (async function* () {
-                yield await localPlanningJson(generate, abort.signal, budget!.output, localMode, eligibleObjective);
-            })() : generate();
+            const events = localRoadmap ? (async function* (backend: ChatBackend) {
+                const guardedGenerate = async function* () {
+                    if (!following) await backend.verifyLoadedCapacity(selectedModel!, budget!,
+                        chat.settings.context.reservedOutputTokens);
+                    yield* generate();
+                };
+                const complete = await localPlanningJson(guardedGenerate, abort.signal, budget!.maxOutputBytes,
+                    localMode, eligibleObjective);
+                await backend.verifyLoadedCapacity(selectedModel!, budget!,
+                    chat.settings.context.reservedOutputTokens);
+                yield complete;
+            })(this) : generate();
             for await (const event of events) {
                 if (event.type === 'delta') {
                     if (following && sequence === 0) {

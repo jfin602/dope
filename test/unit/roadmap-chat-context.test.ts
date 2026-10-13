@@ -40,15 +40,17 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
       repository, roadmapStore);
     let providerCalls = 0;
     let sent = '';
+    let changeAfterComplete: number | undefined;
     const capabilities = { conversationalText: true, streaming: true, contextWindowTokens: 4096 };
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
       models: [{ id: 'short', label: 'Short', usable: true, capabilities }] }] }),
     async *generate(_selection: unknown, request: { messages: { content: string }[]; maxOutputTokens?: number }) {
       providerCalls++;
       sent = request.messages.at(-1)?.content ?? '';
-      assert.equal(request.maxOutputTokens, 512);
-      assert.ok(request.messages.reduce((bytes, item) => bytes + Buffer.byteLength(item.content, 'utf8') + 32, 0) +
-        (request.maxOutputTokens ?? 0) + 512 + 256 <= 4096);
+      assert.equal(request.maxOutputTokens, 1024);
+      assert.ok(Buffer.byteLength(JSON.stringify(request.messages), 'utf8') +
+        (request.maxOutputTokens ?? 0) + 512 + 256 <= capabilities.contextWindowTokens);
+      if (changeAfterComplete) capabilities.contextWindowTokens = changeAfterComplete;
       yield { type: 'complete' as const, text: '{"type":"no-action","message":"Done"}', usage: { tokenMeasurement: 'estimated' as const } };
     } };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer);
@@ -79,7 +81,7 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     const preview = await backend.previewContext({ projectHandle, chatId, selectedModel: selection,
       content: 'What next?', context });
     assert.equal(providerCalls, 0);
-    assert.equal(preview.budgetTokens, 938);
+    assert.equal(preview.budgetTokens, 768);
     assert.ok(preview.usedTokens <= preview.budgetTokens);
     assert.equal(preview.refs[0].kind, 'roadmap-checkpoint');
     assert.equal(preview.refs[0].ownerRevision, 3);
@@ -97,6 +99,44 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     assert.match(sent, /docs\/phase.md/);
     assert.doesNotMatch(sent, /Other 9/);
     assert.equal(providerCalls, 1);
+    for (const measured of [16384, 32768, 65536]) {
+      capabilities.contextWindowTokens = measured;
+      const larger = await backend.previewContext({ projectHandle, chatId, selectedModel: selection,
+        content: 'What next?', context });
+      assert.ok(larger.budgetTokens >= preview.budgetTokens);
+      assert.ok(larger.usedTokens < larger.budgetTokens); // Extra capacity does not pad an ordinary request.
+      const result = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+        selectedModel: selection, content: 'What next?', context });
+      assert.deepEqual(result.refs, larger.refs);
+      assert.match(sent, /Phase A/);
+      assert.doesNotMatch(sent, /Other 9/);
+    }
+    capabilities.contextWindowTokens = 32768;
+    changeAfterComplete = 16384;
+    await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+      selectedModel: selection, content: 'What next?', context }), /Loaded local context changed/);
+    changeAfterComplete = undefined;
+    const failed = (await repository.read(root)).chats[0].messages.at(-1);
+    assert.equal(failed?.role, 'assistant');
+    if (failed?.role === 'assistant') {
+      const retry = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+        selectedModel: selection, retryMessageId: failed.id, context });
+      assert.deepEqual(retry.refs, preview.refs);
+    }
+    const constrained = structuredClone(settings);
+    constrained.context.maxInputTokens = 550;
+    roadmap.checkpoints[0].title = 'Phase A '.repeat(100);
+    let latest = await repository.read(root);
+    await backend.mutate({ projectHandle, expectedRevision: latest.revision,
+      operation: { type: 'set-settings', chatId, settings: constrained } });
+    await assert.rejects(backend.previewContext({ projectHandle, chatId, selectedModel: selection,
+      content: 'What next?', context }), /does not fit|budget/);
+    await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+      selectedModel: selection, content: 'What next?', context }), /does not fit|budget/);
+    latest = await repository.read(root);
+    await backend.mutate({ projectHandle, expectedRevision: latest.revision,
+      operation: { type: 'set-settings', chatId, settings } });
+    roadmap.checkpoints[0].title = 'Phase A';
     roadmap.projectRoot = join(root, 'other');
     await assert.rejects(backend.previewContext({ projectHandle, chatId, selectedModel: selection,
       content: 'Next', context }), /foreign Roadmap/);
@@ -118,7 +158,7 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
       content: 'Next', context }), /Stale Roadmap source/);
     await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
       selectedModel: selection, content: 'Next', context }), /Stale Roadmap source/);
-    assert.equal(providerCalls, 1);
+    assert.equal(providerCalls, 6);
     backend.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
