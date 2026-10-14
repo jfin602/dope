@@ -74,6 +74,16 @@ test('only complete strict proposals preview; malformed, fake ID, Green and tool
         proposal(initial.projectId, 1, { type: 'shell', id: 'a', command: 'touch file' }),
         proposal(initial.projectId, 1, { type: 'shell', id: 'a', command: 'touch file' }));
     await assert.rejects(f.turn(1), /strict JSON/);
+    const failed = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
+    assert.equal(failed.role === 'assistant' && failed.planningActivity?.kind, 'error');
+    assert.equal(failed.role === 'assistant' && failed.planningActivity?.status, 'failed');
+    assert.equal(failed.content, '{bad json');
+    f.outputs.unshift('{"type":"unknown","saved":true}', '{"type":"unknown","saved":true}');
+    await assert.rejects(f.turn(1), /strict JSON/);
+    const unknown = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
+    assert.equal(unknown.content, '{"type":"unknown","saved":true}');
+    assert.equal(unknown.role === 'assistant' && unknown.planningActivity?.kind, 'error');
+    assert.equal((await f.current()).revision, 1);
     for (let i = 0; i < 2; i++) {
         const result = await f.turn(1);
         assert.equal(result.proposal, undefined);
@@ -81,7 +91,7 @@ test('only complete strict proposals preview; malformed, fake ID, Green and tool
         assert.equal((await f.current()).revision, 1);
     }
     await assert.rejects(f.turn(1), /strict JSON/);
-    assert.equal(f.sent.length, 6);
+    assert.equal(f.sent.length, 8);
 }));
 
 test('linked intent binds checked document edit; mismatch, denial and stale source do not write', async () => fixture(async f => {
@@ -95,13 +105,30 @@ test('linked intent binds checked document edit; mismatch, denial and stale sour
     const denied = (await f.turn(initial.revision)).proposal!;
     assert.ok(denied);
     assert.match(denied.summary, /documentDiff/);
+    const pendingMessage = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
+    assert.equal(pendingMessage.role, 'assistant');
+    if (pendingMessage.role === 'assistant') {
+        assert.equal(pendingMessage.content, intent('Rejected'));
+        assert.equal(pendingMessage.planningActivity?.kind, 'roadmap-intent');
+        assert.equal(pendingMessage.planningActivity?.status, 'pending');
+        assert.equal(pendingMessage.planningActivity?.proposalId, denied.id);
+        assert.equal(pendingMessage.planningActivity?.refs[0]?.sourceHash, initial.checkpoints[0].source?.sha256);
+        assert.equal(pendingMessage.execution.actualModel?.modelId, 'short');
+        assert.equal(pendingMessage.execution.actualModel?.providerId, 'local');
+    }
     assert.equal(await readFile(join(f.root, 'ROADMAP.md'), 'utf8'), f.source);
     await f.backend.decidePlanningProposal(f.projectHandle, f.chatId, f.leaseToken, denied.id, false);
+    const deniedMessage = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
+    assert.equal(deniedMessage.role === 'assistant' && deniedMessage.planningActivity?.status, 'denied');
     assert.equal(await readFile(join(f.root, 'ROADMAP.md'), 'utf8'), f.source);
     f.outputs.push(intent('Approved'));
     const approved = (await f.turn(initial.revision)).proposal!;
     assert.ok(approved);
     await f.backend.decidePlanningProposal(f.projectHandle, f.chatId, f.leaseToken, approved.id, true);
+    const appliedMessage = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
+    assert.equal(appliedMessage.role === 'assistant' && appliedMessage.planningActivity?.status, 'applied');
+    assert.equal(appliedMessage.role === 'assistant' && appliedMessage.planningActivity?.appliedRevision,
+        (await f.current()).revision);
     assert.match(await readFile(join(f.root, 'ROADMAP.md'), 'utf8'), /Objective: Approved/);
     assert.equal((await f.current()).checkpoints[0].objective, 'Approved');
     assert.notEqual((await f.current()).checkpoints[0].source?.sha256, initial.checkpoints[0].source?.sha256);
@@ -110,8 +137,16 @@ test('linked intent binds checked document edit; mismatch, denial and stale sour
         content: 'Next', context: [{ kind: 'roadmap-checkpoint', id, projectId: initial.projectId,
             ownerRevision: initial.revision, sourceHash: initial.checkpoints[0].source?.sha256 }] }), /Stale/);
     f.outputs.push('{"type":"no-action","message":"No edit"}');
-    const next = await f.turn((await f.current()).revision);
+    const next = await f.turn((await f.current()).revision,
+        '{"type":"roadmap-intent","intent":"set-objective","value":"User text only"}');
     assert.equal(next.proposal, undefined);
+    const savedMessages = (await f.backend.get(f.projectHandle, f.chatId))!.messages;
+    const userJson = savedMessages.at(-2)!;
+    assert.equal(userJson.role, 'user');
+    assert.equal('planningActivity' in userJson, false);
+    const noActionMessage = savedMessages.at(-1)!;
+    assert.equal(noActionMessage.role === 'assistant' && noActionMessage.planningActivity?.kind, 'no-action');
+    assert.equal(noActionMessage.role === 'assistant' && noActionMessage.planningActivity?.status, 'no-action');
     assert.match(f.sent.at(-1) ?? '', /Approved/);
     assert.match(f.sent.at(-1) ?? '', new RegExp((await f.current()).checkpoints[0].source!.sha256));
     assert.equal((await f.current()).checkpoints[0].id, id);
@@ -124,6 +159,8 @@ test('a linked source changed during inference rejects the in-flight intent', as
     const result = await f.turn(initial.revision);
     assert.equal(result.proposal, undefined);
     assert.match(result.proposalError ?? '', /Stale|source|hash/i);
+    const rejectedMessage = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
+    assert.equal(rejectedMessage.role === 'assistant' && rejectedMessage.planningActivity?.status, 'rejected');
     assert.match(await readFile(join(f.root, 'ROADMAP.md'), 'utf8'), /External edit/);
     assert.equal((await f.current()).revision, initial.revision);
 }, true));
@@ -145,6 +182,11 @@ test('developer rejects or approves one completed proposal; stale manual race re
     f.outputs.push(proposal(owner, 1, { type: 'edit', id: 'a', objective: 'Rejected' }));
     const rejected = (await f.turn(1)).proposal;
     assert.ok(rejected);
+    const messages = (await f.backend.get(f.projectHandle, f.chatId))!.messages;
+    const user = messages.at(-2)!;
+    assert.equal(user.role, 'user');
+    assert.equal(user.role === 'user' && user.content, 'Propose a change');
+    assert.equal('planningActivity' in user, false);
     assert.equal((await f.current()).revision, 1);
     await f.backend.decidePlanningProposal(f.projectHandle, f.chatId, f.leaseToken, rejected.id, false);
     assert.equal((await f.current()).checkpoints[0].objective, 'Before');
@@ -156,6 +198,8 @@ test('developer rejects or approves one completed proposal; stale manual race re
     await f.store.mutate(f.root, 1, { type: 'update', id: 'a', title: 'A', objective: 'Human edit',
         order: 0, dependencies: [], links: [] }, owner);
     await assert.rejects(f.backend.decidePlanningProposal(f.projectHandle, f.chatId, f.leaseToken, stale.id, true), /Stale/);
+    const staleMessage = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
+    assert.equal(staleMessage.role === 'assistant' && staleMessage.planningActivity?.status, 'stale');
     assert.equal((await f.current()).checkpoints[0].objective, 'Human edit');
     await assert.rejects(f.turn(1), /Stale or foreign Roadmap context/);
 
@@ -198,4 +242,25 @@ test('failed stream never yields an actionable proposal', async () => fixture(as
         assert.equal((await f.current()).revision, 1);
         await assert.rejects(backend.decidePlanningProposal(projectHandle, f.chatId, owned.token, 'fake', true), /unavailable/);
     } finally { backend.dispose(); }
+}));
+
+test('cancelled local planning records cancellation without a proposal or write', async () => fixture(async f => {
+    const owner = (await f.current()).projectId;
+    f.outputs.push(proposal(owner, 1, { type: 'edit', id: 'a', objective: 'Never applied' }));
+    f.setBeforeComplete(() => f.backend.cancelTurn(f.projectHandle, f.chatId, f.leaseToken));
+    await assert.rejects(f.turn(1), /cancelled/i);
+    const message = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
+    assert.equal(message.role === 'assistant' && message.execution.status, 'cancelled');
+    assert.equal(message.role === 'assistant' && message.planningActivity?.kind, 'cancelled');
+    assert.equal((await f.current()).checkpoints[0].objective, 'Before');
+    assert.equal((await f.current()).revision, 1);
+}));
+
+test('ordinary local prose stays visible as an untrusted failed turn', async () => fixture(async f => {
+    f.outputs.push('I would change the goal.', 'I would change the goal.');
+    await assert.rejects(f.turn(1), /strict JSON/);
+    const message = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
+    assert.equal(message.content, 'I would change the goal.');
+    assert.equal(message.role === 'assistant' && message.planningActivity?.kind, 'error');
+    assert.equal((await f.current()).revision, 1);
 }));

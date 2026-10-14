@@ -7,7 +7,10 @@ const MAX_ATTEMPTS = 2;
 const MAX_PLANNING_OUTPUT_TOKENS = 4096;
 const MAX_PLANNING_JSON_BYTES = 32768;
 
-const fail = (message: string): never => { throw new ModelRuntimeFailure(message, 'invalid-json'); };
+export class LocalPlanningOutputFailure extends ModelRuntimeFailure {
+    constructor(message: string, readonly rawText: string) { super(message, 'invalid-json'); }
+}
+const fail = (message: string, rawText = ''): never => { throw new LocalPlanningOutputFailure(message, rawText); };
 
 /** The loaded local context is observed by model discovery, never inferred from a model name. */
 export function roadmapLocalBudget(measuredContext: number | undefined, requestedOutput: number,
@@ -42,6 +45,7 @@ export function verifyRoadmapLocalInput(messages: readonly ConversationMessage[]
 export async function localPlanningJson<T extends { type: string; text: string; finishReason?: string }>(
     generate: () => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = MAX_PLANNING_JSON_BYTES,
     mode: 'linked' | 'unlinked' | 'draft' = 'unlinked', eligibleObjective = true): Promise<T> {
+    let lastInvalid = '';
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         if (signal.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         let complete: T | undefined;
@@ -53,7 +57,8 @@ export async function localPlanningJson<T extends { type: string; text: string; 
                 if (streamedBytes > maxOutputBytes) fail('Local planning output exceeds the reserved size');
             } else if (event.type === 'complete') complete = event;
         }
-        if (!complete) throw new ModelRuntimeFailure('Local planning stream ended without completion', 'invalid-json');
+        if (!complete) throw new LocalPlanningOutputFailure('Local planning stream ended without completion', lastInvalid);
+        if (Buffer.byteLength(complete.text, 'utf8') <= maxOutputBytes) lastInvalid = complete.text;
         try {
             if (complete.finishReason && !['stop', 'eos', 'end_turn'].includes(complete.finishReason))
                 throw new Error('unfinished');
@@ -76,7 +81,7 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             if (proposal || intent || noAction) return complete;
         } catch { /* One bounded repair attempt; no mutation or provider switch. */ }
     }
-    return fail('Local planning did not return strict JSON after two attempts');
+    return fail('Local planning did not return strict JSON after two attempts', lastInvalid);
 }
 
 function validNestedAction(value: unknown, mode: 'linked' | 'unlinked' | 'draft'): boolean {

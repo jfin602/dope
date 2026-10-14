@@ -75,6 +75,15 @@ export interface ChatAssistantMessage {
     createdAt: string;
     content: string; // Visible answer only; hidden reasoning is not durable state.
     execution: ChatExecution;
+    planningActivity?: ChatPlanningActivity; // Backend-verified projection; content remains the exact model output.
+}
+export interface ChatPlanningActivity {
+    schemaVersion: 1;
+    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-draft-proposal' | 'no-action' | 'error' | 'cancelled';
+    status: 'pending' | 'no-action' | 'rejected' | 'denied' | 'stale' | 'applied' | 'failed' | 'cancelled';
+    refs: ChatContextRef[];
+    proposalId?: string;
+    appliedRevision?: number;
 }
 export type ChatMessage = ChatUserMessage | ChatAssistantMessage;
 
@@ -272,19 +281,43 @@ function parseExecution(value: unknown): ChatExecution {
     return execution;
 }
 export function parseChatMessage(value: unknown): ChatMessage {
-    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'execution'],
+    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'execution', 'planningActivity'],
         ['schemaVersion', 'id', 'role', 'createdAt', 'content']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported message schema');
     const base = { schemaVersion: 1 as const, id: identifier(v.id), createdAt: time(v.createdAt), content: string(v.content, 'message content', false) };
     if (v.role === 'user') {
-        if (!Array.isArray(v.contextRefs) || v.execution !== undefined || !base.content.trim()) throw new Error('Invalid user message');
+        if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.planningActivity !== undefined || !base.content.trim()) throw new Error('Invalid user message');
         return { ...base, role: 'user', contextRefs: v.contextRefs.map(parseChatContextRef) };
     }
     if (v.role === 'assistant') {
         if (v.contextRefs !== undefined) throw new Error('Invalid assistant message');
-        return { ...base, role: 'assistant', execution: parseExecution(v.execution) };
+        const execution = parseExecution(v.execution);
+        const planningActivity = v.planningActivity === undefined ? undefined : parsePlanningActivity(v.planningActivity);
+        if (planningActivity && !['complete', 'failed', 'cancelled'].includes(execution.status))
+            throw new Error('Planning activity requires a completed execution');
+        if (planningActivity && (planningActivity.kind === 'error' ? execution.status !== 'failed' :
+            planningActivity.kind === 'cancelled' ? execution.status !== 'cancelled' : execution.status !== 'complete'))
+            throw new Error('Planning activity differs from execution outcome');
+        return { ...base, role: 'assistant', execution, ...(planningActivity ? { planningActivity } : {}) };
     }
     throw new Error('Invalid Chat role');
+}
+export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
+    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision'],
+        ['schemaVersion', 'kind', 'status', 'refs']);
+    if (v.schemaVersion !== 1 || !Array.isArray(v.refs)) throw new Error('Invalid planning activity');
+    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-draft-proposal', 'no-action',
+        'error', 'cancelled'] as const, 'planning activity kind');
+    const status = choice(v.status, ['pending', 'no-action', 'rejected', 'denied', 'stale', 'applied',
+        'failed', 'cancelled'] as const, 'planning activity status');
+    if ((kind === 'no-action') !== (status === 'no-action') ||
+        (kind === 'error') !== (status === 'failed') || (kind === 'cancelled') !== (status === 'cancelled') ||
+        (['pending', 'denied', 'stale', 'applied'].includes(status) && v.proposalId === undefined) ||
+        (['no-action', 'failed', 'cancelled'].includes(status) && v.proposalId !== undefined) ||
+        (status === 'applied') !== (v.appliedRevision !== undefined)) throw new Error('Invalid planning activity state');
+    return { schemaVersion: 1, kind, status, refs: v.refs.map(parseChatContextRef),
+        ...(v.proposalId === undefined ? {} : { proposalId: string(v.proposalId, 'proposal ID') }),
+        ...(v.appliedRevision === undefined ? {} : { appliedRevision: count(v.appliedRevision, 'applied revision') }) };
 }
 export function parseChat(value: unknown): Chat {
     const v = record(value, ['schemaVersion', 'id', 'revision', 'folderPath', 'title', 'titleSource',

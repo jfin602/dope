@@ -89,6 +89,28 @@ test('linked intent contract rejects missing action type, wrong operation, extra
         new AbortController().signal, 512, 'linked')).text, valid);
 });
 
+test('strict local completion accepts only known, bounded envelopes', async () => {
+    const signal = new AbortController().signal;
+    const draft = JSON.stringify({ type: 'roadmap-draft-proposal', projectId: 'p', draftRevision: 0,
+        action: { type: 'create-phase', title: 'First phase' } });
+    const unlinked = JSON.stringify({ type: 'roadmap-proposal', projectId: 'p', ownerRevision: 1,
+        action: { type: 'edit', id: 'a', objective: 'Goal' } });
+    for (const [value, mode] of [[draft, 'draft'], [unlinked, 'unlinked'], [noAction, 'linked']] as const)
+        assert.equal((await localPlanningJson(async function* () { yield complete(value); },
+            signal, 4096, mode)).text, value);
+    for (const value of [
+        '{"type":"other","message":"looks structured"}',
+        '{"type":"no-action","message":{"text":"nested"}}',
+        '{"type":"no-action","message":"okay","saved":true}',
+        '{"type":"roadmap-proposal","projectId":"p","ownerRevision":1,"action":{"type":"shell","command":"pwd"}}',
+        '{"type":"no-action","message":"' + 'x'.repeat(1001) + '"}',
+        '{"type":"no-action","message":"unfinished"'
+    ]) await assert.rejects(localPlanningJson(async function* () { yield complete(value); },
+        signal, 4096, 'unlinked'), /strict JSON/);
+    await assert.rejects(localPlanningJson(async function* () { yield complete(noAction); },
+        signal, 8, 'unlinked'), /strict JSON/);
+});
+
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

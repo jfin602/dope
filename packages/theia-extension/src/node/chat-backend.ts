@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
     ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal } from '@dope/chat/lib/service';
-import { suggestedChatTitle, type ChatAssistantMessage, type ChatModelProvenance, type ChatUserMessage } from '@dope/chat';
+import { suggestedChatTitle, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatUserMessage } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure, type ConversationMessage, type ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
 import type { AIRoleHardConstraints, RoutingProvenance } from '@dope/ai';
@@ -10,7 +10,7 @@ import { ChatContextComposer } from './chat-context-composer';
 import { ChatProjectGrounder, type GroundingResult } from './chat-project-grounder';
 import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
-import { localPlanningJson, roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
+import { LocalPlanningOutputFailure, localPlanningJson, roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
 import { RoadmapGreenfield, type GreenfieldEdit, type GreenfieldEditPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 
@@ -268,18 +268,38 @@ export class ChatBackend implements ChatService {
         if (message?.role !== 'assistant' || message.execution.status !== 'complete')
             throw new Error('Planning proposal is not a completed Chat turn');
         this.proposals.delete(chatId);
+        const activity = message.planningActivity;
+        if (!activity || activity.status !== 'pending' || activity.proposalId !== proposalId)
+            throw new Error('Planning activity is not pending');
+        const record = (status: ChatPlanningActivity['status'], appliedRevision?: number) =>
+            this.repository.recordPlanningActivity(root, chatId, pending.messageId, leaseToken,
+                { ...activity, status, ...(appliedRevision === undefined ? {} : { appliedRevision }) },
+                { proposalId, status: 'pending' });
+        let appliedRevision: number | undefined;
         try {
-            if (!approve) return undefined;
+            if (!approve) { await record('denied'); return undefined; }
             if (pending.draft) {
                 if (!this.greenfield) throw new Error('Greenfield draft unavailable');
                 if (this.greenfield.chatDraft(root, chatId)?.handle !== pending.draft.handle)
                     throw new Error('Greenfield Chat binding changed');
                 const result = await this.greenfield.applyEdit(pending.draft.handle, pending.draft.preview, true);
+                appliedRevision = result.revision;
+                await record('applied', result.revision);
                 return { revision: result.revision, changedIds: pending.changedIds };
             }
             if (!this.planning || !pending.request || !pending.token) throw new Error('Planning action unavailable');
             const result = await this.planning.apply(pending.request, pending.token, true);
+            appliedRevision = result.revision;
+            await record('applied', result.revision);
             return { revision: result.revision, changedIds: pending.changedIds };
+        } catch (error) {
+            if (appliedRevision !== undefined)
+                throw new Error(`Planning write completed at revision ${appliedRevision}, but Chat activity could not be recorded; reread the Roadmap: ${String(error)}`);
+            if ((await this.repository.read(root)).chats.find(chat => chat.id === chatId)?.messages
+                .some(item => item.id === pending.messageId && item.role === 'assistant' &&
+                    item.planningActivity?.status === 'pending'))
+                await record(/stale|source|hash|conflict/i.test(String(error)) ? 'stale' : 'rejected');
+            throw error;
         } finally { if (pending.handle) this.planning?.detach(pending.handle); }
     }
 
@@ -501,18 +521,33 @@ export class ChatBackend implements ChatService {
                             message.role === 'assistant' && message.execution.status === 'complete'))
                         void this.automaticTitle(root, key, preceding, assistant.id, output, actual);
                     if (abort.signal.aborted || request.retryMessageId) return preview;
-                    return { ...preview, ...await this.proposal(root, key, assistant.id, request.leaseToken, output, preview.refs, draft) };
+                    const result = await this.proposal(root, key, assistant.id, request.leaseToken, output, preview.refs, draft);
+                    if (localRoadmap) {
+                        const kind = (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
+                        await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
+                            { schemaVersion: 1, kind, refs: preview.refs,
+                                status: kind === 'no-action' ? 'no-action' : result.proposal ? 'pending' : 'rejected',
+                                ...(result.proposal ? { proposalId: result.proposal.id } : {}) });
+                    }
+                    return { ...preview, ...result };
                 }
             }
             throw new Error('Model stream ended without completion');
         } catch (error) {
             if (assistant) {
+                if (localRoadmap && error instanceof LocalPlanningOutputFailure && error.rawText)
+                    output = error.rawText;
                 const cancelled = abort.signal.aborted || error instanceof ModelRuntimeFailure && error.failureClass === 'cancelled';
                 const failure = error instanceof ModelRuntimeFailure ? error.message : 'Conversation failed';
                 try { await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                     outcome: cancelled ? 'cancelled' : 'failed', content: output,
                     ...(!cancelled ? { failure } : {}) }); }
                 catch { /* A lost lease or newer revision is recovered by ChatRepository. */ }
+                if (localRoadmap) try {
+                    await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
+                        { schemaVersion: 1, kind: cancelled ? 'cancelled' : 'error',
+                            status: cancelled ? 'cancelled' : 'failed', refs: preview.refs });
+                } catch { /* The execution failure remains the authoritative saved outcome. */ }
             }
             throw error;
         } finally {

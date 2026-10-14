@@ -5,7 +5,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assignedChatColor, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath, parseChat,
     parseChatCollection, parseChatColor, parseChatFolderPath, parseChatMessage, parseChatSettings, withAutomaticChatTitle } from '../index';
-import type { Chat, ChatCollection, ChatFolder } from '../index';
+import type { Chat, ChatCollection, ChatFolder, ChatPlanningActivity } from '../index';
 import type { ChatEvent, ChatLeaseResult, ChatOperation, ChatSearchHit } from '../service';
 
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
@@ -471,6 +471,32 @@ export class ChatRepository {
             this.emit(root, { revision: next.revision, kind: 'changed',
                 ...('chatId' in operation ? { chatId: operation.chatId } : {}) });
             return next;
+        });
+    }
+    /** Backend-only activity update after strict local validation or an independently confirmed decision. */
+    async recordPlanningActivity(root: string, chatId: string, messageId: string, leaseToken: string,
+        activity: ChatPlanningActivity, expected?: { proposalId: string; status: 'pending' }): Promise<void> {
+        await this.locked(root, async base => {
+            const lease = await this.lease(base, chatId);
+            if (!lease || !this.active(lease) || lease.token !== leaseToken) throw new Error('Chat ownership lease required');
+            const current = await this.recover(root, base);
+            const index = current.chats.findIndex(chat => chat.id === chatId);
+            if (index < 0) throw new Error('Chat not found');
+            const chat = current.chats[index];
+            const at = chat.messages.findIndex(message => message.id === messageId);
+            const message = chat.messages[at];
+            if (!message || message.role !== 'assistant' || !['complete', 'failed', 'cancelled'].includes(message.execution.status) ||
+                (expected ? message.planningActivity?.proposalId !== expected.proposalId ||
+                    message.planningActivity.status !== expected.status : !!message.planningActivity))
+                throw new Error('Planning activity state changed');
+            const messages = [...chat.messages];
+            messages[at] = parseChatMessage({ ...message, planningActivity: activity });
+            const now = new Date().toISOString();
+            const chats = [...current.chats];
+            chats[index] = parseChat({ ...chat, messages, revision: chat.revision + 1, updatedAt: now });
+            const next = parseChatCollection({ ...current, chats, revision: current.revision + 1 });
+            await this.write(root, next);
+            this.emit(root, { revision: next.revision, kind: 'changed', chatId });
         });
     }
     async claim(root: string, chatId: string, ownerId: string): Promise<ChatLeaseResult> {
