@@ -17,6 +17,23 @@ export interface RoadmapVisibleGraph {
     omittedByStack: Map<string, number>;
 }
 
+export interface RoadmapImplementationStack {
+    id: string;
+    path: string;
+    fingerprint: string;
+    promptCount: number;
+}
+
+/** Source-backed stack ownership for presentation; task-stack cards never become checkpoints. */
+export function roadmapImplementationStacks(projection: RoadmapProjection, checkpointId: string): RoadmapImplementationStack[] {
+    const byId = new Map(projection.nodes.map(node => [node.id, node]));
+    return projection.edges.filter(edge => edge.id.startsWith('task-parent:') && edge.from === checkpointId)
+        .map(edge => byId.get(edge.to)).filter((node): node is CheckpointNode => node?.kind === 'task-stack')
+        .map(node => ({ id: node.id, path: node.taskSource!.stackPath, fingerprint: node.taskSource!.fingerprint,
+            promptCount: projection.nodes.filter(item => item.kind === 'prompt' &&
+                item.taskSource?.stackPath === node.taskSource?.stackPath).length }));
+}
+
 export interface RoadmapCanvasConnector {
     id: string;
     from: string;
@@ -60,60 +77,56 @@ export function roadmapCanvasConnectors(projection: Pick<RoadmapProjection, 'nod
 }
 
 /** Presentation disclosure only. The projection and its evidence are never changed. */
-export function roadmapVisibleGraph(projection: RoadmapProjection, detail: RoadmapDetail,
+export function roadmapVisibleGraph(projection: RoadmapProjection, _detail: RoadmapDetail,
     selectedId?: string, expanded: ReadonlySet<string> = new Set(), collapsed: ReadonlySet<string> = new Set(),
     promptLimit = 96, window?: { stackId: string; start: number }): RoadmapVisibleGraph {
-    const byId = new Map(projection.nodes.map(node => [node.id, node]));
-    const stackForPrompt = new Map<string, string>();
     const promptsByStack = new Map<string, CheckpointNode[]>();
-    for (const edge of projection.edges) {
-        const source = byId.get(edge.from), target = byId.get(edge.to);
-        if (source?.kind === 'task-stack' && target?.kind === 'prompt') stackForPrompt.set(target.id, source.id);
-    }
     for (const node of projection.nodes) if (node.kind === 'prompt') {
-        const stack = stackForPrompt.get(node.id) ?? projection.nodes.find(candidate =>
+        const stack = projection.nodes.find(candidate =>
             candidate.kind === 'task-stack' && candidate.taskSource?.stackPath === node.taskSource?.stackPath)?.id;
         if (stack) {
-            stackForPrompt.set(node.id, stack);
             promptsByStack.set(stack, [...(promptsByStack.get(stack) ?? []), node]);
         }
     }
-    const selectedStack = selectedId ? stackForPrompt.get(selectedId) : undefined;
-    const priorityStack = window?.stackId ?? selectedStack ??
-        (byId.get(selectedId ?? '')?.kind === 'task-stack' ? selectedId : undefined);
-    const showStack = (node: CheckpointNode): boolean => {
-        if (node.kind !== 'task-stack') return true;
-        if (node.id === selectedId || node.id === selectedStack) return true;
-        if (expanded.has(node.id)) return true;
-        const parent = projection.edges.find(edge => edge.to === node.id && edge.id.startsWith('task-parent:'))?.from;
-        if (parent && expanded.has(parent)) return true;
-        if (parent && collapsed.has(parent)) return false;
-        return detail !== 'world' || (node.taskSource?.segment ?? node.title).startsWith('Correction ');
-    };
-    const visible = new Set(projection.nodes.filter(node => node.kind !== 'prompt' && showStack(node)).map(node => node.id));
-    const candidates = [...promptsByStack].filter(([stack]) => visible.has(stack) &&
-        (stack === selectedStack || (!collapsed.has(stack) && (expanded.has(stack) || detail === 'checkpoint'))))
-        .sort(([a], [b]) => a === priorityStack ? -1 : b === priorityStack ? 1 : 0);
-    // Reserve room for the selected prompt and immediate sequence context even in a large graph.
+    const owners = new Map(projection.edges.filter(edge => edge.id.startsWith('task-parent:'))
+        .map(edge => [edge.to, edge.from]));
+    const visible = new Set(projection.nodes.filter(node => node.kind !== 'prompt' && node.kind !== 'task-stack')
+        .map(node => node.id));
+    const candidates = [...promptsByStack].filter(([stack]) => {
+        const owner = owners.get(stack);
+        return !!owner && visible.has(owner) && expanded.has(owner) && !collapsed.has(owner);
+    }).sort(([a], [b]) => a === window?.stackId ? -1 : b === window?.stackId ? 1 : 0);
     const budget = Math.max(1, Math.min(256, Math.floor(promptLimit)));
-    const selected = byId.get(selectedId ?? '');
-    if (selected?.kind === 'prompt') visible.add(selected.id);
-    let remaining = Math.max(0, budget - (selected?.kind === 'prompt' ? 1 : 0));
+    let remaining = budget;
+    const perStack = Math.max(1, Math.floor(budget / Math.max(1, candidates.length)));
     for (const [stack, prompts] of candidates) {
+        let stackRemaining = Math.min(perStack, remaining);
         const ordered = [...prompts].sort((a, b) => (a.taskSource?.number ?? 0) - (b.taskSource?.number ?? 0) || a.id.localeCompare(b.id));
         const selectedIndex = ordered.findIndex(node => node.id === selectedId);
         const neighborhood = selectedIndex < 0 ? [] : ordered.slice(Math.max(0, selectedIndex - 2), selectedIndex + 3);
-        for (const node of neighborhood) if (!visible.has(node.id) && remaining > 0) { visible.add(node.id); remaining--; }
+        for (const node of neighborhood) if (!visible.has(node.id) && stackRemaining > 0) {
+            visible.add(node.id); remaining--; stackRemaining--;
+        }
         const offset = stack === window?.stackId && Number.isSafeInteger(window.start) ?
             Math.max(0, Math.min(ordered.length - 1, window.start)) : 0;
         for (const node of [...ordered.slice(offset), ...ordered.slice(0, offset)])
-            if (!visible.has(node.id) && remaining > 0) { visible.add(node.id); remaining--; }
+            if (!visible.has(node.id) && stackRemaining > 0) { visible.add(node.id); remaining--; stackRemaining--; }
     }
     const omittedByStack = new Map<string, number>();
-    for (const [stack, prompts] of promptsByStack) if (visible.has(stack))
+    for (const [stack, prompts] of promptsByStack) if (owners.has(stack))
         omittedByStack.set(stack, prompts.filter(node => !visible.has(node.id)).length);
+    const edges = projection.edges.filter(edge => visible.has(edge.from) && visible.has(edge.to));
+    for (const [stack, prompts] of candidates) {
+        const owner = owners.get(stack)!;
+        const shown = prompts.filter(node => visible.has(node.id)).sort((a, b) =>
+            (a.taskSource?.number ?? 0) - (b.taskSource?.number ?? 0));
+        for (const node of shown) if (!edges.some(edge => edge.to === node.id &&
+            shown.some(previous => previous.id === edge.from)))
+            edges.push({ id: `disclosure:${owner}:${node.id}`, from: owner, to: node.id,
+                kind: 'branch', label: 'Disclosed implementation prompt' });
+    }
     return { nodes: projection.nodes.filter(node => visible.has(node.id)),
-        edges: projection.edges.filter(edge => visible.has(edge.from) && visible.has(edge.to)), omittedByStack };
+        edges, omittedByStack };
 }
 
 /** DOM order and keyboard order are the same, including correction branches. */
@@ -196,12 +209,14 @@ export function roadmapSpatialLayout(projection: RoadmapProjection): Map<string,
     const incoming = new Set<string>();
     for (const edge of projection.edges.filter(item => item.kind === 'branch')) {
         const child = byId.get(edge.to);
-        if (child && !child.phaseAssociation?.unresolvedReason && byId.has(edge.from)) {
+        if (child && child.kind !== 'prompt' && child.kind !== 'task-stack' &&
+            !child.phaseAssociation?.unresolvedReason && byId.has(edge.from)) {
             children.set(edge.from, [...(children.get(edge.from) ?? []), child]);
             incoming.add(child.id);
         }
     }
-    for (const node of projection.nodes) if (node.phaseAssociation?.phaseId && byId.has(node.phaseAssociation.phaseId)) {
+    for (const node of projection.nodes) if (node.kind !== 'prompt' && node.kind !== 'task-stack' &&
+        node.phaseAssociation?.phaseId && byId.has(node.phaseAssociation.phaseId)) {
         const parent = node.phaseAssociation.phaseId;
         // A task with an explicit failed-prompt parent keeps that source-backed attachment.
         if (!incoming.has(node.id)) {
@@ -239,8 +254,39 @@ export function roadmapSpatialLayout(projection: RoadmapProjection): Map<string,
     for (const phase of projection.nodes.filter(node => node.kind === 'phase').sort(compare)) visitBand(phase);
     // Unmatched work stays in a distinct, discoverable region past the phase route.
     nextBandX += 120;
-    for (const node of [...projection.nodes].filter(item => !incoming.has(item.id)).sort(compare))
+    for (const node of [...projection.nodes].filter(item => item.kind !== 'prompt' && item.kind !== 'task-stack' &&
+        !incoming.has(item.id)).sort(compare))
         if (!placed.has(node.id)) visitBand(node);
-    for (const node of [...projection.nodes].sort(compare)) if (!placed.has(node.id)) visitBand(node);
+    for (const node of [...projection.nodes].filter(item => item.kind !== 'prompt' && item.kind !== 'task-stack').sort(compare))
+        if (!placed.has(node.id)) visitBand(node);
+    // Disclosure consumes only the space used by displayed prompts. Strategic cards retain exact coordinates.
+    const ownerByPrompt = new Map(projection.edges.filter(edge => edge.id.startsWith('disclosure:'))
+        .map(edge => [edge.to, edge.from]));
+    const promptById = new Map(projection.nodes.filter(node => node.kind === 'prompt').map(node => [node.id, node]));
+    const pending = [...promptById.values()].sort((a, b) =>
+        (a.taskSource?.stackPath ?? '').localeCompare(b.taskSource?.stackPath ?? '') ||
+        (a.taskSource?.number ?? 0) - (b.taskSource?.number ?? 0));
+    const cursors = new Map<number, { upper: number; lower: number }>();
+    for (const prompt of pending) {
+        const owner = ownerByPrompt.get(prompt.id) ?? projection.edges.find(edge => edge.to === prompt.id &&
+            promptById.has(edge.from))?.from;
+        const anchor = owner && placed.get(owner);
+        if (!anchor) continue;
+        const band = Math.round((anchor.x - 64) / 420);
+        let cursor = cursors.get(band);
+        if (!cursor) {
+            const strategic = [...placed.entries()].filter(([, point]) => Math.round((point.x - 64) / 420) === band);
+            cursor = { upper: Math.min(...strategic.map(([, point]) => point.y)) - 80,
+                lower: Math.max(...strategic.map(([id, point]) => point.y + cardHeight(byId.get(id)!))) + 80 };
+            cursors.set(band, cursor);
+        }
+        const correction = byId.get(owner)?.kind === 'correction' ||
+            (promptById.has(owner) && placed.get(owner)!.y < baseline);
+        const height = cardHeight(prompt);
+        const y = correction ? cursor.upper - height : cursor.lower;
+        placed.set(prompt.id, { x: anchor.x, y });
+        if (correction) cursor.upper = y - 44;
+        else cursor.lower = y + height + 44;
+    }
     return placed;
 }

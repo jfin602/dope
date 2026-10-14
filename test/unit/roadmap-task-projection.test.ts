@@ -19,7 +19,7 @@ const index = (projectId = 'project'): RoadmapIndex => ({ schemaVersion: 1, proj
 const stack = (folderName: string, phase: number, mode: 'phase' | 'correction',
     count = 2): TaskStackSource => ({ folderName, phase, mode, path: `docs/tasks/${folderName}`,
     fingerprint: hash, continuationSlice: /^p\d+[a-z]$/.test(folderName) ? folderName.at(-1) : undefined,
-    correctionSlug: mode === 'correction' ? folderName : undefined,
+    correctionSlug: mode === 'correction' ? folderName.replace(/^c\d+-/, '') : undefined,
     prompts: Array.from({ length: count }, (_, i) => ({ number: i + 1, title: `Prompt ${i + 1}`,
         kind: i === count - 1 ? 'closeout' : 'implementation',
         path: `docs/tasks/${folderName}/P${i + 1}-task.txt`, fingerprint: hash,
@@ -43,7 +43,12 @@ test('p10 prompts, p8 slices, and c10 correction are source-backed and never pro
     assert.ok(first.nodes.some(node => node.taskSource?.segment === 'Continuation b'));
     const correction = first.nodes.find(node => node.kind === 'task-stack' &&
         node.taskSource?.stackPath === 'docs/tasks/c10-roadmap-create-sync')!;
-    assert.equal(first.edges.find(edge => edge.to === correction.id)?.from, 'p10');
+    const sourceOnly = first.nodes.find(node => node.kind === 'correction' &&
+        node.taskSource?.stackPath === 'docs/tasks/c10-roadmap-create-sync')!;
+    assert.equal(sourceOnly.status, 'unknown');
+    assert.equal(sourceOnly.statusLabel, 'Source only · status unknown');
+    assert.equal(sourceOnly.phaseAssociation?.phaseId, 'p10');
+    assert.equal(first.edges.find(edge => edge.to === correction.id)?.from, sourceOnly.id);
     const keyboard = roadmapCanvasOrder(first).map(node => node.id);
     assert.ok(keyboard.indexOf(correction.id) > keyboard.indexOf('p10'));
     assert.ok(keyboard.indexOf(first.nodes.find(node => node.kind === 'prompt' &&
@@ -63,11 +68,15 @@ test('exact failed prompt edge needs typed matching evidence; stale proof attach
     const linked = projectRoadmapTasks(source, [correction, phase], [], {}, [proof]);
     const correctionId = linked.nodes.find(node => node.kind === 'task-stack' &&
         node.taskSource?.stackPath === correction.path)!.id;
-    assert.equal(linked.edges.find(edge => edge.to === correctionId)?.from,
-        linked.nodes.find(node => node.kind === 'prompt' && node.taskSource?.stackPath === phase.path)!.id);
+    const sourceOnly = linked.nodes.find(node => node.kind === 'correction' &&
+        node.taskSource?.stackPath === correction.path)!;
+    assert.equal(linked.edges.find(edge => edge.to === correctionId)?.from, sourceOnly.id);
+    assert.ok(linked.edges.some(edge => edge.from === linked.nodes.find(node =>
+        node.kind === 'prompt' && node.taskSource?.stackPath === phase.path)!.id && edge.to === sourceOnly.id));
     const stale = projectRoadmapTasks(source, [phase, correction], [], {},
         [{ ...proof, failedPrompt: { ...proof.failedPrompt, fingerprint: 'b'.repeat(64) } }]);
-    assert.equal(stale.edges.find(edge => edge.to === correctionId)?.from, 'p10');
+    assert.equal(stale.edges.find(edge => edge.to === correctionId)?.from, sourceOnly.id);
+    assert.equal(stale.edges.some(edge => edge.id.startsWith('task-failure:')), false);
     assert.ok(stale.diagnostics.some(message => message.includes('Unresolved failed prompt')));
 });
 
@@ -108,4 +117,29 @@ test('multiple c10 task stacks retain distinct identities; typed phase conflict 
         ['p10', 'p10', 'p10']);
     assert.match(result.unlinkedTasks[0].reason, /conflicts/);
     assert.equal(result.edges.filter(edge => edge.id.startsWith('task-parent:')).length, 3);
+});
+
+test('canonical correction absorbs its matching stack without a duplicate source-only correction', () => {
+    const source = index();
+    source.checkpoints.push({ ...checkpoint('roadmap:docs/roadmap/mvp-roadmap.md#c10-roadmap-create-sync',
+        'Correction — `c10-roadmap-create-sync`', 11, 'not-green'), kind: 'correction' });
+    const original = JSON.stringify(source);
+    const result = projectRoadmapTasks(source, [stack('c10-roadmap-create-sync', 10, 'correction')]);
+    const corrections = result.nodes.filter(node => node.kind === 'correction');
+    assert.equal(corrections.length, 1);
+    assert.equal(corrections[0].status, 'not-green');
+    assert.equal(result.edges.find(edge => edge.id.startsWith('task-parent:'))?.from, corrections[0].id);
+    assert.equal(result.revision, source.revision);
+    assert.equal(JSON.stringify(source), original);
+});
+
+test('unique descriptive correction in the same phase absorbs its named task folder', () => {
+    const source = index();
+    source.checkpoints.push({ ...checkpoint('roadmap:docs/roadmap/mvp-roadmap.md#october-map-canvas',
+        'October 2 — Phase 10 map canvas priority correction', 11), kind: 'correction' });
+    const result = projectRoadmapTasks(source, [stack('c10-map-canvas-priority', 10, 'correction')]);
+    assert.equal(result.nodes.filter(node => node.kind === 'correction').length, 1);
+    assert.equal(result.nodes.find(node => node.kind === 'correction')?.phaseAssociation?.phaseId, 'p10');
+    assert.equal(result.edges.find(edge => edge.id.startsWith('task-parent:'))?.from,
+        'roadmap:docs/roadmap/mvp-roadmap.md#october-map-canvas');
 });

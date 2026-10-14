@@ -15,7 +15,7 @@ import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
-import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapDetailAtZoom, roadmapVisibleGraph,
+import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
@@ -25,7 +25,7 @@ import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInit
     type RoadmapViewportState } from './roadmap-viewport';
 import './dope.css';
 
-function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean; relation: string; omitted: number;
+function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean; relation: string; omitted: number; detail: RoadmapDetail;
     select: (id: string) => void; activate: (id: string) => void } }): React.ReactElement {
     const item = data.item;
     return React.createElement(React.Fragment, null,
@@ -37,11 +37,13 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
             'aria-label': `${item.kind}: ${item.title}; ${item.statusLabel}${data.relation ? `; ${data.relation}` : ''}${data.omitted ? `; ${data.omitted} prompts hidden` : ''}`,
             onClick: event => { event.stopPropagation(); data.select(item.id); },
             onDoubleClick: event => { event.stopPropagation(); data.activate(item.id); } },
-        React.createElement('small', null, item.kind),
+        data.detail !== 'world' ? React.createElement('small', null, item.kind) : null,
         React.createElement('strong', null, item.title),
         React.createElement('span', { className: 'dope-roadmap-status' },
             React.createElement('span', { className: 'dope-roadmap-status-mark', 'aria-hidden': true }, roadmapStatusMark[item.status]),
             item.statusLabel),
+        data.detail === 'checkpoint' && item.evidence.length ? React.createElement('small', null,
+            `${item.evidence.length} source citation${item.evidence.length === 1 ? '' : 's'}`) : null,
         data.omitted > 0 ? React.createElement('span', { className: 'dope-roadmap-omitted' },
             `${data.omitted} prompt${data.omitted === 1 ? '' : 's'} hidden; expand or select stack for Next prompts`) : null),
         React.createElement(Handle, { id: 'right', type: 'source', position: Position.Right, isConnectable: false }),
@@ -75,6 +77,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly inspection = document.createElement('section');
     private readonly inspectionEditor: RoadmapInspectorWidget;
     private readonly inspectionSummary = document.createElement('strong');
+    private readonly implementation = document.createElement('section');
+    private readonly implementationText = document.createElement('p');
+    private readonly implementationToggle = document.createElement('button');
+    private readonly implementationNext = document.createElement('button');
     private readonly inspectionExpand = document.createElement('button');
     private readonly inspectionCompact = document.createElement('button');
     private readonly inspectionMinimize = document.createElement('button');
@@ -205,7 +211,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.detailLabel.className = 'dope-roadmap-detail';
         this.detailLabel.setAttribute('aria-live', 'polite');
         this.nextPromptsButton.type = 'button';
-        icon(this.nextPromptsButton, 'Show next prompts in selected stack', 'list-ordered');
+        icon(this.nextPromptsButton, 'Show next implementation prompts for selected checkpoint', 'list-ordered');
         this.nextPromptsButton.onclick = () => this.nextPrompts();
         icon(this.sourceButton, 'Roadmap Markdown and setup', 'file-text');
         this.sourceButton.append(this.sourceLabel);
@@ -263,7 +269,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
             button.setAttribute('aria-label', label); button.onclick = action; }
         inspectionHeader.append(this.inspectionSummary, this.inspectionExpand, this.inspectionCompact,
             this.inspectionMinimize, this.inspectionClose);
-        this.inspection.append(inspectionHeader, this.inspectionEditor.node);
+        this.implementation.className = 'dope-roadmap-implementation';
+        this.implementation.setAttribute('aria-label', 'Implementation sources');
+        this.implementationToggle.type = this.implementationNext.type = 'button';
+        this.implementationToggle.onclick = () => this.setExpansion(!this.expanded.has(this.selectedId ?? ''));
+        this.implementationNext.textContent = 'Next prompts';
+        this.implementationNext.onclick = () => this.nextPrompts();
+        this.implementation.append(this.implementationText, this.implementationToggle, this.implementationNext);
+        this.inspection.append(inspectionHeader, this.implementation, this.inspectionEditor.node);
         this.setInspectionView('compact');
         this.sourceHeader.className = 'dope-roadmap-source-header';
         this.sourceSummary.textContent = 'Linked Markdown';
@@ -409,6 +422,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (priorProjectUri === projectUri && selectedTaskId &&
                 projectRoadmapTasks(index, tasks).nodes.some(node => node.id === selectedTaskId)) this.selectedId = selectedTaskId;
             this.projection = projectRoadmapTasks(index, tasks, owners, { projectId: index.projectId, selectedId: this.selectedId });
+            if (switched && this.selectedId) {
+                const restoredTask = this.projection.nodes.find(node => node.id === this.selectedId && node.taskSource);
+                if (restoredTask) this.inspector.selectTask(restoredTask);
+            }
             this.render();
             if (switched && this.viewport && this.flow) void this.flow.setViewport(this.viewport);
             this.queueInitialCamera();
@@ -546,12 +563,35 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.schedulePresentation();
         }
         this.renderFlow();
+        this.renderImplementationSummary();
         this.renderPools();
         this.renderImportEntry();
+        const displayedCount = roadmapVisibleGraph(projection, this.detail, this.selectedId,
+            this.expanded, this.collapsed, 96, this.promptWindow).nodes.length;
         const diagnostic = projection.diagnostics.length ? ` · ${projection.diagnostics.length} unresolved reference(s)` : '';
         this.status.textContent = projection.revision === 0 ?
             'No Roadmap yet. Import one, create manually, or plan with an existing Chat.' :
-            `${nodes.length} checkpoints · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.inspector.index.linkedDocument.syncState})` : ''}${this.taskDiscoveryError ? ' · Prompt discovery unavailable; Refresh to retry.' : ''}`;
+            `${displayedCount} displayed checkpoints · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.inspector.index.linkedDocument.syncState})` : ''}${this.taskDiscoveryError ? ' · Prompt discovery unavailable; Refresh to retry.' : ''}`;
+    }
+
+    private renderImplementationSummary(): void {
+        const id = this.selectedId;
+        const stacks = id && this.projection ? roadmapImplementationStacks(this.projection, id) : [];
+        this.implementation.hidden = !stacks.length;
+        if (!stacks.length) return;
+        const count = stacks.reduce((total, stack) => total +
+            (this.taskStacks.find(source => source.path === stack.path)?.prompts.length ?? stack.promptCount), 0);
+        const paths = stacks.slice(0, 3).map(stack => stack.path).join(', ');
+        this.implementationText.textContent = `${stacks.length} implementation stack${stacks.length === 1 ? '' : 's'} · ` +
+            `${count} discovered prompt${count === 1 ? '' : 's'} · ${paths}${stacks.length > 3 ? `, +${stacks.length - 3} more` : ''}. ` +
+            'Source only; prompt discovery does not determine qualification status.';
+        const expanded = this.expanded.has(id!);
+        this.implementationToggle.textContent = expanded ? 'Hide Prompts' : 'View Prompts';
+        this.implementationToggle.setAttribute('aria-expanded', String(expanded));
+        this.implementationToggle.setAttribute('aria-label', `${expanded ? 'Hide' : 'View'} implementation prompts for ${this.projection?.nodes.find(node => node.id === id)?.title}`);
+        const visible = this.projection && roadmapVisibleGraph(this.projection, this.detail, id,
+            this.expanded, this.collapsed, 96, this.promptWindow);
+        this.implementationNext.hidden = !expanded || !stacks.some(stack => (visible?.omittedByStack.get(stack.id) ?? 0) > 0);
     }
 
     private renderFlow(): void {
@@ -560,20 +600,23 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const cameraGeneration = this.cameraGeneration;
         const cameraProjectUri = this.projectUri;
         this.detailLabel.textContent = `${this.detail[0].toUpperCase()}${this.detail.slice(1)} detail`;
-        this.expandButton.disabled = this.collapseButton.disabled = !this.selectedId;
+        const stacks = this.selectedId && projection ? roadmapImplementationStacks(projection, this.selectedId) : [];
+        this.expandButton.disabled = this.collapseButton.disabled = !stacks.length;
         this.focusButton.disabled = !this.selectedId;
         const visible = projection ? roadmapVisibleGraph(projection, this.detail, this.selectedId,
             this.expanded, this.collapsed, 96, this.promptWindow) : undefined;
-        this.nextPromptsButton.disabled = !this.selectedId || !visible?.omittedByStack.get(this.selectedId);
-        const positions = projection ? roadmapSpatialLayout(projection) : new Map<string, { x: number; y: number }>();
+        this.nextPromptsButton.disabled = !this.expanded.has(this.selectedId ?? '') ||
+            !stacks.some(stack => (visible?.omittedByStack.get(stack.id) ?? 0) > 0);
+        const positions = visible ? roadmapSpatialLayout({ ...projection!, ...visible }) : new Map<string, { x: number; y: number }>();
         const titles = new Map(projection?.nodes.map(item => [item.id, item.title]) ?? []);
         const relations = new Map<string, string[]>();
-        for (const edge of projection ? roadmapCanvasConnectors(projection) : [])
+        for (const edge of visible ? roadmapCanvasConnectors(visible) : [])
             relations.set(edge.to, [...(relations.get(edge.to) ?? []),
                 `${edge.label} ${titles.get(edge.from) ?? edge.from}`]);
         const nodes: Node[] = (visible ? roadmapCanvasOrder(visible) : []).map(item => ({
             id: item.id, type: 'checkpoint', position: this.placements.get(item.id) ?? positions.get(item.id) ?? { x: 64, y: 64 },
-            data: { item, selected: item.id === this.selectedId, relation: (relations.get(item.id) ?? []).join(', '),
+            data: { item, selected: item.id === this.selectedId, detail: this.detail,
+                relation: (relations.get(item.id) ?? []).join(', '),
                 omitted: visible?.omittedByStack.get(item.id) ?? 0,
                 select: (id: string) => this.select(id), activate: (id: string) => this.activateCheckpoint(id) },
             selected: item.id === this.selectedId, draggable: this.arranging, selectable: true,
@@ -689,18 +732,23 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const id = this.selectedId;
         if (!id) return;
         const node = this.projection?.nodes.find(item => item.id === id);
-        const target = node?.kind === 'prompt' ? this.projection?.nodes.find(item =>
-            item.kind === 'task-stack' && item.taskSource?.stackPath === node.taskSource?.stackPath)?.id : id;
+        const stack = node?.kind === 'prompt' ? this.projection?.nodes.find(item =>
+            item.kind === 'task-stack' && item.taskSource?.stackPath === node.taskSource?.stackPath) : undefined;
+        const target = stack ? this.projection?.edges.find(edge => edge.to === stack.id &&
+            edge.id.startsWith('task-parent:'))?.from : id;
         if (!target) return;
         (expand ? this.collapsed : this.expanded).delete(target);
         (expand ? this.expanded : this.collapsed).add(target);
         this.schedulePresentation();
         this.renderFlow();
+        this.renderImplementationSummary();
     }
 
     private focusSelection(): void {
         if (!this.selectedId || !this.flow || !this.projection) return;
-        const position = this.placements.get(this.selectedId) ?? roadmapSpatialLayout(this.projection).get(this.selectedId);
+        const visible = roadmapVisibleGraph(this.projection, this.detail, this.selectedId,
+            this.expanded, this.collapsed, 96, this.promptWindow);
+        const position = this.placements.get(this.selectedId) ?? roadmapSpatialLayout({ ...this.projection, ...visible }).get(this.selectedId);
         if (!position) return;
         this.intentionalCamera(flow => flow.setCenter(position.x + 140, position.y + 40,
             { zoom: Math.max(1.4, flow.getZoom()), duration: 320 }));
@@ -708,15 +756,24 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     private nextPrompts(): void {
         const id = this.selectedId;
-        if (!id || this.projection?.nodes.find(item => item.id === id)?.kind !== 'task-stack') return;
-        const count = this.projection.nodes.filter(item => item.kind === 'prompt' &&
-            item.taskSource?.stackPath === this.projection?.nodes.find(stack => stack.id === id)?.taskSource?.stackPath).length;
-        if (count <= 96) return;
-        this.promptWindow = { stackId: id, start: ((this.promptWindow?.stackId === id ? this.promptWindow.start : 0) + 96) % count };
+        if (!id || !this.projection) return;
+        const visible = roadmapVisibleGraph(this.projection, this.detail, id,
+            this.expanded, this.collapsed, 96, this.promptWindow);
+        const omitted = roadmapImplementationStacks(this.projection, id).filter(item =>
+            (visible.omittedByStack.get(item.id) ?? 0) > 0);
+        const previous = omitted.findIndex(item => item.id === this.promptWindow?.stackId);
+        const stack = omitted[(previous + 1) % omitted.length];
+        if (!stack) return;
+        const count = stack.promptCount;
+        const shown = visible.nodes.filter(node => node.kind === 'prompt' &&
+            node.taskSource?.stackPath === stack.path).length;
+        this.promptWindow = { stackId: stack.id,
+            start: ((this.promptWindow?.stackId === stack.id ? this.promptWindow.start : 0) + Math.max(1, shown)) % count };
         this.expanded.add(id);
         this.collapsed.delete(id);
         this.schedulePresentation();
         this.renderFlow();
+        this.renderImplementationSummary();
     }
 
     protected override onAfterAttach(msg: Message): void {
@@ -1411,7 +1468,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const ids = this.projection ? roadmapCanvasOrder({ ...this.projection,
             ...roadmapVisibleGraph(this.projection, this.detail, this.selectedId, this.expanded, this.collapsed, 96, this.promptWindow) })
             .map(node => node.id) : [];
-        const positions = this.projection ? roadmapSpatialLayout(this.projection) : new Map<string, { x: number; y: number }>();
+        const positions = this.projection ? roadmapSpatialLayout({ ...this.projection,
+            ...roadmapVisibleGraph(this.projection, this.detail, this.selectedId, this.expanded, this.collapsed, 96, this.promptWindow) }) :
+            new Map<string, { x: number; y: number }>();
         for (const [id, position] of this.placements) positions.set(id, position);
         const next = roadmapSpatialNextId(ids, positions, current.dataset.checkpointId, event.key);
         if (next === undefined) return;

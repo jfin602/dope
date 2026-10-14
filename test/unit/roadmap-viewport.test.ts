@@ -32,10 +32,13 @@ test('viewport state restores only within matching project and rejects corrupt c
     assert.equal(restored.viewportIntent, 'user');
     assert.equal(restored.selectedId, 'c1');
     assert.deepEqual(restored.expanded, ['p1']);
+    assert.deepEqual(restored.collapsed, ['p2']);
     assert.deepEqual(restored.placements.c1, { x: 111, y: 222 });
     assert.deepEqual(readRoadmapViewport({ ...saved, placements: { bad: { x: Infinity, y: 0 } } }, 'id').placements, {});
     assert.deepEqual(readRoadmapViewport(saved, 'other').placements, {});
     assert.equal(readRoadmapViewport(saved, 'other').selectedId, undefined);
+    assert.deepEqual(readRoadmapViewport(saved, 'other').expanded, []);
+    assert.deepEqual(readRoadmapViewport(saved, 'other').collapsed, []);
     const legacy = { ...saved, version: 1, orientation: undefined };
     const migrated = readRoadmapViewport(legacy, 'id');
     assert.equal(migrated.selectedId, 'c1');
@@ -55,6 +58,8 @@ test('viewport state restores only within matching project and rejects corrupt c
     assert.match(widget, /this\.intentionalCamera\(flow => flow\.fitView\(\{ padding: 0\.12, maxZoom: 1 \}\)\)/);
     assert.match(widget, /setTimeout\(\(\) => this\.flushPresentation\(\), 350\)/);
     assert.match(widget, /this\.flow\.setViewport\(this\.viewport/);
+    assert.match(widget, /state\.expanded\.forEach\(id => this\.expanded\.add\(id\)\)/);
+    assert.match(widget, /if \(restoredTask\) this\.inspector\.selectTask\(restoredTask\)/);
 });
 
 test('current work uses authoritative phase statuses and a readable centered camera', () => {

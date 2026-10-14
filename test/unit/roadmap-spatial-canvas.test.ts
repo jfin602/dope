@@ -34,7 +34,7 @@ test('only rendered connectors touching selection receive motion emphasis', () =
     assert.match(widget, /roadmapConnectorTouchesSelection\(item, this\.selectedId\) \? ' dope-roadmap-edge-related' : ''/);
 });
 
-test('phase, correction, and prompt coordinates are deterministic and leave the semantic graph untouched', () => {
+test('hidden implementation never reserves layout space and disclosure preserves strategic coordinates', () => {
     const graph: RoadmapProjection = { projectId: 'project', revision: 3,
         nodes: [node('phase-1', 'phase', 1), node('phase-2', 'phase', 2),
             node('correction', 'correction', 1), node('stack', 'task-stack', 1),
@@ -42,25 +42,30 @@ test('phase, correction, and prompt coordinates are deterministic and leave the 
         edges: [
             { id: 'e1', from: 'phase-1', to: 'phase-2', kind: 'dependency', label: 'Depends on' },
             { id: 'e2', from: 'phase-1', to: 'correction', kind: 'branch', label: 'Correction' },
-            { id: 'e3', from: 'correction', to: 'stack', kind: 'branch', label: 'Prompts' },
+            { id: 'task-parent:correction:stack', from: 'correction', to: 'stack', kind: 'branch', label: 'Prompts' },
             { id: 'e4', from: 'stack', to: 'prompt-1', kind: 'branch', label: 'First prompt' },
             { id: 'e5', from: 'prompt-1', to: 'prompt-2', kind: 'branch', label: 'Next prompt' },
         ], pools: { ideas: [], issues: [] }, diagnostics: [] };
     const original = JSON.stringify(graph);
-    const positions = roadmapSpatialLayout(graph);
-    assert.deepEqual(positions, roadmapSpatialLayout(graph));
+    const hidden = roadmapVisibleGraph(graph, 'checkpoint');
+    const positions = roadmapSpatialLayout({ ...graph, ...hidden });
+    assert.deepEqual(positions, roadmapSpatialLayout({ ...graph, ...hidden }));
     assert.equal(JSON.stringify(graph), original);
-    assert.equal(positions.size, graph.nodes.length);
+    assert.equal(positions.size, 3);
     assert.ok(positions.get('phase-1')!.x < positions.get('phase-2')!.x);
     assert.equal(positions.get('phase-1')?.y, positions.get('phase-2')?.y);
     assert.ok(positions.get('correction')!.x > positions.get('phase-1')!.x);
     assert.ok(positions.get('correction')!.y < positions.get('phase-1')!.y);
-    assert.ok(positions.get('prompt-1')!.x > positions.get('stack')!.x);
-    assert.equal(positions.get('prompt-1')?.x, positions.get('prompt-2')?.x);
-    assert.ok(positions.get('prompt-2')!.y < positions.get('prompt-1')!.y);
+    const open = roadmapVisibleGraph(graph, 'world', 'correction', new Set(['correction']));
+    const opened = roadmapSpatialLayout({ ...graph, ...open });
+    assert.deepEqual(opened.get('phase-1'), positions.get('phase-1'));
+    assert.deepEqual(opened.get('phase-2'), positions.get('phase-2'));
+    assert.deepEqual(opened.get('correction'), positions.get('correction'));
+    assert.ok(opened.get('prompt-1')!.y < opened.get('correction')!.y);
+    assert.ok(opened.get('prompt-2')!.y < opened.get('prompt-1')!.y);
 });
 
-test('dense descendants, long titles, support lane, and disconnected sources have separate cards and true edges', () => {
+test('dense expanded prompts have separate cards without moving phase columns', () => {
     const prompts = Array.from({ length: 80 }, (_, i) => ({ ...node(`prompt-${i}`, 'prompt', i),
         title: `${i} ${'long prompt title '.repeat(14)}` }));
     const graph: RoadmapProjection = { projectId: 'dense', revision: 5,
@@ -75,14 +80,21 @@ test('dense descendants, long titles, support lane, and disconnected sources hav
                 to: item.id, kind: 'branch' as const, label: '' })),
         ], pools: { ideas: [], issues: [] }, diagnostics: [] };
     const original = JSON.stringify(graph);
-    const positions = roadmapSpatialLayout(graph);
-    assert.deepEqual(positions, roadmapSpatialLayout(graph));
+    const strategic = { ...graph, nodes: graph.nodes.filter(item => item.kind !== 'task-stack' && item.kind !== 'prompt'),
+        edges: graph.edges.filter(item => item.id === 'path' || item.id === 'upper') };
+    const base = roadmapSpatialLayout(strategic);
+    const disclosed = { ...strategic, nodes: [...strategic.nodes, ...prompts],
+        edges: [...strategic.edges, { id: 'disclosure:phase-1:prompt-0', from: 'phase-1', to: 'prompt-0',
+            kind: 'branch' as const, label: 'Disclosed implementation prompt' },
+        ...graph.edges.filter(item => item.id.startsWith('prompt-edge-') && item.from !== 'support')] };
+    const positions = roadmapSpatialLayout(disclosed);
+    assert.deepEqual(positions, roadmapSpatialLayout(disclosed));
     assert.equal(JSON.stringify(graph), original);
     assert.ok(positions.get('correction')!.y < positions.get('phase-1')!.y);
-    assert.ok(positions.get('support')!.y > positions.get('phase-1')!.y);
-    assert.ok(positions.get('phase-2')!.x > positions.get('prompt-79')!.x);
-    assert.ok(positions.get('orphan')!.x > positions.get('phase-2')!.x);
-    const boxes = graph.nodes.map(item => ({ id: item.id, ...positions.get(item.id)!,
+    assert.deepEqual(positions.get('phase-2'), base.get('phase-2'));
+    assert.equal(positions.has('support'), false);
+    assert.equal(positions.has('orphan'), false);
+    const boxes = disclosed.nodes.map(item => ({ id: item.id, ...positions.get(item.id)!,
         height: Math.max(160, 100 + Math.ceil(item.title.length / 20) * 22) }));
     for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++)
         assert.ok(boxes[i].x + 280 <= boxes[j].x || boxes[j].x + 280 <= boxes[i].x ||
@@ -92,7 +104,7 @@ test('dense descendants, long titles, support lane, and disconnected sources hav
     assert.deepEqual(graph.edges.map(edge => [edge.from, edge.to]), JSON.parse(original).edges.map((edge: {from: string; to: string}) => [edge.from, edge.to]));
     assert.deepEqual(roadmapEdgeHandles(graph.edges[0], positions), { sourceHandle: 'bottom', targetHandle: 'bottom' });
     assert.deepEqual(roadmapEdgeHandles(graph.edges[1], positions), { sourceHandle: 'top', targetHandle: 'bottom' });
-    assert.deepEqual(roadmapEdgeHandles(graph.edges[2], positions), { sourceHandle: 'bottom', targetHandle: 'top' });
+    assert.deepEqual(roadmapEdgeHandles(disclosed.edges[2], positions), { sourceHandle: 'bottom', targetHandle: 'top' });
 });
 
 test('Roadmap mounts React Flow with selection, pan, zoom and fit but no graph mutation gestures or Chat docking', () => {
@@ -142,7 +154,7 @@ test('rendered Tab order follows the same branch traversal as arrow keys', () =>
     assert.match(widget, /\.\.\.roadmapEdgeHandles\(item, displayed\)/);
 });
 
-test('world, phase and checkpoint detail disclose a correction stack without changing source graph', () => {
+test('world, phase and checkpoint detail keep implementation closed until explicit disclosure', () => {
     const graph: RoadmapProjection = { projectId: 'project', revision: 4,
         nodes: [node('phase-1', 'phase', 1), node('correction', 'correction', 2),
             node('stack', 'task-stack', 3), node('prompt', 'prompt', 4)],
@@ -156,11 +168,10 @@ test('world, phase and checkpoint detail disclose a correction stack without cha
     assert.equal(roadmapDetailAtZoom(0.85, 'world'), 'phase');
     assert.equal(roadmapDetailAtZoom(1.5, 'phase'), 'checkpoint');
     assert.deepEqual(roadmapVisibleGraph(graph, 'world').nodes.map(item => item.id), ['phase-1', 'correction']);
-    assert.deepEqual(roadmapVisibleGraph(graph, 'phase').nodes.map(item => item.id), ['phase-1', 'correction', 'stack']);
-    assert.deepEqual(roadmapVisibleGraph(graph, 'checkpoint').nodes.map(item => item.id),
-        ['phase-1', 'correction', 'stack', 'prompt']);
+    assert.deepEqual(roadmapVisibleGraph(graph, 'phase').nodes.map(item => item.id), ['phase-1', 'correction']);
+    assert.deepEqual(roadmapVisibleGraph(graph, 'checkpoint').nodes.map(item => item.id), ['phase-1', 'correction']);
     assert.deepEqual(roadmapVisibleGraph(graph, 'world', undefined, new Set(['correction'])).nodes.map(item => item.id),
-        ['phase-1', 'correction', 'stack']);
+        ['phase-1', 'correction', 'prompt']);
     assert.equal(JSON.stringify(graph), original);
 });
 
@@ -220,7 +231,7 @@ test('unresolved corrections stay detached and connector classes retain visible 
         ], pools: { ideas: [], issues: [] }, diagnostics: [] };
     const positions = roadmapSpatialLayout(graph);
     assert.ok(positions.get(matched.id)!.y < positions.get(phase.id)!.y);
-    assert.ok(positions.get(stack.id)!.y > positions.get(phase.id)!.y);
+    assert.equal(positions.has(stack.id), false);
     assert.ok(positions.get(missing.id)!.x > positions.get(next.id)!.x);
     assert.ok(positions.get(c100.id)!.x > positions.get(next.id)!.x);
     for (const detail of ['world', 'phase', 'checkpoint'] as const) {
@@ -239,7 +250,7 @@ test('unresolved corrections stay detached and connector classes retain visible 
             { sourceHandle: 'bottom', targetHandle: 'bottom' });
         assert.deepEqual(roadmapEdgeHandles(edges.find(edge => edge.kind === 'membership')!, positions),
             { sourceHandle: 'top', targetHandle: 'bottom' });
-        if (detail !== 'world') assert.ok(edges.some(edge => edge.kind === 'containment'));
+        assert.ok(!edges.some(edge => edge.to === stack.id || edge.to === prompt.id));
     }
     assert.equal(graph.edges.length, 4);
 });

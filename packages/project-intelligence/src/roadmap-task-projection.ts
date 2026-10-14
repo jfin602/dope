@@ -33,6 +33,12 @@ const taskId = (project: string, stack: string, number?: number): string =>
     `task:${encodeURIComponent(project)}:${encodeURIComponent(stack)}:${number === undefined ? 'stack' : `P${number}`}`;
 const validPath = (path: string): boolean => path.length > 0 && !path.startsWith('/') &&
     !path.includes('\\') && !path.includes(':') && path.split('/').every(part => !!part && part !== '.' && part !== '..');
+const correctionMatches = (node: CheckpointNode, slug: string): boolean => {
+    if (node.kind !== 'correction') return false;
+    const section = node.id.slice(node.id.lastIndexOf('#') + 1);
+    return section === slug || [...node.title.matchAll(/`(c\d+(?:-[a-z0-9]+)*)`/g)].some(match => match[1] === slug) ||
+        [node.source?.path, ...node.evidence.map(item => item.path)].some(path => path?.startsWith(`docs/tasks/${slug}/`));
+};
 
 /** Enrich canonical checkpoints without changing Roadmap, Markdown, runner or evidence ownership. */
 export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskStackSource[],
@@ -76,8 +82,28 @@ export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskSt
                 diagnostic: stack.diagnostic?.code });
             continue;
         }
-        if (nodes.length + 1 > base.nodes.length + MAX_TASK_NODES) {
-            omittedTaskNodes += 1 + stack.prompts.length; continue;
+        const slug = stack.folderName;
+        const direct = stack.mode === 'correction' ? base.nodes.filter(node => correctionMatches(node, slug)) : [];
+        const words = slug.replace(/^c\d+-/, '').split('-');
+        const phrase = words.join(' ');
+        const descriptive = stack.mode === 'correction' && direct.length === 0 && words.length >= 3 ?
+            base.nodes.filter(node => node.kind === 'correction' &&
+                (node.phaseAssociation?.phaseId === parent.id ||
+                    node.phaseAssociation?.unresolvedReason === 'No reliable correction phase identifier.' &&
+                    new RegExp(`\\bPhase\\s+${stack.phase}\\b`, 'i').test(node.title)) &&
+                node.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').includes(phrase)) : [];
+        const canonical = direct.length === 1 ? direct[0] : descriptive.length === 1 ? descriptive[0] : undefined;
+        if (canonical && association?.phaseId &&
+            canonical.phaseAssociation?.unresolvedReason === 'No reliable correction phase identifier.') {
+            const position = nodes.findIndex(node => node.id === canonical.id);
+            nodes[position] = { ...canonical, phaseAssociation: association };
+            const diagnostic = diagnostics.findIndex(message => message.startsWith(`Unresolved correction phase: ${canonical.id}:`));
+            if (diagnostic >= 0) diagnostics.splice(diagnostic, 1);
+        }
+        const sourceOnly = stack.mode === 'correction' && !canonical;
+        const headers = sourceOnly ? 2 : 1;
+        if (nodes.length + headers > base.nodes.length + MAX_TASK_NODES) {
+            omittedTaskNodes += headers + stack.prompts.length; continue;
         }
         const stackId = taskId(index.projectId, stack.path);
         const segment = stack.mode === 'correction' ? `Correction ${stack.correctionSlug ?? stack.folderName}` :
@@ -89,6 +115,17 @@ export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskSt
         nodes.push(stackNode);
         let origin = parent.id;
         if (stack.mode === 'correction') {
+            if (canonical) origin = canonical.id;
+            else {
+                const correctionId = `${stackId}:correction`;
+                nodes.push({ id: correctionId, kind: 'correction', title: slug, order: parent.order,
+                    status: 'unknown', statusLabel: 'Source only · status unknown', evidence: [], readOnly: true,
+                    lane: 'branch', ...(association ? { phaseAssociation: association } : {}),
+                    taskSource: { stackPath: stack.path, fingerprint: stack.fingerprint!, segment: slug } });
+                origin = correctionId;
+            }
+        }
+        if (stack.mode === 'correction') {
             const proofs = failedPromptEvidence.filter(proof => proof.correctionPath === stack.path &&
                 validPath(proof.evidencePath) && /^[a-f0-9]{64}$/.test(proof.evidenceHash) &&
                 index.checkpoints.some(item => item.evidence.some(citation =>
@@ -97,7 +134,10 @@ export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskSt
                 const proof = proofs[0];
                 const known = knownPrompts.get(`${proof.failedPrompt.stackPath}\0${proof.failedPrompt.number}`);
                 if (known && known.fingerprint === proof.failedPrompt.fingerprint &&
-                    proof.failedPrompt.stackPath !== stack.path) origin = known.id;
+                    proof.failedPrompt.stackPath !== stack.path) {
+                    edges.push({ id: `task-failure:${known.id}:${origin}`, from: known.id, to: origin,
+                        kind: 'branch', label: 'Source-backed failed prompt relationship' });
+                }
                 else diagnostics.push(`Unresolved failed prompt evidence: ${stack.path}`);
             } else if (proofs.length > 1) diagnostics.push(`Ambiguous failed prompt evidence: ${stack.path}`);
         }
