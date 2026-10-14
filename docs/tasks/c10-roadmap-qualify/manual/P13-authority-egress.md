@@ -22,7 +22,7 @@ Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 and docs/planning/p1
 
 ## Validation and evidence
 Run directly affected project-planning-actions, roadmap-integration, roadmap-sync-recovery, roadmap-status-truth, roadmap-planning-links and security tests; no needless full aggregate. Record denied calls, SHA/revision/PID/network traces, real model provenance, restart and gate truth. Protect unrelated paths and historical closeouts.
-Write `qualification/loop-5-authority/cycle-N.md` and family summary. Finish with a complete unresolved-gates register for P14.
+Write `qualification/post-correction-rerun-1/loop-5-authority/cycle-N.md` and family summary. Finish with a complete unresolved-gates register for P14.
 
 **Canvas-first overlay no-bypass gates:** Declining, minimizing, closing, switching tabs or reopening document/inspector overlays never silently approves pending edits, drops protection against stale source/revision/hash, clobbers linked Markdown, rewrites historical status, executes prompt source or grants Work/AgentTask. One shared `RoadmapInspectorModel` must remain the only edit/approval controller even if a legacy sidebar is available; no duplicate Chat or document sync writer. Verify critical sync warnings remain actionable when document overlay is minimized and that overlay presentation changes do not affect egress instrumentation.
 
