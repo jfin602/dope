@@ -1,0 +1,26 @@
+TASK: Correction 10 / P11 — Verify Roadmap appearance in real UI and closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, correction README/assessment/plan, original historical P6 closeout under `history/`, actual P6–P10 committed implementation results, P9 family summary (NOT GREEN), and manual qualification P9/P12/P13/P14. This is a **browser/native T3 manual evidence gate**, not an assertion that UI has already passed. Runner may stop at implementation P10 and hand off this final browser-required prompt; do not force headless evidence through a CLI runner. Check Git/source SHA, clean/authorized worktree, stable version and fixture availability. Do not alter historical P16/P19/P9 records, self-commit, require /activate or fabricate tests.
+
+REAL UI ACCEPTANCE — ALL FOUR DEFECTS + MOTION
+Use actual Dope UI to import accepted current `docs/roadmap/mvp-roadmap.md` into a disposable real project; show source/project ID, status summary, diagnostic classes, and use the same source candidate for **independent browser and actual controllable Electron window** when available. Capture screenshots at first open **before user zoom**, then phase/branch navigation, dark/light/low contrast, selection and zoom, and restarted view. Do not count a build or headless unit test as a GUI pass.
+1. Flat-row repair: chronological phases advance left→right; `c10-*` corrections visually attach vertically to Phase 10, supporting prompts below; multiple corrections have no collisions; `c100-*` and conflicting/missing parent cases remain honest. Association must not add a stored dependency or change source.
+2. Lines repair: solid visible phase progression, distinct correction-parent membership, lower supporting links and separately identifiable **actual directed dependencies** where stored; no false Green path, unrelated fake dependency, invisible/zero-length/cross-pane line or invented reconnection. Verify world/phase/checkpoint semantic zoom, Fit/Focus/keyboard and connector legibility.
+3. Full-card status repair: Green, Active, Not Green, Waived, Not implemented, Unknown cards have **subtle whole-card tint/border/accent** with accessible text/icon, including hover/selected/focus and light/dark; verify Phase 5/10 Not Green and Phase 6 sequencing Waived are NOT Green. Do not promote `c4-color-theme` from source contradiction as a display fix.
+4. First-camera repair: fresh import/no deliberate stored camera starts near actual actionable phase at **readable zoom** with neighboring context rather than showing 31 microscopic checkpoints; explicit Fit Map still works; user pan/zoom persists across refresh/sync/overlay/resize/project leave-return/restart.
+5. Motion: connectors remain visibly useful when idle; active/selected motion is restrained, not flashing or CPU-heavy; prefers-reduced-motion makes it static, no false completion animation.
+6. Regression sanity: full-editor canvas/overlays/Chat remain independently navigable, no hidden source approval, duplicate Chat, project leakage, or prompt execution by opening a file. Classify actual 9 diagnostics by type; don't mandate that unrelated status conflicts disappear.
+
+VERIFY / REPORT — T3 MANUAL
+Run targeted changed tests only when visual repairs require them, plus appropriate build; **do not run full `npm run check`**, which manual c10-roadmap-qualify P14 uniquely owns on final source. For every gate write **PASS/FAIL/BLOCKED/NOT RUN** with exact committed product SHA, fixture path/hash, screenshot/video references for browser **and** independently captured Electron window, status/theme/motion/viewport observations, failures/remaining gaps and test commands actually run into `docs/tasks/c10-horizontal-color/closeout.md`. Preserve the original P6 snapshot under `history/`. Declare *presentation correction visually Green* only if every mandatory live UI gate is observed PASS; otherwise write NOT GREEN/Evidence Gap and the smallest safe repair route. Never claim Phase 10/P9/P12/P13/P14 qualified from this narrower visual closeout. Any later source repair invalidating visuals requires fresh evidence, not retroactive Green.
+
+DONE
+A truthful source-bound visual closeout confirms whether the UI matches the planned experience; no manufactured GUI evidence, historical status rewrite, version bump or owner-close. Manual P9 requalification after the user's explicit decision and P12/P13/P14 remain independent evidence families.
