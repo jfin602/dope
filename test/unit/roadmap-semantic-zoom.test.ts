@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { CheckpointNode, RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
 import { roadmapDetailAtZoom, roadmapImplementationStacks, roadmapSpatialLayout, roadmapVisibleGraph } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 
@@ -65,6 +67,44 @@ test('explicit disclosure reveals only the selected checkpoint prompts and colla
     assert.deepEqual(open.get('phase'), base.get('phase'));
     assert.deepEqual(open.get('correction'), base.get('correction'));
     assert.ok(open.get('fix1')!.y < open.get('correction')!.y);
+});
+
+test('the displayed count follows the same visible graph as prompt disclosure without a Roadmap refresh', () => {
+    const widget = readFileSync(resolve(import.meta.dirname,
+        '../../packages/theia-extension/src/browser/roadmap-canvas-widget.ts'), 'utf8');
+    const render = widget.slice(widget.indexOf('    private render(): void {'), widget.indexOf('    private renderImplementationSummary('));
+    const expansion = widget.slice(widget.indexOf('    private setExpansion('), widget.indexOf('    private focusSelection('));
+    const next = widget.slice(widget.indexOf('    private nextPrompts('), widget.indexOf('    protected override onAfterAttach('));
+    assert.match(render, /const visible = roadmapVisibleGraph\([\s\S]*?this\.renderFlow\(visible\);[\s\S]*?const displayedCount = visible\.nodes\.length/);
+    assert.match(expansion, /this\.schedulePresentation\(\);\s*this\.render\(\);/);
+    assert.match(next, /this\.schedulePresentation\(\);\s*this\.render\(\);/);
+    assert.doesNotMatch(expansion + next, /this\.refresh\(/);
+
+    const source = graph();
+    const before = structuredClone(source);
+    const expanded = new Set<string>();
+    const collapsed = new Set<string>();
+    const visible = (selected = 'phase') => roadmapVisibleGraph(source, 'phase', selected, expanded, collapsed);
+    const initial = visible();
+    assert.equal(initial.nodes.length, 3);
+    for (let cycle = 0; cycle < 3; cycle++) {
+        expanded.add('phase'); collapsed.delete('phase');
+        const open = visible();
+        assert.equal(open.nodes.length, initial.nodes.length + 2);
+        assert.equal(open.nodes.filter(item => item.kind === 'prompt').length, 2);
+        expanded.delete('phase'); collapsed.add('phase');
+        const closed = visible();
+        assert.equal(closed.nodes.length, initial.nodes.length);
+        assert.ok(closed.edges.every(edge => closed.nodes.some(item => item.id === edge.from) &&
+            closed.nodes.some(item => item.id === edge.to)));
+    }
+    expanded.add('correction'); collapsed.delete('correction');
+    const other = visible('correction');
+    assert.equal(other.nodes.length, initial.nodes.length + 1);
+    assert.ok(other.nodes.some(item => item.id === 'fix1'));
+    assert.ok(!other.nodes.some(item => item.id === 'prompt1'));
+    assert.equal(roadmapVisibleGraph(source, 'phase').nodes.length, initial.nodes.length);
+    assert.deepEqual(source, before);
 });
 
 test('hysteresis avoids detail flicker at zoom boundaries', () => {

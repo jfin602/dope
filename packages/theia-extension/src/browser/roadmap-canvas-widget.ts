@@ -16,7 +16,7 @@ import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/proj
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
-    type RoadmapDetail } from './roadmap-canvas-model';
+    type RoadmapDetail, type RoadmapVisibleGraph } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
@@ -572,19 +572,20 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.selectedId = undefined;
             this.schedulePresentation();
         }
-        this.renderFlow();
-        this.renderImplementationSummary();
+        const visible = roadmapVisibleGraph(projection, this.detail, this.selectedId,
+            this.expanded, this.collapsed, 96, this.promptWindow);
+        this.renderFlow(visible);
+        this.renderImplementationSummary(visible);
         this.renderPools();
         this.renderImportEntry();
-        const displayedCount = roadmapVisibleGraph(projection, this.detail, this.selectedId,
-            this.expanded, this.collapsed, 96, this.promptWindow).nodes.length;
+        const displayedCount = visible.nodes.length;
         const diagnostic = projection.diagnostics.length ? ` · ${projection.diagnostics.length} unresolved reference(s)` : '';
         this.status.textContent = projection.revision === 0 ?
             'No Roadmap yet. Import one, create manually, or plan with an existing Chat.' :
             `${displayedCount} displayed checkpoints · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.inspector.index.linkedDocument.syncState})` : ''}${this.taskDiscoveryError ? ' · Prompt discovery unavailable; Refresh to retry.' : ''}`;
     }
 
-    private renderImplementationSummary(): void {
+    private renderImplementationSummary(visibleGraph?: RoadmapVisibleGraph): void {
         const id = this.selectedId;
         const stacks = id && this.projection ? roadmapImplementationStacks(this.projection, id) : [];
         this.implementation.hidden = !stacks.length;
@@ -599,12 +600,12 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.implementationToggle.textContent = expanded ? 'Hide Prompts' : 'View Prompts';
         this.implementationToggle.setAttribute('aria-expanded', String(expanded));
         this.implementationToggle.setAttribute('aria-label', `${expanded ? 'Hide' : 'View'} implementation prompts for ${this.projection?.nodes.find(node => node.id === id)?.title}`);
-        const visible = this.projection && roadmapVisibleGraph(this.projection, this.detail, id,
-            this.expanded, this.collapsed, 96, this.promptWindow);
+        const visible = visibleGraph ?? (this.projection && roadmapVisibleGraph(this.projection, this.detail, id,
+            this.expanded, this.collapsed, 96, this.promptWindow));
         this.implementationNext.hidden = !expanded || !stacks.some(stack => (visible?.omittedByStack.get(stack.id) ?? 0) > 0);
     }
 
-    private renderFlow(): void {
+    private renderFlow(visibleGraph?: RoadmapVisibleGraph): void {
         if (!this.root) return;
         const projection = this.projection;
         const cameraGeneration = this.cameraGeneration;
@@ -613,8 +614,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const stacks = this.selectedId && projection ? roadmapImplementationStacks(projection, this.selectedId) : [];
         this.expandButton.disabled = this.collapseButton.disabled = !stacks.length;
         this.focusButton.disabled = !this.selectedId;
-        const visible = projection ? roadmapVisibleGraph(projection, this.detail, this.selectedId,
-            this.expanded, this.collapsed, 96, this.promptWindow) : undefined;
+        const visible = visibleGraph ?? (projection ? roadmapVisibleGraph(projection, this.detail, this.selectedId,
+            this.expanded, this.collapsed, 96, this.promptWindow) : undefined);
         this.nextPromptsButton.disabled = !this.expanded.has(this.selectedId ?? '') ||
             !stacks.some(stack => (visible?.omittedByStack.get(stack.id) ?? 0) > 0);
         const positions = visible ? roadmapSpatialLayout({ ...projection!, ...visible }) : new Map<string, { x: number; y: number }>();
@@ -762,8 +763,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         (expand ? this.collapsed : this.expanded).delete(target);
         (expand ? this.expanded : this.collapsed).add(target);
         this.schedulePresentation();
-        this.renderFlow();
-        this.renderImplementationSummary();
+        this.render();
     }
 
     private focusSelection(): void {
@@ -794,8 +794,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.expanded.add(id);
         this.collapsed.delete(id);
         this.schedulePresentation();
-        this.renderFlow();
-        this.renderImplementationSummary();
+        this.render();
     }
 
     protected override onAfterAttach(msg: Message): void {
