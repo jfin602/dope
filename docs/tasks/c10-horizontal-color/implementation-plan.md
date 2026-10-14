@@ -1,6 +1,6 @@
 # /prompt-plan — c10-horizontal-color (six-prompt prequalification redesign)
 
-**Status:** Historical P1–P5 implemented; prior P6 handoff archived, new P6–P11 continuation AUTHORED / NOT IMPLEMENTED, manual final Phase 10 qualification NOT GREEN. **Version:** `0.10.16` unchanged.
+**Status:** Historical P1–P5 implemented; prior P6 handoff archived, new P6–P10 continuation IMPLEMENTED/COMMITTED through `726f10b4c9`, P11 visual closeout NOT GREEN / PENDING, manual final Phase 10 qualification NOT GREEN. **Version:** `0.10.16` unchanged.
 **Local preflight for new P6–P11:** P1–P5 are now historically committed and the manually executed original P6 is archived. Validate the current runner grammar, Git-proven P1–P5 prefix and absence of an unexpected P6 implementation checkpoint before resuming; never discard local work. The first P1–P6 plan below is historical and superseded for remaining execution by the appended P6–P11 continuation.
 
 ## Locked product behavior
