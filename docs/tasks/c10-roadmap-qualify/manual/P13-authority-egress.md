@@ -1,5 +1,7 @@
 # Manual P13 — Authority, security, egress and integrated recovery
 
+> **2026-10-14 mandatory fresh post-correction P13 family:** Only run after BOTH `c10-horizontal-color` (disclosure repair + P11) and `c10-better-planning` P1–P5 scope-close. This is an independently rerun fifth manual family, not a prior PASS carry-over. Write new append-only cycles to `qualification/post-correction-rerun-1/loop-5-authority/cycle-N.md`; historical records remain unchanged. Check tool-like JSON rendering never grants approval/Work/AgentTask/file authority, pending never claims applied, stale/foreign/malformed/no-action/denied/error/cancel stay visible and fail-closed, and real successful local Qwen inference plus event-backed commentary creates no unauthorized network egress or extra hosted/local commentary inference. No `/activate` or CLI runner for this manual gate.
+
 **Mode:** manually executed, browser-enabled T3 qualification/repair; NOT a codex:phase runner prompt.
 **Model guidance:** GPT-6 Sol High.
 **Version:** 0.10.16 unchanged. This prompt does not advance the product phase or authorize Phase 11/12.
@@ -27,3 +29,7 @@ Write `qualification/loop-5-authority/cycle-N.md` and family summary. Finish wit
 ## Additional presentation-authority negatives — live review amendment
 
 Independently confirm that exact correction convention (`c10-*` → Phase 10), automatically displayed chronological phase-progression connectors, vertical parent-membership connectors, supporting prompt lines and subtle route animation are **presentation**, not stored graph/dependency/action/evidence mutations. No imported name, line endpoint, CSS color, status tint, selected/highlighted route, Fit/Focus or Arrange gesture may synthesize `RoadmapIndex` dependencies, owner qualification, Green, approved action or source Markdown write. When explicit parent evidence conflicts with correction name, expose ambiguity without overwriting authority; missing parent remains unresolved, not connected by a false real dependency. Phase 5/10 Not Green and Phase 6 waiver must remain truthful before/after render, refresh and restart. Verify reduced-motion is a display preference, not evidence or canonical state. Reuse existing security gates and append evidence in P13, not another family.
+
+## Superseding campaign result path
+
+Write `docs/tasks/c10-roadmap-qualify/qualification/post-correction-rerun-1/loop-5-authority/cycle-N.md` and a new family summary, with exact source and actual independent whole-app observation. Preserve previous family evidence without overwriting it; P14 decides final result.

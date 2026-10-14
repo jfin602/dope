@@ -1,5 +1,7 @@
 # /prompt-plan — c10-roadmap-qualify
 
+> **2026-10-14 execution supersession:** The P1–P8 implementation is already committed; do NOT replay it. Finish all outstanding `c10-horizontal-color` defects and visual P11; then implement and scope-close `c10-better-planning` P1–P5. Only then run a **fresh COMPLETE** manual P9–P13 five-family campaign and P14 exact-source closeout. Prior P9-only requalification/reuse-first wording below is historical. No `/activate` gate.
+
 **Status:** P1–P8 implementation committed through `bcf2b628f`, plus horizontal/full-canvas correction P1–P6 committed through `ddbac418`; manual P9–P14 pending / NOT GREEN; NO SEPARATE ACTIVATION
 **Date:** 2026-10-13 (America/Chicago)
 **Entry source:** `71d91efb3668e57816bb031f82ab309acea17cfc` product and `c620bc0a3be714b7dc329dc5c872a064b1f8003a` evidence commit; current GitHub main must be reconciled with actual local Git HEAD and all project files before mutation.
@@ -66,3 +68,7 @@ P1–P8 were runner-owned implementation/integration (focused checks only); manu
 ## Manual browser loop efficiency and evidence law (2026-10-13)
 
 Keep the already committed runner P1–P8 and the **one** root P9 closeout handoff required by existing parser grammar. The actual user-executed browser-tool qualification is six self-contained `manual/P9` through `manual/P14` files. P9–P13 have up to three source-backed qualification/repair cycles per family (stop immediately on family Green); P14 alone reviews all families and finalizes correction Green/Not Green. Each cycle records initial source SHA/fixture, earliest failed/unproved gate, focused reproduction, separate narrow source repair, re-executed invalidated checks, and PASS/FAIL/BLOCKED/NOT RUN with links. Continue independent families after one remains Not Green only when safe. Do not create artificial runner commits for these manual prompts. Do not repeat the full aggregate after every family; one stable final check (and only when truly invalidated afterward) occurs in P14. Historic P16/P19 evidence is immutable, and all source must remain `0.10.16`. Native Electron and egress evidence are final Green requirements, never optional cosmetic tests.
+
+## Mandatory post-correction Phase 10 rerun — 2026-10-14
+
+Five manual/browser families P9–P13 remain distinct (Codex shared-file handoff, local Qwen planning/approval, context 16K/32K/64K, browser/native/Chat, authority/egress), all required fresh after the full two-correction chain. Add explicit verified structured Chat activity/compact display and factual final questions to P10/P12, local commentary overhead to P11, no-write/false-success/locality checks to P13. Historical P9 three cycles NOT GREEN are preserved and must not be overwritten or silently renamed. New append-only `qualification/post-correction-rerun-1/loop-N-*/cycle-N.md`, up to three cycles per family, real first observation on final candidate; P14 one full aggregate and sole correction verdict. Reuse narrowly unaffected evidence **within the new campaign** only after checking changed source/seams/fixtures. An implementation-only passing correction is not Phase 10 product qualification.
