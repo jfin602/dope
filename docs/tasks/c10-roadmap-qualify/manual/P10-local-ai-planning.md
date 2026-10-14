@@ -1,5 +1,7 @@
 # Manual P10 — Local AI action, approval and greenfield
 
+> **Mandatory full post-correction campaign (2026-10-14):** Begin ONLY after the complete `c10-horizontal-color` (including zoom repair and P11 scoped live closeout) and `c10-better-planning` P1–P5 have finished and are source-checked. This is a NEW manual P9–P13 five-family rerun, not a P9-only retry or prior PASS reuse. Preserve historical failures. Evidence now goes under `qualification/post-correction-rerun-1/loop-2-local-ai/`, append-only, never overwrite earlier `qualification/loop-N-*/cycle-N.md`. **New affected gates:** Real selected local Qwen strict intent/no-action, collapsed tool-like JSON, accessible expand/copy, outcome paragraph plus contextual questions, proposal pending/no-write, accept/reject/stale/cancel and verified linked bytes/revision, fresh NEXT turn and greenfield. An approval-pending proposal is NOT an applied action. Do not use codex:phase for these manual browser gates or require /activate.
+
 **Mode:** manually executed, browser-enabled T3 qualification/repair; NOT a codex:phase runner prompt.
 **Model guidance:** GPT-6 Sol High.
 **Version:** 0.10.16 unchanged. This prompt does not advance the product phase or authorize Phase 11/12.
@@ -19,6 +21,10 @@ Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0036 and docs/planning/p1
 ## Validation and evidence
 Use affected roadmap-local-model, roadmap-chat-actions, roadmap-document-patch, roadmap-greenfield, roadmap-chat-drafts and roadmap-chat-context tests and requisite affected package outputs. Capture real selected model/capacity, actual completed output, approvals, source SHA/revisions, no-write and NEXT-turn context. Use one verified practical context size without setting a universal default; P11 compares all sizes after this happy path.
 
-Write `qualification/loop-2-local-ai/cycle-N.md` and family summary. If no valid real model mutation completes, mark family Not Green; P11 can still collect independent setup/resource evidence but must not claim full comparative action success.
+Write `qualification/post-correction-rerun-1/loop-2-local-ai/cycle-N.md` and family summary. If no valid real model mutation completes, mark family Not Green; P11 can still collect independent setup/resource evidence but must not claim full comparative action success.
 
 **Canvas-first create/approval overlay coverage:** After committed `c10-horizontal-color` P1–P6 (implementation checkpoint `ddbac418`), on the actual final source, complete manual greenfield and saved-Chat linked creation using the Roadmap's new import/create overlay rather than the old permanently visible setup box. Confirm draft edits, preview, explicit Approve/Cancel, feedback, new linked file and fresh model turn remain correct after overlay compact/minimize/reopen. The same ChatPanel remains user-dockable, no forced Chat pane or duplicate model. Reuse earlier source/model evidence only where untouched by the presentation change.
+
+## Campaign evidence routing supersession — 2026-10-14
+
+This P10 must perform fresh direct observation on post-correction source, record cycle 1–3 (stop early on family Green) at `docs/tasks/c10-roadmap-qualify/qualification/post-correction-rerun-1/loop-2-local-ai/cycle-N.md`, with a new family summary, actual source SHA and dependencies. Earlier evidence is historical and not a substitute for this new family. During the new campaign, only granular same-seam observations plausibly unaffected by subsequent repairs may be reused with written rationale. P14 alone judges product qualification.
