@@ -13,7 +13,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
@@ -34,6 +34,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     readonly workController?: WorkSelectionController;
     readonly directController?: AgentRunController;
     private composingWork = false;
+    private readonly openPlanningActivities = new Set<string>();
     private promptStacksOnly = false;
     private lastWorkSelection?: WorkSelection;
     private readonly rootsListener;
@@ -1190,7 +1191,36 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const dots = document.createElement('span'); dots.textContent = '…'; dots.setAttribute('aria-hidden', 'true');
                 content.append(dots);
             } else if (message.role === 'assistant') {
-                content.append(renderUntrustedMessageMarkdown(this.markdown, body));
+                const activity = state.stream?.messageId === message.id ? undefined : planningActivityPresentation(message);
+                if (activity) {
+                    const details = document.createElement('details');
+                    details.className = 'dope-chat-planning-activity';
+                    details.open = this.openPlanningActivities.has(message.id);
+                    details.addEventListener('toggle', () => {
+                        if (details.open) this.openPlanningActivities.add(message.id);
+                        else this.openPlanningActivities.delete(message.id);
+                    });
+                    const summary = document.createElement('summary');
+                    summary.setAttribute('aria-label', `${activity.label}: ${activity.status}. Original JSON`);
+                    const label = document.createElement('span'); label.className = 'dope-chat-activity-label';
+                    label.textContent = activity.label;
+                    const preview = document.createElement('span'); preview.className = 'dope-chat-activity-preview';
+                    preview.textContent = body.replace(/\s+/g, ' ').slice(0, 160);
+                    const status = document.createElement('span'); status.className = 'dope-chat-activity-status';
+                    status.textContent = activity.status;
+                    summary.append(label, preview, status);
+                    const raw = document.createElement('pre'); raw.className = 'dope-chat-activity-raw';
+                    raw.textContent = body;
+                    const copy = this.button('Copy JSON', () => {
+                        void (navigator.clipboard?.writeText(body) ?? Promise.reject(new Error('Clipboard unavailable')))
+                            .then(() => { copy.textContent = 'Copied'; }, () => { copy.textContent = 'Copy failed'; });
+                    });
+                    copy.setAttribute('aria-label', `Copy original JSON for ${activity.label}`);
+                    copy.setAttribute('aria-live', 'polite');
+                    details.append(summary, raw, copy);
+                    content.append(details);
+                    if (activity.alert) item.classList.add('dope-chat-message-alert');
+                } else content.append(renderUntrustedMessageMarkdown(this.markdown, body));
             } else content.textContent = body;
             const time = document.createElement('time');
             time.dateTime = message.createdAt;

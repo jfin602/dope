@@ -2,7 +2,26 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { planningActivityPresentation, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
+
+test('only persisted trusted planning activity receives a compact label and honest status', () => {
+    const message = { content: '{"type":"roadmap-intent"}', planningActivity: {
+        schemaVersion: 1, kind: 'roadmap-intent', status: 'pending', refs: [], proposalId: 'proposal',
+    } } as ChatAssistantMessage;
+    assert.deepEqual(planningActivityPresentation(message), {
+        label: 'Roadmap intent', status: 'Pending · no write', alert: false,
+    });
+    assert.equal(planningActivityPresentation({ ...message, planningActivity: undefined }), undefined);
+    assert.equal(planningActivityPresentation({ ...message, content: '{"type":"unknown"}', planningActivity: undefined }), undefined);
+    for (const [status, expected] of [['rejected', 'Rejected · no change'], ['denied', 'Denied · no change'],
+        ['stale', 'Stale · no change'], ['applied', 'Applied']] as const) {
+        assert.equal(planningActivityPresentation({ ...message, planningActivity: { ...message.planningActivity!, status } })?.status, expected);
+    }
+    assert.equal(planningActivityPresentation({ ...message, planningActivity: {
+        schemaVersion: 1, kind: 'error', status: 'failed', refs: [],
+    } }) , undefined);
+});
 
 test('untrusted Markdown links permit web/mail destinations only', () => {
     const base = 'https://example.test/chat';
@@ -53,6 +72,23 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
     assert.doesNotMatch(widget, /ref\.label}\s*\(\$\{ref\.id\}\)/);
     assert.match(widget, /dope-chat-message-alert/);
     assert.match(widget, /Scroll to latest/);
+});
+
+test('trusted machine activity uses native disclosure, literal raw text and neutral narrow styling', async () => {
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+    assert.match(widget, /planningActivityPresentation\(message\)/);
+    assert.match(widget, /document\.createElement\('details'\)/);
+    assert.match(widget, /summary\.setAttribute\('aria-label', `\$\{activity\.label\}: \$\{activity\.status\}\. Original JSON`\)/);
+    assert.match(widget, /raw\.textContent = body/);
+    assert.match(widget, /navigator\.clipboard\?\.writeText\(body\)/);
+    assert.match(widget, /this\.openPlanningActivities\.add\(message\.id\)/);
+    assert.match(widget, /if \(activity\.alert\) item\.classList\.add\('dope-chat-message-alert'\)/);
+    assert.match(widget, /else content\.append\(renderUntrustedMessageMarkdown\(this\.markdown, body\)\)/);
+    assert.match(css, /\.dope-chat-activity-preview \{[^}]*text-overflow: ellipsis; white-space: nowrap/);
+    assert.match(css, /\.dope-chat-planning-activity \{[^}]*var\(--theia-descriptionForeground\)/);
+    assert.match(css, /\.dope-chat-message-alert \.dope-chat-activity-status \{[^}]*var\(--theia-errorForeground\)/);
+    assert.match(css, /\.dope-chat-panel button:focus-visible, \.dope-chat-panel summary:focus-visible/);
 });
 
 test('Select Chat keeps nested disclosure and contextual actions separate from selection', async () => {

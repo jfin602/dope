@@ -1,3 +1,27 @@
+import type { ChatAssistantMessage } from '@dope/chat';
+
+/** Only the backend's persisted activity marker can select compact machine presentation. */
+export function planningActivityPresentation(message: ChatAssistantMessage): { label: string; status: string; alert: boolean } | undefined {
+    const activity = message.planningActivity;
+    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-draft-proposal', 'no-action'].includes(activity.kind))
+        return undefined;
+    const label = activity.kind === 'no-action' ? 'No planning action' :
+        activity.kind === 'roadmap-draft-proposal' ? 'Planning draft' :
+        activity.kind === 'roadmap-proposal' ? 'Roadmap proposal' : 'Roadmap intent';
+    const statuses: Record<typeof activity.status, string> = {
+        pending: 'Pending · no write',
+        'no-action': 'No change',
+        rejected: 'Rejected · no change',
+        denied: 'Denied · no change',
+        stale: 'Stale · no change',
+        applied: 'Applied',
+        failed: 'Failed',
+        cancelled: 'Cancelled',
+    };
+    return { label, status: statuses[activity.status],
+        alert: ['rejected', 'denied', 'stale', 'failed', 'cancelled'].includes(activity.status) };
+}
+
 export const CHAT_PANEL_ID = 'dope-chat-panel';
 export const chatAreas = { left: 'left', right: 'right', center: 'main', bottom: 'bottom' } as const;
 export type ChatArea = keyof typeof chatAreas;

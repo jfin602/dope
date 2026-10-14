@@ -397,6 +397,17 @@ test('selector and transcript retain keyboard and dark theme surfaces', async ()
     assert.match(source, /dope-chat-settings/);
 });
 
+test('pending planning disclosure stays separate from review and failure feedback', async () => {
+    const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    assert.match(source, /if \(state\.planningProposal\) \{/);
+    assert.match(source, /this\.button\('Apply proposal'/);
+    assert.match(source, /this\.button\('Reject'/);
+    assert.match(source, /if \(state\.planningProposalError\) \{/);
+    assert.match(source, /note\.textContent = state\.planningProposalError/);
+    assert.match(source, /if \(activity\.alert\) item\.classList\.add\('dope-chat-message-alert'\)/);
+    assert.match(source, /copy\.setAttribute\('aria-live', 'polite'\)/);
+});
+
 test('scroll follow respects manual upward scrolling and jump to latest', () => {
     const follow = new ChatScrollFollow();
     follow.select('first');
