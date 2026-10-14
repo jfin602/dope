@@ -37,6 +37,7 @@ test('Chat entry associates an existing selected saved Chat without opening or m
     assert.match(widget, /state\.chatId = chatId \|\| undefined/);
     assert.match(widget, /Build the draft manually now|build the draft manually now/);
     assert.match(module, /getWidgets\(CHAT_PANEL_ID\)/);
+    assert.match(module, /\['left', 'right'\] as const\)\.map\(side => widgets\.tryGetWidget\(chatLauncherIds\[side\]\)\)/);
     assert.match(module, /widget\.controller\.workspace !== workspace/);
     assert.match(module, /widget\.controller\.chat\.id/);
     assert.doesNotMatch(widget, /openChatPanel|shell\.addWidget|shell\.activateWidget|sendTurn|invokeModel/);

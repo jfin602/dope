@@ -341,7 +341,11 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             context.container.get(RoadmapInspectorModel),
             (id, workspace) => openMind(context, id, workspace), workspace => {
                 const chats = new Map<string, string>();
-                for (const widget of context.container.get(WidgetManager).getWidgets(CHAT_PANEL_ID) as ChatPanelWidget[]) {
+                const widgets = context.container.get(WidgetManager);
+                const openChats = [...widgets.getWidgets(CHAT_PANEL_ID),
+                    ...(['left', 'right'] as const).map(side => widgets.tryGetWidget(chatLauncherIds[side]))]
+                    .filter(Boolean) as ChatPanelWidget[];
+                for (const widget of openChats) {
                     if (widget.moduleKind !== 'chat' || widget.controller.workspace !== workspace || !widget.controller.chat) continue;
                     chats.set(widget.controller.chat.id, widget.controller.chat.title);
                 }
