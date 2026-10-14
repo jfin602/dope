@@ -1,0 +1,18 @@
+accepted full source: revision 2, 31 canonical nodes, 0 stored-dependency edges, 11 projection diagnostics
+- Historical status differs for roadmap:docs/roadmap/mvp-roadmap.md#phase-10: docs/planning/p10/activation.md:4 (not-implemented), docs/planning/p10/baseline.md:4 (not-implemented)
+- Historical status differs for roadmap:docs/roadmap/mvp-roadmap.md#phase-1: docs/planning/p1/phase-1-plan.md:3 (active)
+- Historical status differs for roadmap:docs/roadmap/mvp-roadmap.md#phase-3: docs/planning/p3/activation.md:3 (active), docs/planning/p3/phase-3-plan.md:3 (active)
+- Historical status differs for roadmap:docs/roadmap/mvp-roadmap.md#phase-4: docs/planning/p4/activation.md:3 (active), docs/planning/p4/phase-4-plan.md:3 (active)
+- Historical status differs for roadmap:docs/roadmap/mvp-roadmap.md#phase-5: docs/planning/p5/activation.md:3 (waived), docs/planning/p5/phase-5-plan.md:3 (active), docs/roadmap/mvp-roadmap.md:611 (active)
+- Historical status differs for roadmap:docs/roadmap/mvp-roadmap.md#phase-6: docs/planning/p6/activation.md:3 (active), docs/roadmap/mvp-roadmap.md:788 (active)
+- Historical status differs for roadmap:docs/roadmap/mvp-roadmap.md#phase-7: docs/tasks/p7/closeout.md:3 (not-green)
+- Historical status differs for roadmap:docs/roadmap/mvp-roadmap.md#phase-8: docs/planning/p8/activation.md:3 (active), docs/planning/p8/phase-8e-activation.md:3 (not-implemented)
+- Historical status differs for roadmap:docs/roadmap/mvp-roadmap.md#phase-9: docs/planning/p9/activation.md:4 (not-green), docs/planning/p9/baseline.md:3 (active), docs/planning/p9/phase-9b-activation.md:4 (not-implemented), docs/planning/p9/phase-9c-activation.md:6 (not-implemented)
+- Unresolved correction phase: roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction: No reliable correction phase identifier.
+- Unresolved correction phase: roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-map-canvas-priority-correction: No reliable correction phase identifier.
+negative topology: revision 1, 4 canonical nodes, 0 stored-dependency edges, 2 projection diagnostics
+- Unresolved correction phase: roadmap:ROADMAP.md#c100-unmatched: Phase 100 is absent.
+- Unresolved correction phase: roadmap:ROADMAP.md#c11-absent: Phase 11 is absent.
+- association roadmap:ROADMAP.md#c10-attached: {"phaseId":"roadmap:ROADMAP.md#phase-10","source":"identifier"}
+- association roadmap:ROADMAP.md#c100-unmatched: {"unresolvedReason":"Phase 100 is absent."}
+- association roadmap:ROADMAP.md#c11-absent: {"unresolvedReason":"Phase 11 is absent."}

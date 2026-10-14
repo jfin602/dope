@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "projectId": "c1df4f12-5b18-418a-8f4c-fa41f02449b9",
+  "projectRoot": "/tmp/dope-c10-p9-topology-68J9Il",
+  "revision": 1,
+  "checkpoints": [
+    {
+      "id": "roadmap:ROADMAP.md#phase-10",
+      "kind": "phase",
+      "title": "Product Phase 10 — Live topology test",
+      "objective": "",
+      "order": 0,
+      "dependencies": [],
+      "links": [],
+      "status": "active",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "70274186f9eaf1e6d66452642adedf6451f6517921cf7bf163708e7ac4c26301",
+        "line": 3,
+        "text": "## Product Phase 10 — Live topology test"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "70274186f9eaf1e6d66452642adedf6451f6517921cf7bf163708e7ac4c26301",
+          "line": 4,
+          "text": "Status: **ACTIVE**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:ROADMAP.md#c10-attached",
+      "kind": "correction",
+      "title": "Correction `c10-attached`",
+      "objective": "",
+      "order": 1,
+      "dependencies": [],
+      "links": [],
+      "status": "active",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "70274186f9eaf1e6d66452642adedf6451f6517921cf7bf163708e7ac4c26301",
+        "line": 7,
+        "text": "## Correction `c10-attached`"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "70274186f9eaf1e6d66452642adedf6451f6517921cf7bf163708e7ac4c26301",
+          "line": 8,
+          "text": "Status: **ACTIVE**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:ROADMAP.md#c100-unmatched",
+      "kind": "correction",
+      "title": "Correction `c100-unmatched`",
+      "objective": "",
+      "order": 2,
+      "dependencies": [],
+      "links": [],
+      "status": "active",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "70274186f9eaf1e6d66452642adedf6451f6517921cf7bf163708e7ac4c26301",
+        "line": 11,
+        "text": "## Correction `c100-unmatched`"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "70274186f9eaf1e6d66452642adedf6451f6517921cf7bf163708e7ac4c26301",
+          "line": 12,
+          "text": "Status: **ACTIVE**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:ROADMAP.md#c11-absent",
+      "kind": "correction",
+      "title": "Correction `c11-absent`",
+      "objective": "",
+      "order": 3,
+      "dependencies": [],
+      "links": [],
+      "status": "active",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "70274186f9eaf1e6d66452642adedf6451f6517921cf7bf163708e7ac4c26301",
+        "line": 15,
+        "text": "## Correction `c11-absent`"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "70274186f9eaf1e6d66452642adedf6451f6517921cf7bf163708e7ac4c26301",
+          "line": 16,
+          "text": "Status: **ACTIVE**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE**"
+        }
+      ]
+    }
+  ],
+  "linkedDocument": {
+    "projectRoot": "/tmp/dope-c10-p9-topology-68J9Il",
+    "projectId": "c1df4f12-5b18-418a-8f4c-fa41f02449b9",
+    "path": "ROADMAP.md",
+    "sourceHash": "70274186f9eaf1e6d66452642adedf6451f6517921cf7bf163708e7ac4c26301",
+    "sections": [
+      {
+        "sectionKey": "phase-10",
+        "checkpointId": "roadmap:ROADMAP.md#phase-10"
+      },
+      {
+        "sectionKey": "c10-attached",
+        "checkpointId": "roadmap:ROADMAP.md#c10-attached"
+      },
+      {
+        "sectionKey": "c100-unmatched",
+        "checkpointId": "roadmap:ROADMAP.md#c100-unmatched"
+      },
+      {
+        "sectionKey": "c11-absent",
+        "checkpointId": "roadmap:ROADMAP.md#c11-absent"
+      }
+    ],
+    "lastSynced": {
+      "sourceHash": "70274186f9eaf1e6d66452642adedf6451f6517921cf7bf163708e7ac4c26301",
+      "roadmapRevision": 1,
+      "fields": [
+        {
+          "checkpointId": "roadmap:ROADMAP.md#phase-10",
+          "title": "Product Phase 10 — Live topology test"
+        },
+        {
+          "checkpointId": "roadmap:ROADMAP.md#c10-attached",
+          "title": "Correction `c10-attached`"
+        },
+        {
+          "checkpointId": "roadmap:ROADMAP.md#c100-unmatched",
+          "title": "Correction `c100-unmatched`"
+        },
+        {
+          "checkpointId": "roadmap:ROADMAP.md#c11-absent",
+          "title": "Correction `c11-absent`"
+        }
+      ]
+    },
+    "syncState": "synced"
+  }
+}

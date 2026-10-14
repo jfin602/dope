@@ -1,0 +1,376 @@
+Browser tab: 1, Title: "Roadmap - project - Dope", URL: "http://127.0.0.1:3000/#/tmp/dope-c10-p9-requal-2ZlHKk/project".
+0 AXWebArea Roadmap - project - Dope, URL: 127.0.0.1:3000/#/tmp/dope-c10-p9-requal-2ZlHKk/project
+	1 container
+		2 container theia-app-shell
+			3 container theia-top-panel
+				4 menu bar
+					5 File
+						6 text File
+					7 Edit
+						8 text Edit
+					9 Selection
+						10 text Selection
+					11 View
+						12 text View
+					13 Go
+						14 text Go
+					15 Run
+						16 text Run
+					17 Terminal
+						18 text Terminal
+					19 Help
+						20 text Help
+			21 container theia-left-right-split-panel
+				22 container theia-left-content-panel
+					23 container
+						24 tab group
+							25 text 
+							26 text 
+							27 text 
+							28 text 
+							29 text 
+							30 text 
+							49 text 2
+							31 text 
+							32 text 
+							33 text 
+						34 text 
+						35 button AI Center
+				54 container theia-main-content-panel
+					55 tab group
+						675 text 
+						57 text Roadmap
+						676 text 
+					59 container dope-roadmap-canvas
+						60 container Roadmap controls
+							61 button (expanded) Description: Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged, Help: Roadmap Markdown and setup, Secondary Actions: Collapse
+								890 text Markdown · unchanged
+							63 button (collapsed) Description: Show Roadmap details on canvas, Secondary Actions: Expand
+							64 button Browse and edit Project Mind Notes, Ideas, Questions and Decisions
+							65 button Zoom in on Roadmap
+							66 button Zoom out on Roadmap
+							67 button Fit Roadmap
+							68 checkbox Description: Arrange checkpoint positions, Help: Move checkpoint cards without changing their order or dependencies, Value: 0
+							69 button (disabled) Expand selected Roadmap branch
+							70 button (disabled) Collapse selected Roadmap branch
+							71 button (disabled) Focus selected Roadmap checkpoint
+							72 button (disabled) Show next implementation prompts for selected checkpoint
+							891 text Phase detail
+							74 button Refresh Roadmap
+						75 container
+							76 container Description: Roadmap checkpoints canvas, Help: Shift+Arrow pans. In Arrange mode, Alt+Arrow moves the selected card.
+								94 container dope-roadmap-flow
+									95 container
+										892 image
+											893 edge Chronological phase progression; no release gate implied; Foundation Spike 0 — Theia substrate qualification to Product Phase 1 — IDE Alive; endpoint status not-green
+										894 image
+											895 edge Chronological phase progression; no release gate implied; Product Phase 1 — IDE Alive to Product Phase 2 — Project Mind; endpoint status not-green
+										896 image
+											897 edge Chronological phase progression; no release gate implied; Product Phase 2 — Project Mind to Product Phase 3 — Planning; endpoint status waived
+										898 image
+											899 edge Chronological phase progression; no release gate implied; Product Phase 3 — Planning to Product Phase 4 — Physical Map; endpoint status green
+										900 image
+											901 edge Chronological phase progression; no release gate implied; Product Phase 4 — Physical Map to Product Phase 5 — Visual Software Planning; endpoint status not-green
+										902 image
+											903 edge Chronological phase progression; no release gate implied; Product Phase 5 — Visual Software Planning to Product Phase 6 — Flow; endpoint status not-green
+										904 image
+											905 edge Chronological phase progression; no release gate implied; Product Phase 6 — Flow to Product Phase 7 — AI Presence; endpoint status waived
+										906 image
+											907 edge Chronological phase progression; no release gate implied; Product Phase 7 — AI Presence to Product Phase 8 — Coding Agent / Scoped Delegation; endpoint status green
+										908 image
+											909 edge Chronological phase progression; no release gate implied; Product Phase 8 — Coding Agent / Scoped Delegation to Product Phase 9 — Developer Continuity / History; endpoint status green
+										910 image
+											911 edge Chronological phase progression; no release gate implied; Product Phase 9 — Developer Continuity / History to Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange; endpoint status not-green
+										912 image
+											913 edge Chronological phase progression; no release gate implied; Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange to Product Phase 11 — Human-Centered UI / Usability Qualification; endpoint status not-green
+										914 image
+											915 edge Chronological phase progression; no release gate implied; Product Phase 11 — Human-Centered UI / Usability Qualification to Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11); endpoint status not-implemented
+										916 image
+											917 edge Correction belongs to Product Phase 3 — Planning; Product Phase 3 — Planning to Mandatory pre-Phase-4 correction — `c3-remove-planning-instruments`; endpoint status green
+										918 image
+											919 edge Correction belongs to Product Phase 4 — Physical Map; Product Phase 4 — Physical Map to Mandatory post-Phase-4 correction — `c4-architecture-discovery`; endpoint status not-green
+										920 image
+											921 edge Correction belongs to Product Phase 4 — Physical Map; Product Phase 4 — Physical Map to Mandatory pre-Phase-5 correction — `c4-smap-hierarchical-synthesis`; endpoint status not-implemented
+										922 image
+											923 edge Correction belongs to Product Phase 4 — Physical Map; Product Phase 4 — Physical Map to Mandatory pre-Phase-5 correction — `c4-smap-gemini-provider`; endpoint status not-green
+										924 image
+											925 edge Correction belongs to Product Phase 4 — Physical Map; Product Phase 4 — Physical Map to Mandatory pre-Phase-5 correction — `c4-synth-improvements`; endpoint status not-green
+										926 image
+											927 edge Correction belongs to Product Phase 4 — Physical Map; Product Phase 4 — Physical Map to Mandatory pre-Phase-5 correction — `c4-synth-coverage-review`; endpoint status not-green
+										928 image
+											929 edge Correction belongs to Product Phase 4 — Physical Map; Product Phase 4 — Physical Map to Mandatory pre-Phase-5 correction — `c4-smap-provider-comparison`; endpoint status unknown
+										930 image
+											931 edge Correction belongs to Product Phase 4 — Physical Map; Product Phase 4 — Physical Map to Mandatory pre-Phase-5 correction — `c4-smap-storage`; endpoint status green
+										932 image
+											933 edge Correction belongs to Product Phase 4 — Physical Map; Product Phase 4 — Physical Map to Mandatory pre-Phase-5 correction — `c4-color-theme`; endpoint status green
+										934 image
+											935 edge Correction belongs to Product Phase 5 — Visual Software Planning; Product Phase 5 — Visual Software Planning to Phase 5 interruption correction — `c5-smap-acceptance-debug-loop`; endpoint status not-green
+										936 image
+											937 edge Correction belongs to Product Phase 5 — Visual Software Planning; Product Phase 5 — Visual Software Planning to Queued Phase 5 correction — `c5-synth-observe`; endpoint status not-green
+										938 image
+											939 edge Correction belongs to Product Phase 5 — Visual Software Planning; Product Phase 5 — Visual Software Planning to Phase 5 interruption correction — `c5-physical-map-load`; endpoint status not-green
+										940 image
+											941 edge Correction belongs to Product Phase 5 — Visual Software Planning; Product Phase 5 — Visual Software Planning to Phase 5 interruption correction — `c5-planning-basis-isolation`; endpoint status not-green
+										942 image
+											943 edge Correction belongs to Product Phase 5 — Visual Software Planning; Product Phase 5 — Visual Software Planning to Pre-P11-rerun correction — `c5-smap-readability`; endpoint status not-green
+										944 image
+											945 edge Correction belongs to Product Phase 6 — Flow; Product Phase 6 — Flow to Pre-Phase-7 correction — `c6-branch-seam`; endpoint status waived
+										946 image
+											947 edge Correction belongs to Product Phase 6 — Flow; Product Phase 6 — Flow to October 2, 2026 — Phase 6 map canvas priority correction; endpoint status waived
+										948 image
+											949 edge Correction belongs to Product Phase 9 — Developer Continuity / History; Product Phase 9 — Developer Continuity / History to c9-codex-chat — bounded subscription Chat correction (2026-10-12); endpoint status not-implemented
+										950 image
+											951 edge Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange; Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange to c10-horizontal-color; endpoint status not-green
+										952 image
+											953 edge Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange; Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange to c10-roadmap-create-sync; endpoint status not-green
+										954 image
+											955 edge Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange; Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange to c10-roadmap-qualify; endpoint status not-green
+										956 image
+											957 edge Correction belongs to Product Phase 6 — Flow; Product Phase 6 — Flow to c6-edit-architecture; endpoint status waived
+										958 image
+											959 edge Correction belongs to Product Phase 7 — AI Presence; Product Phase 7 — AI Presence to c7-chat-conversation-ux; endpoint status unknown
+										960 image
+											961 edge Correction belongs to Product Phase 7 — AI Presence; Product Phase 7 — AI Presence to c7-chat-project-grounding; endpoint status unknown
+										962 image
+											963 edge Correction belongs to Product Phase 8 — Coding Agent / Scoped Delegation; Product Phase 8 — Coding Agent / Scoped Delegation to c8-chat-work-ui; endpoint status unknown
+										964 image
+											965 edge Correction belongs to Product Phase 8 — Coding Agent / Scoped Delegation; Product Phase 8 — Coding Agent / Scoped Delegation to c8-fix; endpoint status unknown
+										966 image
+											967 edge Correction belongs to Product Phase 8 — Coding Agent / Scoped Delegation; Product Phase 8 — Coding Agent / Scoped Delegation to c8-work-mode; endpoint status unknown
+										968 image
+											969 edge Correction belongs to Product Phase 9 — Developer Continuity / History; Product Phase 9 — Developer Continuity / History to c9-theme-fix; endpoint status unknown
+										735 container
+											736 button phase: Foundation Spike 0 — Theia substrate qualification; Green
+												737 text phase
+												738 text Foundation Spike 0 — Theia substrate qualification
+												739 text Green
+										740 container
+											741 button phase: Product Phase 1 — IDE Alive; Not Green; Chronological phase progression; no release gate implied Foundation Spike 0 — Theia substrate qualification
+												742 text phase
+												743 text Product Phase 1 — IDE Alive
+												744 text Not Green
+										745 container
+											746 button phase: Product Phase 2 — Project Mind; Owner-closed for sequencing; Chronological phase progression; no release gate implied Product Phase 1 — IDE Alive
+												747 text phase
+												748 text Product Phase 2 — Project Mind
+												749 text Owner-closed for sequencing
+										750 container
+											751 button phase: Product Phase 3 — Planning; Green; Chronological phase progression; no release gate implied Product Phase 2 — Project Mind
+												752 text phase
+												753 text Product Phase 3 — Planning
+												754 text Green
+										755 container
+											756 button correction: Mandatory pre-Phase-4 correction — `c3-remove-planning-instruments`; Green; Correction belongs to Product Phase 3 — Planning Product Phase 3 — Planning
+												757 text correction
+												758 text Mandatory pre-Phase-4 correction — `c3-remove-planning-instruments`
+												759 text Green
+										760 container
+											761 button phase: Product Phase 4 — Physical Map; Green; Chronological phase progression; no release gate implied Product Phase 3 — Planning
+												762 text phase
+												763 text Product Phase 4 — Physical Map
+												764 text Green
+										765 container
+											766 button correction: Mandatory post-Phase-4 correction — `c4-architecture-discovery`; Not Green; Correction belongs to Product Phase 4 — Physical Map Product Phase 4 — Physical Map
+												767 text correction
+												768 text Mandatory post-Phase-4 correction — `c4-architecture-discovery`
+												769 text Not Green
+										770 container
+											771 button correction: Mandatory pre-Phase-5 correction — `c4-smap-hierarchical-synthesis`; Not implemented; Correction belongs to Product Phase 4 — Physical Map Product Phase 4 — Physical Map
+												772 text correction
+												773 text Mandatory pre-Phase-5 correction — `c4-smap-hierarchical-synthesis`
+												774 text Not implemented
+										775 container
+											776 button correction: Mandatory pre-Phase-5 correction — `c4-smap-gemini-provider`; Not Green; Correction belongs to Product Phase 4 — Physical Map Product Phase 4 — Physical Map
+												777 text correction
+												778 text Mandatory pre-Phase-5 correction — `c4-smap-gemini-provider`
+												779 text Not Green
+										780 container
+											781 button correction: Mandatory pre-Phase-5 correction — `c4-synth-improvements`; Not Green; Correction belongs to Product Phase 4 — Physical Map Product Phase 4 — Physical Map
+												782 text correction
+												783 text Mandatory pre-Phase-5 correction — `c4-synth-improvements`
+												784 text Not Green
+										785 container
+											786 button correction: Mandatory pre-Phase-5 correction — `c4-synth-coverage-review`; Not Green; Correction belongs to Product Phase 4 — Physical Map Product Phase 4 — Physical Map
+												787 text correction
+												788 text Mandatory pre-Phase-5 correction — `c4-synth-coverage-review`
+												789 text Not Green
+										790 container
+											791 button correction: Mandatory pre-Phase-5 correction — `c4-smap-provider-comparison`; Unknown; Correction belongs to Product Phase 4 — Physical Map Product Phase 4 — Physical Map
+												792 text correction
+												793 text Mandatory pre-Phase-5 correction — `c4-smap-provider-comparison`
+												794 text Unknown
+										795 container
+											796 button correction: Mandatory pre-Phase-5 correction — `c4-smap-storage`; Green; Correction belongs to Product Phase 4 — Physical Map Product Phase 4 — Physical Map
+												797 text correction
+												798 text Mandatory pre-Phase-5 correction — `c4-smap-storage`
+												799 text Green
+										800 container
+											801 button correction: Mandatory pre-Phase-5 correction — `c4-color-theme`; Green; Correction belongs to Product Phase 4 — Physical Map Product Phase 4 — Physical Map
+												802 text correction
+												803 text Mandatory pre-Phase-5 correction — `c4-color-theme`
+												804 text Green
+										805 container
+											806 button phase: Product Phase 5 — Visual Software Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 4 — Physical Map
+												807 text phase
+												808 text Product Phase 5 — Visual Software Planning
+												809 text Not Green
+										810 container
+											811 button correction: Phase 5 interruption correction — `c5-smap-acceptance-debug-loop`; Unknown; Correction belongs to Product Phase 5 — Visual Software Planning Product Phase 5 — Visual Software Planning
+												812 text correction
+												813 text Phase 5 interruption correction — `c5-smap-acceptance-debug-loop`
+												814 text Unknown
+										815 container
+											816 button correction: Queued Phase 5 correction — `c5-synth-observe`; Unknown; Correction belongs to Product Phase 5 — Visual Software Planning Product Phase 5 — Visual Software Planning
+												817 text correction
+												818 text Queued Phase 5 correction — `c5-synth-observe`
+												819 text Unknown
+										820 container
+											821 button correction: Phase 5 interruption correction — `c5-physical-map-load`; Unknown; Correction belongs to Product Phase 5 — Visual Software Planning Product Phase 5 — Visual Software Planning
+												822 text correction
+												823 text Phase 5 interruption correction — `c5-physical-map-load`
+												824 text Unknown
+										825 container
+											826 button correction: Phase 5 interruption correction — `c5-planning-basis-isolation`; Unknown; Correction belongs to Product Phase 5 — Visual Software Planning Product Phase 5 — Visual Software Planning
+												827 text correction
+												828 text Phase 5 interruption correction — `c5-planning-basis-isolation`
+												829 text Unknown
+										830 container
+											831 button correction: Pre-P11-rerun correction — `c5-smap-readability`; Active; Correction belongs to Product Phase 5 — Visual Software Planning Product Phase 5 — Visual Software Planning
+												832 text correction
+												833 text Pre-P11-rerun correction — `c5-smap-readability`
+												834 text Active
+										835 container
+											836 button phase: Product Phase 6 — Flow; Owner-closed for sequencing; Chronological phase progression; no release gate implied Product Phase 5 — Visual Software Planning
+												837 text phase
+												838 text Product Phase 6 — Flow
+												839 text Owner-closed for sequencing
+										970 container
+											971 button correction: c6-edit-architecture; Source only · status unknown; Correction belongs to Product Phase 6 — Flow Product Phase 6 — Flow
+												972 text correction
+												973 text c6-edit-architecture
+												974 text Source only · status unknown
+										840 container
+											841 button correction: Pre-Phase-7 correction — `c6-branch-seam`; Unknown; Correction belongs to Product Phase 6 — Flow Product Phase 6 — Flow
+												842 text correction
+												843 text Pre-Phase-7 correction — `c6-branch-seam`
+												844 text Unknown
+										975 container
+											976 button correction: October 2, 2026 — Phase 6 map canvas priority correction; Unknown; Correction belongs to Product Phase 6 — Flow Product Phase 6 — Flow
+												977 text correction
+												978 text October 2, 2026 — Phase 6 map canvas priority correction
+												979 text Unknown
+										845 container
+											846 button phase: Product Phase 7 — AI Presence; Green; Chronological phase progression; no release gate implied Product Phase 6 — Flow
+												847 text phase
+												848 text Product Phase 7 — AI Presence
+												849 text Green
+										980 container
+											981 button correction: c7-chat-conversation-ux; Source only · status unknown; Correction belongs to Product Phase 7 — AI Presence Product Phase 7 — AI Presence
+												982 text correction
+												983 text c7-chat-conversation-ux
+												984 text Source only · status unknown
+										985 container
+											986 button correction: c7-chat-project-grounding; Source only · status unknown; Correction belongs to Product Phase 7 — AI Presence Product Phase 7 — AI Presence
+												987 text correction
+												988 text c7-chat-project-grounding
+												989 text Source only · status unknown
+										850 container
+											851 button phase: Product Phase 8 — Coding Agent / Scoped Delegation; Green; Chronological phase progression; no release gate implied Product Phase 7 — AI Presence
+												852 text phase
+												853 text Product Phase 8 — Coding Agent / Scoped Delegation
+												854 text Green
+										990 container
+											991 button correction: c8-chat-work-ui; Source only · status unknown; Correction belongs to Product Phase 8 — Coding Agent / Scoped Delegation Product Phase 8 — Coding Agent / Scoped Delegation
+												992 text correction
+												993 text c8-chat-work-ui
+												994 text Source only · status unknown
+										995 container
+											996 button correction: c8-fix; Source only · status unknown; Correction belongs to Product Phase 8 — Coding Agent / Scoped Delegation Product Phase 8 — Coding Agent / Scoped Delegation
+												997 text correction
+												998 text c8-fix
+												999 text Source only · status unknown
+										1000 container
+											1001 button correction: c8-work-mode; Source only · status unknown; Correction belongs to Product Phase 8 — Coding Agent / Scoped Delegation Product Phase 8 — Coding Agent / Scoped Delegation
+												1002 text correction
+												1003 text c8-work-mode
+												1004 text Source only · status unknown
+										855 container
+											856 button phase: Product Phase 9 — Developer Continuity / History; Green; Chronological phase progression; no release gate implied Product Phase 8 — Coding Agent / Scoped Delegation
+												857 text phase
+												858 text Product Phase 9 — Developer Continuity / History
+												859 text Green
+										1005 container
+											1006 button correction: c9-theme-fix; Source only · status unknown; Correction belongs to Product Phase 9 — Developer Continuity / History Product Phase 9 — Developer Continuity / History
+												1007 text correction
+												1008 text c9-theme-fix
+												1009 text Source only · status unknown
+										860 container
+											861 button correction: c9-codex-chat — bounded subscription Chat correction (2026-10-12); Not implemented; Correction belongs to Product Phase 9 — Developer Continuity / History Product Phase 9 — Developer Continuity / History
+												862 text correction
+												863 text c9-codex-chat — bounded subscription Chat correction (2026-10-12)
+												864 text Not implemented
+										865 container
+											866 button phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History
+												867 text phase
+												868 text Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange
+												869 text Not Green
+										1010 container
+											1011 button correction: c10-horizontal-color; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange
+												1012 text correction
+												1013 text c10-horizontal-color
+												1014 text Source only · status unknown
+										1015 container
+											1016 button correction: c10-roadmap-create-sync; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange
+												1017 text correction
+												1018 text c10-roadmap-create-sync
+												1019 text Source only · status unknown
+										1020 container
+											1021 button correction: c10-roadmap-qualify; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange
+												1022 text correction
+												1023 text c10-roadmap-qualify
+												1024 text Source only · status unknown
+										870 container
+											871 button phase: Product Phase 11 — Human-Centered UI / Usability Qualification; Not implemented; Chronological phase progression; no release gate implied Product Phase 10 — Unified Roadmap & Local-First AI Planning — P9 requalification exchange
+												872 text phase
+												873 text Product Phase 11 — Human-Centered UI / Usability Qualification
+												874 text Not implemented
+										875 container
+											876 button phase: Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11); Unknown; Chronological phase progression; no release gate implied Product Phase 11 — Human-Centered UI / Usability Qualification
+												877 text phase
+												878 text Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11)
+												879 text Unknown
+										885 container
+											886 button correction: October 2, 2026 — Phase 6 Flow projection-contract correction; Unknown
+												887 text correction
+												888 text October 2, 2026 — Phase 6 Flow projection-contract correction
+												889 text Unknown
+									379 image
+							1025 text 41 displayed checkpoints · Roadmap revision 2 · 10 unresolved reference(s) · Linked: docs/roadmap/mvp-roadmap.md (synced)
+							668 container Description: Linked Markdown, ID: dope-roadmap-source-panel
+								669 container
+									1026 text Linked Markdown · docs/roadmap/mvp-roadmap.md · unchanged
+									671 button Expand Linked Markdown
+									674 button Minimize Linked Markdown
+									673 button Close Linked Markdown
+								1027 text Linked Markdown: docs/roadmap/mvp-roadmap.md · unchanged
+								1028 text The linked Markdown stays at its original path. Review external changes before applying supported title, objective, order or prose fields; status evidence is preserved.
+							78 button (collapsed) Description: Ideas, Issues and unlinked tasks, Secondary Actions: Expand
+				36 container theia-right-content-panel
+					37 container
+						38 tab group
+							39 text 
+							40 text 
+							41 text 
+							42 text 
+			43 container theia-statusBar
+				50 container Description: $(git-branch-changes) main*, project (Git) - main*, Checkout Branch/Tag..., ID: status-bar-scm.status.0
+					51 text  main*
+				52 container Description: $(sync), project (Git) - Synchronize Changes, ID: status-bar-scm.status.1
+					53 text 
+				44 container Description: $(codicon-error) 0 $(codicon-warning) 0, No Problems, ID: status-bar-problem-marker-status
+					45 text  0  0
+				46 container Description: No Notifications, ID: status-bar-theia-notification-center
+					47 text 
+				48 button Description: Toggle Bottom Panel, ID: status-bar-bottom-panel-toggle
+
+The focused UI element is 0 AXWebArea Roadmap - project - Dope, URL: 127.0.0.1:3000/#/tmp/dope-c10-p9-requal-2ZlHKk/project

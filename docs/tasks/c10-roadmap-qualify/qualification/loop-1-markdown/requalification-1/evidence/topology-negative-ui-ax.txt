@@ -1,0 +1,107 @@
+Browser tab: 2, Title: "Roadmap - dope-c10-p9-topology-68J9Il - Dope", URL: "http://127.0.0.1:3000/#/tmp/dope-c10-p9-topology-68J9Il".
+0 AXWebArea Roadmap - dope-c10-p9-topology-68J9Il - Dope, URL: 127.0.0.1:3000/#/tmp/dope-c10-p9-topology-68J9Il
+	1 container
+		2 container theia-app-shell
+			3 container theia-top-panel
+				4 menu bar
+					5 File
+						6 text File
+					7 Edit
+						8 text Edit
+					9 Selection
+						10 text Selection
+					11 View
+						12 text View
+					13 Go
+						14 text Go
+					15 Run
+						16 text Run
+					17 Terminal
+						18 text Terminal
+					19 Help
+						20 text Help
+			21 container theia-left-right-split-panel
+				22 container theia-left-content-panel
+					23 container
+						24 tab group
+							25 text 
+							26 text 
+							27 text 
+							28 text 
+							29 text 
+							30 text 
+							108 text 1
+							31 text 
+							32 text 
+							33 text 
+						34 text 
+						35 button AI Center
+				49 container theia-main-content-panel
+					50 tab group
+						78 text 
+						52 text Roadmap
+						79 text 
+					54 container dope-roadmap-canvas
+						55 container Roadmap controls
+							56 button (collapsed) Description: Roadmap Markdown ROADMAP.md: unchanged, Help: Roadmap Markdown and setup, Secondary Actions: Expand
+								80 text Markdown · unchanged
+							58 button (collapsed) Description: Show Roadmap details on canvas, Secondary Actions: Expand
+							59 button Browse and edit Project Mind Notes, Ideas, Questions and Decisions
+							60 button Zoom in on Roadmap
+							61 button Zoom out on Roadmap
+							62 button Fit Roadmap
+							63 checkbox Description: Arrange checkpoint positions, Help: Move checkpoint cards without changing their order or dependencies, Value: 0
+							64 button (disabled) Expand selected Roadmap branch
+							65 button (disabled) Collapse selected Roadmap branch
+							66 button (disabled) Focus selected Roadmap checkpoint
+							67 button (disabled) Show next implementation prompts for selected checkpoint
+							81 text Phase detail
+							69 button Refresh Roadmap
+						70 container
+							71 container Description: Roadmap checkpoints canvas, Help: Shift+Arrow pans. In Arrange mode, Alt+Arrow moves the selected card.
+								82 container dope-roadmap-flow
+									83 container
+										84 image
+											85 edge Correction belongs to Product Phase 10 — Live topology test; Product Phase 10 — Live topology test to Correction `c10-attached`; endpoint status active
+										86 container
+											87 button phase: Product Phase 10 — Live topology test; Active
+												88 text phase
+												89 text Product Phase 10 — Live topology test
+												90 text Active
+										91 container
+											92 button correction: Correction `c10-attached`; Active; Correction belongs to Product Phase 10 — Live topology test Product Phase 10 — Live topology test
+												93 text correction
+												94 text Correction `c10-attached`
+												95 text Active
+										96 container
+											97 button correction: Correction `c100-unmatched`; Active
+												98 text correction
+												99 text Correction `c100-unmatched`
+												100 text Active
+										101 container
+											102 button correction: Correction `c11-absent`; Active
+												103 text correction
+												104 text Correction `c11-absent`
+												105 text Active
+									106 image
+							107 text Imported and linked ROADMAP.md · synced.
+							73 button (collapsed) Description: Ideas, Issues and unlinked tasks, Secondary Actions: Expand
+				36 container theia-right-content-panel
+					37 container
+						38 tab group
+							39 text 
+							40 text 
+							41 text 
+							42 text 
+			43 container theia-statusBar
+				74 container Description: $(git-branch-changes) main*, dope-c10-p9-topology-68J9Il (Git) - main*, Checkout Branch/Tag..., ID: status-bar-scm.status.0
+					109 text  main*
+				76 container Description: $(cloud-upload), dope-c10-p9-topology-68J9Il (Git) - Publish to GitHub, ID: status-bar-scm.status.1
+					77 text 
+				44 container Description: $(codicon-error) 0 $(codicon-warning) 0, No Problems, ID: status-bar-problem-marker-status
+					45 text  0  0
+				46 container Description: No Notifications, ID: status-bar-theia-notification-center
+					47 text 
+				48 button Description: Toggle Bottom Panel, ID: status-bar-bottom-panel-toggle
+
+The focused UI element is 0 AXWebArea Roadmap - dope-c10-p9-topology-68J9Il - Dope, URL: 127.0.0.1:3000/#/tmp/dope-c10-p9-topology-68J9Il
