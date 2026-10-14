@@ -1,0 +1,23 @@
+TASK: Correction 10 / P7 — Render connected phase progression and vertical Roadmap branches
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read c10-horizontal-color README/plan, P6's actual commit/tests, ADR 0036 and existing React Flow/Software Map conventions. Check HEAD, version, worktree and archived old P6; do not rerun P1–P5, reset user state, self-commit or require /activate.
+
+INSPECT
+`roadmap-canvas-model.ts` `roadmapSpatialLayout` and `roadmapEdgeHandles`, `roadmap-canvas-widget.ts` React Flow edge/node projection and semantic zoom, `roadmap-projection.ts` evidence-backed dependency types, `roadmap-viewport.ts` user Arrange placements, related spatial/canvas/prompt navigation tests. The old layout places nodes with no `kind=branch` dependency in horizontally adjacent root bands, and renderer draws only visible stored edges. Confirm with an actual full-roadmap projection before editing.
+
+IMPLEMENT — ONE OWNER: CANVAS TOPOLOGY / CONNECTORS
+Lay out chronological Phase nodes on the horizontal baseline with stable readable gaps; visually attach P6-resolved corrections vertically **above their phase** and supporting prompts/task stacks below, sized for long titles and dense branches. Unmatched corrections retain a discoverable separated/unlinked region rather than masquerading as later mainline stages. Render distinct **presentation-only** connector classes: (a) solid chronological phase progression independent of required dependency, (b) correction-to-phase membership, (c) supporting containment, and (d) separately styled directed actual Roadmap dependency only when explicitly stored. Use true, visible React Flow endpoints/handles at world/phase/checkpoint semantic zoom with suitable disclosure, z-order, style and accessible labels; ensure the rendered lines don't disappear under nodes or because unrelated internal edges were missing. Do not persist synthetic progression/membership in canonical graph, imply a chronological edge is a release gate, invent reconnection or assign completed state. Preserve Arrange placements, v2 viewport, selection/focus, inspector, prompt Open-without-run, status projection, Chat docking and performant rendering.
+
+FOCUSED PROOF — T2
+Add/extend `roadmap-spatial-canvas.test.ts`, `roadmap-canvas.test.ts`, projection tests only as directly impacted: actual Dope import fixture, c10 branches attached with real labels, missing phase standalone, c100 not attached, consecutive phases connected without stored dependency, real dependencies remain distinct, world/mid/near zoom line endpoints, no false edges in `RoadmapIndex`, stable layout/density/keyboard order. Validate no source/index revision change and no path falsely Green across Not Green/Waived endpoints. Run focused changed tests and only required theia-extension build, `git diff --check`. P8 owns colors; P10 motion; P11 visual browser/native. Target <=8 minutes; justified bounded T2 exception for geometry only.
+
+DONE
+Visible static, truthful relationships are ready for live evidence; vertical corrections no longer become false horizontal phases.
