@@ -1,0 +1,23 @@
+TASK: Correction 10 / P10 — Add subtle accessible Roadmap relationship motion
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read c10-horizontal-color README/plan, P7 visible connector outcome, P8 card-theme result, ADR 0016/0037 and P11 proposed visual evidence gate. Check safe HEAD/version/dirty changes, no resets/stash/self-commits or /activate.
+
+INSPECT
+Existing React Flow edge class/status grammar and selection, `dope.css`, CSS prefers-reduced-motion support, `roadmap-status-style.ts`, semantic zoom and current active checkpoint selection. Prefer CSS-only motion over new render loops, intervals or extra animation libraries.
+
+IMPLEMENT — ONE OWNER: RESTRAINED MOTION
+Keep all connector lines useful when static. Provide brief unobtrusive highlight on selected card and **its genuinely rendered related connectors**, short eased expand/collapse/reposition transitions and, if clearly supported by an evidence-based active route, a slow low-opacity active-line accent. Avoid animation on inactive, Not Green, waived, unknown or merely chronological route segments; never imply passage/qualification or completed dependencies. Avoid flashing cards, global waves, particle systems, high-frequency rerender, CPU-expensive continuous canvas state updates, forced Chat focus or auto-panning. Respect `prefers-reduced-motion: reduce` with truly static edges and no nonessential movement; keep touch/keyboard visible selection emphasis and dark/light contrast.
+
+FOCUSED PROOF — T1
+Use smallest roadmap-canvas/theme/edge-style unit tests covering motion class/eligibility, no false Green, selection-only emphasis, reduced-motion CSS and no dynamic Roadmap write. Build affected Theia UI output only if needed by tests and `git diff --check`. P11 owns browser/native visual subtlety and performance. Target <=8 minutes.
+
+DONE
+Relationships remain quiet, clear and accessible during idle and navigation, with zero status/authority change.
