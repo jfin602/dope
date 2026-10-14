@@ -1,6 +1,6 @@
 # c10-better-planning — readable local planning Chat
 
-**2026-10-14 current status:** P1–P4 committed through `320f9bd`; [manual P5 closeout](closeout.md) is **NOT GREEN / NOT QUALIFIED** at unchanged `0.10.16`. Browser Chat authority and linked-source checks passed in a disposable project, but native UI evidence and other P5 requirements remain open. The earlier authoring/implementation-entry notes below are historical.
+**2026-10-14 current status: P1–P5 GREEN / SCOPED QUALIFIED by owner acceptance** at committed/pushed product `824eaa17b58e888451a615c14fccf79092f1adb4`, version `0.10.16` unchanged. The initial manual P5 NOT GREEN at `320f9bd` and the two repair-cycle source-bound NOT GREEN snapshots are preserved in [closeout](closeout.md) and [repair-loop](qualification/p5-repair-loop/summary.md). Successful precommit browser/Qwen/clipboard/progress/native observations were accepted on the equivalent committed repair without a new postcommit UI replay; do not claim such a replay occurred. Browser testing is sufficient for P5; P12 still owns the broader four-dock matrix and P11 the overhead comparison. `c10-horizontal-color` P11 remains NOT GREEN; full Phase 10 P9–P14 remains deferred.
 
 **Mode:** Correction 10. **Package:** `0.10.16` unchanged.
 **Authority:** ADR 0016/0030/0036/0037, Phase 10 plan, this assessment and plan.

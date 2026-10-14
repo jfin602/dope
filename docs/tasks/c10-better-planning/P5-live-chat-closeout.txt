@@ -1,5 +1,8 @@
 TASK: Correction 10 / P5 — Real local planning UX scoped qualification / closeout
 
+HISTORICAL TASK AND CURRENT OWNER DISPOSITION (2026-10-14)
+P5 is SCOPED GREEN / OWNER-ACCEPTED at committed source 824eaa17b58e888451a615c14fccf79092f1adb4. Browser-based direct interaction is sufficient for this scoped gate; independent computer-use is not mandatory for P5. Actual Electron UI interaction was also captured precommit. The developer accepted source-equivalent precommit evidence without repeating the UI replay after commit. Do not rerun this completed task merely because older instructions below mention native controls. The left/bottom/center dock matrix belongs to Phase 10 manual P12; isolated trace-overhead comparison belongs to P11. These do not waive either family's eventual requirements. See closeout.md; preserve historical initial NOT GREEN and repair-loop evidence. Full Phase 10 remains blocked on the separate horizontal/color P11 correction.
+
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
 - Browser required: yes.
