@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "projectId": "7ee8759a-f8aa-47ed-ac78-3ecfb1f68afb",
+  "projectRoot": "/tmp/dope-p10-chat-create-J1HYyc",
+  "revision": 2,
+  "checkpoints": [
+    {
+      "id": "roadmap:ROADMAP.md#phase-1",
+      "kind": "phase",
+      "title": "Phase 1 — Search foundation",
+      "objective": "Plan a small local search prototype with focused validation.",
+      "order": 0,
+      "dependencies": [],
+      "links": [],
+      "status": "not-implemented",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "efae839f64d7826c7e4d0cd8d0dbc321514d2b268fc6ab17619c971d63036743",
+        "line": 3,
+        "text": "## Phase 1 — Search foundation"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "efae839f64d7826c7e4d0cd8d0dbc321514d2b268fc6ab17619c971d63036743",
+          "line": 3,
+          "text": "Status: NOT IMPLEMENTED",
+          "status": "not-implemented",
+          "statusText": "Status: NOT IMPLEMENTED"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:ROADMAP.md#milestone-prototype-and-tests",
+      "kind": "milestone",
+      "title": "Milestone Prototype and tests",
+      "objective": "Implement local search and verify focused tests.",
+      "order": 1,
+      "dependencies": [],
+      "links": [],
+      "status": "not-implemented",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "efae839f64d7826c7e4d0cd8d0dbc321514d2b268fc6ab17619c971d63036743",
+        "line": 9,
+        "text": "### Milestone Prototype and tests"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "efae839f64d7826c7e4d0cd8d0dbc321514d2b268fc6ab17619c971d63036743",
+          "line": 9,
+          "text": "Status: NOT IMPLEMENTED",
+          "status": "not-implemented",
+          "statusText": "Status: NOT IMPLEMENTED"
+        }
+      ]
+    }
+  ],
+  "linkedDocument": {
+    "projectRoot": "/tmp/dope-p10-chat-create-J1HYyc",
+    "projectId": "7ee8759a-f8aa-47ed-ac78-3ecfb1f68afb",
+    "path": "ROADMAP.md",
+    "sourceHash": "efae839f64d7826c7e4d0cd8d0dbc321514d2b268fc6ab17619c971d63036743",
+    "sections": [
+      {
+        "sectionKey": "phase-1",
+        "checkpointId": "roadmap:ROADMAP.md#phase-1"
+      },
+      {
+        "sectionKey": "milestone-prototype-and-tests",
+        "checkpointId": "roadmap:ROADMAP.md#milestone-prototype-and-tests"
+      }
+    ],
+    "lastSynced": {
+      "sourceHash": "efae839f64d7826c7e4d0cd8d0dbc321514d2b268fc6ab17619c971d63036743",
+      "roadmapRevision": 2,
+      "fields": [
+        {
+          "checkpointId": "roadmap:ROADMAP.md#phase-1",
+          "title": "Phase 1 — Search foundation",
+          "objective": "Plan a small local search prototype with focused validation.",
+          "order": 0,
+          "prose": ""
+        },
+        {
+          "checkpointId": "roadmap:ROADMAP.md#milestone-prototype-and-tests",
+          "title": "Milestone Prototype and tests",
+          "objective": "Implement local search and verify focused tests.",
+          "order": 1,
+          "prose": ""
+        }
+      ]
+    },
+    "syncState": "synced"
+  }
+}

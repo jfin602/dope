@@ -1,0 +1,4 @@
+efae839f64d7826c7e4d0cd8d0dbc321514d2b268fc6ab17619c971d63036743  docs/tasks/c10-roadmap-qualify/qualification/post-correction-rerun-1/loop-2-local-ai/evidence/cycle-2/chat-created.md
+fed3d9c964fec53a884d283d85603f27ae353ba09674861e614c52b9578ad8b9  docs/tasks/c10-roadmap-qualify/qualification/post-correction-rerun-1/loop-2-local-ai/evidence/cycle-2/chat-owner.json
+bc2dc4634fd31418f5d88eba249e90ea59a55986b3800d0677bf5fad289fe364  docs/tasks/c10-roadmap-qualify/qualification/post-correction-rerun-1/loop-2-local-ai/evidence/cycle-2/greenfield-chat-sanitized.json
+f7f7a464508352a1b8c2ea34d0fe599c4d8f7395015ee6e5aeb72d02909f8e2b  docs/tasks/c10-roadmap-qualify/qualification/post-correction-rerun-1/loop-2-local-ai/evidence/cycle-2/linked-chat-sanitized.json
