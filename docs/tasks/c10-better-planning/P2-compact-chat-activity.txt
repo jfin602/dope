@@ -1,0 +1,23 @@
+TASK: Correction 10 / P2 — Compact expandable tool-like activity in ChatPanel
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0016/0030/0036/0037 and the c10-better-planning README, assessment and plan. Check actual local HEAD, package/version 0.10.16, dirty user files, other running tasks and completed upstream visual correction. Do not reset/stash/clean, require /activate, self-commit, widen provider authority, start another Chat, launch an AgentTask or infer historical Green.
+
+INSPECT
+P1 classifier; `chat-panel-widget.ts`, `chat-panel-controller.ts`, `chat-panel-presentation.ts`, `untrusted-message-markdown.ts`, `dope.css`; existing collapsed AgentRun details pattern and current semantic theme tokens.
+
+IMPLEMENT — ONE OWNER: DISCLOSURE RENDERING
+In the existing ChatPanel replace naked, P1-trusted structured planning payload display with a small muted neutral gray, truncated single-line activity and short status label. Native keyboard/click-expand `details/summary` exposes complete original raw JSON as safe literal text and a Copy affordance. A pending proposal remains visibly pending with review controls; errors/denials must not disappear into styling. Ordinary prose and unknown JSON use normal safe Markdown. Keep narrow docks, scroll/stream/focus, saved Chat reopen, dark/light theme, screen-reader names, bounded rendering; do not use unsafe HTML or global AgentRun/Work redesign.
+
+FOCUSED PROOF — T1
+`chat-presentation.test.ts`, smallest affected `chat-panel.test.ts` + CSS/keyboard assertions for collapsed/expanded/raw copy, unknown JSON, status and narrow/normal themes. Only necessary changed-output build, `git diff --check`. P5 owns real GUI screenshot; <=8m target.
+
+DONE
+Trusted machine details are quiet yet inspectable; Chat prose stays readable.

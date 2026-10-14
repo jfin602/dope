@@ -1,0 +1,23 @@
+TASK: Correction 10 / P3 — Verified final outcome/questions and low-cost intermediate activity
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0016/0030/0036/0037 and the c10-better-planning README, assessment and plan. Check actual local HEAD, package/version 0.10.16, dirty user files, other running tasks and completed upstream visual correction. Do not reset/stash/clean, require /activate, self-commit, widen provider authority, start another Chat, launch an AgentTask or infer historical Green.
+
+INSPECT
+P1 trusted result kind and P2 renderer, `chat-backend.ts` proposal creation/decision, `chat-panel-controller.ts` turn/status/lease and actual saved-chat state; focused approval tests.
+
+IMPLEMENT — ONE OWNER: STATE-TO-EXPLANATION
+End each completed **local planning** turn with a brief natural-language paragraph explaining what it actually did or proposed, plus 1–2 insightful context-related questions. Use verified checkpoint/eligible field/current linked source/proposal/action result; questions suggest review, verify sync, compare current objective or recover error, never auto-execute. A pre-approval proposal MUST say “awaiting approval; no write yet”; approved success only after real persisted result, denied/no-action/error/stale/cancelled remain truthful. Keep outcome consistent after reconnect/restart. Ordinary Chat prose remains normal. Emit light intermediate notices only from real transitions (waiting local model, validating, review pending, confirmed apply/error), coalesce duplicate updates, and never narrate fictional file reads. Strict output stays buffered until validated; no second model/provider inference solely for commentary.
+
+FOCUSED PROOF — T2
+`chat-backend.test.ts`, `roadmap-chat-actions.test.ts`, `roadmap-chat-panel.test.ts` as touched, add outcome state/next-turn/proposal denial/cancel/restart zero-extra-generate assertions. Prevent leakage/false success. Rebuild fresh impacted `lib/` only if needed; `git diff --check`; <=8m target.
+
+DONE
+Every local planning turn finishes intelligibly without losing authority or adding inference calls.

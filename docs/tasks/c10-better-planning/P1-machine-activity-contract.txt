@@ -1,0 +1,23 @@
+TASK: Correction 10 / P1 — Classify trusted machine-only local planning output
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0016/0030/0036/0037 and the c10-better-planning README, assessment and plan. Check actual local HEAD, package/version 0.10.16, dirty user files, other running tasks and completed upstream visual correction. Do not reset/stash/clean, require /activate, self-commit, widen provider authority, start another Chat, launch an AgentTask or infer historical Green.
+
+INSPECT
+`roadmap-local-model.ts`, `chat-backend.ts`, `chat-context-composer.ts`, saved Chat types and current strict tests.
+
+IMPLEMENT — ONE OWNER: SAFE ACTIVITY CLASSIFICATION
+Recognize only completed, backend-validated known local `roadmap-intent`, `roadmap-proposal`, `roadmap-draft-proposal`, `no-action` and verified error/cancellation outcomes as structured activity for Chat presentation. Preserve raw original response, model identity, revisions, source references and exact approval semantics. Distinguish proposed/pending versus applied only after confirmed developer approval/result. Unknown JSON, ordinary prose or user-authored JSON stays untrusted/visible. Do not broaden strict JSON parsing, permit executable tool calls, add a second Chat runtime or trust model-authored “saved” messages.
+
+FOCUSED PROOF — T2
+Test known/unknown/malformed/nested/oversize/no-action, pending, denial, stale and model provenance with directly impacted `roadmap-local-model.test.ts`, `roadmap-chat-actions.test.ts`, `chat-backend.test.ts`. Prove no write before approval and raw content retained. Compile changed package only when tests import stale `lib/`; `git diff --check`. <=8m target.
+
+DONE
+A trusted activity classification exists without new model/action authority for P2/P3 to consume.

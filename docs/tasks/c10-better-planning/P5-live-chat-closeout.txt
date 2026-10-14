@@ -1,0 +1,26 @@
+TASK: Correction 10 / P5 — Real local planning UX scoped qualification / closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0016/0030/0036/0037 and the c10-better-planning README, assessment and plan. Check actual local HEAD, package/version 0.10.16, dirty user files, other running tasks and completed upstream visual correction. Do not reset/stash/clean, require /activate, self-commit, widen provider authority, start another Chat, launch an AgentTask or infer historical Green.
+
+MODE
+Manual T3 scoped evidence gate, not a headless agent prompt or Phase 10 P14 aggregate. Confirm P1–P4 commits/tests, actual source SHA, model availability, real browser and independently controllable native Electron window. Do not fabricate tool screenshots, commit product code without separate authorization or run full npm check.
+
+REAL ACCEPTANCE
+1. Real saved ChatPanel beside a Roadmap, local Qwen selected, JSON-only `roadmap-intent` and `no-action`: small muted collapsed activity, keyboard/click expanded exact original JSON/copy, warning still visible; normal prose readable.
+2. Model action pending: clear short explanation/questions says proposed/no write. Reject (prove no source write) then accept fresh permitted edit (prove exact linked Markdown bytes/source revision changed) and fresh NEXT turn recognizes current objective. Exercise error/stale/denial/cancellation and honest non-success.
+3. Observe factual intermediate progress, first visible state, provider request count and completion latency where measurable; no extra local/hosted narrative inference. Avoid unsupported performance claims.
+4. Browser and independent native Electron UI screenshots, dock/narrow/keyboard/theme/scroll/one saved Chat and restart; native inaccessible = BLOCKED evidence, not fake pass. Avoid repeating full P12/P13/16K–64K tests here.
+
+REPORT
+Record exact SHA/0.10.16, model config, per-gate PASS/FAIL/BLOCKED/NOT RUN, commands actually run, source hashes, screenshots, time/restart evidence and blockers in `docs/tasks/c10-better-planning/closeout.md`. Only call this correction scoped Green if all required direct gates pass. Its success does NOT qualify Phase 10. No root version bump/dependency churn or historical P9/P16/P19 rewrite.
+
+NEXT
+After this and the entire `c10-horizontal-color` correction are truly complete, start **fresh FULL manual P9–P13 + P14** Phase 10 qualification. Never call P9 historical three-cycle failure Green or treat an implementation-only pass as final product proof.
