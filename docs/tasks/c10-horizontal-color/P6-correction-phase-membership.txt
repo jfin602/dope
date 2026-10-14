@@ -1,0 +1,23 @@
+TASK: Correction 10 / P6 — Resolve imported correction phase membership from identifiers
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036, c10-horizontal-color README/assessment/implementation-plan and history/P6-original-closeout.md; P9 manual failure summary, source integrity and project dirty/Git history. Verify existing P1–P5 canonical runner commits, historical P6 manual closeout at ddbac418, and no new P6 implementation commit. Do not reset/clean/stash or require /activate; runner owns checkpoint commits. Preserve 0.10.16 manifest/pins and historical P16/P19/P9 Not Green.
+
+INSPECT
+Trace imported Markdown headings/identifiers, checkpoint identity and dependencies through project-intelligence importer/roadmap-store, runner-backed task discovery, `roadmap-projection.ts`, and `roadmap-canvas-model.ts`. Read actual `docs/roadmap/mvp-roadmap.md` and the P9 full-real-roadmap fixture/results (31 checkpoints, 9 mixed diagnostics). Confirm which corrections lack stored branch dependencies; do not assume all diagnostics are orphaned corrections.
+
+IMPLEMENT — ONE OWNER: DETERMINISTIC PHASE ASSOCIATION
+Resolve correction-to-phase membership as a **presentation association** from (1) valid explicit typed phase/parent evidence, then (2) exact numeric `c<phase>[-lower-kebab-slug]` recognized in imported Markdown correction headings/IDs and task stack names. Examples `c10-roadmap-create-sync`, `c10-horizontal-color`, `c10-roadmap-qualify` -> Phase 10, not mainline nodes; `c100-*` != Phase 10. Handle historic descriptive correction headings only when a reliable source/task identity proves the conventional identifier; do not guess from arbitrary occurrence of a phase number in prose. Existing conflicting explicit association or absent phase => visible unresolved reason, not silent override. Preserve distinct correction IDs and stable parent association across linked-source refresh/restart and after task discovery. Prefer a shared deterministic helper/canonical projection path rather than an independent UI-only parser. Do not write derived membership into `.dope/roadmap.json`, linked Markdown, checkpoint dependencies or historic qualification; do not fabricate exact failed prompt attachments.
+
+FOCUSED PROOF — T2
+Add fixture-backed importer/projection tests based on actual repo's mixed phase/correction heading forms plus explicit/no parent, conflict, absent parent, c10/c100 collision, multiple c10 corrections, task-only corrections, repeated import, preserved IDs and no RoadmapIndex revision/status change. Classify the screenshot's 9 diagnostics by type if available, without forcing unrelated historical discrepancies to disappear. Run only changed package/source-consuming import/projection tests; rebuild relevant compiled project-intelligence output only for consumers of built lib, then `git diff --check`. Report remaining unresolved without false graph assumptions. P7 owns visual line geometry; P9 owns camera; P11 owns live screenshots. Target <=8 minutes; disclose a narrow T2 exception if needed.
+
+DONE
+Deterministic, stable, read-only correction phase associations exist with focused positive/negative evidence. No invented canonical edge, Green, source write or extra Chat/runtime.
