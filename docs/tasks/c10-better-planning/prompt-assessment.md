@@ -9,6 +9,9 @@ The supplied screenshot shows user-visible bare `{"type":"roadmap-intent"...}` a
 Only known **validated** local planning envelopes (`roadmap-intent`, `roadmap-proposal`, `roadmap-draft-proposal`, `no-action`) and actual activity events become low-contrast, small, truncated, expandable entries. Retain exact raw JSON with safe text rendering/copy and model provenance; unknown JSON/prose remains readable. Every completed *local planning* turn gets a concise accurate outcome paragraph and 1–2 context-grounded follow-up questions (no automated execution). Pending proposals explicitly say **no write yet**; only verified approved persistence may say “updated”. No-action, malformed, error, reject, stale and cancel cannot be presented as success. Status messages between operations should come from actual lifecycle transitions, not a second local/hosted inference.
 
 ## Dependency split and validation
+
+**Sequencing repair (2026-10-14):** The previous P1 attempt was blocked by upstream visual P11 NOT GREEN and yielded no implementation diff/commit. That is a preflight refusal, not P1 completion. P1–P4 may proceed independently with normal worktree/overlap safety, and P5 performs its own live acceptance. Reobserve changed Chat/roadmap seams after later visual repairs. The complete manual Phase 10 P9–P14 campaign still waits for both corrections to close; no P9-only shortcut.
+
 | Prompt | One coherent owner | Tier / model | Time target | Checks |
 | --- | --- | --- | --- | --- |
 | P1 | Known-structured activity discriminator/provenance at local Chat boundary | T2/High | <=8m | strict JSON, proposals, no-action, unknown/malformed and no write |

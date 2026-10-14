@@ -9,6 +9,9 @@
 - Persistence should favor backward-compatible projections from existing data; only extend saved metadata when essential for correctness after restart. No duplicate Chat or source writer.
 
 ## Implementation and checks
+
+**Independent implementation entry (2026-10-14):** The visual P11 NOT GREEN/native evidence gap is recorded but not a P1–P4 precondition. Perform normal HEAD, version, dirty-tree and actual overlapping-source safety checks. P5 collects its own scoped live Chat UX evidence independently; any subsequent visual fix touching a tested seam requires focused re-observation. Full manual Phase 10 qualification still awaits BOTH correction closeouts.
+
 **P1 T2:** classify already strictly validated complete local envelopes and trusted outcome state; don't parse arbitrary `type` strings, broaden JSON grammar or accept model-declared “applied.” Preserve saved raw content/model provenance. Test `test/unit/roadmap-local-model.test.ts`, `roadmap-chat-actions.test.ts`, `chat-backend.test.ts` only if changed.
 
 **P2 T1:** one-line ellipsized gray machine activity with meaningful short label/status, accessible native expandable details, safe literal payload and Copy. Unknown JSON/prose stays visible; no warning hiding. Test `test/unit/chat-presentation.test.ts`, directly affected `chat-panel.test.ts` and minimal CSS tests. Current ADR 0016/0030/0037, semantic tokens, narrow docks, light/dark, keyboard, scroll-follow.
@@ -22,4 +25,4 @@
 For every P1–P4 inspect whether tests import `lib/`; rebuild only changed package outputs as necessary, avoid stale compiled tests and duplicate full builds. Use `git diff --check`. Target <=8 minutes, 10-minute soft and 15-minute hard. P5 manual may take longer. P5 is the **sole correction closeout**, not Phase 10 qualification.
 
 ## Exit
-First finish outstanding `c10-horizontal-color` work/visual P11, then this P1–P5. Only after both are scope-closed run an entirely **fresh** manual `c10-roadmap-qualify/manual/P9`–`P13` matrix then P14 exact-source full aggregate. No P9-only shortcut, version bump, no `/activate`, no owner close/Phase 11.
+Run P1–P4 independently of visual P11 qualification when safe, and gather P5's separate manual Chat UX evidence without treating visual P11 as Green. **Only after BOTH corrections are scope-closed**, including the horizontal zoom repair and its direct visual P11 checks, run an entirely **fresh** manual `c10-roadmap-qualify/manual/P9`–`P13` matrix then P14 exact-source full aggregate. No P9-only shortcut, version bump, no `/activate`, no owner close/Phase 11.

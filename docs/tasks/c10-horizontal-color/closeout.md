@@ -1,10 +1,6 @@
 # c10-horizontal-color P11 — live visual closeout
 
-<<<<<<< HEAD
-**Status: P6-P10 IMPLEMENTATION COMMITTED through `726f10b4c9`; P11 VISUAL QUALIFICATION NOT GREEN / PENDING.**
-=======
-**Disposition: NOT GREEN / EVIDENCE GAP.** Manual browser observation on 2026-10-13 (America/Chicago) found a first-camera failure and a connector crossing card content. Independent native Electron GUI capture was unavailable. This is a presentation-only decision; Phase 10, the earlier P9 family, manual P12–P14, and historical P16/P19 retain their separate outcomes.
->>>>>>> 2ecaf50 (closeout not green)
+**Status: P6–P10 IMPLEMENTATION COMMITTED through `726f10b4c9`; P11 VISUAL QUALIFICATION NOT GREEN / EVIDENCE GAP.** Manual browser observation on 2026-10-13 (America/Chicago) found a first-camera failure and a connector crossing card content. Independent native Electron GUI capture was unavailable. This is a presentation-only decision; Phase 10, the earlier P9 family, manual P12–P14, and historical P16/P19 retain their separate outcomes.
 
 ## Exact source and fixture
 
@@ -35,16 +31,14 @@ Browser screenshots were captured directly from the live UI. Checksums are in [p
 
 ## Validation and next route
 
-<<<<<<< HEAD
 **Decision law:** mark *this presentation correction* Green only if P11 records direct browser AND native observations passing the four repairs, restrained/reduced motion, and preservation gates on a coherent committed candidate. Missing controller/evidence = BLOCKED/EVIDENCE GAP, never claimed PASS. Follow-up edits to code require source-specific re-observation. No manual P9/P12/P13/P14 or full `npm run check` outcome may be inferred from this closeout.
 
 ## Live P11 visual defect added before closeout: unwanted task-stack containers
 
-A screenshot from the real P11 browser fixture shows unrequested full-size `task-stack` cards ("Phase 6 prompts", "Correction edit-architecture") emerging at closer zoom with `Unknown` and omitted-prompt text. The source model's phase/checkpoint `roadmapVisibleGraph()` auto-disclosure is consistent with this symptom. **The visual gate is NOT GREEN** until zoom-only clutter is removed and explicitly expanded prompt browsing is proved without hiding corrections, losing prompt navigation or leaving disconnected lines/large blank space. This note is a defect and acceptance requirement, **not** evidence of a repaired browser/native candidate. The actual P11 closeout must replace PENDING/NOT RUN entries only with direct source-bound observations; historical P6 records and P9 Not Green are retained.
-=======
+A screenshot from the real P11 browser fixture shows unrequested full-size `task-stack` cards ("Phase 6 prompts", "Correction edit-architecture") emerging at closer zoom with `Unknown` and omitted-prompt text. The source model's phase/checkpoint `roadmapVisibleGraph()` auto-disclosure is consistent with this symptom. **The visual gate is NOT GREEN** until zoom-only clutter is removed and explicitly expanded prompt browsing is proved without hiding corrections, losing prompt navigation or leaving disconnected lines/large blank space. This note is a defect and acceptance requirement, **not** evidence of a repaired browser/native candidate. Any later P11 addendum may update current qualification only with direct exact-source observations; this historical result and P6/P9 Not Green are preserved.
+
 Commands actually run: npm run build:browser **PASS**; npm run build:electron **PASS**; git diff --check **PASS**; screenshot checksum verification **PASS**. Browser and Electron were started from those outputs. No focused test was run because P11 made no visual repair, and the UI failure is directly observable. npm run check was **NOT RUN**; manual c10-roadmap-qualify P14 alone owns the final exact-source aggregate. No commit was created.
 
 Smallest safe repair: keep the no-intentional-viewport camera pinned through the settled import/task-discovery render without treating an automatic transition as user intent; then route membership/support connectors around card bodies and distinguish duplicate path segments. Add focused viewport/edge regressions for those defects, rebuild the affected UI, and repeat fresh-import browser observation on a new disposable project. Obtain an independently controllable Electron window and repeat same-source visual checks there; exercise reduced motion, low contrast, directed dependencies with a supplemental explicit-dependency fixture, and omitted interaction/authority cases before any visual Green decision. Later source changes invalidate these screenshots for the changed seam.
 
 The archived original P6 implementation snapshot remains untouched at [history/P6-original-closeout.md](history/P6-original-closeout.md). Historical P16/P19 and manual P9 three-cycle **NOT GREEN** remain unchanged. The explicitly requested fresh P9 requalification, manual P12/P13 and final P14 are independent; Phase 10 is not owner-closed and Phases 11/12 remain inactive.
->>>>>>> 2ecaf50 (closeout not green)

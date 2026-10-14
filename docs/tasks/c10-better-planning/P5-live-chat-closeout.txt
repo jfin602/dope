@@ -8,10 +8,10 @@ VERSIONING
 - Required unchanged project version: `0.10.16`.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0016/0030/0036/0037 and the c10-better-planning README, assessment and plan. Check actual local HEAD, package/version 0.10.16, dirty user files, other running tasks and completed upstream visual correction. Do not reset/stash/clean, require /activate, self-commit, widen provider authority, start another Chat, launch an AgentTask or infer historical Green.
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0016/0030/0036/0037 and the c10-better-planning README, assessment and plan. Check actual local HEAD, package/version 0.10.16, dirty user files, other running tasks and current upstream visual correction status. P5 is this correction's scoped manual Chat UX closeout and may run without `c10-horizontal-color` P11 Green if the tested seams are safe. Reobserve affected behavior if later visual changes touch it. Do not treat P5 as Phase 10 qualification. Do not reset/stash/clean, require /activate, self-commit, widen provider authority, start another Chat, launch an AgentTask or infer historical Green.
 
 MODE
-Manual T3 scoped evidence gate, not a headless agent prompt or Phase 10 P14 aggregate. Confirm P1–P4 commits/tests, actual source SHA, model availability, real browser and independently controllable native Electron window. Do not fabricate tool screenshots, commit product code without separate authorization or run full npm check.
+Manual T3 scoped evidence gate, not a headless agent prompt or Phase 10 P14 aggregate. The separate visual P11 NOT GREEN result is not a reason to skip P5's own Chat UX tests. Missing mandatory P5 live evidence still makes P5 NOT GREEN. Retest any affected P5 evidence after later visual-source repairs. Confirm P1–P4 commits/tests, actual source SHA, model availability, real browser and independently controllable native Electron window. Do not fabricate tool screenshots, commit product code without separate authorization or run full npm check.
 
 REAL ACCEPTANCE
 1. Real saved ChatPanel beside a Roadmap, local Qwen selected, JSON-only `roadmap-intent` and `no-action`: small muted collapsed activity, keyboard/click expanded exact original JSON/copy, warning still visible; normal prose readable.

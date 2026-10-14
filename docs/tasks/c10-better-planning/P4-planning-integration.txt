@@ -8,7 +8,7 @@ VERSIONING
 - Required unchanged project version: `0.10.16`.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0016/0030/0036/0037 and the c10-better-planning README, assessment and plan. Check actual local HEAD, package/version 0.10.16, dirty user files, other running tasks and completed upstream visual correction. Do not reset/stash/clean, require /activate, self-commit, widen provider authority, start another Chat, launch an AgentTask or infer historical Green.
+Read BOOT.md, AGENTS.md, docs/workflow.md, current ADR 0016/0030/0036/0037 and the c10-better-planning README, assessment and plan. Check actual local HEAD, package/version 0.10.16, dirty user files, other running tasks and current upstream visual correction status. `c10-horizontal-color` P11 NOT GREEN (including browser defects/native evidence gaps) is NOT an implementation gate for P1–P4. Record that status; proceed if HEAD, dirty-tree and overlapping source ownership checks are safe. Stop on actual concurrent edits or security conflicts, but do not require visual Green, invent it, or create a no-op commit to advance. Do not reset/stash/clean, require /activate, self-commit, widen provider authority, start another Chat, launch an AgentTask or infer historical Green.
 
 INSPECT
 P1–P3 source/tests, `chat-backend.ts`, Chat saved message store, pending approvals, source sync and controller lease/stream/restart.
