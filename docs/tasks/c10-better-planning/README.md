@@ -1,6 +1,8 @@
 # c10-better-planning — readable local planning Chat
 
-**2026-10-14 status:** AUTHORED ONLY / NOT IMPLEMENTED / NOT QUALIFIED. **Mode:** Correction 10. **Package:** `0.10.16` unchanged.
+**2026-10-14 current status:** P1–P4 committed through `320f9bd`; [manual P5 closeout](closeout.md) is **NOT GREEN / NOT QUALIFIED** at unchanged `0.10.16`. Browser Chat authority and linked-source checks passed in a disposable project, but native UI evidence and other P5 requirements remain open. The earlier authoring/implementation-entry notes below are historical.
+
+**Mode:** Correction 10. **Package:** `0.10.16` unchanged.
 **Authority:** ADR 0016/0030/0036/0037, Phase 10 plan, this assessment and plan.
 **Goal:** The existing ChatPanel should never leave a *completed local planning turn* as only a naked `roadmap-intent` / `no-action` JSON message. Make trusted machine activity compact, gray and expandable; present an accurate short final explanation with useful questions, and lightweight event-backed progress, without a second model call.
 
