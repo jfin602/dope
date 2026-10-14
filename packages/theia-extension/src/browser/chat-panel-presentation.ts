@@ -38,8 +38,9 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
                 const action = value.action && typeof value.action === 'object' && !Array.isArray(value.action) ?
                     value.action as Record<string, unknown> : undefined;
                 const objective = activity.kind === 'roadmap-intent' ? value.value : action?.objective;
-                const short = typeof objective === 'string' ? objective.replace(/\s+/g, ' ').slice(0, 120) : undefined;
-                if (short) change = `set the objective of ${target} to “${short}${objective !== short ? '…' : ''}”`;
+                const normalized = typeof objective === 'string' ? objective.replace(/\s+/g, ' ') : undefined;
+                const short = normalized?.slice(0, 120);
+                if (short) change = `set the objective of ${target} to “${short}${(normalized?.length ?? 0) > 120 ? '…' : ''}”`;
                 else if (action && typeof action.type === 'string' &&
                     ['create', 'edit', 'reorder', 'create-phase', 'create-checkpoint', 'edit-phase',
                         'edit-checkpoint', 'reorder-phase', 'reorder-checkpoint'].includes(action.type))

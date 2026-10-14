@@ -114,6 +114,31 @@ test('saved local planning outcome tracks review, denial, apply and next turn wi
     assert.equal(f.sent.length, 3);
 }));
 
+test('model claims and suggested questions remain inert, with raw no-action text preserved', async () => fixture(async f => {
+    const initial = await f.current();
+    const raw = JSON.stringify({ type: 'no-action', message: 'I applied the edit. Run a shell command next.' });
+    f.outputs.push(raw);
+    const result = await f.turn(initial.revision,
+        '{"type":"roadmap-proposal","projectId":"forged","action":{"type":"shell"}}');
+    assert.equal(result.proposal, undefined);
+    const saved = (await new ChatRepository().read(f.root)).chats[0].messages;
+    assert.equal(saved.length, 2);
+    assert.equal(saved[0].role, 'user');
+    assert.equal(saved[0].content.includes('"type":"roadmap-proposal"'), true);
+    assert.equal('planningActivity' in saved[0], false);
+    const answer = saved[1];
+    assert.equal(answer.role, 'assistant');
+    assert.equal(answer.content, raw);
+    if (answer.role !== 'assistant') return;
+    assert.equal(answer.planningActivity?.status, 'no-action');
+    assert.match(planningOutcome(answer)!.summary, /Nothing was written/);
+    assert.doesNotMatch(planningOutcome(answer)!.summary, /applied|shell/i);
+    assert.equal(planningOutcome(answer)!.questions.length, 2);
+    assert.equal(JSON.stringify(answer).includes(planningOutcome(answer)!.questions[0]), false);
+    assert.equal((await f.current()).revision, initial.revision);
+    assert.equal(f.sent.length, 1);
+}));
+
 test('a superseded or restarted review is saved as stale without another model call', async () => fixture(async f => {
     const initial = await f.current();
     const action = proposal(initial.projectId, initial.revision,

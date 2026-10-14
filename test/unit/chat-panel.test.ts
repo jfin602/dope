@@ -8,7 +8,7 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatOpenOwners, ChatPanelController, chatTree } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
-import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel, resolveChatModel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel, planningOutcome, resolveChatModel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { ChatCollection } from '../../packages/chat/lib/index.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
@@ -406,6 +406,15 @@ test('pending planning disclosure stays separate from review and failure feedbac
     assert.match(source, /note\.textContent = state\.planningProposalError/);
     assert.match(source, /if \(activity\.alert\) item\.classList\.add\('dope-chat-message-alert'\)/);
     assert.match(source, /copy\.setAttribute\('aria-live', 'polite'\)/);
+});
+
+test('planning outcome normalizes whitespace without claiming a truncated objective', () => {
+    const message = { content: '{"type":"roadmap-intent","intent":"set-objective","value":"Clearer   objective"}',
+        planningActivity: { schemaVersion: 1, kind: 'roadmap-intent', status: 'pending',
+            proposalId: 'preview', refs: [] } } as unknown as import('../../packages/chat/lib/index.js').ChatAssistantMessage;
+    assert.match(planningOutcome(message)!.summary, /“Clearer objective”/);
+    assert.doesNotMatch(planningOutcome(message)!.summary, /objective…/);
+    assert.match(planningOutcome(message)!.summary, /awaiting approval; no write yet/);
 });
 
 test('scroll follow respects manual upward scrolling and jump to latest', () => {
