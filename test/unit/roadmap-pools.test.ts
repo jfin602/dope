@@ -84,7 +84,7 @@ test('pool controls expose native keyboard actions, labels, filter, and recovery
     assert.match(widget, /unlink\.type = 'button'/);
     assert.match(widget, /service\.preview\(request\)/);
     assert.match(widget, /service\.apply\(request, preview\.token/);
-    assert.match(widget, /this\.stage\.append\(this\.path, this\.status, this\.importEntry, this\.poolButton, this\.pools\)/);
+    assert.match(widget, /this\.stage\.append\(this\.path, this\.status, this\.importEntry, this\.inspection, this\.poolButton, this\.pools\)/);
     assert.match(widget, /this\.setPoolOpen\(false\)/);
     assert.match(widget, /this\.pools\.hidden = !open/);
     assert.match(widget, /this\.poolButton\.setAttribute\('aria-expanded', String\(open\)\)/);

@@ -1,0 +1,30 @@
+# P6 — Roadmap presentation implementation closeout and manual handoff
+
+**Disposition:** Implementation integration complete for this correction; **manual qualification remains open**. This is not `c10-roadmap-qualify/closeout.md`, a Phase 10 owner closeout, or activation of Phase 11/12. Historical P16 and P19 remain **NOT GREEN / NOT QUALIFIED**.
+
+## Source and scope
+
+- Exact independently committed P1–P5 **product implementation source** reviewed: `f5b70569143fe23be9688b9cb1fbfafc638dd002` at unchanged `0.10.16`. P6 changes one stale focused test assertion and this evidence document in the working tree; the phase runner owns the final checkpoint SHA. No P6 product source changed.
+- The worktree was clean at P6 entry. P1–P5 are five consecutive commits on `71b8866` with no old P3 closeout checkpoint or unrelated local changes in this checkout. No user work was reset or staged. All 13 root/app/workspace versioned manifests are `0.10.16`; all 20 internal `@dope/*` pins are `0.10.16`. The independent restart-extension test fixture manifest is `1.0.0` and is outside the 13 project manifests. No lockfile or dependency change was made.
+- Source inspection confirms one Roadmap React Flow renderer and projection. `roadmapSpatialLayout` advances phases left to right, with correction/qualification above and support/task branches below. Workbench viewport v2 preserves selection/disclosure and accepts v1 selection while leaving old vertical placements and viewport under their original key. Status marks, labels and theme-token colors cover Green, Active, Not Green, Waived, Not implemented and Unknown. Edge styling comes from actual endpoint statuses; only Green-to-Green is Green. Presentation does not write Roadmap status or revision.
+- The Roadmap remains an ordinary editor tab. The compact toolbar is its only persistent top strip; React Flow fills the remaining available stage. Source, inspector and Ideas/Issues are positioned overlays; the searchable pool starts collapsed. No persistent source card or bottom pool strip takes canvas height. Overlay state handlers do not call Fit, relayout or Roadmap mutation. The existing ChatPanel remains independently dockable.
+- Linked Markdown, import/create, relink/conflict and interrupted-sync actions still use the existing document and greenfield services with explicit preview/approval. The toolbar retains source conflict, pending sync and approval warnings while the document overlay is closed or minimized. The in-canvas inspector mounts the existing `RoadmapInspectorWidget` with the same `RoadmapInspectorModel` and retains draft, preview, approval and undo across overlay states. The old sidebar can restore as a read-only view. Cancel/minimize/close handlers do not apply a source change or approval. These are source and automated-contract findings, **not direct browser or native observations**.
+
+## Focused validation
+
+- P1–P5 commit records report their focused tests and changed Theia extension builds passed. P6 reused those unchanged-source results. P6 independently ran 25 layout/viewport/canvas/inspector/source-overlay/status tests: **25 passed**.
+- A nearby pool presentation test failed because its exact stage-child assertion still described the pre-P5 source. The pool behavior tests passed. P6 updated only that assertion to include the mounted inspector. The affected pool/canvas/inspector/source-overlay/status set then passed **21/21**, including owner-link stale/foreign rejection, linked source approval, no inferred Green, and current owner-status provenance. No product behavior or source authority changed.
+- `npm run codex:phase:validate -- c10-horizontal-color`: **VALID**, contiguous P1–P6, unchanged `0.10.16`, P6 sole runner closeout. `git diff --check`: **passed**. The full `npm run check`, browser and native Electron qualification were deliberately left to manual P14/P12.
+
+## Manual qualification handoff
+
+Run `c10-roadmap-qualify/manual/P9`–`P14` outside the correction runner on the eventual exact committed product candidate. Preserve prior evidence for its original source and re-exercise only gates plausibly changed by this presentation correction:
+
+1. **P9:** Actual Codex ↔ Dope shared Markdown and fresh reads; source-changed, import/relink, conflict and interrupted-sync recovery through the new overlay. Check minimized/closed warning visibility and no silent source apply.
+2. **P10:** Real approved local-model edit and fresh next turn; manual and saved-Chat greenfield creation through the overlay, including draft/preview/cancel/minimize/reopen and linked file persistence.
+3. **P11:** Actual 16K/32K/64K measured context comparisons and evidence-based default or explicit undecided result. Reuse unaffected profile evidence only after checking exact source and any P10 dependency.
+4. **P12:** Direct browser **and independently observed native Electron** full-editor canvas, horizontal/vertical lane layout, dense nodes, six colors and noncolor labels, migrated v1 viewport, Fit/Focus and no overlay-induced re-fit. Exercise pool search/link, source and inspector expanded/compact/minimized states, keyboard/focus/restart/theme/narrow panes, and one saved Chat in right/left/bottom/center split without forced docking.
+5. **P13:** No false Green or status authority from colors, edges, Arrange or overlays; no silent document/approval write on cancel/minimize/tab switch; stale/foreign and recovery denials; whole-app process/PID network coverage during an actual successful local inference and approved write. Keep historical P16/P19 Not Green.
+6. **P14:** Reconcile all five family records and repair-cycle counts on one exact committed source, run the sole exact-source aggregate, and write the final Green/Not Green qualification record. P6 test/build evidence cannot substitute for these live gates.
+
+No direct UI, native window, model inference, Codex file-read, whole-app egress or restart observation was performed in P6. Phase 10 remains not owner-closed; Phase 11/12 remain inactive.
