@@ -25,6 +25,12 @@ export interface RoadmapCanvasConnector {
     label: string;
 }
 
+/** Selection emphasis is local to a connector actually rendered at this detail level. */
+export function roadmapConnectorTouchesSelection(connector: Pick<RoadmapCanvasConnector, 'from' | 'to'>,
+    selectedId: string | undefined): boolean {
+    return selectedId !== undefined && (connector.from === selectedId || connector.to === selectedId);
+}
+
 /** Relationships for drawing only. None are written back to RoadmapIndex. */
 export function roadmapCanvasConnectors(projection: Pick<RoadmapProjection, 'nodes' | 'edges'>): RoadmapCanvasConnector[] {
     const byId = new Map(projection.nodes.map(node => [node.id, node]));

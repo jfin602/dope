@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import type { RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
 import type { RoadmapIndex } from '../../packages/project-intelligence/src/node/roadmap-store.ts';
 import { projectRoadmap } from '../../packages/project-intelligence/lib/roadmap-projection.js';
-import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapDetailAtZoom, roadmapEdgeHandles, roadmapSpatialLayout, roadmapSpatialNextId, roadmapVisibleGraph } from
+import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapDetailAtZoom, roadmapEdgeHandles, roadmapSpatialLayout, roadmapSpatialNextId, roadmapVisibleGraph } from
     '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 import { roadmapInitialCamera, roadmapInitialTarget } from '../../packages/theia-extension/src/browser/roadmap-viewport.ts';
 
@@ -13,6 +13,25 @@ const read = (path: string) => readFileSync(resolve(import.meta.dirname, '../..'
 const node = (id: string, kind: 'phase' | 'correction' | 'task-stack' | 'prompt', order: number) => ({
     id, kind, order, lane: kind === 'phase' ? 'path' as const : 'branch' as const,
     title: id, status: 'unknown' as const, statusLabel: 'Unknown', evidence: [], readOnly: kind === 'prompt',
+});
+
+test('only rendered connectors touching selection receive motion emphasis', () => {
+    const graph: RoadmapProjection = { projectId: 'project', revision: 9,
+        nodes: [node('phase-1', 'phase', 1), node('phase-2', 'phase', 2), node('correction', 'correction', 3)],
+        edges: [{ id: 'stored', from: 'phase-2', to: 'correction', kind: 'dependency', label: 'Depends on' }],
+        pools: { ideas: [], issues: [] }, diagnostics: [] };
+    const original = JSON.stringify(graph);
+    const visible = roadmapVisibleGraph(graph, 'phase');
+    const connectors = roadmapCanvasConnectors(visible);
+    assert.deepEqual(connectors.filter(edge => roadmapConnectorTouchesSelection(edge, 'phase-1')).map(edge => edge.kind),
+        ['progression']);
+    assert.deepEqual(connectors.filter(edge => roadmapConnectorTouchesSelection(edge, 'correction')).map(edge => edge.kind),
+        ['dependency']);
+    assert.equal(connectors.some(edge => roadmapConnectorTouchesSelection(edge, undefined)), false);
+    assert.equal(JSON.stringify(graph), original);
+    const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
+    assert.match(widget, /\(visible \? roadmapCanvasConnectors\(visible\) : \[\]\)\.map/);
+    assert.match(widget, /roadmapConnectorTouchesSelection\(item, this\.selectedId\) \? ' dope-roadmap-edge-related' : ''/);
 });
 
 test('phase, correction, and prompt coordinates are deterministic and leave the semantic graph untouched', () => {

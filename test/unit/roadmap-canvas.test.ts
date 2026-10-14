@@ -148,3 +148,12 @@ test('only actual Green to Green dependencies or branches look completed', () =>
     assert.match(css, /\.dope-roadmap-edge-branch \.react-flow__edge-path \{ stroke-dasharray: 6 4; \}/);
     assert.match(css, /\.dope-roadmap-edge-active \.react-flow__edge-path \{[^}]*stroke-dasharray:/);
 });
+
+test('relationship motion is brief, selection-only and static under reduced motion', () => {
+    const css = read('packages/theia-extension/src/browser/dope.css');
+    assert.match(css, /\.dope-roadmap-edge-related \.react-flow__edge-path \{[^}]*animation: dope-roadmap-relationship-focus 420ms ease-out 1/);
+    assert.match(css, /\.dope-roadmap-stage:not\(\.dope-roadmap-arranging\) \.react-flow__node \{ transition: transform 180ms ease-out/);
+    assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.dope-roadmap-edge-related \.react-flow__edge-path \{ animation: none; \}/);
+    assert.doesNotMatch(css, /\.dope-roadmap-edge-active \.react-flow__edge-path \{[^}]*animation:/);
+    assert.doesNotMatch(css, /animation-iteration-count:\s*infinite/);
+});

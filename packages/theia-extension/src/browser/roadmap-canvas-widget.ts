@@ -15,7 +15,7 @@ import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
-import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapDetailAtZoom, roadmapVisibleGraph,
+import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
@@ -588,7 +588,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 type: 'smoothstep', selectable: false, zIndex: 1,
                 ...(item.kind === 'dependency' ? { markerEnd: { type: MarkerType.ArrowClosed } } : {}),
                 ariaLabel: `${item.label}; ${titles.get(item.from) ?? item.from} to ${titles.get(item.to) ?? item.to}; endpoint status ${status}`,
-                className: `dope-roadmap-edge dope-roadmap-edge-${item.kind}${item.kind === 'dependency' ? ` dope-roadmap-edge-${status}` : ''}` };
+                className: `dope-roadmap-edge dope-roadmap-edge-${item.kind}${item.kind === 'dependency' ? ` dope-roadmap-edge-${status}` : ''}${roadmapConnectorTouchesSelection(item, this.selectedId) ? ' dope-roadmap-edge-related' : ''}` };
         });
         this.root.render(React.createElement(ReactFlow, {
             id: 'dope-roadmap-flow', nodes, edges, nodeTypes: roadmapNodeTypes,
