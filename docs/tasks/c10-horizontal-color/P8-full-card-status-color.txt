@@ -1,0 +1,23 @@
+TASK: Correction 10 / P8 — Color complete Roadmap cards by qualification state
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read ADR 0016, ADR 0036/0037, P7 outcome, c10-horizontal-color plan and current theme tokens. Verify HEAD/version/dirty user changes; no reset/stash, /activate, runner self-commit, extra theme engine or new Chat.
+
+INSPECT
+`roadmap-canvas-widget.ts` RoadmapNode class composition, `roadmap-status-style.ts`, `dope.css` `.dope-roadmap-node`, six `.dope-roadmap-status-*` token rules, hover, selection/focus, theme and alternate light styles; corresponding roadmap-status-truth, roadmap-canvas, and theme tests. Current class on whole node sets `--roadmap-status-color` but only status text actually uses it; the body stays neutral.
+
+IMPLEMENT — ONE OWNER: CARD COLOR CONTRACT
+Render **the entire card** with restrained six-state semantic-tinted background, border and small accent, not just a colored text badge: Green earned muted green; Active restrained orange; Not Green muted red; Waived distinct muted violet; Not implemented neutral slate; Unknown separate soft neutral. Preserve white/neutral readable titles and all noncolor status text/icons. Apply status treatment through theme-aware semantic tokens in dark and alternate light mode; avoid harsh neon/high-coverage orange, hardcoded provider colors or changing global theme identity. Hover, selected, keyboard focus, disabled/read-only and overlay states may layer focus cues without wiping the status. Ensure a Green prompt/correction, implementation-only checkpoint or waiver does NOT recolor the phase Green. Keep all edge class semantics truthful and no status mutation.
+
+FOCUSED PROOF — T1
+Target existing `roadmap-canvas.test.ts`, `roadmap-status-truth.test.ts` plus smallest CSS/theme token assertions for all six states, hover/focus and fallback contrast; `dope-theme.test.ts` only if shared token declaration changed. Compile theia-extension only when tests consume built output, `git diff --check`. P11 owns real browser/native dark/light screenshot verification. Target <=8 minutes.
+
+DONE
+A status is unambiguously communicated by the **full visible card** with accessible icons/text; all historical Not Green/Waived truth remains intact.
