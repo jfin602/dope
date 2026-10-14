@@ -100,6 +100,7 @@ test('actual Dope sources keep qualified Phase 9 distinct from retained Phase 5 
     const phase5 = preview.checkpoints.find(item => item.id.endsWith('#phase-5'))!;
     const phase9 = preview.checkpoints.find(item => item.id.endsWith('#phase-9'))!;
     const phase10 = preview.checkpoints.find(item => item.id.endsWith('#phase-10'))!;
+    const colorTheme = preview.checkpoints.find(item => item.id.endsWith('#c4-color-theme'))!;
     assert.equal(phase5.roadmapStatus, 'active');
     assert.equal(phase5.status, 'not-green');
     assert.equal(phase5.waived, true);
@@ -109,6 +110,7 @@ test('actual Dope sources keep qualified Phase 9 distinct from retained Phase 5 
     assert.ok(phase9.evidence.some(ref => ref.path === 'docs/tasks/p9d/final-qualification.md' && ref.status === 'green'));
     assert.equal(phase10.status, 'not-green');
     assert.ok(phase10.evidence.some(ref => ref.path === 'docs/tasks/p10/closeout.md' && ref.status === 'not-green'));
+    assert.equal(colorTheme.status, 'green');
     assert.equal(preview.checkpoints.find(item => item.id.endsWith('#c9-codex-chat'))?.status, 'not-implemented');
     assert.deepEqual(await readFile(path), before);
 });
