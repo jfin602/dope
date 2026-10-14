@@ -94,3 +94,18 @@ test('large stacks have an explicit bounded projection', () => {
     assert.ok(result.omittedTaskNodes > 0);
     assert.ok(result.diagnostics.some(message => message.includes('omitted')));
 });
+
+test('multiple c10 task stacks retain distinct identities; typed phase conflict stays unlinked', () => {
+    const names = ['c10-roadmap-create-sync', 'c10-horizontal-color', 'c10-roadmap-qualify'];
+    const source = index();
+    const before = JSON.stringify(source);
+    const result = projectRoadmapTasks(source, [...names.map(name => stack(name, 10, 'correction')),
+        stack('c100-other', 10, 'correction')]);
+    assert.equal(JSON.stringify(source), before);
+    assert.equal(result.revision, 2);
+    assert.equal(result.nodes.filter(node => node.kind === 'task-stack').length, 3);
+    assert.deepEqual(result.nodes.filter(node => node.kind === 'task-stack').map(node => node.phaseAssociation?.phaseId),
+        ['p10', 'p10', 'p10']);
+    assert.match(result.unlinkedTasks[0].reason, /conflicts/);
+    assert.equal(result.edges.filter(edge => edge.id.startsWith('task-parent:')).length, 3);
+});

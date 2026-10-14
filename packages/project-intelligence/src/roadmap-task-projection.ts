@@ -2,6 +2,7 @@ import { projectRoadmap } from './roadmap-projection';
 import type { CheckpointEdge, CheckpointNode, RoadmapPresentation, RoadmapProjection } from './roadmap-projection';
 import type { RoadmapIndex } from './node/roadmap-store';
 import type { RoadmapOwnerRecord } from './node/roadmap-owner-links';
+import { correctionPhaseNumber, resolveCorrectionPhase, roadmapPhaseNumber } from './roadmap-phase-association';
 
 /** Structural input from the strict, read-only P11 discovery. No runner or Node dependency enters this projection. */
 export interface TaskStackSource {
@@ -28,10 +29,6 @@ const compare = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
 const MAX_TASK_NODES = 512;
 const MAX_TASK_STACKS = 256;
 const MAX_STACK_PROMPTS = 256;
-const phaseNumber = (title: string): number | undefined => {
-    const match = /^(?:Product )?Phase (\d+)\b/i.exec(title) ?? /^Foundation Spike (0)\b/i.exec(title);
-    return match ? Number(match[1]) : undefined;
-};
 const taskId = (project: string, stack: string, number?: number): string =>
     `task:${encodeURIComponent(project)}:${encodeURIComponent(stack)}:${number === undefined ? 'stack' : `P${number}`}`;
 const validPath = (path: string): boolean => path.length > 0 && !path.startsWith('/') &&
@@ -49,7 +46,7 @@ export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskSt
     const phases = new Map<number, CheckpointNode[]>();
     for (const node of base.nodes) {
         if (node.kind !== 'phase') continue;
-        const number = phaseNumber(node.title);
+        const number = roadmapPhaseNumber(node.title);
         if (number !== undefined) phases.set(number, [...(phases.get(number) ?? []), node]);
     }
     const sorted = [...stacks].sort((a, b) => compare(a.path, b.path));
@@ -66,11 +63,16 @@ export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskSt
         knownPrompts.set(`${stack.path}\0${prompt.number}`,
             { id: taskId(index.projectId, stack.path, prompt.number), fingerprint: prompt.fingerprint });
     for (const stack of eligible) {
+        const association = stack.mode === 'correction' ? resolveCorrectionPhase(
+            correctionPhaseNumber(stack.folderName), stack.phase === undefined ? [] :
+                (phases.get(stack.phase) ?? []).map(node => node.id),
+            new Map([...phases].map(([number, nodes]) => [number, nodes.map(node => node.id)]))) : undefined;
         const candidates = stack.phase === undefined ? [] : phases.get(stack.phase) ?? [];
-        const parent = candidates.length === 1 ? candidates[0] : undefined;
+        const parent = association ? candidates.find(node => node.id === association.phaseId) :
+            candidates.length === 1 ? candidates[0] : undefined;
         if (!stackValid(stack) || !parent) {
             unlinkedTasks.push({ path: stack.path, title: stack.folderName,
-                reason: stack.diagnostic?.message ?? (!parent ? 'No unique strategic phase match.' : 'Invalid task stack.'),
+                reason: stack.diagnostic?.message ?? association?.unresolvedReason ?? (!parent ? 'No unique strategic phase match.' : 'Invalid task stack.'),
                 diagnostic: stack.diagnostic?.code });
             continue;
         }
@@ -82,7 +84,8 @@ export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskSt
             stack.continuationSlice ? `Continuation ${stack.continuationSlice}` : `Phase ${stack.phase} prompts`;
         const stackNode: CheckpointNode = { id: stackId, kind: 'task-stack', title: segment,
             order: parent.order, status: 'unknown', statusLabel: 'Unknown', evidence: [], readOnly: true,
-            lane: 'branch', taskSource: { stackPath: stack.path, fingerprint: stack.fingerprint!, segment } };
+            lane: 'branch', ...(association ? { phaseAssociation: association } : {}),
+            taskSource: { stackPath: stack.path, fingerprint: stack.fingerprint!, segment } };
         nodes.push(stackNode);
         let origin = parent.id;
         if (stack.mode === 'correction') {

@@ -1,5 +1,6 @@
 import type { RoadmapCheckpoint, RoadmapIndex, RoadmapLink } from './node/roadmap-store';
 import type { RoadmapOwnerRecord } from './node/roadmap-owner-links';
+import { correctionIdentifier, resolveCorrectionPhase, roadmapPhaseNumber, type PhaseAssociation } from './roadmap-phase-association';
 
 export interface RoadmapPresentation {
     projectId?: string;
@@ -19,6 +20,7 @@ export interface CheckpointNode {
     source?: RoadmapCheckpoint['source'];
     readOnly: boolean;
     lane: 'path' | 'branch';
+    phaseAssociation?: PhaseAssociation;
     taskSource?: { stackPath: string; path?: string; fingerprint: string; number?: number; version?: string;
         browserRequired?: boolean; segment?: string; diagnostic?: string };
 }
@@ -74,6 +76,18 @@ export function projectRoadmap(index: RoadmapIndex, owners: readonly RoadmapOwne
     const byId = new Map(nodes.map(node => [node.id, node]));
     const edges: CheckpointEdge[] = [];
     const diagnostics: string[] = [];
+    const phases = new Map<number, string[]>();
+    for (const node of nodes) if (node.kind === 'phase') {
+        const number = roadmapPhaseNumber(node.title);
+        if (number !== undefined) phases.set(number, [...(phases.get(number) ?? []), node.id]);
+    }
+    for (const item of index.checkpoints) if (item.kind === 'correction') {
+        const explicit = item.dependencies.filter(id => byId.get(id)?.kind === 'phase' || /#phase-\d+$/.test(id));
+        const association = resolveCorrectionPhase(correctionIdentifier(item.id, item.title,
+            [item.source?.path ?? '', ...item.evidence.map(citation => citation.path)]), explicit, phases);
+        byId.get(item.id)!.phaseAssociation = association;
+        if (association.unresolvedReason) diagnostics.push(`Unresolved correction phase: ${item.id}: ${association.unresolvedReason}`);
+    }
     for (const item of index.checkpoints) {
         const differing = item.evidence.filter(citation => citation.status && citation.status !== 'unknown' && citation.status !== item.status);
         if (differing.length) diagnostics.push(`Historical status differs for ${item.id}: ${differing.map(citation =>
