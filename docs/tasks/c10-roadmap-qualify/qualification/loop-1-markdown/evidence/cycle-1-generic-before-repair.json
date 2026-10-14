@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "projectId": "d91fa3fd-8f8b-4cd6-97be-03b7c18d2f43",
+  "projectRoot": "/tmp/dope-c10-p9-SwltPi",
+  "revision": 1,
+  "checkpoints": [
+    {
+      "id": "roadmap:ROADMAP.md#milestone-seed-catalog",
+      "kind": "milestone",
+      "title": "Milestone Seed catalog",
+      "objective": "",
+      "order": 0,
+      "dependencies": [],
+      "links": [],
+      "status": "active",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+        "line": 3,
+        "text": "## Milestone Seed catalog"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+          "line": 3,
+          "text": "Status: **ACTIVE**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:ROADMAP.md#milestone-seed-catalog/checklist-count-tomato-seeds",
+      "kind": "milestone",
+      "title": "Count tomato seeds",
+      "objective": "",
+      "order": 1,
+      "dependencies": [],
+      "links": [],
+      "status": "unknown",
+      "readOnly": true,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+        "line": 11,
+        "text": "- [ ] Count tomato seeds"
+      },
+      "evidence": []
+    },
+    {
+      "id": "roadmap:ROADMAP.md#milestone-watering-schedule",
+      "kind": "milestone",
+      "title": "Milestone Watering schedule",
+      "objective": "",
+      "order": 2,
+      "dependencies": [],
+      "links": [],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+        "line": 13,
+        "text": "## Milestone Watering schedule"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+          "line": 13,
+          "text": "Status: **NOT GREEN**",
+          "status": "not-green",
+          "statusText": "Status: **NOT GREEN**"
+        }
+      ]
+    }
+  ],
+  "linkedDocument": {
+    "projectRoot": "/tmp/dope-c10-p9-SwltPi",
+    "projectId": "d91fa3fd-8f8b-4cd6-97be-03b7c18d2f43",
+    "path": "ROADMAP.md",
+    "sourceHash": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+    "sections": [
+      {
+        "sectionKey": "milestone-seed-catalog",
+        "checkpointId": "roadmap:ROADMAP.md#milestone-seed-catalog"
+      },
+      {
+        "sectionKey": "milestone-seed-catalog/checklist-count-tomato-seeds",
+        "checkpointId": "roadmap:ROADMAP.md#milestone-seed-catalog/checklist-count-tomato-seeds"
+      },
+      {
+        "sectionKey": "milestone-watering-schedule",
+        "checkpointId": "roadmap:ROADMAP.md#milestone-watering-schedule"
+      }
+    ],
+    "lastSynced": {
+      "sourceHash": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+      "roadmapRevision": 1
+    },
+    "syncState": "conflict"
+  }
+}

@@ -1,0 +1,1367 @@
+{
+  "schemaVersion": 1,
+  "projectId": "96eff3ae-49a0-4811-b526-0d71b4888c95",
+  "projectRoot": "/tmp/dope-c10-p9-SwltPi",
+  "revision": 1,
+  "checkpoints": [
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+      "kind": "phase",
+      "title": "Foundation Spike 0 — Theia substrate qualification",
+      "objective": "",
+      "order": 0,
+      "dependencies": [],
+      "links": [],
+      "status": "green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 86,
+        "text": "## Foundation Spike 0 — Theia substrate qualification"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 87,
+          "text": "Status: **QUALIFIED / OWNER-CLOSED** at package `0.0.6`, closeout commit `425b89d222e1542815af9e38aaa21a4e5a472cb7`.",
+          "status": "green",
+          "statusText": "Status: **QUALIFIED / OWNER-CLOSED**"
+        },
+        {
+          "path": "docs/planning/foundation-spike-0/decision-record.md",
+          "sha256": "c3b9826b3b2c608c932871adc3e7eb33c375963cf39c7bc62b9834ae4ab1bda5",
+          "line": 3,
+          "text": "Status: QUALIFIED — EXECUTED FOUNDATION SPIKE 0; bounded Evidence Gaps retained",
+          "status": "green",
+          "statusText": "Status: QUALIFIED — EXECUTED FOUNDATION SPIKE 0; bounded Evidence Gaps retained"
+        },
+        {
+          "path": "docs/planning/foundation-spike-0/qualification-plan.md",
+          "sha256": "a568a596c8ffac3a4ceb6a696eb98fc96ba2d449c1cad68e2fce2ae78b81e38b",
+          "line": 3,
+          "text": "Status: EXECUTED — Foundation Spike 0 qualified; see `docs/tasks/p0/closeout.md`",
+          "status": "green",
+          "statusText": "Status: EXECUTED — Foundation Spike 0 qualified; see `docs/tasks/p0/closeout.md`"
+        },
+        {
+          "path": "docs/tasks/p0/closeout.md",
+          "sha256": "7be4515ba6fd6ef5ef5eceef4f530c99c8b3e689689993afd87bde7923cb344b",
+          "line": 3,
+          "text": "Status: **QUALIFIED — bounded Evidence Gaps retained** (2026-09-27)",
+          "status": "green",
+          "statusText": "Status: **QUALIFIED — bounded Evidence Gaps retained** (2026-09-27)"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-1",
+      "kind": "phase",
+      "title": "Product Phase 1 — IDE Alive",
+      "objective": "",
+      "order": 1,
+      "dependencies": [],
+      "links": [],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 113,
+        "text": "## Product Phase 1 — IDE Alive"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 114,
+          "text": "Status: **NOT QUALIFIED — OWNER AUTHORIZED PHASE 2 SEQUENCING**",
+          "status": "not-green",
+          "statusText": "Status: **NOT QUALIFIED — OWNER AUTHORIZED PHASE 2 SEQUENCING**"
+        },
+        {
+          "path": "docs/planning/p1/phase-1-plan.md",
+          "sha256": "e5a8483b08041a832131b4c114af435d6d671b1480f81ef9cca231de9987cd6b",
+          "line": 3,
+          "text": "Status: APPROVED / ACTIVE ENGINEERING GATE",
+          "status": "active",
+          "statusText": "Status: APPROVED / ACTIVE ENGINEERING GATE"
+        },
+        {
+          "path": "docs/planning/p2/activation.md",
+          "sha256": "bdcce18745a97bc745b31c69454a550a45e0e1871dfc44830a19e68993a5b18f",
+          "line": 4,
+          "text": "Status: OWNER-AUTHORIZED PHASE 2 ACTIVATION — READY FOR P1",
+          "status": "unknown",
+          "statusText": "Status: OWNER-AUTHORIZED PHASE 2 ACTIVATION — READY FOR P1"
+        },
+        {
+          "path": "docs/tasks/p1/closeout.md",
+          "sha256": "48385ae58c016a6e82cc5e966bf756c56256ab82220abe32b650202245acacdc",
+          "line": 3,
+          "text": "Date: September 28, 2026. **Decision: Not Qualified.** Phase 2 remains blocked. The owner's September 28 waiver authorizes this P6 audit, not a Green P5 result or Phase 2 approval.",
+          "status": "not-green",
+          "statusText": "Date: September 28, 2026. **Decision: Not Qualified.** Phase 2 remains blocked. The owner's September 28 waiver authorizes this P6 audit, not a Green P5 result or Phase 2 approval."
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-2",
+      "kind": "phase",
+      "title": "Product Phase 2 — Project Mind",
+      "objective": "",
+      "order": 2,
+      "dependencies": [],
+      "links": [],
+      "status": "waived",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 157,
+        "text": "## Product Phase 2 — Project Mind"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 158,
+          "text": "Status: **OWNER-CLOSED FOR SEQUENCING — P6 AUDIT REMAINS NOT QUALIFIED**",
+          "status": "waived",
+          "statusText": "Status: **OWNER-CLOSED FOR SEQUENCING — P6 AUDIT REMAINS NOT QUALIFIED**"
+        },
+        {
+          "path": "docs/planning/p2/activation.md",
+          "sha256": "bdcce18745a97bc745b31c69454a550a45e0e1871dfc44830a19e68993a5b18f",
+          "line": 4,
+          "text": "Status: OWNER-AUTHORIZED PHASE 2 ACTIVATION — READY FOR P1",
+          "status": "unknown",
+          "statusText": "Status: OWNER-AUTHORIZED PHASE 2 ACTIVATION — READY FOR P1"
+        },
+        {
+          "path": "docs/planning/p2/phase-2-plan.md",
+          "sha256": "3ff5158a1f2a1608e5fb7565388f0115eb98cc971fff845b9e68b13cb2f68ca0",
+          "line": 3,
+          "text": "Status: HISTORICAL — OWNER-CLOSED FOR SEQUENCING; P6 AUDIT REMAINS NOT QUALIFIED",
+          "status": "waived",
+          "statusText": "Status: HISTORICAL — OWNER-CLOSED FOR SEQUENCING; P6 AUDIT REMAINS NOT QUALIFIED"
+        },
+        {
+          "path": "docs/tasks/p2/closeout.md",
+          "sha256": "0d53b52a49b5bf911974c103adf88a718c4b96439ff2b673f3477638da205aa6",
+          "line": 1,
+          "text": "# Product Phase 2 — Project Mind closeout"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-3",
+      "kind": "phase",
+      "title": "Product Phase 3 — Planning",
+      "objective": "",
+      "order": 3,
+      "dependencies": [],
+      "links": [],
+      "status": "green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 201,
+        "text": "## Product Phase 3 — Planning"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 202,
+          "text": "Status: **QUALIFIED FOR APPLICABLE SCOPE — `0.3.6`** (`docs/tasks/p3/closeout.md`). This is historical qualification, not a forward compatibility contract. Its live Planning instruments must be removed by the mandatory correction gate before Phase 4.",
+          "status": "green",
+          "statusText": "Status: **QUALIFIED FOR APPLICABLE SCOPE — `0.3.6`**"
+        },
+        {
+          "path": "docs/planning/p3/activation.md",
+          "sha256": "7b7f90f20bd95a94b4fd46d0fce7b12e697f75d2cfbf549520426b1ae3d02849",
+          "line": 3,
+          "text": "Status: OWNER APPROVED — ACTIVE",
+          "status": "active",
+          "statusText": "Status: OWNER APPROVED — ACTIVE"
+        },
+        {
+          "path": "docs/planning/p3/phase-3-plan.md",
+          "sha256": "516f6245d816ffc57fe82b8c61533bb3e866fb84989fa421cd58b0456e108ce1",
+          "line": 3,
+          "text": "Status: APPROVED / OWNER ACTIVATED",
+          "status": "active",
+          "statusText": "Status: APPROVED / OWNER ACTIVATED"
+        },
+        {
+          "path": "docs/tasks/p3/closeout.md",
+          "sha256": "6887908384bfbc6ffc21174c0d1954f11f627197c5198ce36744facde55f4217",
+          "line": 3,
+          "text": "Date: September 28, 2026. **Decision: Qualified for Phase 3's applicable scope.** This does not qualify Phase 1 or Phase 2, or authorize Phase 4 implementation.",
+          "status": "green",
+          "statusText": "Date: September 28, 2026. **Decision: Qualified for Phase 3's applicable scope.** This does not qualify Phase 1 or Phase 2, or authorize Phase 4 implementation."
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c3-remove-planning-instruments",
+      "kind": "correction",
+      "title": "Mandatory pre-Phase-4 correction — `c3-remove-planning-instruments`",
+      "objective": "",
+      "order": 4,
+      "dependencies": [],
+      "links": [],
+      "status": "green",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 239,
+        "text": "## Mandatory pre-Phase-4 correction — `c3-remove-planning-instruments`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 240,
+          "text": "Status: **COMPLETE — GREEN / QUALIFIED FOR SEQUENCING at unchanged `0.3.6`** (`docs/tasks/c3-remove-planning-instruments/closeout.md`)",
+          "status": "green",
+          "statusText": "Status: **COMPLETE — GREEN / QUALIFIED FOR SEQUENCING at unchanged `0.3.6`**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-4",
+      "kind": "phase",
+      "title": "Product Phase 4 — Physical Map",
+      "objective": "",
+      "order": 5,
+      "dependencies": [],
+      "links": [],
+      "status": "not-implemented",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 268,
+        "text": "## Product Phase 4 — Physical Map"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 269,
+          "text": "Status: **QUALIFIED/GREEN — committed `0.4.6` at `fac88712bb55176d3d6d54fbe6034de8b0f801ff`** (`docs/tasks/p4/closeout.md`)",
+          "status": "green",
+          "statusText": "Status: **QUALIFIED/GREEN — committed `0.4.6` at `fac88712bb55176d3d6d54fbe6034de8b0f801ff`**"
+        },
+        {
+          "path": "docs/planning/p4/activation.md",
+          "sha256": "de8988c57a43ddf5440c5b2dce9c041855af6ad3d39abd95eb67c6f5836146f7",
+          "line": 3,
+          "text": "Status: OWNER APPROVED — ACTIVE",
+          "status": "active",
+          "statusText": "Status: OWNER APPROVED — ACTIVE"
+        },
+        {
+          "path": "docs/planning/p4/phase-4-plan.md",
+          "sha256": "61e348308a48b6d67a17693522a720713c3049c70c67308f11bea61fe164b80a",
+          "line": 3,
+          "text": "Status: OWNER APPROVED — ACTIVE",
+          "status": "active",
+          "statusText": "Status: OWNER APPROVED — ACTIVE"
+        },
+        {
+          "path": "docs/tasks/p4/closeout.md",
+          "sha256": "3b1fdc4e70c2179a86e1a295025e9d13c186706042b3820295f8e2f88cf2878d",
+          "line": 3,
+          "text": "September 29, 2026. **Decision: Qualified / Green for the approved Phase 4 scope.** This is an evidence-only closeout, not a product repair or a new direct GUI qualification. Phase 5 is not activated.",
+          "status": "not-implemented",
+          "statusText": "September 29, 2026. **Decision: Qualified / Green for the approved Phase 4 scope.** This is an evidence-only closeout, not a product repair or a new direct GUI qualification. Phase 5 is not activated."
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c4-architecture-discovery",
+      "kind": "correction",
+      "title": "Mandatory post-Phase-4 correction — `c4-architecture-discovery`",
+      "objective": "",
+      "order": 6,
+      "dependencies": [],
+      "links": [],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 311,
+        "text": "## Mandatory post-Phase-4 correction — `c4-architecture-discovery`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 312,
+          "text": "Status: **OWNER-CLOSED / NOT QUALIFIED — terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0`; superseded by ADR 0012 hierarchical correction**",
+          "status": "not-green",
+          "statusText": "Status: **OWNER-CLOSED / NOT QUALIFIED — terminal source `0f94b0e3ba46e395394acdb5badc00dd092b37d0`; superseded by ADR 0012 hierarchical correction**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-hierarchical-synthesis",
+      "kind": "correction",
+      "title": "Mandatory pre-Phase-5 correction — `c4-smap-hierarchical-synthesis`",
+      "objective": "",
+      "order": 7,
+      "dependencies": [],
+      "links": [],
+      "status": "not-implemented",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 376,
+        "text": "## Mandatory pre-Phase-5 correction — `c4-smap-hierarchical-synthesis`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 377,
+          "text": "Status: **IMPLEMENTATION THROUGH P7 COMPLETE — P8/P9 SUPERSEDED / NOT EXECUTED under ADR 0013; reachable P7 implementation commit `66f023f717afd63433d442015b575edf049ae1b6`**",
+          "status": "not-implemented",
+          "statusText": "Status: **IMPLEMENTATION THROUGH P7 COMPLETE — P8/P9 SUPERSEDED / NOT EXECUTED under ADR 0013; reachable P7 implementation commit `66f023f717afd63433d442015b575edf049ae1b6`**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-gemini-provider",
+      "kind": "correction",
+      "title": "Mandatory pre-Phase-5 correction — `c4-smap-gemini-provider`",
+      "objective": "",
+      "order": 8,
+      "dependencies": [],
+      "links": [],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 423,
+        "text": "## Mandatory pre-Phase-5 correction — `c4-smap-gemini-provider`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 424,
+          "text": "Status: **OWNER-CLOSED / NOT QUALIFIED — terminal evidence source `8ea34ae1300a387ac63aad9462ae649ac78a9605`; planned full Local/Gemini comparison and formal P5 audit not executed**",
+          "status": "not-green",
+          "statusText": "Status: **OWNER-CLOSED / NOT QUALIFIED — terminal evidence source `8ea34ae1300a387ac63aad9462ae649ac78a9605`; planned full Local/Gemini comparison and formal P5 audit not executed**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c4-synth-improvements",
+      "kind": "correction",
+      "title": "Mandatory pre-Phase-5 correction — `c4-synth-improvements`",
+      "objective": "",
+      "order": 9,
+      "dependencies": [],
+      "links": [],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 486,
+        "text": "## Mandatory pre-Phase-5 correction — `c4-synth-improvements`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 487,
+          "text": "Status: **OWNER-CLOSED / NOT QUALIFIED AFTER P4 — P5 UNEXECUTED**",
+          "status": "not-green",
+          "statusText": "Status: **OWNER-CLOSED / NOT QUALIFIED AFTER P4 — P5 UNEXECUTED**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c4-synth-coverage-review",
+      "kind": "correction",
+      "title": "Mandatory pre-Phase-5 correction — `c4-synth-coverage-review`",
+      "objective": "",
+      "order": 10,
+      "dependencies": [],
+      "links": [],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 511,
+        "text": "## Mandatory pre-Phase-5 correction — `c4-synth-coverage-review`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 512,
+          "text": "Status: **OWNER-CLOSED / NOT QUALIFIED AFTER STOPPED P6 — IMPLEMENTED BASELINE RETAINED**",
+          "status": "not-green",
+          "statusText": "Status: **OWNER-CLOSED / NOT QUALIFIED AFTER STOPPED P6 — IMPLEMENTED BASELINE RETAINED**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-provider-comparison",
+      "kind": "correction",
+      "title": "Mandatory pre-Phase-5 correction — `c4-smap-provider-comparison`",
+      "objective": "",
+      "order": 11,
+      "dependencies": [],
+      "links": [],
+      "status": "unknown",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 541,
+        "text": "## Mandatory pre-Phase-5 correction — `c4-smap-provider-comparison`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 542,
+          "text": "Status: **DEFERRED / REMOVED FROM PRE-PHASE-5 CRITICAL PATH**",
+          "status": "unknown",
+          "statusText": "Status: **DEFERRED / REMOVED FROM PRE-PHASE-5 CRITICAL PATH**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-storage",
+      "kind": "correction",
+      "title": "Mandatory pre-Phase-5 correction — `c4-smap-storage`",
+      "objective": "",
+      "order": 12,
+      "dependencies": [],
+      "links": [],
+      "status": "green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 550,
+        "text": "## Mandatory pre-Phase-5 correction — `c4-smap-storage`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 551,
+          "text": "Status: **GREEN / QUALIFIED — closeout `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`**",
+          "status": "green",
+          "statusText": "Status: **GREEN / QUALIFIED — closeout `7ef58e69c64e71ca0cceb5dd29ee540e7c70a8cf`**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c4-color-theme",
+      "kind": "correction",
+      "title": "Mandatory pre-Phase-5 correction — `c4-color-theme`",
+      "objective": "",
+      "order": 13,
+      "dependencies": [],
+      "links": [],
+      "status": "active",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 577,
+        "text": "## Mandatory pre-Phase-5 correction — `c4-color-theme`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 578,
+          "text": "Status: **ACTIVE / APPROVED FOR PROMPT PLANNING**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE / APPROVED FOR PROMPT PLANNING**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-5",
+      "kind": "phase",
+      "title": "Product Phase 5 — Visual Software Planning",
+      "objective": "",
+      "order": 14,
+      "dependencies": [],
+      "links": [],
+      "status": "not-green",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 610,
+        "text": "## Product Phase 5 — Visual Software Planning"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 611,
+          "text": "Status: **ACTIVE** from package `0.5.0` at transition commit `016bd8780e89081dfdb5746eae981183dc945baa`.",
+          "status": "active",
+          "statusText": "Status: **ACTIVE**"
+        },
+        {
+          "path": "docs/planning/p5/activation.md",
+          "sha256": "617668de4ad9d817317ac8cda88643895f068c3e68ac6835702acb13607e8577",
+          "line": 3,
+          "text": "Status: **OWNER-CLOSED FOR SEQUENCING**",
+          "status": "waived",
+          "statusText": "Status: **OWNER-CLOSED FOR SEQUENCING**"
+        },
+        {
+          "path": "docs/planning/p5/phase-5-plan.md",
+          "sha256": "5a3ef9fab969b093591cba63fb2f14f6f83dacd7753937190bd6ad42b2fc2eaa",
+          "line": 3,
+          "text": "Status: **ACTIVE PLAN**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE PLAN**"
+        },
+        {
+          "path": "docs/planning/p5/phase-5-visual-workflow-worksheet.md",
+          "sha256": "e7b9c5987dda0b4523f834438bceaa07517f823f63aac03f285dcea9a2dda8cb",
+          "line": 3,
+          "text": "Status: RESOLVED / PROMOTED TO PHASE 5 AUTHORITY",
+          "status": "unknown",
+          "statusText": "Status: RESOLVED / PROMOTED TO PHASE 5 AUTHORITY"
+        },
+        {
+          "path": "docs/tasks/p5/closeout.md",
+          "sha256": "73ff92fbbabfa03eb0c12f74aa8128a70d1c26e4dea63af80a9b9c16bccba5c4",
+          "line": 5,
+          "text": "**Disposition: OWNER-CLOSED FOR SEQUENCING. Qualification remains Not Green.**",
+          "status": "not-green",
+          "statusText": "**Disposition: OWNER-CLOSED FOR SEQUENCING. Qualification remains Not Green.**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c5-smap-acceptance-debug-loop",
+      "kind": "correction",
+      "title": "Phase 5 interruption correction — `c5-smap-acceptance-debug-loop`",
+      "objective": "",
+      "order": 15,
+      "dependencies": [],
+      "links": [],
+      "status": "unknown",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 659,
+        "text": "## Phase 5 interruption correction — `c5-smap-acceptance-debug-loop`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 660,
+          "text": "Status: **APPROVED / READY FOR EXECUTION at unchanged `0.5.11`**",
+          "status": "unknown",
+          "statusText": "Status: **APPROVED / READY FOR EXECUTION at unchanged `0.5.11`**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c5-synth-observe",
+      "kind": "correction",
+      "title": "Queued Phase 5 correction — `c5-synth-observe`",
+      "objective": "",
+      "order": 16,
+      "dependencies": [],
+      "links": [],
+      "status": "unknown",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 692,
+        "text": "## Queued Phase 5 correction — `c5-synth-observe`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 693,
+          "text": "Status: **PLANNED / QUEUED FOR EXECUTION**. Assessment, plan and P1–P3 execution briefs are in `docs/tasks/c5-synth-observe/`. Current package baseline is `0.5.11`; this correction does not advance the package version while that baseline applies.",
+          "status": "unknown",
+          "statusText": "Status: **PLANNED / QUEUED FOR EXECUTION**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c5-physical-map-load",
+      "kind": "correction",
+      "title": "Phase 5 interruption correction — `c5-physical-map-load`",
+      "objective": "",
+      "order": 17,
+      "dependencies": [],
+      "links": [],
+      "status": "unknown",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 700,
+        "text": "## Phase 5 interruption correction — `c5-physical-map-load`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 701,
+          "text": "Status: **APPROVED / ONE-OFF IMPLEMENTATION at unchanged `0.5.11`**",
+          "status": "unknown",
+          "statusText": "Status: **APPROVED / ONE-OFF IMPLEMENTATION at unchanged `0.5.11`**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c5-planning-basis-isolation",
+      "kind": "correction",
+      "title": "Phase 5 interruption correction — `c5-planning-basis-isolation`",
+      "objective": "",
+      "order": 18,
+      "dependencies": [],
+      "links": [],
+      "status": "unknown",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 732,
+        "text": "## Phase 5 interruption correction — `c5-planning-basis-isolation`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 733,
+          "text": "Status: **APPROVED / MANUAL ONE-OFF at unchanged `0.5.11`**",
+          "status": "unknown",
+          "statusText": "Status: **APPROVED / MANUAL ONE-OFF at unchanged `0.5.11`**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c5-smap-readability",
+      "kind": "correction",
+      "title": "Pre-P11-rerun correction — `c5-smap-readability`",
+      "objective": "",
+      "order": 19,
+      "dependencies": [],
+      "links": [],
+      "status": "active",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 756,
+        "text": "## Pre-P11-rerun correction — `c5-smap-readability`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 757,
+          "text": "Status: **ACTIVE / READY**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE / READY**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-6",
+      "kind": "phase",
+      "title": "Product Phase 6 — Flow",
+      "objective": "",
+      "order": 20,
+      "dependencies": [],
+      "links": [],
+      "status": "waived",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 787,
+        "text": "## Product Phase 6 — Flow"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 788,
+          "text": "Status: **ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION**"
+        },
+        {
+          "path": "docs/planning/p6/activation.md",
+          "sha256": "b1cb80c9984895a3829a78c782e302a77d2b258de8454222f5ba38c7024b255c",
+          "line": 3,
+          "text": "Status: **OWNER APPROVED — ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION**",
+          "status": "active",
+          "statusText": "Status: **OWNER APPROVED — ACTIVE / PROMPTS WRITTEN / READY FOR EXECUTION**"
+        },
+        {
+          "path": "docs/planning/p6/phase-6-ai-presence-worksheet.md",
+          "sha256": "eeac07f9c0aea184852070bfbe5764cb227285d5375db95e5f858cfc42409b34",
+          "line": 3,
+          "text": "Status: OPEN PLANNING WORKSHEET",
+          "status": "unknown",
+          "statusText": "Status: OPEN PLANNING WORKSHEET"
+        },
+        {
+          "path": "docs/planning/p6/phase-6-plan.md",
+          "sha256": "d22e987a6dca0e2ea70fbc4385a4e538d377129d902e4bd907e2d98e1d84a452",
+          "line": 3,
+          "text": "Status: **OWNER-CLOSED FOR SEQUENCING / P8 NOT QUALIFIED**",
+          "status": "waived",
+          "statusText": "Status: **OWNER-CLOSED FOR SEQUENCING / P8 NOT QUALIFIED**"
+        },
+        {
+          "path": "docs/tasks/p6/closeout.md",
+          "sha256": "e55a09e1194fdfd86734d4147964bad0f165975097b96fb49a11b31a759aadb1",
+          "line": 3,
+          "text": "Date: October 3, 2026. **Disposition: OWNER-CLOSED FOR SEQUENCING; P8 qualification remains Not Qualified (evidence gap).** The owner approved sequencing after this evidence-only P8 audit at `0.6.8`; no Flow behavior was repaired. The recorded bounded P7 Green disposition remains intact, as do its earlier Not Green runs. P8 applies the Phase 6 exit condition to the whole evidence chain.",
+          "status": "waived",
+          "statusText": "Date: October 3, 2026. **Disposition: OWNER-CLOSED FOR SEQUENCING; P8 qualification remains Not Qualified (evidence gap).** The owner approved sequencing after this evidence-only P8 audit at `0.6.8`; no Flow behavior was repaired. The recorded bounded P7 Green disposition remains intact, as do its earlier Not Green runs. P8 applies the Phase 6 exit condition to the whole evidence chain."
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c6-branch-seam",
+      "kind": "correction",
+      "title": "Pre-Phase-7 correction — `c6-branch-seam`",
+      "objective": "",
+      "order": 21,
+      "dependencies": [],
+      "links": [],
+      "status": "unknown",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 831,
+        "text": "## Pre-Phase-7 correction — `c6-branch-seam`"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 832,
+          "text": "Status: **APPROVED / ONE-OFF IMPLEMENTATION at unchanged `0.6.7`**.",
+          "status": "unknown",
+          "statusText": "Status: **APPROVED / ONE-OFF IMPLEMENTATION at unchanged `0.6.7`**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-7",
+      "kind": "phase",
+      "title": "Product Phase 7 — AI Presence",
+      "objective": "",
+      "order": 22,
+      "dependencies": [],
+      "links": [],
+      "status": "green",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 863,
+        "text": "## Product Phase 7 — AI Presence"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 864,
+          "text": "Status: **HISTORICAL PHASE 7 PLANNING SNAPSHOT**. Phase 7 ultimately closed Green at actual `0.7.31` (see phase-status table); the original P13 and intermediate 7B-next state below are preserved as then-current planning and are not present-day activation guidance.",
+          "status": "unknown",
+          "statusText": "Status: **HISTORICAL PHASE 7 PLANNING SNAPSHOT**"
+        },
+        {
+          "path": "docs/planning/p7/activation.md",
+          "sha256": "300eaeeb4fc7051938ee95ef1af0ad456c6f26e16eb2bf059334fde2aa85a36a",
+          "line": 3,
+          "text": "Status: **OWNER APPROVED / QUALIFIED / CLOSED AT ACTUAL `0.7.31` SOURCE**",
+          "status": "green",
+          "statusText": "Status: **OWNER APPROVED / QUALIFIED / CLOSED AT ACTUAL `0.7.31` SOURCE**"
+        },
+        {
+          "path": "docs/planning/p7/phase-7-plan.md",
+          "sha256": "8f8bcf1413d4c286c91a3e86ff3635d9ca23d544d064c5d7de054eb140f6c0d0",
+          "line": 3,
+          "text": "Status: **OWNER APPROVED / QUALIFIED / CLOSED AT ACTUAL 0.7.31 / POST-CLOSEOUT c7-chat-project-grounding PROMPTS WRITTEN + NEXT BEFORE PHASE 8**",
+          "status": "green",
+          "statusText": "Status: **OWNER APPROVED / QUALIFIED / CLOSED AT ACTUAL 0.7.31 / POST-CLOSEOUT c7-chat-project-grounding PROMPTS WRITTEN + NEXT BEFORE PHASE 8**"
+        },
+        {
+          "path": "docs/planning/p7/phase-7b-ai-center-worksheet.md",
+          "sha256": "ebbe4fe494f4688c1c73544141164d2ba08741ad2b49c555e31faab83e9b19d4",
+          "line": 3,
+          "text": "Status: RESOLVED / PROMOTED TO PHASE 7 AUTHORITY",
+          "status": "unknown",
+          "statusText": "Status: RESOLVED / PROMOTED TO PHASE 7 AUTHORITY"
+        },
+        {
+          "path": "docs/planning/p7/phase-7c-ai-roles-routing-worksheet.md",
+          "sha256": "e146fac501f941183514e5f41adfda2c5942ca7ec665d69799562ff85eba0b3a",
+          "line": 3,
+          "text": "Status: RESOLVED / PROMOTED TO PHASE 7 AUTHORITY",
+          "status": "unknown",
+          "statusText": "Status: RESOLVED / PROMOTED TO PHASE 7 AUTHORITY"
+        },
+        {
+          "path": "docs/tasks/p7/closeout.md",
+          "sha256": "145807f2780c1b16cd3a6699294cb133212e2f42e5d3fdbf92725e91bf83b63d",
+          "line": 3,
+          "text": "Date: October 3, 2026. **Decision: Not Qualified.** This is an evidence-only `0.7.13` coherence transition, not an owner closeout or a claim that all of Phase 7 is implemented. The Phase 7A Chat and read-only AI Presence slice has substantial direct evidence. ADR 0026 and the [current Phase 7 plan](../../planning/p7/phase-7-plan.md) require AI Center and deterministic role routing (7B/7C) for the full Phase 7 exit condition; the P1–P12 stack did not implement or qualify them. This run changed versions and documentation only.",
+          "status": "not-green",
+          "statusText": "Date: October 3, 2026. **Decision: Not Qualified.** This is an evidence-only `0.7.13` coherence transition, not an owner closeout or a claim that all of Phase 7 is implemented. The Phase 7A Chat and read-only AI Presence slice has substantial direct evidence. ADR 0026 and the [current Phase 7 plan](../../planning/p7/phase-7-plan.md) require AI Center and deterministic role routing (7B/7C) for the full Phase 7 exit condition; the P1–P12 stack did not implement or qualify them. This run changed versions and documentation only."
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-8",
+      "kind": "phase",
+      "title": "Product Phase 8 — Coding Agent / Scoped Delegation",
+      "objective": "",
+      "order": 23,
+      "dependencies": [],
+      "links": [],
+      "status": "green",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 924,
+        "text": "## Product Phase 8 — Coding Agent / Scoped Delegation"
+      },
+      "evidence": [
+        {
+          "path": "docs/planning/p8/activation.md",
+          "sha256": "cbbb3d2d9813efe00e664911c7ed174e31d672853d440dbb90e5a31d7a4a50e8",
+          "line": 3,
+          "text": "Status: **OWNER APPROVED — ACTIVE**",
+          "status": "active",
+          "statusText": "Status: **OWNER APPROVED — ACTIVE**"
+        },
+        {
+          "path": "docs/planning/p8/phase-8-closeout.md",
+          "sha256": "c2aa81d1f5fd2e48334293546d435d285f964aa79f28caad7406bc707337604d",
+          "line": 4,
+          "text": "**Disposition:** **OWNER-CLOSED / GREEN / QUALIFIED FOR APPROVED PHASE 8 SCOPE**",
+          "status": "green",
+          "statusText": "**Disposition:** **OWNER-CLOSED / GREEN / QUALIFIED FOR APPROVED PHASE 8 SCOPE**"
+        },
+        {
+          "path": "docs/planning/p8/phase-8-plan.md",
+          "sha256": "2311cebd36c3ef6e6a771c417154ffd5be0a8e3589318b09b8ad0338021906a1",
+          "line": 3,
+          "text": "Status: **PRODUCT PHASE 8 OWNER-CLOSED / GREEN / QUALIFIED for approved 8A–8E scope at `0.8.47` source `bcc5cb8` (2026-10-10).** Original 8D P13 Not Green remains historical; c8-fix later qualified 8D at `0.8.33`. Phase 8E P14 qualified local coding-agent execution at `0.8.47`. See `docs/planning/p8/phase-8-closeout.md`. Phase 9 remains NOT ACTIVATED.",
+          "status": "not-green",
+          "statusText": "Status: **PRODUCT PHASE 8 OWNER-CLOSED / GREEN / QUALIFIED for approved 8A–8E scope at `0.8.47` source `bcc5cb8` (2026-10-10).** Original 8D P13 Not Green remains historical; c8-fix later qualified 8D at `0.8.33`. Phase 8E P14 qualified local coding-agent execution at `0.8.47`. See `docs/planning/p8/phase-8-closeout.md`. Phase 9 remains NOT ACTIVATED."
+        },
+        {
+          "path": "docs/planning/p8/phase-8b-plan.md",
+          "sha256": "8dc1ebcc0bb203a47489ce3906e3a3fd2ea78cd8be75574eca345867b3fb5122",
+          "line": 3,
+          "text": "Status: **HISTORICAL PLAN — PHASE 8B GREEN / QUALIFIED AT 0.8.13**",
+          "status": "green",
+          "statusText": "Status: **HISTORICAL PLAN — PHASE 8B GREEN / QUALIFIED AT 0.8.13**"
+        },
+        {
+          "path": "docs/planning/p8/phase-8c-plan.md",
+          "sha256": "e93807a3e2fbd22cce4872bd23ea8f017e4aae437d5dc6e834f9d426b64fd046",
+          "line": 3,
+          "text": "Status: **APPROVED / CURRENT SLICE**",
+          "status": "unknown",
+          "statusText": "Status: **APPROVED / CURRENT SLICE**"
+        },
+        {
+          "path": "docs/planning/p8/phase-8d-plan.md",
+          "sha256": "ff9871b4353ba420e8bfc7b17b07f81e5c952f6990a6075080191ba22f4d1fa6",
+          "line": 3,
+          "text": "Status: **8D GREEN / QUALIFIED at `0.8.33` source `8748cb4` through c8-fix P6; Product Phase 8 subsequently OWNER-CLOSED / GREEN at `0.8.47` on 2026-10-10.** Original P13 Not Green remains historical; see `docs/planning/p8/phase-8-closeout.md`.",
+          "status": "not-green",
+          "statusText": "Status: **8D GREEN / QUALIFIED at `0.8.33` source `8748cb4` through c8-fix P6; Product Phase 8 subsequently OWNER-CLOSED / GREEN at `0.8.47` on 2026-10-10.** Original P13 Not Green remains historical; see `docs/planning/p8/phase-8-closeout.md`."
+        },
+        {
+          "path": "docs/planning/p8/phase-8e-activation.md",
+          "sha256": "0ee100d94ff14000a98ce37c9334d1873f8fbdc7fe9dc7f8645fd85964ed6423",
+          "line": 3,
+          "text": "Status: **OWNER-ACTIVATED 2026-10-10 / P1 READY — NOT IMPLEMENTED OR QUALIFIED**",
+          "status": "not-implemented",
+          "statusText": "Status: **OWNER-ACTIVATED 2026-10-10 / P1 READY — NOT IMPLEMENTED OR QUALIFIED**"
+        },
+        {
+          "path": "docs/planning/p8/phase-8e-plan.md",
+          "sha256": "10f427c6371411d90311851127b6bc71b8ddda41dc7fa0b9af6eb394770a8886",
+          "line": 3,
+          "text": "Status: **GREEN / QUALIFIED 2026-10-10 at committed `0.8.47` source `bcc5cb8`; Product Phase 8 subsequently OWNER-CLOSED / GREEN for approved scope (2026-10-10).** This plan and its activation history are retained; see `docs/tasks/p8e/closeout.md` for observed scope and `docs/planning/p8/phase-8-closeout.md` for owner disposition. Phase 9 not activated.",
+          "status": "not-implemented",
+          "statusText": "Status: **GREEN / QUALIFIED 2026-10-10 at committed `0.8.47` source `bcc5cb8`; Product Phase 8 subsequently OWNER-CLOSED / GREEN for approved scope (2026-10-10).** This plan and its activation history are retained; see `docs/tasks/p8e/closeout.md` for observed scope and `docs/planning/p8/phase-8-closeout.md` for owner disposition. Phase 9 not activated."
+        },
+        {
+          "path": "docs/tasks/p8/closeout.md",
+          "sha256": "3283d9abb7e52fb44a31fd0e3238478bd9255c2bad28572f277a2a4b89b0866b",
+          "line": 3,
+          "text": "Status: **GREEN / QUALIFIED — supplemental final disposition below**",
+          "status": "green",
+          "statusText": "Status: **GREEN / QUALIFIED — supplemental final disposition below**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+      "kind": "phase",
+      "title": "Product Phase 9 — Developer Continuity / History",
+      "objective": "",
+      "order": 24,
+      "dependencies": [],
+      "links": [],
+      "status": "green",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 1046,
+        "text": "## Product Phase 9 — Developer Continuity / History"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 1047,
+          "text": "**Status: GREEN / QUALIFIED at exact source `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`, root version `0.9.35`; OWNER-CLOSED (2026-10-12).** Historical Phase 9A (`0.9.6`) and 9B (`0.9.13`) scoped Green remain unchanged. Old 9C P1–P9 exists, P10 was unexecuted and superseded, and original p9d P13 plus its first repair loop remain truthful Not Green records. Do not run original p9c.",
+          "status": "green",
+          "statusText": "**Status: GREEN / QUALIFIED at exact source `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`, root version `0.9.35`; OWNER-CLOSED (2026-10-12).**"
+        },
+        {
+          "path": "docs/planning/p9/activation.md",
+          "sha256": "b96806495ff1c6bf3c366429ce08bbf9b08da89299844a071c56cb521d07dd80",
+          "line": 4,
+          "text": "**Status:** **PHASE 9 ACTIVE / 9A IMPLEMENTATION OWNER-AUTHORIZED — NOT QUALIFIED**",
+          "status": "not-green",
+          "statusText": "**Status:** **PHASE 9 ACTIVE / 9A IMPLEMENTATION OWNER-AUTHORIZED — NOT QUALIFIED**"
+        },
+        {
+          "path": "docs/planning/p9/baseline.md",
+          "sha256": "b708eca25384582bf1ca8b6c451ecf3b4319a171ed6954d7cabf41e11e3c29ae",
+          "line": 3,
+          "text": "**Status: VERSION BASELINE ESTABLISHED / PHASE 9A SUBSEQUENTLY OWNER-ACTIVATED (2026-10-10)**",
+          "status": "active",
+          "statusText": "**Status: VERSION BASELINE ESTABLISHED / PHASE 9A SUBSEQUENTLY OWNER-ACTIVATED (2026-10-10)**"
+        },
+        {
+          "path": "docs/planning/p9/phase-9-closeout.md",
+          "sha256": "fa0da10003a752618d1154a55f72113d1476079ca994ae2c345ffe64f237162e",
+          "line": 4,
+          "text": "**Disposition:** **OWNER-CLOSED / GREEN / QUALIFIED FOR APPROVED ADR 0034 SCOPE**",
+          "status": "green",
+          "statusText": "**Disposition:** **OWNER-CLOSED / GREEN / QUALIFIED FOR APPROVED ADR 0034 SCOPE**"
+        },
+        {
+          "path": "docs/planning/p9/phase-9-plan.md",
+          "sha256": "5e6330214f9086e643833266c6d5d52e7cd556c1190244d97d3b4f881c8d5db8",
+          "line": 3,
+          "text": "**Status:** IMPLEMENTED THROUGH `0.9.35` / FINAL QUALIFICATION GREEN / PHASE 9 QUALIFIED / OWNER CLOSEOUT PENDING",
+          "status": "green",
+          "statusText": "**Status:** IMPLEMENTED THROUGH `0.9.35` / FINAL QUALIFICATION GREEN / PHASE 9 QUALIFIED / OWNER CLOSEOUT PENDING"
+        },
+        {
+          "path": "docs/planning/p9/phase-9b-activation.md",
+          "sha256": "27c17df6bbdddc2290a61a0637c06dd4d73be522351fb878cc0f067f77814d8f",
+          "line": 4,
+          "text": "**Decision:** **OWNER-APPROVED — PHASE 9B P1–P7 ACTIVATED FOR EXECUTION; NOT IMPLEMENTED OR QUALIFIED**",
+          "status": "not-implemented",
+          "statusText": "**Decision:** **OWNER-APPROVED — PHASE 9B P1–P7 ACTIVATED FOR EXECUTION; NOT IMPLEMENTED OR QUALIFIED**"
+        },
+        {
+          "path": "docs/planning/p9/phase-9b-plan.md",
+          "sha256": "49cda69a5b7c98a7b449da8c5b339c2f08fb1ab73c8e7349eae554236cdbde53",
+          "line": 3,
+          "text": "**Status:** OWNER-ACTIVATED / P1–P7 EXECUTED / BOUNDED 9B GREEN at `0.9.13` / `5aa0bac`; Phase 9 overall NOT QUALIFIED",
+          "status": "not-green",
+          "statusText": "**Status:** OWNER-ACTIVATED / P1–P7 EXECUTED / BOUNDED 9B GREEN at `0.9.13` / `5aa0bac`; Phase 9 overall NOT QUALIFIED"
+        },
+        {
+          "path": "docs/planning/p9/phase-9c-activation.md",
+          "sha256": "7215d9379375b8432a5a5ac52c44da78915b1aaff9f828e85d4faad0706120a8",
+          "line": 6,
+          "text": "**Decision:** **OWNER-APPROVED — PHASE 9C P1–P10 ACTIVATED FOR EXECUTION; NOT IMPLEMENTED OR QUALIFIED**",
+          "status": "not-implemented",
+          "statusText": "**Decision:** **OWNER-APPROVED — PHASE 9C P1–P10 ACTIVATED FOR EXECUTION; NOT IMPLEMENTED OR QUALIFIED**"
+        },
+        {
+          "path": "docs/planning/p9/phase-9c-plan.md",
+          "sha256": "0c16b5e66a3856bc090a445683c6448d08b0d31e27a2512c3e065966ab6094ca",
+          "line": 5,
+          "text": "**Status:** DESIGN REVIEWED / DOCUMENTATION AND PROMPT AUTHORING ONLY / NOT OWNER-ACTIVATED OR IMPLEMENTED",
+          "status": "active",
+          "statusText": "**Status:** DESIGN REVIEWED / DOCUMENTATION AND PROMPT AUTHORING ONLY / NOT OWNER-ACTIVATED OR IMPLEMENTED"
+        },
+        {
+          "path": "docs/planning/p9/phase-9d-activation.md",
+          "sha256": "c2eb8c35ac1603c72d6fc93c286057d0f6d1b112bfb483d8129dc815f20e81a1",
+          "line": 8,
+          "text": "**Disposition:** **OWNER-APPROVED FOR PHASE 9D P1–P13, CONDITIONED ON P1 REQUALIFICATION BEFORE P2**",
+          "status": "unknown",
+          "statusText": "**Disposition:** **OWNER-APPROVED FOR PHASE 9D P1–P13, CONDITIONED ON P1 REQUALIFICATION BEFORE P2**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "kind": "phase",
+      "title": "Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+      "objective": "",
+      "order": 25,
+      "dependencies": [],
+      "links": [],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 1058,
+        "text": "## Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 1059,
+          "text": "**Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREEN at committed `0.10.16` source `27ab84e` (2026-10-12) / NOT OWNER-CLOSED.** The exact-source aggregate passed, but direct Roadmap import and local checkpoint Chat planning failed in the real UI; see `docs/tasks/p10/closeout.md`. Phase 9 is owner-closed, the separate `/activate p10` authorized this stack, and the `0.10.0` baseline is historical. Turn existing phase planning into a visual checkpoint path with corrections and detached unscheduled Ideas/Issues. Select a checkpoint for in-place Software Map-style **left inspector** editing without a standalone page; a reusable project Chat remains visible alongside it. Planning Maps link to checkpoints but keep real architecture/basis/WorkItem authority.",
+          "status": "not-green",
+          "statusText": "**Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREEN at committed `0.10.16` source `27ab84e` (2026-10-12) / NOT OWNER-CLOSED.**"
+        },
+        {
+          "path": "docs/planning/p10/activation.md",
+          "sha256": "2571f23644c22e15e7867c89907a61fcec91f83eb1cbdb7e7d5ee6e6d534fe66",
+          "line": 4,
+          "text": "**Disposition:** **OWNER APPROVED / PHASE 10 ACTIVE FOR P1–P16 IMPLEMENTATION / NOT IMPLEMENTED OR QUALIFIED**",
+          "status": "not-implemented",
+          "statusText": "**Disposition:** **OWNER APPROVED / PHASE 10 ACTIVE FOR P1–P16 IMPLEMENTATION / NOT IMPLEMENTED OR QUALIFIED**"
+        },
+        {
+          "path": "docs/planning/p10/baseline.md",
+          "sha256": "02d22087a8beba2b0845dd5b9eb65a3836c531c0227da858b09d8e326fbf380e",
+          "line": 4,
+          "text": "**Status:** **COHERENT VERSION BASELINE ESTABLISHED / SUBSEQUENTLY OWNER-ACTIVATED 2026-10-12 / NOT IMPLEMENTED OR QUALIFIED**",
+          "status": "not-implemented",
+          "statusText": "**Status:** **COHERENT VERSION BASELINE ESTABLISHED / SUBSEQUENTLY OWNER-ACTIVATED 2026-10-12 / NOT IMPLEMENTED OR QUALIFIED**"
+        },
+        {
+          "path": "docs/planning/p10/c10-roadmap-create-sync-activation.md",
+          "sha256": "2dd65338038c9585197c2ae5b8277581144db0221736e184ea70a5319ab6bac8",
+          "line": 5,
+          "text": "**Disposition:** **OWNER-ACTIVATED FOR CORRECTION IMPLEMENTATION ONLY / NOT EXECUTED / NOT QUALIFIED / PHASE 10 NOT OWNER-CLOSED**",
+          "status": "not-green",
+          "statusText": "**Disposition:** **OWNER-ACTIVATED FOR CORRECTION IMPLEMENTATION ONLY / NOT EXECUTED / NOT QUALIFIED / PHASE 10 NOT OWNER-CLOSED**"
+        },
+        {
+          "path": "docs/planning/p10/phase-10-plan.md",
+          "sha256": "87267fdea4983bc6dd18b7649e47512c51c89b9c729f0dffce65b56db44ce032",
+          "line": 5,
+          "text": "**Status:** DESIGN APPROVED / P1–P16 OWNER-ACTIVATED / P1–P15 IMPLEMENTED / P16 NOT GREEN at committed `0.10.16` source `27ab84e` (2026-10-12); NOT OWNER-CLOSED",
+          "status": "not-green",
+          "statusText": "**Status:** DESIGN APPROVED / P1–P16 OWNER-ACTIVATED / P1–P15 IMPLEMENTED / P16 NOT GREEN at committed `0.10.16` source `27ab84e` (2026-10-12); NOT OWNER-CLOSED"
+        },
+        {
+          "path": "docs/tasks/p10/closeout.md",
+          "sha256": "8d35b0856161c337f73a8f960adf611cb3cf894d19710e3c3233e7329dd50330",
+          "line": 4,
+          "text": "**Disposition:** **NOT GREEN / NOT QUALIFIED.** P1–P15 implementation is retained; P16 found blocking live workflow gaps. This is not an owner closeout or Phase 11 activation.",
+          "status": "not-green",
+          "statusText": "**Disposition:** **NOT GREEN / NOT QUALIFIED.** P1–P15 implementation is retained; P16 found blocking live workflow gaps. This is not an owner closeout or Phase 11 activation."
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+      "kind": "phase",
+      "title": "Product Phase 11 — Human-Centered UI / Usability Qualification",
+      "objective": "",
+      "order": 26,
+      "dependencies": [],
+      "links": [],
+      "status": "not-implemented",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 1068,
+        "text": "## Product Phase 11 — Human-Centered UI / Usability Qualification"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 1069,
+          "text": "**Status: DESIGN APPROVED (ADR 0037), NOT ACTIVATED OR QUALIFIED.** Audit real developer tasks across Dope-owned panels and improve navigation, affordances, feedback and recovery with direct GUI evidence. Palette-only `c9-theme-fix` remains separate. Phase 11 requires separate activation after Phase 10.",
+          "status": "not-implemented",
+          "statusText": "**Status: DESIGN APPROVED (ADR 0037), NOT ACTIVATED OR QUALIFIED.**"
+        },
+        {
+          "path": "docs/planning/p11/panel-usability-matrix.md",
+          "sha256": "e469605b26d68704a5a9e3ed6ee5d48046dc85b846671ca1ebefdeb43cecfbed",
+          "line": 3,
+          "text": "**Status:** PLANNING CHECKLIST / NOT AUDITED / NO HUMAN TEST EVIDENCE",
+          "status": "unknown",
+          "statusText": "**Status:** PLANNING CHECKLIST / NOT AUDITED / NO HUMAN TEST EVIDENCE"
+        },
+        {
+          "path": "docs/planning/p11/phase-11-plan.md",
+          "sha256": "c1f3fe35bf14de1b0a990204e9f0c319b58e320be5202928955ec042ef691847",
+          "line": 3,
+          "text": "**Status:** DESIGN APPROVED / DOCUMENTATION ONLY / NOT ACTIVATED / NOT QUALIFIED",
+          "status": "not-green",
+          "statusText": "**Status:** DESIGN APPROVED / DOCUMENTATION ONLY / NOT ACTIVATED / NOT QUALIFIED"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-12",
+      "kind": "phase",
+      "title": "Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11)",
+      "objective": "",
+      "order": 27,
+      "dependencies": [],
+      "links": [],
+      "status": "unknown",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 1072,
+        "text": "## Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11)"
+      },
+      "evidence": []
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-map-canvas-priority-correction",
+      "kind": "correction",
+      "title": "October 2, 2026 — Phase 6 map canvas priority correction",
+      "objective": "",
+      "order": 28,
+      "dependencies": [],
+      "links": [],
+      "status": "unknown",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 1132,
+        "text": "## October 2, 2026 — Phase 6 map canvas priority correction"
+      },
+      "evidence": []
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "kind": "correction",
+      "title": "October 2, 2026 — Phase 6 Flow projection-contract correction",
+      "objective": "",
+      "order": 29,
+      "dependencies": [],
+      "links": [],
+      "status": "unknown",
+      "readOnly": true,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 1155,
+        "text": "## October 2, 2026 — Phase 6 Flow projection-contract correction"
+      },
+      "evidence": []
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#c9-codex-chat",
+      "kind": "correction",
+      "title": "c9-codex-chat — bounded subscription Chat correction (2026-10-12)",
+      "objective": "",
+      "order": 30,
+      "dependencies": [],
+      "links": [],
+      "status": "not-implemented",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+        "line": 1178,
+        "text": "## c9-codex-chat — bounded subscription Chat correction (2026-10-12)"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+          "line": 1179,
+          "text": "**APPROVED DESIGN / DOCUMENTS AND PROMPTS ONLY; NOT IMPLEMENTED OR QUALIFIED.** At unchanged coherent 0.9.23, add ordinary Chat support to the existing signed-in Codex AI Center connection using an independently authorized tool-free Responses conversational adapter. Preserve provider-neutral Chat/Interactive routing, one secure sign-in, shared Work/Codex usage reporting, existing Coding Agent execution/permissions, separate Chat and Work panels, hosted-data consent and no API-key fallback. Authority: ADR 0035; execution stack docs/tasks/c9-codex-chat/. Independently activated p9d is now qualified Green at `0.9.35` / `af3447ccc419cc9c06051dbd4046a9145d7bf0ae`, and is now owner-closed; keep the historical correction's fixed versions/evidence separate from p9d and do not assume they apply unchanged to the new `0.10.0` successor baseline. Phase 10 remains inactive.",
+          "status": "not-implemented",
+          "statusText": "**APPROVED DESIGN / DOCUMENTS AND PROMPTS ONLY; NOT IMPLEMENTED OR QUALIFIED.**"
+        }
+      ]
+    }
+  ],
+  "linkedDocument": {
+    "projectRoot": "/tmp/dope-c10-p9-SwltPi",
+    "projectId": "96eff3ae-49a0-4811-b526-0d71b4888c95",
+    "path": "docs/roadmap/mvp-roadmap.md",
+    "sourceHash": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+    "sections": [
+      {
+        "sectionKey": "foundation-spike-0",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0"
+      },
+      {
+        "sectionKey": "phase-1",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-1"
+      },
+      {
+        "sectionKey": "phase-2",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-2"
+      },
+      {
+        "sectionKey": "phase-3",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-3"
+      },
+      {
+        "sectionKey": "c4-architecture-discovery",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-architecture-discovery"
+      },
+      {
+        "sectionKey": "c4-smap-hierarchical-synthesis",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-hierarchical-synthesis"
+      },
+      {
+        "sectionKey": "c4-smap-gemini-provider",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-gemini-provider"
+      },
+      {
+        "sectionKey": "c4-synth-improvements",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-synth-improvements"
+      },
+      {
+        "sectionKey": "c4-synth-coverage-review",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-synth-coverage-review"
+      },
+      {
+        "sectionKey": "c4-smap-storage",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-storage"
+      },
+      {
+        "sectionKey": "c4-color-theme",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-color-theme"
+      },
+      {
+        "sectionKey": "c5-smap-readability",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c5-smap-readability"
+      },
+      {
+        "sectionKey": "phase-10",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+      },
+      {
+        "sectionKey": "phase-11",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11"
+      },
+      {
+        "sectionKey": "c9-codex-chat",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c9-codex-chat"
+      }
+    ],
+    "lastSynced": {
+      "sourceHash": "e380d57e0c1ec0b8d84982cb0199450dfd2967d101e4b08ab2ee1f81258800ba",
+      "roadmapRevision": 1,
+      "fields": [
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+          "title": "Foundation Spike 0 — Theia substrate qualification"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-1",
+          "title": "Product Phase 1 — IDE Alive"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-2",
+          "title": "Product Phase 2 — Project Mind"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-3",
+          "title": "Product Phase 3 — Planning"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-architecture-discovery",
+          "title": "Mandatory post-Phase-4 correction — `c4-architecture-discovery`"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-hierarchical-synthesis",
+          "title": "Mandatory pre-Phase-5 correction — `c4-smap-hierarchical-synthesis`"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-gemini-provider",
+          "title": "Mandatory pre-Phase-5 correction — `c4-smap-gemini-provider`"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-synth-improvements",
+          "title": "Mandatory pre-Phase-5 correction — `c4-synth-improvements`"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-synth-coverage-review",
+          "title": "Mandatory pre-Phase-5 correction — `c4-synth-coverage-review`"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-storage",
+          "title": "Mandatory pre-Phase-5 correction — `c4-smap-storage`"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c4-color-theme",
+          "title": "Mandatory pre-Phase-5 correction — `c4-color-theme`"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c5-smap-readability",
+          "title": "Pre-P11-rerun correction — `c5-smap-readability`"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "title": "Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+          "title": "Product Phase 11 — Human-Centered UI / Usability Qualification"
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#c9-codex-chat",
+          "title": "c9-codex-chat — bounded subscription Chat correction (2026-10-12)"
+        }
+      ]
+    },
+    "syncState": "synced"
+  }
+}

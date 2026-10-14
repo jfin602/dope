@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "projectId": "5f708752-f8d2-4d23-ba18-53b8fd76f529",
+  "projectRoot": "/tmp/dope-c10-p9-SwltPi",
+  "revision": 1,
+  "checkpoints": [
+    {
+      "id": "roadmap:ROADMAP.md#milestone-seed-catalog",
+      "kind": "milestone",
+      "title": "Milestone Seed catalog",
+      "objective": "Collect seed names.",
+      "order": 1,
+      "dependencies": [],
+      "links": [],
+      "status": "active",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+        "line": 3,
+        "text": "## Milestone Seed catalog"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+          "line": 3,
+          "text": "Status: **ACTIVE**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:ROADMAP.md#milestone-seed-catalog/checklist-count-tomato-seeds",
+      "kind": "milestone",
+      "title": "Count tomato seeds",
+      "objective": "",
+      "order": 1,
+      "dependencies": [],
+      "links": [],
+      "status": "unknown",
+      "readOnly": true,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+        "line": 11,
+        "text": "- [ ] Count tomato seeds"
+      },
+      "evidence": []
+    },
+    {
+      "id": "roadmap:ROADMAP.md#milestone-watering-schedule",
+      "kind": "milestone",
+      "title": "Milestone Watering schedule",
+      "objective": "Set a weekly plan.",
+      "order": 2,
+      "dependencies": [],
+      "links": [],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+        "line": 13,
+        "text": "## Milestone Watering schedule"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+          "line": 13,
+          "text": "Status: **NOT GREEN**",
+          "status": "not-green",
+          "statusText": "Status: **NOT GREEN**"
+        }
+      ]
+    }
+  ],
+  "linkedDocument": {
+    "projectRoot": "/tmp/dope-c10-p9-SwltPi",
+    "projectId": "5f708752-f8d2-4d23-ba18-53b8fd76f529",
+    "path": "ROADMAP.md",
+    "sourceHash": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+    "sections": [
+      {
+        "sectionKey": "milestone-seed-catalog",
+        "checkpointId": "roadmap:ROADMAP.md#milestone-seed-catalog"
+      },
+      {
+        "sectionKey": "milestone-watering-schedule",
+        "checkpointId": "roadmap:ROADMAP.md#milestone-watering-schedule"
+      }
+    ],
+    "lastSynced": {
+      "sourceHash": "93e0c66346c4090d9500d6a9fcae10f968409309fc03accc703937ee161db906",
+      "roadmapRevision": 1,
+      "fields": [
+        {
+          "checkpointId": "roadmap:ROADMAP.md#milestone-seed-catalog",
+          "title": "Milestone Seed catalog",
+          "objective": "Collect seed names.",
+          "order": 1,
+          "prose": "Keep each seed tagged."
+        },
+        {
+          "checkpointId": "roadmap:ROADMAP.md#milestone-watering-schedule",
+          "title": "Milestone Watering schedule",
+          "objective": "Set a weekly plan."
+        }
+      ]
+    },
+    "syncState": "synced"
+  }
+}

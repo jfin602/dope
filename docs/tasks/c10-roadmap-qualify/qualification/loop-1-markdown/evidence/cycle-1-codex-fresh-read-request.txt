@@ -1,0 +1,1 @@
+This is a NEW Codex CLI turn in the same disposable Git checkout after Dope approved a linked Roadmap edit. Read docs/roadmap/mvp-roadmap.md afresh from disk now, including its Product Phase 10 heading, Objective, Order, Prose, status, and source-owned narrative. Run sha256sum on that file and report the observed hash and exact Objective line. Do not modify files.

@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "projectId": "908bffe3-52b9-4f8d-bbed-09ae9acfc700",
+  "projectRoot": "/tmp/dope-c10-p9-SwltPi",
+  "revision": 7,
+  "checkpoints": [
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "kind": "phase",
+      "title": "Product Phase 10 — Codex Reviewed Planning",
+      "objective": "Dope approved this revision after Codex review.",
+      "order": 13,
+      "dependencies": [],
+      "links": [],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "8f3bb208c996b5d5f2d3ad578c4d884644e5ef798199a0653a787c443d66a00f",
+        "line": 3,
+        "text": "## Product Phase 10 — Codex Reviewed Planning"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "35e06c7bab7f16fe58c4192d869454dba3b9d1b3958fc0b0a323bcedc95f5cf6",
+          "line": 3,
+          "text": "Status: **NOT GREEN**",
+          "status": "not-green",
+          "statusText": "Status: **NOT GREEN**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+      "kind": "phase",
+      "title": "Product Phase 11 — Deferred Design",
+      "objective": "Remain inactive during P9 qualification.",
+      "order": 1,
+      "dependencies": [],
+      "links": [],
+      "status": "not-implemented",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap/mvp-roadmap.md",
+        "sha256": "8f3bb208c996b5d5f2d3ad578c4d884644e5ef798199a0653a787c443d66a00f",
+        "line": 11,
+        "text": "## Product Phase 11 — Deferred Design"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "sha256": "35e06c7bab7f16fe58c4192d869454dba3b9d1b3958fc0b0a323bcedc95f5cf6",
+          "line": 11,
+          "text": "Status: **NOT IMPLEMENTED**",
+          "status": "not-implemented",
+          "statusText": "Status: **NOT IMPLEMENTED**"
+        }
+      ]
+    }
+  ],
+  "linkedDocument": {
+    "projectRoot": "/tmp/dope-c10-p9-SwltPi",
+    "projectId": "908bffe3-52b9-4f8d-bbed-09ae9acfc700",
+    "path": "docs/roadmap/mvp-roadmap.md",
+    "sourceHash": "8f3bb208c996b5d5f2d3ad578c4d884644e5ef798199a0653a787c443d66a00f",
+    "sections": [
+      {
+        "sectionKey": "phase-10",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+      },
+      {
+        "sectionKey": "phase-11",
+        "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11"
+      }
+    ],
+    "lastSynced": {
+      "sourceHash": "8f3bb208c996b5d5f2d3ad578c4d884644e5ef798199a0653a787c443d66a00f",
+      "roadmapRevision": 7,
+      "fields": [
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "title": "Product Phase 10 — Codex Reviewed Planning",
+          "objective": "Dope approved this revision after Codex review.",
+          "order": 13,
+          "prose": "Codex confirmed the second shared-file cycle."
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+          "title": "Product Phase 11 — Deferred Design",
+          "objective": "Remain inactive during P9 qualification."
+        }
+      ]
+    },
+    "syncState": "synced"
+  }
+}

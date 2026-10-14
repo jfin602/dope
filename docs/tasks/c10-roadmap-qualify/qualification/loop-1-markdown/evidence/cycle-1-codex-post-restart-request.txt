@@ -1,0 +1,1 @@
+This is a fresh Codex CLI turn after Dope was restarted. Read docs/roadmap/mvp-roadmap.md from disk. Change only the unique Product Phase 10 `Order: 12` line to `Order: 13`; leave every other byte, the Not Green status, all narrative, .dope state, and Git commits unchanged. Read the file again and report the SHA-256 and exact changed line.
