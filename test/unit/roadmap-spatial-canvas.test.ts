@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import type { RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
 import type { RoadmapIndex } from '../../packages/project-intelligence/src/node/roadmap-store.ts';
 import { projectRoadmap } from '../../packages/project-intelligence/lib/roadmap-projection.js';
-import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapDetailAtZoom, roadmapEdgeHandles, roadmapSpatialLayout, roadmapSpatialNextId, roadmapVisibleGraph } from
+import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapDetailAtZoom, roadmapEdgeHandles, roadmapBranchPath, roadmapSpatialLayout, roadmapSpatialNextId, roadmapVisibleGraph } from
     '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 import { roadmapInitialCamera, roadmapInitialTarget } from '../../packages/theia-extension/src/browser/roadmap-viewport.ts';
 
@@ -32,6 +32,22 @@ test('only rendered connectors touching selection receive motion emphasis', () =
     const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
     assert.match(widget, /\(visible \? roadmapCanvasConnectors\(visible\) : \[\]\)\.map/);
     assert.match(widget, /roadmapConnectorTouchesSelection\(item, this\.selectedId\) \? ' dope-roadmap-edge-related' : ''/);
+});
+
+test('branch routes use the card gutter and duplicate membership segments are suppressed', () => {
+    const graph: RoadmapProjection = { projectId: 'project', revision: 1,
+        nodes: [node('phase', 'phase', 1),
+            { ...node('correction', 'correction', 2), phaseAssociation: { phaseId: 'phase', source: 'identifier' } }],
+        edges: [{ id: 'branch', from: 'phase', to: 'correction', kind: 'branch', label: 'Correction' }],
+        pools: { ideas: [], issues: [] }, diagnostics: [] };
+    const connectors = roadmapCanvasConnectors(graph);
+    assert.deepEqual(connectors.map(item => item.kind), ['membership']);
+    assert.equal(graph.edges.length, 1);
+    const route = roadmapBranchPath(204, 640, 372, 300, true);
+    assert.equal(route, 'M 204 640 L 204 614 L 444 614 L 444 300 L 372 300');
+    assert.ok(444 > 372); // The long vertical segment is outside the correction card.
+    assert.equal(roadmapBranchPath(204, 800, 372, 980, false),
+        'M 204 800 L 204 826 L 444 826 L 444 980 L 372 980');
 });
 
 test('hidden implementation never reserves layout space and disclosure preserves strategic coordinates', () => {
@@ -103,8 +119,8 @@ test('dense expanded prompts have separate cards without moving phase columns', 
     assert.equal(graph.edges.some(edge => edge.to === 'orphan'), false);
     assert.deepEqual(graph.edges.map(edge => [edge.from, edge.to]), JSON.parse(original).edges.map((edge: {from: string; to: string}) => [edge.from, edge.to]));
     assert.deepEqual(roadmapEdgeHandles(graph.edges[0], positions), { sourceHandle: 'bottom', targetHandle: 'bottom' });
-    assert.deepEqual(roadmapEdgeHandles(graph.edges[1], positions), { sourceHandle: 'top', targetHandle: 'bottom' });
-    assert.deepEqual(roadmapEdgeHandles(disclosed.edges[2], positions), { sourceHandle: 'bottom', targetHandle: 'top' });
+    assert.deepEqual(roadmapEdgeHandles(graph.edges[1], positions), { sourceHandle: 'top', targetHandle: 'right-target' });
+    assert.deepEqual(roadmapEdgeHandles(disclosed.edges[2], positions), { sourceHandle: 'bottom', targetHandle: 'right-target' });
 });
 
 test('Roadmap mounts React Flow with selection, pan, zoom and fit but no graph mutation gestures or Chat docking', () => {
@@ -151,7 +167,8 @@ test('rendered Tab order follows the same branch traversal as arrow keys', () =>
     assert.equal(roadmapSpatialNextId(ids, positions, 'phase-1', 'ArrowUp'), 'correction');
     assert.equal(roadmapSpatialNextId(ids, positions, 'phase-2', 'Home'), 'phase-1');
     assert.equal(roadmapSpatialNextId(ids, positions, 'phase-1', 'End'), 'phase-2');
-    assert.match(widget, /\.\.\.roadmapEdgeHandles\(item, displayed\)/);
+    assert.match(widget, /const handles = roadmapEdgeHandles\(item, displayed\)/);
+    assert.match(widget, /type: handles\.targetHandle === 'right-target' \? 'branchRoute' : 'smoothstep'/);
 });
 
 test('world, phase and checkpoint detail keep implementation closed until explicit disclosure', () => {
@@ -249,7 +266,7 @@ test('unresolved corrections stay detached and connector classes retain visible 
         assert.deepEqual(roadmapEdgeHandles(edges.find(edge => edge.kind === 'dependency')!, positions),
             { sourceHandle: 'bottom', targetHandle: 'bottom' });
         assert.deepEqual(roadmapEdgeHandles(edges.find(edge => edge.kind === 'membership')!, positions),
-            { sourceHandle: 'top', targetHandle: 'bottom' });
+            { sourceHandle: 'top', targetHandle: 'right-target' });
         assert.ok(!edges.some(edge => edge.to === stack.id || edge.to === prompt.id));
     }
     assert.equal(graph.edges.length, 4);

@@ -69,6 +69,10 @@ export function roadmapCanvasConnectors(projection: Pick<RoadmapProjection, 'nod
     });
     for (const edge of projection.edges) if (visible(edge.from) && visible(edge.to)) {
         const kind = edge.kind === 'dependency' || edge.id.startsWith('dependency:') ? 'dependency' : 'containment';
+        // A source-backed branch and the presentation membership may name the same pair.
+        // Draw that relationship once; the stored edge remains intact in the projection.
+        if (kind === 'containment' && connectors.some(item => item.kind === 'membership' &&
+            item.from === edge.from && item.to === edge.to)) continue;
         connectors.push({ id: `view:${edge.id}`, from: edge.from, to: edge.to, kind,
             label: kind === 'dependency' ? `Stored Roadmap dependency: ${edge.label}` :
                 `Supporting task or prompt: ${edge.label}` });
@@ -196,9 +200,18 @@ export function roadmapEdgeHandles(edge: { from: string; to: string; kind: Roadm
     if (edge.kind === 'dependency' && from && to && Math.abs(to.y - from.y) <= 20)
         return { sourceHandle: 'bottom', targetHandle: 'bottom' };
     if (edge.kind !== 'progression' && edge.kind !== 'dependency' && from && to && Math.abs(to.y - from.y) > 20)
-        return to.y < from.y ? { sourceHandle: 'top', targetHandle: 'bottom' } :
-            { sourceHandle: 'bottom', targetHandle: 'top' };
+        return to.y < from.y ? { sourceHandle: 'top', targetHandle: 'right-target' } :
+            { sourceHandle: 'bottom', targetHandle: 'right-target' };
     return { sourceHandle: 'right', targetHandle: 'left' };
+}
+
+/** Orthogonal branch bus outside the card column; React Flow supplies measured handle coordinates. */
+export function roadmapBranchPath(sourceX: number, sourceY: number, targetX: number, targetY: number,
+    upper: boolean): string {
+    const clearance = upper ? -26 : 26;
+    const gutter = Math.max(sourceX + 240, targetX + 28);
+    return `M ${sourceX} ${sourceY} L ${sourceX} ${sourceY + clearance} L ${gutter} ${sourceY + clearance} ` +
+        `L ${gutter} ${targetY} L ${targetX} ${targetY}`;
 }
 
 /** Stable phase columns with correction space above and supporting work below. */

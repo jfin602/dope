@@ -19,6 +19,14 @@ export const roadmapViewportKey = (uri: string, projectId: string): string =>
 export const roadmapLegacyViewportKey = (uri: string, projectId: string): string =>
     `dope.roadmap.viewport.v1:${encodeURIComponent(uri)}:${encodeURIComponent(projectId)}`;
 
+/** React Flow also reports camera changes caused by mounting and graph measurement. */
+export function roadmapUserViewportEvent(value: unknown): boolean {
+    if (!value || typeof value !== 'object') return false;
+    const event = value as { isTrusted?: unknown; type?: unknown };
+    return event.isTrusted === true && typeof event.type === 'string' &&
+        /^(mouse|pointer|touch|wheel|key)/.test(event.type);
+}
+
 export function roadmapViewportSnapshot(projectId: string, viewport: RoadmapViewportState['viewport'],
     selectedId: string | undefined, expanded: ReadonlySet<string>, collapsed: ReadonlySet<string>,
     placements: ReadonlyMap<string, { x: number; y: number }>): RoadmapViewportState {

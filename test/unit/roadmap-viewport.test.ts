@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction,
-    roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot } from
+    roadmapUserViewportEvent, roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot } from
     '../../packages/theia-extension/src/browser/roadmap-viewport.ts';
 
 const widget = readFileSync(resolve(import.meta.dirname, '../../packages/theia-extension/src/browser/roadmap-canvas-widget.ts'), 'utf8');
@@ -84,11 +84,21 @@ test('widget initializes after project projection and saves only intentional cam
     assert.match(widget, /this\.projection = projectRoadmapTasks\(index, tasks, owners/);
     assert.match(widget, /this\.queueInitialCamera\(\)/);
     assert.match(widget, /generation === this\.cameraGeneration && uri === this\.projectUri && flow === this\.flow/);
-    assert.match(widget, /cameraGeneration !== this\.cameraGeneration \|\|[\s\S]*?cameraProjectUri !== this\.projectUri\) return;[\s\S]*?if \(event\) this\.recordUserCamera\(viewport\)/);
+    assert.match(widget, /cameraGeneration !== this\.cameraGeneration \|\|[\s\S]*?cameraProjectUri !== this\.projectUri\) return;[\s\S]*?if \(roadmapUserViewportEvent\(event\)\) this\.recordUserCamera\(viewport\)/);
     assert.match(widget, /flow !== this\.flow \|\| generation !== this\.cameraGeneration \|\| uri !== this\.projectUri/);
     assert.match(widget, /this\.displayedViewport = camera;[\s\S]*?void this\.flow\.setViewport\(camera\)/);
     assert.match(widget, /if \(this\.flow\) this\.displayedViewport = this\.flow\.getViewport\(\)/);
     assert.doesNotMatch(widget, /void this\.flow\.fitView\(\{ padding: 0\.12 \}\)/);
+});
+
+test('automatic graph measurement cannot become saved user camera intent', () => {
+    assert.equal(roadmapUserViewportEvent(undefined), false);
+    assert.equal(roadmapUserViewportEvent({ type: 'zoom', isTrusted: true }), false);
+    assert.equal(roadmapUserViewportEvent({ type: 'wheel', isTrusted: false }), false);
+    assert.equal(roadmapUserViewportEvent({ type: 'wheel', isTrusted: true }), true);
+    assert.equal(roadmapUserViewportEvent({ type: 'pointerup', isTrusted: true }), true);
+    assert.match(widget, /if \(roadmapUserViewportEvent\(event\)\) this\.recordUserCamera\(viewport\)/);
+    assert.match(widget, /this\.automaticCamera = camera;[\s\S]*?this\.flow\.setViewport\(camera\)/);
 });
 
 test('keyboard navigation has pan and arrangement equivalents without overriding ordinary selection', () => {

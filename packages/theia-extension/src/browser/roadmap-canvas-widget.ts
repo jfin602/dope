@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { ReactFlow, Background, Handle, Position, MarkerType, type Edge, type Node, type NodeChange, type ReactFlowInstance } from '@xyflow/react';
+import { ReactFlow, Background, BaseEdge, Handle, Position, MarkerType, type Edge, type EdgeProps, type Node, type NodeChange, type ReactFlowInstance } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { BaseWidget, Message, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
@@ -15,12 +15,12 @@ import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
-import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapDetailAtZoom, roadmapVisibleGraph,
+import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
-import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction,
+import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapUserViewportEvent,
     roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot,
     type RoadmapViewportState } from './roadmap-viewport';
 import './dope.css';
@@ -32,6 +32,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement(Handle, { id: 'left', type: 'target', position: Position.Left, isConnectable: false }),
         React.createElement(Handle, { id: 'top', type: 'target', position: Position.Top, isConnectable: false }),
         React.createElement(Handle, { id: 'bottom', type: 'target', position: Position.Bottom, isConnectable: false }),
+        React.createElement(Handle, { id: 'right-target', type: 'target', position: Position.Right, isConnectable: false }),
         React.createElement('button', { type: 'button', className: `dope-roadmap-node dope-roadmap-status-${item.status}`,
             'data-checkpoint-id': item.id, 'aria-current': data.selected ? 'true' : undefined,
             'aria-label': `${item.kind}: ${item.title}; ${item.statusLabel}${data.relation ? `; ${data.relation}` : ''}${data.omitted ? `; ${data.omitted} prompts hidden` : ''}`,
@@ -51,6 +52,13 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement(Handle, { id: 'bottom', type: 'source', position: Position.Bottom, isConnectable: false }));
 }
 const roadmapNodeTypes = { checkpoint: RoadmapNode };
+
+function RoadmapBranchEdge(props: EdgeProps): React.ReactElement {
+    return React.createElement(BaseEdge, { id: props.id,
+        path: roadmapBranchPath(props.sourceX, props.sourceY, props.targetX, props.targetY,
+            props.sourceY > props.targetY), markerEnd: props.markerEnd, style: props.style });
+}
+const roadmapEdgeTypes = { branchRoute: RoadmapBranchEdge };
 
 export const ROADMAP_CANVAS_ID = 'dope-roadmap-canvas';
 
@@ -121,6 +129,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private viewport?: RoadmapViewportState['viewport'];
     private displayedViewport?: RoadmapViewportState['viewport'];
     private initialCameraPending = false;
+    private automaticCamera?: RoadmapViewportState['viewport'];
     private cameraGeneration = 0;
     private readonly placements = new Map<string, { x: number; y: number }>();
     private saveTimer?: ReturnType<typeof setTimeout>;
@@ -384,6 +393,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.viewport = state.viewport;
                 this.displayedViewport = state.viewport;
                 this.initialCameraPending = !state.viewport;
+                this.automaticCamera = undefined;
                 ++this.cameraGeneration;
                 this.expanded.clear(); this.collapsed.clear(); this.placements.clear();
                 state.expanded.forEach(id => this.expanded.add(id));
@@ -626,15 +636,17 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const statuses = new Map(visible?.nodes.map(node => [node.id, node.status]) ?? []);
         const edges: Edge[] = (visible ? roadmapCanvasConnectors(visible) : []).map(item => {
             const status = roadmapEdgeStatus(statuses.get(item.from), statuses.get(item.to));
+            const handles = roadmapEdgeHandles(item, displayed);
             return { id: item.id, source: item.from, target: item.to,
-                ...roadmapEdgeHandles(item, displayed),
-                type: 'smoothstep', selectable: false, zIndex: 1,
+                ...handles,
+                type: handles.targetHandle === 'right-target' ? 'branchRoute' : 'smoothstep',
+                selectable: false, zIndex: 1,
                 ...(item.kind === 'dependency' ? { markerEnd: { type: MarkerType.ArrowClosed } } : {}),
                 ariaLabel: `${item.label}; ${titles.get(item.from) ?? item.from} to ${titles.get(item.to) ?? item.to}; endpoint status ${status}`,
                 className: `dope-roadmap-edge dope-roadmap-edge-${item.kind}${item.kind === 'dependency' ? ` dope-roadmap-edge-${status}` : ''}${roadmapConnectorTouchesSelection(item, this.selectedId) ? ' dope-roadmap-edge-related' : ''}` };
         });
         this.root.render(React.createElement(ReactFlow, {
-            id: 'dope-roadmap-flow', nodes, edges, nodeTypes: roadmapNodeTypes,
+            id: 'dope-roadmap-flow', nodes, edges, nodeTypes: roadmapNodeTypes, edgeTypes: roadmapEdgeTypes,
             defaultViewport: this.displayedViewport ?? { x: 20, y: 20, zoom: 0.85 }, minZoom: 0.2, maxZoom: 2,
             ...roadmapGestures(this.arranging), elementsSelectable: true,
             nodesFocusable: false, edgesFocusable: false,
@@ -661,14 +673,22 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 if (this.viewport) void flow.setViewport(this.viewport);
                 this.queueInitialCamera(); },
             onMoveStart: (event: unknown) => {
-                if (event && cameraGeneration === this.cameraGeneration && cameraProjectUri === this.projectUri)
+                if (roadmapUserViewportEvent(event) && cameraGeneration === this.cameraGeneration && cameraProjectUri === this.projectUri)
                     this.initialCameraPending = false;
             },
             onMoveEnd: (event: unknown, viewport: { x: number; y: number; zoom: number }) => {
                 if (!this.projectId || !this.projectUri || cameraGeneration !== this.cameraGeneration ||
                     cameraProjectUri !== this.projectUri) return;
-                this.displayedViewport = { ...viewport };
-                if (event) this.recordUserCamera(viewport);
+                if (roadmapUserViewportEvent(event)) this.recordUserCamera(viewport);
+                else if (!this.viewport && this.automaticCamera &&
+                    (viewport.x !== this.automaticCamera.x || viewport.y !== this.automaticCamera.y ||
+                        viewport.zoom !== this.automaticCamera.zoom)) {
+                    // Graph measurement is allowed to update React Flow, but not to replace the
+                    // readable first camera before the developer navigates deliberately.
+                    const camera = this.automaticCamera;
+                    if (this.flow) void this.flow.setViewport(camera);
+                    return;
+                } else this.displayedViewport = { ...viewport };
                 const next = roadmapDetailAtZoom(viewport.zoom, this.detail);
                 if (next !== this.detail) { this.detail = next; this.renderFlow(); }
             },
@@ -696,6 +716,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (!position) return;
         const camera = roadmapInitialCamera(position, this.stage.clientWidth, this.stage.clientHeight);
         this.initialCameraPending = false;
+        this.automaticCamera = camera;
         this.displayedViewport = camera;
         this.detail = roadmapDetailAtZoom(camera.zoom, this.detail);
         void this.flow.setViewport(camera);
@@ -704,6 +725,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private recordUserCamera(camera = this.flow?.getViewport()): void {
         if (!camera || !this.projectId || !this.projectUri) return;
         this.initialCameraPending = false;
+        this.automaticCamera = undefined;
         this.displayedViewport = { ...camera };
         if (!this.viewport || this.viewport.x !== camera.x || this.viewport.y !== camera.y || this.viewport.zoom !== camera.zoom) {
             this.viewport = { ...camera };
