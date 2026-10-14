@@ -1,0 +1,3 @@
+before 10 roadmap:docs/roadmap/mvp-roadmap.md#phase-10 External overlap must be reviewed. true
+interrupted Error: P9 injected interruption after durable pending owner write
+after 11 pending-sync prepared External overlap must be reviewed.
