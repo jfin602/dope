@@ -1,7 +1,7 @@
 # /prompt-ass — c10-horizontal-color (revised full-canvas scope)
 
 **Date:** 2026-10-13. **Status:** Original P1–P5 implemented and P6 handoff historically executed; new P6–P11 implementation/evidence continuation AUTHORED / NOT EXECUTED, unchanged `0.10.16`; Phase 10 NOT GREEN.
-**Baseline:** `c10-roadmap-qualify` P1–P8 published; manual P9–P14 not qualified; last docs commit `628053adb1881a7277d333305cd6ee8ef466673c`. No published `c10-horizontal-color` implementation checkpoint; local private runner history must be checked before renumbering its former P3 closeout.
+**Historical baseline:** `628053adb1881a7277d333305cd6ee8ef466673c` was the initial authoring point, before the subsequent P1–P5 commits and original P6 handoff. P9 has since completed three cycles and is Not Green. The original six-prompt assessment below is historical; the appended P6–P11 assessment supersedes it for new execution.
 
 ## Grounded code seams and UX problem
 
@@ -14,7 +14,7 @@ The user-supplied GUI screenshot shows the Roadmap React Flow canvas squeezed be
 - `roadmap-inspector-widget.ts` currently owns the editable left-sidebar presentation bound to `RoadmapInspectorModel`. Editing uses `ProjectPlanningActions` preview, approval, undo; share that model/view behavior with the overlay, do not clone the mutation logic. `frontend-module.ts` binds both Roadmap widget and inspector view; preserve a coherent command route and avoid duplicate widget controllers.
 - Existing tests `roadmap-spatial-canvas.test.ts`, `roadmap-viewport.test.ts`, `roadmap-canvas.test.ts`, `roadmap-create-ui.test.ts`, `roadmap-inspector.test.ts`, `roadmap-chat-panel.test.ts` and document-sync/relink/recovery tests protect the dependent workflows.
 
-## Six-prompt split and effort
+## Historical initial six-prompt split and effort (completed)
 
 1. **P1 — layout (High/T2).** Monotonic horizontal phase path, dense above/below branches and v1 saved placement safety. Existing tests primarily spatial/viewport/keyboard.
 2. **P2 — status grammar (Medium/T1).** Color from six canonical statuses + accessible labels. Existing canvas/status/theme tests.
