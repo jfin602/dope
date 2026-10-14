@@ -1,6 +1,6 @@
 # /prompt-plan — c10-horizontal-color (six-prompt prequalification redesign)
 
-**Status:** approved documentation/prompt authoring; product NOT implemented by this revision; final manual qualification NOT GREEN. **Version:** `0.10.16` unchanged.
+**Status:** Historical P1–P5 implemented; prior P6 handoff archived, new P6–P11 continuation AUTHORED / NOT IMPLEMENTED, manual final Phase 10 qualification NOT GREEN. **Version:** `0.10.16` unchanged.
 **Local preflight:** The published GitHub branch has no `c10-horizontal-color` task implementation commits at `628053adb1881a7277d333305cd6ee8ef466673c`. This does NOT guarantee no unpushed local checkpoint. If old P3 ran, STOP before renumbering and reconcile runner/Git history without discarding work.
 
 ## Locked product behavior
@@ -48,3 +48,18 @@ Inspect `dope.css` and status token/style source: six status classes currently s
 Draw static, connected, readable phase/progression, correction-membership, support and actual dependency lines first. If adding motion, prefer CSS/renderer-native low-cost gentle path animation *only* on a demonstrably active route and short selected/expand transitions; honor `prefers-reduced-motion`, avoid distracting perpetual particles/reflow and benchmark dense graph responsiveness. Test semantic zoom, pan and resize, arrow/keyboard selection and narrow center Chat splits.
 
 Use existing P9 source/import and P12 browser/native visual cycles with P13 no-authority negative and P14 sole exact-source full aggregate. Narrow focused tests include `roadmap-spatial-canvas`, `roadmap-canvas`, `roadmap-status-truth`, `roadmap-viewport`, plus targeted import/discovery/semantic-projection assertions. Preserve existing Chat, linked Markdown ownership, completed P1–P6/old closeouts, unchanged version and developer work.
+
+## /prompt-plan — implementation continuation after original P6 evidence
+
+| New task | Exact source owner | Focused tests / build | Failure mode / guard |
+| --- | --- | --- | --- |
+| P6 convention membership | Project-intelligence Markdown/import, runner task source and `roadmap-projection.ts` | Existing `roadmap-import`, `roadmap-create-sync-integration` / small new association cases; build project-intelligence before compiled consumers | Missing/conflicting or accidental c100 parent => visible diagnostic; no canonical dependency write |
+| P7 connected lanes | `roadmap-canvas-model.ts` and `roadmap-canvas-widget.ts` React Flow edge/node projection | `roadmap-spatial-canvas`, `roadmap-canvas` with actual Markdown/c10 branches and zoom; changed Theia extension build | No edges without dependencies; fake canonical/Green line; clipped/nonvisible endpoints, collisions |
+| P8 full-card colors | `dope.css`, node/status class, semantic tokens | `roadmap-canvas`, `roadmap-status-truth` and `dope-theme` only if shared tokens affected | Neutral full card, theme override, hover/selection erasing status, waived as Green |
+| P9 initial viewport | `roadmap-canvas-widget.ts` `onInit` / `fitView`, `roadmap-viewport.ts`, actionable target helper | `roadmap-viewport`, `roadmap-spatial-canvas`, smallest first-mount lifecycle assertion | Auto fit-all persisted, false intentional camera, reset on sync/overlays/split/restart, project switch |
+| P10 restrained motion | `dope.css`, actual visual edge/selection classification | Targeted `roadmap-canvas` style assertions, reduced-motion fallback | Distracting perpetual animation, low contrast, animation of false Green, unnecessary render loops |
+| P11 UI evidence | Actual Dope browser + independently controllable Electron, P9 real imported source | T3 screenshots with SHA, dark/light/reduced motion/readability and Focus/refresh/restart; NO full aggregate | Cannot claim visual pass from source-only CSS tests or headless build; write Not Green/Evidence Gap honestly |
+
+**Producer/consumer order:** finish source-derived membership before lane geometry; draw visible static lines before styling them; preserve all user/project and status invariants before changing camera; motion uses already-stable layout/status/edge classes. Build only the changed package consumers needed for focused tests; don't rerun all package tests in each prompt. Full app `npm run check` still reserved for independent P14 final source. Test actual imported `docs/roadmap/mvp-roadmap.md` (31 checkpoints) plus negatives (c100, absent parent, explicit conflict, multiple corrections); preserve nine diagnostic classes rather than declaring them gone. P11 should report the exact result in the living `closeout.md` and retain previous P6 evidence in `history/`.
+
+**Runner grammar/historical ownership:** The old P6 handoff (commit `ddbac418` with noncanonical subject) was archived verbatim as `history/P6-original-presentation-implementation-closeout.txt` and `history/P6-original-closeout.md`. It is not one of the new root executable prompts. Newly authored root P6–P10 are the only pending implementation stages; P11 is the one root closeout and has `Browser required: yes.` No edits to historical P1–P5 prompt content; verify safe local Git prefix and dirty tree before resuming. Do not write fictional T3 result until GUI proof exists.
