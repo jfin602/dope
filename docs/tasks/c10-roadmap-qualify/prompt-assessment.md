@@ -1,6 +1,6 @@
 # /prompt-ass — c10-roadmap-qualify
 
-**Status:** P1–P8 IMPLEMENTED/COMMITTED on GitHub through `bcf2b628f`; manual browser qualification P9–P14 pending / NOT GREEN
+**Status:** P1–P8 IMPLEMENTED/COMMITTED through `bcf2b628f`, followed by `c10-horizontal-color` implementation P1–P6 through `ddbac418`; manual browser qualification P9–P14 remains pending / NOT GREEN
 **Date:** 2026-10-13 (America/Chicago)
 **Entry:** P19 `c10-roadmap-create-sync` tested product source `71d91efb3668e57816bb031f82ab309acea17cfc`, evidence-only commit `c620bc0a3be714b7dc329dc5c872a064b1f8003a`, package `0.10.16`. Exact aggregate **671/671 and browser/Electron builds PASS**, but P19 **NOT GREEN**. P16 predecessor NOT GREEN. Actual local Git/worktree status was not independently observed during prompt authoring.
 **Authority:** ADR 0036 including 2026-10-13 compact-intent and supported-field amendment, current ADR 0016, ADR 0025/28/29, ADR 0037, `docs/planning/p10/phase-10-plan.md`, `docs/workflow.md`, `BOOT.md`, `AGENTS.md`, P19 closeout.
@@ -63,6 +63,10 @@ The manual **P12/P13 T3** operators must demonstrate a controllable/capturable n
 Eight now-committed runner implementation/integration tasks (target <=8 minutes, 10 soft / 15 hard); source-aware safety and T2 integration may justify limited extra. Manual P9–P13 own browser-led family qualification, each capped at three focused repair cycles; P14 alone owns the final full `npm run check` and terminal decision. The manual prompts are outside root runner discovery and carry no synthetic runner completion checkpoints. Focused tests use actual existing `test/unit/roadmap-*.test.ts` and directly affected Chat/Store/Map suites; tests importing compiled `@dope/*/lib` need only changed package output rebuilt in dependency order, not `npm run build:extension` for every prompt. Register new tests in root `test:product` once. Final `npm run check` includes typecheck, tests, browser/Electron builds; run once per final candidate after changes. Runner validator must be executed locally after writing stack; static consistency alone is not runtime validation.
 
 **Runner grammar preserved:** only the root `P1`–`P9` files are runner-discovered and contiguous, with root P9 the one browser-required closeout **handoff**. P1–P8 are committed. Manual `manual/P9-*.md` through `manual/P14-*.md` are distinct, individually executed browser-tool instructions and NOT runner-discovered; manual P14 solely owns the real final closeout. No separate `/activate`, runner parsing changes, fabricated checkpoint commits, or duplicate final decisions.
+
+## Latest prequalification source and overlap correction
+
+On GitHub main through `ddbac418` the full-editor horizontal correction P1–P6 is committed, with P6 explicitly **implementation-only**. The five manual families stay P9 (real Codex/shared Markdown source correctness), P10 (real local action/approval and manual/Chat greenfield correctness), P11 (real 16K/32K/64K contexts and measured failure vs unattempted classification), P12 (browser/native full-editor UI, overlay focus, Chat mobility and correctly scoped v1 migration), P13 (cross-owner denial, no false Green, process/egress). P14 alone closes the exact-source correction. Shared readiness comes before manual P9 without adding a sixth family. One cycle is a family pass with repair, not each failing check. Preserve unaffected live evidence with explicit source/seam justification; do not repeat P9's full conflict/relink workflow at P13 or P10's actual model/greenfield mutation at P12.
 
 ## Five independent manual gate-family loops — approved routing
 

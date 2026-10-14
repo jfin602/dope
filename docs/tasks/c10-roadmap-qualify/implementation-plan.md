@@ -1,6 +1,6 @@
 # /prompt-plan — c10-roadmap-qualify
 
-**Status:** P1–P8 runner prompts committed through `bcf2b628f`; manual P9–P14 browser qualification planned, NOT GREEN; NO SEPARATE ACTIVATION
+**Status:** P1–P8 implementation committed through `bcf2b628f`, plus horizontal/full-canvas correction P1–P6 committed through `ddbac418`; manual P9–P14 pending / NOT GREEN; NO SEPARATE ACTIVATION
 **Date:** 2026-10-13 (America/Chicago)
 **Entry source:** `71d91efb3668e57816bb031f82ab309acea17cfc` product and `c620bc0a3be714b7dc329dc5c872a064b1f8003a` evidence commit; current GitHub main must be reconciled with actual local Git HEAD and all project files before mutation.
 **Version:** unchanged `0.10.16`. **Evidence:** P19 671/671/tests+builds PASS, manual NOT GREEN, P16 NOT GREEN.
@@ -58,6 +58,10 @@ Do not lock the preferred context in P2. Manual P11 compares **16K / 32K / 64K l
 Explicitly keep Phase 10 Not Green and Phase 11/12 inactive. Source-backed fields are editable only with deterministic unique mapped lines (e.g. `Objective:`); historic Dope narrative sections are not automatically supported. A separate preview/approval is required for any structural conversion; it is not a loophole for silent insertion. Model output may supply an allowed intent/value, not authority IDs, hash, arbitrary paths or direct write privileges. Dope retains checked `ProjectPlanningActions` apply, same normal Chat, source-hash CAS, no hosted fallback, no automatic agent/work launch.
 
 P1–P8 were runner-owned implementation/integration (focused checks only); manual P9–P13 now independently exercise five browser qualification families with up to three focused repair cycles each. Manual P14 owns one complete `npm run check` on independently committed exact product candidate. The root check already includes typecheck, product tests, browser and Electron builds: no duplicate commands on unchanged final candidate. One test registration in `test:product` per new test. No local/manual qualification, process commands, repository reset, manifest update, or test-run claim from authoring these files. The root P9 text is a runner-compatibility closeout handoff, not the final verdict; the six `manual/P9`–`manual/P14` Markdown prompts are outside runner discovery and require no runner checkpoint commits.
+
+## Latest implementation baseline and work-owner split
+
+`c10-horizontal-color` P1–P6 has now finished implementation with closeout at `ddbac418` and P1–P5 actual product implementation `f5b705691` (unchanged `0.10.16`). The qualification matrix must use this horizontal six-status/full-editor/overlay source, NOT assume the older vertical layout, nor call P6's passing focused tests live Green. P9 owns external Markdown semantics and Codex CLI round-trip; P10 owns local-model approval and greenfield file persistence; P11 owns comparative profile measurement (including observed resource failure versus not-tested gap); P12 owns browser/native presentation, overlay/dock UX, v1 selection/disclosure migration with **legacy vertical coordinates not imported**; P13 owns cross-owner denial and whole-app egress. Reuse evidence with source/hash/seam checks, not repeated entire workflows. P14 requalifies invalidated proofs and runs the final full aggregate once on stable source.
 
 ## Manual browser loop efficiency and evidence law (2026-10-13)
 

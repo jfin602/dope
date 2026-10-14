@@ -19,7 +19,7 @@
 | [P8 — Integration](P8-qualification-integration.txt) | Cross-owner/adversarial and shared-Markdown handoff regression integration | T2 | GPT-6 Sol High | no |
 | [P9 — Runner handoff](P9-roadmap-qualification-closeout.txt) | **Manual browser-required handoff only; see manual P9–P14 below** | T3 | GPT-6 Sol High | **yes** |
 
-## Adaptive local context — default chosen in P9
+## Adaptive local context — default evaluated in manual P11
 
 P2 removes the fixed 4,096-total-token ceiling from local Roadmap planning and uses the verified loaded model context with task-sized context, consistent preview/send/retry accounting, explicit omission diagnostics and bounded JSON output separately from reserved generation tokens. P2 does **not** select a permanent 16K/32K/64K default. **Manual P11** compares the same actual local model/quantization/runtime at loaded **16K, 32K and 64K** across real narrow/large/multi-turn tasks, latency, memory and stability; record limitations and choose the smallest reliably sufficient profile only after measuring. 4K is optional narrow compatibility stress, neither a production maximum nor a full-workflow requirement. Missing comparisons remain an evidence gap, not a fabricated winner. Preserve real local-only and approval/security boundaries.
 
@@ -31,7 +31,7 @@ P8 owns focused disposable shared-file regression; **manual P9** now owns the **
 
 ## Prequalification presentation dependency — c10-horizontal-color
 
-Owner-authorized `../c10-horizontal-color/` contains P1 horizontal phase path / vertical correction-support branches, P2 six-state completion colors and P3 **implementation-only** closeout. Execute and source-checkpoint this correction on coherent unchanged `0.10.16` before starting the manual browser matrix below. This is not an `/activate` gate and does NOT itself qualify Phase 10. Manual P12 tests its actual browser/native placement, colors and migrated layout; P13 guards false Green/authority; P14 validates the exact final source. Reuse already recorded manual P9–P11 evidence only after checking whether the UI changes invalidate any part of it; preserve every original result.
+`../c10-horizontal-color/` **P1–P6 is implemented and committed** through `ddbac418` (P1–P5 product source `f5b705691`); its P6 closeout is implementation-only and **does not** qualify Phase 10. The committed baseline now includes left-to-right phases, correction/support branches, six status treatments, the full editor canvas and contextual source/inspector/pool overlays. Manual P9/P10 must exercise affected source/creation/approval overlays, P12 tests browser/native visuals, Chat docking and legacy v1 selection/disclosure (not old vertical placements), P13 checks false Green/approval authority, and P14 qualifies the coherent final source. No extra activation, runner execution or fresh correction implementation is required.
 
 ## Manual browser qualification P9–P14 (outside runner)
 
@@ -48,6 +48,12 @@ P1–P8 are committed runner checkpoints. To avoid forcing browser-tool work thr
 
 Each P9–P13 group stops early on Green, records append-only `qualification/loop-N-*/cycle-N.md` and its family matrix, and commits any narrow product-source repair separately. After three unsuccessful cycles, preserve the blocker without claiming Green; independent later groups can still gather evidence if safe. P14 checks invalidation from subsequent repairs before reusing earlier evidence and is the **only** writer of the terminal `closeout.md`. No second Chat/sync implementation, phase bump, separate activation or new runner grammar.
 
+## Shared manual qualification readiness and evidence reuse
+
+Before manual P9, verify actual local HEAD/status against current GitHub `main` (at review: `ddbac418`; recheck on execution), version `0.10.16`, completed `c10-horizontal-color` source, disposable Git project(s), actual Codex CLI, local LM Studio/model, browser control, independently observable native Electron window, and full relevant-process/network tracing. Record tool availability/limits and reusable fixture IDs, paths, hashes, model configuration and stable source SHA in `qualification/readiness.md` when manual execution begins. Unavailable instrumentation is a **BLOCKED evidence gate**, not a new pre-P9 activation ceremony or a reason to stop unrelated safe testing.
+
+Use one non-destructive linked-project fixture across P9→P10→P11→P12/P13 when its state is coherent; isolate crash, unsafe-path and destructive denials in separate disposable copies. Reuse source-specific prior PASS evidence if later repairs did not touch the tested producer/consumer, mapping, configuration or UI; document the reuse rationale and rerun only invalidated proof. **One cycle = a bounded family pass with possible focused repair, not an individual assertion or setup retry.** Every P9–P13 family has up to three such cycles, stopping early on Green. P12 executes UI/canvas and Chat/native sub-sections inside one family. P10 owns real action/greenfield correctness; P9 owns linked-file semantics; P12 owns presentation/interaction; P13 owns cross-owner/security and whole-app egress (prefer tracing the real successful P10 call contemporaneously). P14 performs the one exact-candidate aggregate after source stabilization.
+
 ## Execution preflight
 
 Starting this selected stack via the runner is sufficient implementation authorization; no separate `/activate` command or activation record is needed. Reconcile actual local HEAD/version/dirty tree safely before mutation. Native Electron window controls/capture, browser+touch/keyboard-equivalent actions and network/process-tree observations remain mandatory P9 T3 qualification evidence, not a pre-P1 implementation gate. A process launch or Electron build is not sufficient. Do not weaken T3 qualification due to missing tooling.
@@ -56,13 +62,9 @@ After local checkout contains the authored files, validate runner syntax:
 ```sh
 npm run codex:phase:validate -- c10-roadmap-qualify
 ```
-This command is required at execution; static authoring checks do not substitute for it.
+This is a grammar/compatibility check for the already authored stack, not a command to launch the manual qualification or a replacement for P14's exact-source validation.
 
-After satisfactory execution preflight:
-```sh
-npm run codex:phase -- c10-roadmap-qualify
-```
-The runner has completed P1–P8 commits and hands off the root P9 **only as a browser-required manual pointer**; manually execute `manual/P9` through `manual/P14`. Implementation agents do not self-commit; actual manual repairs require deliberately separate product commits. Never rerun `p10` or `c10-roadmap-create-sync` to fix this.
+**P1–P8 have already been committed. Do NOT rerun the implementation stack to begin qualification.** The root P9 remains a browser-required runner-grammar handoff only; execute `manual/P9` through `manual/P14` individually with the browser-capable environment. Implementation agents do not self-commit; actual manual repairs require deliberately separate product commits. Never rerun `p10` or `c10-roadmap-create-sync` to fix this.
 
 ## Preservation / pass law
 
@@ -72,4 +74,4 @@ See [assessment](prompt-assessment.md), [implementation plan](implementation-pla
 
 ### Full-canvas Roadmap overlay coverage (current prequalification direction)
 
-The separate `../c10-horizontal-color/` correction is now **P1–P6**, not earlier P1–P3: P3 makes the Roadmap a full-editor canvas with compact toolbar and floating Ideas/Issues, P4 moves linked Markdown/import/creation/relink/conflict/recovery into contextual overlays, P5 reuses the existing inspector editing/approval model in an in-canvas overlay, and P6 performs implementation-only closeout. Confirm it is implemented and checkpointed on the actual final source BEFORE claiming any affected manual UI gates. Revisit P9 (real Codex-to-Dope source/status overlay), P10 (manual/Chat greenfield and approval overlay), P12 (native+browser overlay/readability/Chat), P13 (no hidden approval, false Green or silent write), and P14 (source-evidence reconciliation). Do not add a sixth family, relax context/egress/native gates or allow the correction closeout to replace manual P14.
+The separately completed `../c10-horizontal-color/` correction is **P1–P6**, committed through `ddbac418`: P3 makes the Roadmap a full-editor canvas with compact toolbar and floating Ideas/Issues, P4 moves linked Markdown/import/creation/relink/conflict/recovery into contextual overlays, P5 reuses the existing inspector editing/approval model in an in-canvas overlay, and P6 performs implementation-only closeout. Confirm it is implemented and checkpointed on the actual final source BEFORE claiming any affected manual UI gates. Revisit P9 (real Codex-to-Dope source/status overlay), P10 (manual/Chat greenfield and approval overlay), P12 (native+browser overlay/readability/Chat), P13 (no hidden approval, false Green or silent write), and P14 (source-evidence reconciliation). Do not add a sixth family, relax context/egress/native gates or allow the correction closeout to replace manual P14.
