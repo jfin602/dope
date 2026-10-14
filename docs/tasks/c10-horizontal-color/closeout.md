@@ -1,6 +1,6 @@
 # c10-horizontal-color — Visual verification pending (P11)
 
-**Status: IMPLEMENTATION CONTINUATION AUTHORED / NOT YET EXECUTED. PRESENTATION NOT GREEN / NOT QUALIFIED.**
+**Status: P6-P10 IMPLEMENTATION COMMITTED through `726f10b4c9`; P11 VISUAL QUALIFICATION NOT GREEN / PENDING.**
 
 The original P6 implementation-only handoff and its authentic focused test/evidence record are preserved verbatim in [history/P6-original-closeout.md](history/P6-original-closeout.md) and [history/P6-original-presentation-implementation-closeout.txt](history/P6-original-presentation-implementation-closeout.txt). Historical source had completed P1–P5, and the old P6 closeout was manually recorded at `ddbac418`. It **did not** include direct browser/native confirmation.
 
