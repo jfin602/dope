@@ -4,6 +4,8 @@ export interface RoadmapViewportState {
     orientation: 'horizontal';
     projectId: string;
     viewport?: { x: number; y: number; zoom: number };
+    /** Distinguishes an intentional Fit/pan/zoom from the old automatic fit on mount. */
+    viewportIntent?: 'user';
     selectedId?: string;
     expanded: string[];
     collapsed: string[];
@@ -20,7 +22,8 @@ export const roadmapLegacyViewportKey = (uri: string, projectId: string): string
 export function roadmapViewportSnapshot(projectId: string, viewport: RoadmapViewportState['viewport'],
     selectedId: string | undefined, expanded: ReadonlySet<string>, collapsed: ReadonlySet<string>,
     placements: ReadonlyMap<string, { x: number; y: number }>): RoadmapViewportState {
-    return { version: 2, orientation: 'horizontal', projectId, viewport: viewport && { ...viewport }, selectedId,
+    return { version: 2, orientation: 'horizontal', projectId, viewport: viewport && { ...viewport },
+        viewportIntent: viewport ? 'user' : undefined, selectedId,
         expanded: [...expanded], collapsed: [...collapsed],
         placements: Object.fromEntries([...placements].map(([id, position]) => [id, { ...position }])) };
 }
@@ -48,12 +51,45 @@ export function readRoadmapViewport(value: unknown, projectId: string): RoadmapV
             if (id && id !== '__proto__' && id !== 'constructor' && id !== 'prototype' && point(position))
                 placements[id] = { x: position.x, y: position.y };
     const viewport = item.viewport;
+    // Earlier v2 builds saved fit-all on mount. At world-detail zoom that value has no
+    // provenance; a marked intentional Fit remains restorable at the same zoom.
+    const validViewport = horizontal && point(viewport) && typeof viewport.zoom === 'number' &&
+        Number.isFinite(viewport.zoom) && viewport.zoom >= 0.2 && viewport.zoom <= 2 &&
+        (item.viewportIntent === 'user' || viewport.zoom >= 0.56);
     return { version: 2, orientation: 'horizontal', projectId,
-        viewport: horizontal && point(viewport) && typeof viewport.zoom === 'number' &&
-            Number.isFinite(viewport.zoom) && viewport.zoom >= 0.2 && viewport.zoom <= 2 ?
-            { x: viewport.x, y: viewport.y, zoom: viewport.zoom } : undefined,
+        viewport: validViewport ? { x: viewport.x, y: viewport.y, zoom: viewport.zoom } : undefined,
+        viewportIntent: validViewport ? 'user' : undefined,
         selectedId: typeof item.selectedId === 'string' ? item.selectedId : undefined,
         expanded: ids(item.expanded), collapsed: ids(item.collapsed), placements };
+}
+
+export interface RoadmapCameraNode {
+    id: string;
+    kind: string;
+    order: number;
+    status: string;
+}
+
+/** Current phase follows the latest completed phase in authoritative roadmap status. */
+export function roadmapInitialTarget<T extends RoadmapCameraNode>(nodes: readonly T[]): T | undefined {
+    const ordered = [...nodes].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+    const phases = ordered.filter(node => node.kind === 'phase');
+    const completed = (node: T): boolean => node.status === 'green' || node.status === 'waived';
+    let lastCompleted = -1;
+    phases.forEach((node, index) => { if (completed(node)) lastCompleted = index; });
+    return phases.slice(lastCompleted + 1).find(node => node.status === 'active') ??
+        phases.slice(lastCompleted + 1).find(node => node.status === 'not-green') ??
+        phases.slice(lastCompleted + 1).find(node => !completed(node)) ??
+        phases.find(node => node.status === 'active') ?? phases.at(-1) ??
+        ordered.find(node => node.status === 'active') ?? ordered[0];
+}
+
+/** Center the card at phase detail; adjacent 420px phase columns remain visible. */
+export function roadmapInitialCamera(target: { x: number; y: number }, width: number, height: number):
+    NonNullable<RoadmapViewportState['viewport']> {
+    const zoom = 0.9;
+    return { x: width / 2 - (target.x + 140) * zoom,
+        y: height / 2 - (target.y + 80) * zoom, zoom };
 }
 
 export const roadmapGestures = (arranging: boolean): { panOnDrag: boolean; zoomOnScroll: boolean;

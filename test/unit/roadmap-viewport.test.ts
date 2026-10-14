@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { readRoadmapViewport, roadmapGestures, roadmapKeyboardAction, roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot } from
+import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction,
+    roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot } from
     '../../packages/theia-extension/src/browser/roadmap-viewport.ts';
 
 const widget = readFileSync(resolve(import.meta.dirname, '../../packages/theia-extension/src/browser/roadmap-canvas-widget.ts'), 'utf8');
@@ -28,6 +29,7 @@ test('viewport state restores only within matching project and rejects corrupt c
     assert.equal(restored.version, 2);
     assert.equal(restored.orientation, 'horizontal');
     assert.deepEqual(restored.viewport, saved.viewport);
+    assert.equal(restored.viewportIntent, 'user');
     assert.equal(restored.selectedId, 'c1');
     assert.deepEqual(restored.expanded, ['p1']);
     assert.deepEqual(restored.placements.c1, { x: 111, y: 222 });
@@ -42,11 +44,46 @@ test('viewport state restores only within matching project and rejects corrupt c
     assert.deepEqual(migrated.placements, {});
     assert.deepEqual(readRoadmapViewport({ ...saved, orientation: 'vertical' }, 'id').placements, {});
     assert.equal(readRoadmapViewport({ ...saved, viewport: { x: 0, y: 0, zoom: 99 } }, 'id').viewport, undefined);
+    assert.equal(readRoadmapViewport({ ...saved, viewportIntent: undefined,
+        viewport: { x: -50, y: 20, zoom: 0.2 } }, 'id').viewport, undefined);
+    assert.deepEqual(readRoadmapViewport({ ...saved, viewport: { x: -50, y: 20, zoom: 0.2 } }, 'id').viewport,
+        { x: -50, y: 20, zoom: 0.2 }); // Explicit Fit is intentional, even at world zoom.
+    assert.deepEqual(readRoadmapViewport({ ...saved, viewportIntent: undefined }, 'id').viewport, saved.viewport);
     assert.deepEqual(readRoadmapViewport(JSON.parse(JSON.stringify(restored)), 'id'), restored);
     assert.match(widget, /roadmapLegacyViewportKey\(projectUri, index\.projectId\)/);
-    assert.match(widget, /flow\.fitView\(\{ padding: 0\.12 \}\)/);
+    assert.doesNotMatch(widget, /else requestAnimationFrame\(\(\) => .*fitView/);
+    assert.match(widget, /this\.intentionalCamera\(flow => flow\.fitView\(\{ padding: 0\.12, maxZoom: 1 \}\)\)/);
     assert.match(widget, /setTimeout\(\(\) => this\.flushPresentation\(\), 350\)/);
     assert.match(widget, /this\.flow\.setViewport\(this\.viewport/);
+});
+
+test('current work uses authoritative phase statuses and a readable centered camera', () => {
+    const nodes = [
+        { id: 'old-active-correction', kind: 'correction', order: 13, status: 'active' },
+        { id: 'phase-9', kind: 'phase', order: 24, status: 'green' },
+        { id: 'phase-10', kind: 'phase', order: 25, status: 'not-green' },
+        { id: 'phase-11', kind: 'phase', order: 26, status: 'not-implemented' },
+    ];
+    assert.equal(roadmapInitialTarget(nodes)?.id, 'phase-10');
+    assert.equal(roadmapInitialTarget(nodes.filter(node => node.kind !== 'phase'))?.id, 'old-active-correction');
+    const camera = roadmapInitialCamera({ x: 4200, y: 640 }, 1100, 700);
+    assert.equal(camera.zoom, 0.9);
+    assert.equal(4200 * camera.zoom + camera.x + 140 * camera.zoom, 550);
+    assert.equal(640 * camera.zoom + camera.y + 80 * camera.zoom, 350);
+    assert.ok((4200 - 420) * camera.zoom + camera.x > 0);
+    assert.ok((4200 + 420) * camera.zoom + camera.x < 1100);
+});
+
+test('widget initializes after project projection and saves only intentional camera changes', () => {
+    assert.match(widget, /this\.initialCameraPending = !state\.viewport/);
+    assert.match(widget, /this\.projection = projectRoadmapTasks\(index, tasks, owners/);
+    assert.match(widget, /this\.queueInitialCamera\(\)/);
+    assert.match(widget, /generation === this\.cameraGeneration && uri === this\.projectUri && flow === this\.flow/);
+    assert.match(widget, /cameraGeneration !== this\.cameraGeneration \|\|[\s\S]*?cameraProjectUri !== this\.projectUri\) return;[\s\S]*?if \(event\) this\.recordUserCamera\(viewport\)/);
+    assert.match(widget, /flow !== this\.flow \|\| generation !== this\.cameraGeneration \|\| uri !== this\.projectUri/);
+    assert.match(widget, /this\.displayedViewport = camera;[\s\S]*?void this\.flow\.setViewport\(camera\)/);
+    assert.match(widget, /if \(this\.flow\) this\.displayedViewport = this\.flow\.getViewport\(\)/);
+    assert.doesNotMatch(widget, /void this\.flow\.fitView\(\{ padding: 0\.12 \}\)/);
 });
 
 test('keyboard navigation has pan and arrangement equivalents without overriding ordinary selection', () => {

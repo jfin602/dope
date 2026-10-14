@@ -20,7 +20,8 @@ import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapSpatialNextId, road
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
-import { readRoadmapViewport, roadmapGestures, roadmapKeyboardAction, roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot,
+import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction,
+    roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot,
     type RoadmapViewportState } from './roadmap-viewport';
 import './dope.css';
 
@@ -62,6 +63,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly toolbar = document.createElement('header');
     private readonly stage = document.createElement('div');
     private readonly stageResize = new ResizeObserver(() => {
+        this.applyInitialCamera();
         if (this.stage.clientWidth < 1240 && this.sourceOpen && this.inspectionOpen &&
             this.sourceView === 'expanded' && this.inspectionView === 'expanded') this.setSourceOpen(false);
     });
@@ -111,6 +113,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private detail: RoadmapDetail = 'phase';
     private arranging = false;
     private viewport?: RoadmapViewportState['viewport'];
+    private displayedViewport?: RoadmapViewportState['viewport'];
+    private initialCameraPending = false;
+    private cameraGeneration = 0;
     private readonly placements = new Map<string, { x: number; y: number }>();
     private saveTimer?: ReturnType<typeof setTimeout>;
     private saveWrite: Promise<unknown> = Promise.resolve();
@@ -171,9 +176,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.status.textContent = `Project Mind unavailable: ${String(error)}. Retry from the command palette.`;
         }); };
         for (const [button, label, icon, action] of [
-            [this.zoomIn, 'Zoom in on Roadmap', 'zoom-in', () => void this.flow?.zoomIn()],
-            [this.zoomOut, 'Zoom out on Roadmap', 'zoom-out', () => void this.flow?.zoomOut()],
-            [this.fitButton, 'Fit Roadmap', 'screen-full', () => void this.flow?.fitView({ padding: 0.12, maxZoom: 1 })],
+            [this.zoomIn, 'Zoom in on Roadmap', 'zoom-in', () => this.intentionalCamera(flow => flow.zoomIn())],
+            [this.zoomOut, 'Zoom out on Roadmap', 'zoom-out', () => this.intentionalCamera(flow => flow.zoomOut())],
+            [this.fitButton, 'Fit Roadmap', 'screen-full', () => this.intentionalCamera(flow => flow.fitView({ padding: 0.12, maxZoom: 1 }))],
         ] as const) {
             button.type = 'button'; button.title = label; button.setAttribute('aria-label', label);
             const glyph = document.createElement('span'); glyph.className = codicon(icon); glyph.setAttribute('aria-hidden', 'true');
@@ -364,6 +369,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 const state = readRoadmapViewport(stored, index.projectId);
                 this.selectedId = state.selectedId;
                 this.viewport = state.viewport;
+                this.displayedViewport = state.viewport;
+                this.initialCameraPending = !state.viewport;
+                ++this.cameraGeneration;
                 this.expanded.clear(); this.collapsed.clear(); this.placements.clear();
                 state.expanded.forEach(id => this.expanded.add(id));
                 state.collapsed.forEach(id => this.collapsed.add(id));
@@ -383,10 +391,6 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (switched) this.sourceError = undefined;
             if (this.relink && (this.relink.uri !== projectUri || this.relink.preview?.revision !== index.revision))
                 this.relink = undefined;
-            if (switched && this.flow) {
-                if (this.viewport) void this.flow.setViewport(this.viewport);
-                else requestAnimationFrame(() => { if (this.flow && this.projectUri === projectUri) void this.flow.fitView({ padding: 0.12 }); });
-            }
             if (this.createState && (this.createState.uri !== projectUri || this.createState.projectId !== index.projectId || index.revision !== 0)) {
                 void this.service.cancelDraft(this.createState.handle); this.createState = undefined; ++this.createSerial;
             }
@@ -406,6 +410,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 projectRoadmapTasks(index, tasks).nodes.some(node => node.id === selectedTaskId)) this.selectedId = selectedTaskId;
             this.projection = projectRoadmapTasks(index, tasks, owners, { projectId: index.projectId, selectedId: this.selectedId });
             this.render();
+            if (switched && this.viewport && this.flow) void this.flow.setViewport(this.viewport);
+            this.queueInitialCamera();
             if (index.linkedDocument) {
                 try {
                     const sync = await this.service.previewDocumentSync(projectUri);
@@ -551,6 +557,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private renderFlow(): void {
         if (!this.root) return;
         const projection = this.projection;
+        const cameraGeneration = this.cameraGeneration;
+        const cameraProjectUri = this.projectUri;
         this.detailLabel.textContent = `${this.detail[0].toUpperCase()}${this.detail.slice(1)} detail`;
         this.expandButton.disabled = this.collapseButton.disabled = !this.selectedId;
         this.focusButton.disabled = !this.selectedId;
@@ -584,7 +592,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         });
         this.root.render(React.createElement(ReactFlow, {
             id: 'dope-roadmap-flow', nodes, edges, nodeTypes: roadmapNodeTypes,
-            defaultViewport: this.viewport ?? { x: 20, y: 20, zoom: 0.85 }, minZoom: 0.2, maxZoom: 2,
+            defaultViewport: this.displayedViewport ?? { x: 20, y: 20, zoom: 0.85 }, minZoom: 0.2, maxZoom: 2,
             ...roadmapGestures(this.arranging), elementsSelectable: true,
             nodesFocusable: false, edgesFocusable: false,
             zoomOnDoubleClick: false, nodeDragThreshold: 5,
@@ -608,18 +616,73 @@ export class RoadmapCanvasWidget extends BaseWidget {
             },
             onInit: (flow: ReactFlowInstance) => { this.flow = flow;
                 if (this.viewport) void flow.setViewport(this.viewport);
-                else requestAnimationFrame(() => { if (this.flow === flow) void flow.fitView({ padding: 0.12 }); }); },
-            onMoveEnd: (_event: unknown, viewport: { x: number; y: number; zoom: number }) => {
-                if (!this.projectId || !this.projectUri) return;
-                if (!this.viewport || this.viewport.x !== viewport.x || this.viewport.y !== viewport.y || this.viewport.zoom !== viewport.zoom) {
-                    this.viewport = { x: viewport.x, y: viewport.y, zoom: viewport.zoom };
-                    this.schedulePresentation();
-                }
+                this.queueInitialCamera(); },
+            onMoveStart: (event: unknown) => {
+                if (event && cameraGeneration === this.cameraGeneration && cameraProjectUri === this.projectUri)
+                    this.initialCameraPending = false;
+            },
+            onMoveEnd: (event: unknown, viewport: { x: number; y: number; zoom: number }) => {
+                if (!this.projectId || !this.projectUri || cameraGeneration !== this.cameraGeneration ||
+                    cameraProjectUri !== this.projectUri) return;
+                this.displayedViewport = { ...viewport };
+                if (event) this.recordUserCamera(viewport);
                 const next = roadmapDetailAtZoom(viewport.zoom, this.detail);
                 if (next !== this.detail) { this.detail = next; this.renderFlow(); }
             },
             proOptions: { hideAttribution: true },
         }, React.createElement(Background, { id: 'dope-roadmap-grid' })));
+        this.queueInitialCamera();
+    }
+
+    private queueInitialCamera(): void {
+        if (!this.initialCameraPending || !this.projection || !this.flow) return;
+        const generation = this.cameraGeneration;
+        const uri = this.projectUri;
+        const flow = this.flow;
+        requestAnimationFrame(() => {
+            if (generation === this.cameraGeneration && uri === this.projectUri && flow === this.flow)
+                this.applyInitialCamera();
+        });
+    }
+
+    private applyInitialCamera(): void {
+        if (!this.initialCameraPending || !this.flow || !this.projection ||
+            !this.stage.clientWidth || !this.stage.clientHeight) return;
+        const target = roadmapInitialTarget(this.projection.nodes);
+        const position = target && (this.placements.get(target.id) ?? roadmapSpatialLayout(this.projection).get(target.id));
+        if (!position) return;
+        const camera = roadmapInitialCamera(position, this.stage.clientWidth, this.stage.clientHeight);
+        this.initialCameraPending = false;
+        this.displayedViewport = camera;
+        this.detail = roadmapDetailAtZoom(camera.zoom, this.detail);
+        void this.flow.setViewport(camera);
+    }
+
+    private recordUserCamera(camera = this.flow?.getViewport()): void {
+        if (!camera || !this.projectId || !this.projectUri) return;
+        this.initialCameraPending = false;
+        this.displayedViewport = { ...camera };
+        if (!this.viewport || this.viewport.x !== camera.x || this.viewport.y !== camera.y || this.viewport.zoom !== camera.zoom) {
+            this.viewport = { ...camera };
+            this.schedulePresentation();
+        }
+    }
+
+    private intentionalCamera(action: (flow: ReactFlowInstance) => Promise<boolean>): void {
+        const flow = this.flow;
+        if (!flow || !this.projectUri) return;
+        const generation = this.cameraGeneration;
+        const uri = this.projectUri;
+        const wasPending = this.initialCameraPending;
+        this.initialCameraPending = false;
+        void action(flow).then(applied => {
+            if (flow !== this.flow || generation !== this.cameraGeneration || uri !== this.projectUri) return;
+            if (applied) this.recordUserCamera(flow.getViewport());
+            else if (wasPending && !this.viewport) {
+                this.initialCameraPending = true;
+                this.queueInitialCamera();
+            }
+        });
     }
 
     private setExpansion(expand: boolean): void {
@@ -639,7 +702,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (!this.selectedId || !this.flow || !this.projection) return;
         const position = this.placements.get(this.selectedId) ?? roadmapSpatialLayout(this.projection).get(this.selectedId);
         if (!position) return;
-        void this.flow.setCenter(position.x + 140, position.y + 40, { zoom: Math.max(1.4, this.flow.getZoom()), duration: 320 });
+        this.intentionalCamera(flow => flow.setCenter(position.x + 140, position.y + 40,
+            { zoom: Math.max(1.4, flow.getZoom()), duration: 320 }));
     }
 
     private nextPrompts(): void {
@@ -662,6 +726,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     protected override onBeforeDetach(msg: Message): void {
+        if (this.flow) this.displayedViewport = this.flow.getViewport();
         this.root?.unmount();
         this.root = undefined;
         this.flow = undefined;
@@ -1333,7 +1398,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const dy = direction === 'up' ? -40 : direction === 'down' ? 40 : 0;
             if (kind === 'pan' && this.flow) {
                 const view = this.flow.getViewport();
-                void this.flow.setViewport({ ...view, x: view.x - dx, y: view.y - dy });
+                this.intentionalCamera(flow => flow.setViewport({ ...view, x: view.x - dx, y: view.y - dy }));
             } else if (kind === 'move' && current && this.projection) {
                 const id = current.dataset.checkpointId!;
                 const position = this.placements.get(id) ?? roadmapSpatialLayout(this.projection).get(id);

@@ -7,6 +7,7 @@ import type { RoadmapIndex } from '../../packages/project-intelligence/src/node/
 import { projectRoadmap } from '../../packages/project-intelligence/lib/roadmap-projection.js';
 import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapDetailAtZoom, roadmapEdgeHandles, roadmapSpatialLayout, roadmapSpatialNextId, roadmapVisibleGraph } from
     '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
+import { roadmapInitialCamera, roadmapInitialTarget } from '../../packages/theia-extension/src/browser/roadmap-viewport.ts';
 
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, '../..', path), 'utf8');
 const node = (id: string, kind: 'phase' | 'correction' | 'task-stack' | 'prompt', order: number) => ({
@@ -87,9 +88,9 @@ test('Roadmap mounts React Flow with selection, pan, zoom and fit but no graph m
     assert.match(widget, /onNodeClick: .*this\.select\(node\.id\)/);
     assert.match(widget, /\.\.\.roadmapGestures\(this\.arranging\)/);
     assert.match(widget, /draggable: this\.arranging/);
-    assert.match(widget, /this\.flow\?\.zoomIn\(\)/);
-    assert.match(widget, /this\.flow\?\.zoomOut\(\)/);
-    assert.match(widget, /this\.flow\?\.fitView/);
+    assert.match(widget, /this\.intentionalCamera\(flow => flow\.zoomIn\(\)\)/);
+    assert.match(widget, /this\.intentionalCamera\(flow => flow\.zoomOut\(\)\)/);
+    assert.match(widget, /this\.intentionalCamera\(flow => flow\.fitView/);
     assert.match(widget, /onNodeDragStop:.*\{/);
     assert.match(widget, /if \(!this\.arranging \|\| !this\.projection\?\.nodes\.some/);
     assert.doesNotMatch(widget, /onConnect:|fitView\(\).*refresh/);
@@ -154,6 +155,14 @@ test('actual full Dope import plus current c10 correction labels has a route and
     const before = JSON.stringify(index);
     const graph = projectRoadmap(index);
     const positions = roadmapSpatialLayout(graph);
+    const current = roadmapInitialTarget(graph.nodes)!;
+    assert.ok(current.id.endsWith('#phase-10'), current.id);
+    const camera = roadmapInitialCamera(positions.get(current.id)!, 1100, 700);
+    assert.ok(camera.zoom >= 0.72 && camera.zoom <= 1.12);
+    const neighbors = ['#phase-9', '#phase-10', '#phase-11'].map(suffix =>
+        positions.get(graph.nodes.find(node => node.id.endsWith(suffix))!.id)!);
+    assert.ok(neighbors.every(position => position.x * camera.zoom + camera.x > -280 &&
+        position.x * camera.zoom + camera.x < 1100));
     const connectors = roadmapCanvasConnectors(graph);
     const phase10 = graph.nodes.find(item => item.id.endsWith('#phase-10'))!;
     const c10 = graph.nodes.filter(item => item.kind === 'correction' && item.phaseAssociation?.phaseId === phase10.id);
