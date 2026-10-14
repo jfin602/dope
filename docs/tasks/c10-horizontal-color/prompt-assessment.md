@@ -1,6 +1,6 @@
 # /prompt-ass — c10-horizontal-color (revised full-canvas scope)
 
-**Date:** 2026-10-13. **Status:** owner-approved documents/prompts only; unchanged `0.10.16`; Phase 10 NOT GREEN.
+**Date:** 2026-10-13. **Status:** Original P1–P5 implemented and P6 handoff historically executed; new P6–P11 implementation/evidence continuation AUTHORED / NOT EXECUTED, unchanged `0.10.16`; Phase 10 NOT GREEN.
 **Baseline:** `c10-roadmap-qualify` P1–P8 published; manual P9–P14 not qualified; last docs commit `628053adb1881a7277d333305cd6ee8ef466673c`. No published `c10-horizontal-color` implementation checkpoint; local private runner history must be checked before renumbering its former P3 closeout.
 
 ## Grounded code seams and UX problem
@@ -36,3 +36,13 @@ The user-supplied GUI screenshot shows the Roadmap React Flow canvas squeezed be
 ## Explicit non-goals
 
 No automatic percent completion without trustworthy source, new canonical layouts/graph edges, new Roadmap data owner, animated unlock gates, new Chat panel, new saved modal/session store, reimplementation of ProjectPlanningActions or document source reconciliation, changing Work/AgentTask authority, standalone Roadmap details page, theme-system rewrite or false Green by UI styling.
+
+## /prompt-ass — post-P9 visual repair continuation
+
+**Observed source-backed failures:** The first imported Roadmap shows (1) flattened c10 correction cards, (2) no visible relationship connectors, (3) only tiny colored status text rather than tinted whole cards, (4) maximum fit-all starting zoom instead of readable current phase, and (5) no desired restrained selected-route motion. `roadmapSpatialLayout` places unattached nodes into new horizontal bands; `projectRoadmap` derives branch edges only from stored dependencies; current CSS colors only status labels; the widget `onInit` defaults to all-graph `fitView`. Do not assume nine unresolved diagnostics are missing correction links. **P9 live result:** Not Green after three recorded cycles because `c4-color-theme` historical source authority is internally contradictory, independent of these presentation failures.
+
+**Smallest safe decomposition and routing:** P6 semantic/convention-derived phase associations; P7 geometry and separate visual connectors; P8 full-card CSS; P9 initial camera and deliberate user viewport; P10 low-distraction CSS motion; P11 real browser + native screenshot-bound appearance decision. Dependencies run strictly P6→P7→P8→P9→P10→P11. Scope is strictly Roadmap presentation/project importer conventions, not Phase 12 knowledge reconciliation, new Roadmap/Chat backend, speculative Graph dependencies, broad theme redesign or model edits. Owner controls source-c4 status resolution; manual P9 evidence is append-only and cannot be relabeled Green.
+
+**Authority invariants:** Conventions `c<phase>[-slug]` assign visual membership only, exact c10≠c100. Correct explicit typed parent wins unless genuinely conflicting; conflicts or missing phase display diagnostic. Progression/membership edges are presentation-only; actual dependencies remain data-owned. Qualified ≠ implementation/waiver. Existing `RoadmapInspectorModel` and ChatPanel, linked Markdown, approval, ids/revisions and versions remain untouched.
+
+**Evidence:** Narrow importer/projection T2, spatial/edge T2, color/theme T1, viewport T2, motion/reduced-motion T1. P11 owns direct T3 browser/native screenshots and truthful final visual closeout; P9 rerun separately preserves previous P9 NOT GREEN, P12/P13/P14 retain full Phase 10 gates. **Prompt Efficiency Gate:** each ordinary implementation is one coherent <=8-minute target, no repeated full aggregate, narrow consumer builds only; T3 visual work legitimately has an explicit longer exception. Historical P6 files archived under `history/` because current runner demands exactly one final root closeout and the old P6 Git commit does not mark canonical P6 implementation. Actual local prefix verification required before run.
