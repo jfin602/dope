@@ -1,0 +1,15 @@
+P5 cycle 2 local planning trace (timestamps UTC unless LM Studio, which logs America/Chicago).
+Backend stages for message ddccd027-2e38-4356-a8e2-3c681e761a5a:
+2026-10-14T14:33:24.729Z root INFO [dope-chat-planning-trace] {"at":"2026-10-14T14:33:24.729Z","stage":"submitted","chatId":"7b8c56d7-1929-4758-8df8-6b6f4c1ebd4a","messageId":"ddccd027-2e38-4356-a8e2-3c681e761a5a"}
+2026-10-14T14:33:24.730Z root INFO [dope-chat-planning-trace] {"at":"2026-10-14T14:33:24.729Z","stage":"waiting","chatId":"7b8c56d7-1929-4758-8df8-6b6f4c1ebd4a","messageId":"ddccd027-2e38-4356-a8e2-3c681e761a5a"}
+2026-10-14T14:33:29.694Z root INFO [dope-chat-planning-trace] {"at":"2026-10-14T14:33:29.694Z","stage":"validated","chatId":"7b8c56d7-1929-4758-8df8-6b6f4c1ebd4a","messageId":"ddccd027-2e38-4356-a8e2-3c681e761a5a"}
+2026-10-14T14:33:29.694Z root INFO [dope-chat-planning-trace] {"at":"2026-10-14T14:33:29.694Z","stage":"validating","chatId":"7b8c56d7-1929-4758-8df8-6b6f4c1ebd4a","messageId":"ddccd027-2e38-4356-a8e2-3c681e761a5a"}
+2026-10-14T14:33:29.716Z root INFO [dope-chat-planning-trace] {"at":"2026-10-14T14:33:29.716Z","stage":"result-recorded","chatId":"7b8c56d7-1929-4758-8df8-6b6f4c1ebd4a","messageId":"ddccd027-2e38-4356-a8e2-3c681e761a5a","status":"pending"}
+2026-10-14T14:33:49.430Z root INFO [dope-chat-planning-trace] {"at":"2026-10-14T14:33:49.430Z","stage":"decision-requested","chatId":"7b8c56d7-1929-4758-8df8-6b6f4c1ebd4a","messageId":"ddccd027-2e38-4356-a8e2-3c681e761a5a","status":"approve"}
+2026-10-14T14:33:49.444Z root INFO [dope-chat-planning-trace] {"at":"2026-10-14T14:33:49.444Z","stage":"decision-recorded","chatId":"7b8c56d7-1929-4758-8df8-6b6f4c1ebd4a","messageId":"ddccd027-2e38-4356-a8e2-3c681e761a5a","status":"applied"}
+LM Studio request count in 09:33:24–09:33:49 local window:
+[2026-10-14 09:33:24][DEBUG] Received request: POST to /v1/chat/completions
+LM Studio timing lines for task 734:
+[2026-10-14 09:33:29][DEBUG] 161.02.337.644 I slot print_timing: id  1 | task 734 | prompt eval time =    3203.47 ms /   519 tokens (    6.17 ms per token,   162.01 tokens per second)
+161.02.337.648 I slot print_timing: id  1 | task 734 |        eval time =    1716.64 ms /    28 tokens (   63.58 ms per token,    15.73 tokens per second)
+161.02.337.648 I slot print_timing: id  1 | task 734 |       total time =    4920.12 ms /   547 tokens

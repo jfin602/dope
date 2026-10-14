@@ -1227,7 +1227,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     note.textContent = 'Unvalidated local planning output';
                     content.append(note);
                     if (body) {
-                        const raw = document.createElement('pre'); raw.textContent = body;
+                        const raw = document.createElement('pre');
+                        raw.className = 'dope-chat-planning-invalid-raw';
+                        raw.textContent = body;
                         content.append(raw);
                     }
                 } else content.append(renderUntrustedMessageMarkdown(this.markdown, body));

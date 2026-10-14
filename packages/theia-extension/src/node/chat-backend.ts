@@ -19,6 +19,12 @@ const draftInstruction = 'You are editing a noncanonical Roadmap draft. Propose 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
     locality: 'any', enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
 
+function tracePlanning(stage: string, chatId: string, messageId: string, status?: string): void {
+    if (process.env.DOPE_CHAT_PLANNING_TRACE !== '1') return;
+    console.info('[dope-chat-planning-trace]', JSON.stringify({ at: new Date().toISOString(),
+        stage, chatId, messageId, ...(status ? { status } : {}) }));
+}
+
 function evidenceIdentity(ref: { kind: string; id: string; contentHash?: string; projectId?: string; generation?: number }) {
     return [ref.kind, ref.id, ref.contentHash, ref.projectId, ref.generation];
 }
@@ -200,6 +206,7 @@ export class ChatBackend implements ChatService {
     }
     private planningProgress(chatId: string, messageId: string, stage: 'waiting' | 'validating'): void {
         if (!this.handle || this.disposed) return;
+        tracePlanning(stage, chatId, messageId);
         try { this.client.notifyChatEvent({ projectHandle: this.handle, kind: 'planning-progress',
             chatId, messageId, stage }); }
         catch { /* A transient UI notice cannot fail a planning turn. */ }
@@ -300,12 +307,15 @@ export class ChatBackend implements ChatService {
         const activity = message.planningActivity;
         if (!activity || activity.status !== 'pending' || activity.proposalId !== proposalId)
             throw new Error('Planning activity is not pending');
-        const record = (status: ChatPlanningActivity['status'], appliedRevision?: number) =>
-            this.repository.recordPlanningActivity(root, chatId, pending.messageId, leaseToken,
+        const record = async (status: ChatPlanningActivity['status'], appliedRevision?: number) => {
+            await this.repository.recordPlanningActivity(root, chatId, pending.messageId, leaseToken,
                 { ...activity, status, ...(appliedRevision === undefined ? {} : { appliedRevision }) },
                 { proposalId, status: 'pending' });
+            tracePlanning('decision-recorded', chatId, pending.messageId, status);
+        };
         let appliedRevision: number | undefined;
         try {
+            tracePlanning('decision-requested', chatId, pending.messageId, approve ? 'approve' : 'reject');
             if (!approve) { await record('denied'); return undefined; }
             if (pending.draft) {
                 if (!this.greenfield) throw new Error('Greenfield draft unavailable');
@@ -456,6 +466,7 @@ export class ChatBackend implements ChatService {
                         request.selectedModel ? 'explicit-turn' : 'chat-exact-default',
                     startedAt: now } };
             await mutate({ type: 'begin-assistant', chatId: key, message: assistant });
+            if (localRoadmap) tracePlanning('submitted', key, assistant.id);
             if (localRoadmap) this.planningProgress(key, assistant.id, 'waiting');
             if (!following) {
                 await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id, actualModel: actual });
@@ -509,6 +520,7 @@ export class ChatBackend implements ChatService {
                     localMode, eligibleObjective);
                 await backend.verifyLoadedCapacity(selectedModel!, budget!,
                     chat.settings.context.reservedOutputTokens);
+                tracePlanning('validated', key, assistant!.id);
                 yield complete;
             })(this) : generate();
             for await (const event of events) {
@@ -562,6 +574,8 @@ export class ChatBackend implements ChatService {
                             { schemaVersion: 1, kind, refs: preview.refs,
                                 status: kind === 'no-action' ? 'no-action' : result.proposal ? 'pending' : 'rejected',
                                 ...(result.proposal ? { proposalId: result.proposal.id } : {}) });
+                        tracePlanning('result-recorded', key, assistant.id,
+                            kind === 'no-action' ? 'no-action' : result.proposal ? 'pending' : 'rejected');
                     }
                     return { ...preview, ...result };
                 }
