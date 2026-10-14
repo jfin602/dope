@@ -1,5 +1,7 @@
 # Dope Boot Document
 
+> **CURRENT 2026-10-14 Phase 10 sequencing:** Full Phase 10 qualification is ON HOLD until (1) `c10-horizontal-color` completes all visual/zoom-disclosure repairs and P11 scoped live proof, and (2) `c10-better-planning` P1–P5 implements and scope-closes the existing ChatPanel's compact structured activity, verified outcome/questions and low-cost progress. THEN rerun **every** manual `c10-roadmap-qualify/manual/P9`–`P13` family afresh and P14 sole final exact-source aggregate. Preserve historical manual P9 three-cycle NOT GREEN and original P16/P19 NOT GREEN; Phase 10 NOT OWNER-CLOSED, unchanged `0.10.16`. Never use a P9-only shortcut, /activate gate, CLI runner for browser/manual gates, or falsely infer Green. Older dated status notes below are historical.
+
 This is the session router for repository-aware work in jfin602/dope.
 
 Before substantial repository-aware planning, implementation, review, architecture work, roadmap work, or documentation changes:
