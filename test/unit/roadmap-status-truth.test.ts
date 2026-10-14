@@ -11,6 +11,8 @@ import type { RoadmapIndex } from '../../packages/project-intelligence/lib/node/
 test('current owner dispositions beat historical status without erasing failed gates', async () => {
     const preview = await previewRoadmapImport(process.cwd());
     const phase = (number: number) => preview.checkpoints.find(item => item.sectionKey === `phase-${number}`)!;
+    assert.equal(phase(4).status, 'green');
+    assert.ok(phase(4).evidence.some(item => item.path === 'docs/tasks/p4/closeout.md' && item.status === 'green'));
     assert.equal(phase(5).status, 'not-green');
     assert.equal(phase(5).waived, true);
     assert.equal(phase(6).roadmapStatus, 'active');

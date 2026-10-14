@@ -156,7 +156,7 @@ function verdict(line: string): string {
 function evidenceVerdict(content: string): { text: string; line: number } | undefined {
     const first = content.split(/\r?\n/).slice(0, 24);
     const line = first.findIndex(value => /(?:^|\*\*)\s*(?:Status|Disposition|Decision):/i.test(value));
-    if (line >= 0) return { text: first[line].trim(), line: line + 1 };
+    if (line >= 0) return { text: verdict(first[line].trim()), line: line + 1 };
     const heading = first.findIndex(value => /^# /.test(value) && status(value) !== 'unknown');
     return heading >= 0 ? { text: first[heading], line: heading + 1 } : undefined;
 }
