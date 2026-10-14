@@ -1,39 +1,50 @@
-# c10-horizontal-color — Visual verification pending (P11)
+# c10-horizontal-color P11 — live visual closeout
 
+<<<<<<< HEAD
 **Status: P6-P10 IMPLEMENTATION COMMITTED through `726f10b4c9`; P11 VISUAL QUALIFICATION NOT GREEN / PENDING.**
+=======
+**Disposition: NOT GREEN / EVIDENCE GAP.** Manual browser observation on 2026-10-13 (America/Chicago) found a first-camera failure and a connector crossing card content. Independent native Electron GUI capture was unavailable. This is a presentation-only decision; Phase 10, the earlier P9 family, manual P12–P14, and historical P16/P19 retain their separate outcomes.
+>>>>>>> 2ecaf50 (closeout not green)
 
-The original P6 implementation-only handoff and its authentic focused test/evidence record are preserved verbatim in [history/P6-original-closeout.md](history/P6-original-closeout.md) and [history/P6-original-presentation-implementation-closeout.txt](history/P6-original-presentation-implementation-closeout.txt). Historical source had completed P1–P5, and the old P6 closeout was manually recorded at `ddbac418`. It **did not** include direct browser/native confirmation.
+## Exact source and fixture
 
-## Four observed live defects (plus motion)
+- Committed product HEAD: 726f10b4c917e7f20aa7d3e700ced382e315d58e (c10-horizontal-color/P10), version 0.10.16. The main worktree was clean before P11. P6–P10 are committed as 5bd0201, d1c5355, fde9bfe, c1eb7c8, and 726f10b. This file and screenshot evidence are the only P11 repository additions. No product source, roadmap source, version, historical qualification file, or lockfile was changed.
+- Disposable real Git project: /tmp/dope-c10-p11-O3P5zN/project, cloned at the same HEAD. Project ID b432ce20-fa8d-409a-b2fd-3df9463b966a after import. Accepted source: docs/roadmap/mvp-roadmap.md, 105,270 bytes, SHA-256 7c1dacefcd773b9c11c8de03668ccf1eabdfc58757267d750c51a361c0b0cd10; it matched the committed source before and after browser actions. Disposable .dope/roadmap.json remained revision 1, SHA-256 4023f844c0ae685abfca353f8b352597c6f30c8347efe6c32f569879ea959152 when inspected. It has 31 imported checkpoints and **zero stored dependencies**.
+- Real browser UI: current source build at http://127.0.0.1:3001/#/tmp/dope-c10-p11-O3P5zN/project, controlled through the Codex in-app browser. Import was selected and Accept Import clicked in Dope. Preview said 31 checkpoints, 77 source files, 0 unsupported sections, 7 Not Green checkpoints and 14 read-only checkpoints. Imported status counts: Green 8, Active 2, Not Green 7, Waived 2, Not implemented 3, Unknown 9. Once task discovery completed, the canvas reported 317 displayed checkpoints, revision 1, and 11 unresolved references; that includes discovered tasks and is different from the 31 imported source checkpoints.
+- Native attempt: npm run build:electron passed and an Electron process was launched against the same disposable project with an isolated profile. Its frontend connected, but the available computer controller reported **no native app windows**; launch also logged a plugin-deployer initialization error. There is no independent Electron window interaction or screenshot. Every native visual gate is **BLOCKED**, regardless of successful build or process startup.
 
-1. Corrections from the imported Roadmap appeared in one flat horizontal row rather than above their numbered parent phases.
-2. No meaningful relationship lines connected phases, corrections, supporting prompts or real dependencies.
-3. Status color affected small text/indicators rather than the complete checkpoint card.
-4. Initial viewport `fitView` made 31 imported checkpoints microscopic rather than focusing near the current active/actionable phase.
-5. Restrained route/selection animation and reduced-motion behavior had not been proven.
+## Diagnostic classification
 
-The prior manual P9 family also ended **NOT GREEN after three cycles** due to an unrelated `c4-color-theme` source-status conflict (local Active vs summary Green). See `../c10-roadmap-qualify/qualification/loop-1-markdown/family-summary.md`. Do not silently resolve that contradiction through a visual change.
+The current accepted source produced **2 import diagnostics**: missing docs/tasks/c3-remove-planning-instruments/closeout.md and docs/tasks/c5-synth-observe/README.md. Its preview separately listed **19 checkpoint diagnostics**: 11 Unknown status, 4 status differs from linked owner evidence (Phases 5–8), 2 conflicting historical status evidence (Phases 5 and 7), and 2 missing references to those two paths. The post-discovery canvas's 11 unresolved references were displayed but not individually expanded; they must not be equated with either preview count. The older P9 screenshot's 9 unresolved references belonged to another committed source/fixture. c4-color-theme displayed **Active** as its local source says; P9's conflicting Green summary remains unresolved and was not visually promoted.
 
-## Implementation and qualification split
+## Live gate record
 
-New P6–P10 are bounded **source implementation prompts** within this correction; P11 is the **browser-required evidence closeout** that must update this living record only after direct testing of the exact committed product source. Prior qualification is not retroactively Green. `0.10.16` stays unchanged. P11 is not Phase 10 P14 and does not owner-close Phase 10.
+| Gate | Result | Direct observation and limit |
+| --- | --- | --- |
+| Accepted current source and project isolation | **PASS** | Dope imported exact source into the disposable Git project through preview/accept; owner revision 1 and source hash stayed fixed. Only the disposable project became dirty when .dope/roadmap.json was created. |
+| Horizontal phases and correction/support lanes | **PASS for observed positive case; NOT RUN for adversarial cases** | Phase 9 → 10 → 11 advanced left to right. c10-horizontal-color, c10-roadmap-create-sync, and c10-roadmap-qualify appeared as distinct upper Phase 10 branches; Phase 10 prompts appeared below. The current source had no c100, conflicting explicit parent, or missing numeric parent example, so those cases received no live UI replay. See [early readable frame](evidence/p11-browser-first-open.png) and [selected Phase 10](evidence/p11-browser-phase10-selected.png). |
+| Lines and semantic zoom | **FAIL** | Solid phase progression and differentiated upper/lower dashed links were visible in world and phase views; accessibility labels explicitly called progression non-authoritative and membership/support relationships by name. However, a vertical dashed connector visibly **runs through the text and body** of the Correction edit-architecture card (also visible through Correction horizontal-color), making the relationship ambiguous. See [unobstructed collision](evidence/p11-browser-line-through-card.png). Fit Map worked at zoom 0.2; Focus Selection returned to readable zoom 1.37043 on Phase 10. Checkpoint zoom, keyboard path, zero-length/cross-pane variants, and directed **stored** dependency appearance were **NOT RUN**; the accepted owner has zero dependencies. No dependency can be inferred from visual membership links. |
+| Six-status whole-card treatment | **PASS for observed dark/light cards; NOT RUN for low-contrast and complete interaction matrix** | Dark and Light (Theia) showed whole-card fills/borders plus text/icon. Visible Green, Not Green, Waived, Not implemented and Unknown examples were distinct; c4-color-theme Active contrasted with adjacent c4-smap-storage Green. Phase 5 and 10 remained Not Green, and Phase 6 remained purple Waived with literal “Owner-closed for sequencing” label, including when selected. Selection outline did not erase its label. See [dark Active/Green](evidence/p11-browser-dark-active-green.png), [dark Waived/Not Green](evidence/p11-browser-dark-waived.png), [light Waived/Not Green](evidence/p11-browser-light-waived.png), and [light Phase 10](evidence/p11-browser-light-phase10.png). Low-contrast theme, all six states' hover/focus in both themes, and native comparison were not exercised. |
+| Fresh-import first camera | **FAIL** | Before any deliberate zoom/pan, an early frame briefly showed Phase 9–11 at readable 0.9 zoom [here](evidence/p11-browser-first-open.png). After the import/task projection settled **without user input**, it moved to world detail at translate(-502.118px, 443.087px) scale(0.359076), showing tiny earlier-phase cards instead of actionable Phase 10 [here](evidence/p11-browser-first-open-settled.png). The settled frame is the acceptance result. |
+| Deliberate viewport retention | **PASS for refresh/reload; NOT RUN for remaining transitions** | After selecting Phase 10, explicit Fit gave 0.2, Focus gave 1.37043, and deliberate Zoom Out gave 1.16667. Exact translate(-4593.5px, -318.333px) scale(1.16667) survived Roadmap Refresh and full browser reload [screenshot](evidence/p11-browser-reload-persisted.png). Sync, overlay transitions, resize, project leave/return, and native restart were not replayed. |
+| Motion and reduced motion | **BLOCKED for complete gate** | Live CSS inspection with Phase 6 selected found only related connector paths using one 420ms emphasis animation while unrelated idle progression paths reported animation: none; static lines remained visible. Browser reported prefers-reduced-motion: false. No supported media-preference control or CPU measurement was available, and no independent native observation exists. Source CSS has a reduced-motion rule, which is not live reduced-motion proof. |
+| Full-editor, overlays, Chat and authority sanity | **NOT RUN as complete regression** | Roadmap occupied the editor canvas; linked Markdown import/approval overlay and selected-card inspector opened in place, and closing inspector did not alter owner revision or source hash. Pool search/linking, Chat docking, prompt-open without Run, narrow split, approval/conflict/recovery and project leakage were not replayed. P11 does not substitute for manual P9/P10/P12/P13. |
+| Independently controlled Electron window | **BLOCKED** | Same committed source and disposable project were used for launch. No native controller/window was exposed; there are **no Electron screenshots** or native PASS claims. |
 
-## P11 completion record (fill with actual observed proof, not expectations)
+Browser screenshots were captured directly from the live UI. Checksums are in [p11-screenshots.sha256](evidence/p11-screenshots.sha256). There is **no Electron screenshot reference**, an evidence gap rather than a file to infer.
 
-- **Exact independently committed product SHA:** PENDING
-- **Package/build and local Git state:** PENDING
-- **Imported fixture file and original SHA-256:** PENDING
-- **Browser UI controller, screenshot paths, actual first viewport/zoom and branch/line/color observations:** NOT RUN
-- **Independently controlled native Electron window and screenshot paths:** NOT RUN
-- **Dark/light/reduced-motion, narrow pane, semantic zoom/Focus/Fit/refresh/restart:** NOT RUN
-- **Convention-derived parent association vs stored dependency check:** NOT RUN
-- **Historical Not Green/Waived, unresolved-reference classes and authority non-mutation:** NOT RUN
-- **Focused tests actually run / failures and their fixes:** NOT RUN
-- **Final presentation-only disposition:** NOT GREEN / EVIDENCE GAP pending P11
-- **Remaining Phase 10 qualifications:** owner-approved P9 requalification must preserve earlier NOT GREEN and resolve c4 source authority separately; P10–P14 still independently required. Historical P16/P19 NOT GREEN.
+## Validation and next route
 
+<<<<<<< HEAD
 **Decision law:** mark *this presentation correction* Green only if P11 records direct browser AND native observations passing the four repairs, restrained/reduced motion, and preservation gates on a coherent committed candidate. Missing controller/evidence = BLOCKED/EVIDENCE GAP, never claimed PASS. Follow-up edits to code require source-specific re-observation. No manual P9/P12/P13/P14 or full `npm run check` outcome may be inferred from this closeout.
 
 ## Live P11 visual defect added before closeout: unwanted task-stack containers
 
 A screenshot from the real P11 browser fixture shows unrequested full-size `task-stack` cards ("Phase 6 prompts", "Correction edit-architecture") emerging at closer zoom with `Unknown` and omitted-prompt text. The source model's phase/checkpoint `roadmapVisibleGraph()` auto-disclosure is consistent with this symptom. **The visual gate is NOT GREEN** until zoom-only clutter is removed and explicitly expanded prompt browsing is proved without hiding corrections, losing prompt navigation or leaving disconnected lines/large blank space. This note is a defect and acceptance requirement, **not** evidence of a repaired browser/native candidate. The actual P11 closeout must replace PENDING/NOT RUN entries only with direct source-bound observations; historical P6 records and P9 Not Green are retained.
+=======
+Commands actually run: npm run build:browser **PASS**; npm run build:electron **PASS**; git diff --check **PASS**; screenshot checksum verification **PASS**. Browser and Electron were started from those outputs. No focused test was run because P11 made no visual repair, and the UI failure is directly observable. npm run check was **NOT RUN**; manual c10-roadmap-qualify P14 alone owns the final exact-source aggregate. No commit was created.
+
+Smallest safe repair: keep the no-intentional-viewport camera pinned through the settled import/task-discovery render without treating an automatic transition as user intent; then route membership/support connectors around card bodies and distinguish duplicate path segments. Add focused viewport/edge regressions for those defects, rebuild the affected UI, and repeat fresh-import browser observation on a new disposable project. Obtain an independently controllable Electron window and repeat same-source visual checks there; exercise reduced motion, low contrast, directed dependencies with a supplemental explicit-dependency fixture, and omitted interaction/authority cases before any visual Green decision. Later source changes invalidate these screenshots for the changed seam.
+
+The archived original P6 implementation snapshot remains untouched at [history/P6-original-closeout.md](history/P6-original-closeout.md). Historical P16/P19 and manual P9 three-cycle **NOT GREEN** remain unchanged. The explicitly requested fresh P9 requalification, manual P12/P13 and final P14 are independent; Phase 10 is not owner-closed and Phases 11/12 remain inactive.
+>>>>>>> 2ecaf50 (closeout not green)
