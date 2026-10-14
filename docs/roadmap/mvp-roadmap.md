@@ -576,7 +576,7 @@ At unchanged `0.4.6`, durable sMap state is demonstrably project-local, versione
 
 ## Mandatory pre-Phase-5 correction — `c4-color-theme`
 
-Status: **ACTIVE / APPROVED FOR PROMPT PLANNING**
+Status: **GREEN / QUALIFIED** at unchanged `0.4.6`. The historical browser qualification and user-theme override evidence is recorded in `docs/tasks/c4-color-theme/closeout.md` at commit `8baddc7299dde762b0ab6438f5135eab05a2a4fa`; that task folder was later removed from the working tree at `0cd080b12a71f67a78ae53ea3d3da8523894454c`. The earlier Active label described the pre-implementation planning state.
 
 Version semantics: unchanged package version `0.4.6`.
 
