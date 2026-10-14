@@ -1,5 +1,7 @@
 # P11 iterative repair summary
 
+> **Final targeted browser replay, 2026-10-14:** The five-file repair is now committed at `bbf662a8f37c8cc7c55771d0aeee58ba1d59ac35`, and its binary diff exactly matches cycle 1's tested repair. Fresh browser import, stored-dependency, keyboard/theme, narrow split, and authority checks were exercised. **P11 remains NOT GREEN** because Hide Prompts removes 16 nodes while the status incorrectly continues to report 58 displayed checkpoints until Refresh. See [final browser qualification](final-browser-qualification.md). This addendum does not alter the historical cycle-1 result below.
+
 **Current disposition: NOT GREEN.** One repair cycle completed on uncommitted product source based on HEAD `824eaa17b58e888451a615c14fccf79092f1adb4`, version `0.10.16`. See [cycle 1](cycle-1.md) and its direct browser images. The prior P11 NOT GREEN closeout remains historical evidence.
 
 The browser replay passed the observed initial camera, gutter-routed correction connectors, zoom without automatic task stacks, explicit Phase 10/c6 prompt disclosure, collapse, reload viewport retention, and exact prompt-source opening. Focused tests passed 30/30; affected browser and Electron builds passed. No native Dope window could be controlled or captured. The candidate remains uncommitted, and the remaining required visual/interaction and stored-dependency checks are open. The developer's commit boundary and exact-source replay are the shortest next route; no P11 Green, better-planning P5 Green, Phase 10 Green, or owner closure is claimed.
