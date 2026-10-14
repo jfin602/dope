@@ -53,7 +53,7 @@
 .dope-roadmap-stage .react-flow { background: var(--theia-editor-background); }
 .dope-roadmap-stage .react-flow__pane { touch-action: none; }
 .dope-roadmap-stage .react-flow__node { border: 0; background: transparent; }
-.dope-roadmap-stage .react-flow__handle { opacity: 0; pointer-events: none; }
+.dope-roadmap-stage .react-flow__handle { opacity: 1; width: 7px; height: 7px; border: 1px solid var(--theia-editor-background); background: var(--theia-descriptionForeground); pointer-events: none; }
 .dope-roadmap-node { box-sizing: border-box; display: flex; flex-direction: column; gap: 5px; width: 280px; min-height: 76px; padding: 10px 12px; text-align: left; color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 2px solid var(--theia-widget-border); border-radius: 6px; cursor: pointer; touch-action: none; }
 .dope-roadmap-node:hover { background: var(--theia-list-hoverBackground, var(--theia-editorWidget-background)); }
 .dope-roadmap-arranging .dope-roadmap-node { cursor: grab; }
@@ -74,6 +74,11 @@
 .dope-roadmap-detail { color: var(--theia-descriptionForeground); }
 .dope-roadmap-edge .react-flow__edge-path { stroke: var(--theia-descriptionForeground); stroke-width: 2; }
 .dope-roadmap-edge-branch .react-flow__edge-path { stroke-dasharray: 6 4; }
+.dope-roadmap-edge-progression .react-flow__edge-path { stroke: var(--theia-editor-foreground); stroke-width: 2.5; }
+.dope-roadmap-edge-membership .react-flow__edge-path { stroke: var(--theia-descriptionForeground); stroke-width: 2; stroke-dasharray: 7 4; }
+.dope-roadmap-edge-containment .react-flow__edge-path { stroke: var(--theia-descriptionForeground); stroke-width: 1.5; stroke-dasharray: 2 5; }
+.dope-roadmap-edge-dependency .react-flow__edge-path { stroke-width: 2.5; stroke-dasharray: 9 3; }
+.dope-roadmap-edge-dependency .react-flow__edge-marker { fill: var(--theia-descriptionForeground); }
 .dope-roadmap-edge-green .react-flow__edge-path { stroke: var(--dope-roadmap-green, var(--theia-testing-iconPassed, var(--theia-foreground))); }
 .dope-roadmap-edge-active .react-flow__edge-path { stroke: var(--dope-roadmap-active, var(--theia-editorWarning-foreground, var(--theia-foreground))); stroke-dasharray: 8 4; }
 .dope-roadmap-edge-not-green .react-flow__edge-path { stroke: var(--dope-roadmap-not-green, var(--theia-errorForeground, var(--theia-foreground))); stroke-dasharray: 3 5; }

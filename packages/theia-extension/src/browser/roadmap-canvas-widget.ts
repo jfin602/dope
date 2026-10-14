@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { ReactFlow, Background, Handle, Position, type Edge, type Node, type NodeChange, type ReactFlowInstance } from '@xyflow/react';
+import { ReactFlow, Background, Handle, Position, MarkerType, type Edge, type Node, type NodeChange, type ReactFlowInstance } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { BaseWidget, Message, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
@@ -15,7 +15,7 @@ import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
-import { roadmapCanvasOrder, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapDetailAtZoom, roadmapVisibleGraph,
+import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
@@ -560,8 +560,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const positions = projection ? roadmapSpatialLayout(projection) : new Map<string, { x: number; y: number }>();
         const titles = new Map(projection?.nodes.map(item => [item.id, item.title]) ?? []);
         const relations = new Map<string, string[]>();
-        for (const edge of projection?.edges ?? []) relations.set(edge.to, [...(relations.get(edge.to) ?? []),
-            `${edge.kind === 'branch' ? 'Branches from' : 'Depends on'} ${titles.get(edge.from) ?? edge.from}`]);
+        for (const edge of projection ? roadmapCanvasConnectors(projection) : [])
+            relations.set(edge.to, [...(relations.get(edge.to) ?? []),
+                `${edge.label} ${titles.get(edge.from) ?? edge.from}`]);
         const nodes: Node[] = (visible ? roadmapCanvasOrder(visible) : []).map(item => ({
             id: item.id, type: 'checkpoint', position: this.placements.get(item.id) ?? positions.get(item.id) ?? { x: 64, y: 64 },
             data: { item, selected: item.id === this.selectedId, relation: (relations.get(item.id) ?? []).join(', '),
@@ -572,13 +573,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
         }));
         const displayed = new Map(nodes.map(node => [node.id, node.position]));
         const statuses = new Map(visible?.nodes.map(node => [node.id, node.status]) ?? []);
-        const edges: Edge[] = (visible?.edges ?? []).map(item => {
+        const edges: Edge[] = (visible ? roadmapCanvasConnectors(visible) : []).map(item => {
             const status = roadmapEdgeStatus(statuses.get(item.from), statuses.get(item.to));
             return { id: item.id, source: item.from, target: item.to,
                 ...roadmapEdgeHandles(item, displayed),
-                type: 'smoothstep', selectable: false,
-                ariaLabel: `${item.label}; ${titles.get(item.from) ?? item.from} to ${titles.get(item.to) ?? item.to}; ${status}`,
-                className: `dope-roadmap-edge dope-roadmap-edge-${item.kind} dope-roadmap-edge-${status}` };
+                type: 'smoothstep', selectable: false, zIndex: 1,
+                ...(item.kind === 'dependency' ? { markerEnd: { type: MarkerType.ArrowClosed } } : {}),
+                ariaLabel: `${item.label}; ${titles.get(item.from) ?? item.from} to ${titles.get(item.to) ?? item.to}; endpoint status ${status}`,
+                className: `dope-roadmap-edge dope-roadmap-edge-${item.kind}${item.kind === 'dependency' ? ` dope-roadmap-edge-${status}` : ''}` };
         });
         this.root.render(React.createElement(ReactFlow, {
             id: 'dope-roadmap-flow', nodes, edges, nodeTypes: roadmapNodeTypes,

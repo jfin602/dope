@@ -17,6 +17,42 @@ export interface RoadmapVisibleGraph {
     omittedByStack: Map<string, number>;
 }
 
+export interface RoadmapCanvasConnector {
+    id: string;
+    from: string;
+    to: string;
+    kind: 'progression' | 'membership' | 'containment' | 'dependency';
+    label: string;
+}
+
+/** Relationships for drawing only. None are written back to RoadmapIndex. */
+export function roadmapCanvasConnectors(projection: Pick<RoadmapProjection, 'nodes' | 'edges'>): RoadmapCanvasConnector[] {
+    const byId = new Map(projection.nodes.map(node => [node.id, node]));
+    const visible = (id: string): boolean => byId.has(id);
+    const phases = projection.nodes.filter(node => node.kind === 'phase')
+        .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+    const connectors: RoadmapCanvasConnector[] = [];
+    for (let i = 1; i < phases.length; i++) connectors.push({
+        id: `view:progression:${phases[i - 1].id}:${phases[i].id}`,
+        from: phases[i - 1].id, to: phases[i].id, kind: 'progression',
+        label: 'Chronological phase progression; no release gate implied',
+    });
+    for (const node of projection.nodes) if ((node.kind === 'correction' ||
+        node.kind === 'task-stack' && roadmapUpperBranch(node)) &&
+        node.phaseAssociation?.phaseId && visible(node.phaseAssociation.phaseId)) connectors.push({
+        id: `view:membership:${node.phaseAssociation.phaseId}:${node.id}`,
+        from: node.phaseAssociation.phaseId, to: node.id, kind: 'membership',
+        label: `Correction belongs to ${byId.get(node.phaseAssociation.phaseId)!.title}`,
+    });
+    for (const edge of projection.edges) if (visible(edge.from) && visible(edge.to)) {
+        const kind = edge.kind === 'dependency' || edge.id.startsWith('dependency:') ? 'dependency' : 'containment';
+        connectors.push({ id: `view:${edge.id}`, from: edge.from, to: edge.to, kind,
+            label: kind === 'dependency' ? `Stored Roadmap dependency: ${edge.label}` :
+                `Supporting task or prompt: ${edge.label}` });
+    }
+    return connectors;
+}
+
 /** Presentation disclosure only. The projection and its evidence are never changed. */
 export function roadmapVisibleGraph(projection: RoadmapProjection, detail: RoadmapDetail,
     selectedId?: string, expanded: ReadonlySet<string> = new Set(), collapsed: ReadonlySet<string> = new Set(),
@@ -81,7 +117,8 @@ export function roadmapCanvasOrder(projection: Pick<RoadmapProjection, 'nodes' |
     const byId = new Map(projection.nodes.map(node => [node.id, node]));
     const children = new Map<string, CheckpointNode[]>();
     for (const node of branches) {
-        const parent = projection.edges.find(edge => edge.to === node.id && edge.kind === 'branch')?.from;
+        const parent = node.phaseAssociation?.unresolvedReason ? undefined : node.phaseAssociation?.phaseId ??
+            projection.edges.find(edge => edge.to === node.id && edge.kind === 'branch')?.from;
         if (parent && byId.has(parent)) children.set(parent, [...(children.get(parent) ?? []), node]);
     }
     const compare = (a: CheckpointNode, b: CheckpointNode): number =>
@@ -133,16 +170,19 @@ export function roadmapSpatialNextId(ids: readonly string[], positions: Readonly
 }
 
 /** A displayed edge retains its real graph endpoints; only its presentation handles change. */
-export function roadmapEdgeHandles(edge: CheckpointEdge,
+export function roadmapEdgeHandles(edge: { from: string; to: string; kind: RoadmapCanvasConnector['kind'] | CheckpointEdge['kind'] },
     positions: ReadonlyMap<string, { x: number; y: number }>): { sourceHandle: string; targetHandle: string } {
     const from = positions.get(edge.from), to = positions.get(edge.to);
-    if (edge.kind === 'branch' && from && to && Math.abs(to.y - from.y) > 20)
+    // A stored gate between consecutive phases must not paint over the chronological line.
+    if (edge.kind === 'dependency' && from && to && Math.abs(to.y - from.y) <= 20)
+        return { sourceHandle: 'bottom', targetHandle: 'bottom' };
+    if (edge.kind !== 'progression' && edge.kind !== 'dependency' && from && to && Math.abs(to.y - from.y) > 20)
         return to.y < from.y ? { sourceHandle: 'top', targetHandle: 'bottom' } :
             { sourceHandle: 'bottom', targetHandle: 'top' };
     return { sourceHandle: 'right', targetHandle: 'left' };
 }
 
-/** Stable horizontal phase bands; each branch stays in its parent's band. */
+/** Stable phase columns with correction space above and supporting work below. */
 export function roadmapSpatialLayout(projection: RoadmapProjection): Map<string, { x: number; y: number }> {
     const placed = new Map<string, { x: number; y: number }>();
     const byId = new Map(projection.nodes.map(node => [node.id, node]));
@@ -150,29 +190,35 @@ export function roadmapSpatialLayout(projection: RoadmapProjection): Map<string,
     const incoming = new Set<string>();
     for (const edge of projection.edges.filter(item => item.kind === 'branch')) {
         const child = byId.get(edge.to);
-        if (child && byId.has(edge.from)) {
+        if (child && !child.phaseAssociation?.unresolvedReason && byId.has(edge.from)) {
             children.set(edge.from, [...(children.get(edge.from) ?? []), child]);
             incoming.add(child.id);
+        }
+    }
+    for (const node of projection.nodes) if (node.phaseAssociation?.phaseId && byId.has(node.phaseAssociation.phaseId)) {
+        const parent = node.phaseAssociation.phaseId;
+        // A task with an explicit failed-prompt parent keeps that source-backed attachment.
+        if (!incoming.has(node.id)) {
+            children.set(parent, [...(children.get(parent) ?? []), node]);
+            incoming.add(node.id);
         }
     }
     const compare = (a: CheckpointNode, b: CheckpointNode): number =>
         a.order - b.order || a.id.localeCompare(b.id, 'en');
     for (const group of children.values()) group.sort(compare);
     const baseline = 640;
-    const column = 340;
+    const column = 28;
     const cardHeight = (node: CheckpointNode): number =>
         Math.max(160, 100 + Math.ceil(node.title.length / 20) * 22);
     let nextBandX = 64;
     const visitBand = (root: CheckpointNode): void => {
         const x = nextBandX;
-        const cursor = { upper: baseline - 120, lower: baseline + 180 };
-        let maxColumn = 0;
+        const cursor = { upper: baseline - 70, lower: baseline + cardHeight(root) + 70 };
         const visit = (node: CheckpointNode, depth: number, upper: boolean): void => {
             if (placed.has(node.id)) return;
-            maxColumn = Math.max(maxColumn, depth);
             const height = cardHeight(node);
             const y = node === root ? baseline : upper ? cursor.upper - height : cursor.lower;
-            placed.set(node.id, { x: x + depth * column, y });
+            placed.set(node.id, { x: x + Math.min(depth, 3) * column, y });
             if (node !== root) {
                 if (upper) cursor.upper = y - 44;
                 else cursor.lower = y + height + 44;
@@ -182,10 +228,11 @@ export function roadmapSpatialLayout(projection: RoadmapProjection): Map<string,
                     node === root ? roadmapUpperBranch(child) : upper);
         };
         visit(root, 0, false);
-        nextBandX += (maxColumn + 1) * column + 100;
+        nextBandX += 420;
     };
-    for (const phase of projection.nodes.filter(node => node.lane === 'path').sort(compare)) visitBand(phase);
-    // A missing source stays disconnected. It gets its own band; no visual edge is synthesized.
+    for (const phase of projection.nodes.filter(node => node.kind === 'phase').sort(compare)) visitBand(phase);
+    // Unmatched work stays in a distinct, discoverable region past the phase route.
+    nextBandX += 120;
     for (const node of [...projection.nodes].filter(item => !incoming.has(item.id)).sort(compare))
         if (!placed.has(node.id)) visitBand(node);
     for (const node of [...projection.nodes].sort(compare)) if (!placed.has(node.id)) visitBand(node);

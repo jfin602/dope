@@ -114,7 +114,8 @@ test('only actual Green to Green dependencies or branches look completed', () =>
     assert.equal(roadmapEdgeStatus('not-green', 'green'), 'not-green');
     const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
     assert.match(widget, /roadmapEdgeStatus\(statuses\.get\(item\.from\), statuses\.get\(item\.to\)\)/);
-    assert.match(widget, /dope-roadmap-edge-\$\{item\.kind\} dope-roadmap-edge-\$\{status\}/);
+    assert.match(widget, /item\.kind === 'dependency' \? ` dope-roadmap-edge-\$\{status\}` : ''/);
+    assert.match(widget, /roadmapCanvasConnectors\(visible\)/);
     assert.match(widget, /ariaLabel: `\$\{item\.label\};/);
     const css = read('packages/theia-extension/src/browser/dope.css');
     assert.match(css, /\.dope-roadmap-edge-branch \.react-flow__edge-path \{ stroke-dasharray: 6 4; \}/);
