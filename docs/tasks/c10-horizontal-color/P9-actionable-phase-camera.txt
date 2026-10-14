@@ -1,0 +1,23 @@
+TASK: Correction 10 / P9 — Open Roadmap focused on current actionable work
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.10.16`.
+
+PREFLIGHT
+Read c10-horizontal-color README, the corrected P6–P8 results, `roadmap-viewport.ts`, `roadmap-canvas-widget.ts`, `roadmap-canvas-model.ts`, P9 full-roadmap fixture and P12 viewport qualification requirements. Verify safe HEAD/dirty/version; keep historical original P6 archived, never overwrite work or require /activate.
+
+INSPECT
+Follow initial project switch, accepted import, `onInit`, `renderFlow`, React Flow `fitView({ padding: 0.12 })`, `defaultViewport`, `onMoveEnd`, `focusSelection()`, semantic-detail threshold and persisted v1/v2 migration. Distinguish a deliberately saved camera from default-fit values accidentally persisted on mount; inspect refresh/startup/resize flows to avoid viewport reset or race against nodes being projected.
+
+IMPLEMENT — ONE OWNER: INITIAL CAMERA / USER RESTORE
+When there is no genuine deliberate viewport, identify a deterministic current actionable checkpoint/phase from **existing authoritative status/plan/evidence**, not assumed most-recent title/order; center its legible card and immediate phase neighbors at near/mid readable zoom with fallback if no active node. Never `fitView()` across all 31 checkpoints automatically. Invalid/legacy default-fit snapshots should not keep a fresh project microscopically zoomed out; do not override a demonstrably user-adjusted viewport. Keep explicit Fit Map and Focus Selection actions. Preserve user's panned/zoomed view and selected node across refresh, source reconciliation, overlay transitions, editor resize/split, project switch/return and restart. Guard first-mount/onInit asynchronous race and avoid storing auto-init camera as proof of intentional navigation. Do not change RoadmapIndex revision, task identity, persistence of user Arrange layouts or Chat Follow/Pin.
+
+FOCUSED PROOF — T2
+Extend `roadmap-viewport.test.ts`, `roadmap-spatial-canvas.test.ts` and smallest widget/camera test to show fresh full-roadmap import centers active/Phase 10 vicinity with readable zoom; user-created view wins, deliberate Fit persists, v1 selection/disclosure migrates without restoring vertical coordinates, invalid/auto-fit fallback chooses a readable current target, no repeated recenter after refresh/overlay/resize, project isolation/restart, and no source writes. Compile only necessary theia-extension outputs and `git diff --check`. P11 performs direct live camera observation. Target <=8 minutes; focused T2 exception only if first-mount lifecycle requires it.
+
+DONE
+Default opens near real work and manual navigation remains stable. Do not claim screenshot proof from unit tests.
