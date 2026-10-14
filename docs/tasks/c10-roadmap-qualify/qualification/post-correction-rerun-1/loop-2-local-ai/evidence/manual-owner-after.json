@@ -1,0 +1,23 @@
+{
+  "projectId": "4ab7d8a5-87ac-47df-9615-99e13eb778c0",
+  "revision": 2,
+  "checkpoints": [
+    {
+      "id": "roadmap:ROADMAP.md#phase-1",
+      "title": "Phase 1 — Manual launch",
+      "objective": "Build a small local feature with reviewable steps.",
+      "status": "not-implemented"
+    },
+    {
+      "id": "roadmap:ROADMAP.md#milestone-first-review",
+      "title": "Milestone First review",
+      "objective": "Review the first feature before implementation.",
+      "status": "not-implemented"
+    }
+  ],
+  "linkedDocument": {
+    "path": "ROADMAP.md",
+    "sourceHash": "d501fbc6299fe8e7cde539a581b5dd6b1390cc011527041b1ef27bc8d9dd1542",
+    "syncState": "synced"
+  }
+}

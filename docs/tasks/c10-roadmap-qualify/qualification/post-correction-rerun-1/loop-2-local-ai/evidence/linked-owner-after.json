@@ -1,0 +1,23 @@
+{
+  "projectId": "83fbe679-72d1-49e7-82a9-bde6b22f39f2",
+  "revision": 4,
+  "checkpoints": [
+    {
+      "id": "roadmap:ROADMAP.md#phase-1",
+      "title": "Phase 1 — Local feature",
+      "objective": "Plan the first local feature.",
+      "status": "not-implemented"
+    },
+    {
+      "id": "roadmap:ROADMAP.md#milestone-first-checkpoint",
+      "title": "Milestone First checkpoint",
+      "objective": "Build a local search prototype and run focused tests.",
+      "status": "not-implemented"
+    }
+  ],
+  "linkedDocument": {
+    "path": "ROADMAP.md",
+    "sourceHash": "37083c0775996ed036de5d1bf7445adb009125565afd1a4affe80e40becbd334",
+    "syncState": "synced"
+  }
+}

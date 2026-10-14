@@ -1,0 +1,6 @@
+4a5ae8011b9257f177fc903ed1d955b04720e75b2821412a8a41cbe69681c236  docs/tasks/c10-roadmap-qualify/qualification/post-correction-rerun-1/loop-2-local-ai/evidence/chat-turns-sanitized.json
+37083c0775996ed036de5d1bf7445adb009125565afd1a4affe80e40becbd334  docs/tasks/c10-roadmap-qualify/qualification/post-correction-rerun-1/loop-2-local-ai/evidence/linked-after.md
+1e823bad982cfa39c31741c6b8969c9898296c4b8cf74bd202d7ed1eb143c50b  docs/tasks/c10-roadmap-qualify/qualification/post-correction-rerun-1/loop-2-local-ai/evidence/linked-before.md
+9c150508ffbe1c3a4c0f67395a9a23e42dc53302371c21df40eca8430fad63d0  docs/tasks/c10-roadmap-qualify/qualification/post-correction-rerun-1/loop-2-local-ai/evidence/linked-owner-after.json
+d501fbc6299fe8e7cde539a581b5dd6b1390cc011527041b1ef27bc8d9dd1542  docs/tasks/c10-roadmap-qualify/qualification/post-correction-rerun-1/loop-2-local-ai/evidence/manual-created.md
+3cb1efd1efbec1d9209cdff5f0d47c7fd5c97703f414777ac32bb2313cb6547f  docs/tasks/c10-roadmap-qualify/qualification/post-correction-rerun-1/loop-2-local-ai/evidence/manual-owner-after.json
