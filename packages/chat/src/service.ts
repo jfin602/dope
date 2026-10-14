@@ -45,6 +45,8 @@ export interface ChatPlanningProposal { id: string; chatId: ChatId; messageId: s
 export interface ChatTurnResult extends ChatContextPreview { proposal?: ChatPlanningProposal; proposalError?: string }
 export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'changed' | 'lease-changed'; chatId?: ChatId }
+    | { projectHandle: string; kind: 'planning-progress'; chatId: ChatId; messageId: string;
+        stage: 'waiting' | 'validating' }
     /** Transient visible output; persistence happens at turn lifecycle boundaries. */
     | { projectHandle: string; revision: number; kind: 'assistant-delta'; chatId: ChatId;
         messageId: string; executionId: string; sequence: number; delta: string };

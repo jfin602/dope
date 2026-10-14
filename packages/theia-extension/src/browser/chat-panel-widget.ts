@@ -13,7 +13,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
@@ -1220,7 +1220,26 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     details.append(summary, raw, copy);
                     content.append(details);
                     if (activity.alert) item.classList.add('dope-chat-message-alert');
+                } else if (message.planningActivity?.status === 'failed' ||
+                    message.planningActivity?.status === 'cancelled') {
+                    const note = document.createElement('p');
+                    note.className = 'dope-chat-planning-invalid';
+                    note.textContent = 'Unvalidated local planning output';
+                    content.append(note);
+                    if (body) {
+                        const raw = document.createElement('pre'); raw.textContent = body;
+                        content.append(raw);
+                    }
                 } else content.append(renderUntrustedMessageMarkdown(this.markdown, body));
+                const outcome = planningOutcome(message);
+                if (outcome && state.stream?.messageId !== message.id) {
+                    const explanation = document.createElement('div');
+                    explanation.className = 'dope-chat-planning-outcome';
+                    const summary = document.createElement('p'); summary.textContent = outcome.summary;
+                    const questions = document.createElement('p'); questions.textContent = outcome.questions.join(' ');
+                    explanation.append(summary, questions);
+                    content.append(explanation);
+                }
             } else content.textContent = body;
             const time = document.createElement('time');
             time.dateTime = message.createdAt;
@@ -1419,6 +1438,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         toolbar.append(more, modelSelector, submitButton);
         composer.append(input, toolbar);
         composer.append(menu);
+        if (state.running && state.planningProgress) {
+            const progress = document.createElement('p');
+            progress.className = 'dope-chat-planning-progress';
+            progress.setAttribute('role', 'status');
+            progress.textContent = state.planningProgress.stage === 'waiting' ?
+                'Waiting for local model…' : 'Validating local planning result…';
+            composer.append(progress);
+        }
         const planning = document.createElement('div');
         planning.className = 'dope-chat-planning-context';
         const activePlanning = state.activePlanning;

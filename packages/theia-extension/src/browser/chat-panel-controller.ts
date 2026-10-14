@@ -76,6 +76,7 @@ export class ChatPanelController {
     turnModel: ChatModelSelection | undefined;
     running = false;
     stream: { messageId: string; executionId: string; content: string; sequence: number } | undefined;
+    planningProgress?: { messageId: string; stage: 'waiting' | 'validating' };
     transientUser: { chatId: string; content: string; previousIds: Set<string> } | undefined;
     private connection?: ChatConnection;
     private handle?: string;
@@ -120,6 +121,7 @@ export class ChatPanelController {
         this.error = '';
         this.draft = ''; this.context = []; this.lastContext = undefined; this.planningProposal = undefined;
         this.planningProposalError = undefined; this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
+        this.planningProgress = undefined;
         this.planningMode = 'follow'; this.pinnedPlanning = undefined;
         if (workspace && this.restoredPlanning?.workspace === workspace) {
             this.planningMode = 'pin'; this.pinnedPlanning = this.restoredPlanning.selection;
@@ -142,6 +144,13 @@ export class ChatPanelController {
             this.connection = connection;
             connection.setClient({ notifyChatEvent: event => {
                 if (this.disposed || generation !== this.generation || this.handle && event.projectHandle !== this.handle) return;
+                if (event.kind === 'planning-progress') {
+                    if (!this.running || event.chatId !== this.chatId ||
+                        this.planningProgress?.messageId === event.messageId && this.planningProgress.stage === event.stage) return;
+                    this.planningProgress = { messageId: event.messageId, stage: event.stage };
+                    this.changed();
+                    return;
+                }
                 if (event.kind === 'assistant-delta') {
                     if (!this.running || event.chatId !== this.chatId) return;
                     const current = this.stream;
@@ -229,6 +238,7 @@ export class ChatPanelController {
         this.chatId = undefined; this.mode = 'select-chat'; this.error = '';
         this.draft = ''; this.context = []; this.lastContext = undefined; this.planningProposal = undefined;
         this.planningProposalError = undefined; this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
+        this.planningProgress = undefined;
         this.changed();
         await this.leave();
         await Promise.allSettled(previous);
@@ -384,7 +394,7 @@ export class ChatPanelController {
         const content = this.draft;
         const generation = this.generation, chatId = this.chatId;
         let completed = false;
-        this.running = true; this.error = ''; this.stream = undefined;
+        this.running = true; this.error = ''; this.stream = undefined; this.planningProgress = undefined;
         this.planningProposal = undefined; this.planningProposalError = undefined;
         if (!retryMessageId && chatId) this.transientUser = { chatId, content,
             previousIds: new Set(this.chat?.messages.filter(message => message.role === 'user').map(message => message.id)) };
@@ -421,7 +431,7 @@ export class ChatPanelController {
             return false;
         } finally {
             if (!this.disposed && generation === this.generation && chatId === this.chatId) {
-                this.running = false; this.stream = undefined; this.changed();
+                this.running = false; this.stream = undefined; this.planningProgress = undefined; this.changed();
                 await this.refresh(true);
                 if (!completed && this.transientUser?.chatId === chatId) {
                     if (this.error && !retryMessageId) this.draft = content;
@@ -444,7 +454,7 @@ export class ChatPanelController {
         } catch (error) {
             this.planningProposal = undefined;
             this.planningProposalError = `Planning proposal was not applied: ${String(error)}. Refresh the selection for the next turn.`;
-        } finally { this.pending = false; this.changed(); }
+        } finally { this.pending = false; this.changed(); await this.refresh(true); }
     }
     addContext(selection: ChatContextSelection): void {
         if (this.context.length >= 20) throw new Error('Too many context selections');

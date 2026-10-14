@@ -22,6 +22,68 @@ export function planningActivityPresentation(message: ChatAssistantMessage): { l
         alert: ['rejected', 'denied', 'stale', 'failed', 'cancelled'].includes(activity.status) };
 }
 
+/** Explain only the backend-verified activity; raw model text is never an authority signal. */
+export function planningOutcome(message: ChatAssistantMessage): { summary: string; questions: string[] } | undefined {
+    const activity = message.planningActivity;
+    if (!activity) return undefined;
+    const ref = activity.refs.find(item => item.kind === 'roadmap-checkpoint');
+    const target = ref ? `checkpoint ${ref.label}` : activity.kind === 'roadmap-draft-proposal' ? 'Roadmap draft' : 'Roadmap';
+    let change = `change ${target}`;
+    // This detail is only displayed alongside a backend-verified preview or confirmed apply.
+    if (activity.status === 'pending' || activity.status === 'applied') {
+        try {
+            const raw: unknown = JSON.parse(message.content);
+            if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+                const value = raw as Record<string, unknown>;
+                const action = value.action && typeof value.action === 'object' && !Array.isArray(value.action) ?
+                    value.action as Record<string, unknown> : undefined;
+                const objective = activity.kind === 'roadmap-intent' ? value.value : action?.objective;
+                const short = typeof objective === 'string' ? objective.replace(/\s+/g, ' ').slice(0, 120) : undefined;
+                if (short) change = `set the objective of ${target} to “${short}${objective !== short ? '…' : ''}”`;
+                else if (action && typeof action.type === 'string' &&
+                    ['create', 'edit', 'reorder', 'create-phase', 'create-checkpoint', 'edit-phase',
+                        'edit-checkpoint', 'reorder-phase', 'reorder-checkpoint'].includes(action.type))
+                    change = action.type === 'create' ? `create a Roadmap item near ${target}` :
+                        action.type === 'edit' || action.type === 'reorder' ? `${action.type} ${target}` :
+                            `${action.type.replace(/-/g, ' ')} in ${target}`;
+            }
+        } catch { /* A damaged saved payload never grants authority or breaks the transcript. */ }
+    }
+    const revision = activity.appliedRevision;
+    if (activity.status === 'applied' && revision !== undefined) return {
+        summary: `The approved proposal to ${change} was saved at revision ${revision}.`,
+        questions: ['Does the saved result match your current objective?', 'Would you like to review the linked source or next checkpoint?'],
+    };
+    if (activity.status === 'pending') return {
+        summary: `A proposal to ${change} was previewed and is awaiting approval; no write yet.`,
+        questions: ['Does the proposed change match your intent?', 'Should you review the affected source before deciding?'],
+    };
+    if (activity.status === 'no-action') return {
+        summary: `The local planning turn proposed no change to ${target}. Nothing was written.`,
+        questions: ['Is there a specific objective you want to clarify?', 'Would reviewing the current checkpoint help choose the next step?'],
+    };
+    if (activity.status === 'denied') return {
+        summary: `You rejected the proposed change to ${target}. Nothing was written by that proposal.`,
+        questions: ['What would you change about the proposal?'],
+    };
+    if (activity.status === 'stale') return {
+        summary: `The proposal for ${target} became stale and was not applied.`,
+        questions: ['Would you like to compare it with the current Roadmap before trying again?'],
+    };
+    if (activity.status === 'rejected') return {
+        summary: `The proposed change to ${target} did not pass planning validation and was not applied.`,
+        questions: ['Would reviewing the eligible field or current source help refine the request?'],
+    };
+    if (activity.status === 'cancelled') return {
+        summary: `The local planning turn was cancelled. No proposal from this turn was applied.`,
+        questions: ['Would you like to review the current checkpoint before retrying?'],
+    };
+    return {
+        summary: `The local planning turn failed before an approved change could be applied.`,
+        questions: ['Would you like to check the error and current source before retrying?'],
+    };
+}
+
 export const CHAT_PANEL_ID = 'dope-chat-panel';
 export const chatAreas = { left: 'left', right: 'right', center: 'main', bottom: 'bottom' } as const;
 export type ChatArea = keyof typeof chatAreas;

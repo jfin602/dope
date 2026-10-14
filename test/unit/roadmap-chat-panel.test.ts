@@ -11,6 +11,7 @@ import { ChatPlanningSelection } from '../../packages/theia-extension/lib/browse
 import { RoadmapInspectorModel } from '../../packages/theia-extension/lib/browser/roadmap-inspector-model.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
 import type { ChatContextSelection } from '../../packages/chat/src/service.ts';
+import type { ChatClient } from '../../packages/chat/src/service.ts';
 import type { RoadmapIndex } from '../../packages/project-intelligence/src/node/roadmap-store.ts';
 import type { RoadmapService } from '../../packages/theia-extension/src/roadmap-service.ts';
 import type { PlanningMapController } from '../../packages/theia-extension/src/browser/planning-map-controller.ts';
@@ -31,20 +32,40 @@ test('one saved Chat follows current checkpoint, pins exact owner, restores and 
     const selection = new ChatPlanningSelection(inspector, planning, roadmap);
     const repository = new ChatRepository(), owners = new ChatOpenOwners();
     const calls: ChatContextSelection[][] = [];
+    let progressChecked = false;
+    let updates = 0;
     const connect = (): ChatConnection => {
         const backend = new ChatBackend(repository, { notifyChatEvent() {} });
-        return Object.assign(backend, { setClient() {}, runTurn: async (request: { context?: ChatContextSelection[] }) => {
+        let client: ChatClient | undefined;
+        return Object.assign(backend, { setClient(next: ChatClient | undefined) { client = next; },
+            runTurn: async (request: { projectHandle: string; chatId: string; context?: ChatContextSelection[] }) => {
             calls.push(request.context ?? []);
+            if (calls.length === 1) {
+                const event = { projectHandle: request.projectHandle, kind: 'planning-progress' as const,
+                    chatId: request.chatId, messageId: 'turn-1', stage: 'waiting' as const };
+                const before = updates;
+                client?.notifyChatEvent(event);
+                assert.equal(first.planningProgress?.stage, 'waiting');
+                assert.equal(updates, before + 1);
+                client?.notifyChatEvent(event);
+                assert.equal(updates, before + 1);
+                client?.notifyChatEvent({ ...event, stage: 'validating' });
+                assert.equal(first.planningProgress?.stage, 'validating');
+                assert.equal(updates, before + 2);
+                progressChecked = true;
+            }
             return { refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 4096 };
         } });
     };
-    const first = new ChatPanelController(connect, () => {}, owners, 'left', () => {}, selection);
+    const first = new ChatPanelController(connect, () => { updates++; }, owners, 'left', () => {}, selection);
     try {
         await first.attach(workspace);
         assert.equal(await first.newChat(''), true);
         const chatId = first.chatId!;
         first.draft = 'First turn';
         assert.equal(await first.runTurn(), true);
+        assert.equal(progressChecked, true);
+        assert.equal(first.planningProgress, undefined);
         assert.equal(calls.at(-1)?.[0].id, 'p1');
         inspector.select('p2'); index.revision = 2; inspector.setSnapshot(workspace, index);
         first.draft = 'Next turn';

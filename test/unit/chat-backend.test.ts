@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
+import { planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { ChatEvent } from '../../packages/chat/lib/service.js';
 
 const folder = () => mkdtemp(join(tmpdir(), 'dope-chat-backend-'));
@@ -96,6 +97,8 @@ test('ownership gates turn writes and transient deltas; search reads saved Chat'
             operation: { type: 'finish-assistant', chatId, messageId: assistantId, outcome: 'complete',
                 content: 'Complete answer', actualModel: provenance } });
         assert.equal(state.chats[0].messages[1].content, 'Complete answer');
+        assert.equal(state.chats[0].messages[1].role === 'assistant' ?
+            planningOutcome(state.chats[0].messages[1]) : undefined, undefined);
         await assert.rejects(service.publishDelta({ projectHandle, chatId, messageId: assistantId,
             executionId, sequence: 1, delta: 'late', leaseToken: claim.token }), /not streaming/);
         assert.equal((await service.search({ projectHandle, query: 'saved', limit: 2 }))[0].chatId, chatId);

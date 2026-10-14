@@ -52,7 +52,7 @@ export class ChatBackend implements ChatService {
         handle?: string; request?: PlanningActionRequest; token?: string; changedIds: string[];
         draft?: { handle: string; preview: GreenfieldEditPreview } }>();
 
-    constructor(private readonly repository: ChatRepository, client: ChatClient,
+    constructor(private readonly repository: ChatRepository, private readonly client: ChatClient,
         private readonly models?: ModelConnectionsRegistry, private readonly composer?: ChatContextComposer,
         private readonly routing?: AIRoleRoutingService, private readonly grounder?: ChatProjectGrounder,
         private readonly planning?: ProjectPlanningActions, private readonly greenfield?: RoadmapGreenfield) {
@@ -155,9 +155,21 @@ export class ChatBackend implements ChatService {
         return { refs: composed.refs, diagnostics: composed.diagnostics,
             usedTokens: composed.usedTokens, budgetTokens: composed.budgetTokens };
     }
-    claim(request: ChatLeaseRequest) {
+    async claim(request: ChatLeaseRequest) {
         if (!request || typeof request !== 'object') throw new Error('Invalid Chat lease request');
-        return this.repository.claim(this.active(request.projectHandle), request.chatId, request.ownerId);
+        const root = this.active(request.projectHandle);
+        const result = await this.repository.claim(root, request.chatId, request.ownerId);
+        if (result.acquired) {
+            try {
+                // A new lease cannot approve an in-memory preview from an earlier owner/session.
+                await this.retirePending(root, request.chatId, result.token);
+                this.clearProposal(request.chatId);
+            } catch (error) {
+                await this.repository.release(root, request.chatId, result.token).catch(() => {});
+                throw error;
+            }
+        }
+        return result;
     }
     renew(projectHandle: string, chatId: string, token: string) {
         return this.repository.renew(this.active(projectHandle), chatId, token);
@@ -174,6 +186,23 @@ export class ChatBackend implements ChatService {
         const pending = this.proposals.get(chatId);
         if (pending?.handle) this.planning?.detach(pending.handle);
         this.proposals.delete(chatId);
+    }
+
+    private async retirePending(root: string, chatId: string, leaseToken: string): Promise<void> {
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        for (const message of chat?.messages ?? []) {
+            if (message.role !== 'assistant' || message.planningActivity?.status !== 'pending' ||
+                !message.planningActivity.proposalId) continue;
+            await this.repository.recordPlanningActivity(root, chatId, message.id, leaseToken,
+                { ...message.planningActivity, status: 'stale' },
+                { proposalId: message.planningActivity.proposalId, status: 'pending' });
+        }
+    }
+    private planningProgress(chatId: string, messageId: string, stage: 'waiting' | 'validating'): void {
+        if (!this.handle || this.disposed) return;
+        try { this.client.notifyChatEvent({ projectHandle: this.handle, kind: 'planning-progress',
+            chatId, messageId, stage }); }
+        catch { /* A transient UI notice cannot fail a planning turn. */ }
     }
 
     private async proposal(root: string, chatId: string, messageId: string, leaseToken: string,
@@ -310,6 +339,7 @@ export class ChatBackend implements ChatService {
         const chat = snapshot.chats.find(item => item.id === request.chatId);
         if (!chat) throw new Error('Chat not found');
         await this.repository.renew(root, request.chatId, request.leaseToken);
+        await this.retirePending(root, request.chatId, request.leaseToken);
         this.clearProposal(request.chatId);
         const retryIndex = request.retryMessageId ? chat.messages.findIndex(item => item.id === request.retryMessageId) : -1;
         const content = request.retryMessageId ? (() => {
@@ -426,6 +456,7 @@ export class ChatBackend implements ChatService {
                         request.selectedModel ? 'explicit-turn' : 'chat-exact-default',
                     startedAt: now } };
             await mutate({ type: 'begin-assistant', chatId: key, message: assistant });
+            if (localRoadmap) this.planningProgress(key, assistant.id, 'waiting');
             if (!following) {
                 await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id, actualModel: actual });
             }
@@ -495,6 +526,7 @@ export class ChatBackend implements ChatService {
                         sequence++, event.text, request.leaseToken);
                 } else {
                     output = event.text;
+                    if (localRoadmap) this.planningProgress(key, assistant.id, 'validating');
                     if (event.provenance) actual = { schemaVersion: 1, ...event.provenance };
                     else if (event.actualModelId) actual = { ...actual, modelId: event.actualModelId };
                     if (following) {
@@ -511,6 +543,8 @@ export class ChatBackend implements ChatService {
                             { connection: connection.label ?? connection.id, provider: actual.providerId,
                                 model: actual.modelLabel });
                     }
+                    if (localRoadmap && abort.signal.aborted)
+                        throw new ModelRuntimeFailure('Local planning cancelled', 'cancelled');
                     const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                         outcome: 'complete', content: output, actualModel: actual, routingProvenance });
                     const titledChat = completed.chats.find(item => item.id === key);
@@ -520,7 +554,7 @@ export class ChatBackend implements ChatService {
                         !titledChat.messages.slice(0, index).some(message =>
                             message.role === 'assistant' && message.execution.status === 'complete'))
                         void this.automaticTitle(root, key, preceding, assistant.id, output, actual);
-                    if (abort.signal.aborted || request.retryMessageId) return preview;
+                    if (abort.signal.aborted && !localRoadmap) return preview;
                     const result = await this.proposal(root, key, assistant.id, request.leaseToken, output, preview.refs, draft);
                     if (localRoadmap) {
                         const kind = (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;

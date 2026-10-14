@@ -11,6 +11,7 @@ import { ProjectPlanningActions } from '../../packages/project-intelligence/lib/
 import { previewRoadmapImport } from '../../packages/project-intelligence/lib/node/roadmap-import.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
+import { planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 
 const proposal = (projectId: string, ownerRevision: number, action: unknown) => JSON.stringify({
     type: 'roadmap-proposal', projectId, ownerRevision, action });
@@ -32,6 +33,7 @@ async function setup(linked = false, sourceOverride?: string) {
     const composer = new ChatContextComposer({} as never, {} as never, {} as never, repository, store);
     const outputs: string[] = [];
     const sent: string[] = [];
+    const progress: string[] = [];
     let beforeComplete: (() => Promise<void>) | undefined;
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
         models: [{ id: 'short', label: 'Short', usable: true,
@@ -43,7 +45,9 @@ async function setup(linked = false, sourceOverride?: string) {
             yield { type: 'delta' as const, text: text.slice(0, 8) };
             yield { type: 'complete' as const, text };
         } };
-    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer,
+    const backend = new ChatBackend(repository, { notifyChatEvent(event) {
+        if (event.kind === 'planning-progress') progress.push(event.stage);
+    } }, models as never, composer,
         undefined, undefined, new ProjectPlanningActions(store));
     const { projectHandle } = await backend.attach(pathToFileURL(root).href);
     const chatId = randomUUID();
@@ -62,10 +66,99 @@ async function setup(linked = false, sourceOverride?: string) {
         context: [{ kind: 'roadmap-checkpoint', id: (await current()).checkpoints[0].id,
             projectId: (await current()).projectId, ownerRevision: revision,
             ...(linked ? { sourceHash: (await current()).checkpoints[0].source!.sha256 } : {}) }] });
-    return { root, store, repository, backend, outputs, sent, current, turn, projectHandle, chatId,
+    return { root, store, repository, backend, outputs, sent, progress, current, turn, projectHandle, chatId,
         setBeforeComplete: (hook?: () => Promise<void>) => { beforeComplete = hook; },
         leaseToken: lease.token, source };
 }
+
+test('saved local planning outcome tracks review, denial, apply and next turn without extra inference', async () => fixture(async f => {
+    const initial = await f.current();
+    const action = proposal(initial.projectId, initial.revision,
+        { type: 'edit', id: 'a', objective: 'Clearer objective' });
+    f.outputs.push(action);
+    const pending = (await f.turn(initial.revision)).proposal!;
+    assert.ok(pending);
+    const saved = async () => (await new ChatRepository().read(f.root)).chats[0].messages.at(-1)!;
+    const before = await saved();
+    assert.equal(before.role, 'assistant');
+    if (before.role !== 'assistant') return;
+    assert.match(planningOutcome(before)!.summary, /awaiting approval; no write yet/);
+    assert.match(planningOutcome(before)!.summary, /Clearer objective/);
+    assert.equal(planningOutcome(before)!.questions.length, 2);
+    assert.deepEqual(f.progress, ['waiting', 'validating']);
+    assert.equal(f.sent.length, 1);
+    await f.backend.decidePlanningProposal(f.projectHandle, f.chatId, f.leaseToken, pending.id, false);
+    const denied = await saved();
+    assert.equal(denied.role, 'assistant');
+    if (denied.role !== 'assistant') return;
+    assert.match(planningOutcome(denied)!.summary, /rejected.*Nothing was written/);
+    assert.equal((await f.current()).revision, initial.revision);
+    assert.equal(f.sent.length, 1);
+
+    f.outputs.push(action);
+    const approved = (await f.turn(initial.revision)).proposal!;
+    await f.backend.decidePlanningProposal(f.projectHandle, f.chatId, f.leaseToken, approved.id, true);
+    const applied = await saved();
+    assert.equal(applied.role, 'assistant');
+    if (applied.role !== 'assistant') return;
+    assert.match(planningOutcome(applied)!.summary, /saved at revision 2/);
+    assert.equal((await f.current()).checkpoints[0].objective, 'Clearer objective');
+    assert.equal(f.sent.length, 2);
+
+    f.outputs.push('{"type":"no-action","message":"No further edit"}');
+    await f.turn((await f.current()).revision, 'What next?');
+    const noAction = await saved();
+    assert.equal(noAction.role, 'assistant');
+    if (noAction.role !== 'assistant') return;
+    assert.match(planningOutcome(noAction)!.summary, /Nothing was written/);
+    assert.equal(f.sent.length, 3);
+}));
+
+test('a superseded or restarted review is saved as stale without another model call', async () => fixture(async f => {
+    const initial = await f.current();
+    const action = proposal(initial.projectId, initial.revision,
+        { type: 'edit', id: 'a', objective: 'Still pending' });
+    f.outputs.push(action, '{"type":"no-action","message":"Wait"}');
+    const pending = (await f.turn(initial.revision)).proposal!;
+    await f.turn(initial.revision, 'Reconsider');
+    const messages = (await new ChatRepository().read(f.root)).chats[0].messages;
+    const previous = messages.find(item => item.role === 'assistant' && item.planningActivity?.proposalId === pending.id);
+    assert.equal(previous?.role, 'assistant');
+    if (previous?.role === 'assistant') assert.match(planningOutcome(previous)!.summary, /stale.*not applied/);
+    assert.equal(f.sent.length, 2);
+
+    f.outputs.push(action);
+    const again = (await f.turn(initial.revision)).proposal!;
+    await f.backend.release(f.projectHandle, f.chatId, f.leaseToken);
+    const reopened = new ChatBackend(new ChatRepository(), { notifyChatEvent() {} });
+    try {
+        const { projectHandle } = await reopened.attach(pathToFileURL(f.root).href);
+        const lease = await reopened.claim({ projectHandle, chatId: f.chatId, ownerId: 'reopened' });
+        assert.equal(lease.acquired, true);
+        const restored = (await reopened.get(projectHandle, f.chatId))!.messages.find(item =>
+            item.role === 'assistant' && item.planningActivity?.proposalId === again.id);
+        assert.equal(restored?.role, 'assistant');
+        if (restored?.role === 'assistant') assert.match(planningOutcome(restored)!.summary, /stale.*not applied/);
+        assert.equal(f.sent.length, 3);
+        assert.equal((await f.current()).revision, initial.revision);
+    } finally { reopened.dispose(); }
+}));
+
+test('a completed local planning retry receives a verified outcome', async () => fixture(async f => {
+    const initial = await f.current();
+    f.outputs.push('{bad', '{bad');
+    await assert.rejects(f.turn(initial.revision), /strict JSON/);
+    const failed = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
+    f.outputs.push('{"type":"no-action","message":"No safe change"}');
+    await f.backend.runTurn({ projectHandle: f.projectHandle, chatId: f.chatId, leaseToken: f.leaseToken,
+        selectedModel: { connectionId: 'local', modelId: 'short' }, retryMessageId: failed.id,
+        context: [{ kind: 'roadmap-checkpoint', id: 'a', projectId: initial.projectId,
+            ownerRevision: initial.revision }] });
+    const retried = (await new ChatRepository().read(f.root)).chats[0].messages.at(-1)!;
+    assert.equal(retried.role, 'assistant');
+    if (retried.role === 'assistant') assert.match(planningOutcome(retried)!.summary, /Nothing was written/);
+    assert.equal(f.sent.length, 3);
+}));
 
 test('only complete strict proposals preview; malformed, fake ID, Green and tool escape do not write', async () => fixture(async f => {
     const initial = await f.current();
@@ -252,6 +345,7 @@ test('cancelled local planning records cancellation without a proposal or write'
     const message = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
     assert.equal(message.role === 'assistant' && message.execution.status, 'cancelled');
     assert.equal(message.role === 'assistant' && message.planningActivity?.kind, 'cancelled');
+    if (message.role === 'assistant') assert.match(planningOutcome(message)!.summary, /cancelled.*No proposal.*applied/);
     assert.equal((await f.current()).checkpoints[0].objective, 'Before');
     assert.equal((await f.current()).revision, 1);
 }));
