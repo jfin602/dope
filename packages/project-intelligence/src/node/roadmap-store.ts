@@ -370,7 +370,10 @@ export class RoadmapStore {
                 if (preview.checkpoints.filter(other => other.id === item.id).length > 1) { duplicate.add(item.id); continue; }
                 const existing = checkpoints.find(checkpoint => checkpoint.id === item.id);
                 if (existing && !existing.source) continue; // A later import cannot overwrite a roadmap-owned checkpoint.
-                if (item.source.path === fresh.roadmapPath) sections.push({ sectionKey: item.sectionKey, checkpointId: item.id });
+                // Unsupported checklist entries stay visible with stable IDs, but have no
+                // lossless mapped section for document sync or approved source patches.
+                if (item.source.path === fresh.roadmapPath && !item.readOnly)
+                    sections.push({ sectionKey: item.sectionKey, checkpointId: item.id });
                 const imported: RoadmapCheckpoint = { id: item.id, kind: item.kind, title: item.title,
                     objective: existing?.objective ?? '',
                     order: existing?.order ?? checkpoints.length, dependencies: existing?.dependencies ?? [],

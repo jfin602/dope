@@ -21,6 +21,26 @@ async function accepted(root: string, store: RoadmapStore) {
     return store.acceptImport(root, 0, await previewRoadmapImport(root));
 }
 
+test('generic read-only checklist entries do not put a newly linked document in conflict', async () => fixture(async (root, file, store) => {
+    const generic = '# Roadmap\n\n## Milestone Seed catalog\nStatus: **ACTIVE**\nObjective: old\n\nSource-owned narrative.\n- [ ] Count seeds\n';
+    const selected = join(root, 'ROADMAP.md');
+    await writeFile(selected, generic);
+    const first = await store.acceptImport(root, 0, await previewRoadmapImport(root, 'ROADMAP.md'));
+    const checklist = first.checkpoints.find(item => item.title === 'Count seeds')!;
+    assert.equal(checklist.readOnly, true);
+    assert.equal(first.linkedDocument?.syncState, 'synced');
+    assert.deepEqual(first.linkedDocument?.sections.map(item => item.checkpointId), [first.checkpoints[0].id]);
+    assert.equal((await store.previewDocumentSync(root)).state, 'unchanged');
+    const external = generic.replace('Objective: old', 'Objective: external').replace('Source-owned narrative.', 'Source-owned narrative. More detail.');
+    await writeFile(selected, external);
+    const preview = await store.previewDocumentSync(root);
+    assert.equal(preview.state, 'source-changed');
+    const next = await store.applyDocumentSync(root, preview);
+    assert.equal(next.checkpoints[0].objective, 'external');
+    assert.equal(next.checkpoints.find(item => item.id === checklist.id)?.readOnly, true);
+    assert.equal(await readFile(selected, 'utf8'), external);
+}));
+
 test('external mapped edit previews deterministically and applies without writing Markdown or changing status', async () => fixture(async (root, file, store) => {
     const first = await accepted(root, store);
     assert.equal(first.checkpoints[0].objective, 'old');
