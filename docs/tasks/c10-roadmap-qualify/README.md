@@ -75,3 +75,14 @@ See [assessment](prompt-assessment.md), [implementation plan](implementation-pla
 ### Full-canvas Roadmap overlay coverage (current prequalification direction)
 
 The separately completed `../c10-horizontal-color/` correction is **P1–P6**, committed through `ddbac418`: P3 makes the Roadmap a full-editor canvas with compact toolbar and floating Ideas/Issues, P4 moves linked Markdown/import/creation/relink/conflict/recovery into contextual overlays, P5 reuses the existing inspector editing/approval model in an in-canvas overlay, and P6 performs implementation-only closeout. Confirm it is implemented and checkpointed on the actual final source BEFORE claiming any affected manual UI gates. Revisit P9 (real Codex-to-Dope source/status overlay), P10 (manual/Chat greenfield and approval overlay), P12 (native+browser overlay/readability/Chat), P13 (no hidden approval, false Green or silent write), and P14 (source-evidence reconciliation). Do not add a sixth family, relax context/egress/native gates or allow the correction closeout to replace manual P14.
+
+## Qualification review amendment — connected, readable imported roadmap (2026-10-13)
+
+First live browser import after completed `c10-horizontal-color` exposed flat correction placement, no visible connectors, label-only status colors, and an initial fit-all zoom that made the 31-checkpoint Roadmap unreadable; the 9 diagnostic references need categorical inspection. Treat these as **open P9/P12 family defects, not new qualification families**.
+
+- **P9:** exercise linked Markdown and task discovery with exact numeric `c<phase>[-slug]` convention association, including c10→10/c100≠10, valid explicit parent, conflict, missing phase and multiple corrections; classify all currently observed unresolved references rather than guessing cause.
+- **P12:** directly observe a legible first-load current-phase-centered camera and persisted user camera, true left→right phase progression, separate upper correction and lower prompt branches, visible **progression vs phase-membership vs real dependency** connectors, full-card six-state tint with accessible focus/noncolor cues, and gentle active/selection motion or static reduced-motion alternative. Repeat browser and independently visible native Electron, including narrow split/restart/theme/semantic zoom.
+- **P13:** visual association, animated line, completed prompt and waiver must never synthesize a stored dependency, approval, canonical status or false Green.
+- **P14:** require these presentation behaviors and prior five family proofs on one final exact committed product SHA before Green; otherwise retain Not Green.
+
+No new runner stack, version bump, /activate gate, or extra P9–P13 family. Keep historical P16/P19 Not Green and all completed implementation artifacts.
