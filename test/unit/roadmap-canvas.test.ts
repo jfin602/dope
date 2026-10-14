@@ -103,6 +103,33 @@ test('all six status marks and semantic colors remain distinct from selection an
     assert.match(read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts'), /'aria-hidden': true.*roadmapStatusMark\[item\.status\]/);
 });
 
+test('the whole Roadmap card keeps its status tint through hover, selection and focus', () => {
+    const css = read('packages/theia-extension/src/browser/dope.css');
+    const rule = (selector: string) => css.match(new RegExp(`${selector} \\{([^}]+)\\}`))?.[1] ?? '';
+    const card = rule('\\.dope-roadmap-node');
+    const hover = rule('\\.dope-roadmap-node:hover');
+    const selected = rule('\\.dope-roadmap-node\\[aria-current="true"\\]');
+    assert.match(card, /color: var\(--theia-editor-foreground\)/);
+    assert.match(card, /background: color-mix\(in srgb, var\(--roadmap-status-color, var\(--theia-descriptionForeground\)\)/);
+    assert.match(card, /var\(--roadmap-status-fill, 13%\)/);
+    assert.match(card, /var\(--theia-editorWidget-background, var\(--theia-editor-background\)\)/);
+    assert.match(card, /border: 2px solid color-mix\(in srgb, var\(--roadmap-status-color/);
+    assert.match(card, /var\(--theia-widget-border, var\(--theia-descriptionForeground\)\)/);
+    assert.match(card, /border-left-width: 5px/);
+    assert.match(hover, /background: color-mix\(in srgb, var\(--roadmap-status-color/);
+    assert.match(hover, /var\(--roadmap-status-hover-fill, 19%\)/);
+    assert.doesNotMatch(selected, /background:|border-left:/);
+    assert.match(selected, /box-shadow: 0 0 0 2px var\(--dope-primary, var\(--theia-focusBorder\)\)/);
+    assert.match(css, /\.dope-roadmap-canvas button:focus-visible \{ outline: 2px solid var\(--theia-focusBorder\)/);
+    assert.doesNotMatch(rule('\\.dope-roadmap-node:disabled'), /opacity:|background:/);
+    for (const status of ['green', 'active', 'not-green', 'waived', 'not-implemented', 'unknown']) {
+        assert.match(rule(`\\.dope-roadmap-status-${status}`), /--roadmap-status-color: var\(--dope-roadmap-/);
+    }
+    assert.match(rule('\\.dope-roadmap-status-not-implemented'), /--roadmap-status-fill: 9%/);
+    assert.match(rule('\\.dope-roadmap-status-unknown'), /--roadmap-status-fill: 6%/);
+    assert.doesNotMatch(card + hover, /#[0-9a-fA-F]{3,8}\b/);
+});
+
 test('only actual Green to Green dependencies or branches look completed', () => {
     const states: RoadmapStatus[] = ['green', 'active', 'not-green', 'waived', 'not-implemented', 'unknown'];
     for (const from of states) for (const to of states) {
