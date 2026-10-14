@@ -2,7 +2,7 @@
 
 **Current status (2026-10-13): Historical P1–P5 implementation committed through `f5b705691`; old P6 implementation-only closeout recorded at `ddbac418` and preserved verbatim under `history/`. NEW P6–P10 visual repair IMPLEMENTATION PROMPTS AUTHORED / NOT EXECUTED; P11 live visual closeout PENDING. Manual Phase 10 P9 completed three cycles and is NOT GREEN (`c4-color-theme` source-status conflict); P10–P14 and full Phase 10 qualification remain OPEN.** Same unchanged project version `0.10.16`.
 **Correction:** `c10-horizontal-color`, unchanged coherent project version `0.10.16`. The original implementation followed `c10-roadmap-qualify` P1–P8; this continuation is authored after already executed manual P9 and must complete before the explicitly requested fresh P9 requalification and subsequent P12 live UI evidence.
-**Historical authoring baseline (now superseded by committed P1–P6):** `628053adb1881a7277d333305cd6ee8ef466673c`. No published `c10-horizontal-color/P1`–`P3` implementation commits were found. **A local unpushed P1/P2/P3 run cannot be ruled out.** Check local log, runner state, Git status and active tasks before using this revised stack. If any old P3 closeout/runner checkpoint exists locally, stop and reconcile the historical implementation state; never rename an already executed checkpoint just to satisfy numbering.
+**Historical authoring baseline:** `628053adb1881a7277d333305cd6ee8ef466673c` predates the now-committed P1–P5 implementation and original P6 handoff. Those historical checks are preserved; current execution must instead verify that the local runner recognizes P1–P5 and finds no conflicting P6 implementation marker before resuming at the new P6.
 
 ## Locked experience
 
@@ -67,7 +67,7 @@ The first Phase 10 manual import exposed four **Not Green presentation findings 
 
 **Motion:** restrained slow highlight on the evidenced active route and brief focus/expand transitions only; static clarity is mandatory, no distracting flashing or all-path activity, respect reduced-motion, keep dense canvases responsive.
 
-**Execution routing:** These are amendments to manual P9 (relationships/import), P12 (visual/browser/native and motion), P13 (authority negatives) and P14 (final source decision). P1–P6 are historical completed prompts and their implementation closeout remains intact. Repair through the existing up-to-three-cycle manual families; do not rerun the completed correction runner, bump `0.10.16`, add a family or imply Phase 10 Green.
+**Superseded routing note:** The original proposal was to repair these findings only within manual P9/P12 cycles. The owner later explicitly requested implementation prompts: new P6–P10 now implement them, P11 checks appearance with real UI, and P9 requalification follows separately. The original P6 is archived; do not rerun completed P1–P5 or change `0.10.16`, add a qualification family or imply Phase 10 Green.
 
 ## Prompt efficiency gate — 2026-10-13 continuation
 
