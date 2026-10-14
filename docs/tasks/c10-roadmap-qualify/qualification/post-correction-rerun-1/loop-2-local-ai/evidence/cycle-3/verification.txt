@@ -1,0 +1,9 @@
+efae839f64d7826c7e4d0cd8d0dbc321514d2b268fc6ab17619c971d63036743  /tmp/dope-p10-chat-create-J1HYyc/ROADMAP.md
+cancel fixture ROADMAP.md: absent
+cancel fixture .dope/roadmap.json: absent
+{
+  "projectId": "7ee8759a-f8aa-47ed-ac78-3ecfb1f68afb",
+  "revision": 2,
+  "sourceHash": "efae839f64d7826c7e4d0cd8d0dbc321514d2b268fc6ab17619c971d63036743",
+  "syncState": "synced"
+}
