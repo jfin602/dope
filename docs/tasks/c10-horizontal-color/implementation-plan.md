@@ -1,7 +1,7 @@
 # /prompt-plan — c10-horizontal-color (six-prompt prequalification redesign)
 
 **Status:** Historical P1–P5 implemented; prior P6 handoff archived, new P6–P11 continuation AUTHORED / NOT IMPLEMENTED, manual final Phase 10 qualification NOT GREEN. **Version:** `0.10.16` unchanged.
-**Local preflight:** The published GitHub branch has no `c10-horizontal-color` task implementation commits at `628053adb1881a7277d333305cd6ee8ef466673c`. This does NOT guarantee no unpushed local checkpoint. If old P3 ran, STOP before renumbering and reconcile runner/Git history without discarding work.
+**Local preflight for new P6–P11:** P1–P5 are now historically committed and the manually executed original P6 is archived. Validate the current runner grammar, Git-proven P1–P5 prefix and absence of an unexpected P6 implementation checkpoint before resuming; never discard local work. The first P1–P6 plan below is historical and superseded for remaining execution by the appended P6–P11 continuation.
 
 ## Locked product behavior
 
@@ -16,7 +16,7 @@ The entire **available Roadmap editor tab** becomes an interactive React Flow ca
 7. **Overlay coordination:** one large editor/recovery surface at a time in narrow panes, with explicit buttons/labels, Escape/back, safe focus restoration, keyboard/touch support and responsive limits. No canvas reflow/re-fit, graph revision, selection/project leakage or discarded dirty editor merely from overlay state. Retain persistent alerts and explicit source approval.
 8. **Chat independence:** existing saved ChatPanel stays user-dockable left/right/bottom/center, no second chat/controller/runtime or unrequested docking. Maintain map and Chat side-by-side in normal narrow panes.
 
-## Order and focused validation
+## Historical initial P1–P6 order and focused validation (completed)
 
 | Prompt | Primary implementation seam | Focused required checks |
 | --- | --- | --- |
@@ -29,11 +29,11 @@ The entire **available Roadmap editor tab** becomes an interactive React Flow ca
 
 Do not bundle P3 shell with P4 source mutation or P5 inspector edits; reuse existing UI elements and services where possible. Avoid creating reusable abstraction infrastructure beyond what these three specific overlays require. No full `npm run check` until manual P14 exact product SHA.
 
-## Qualification handoff
+## Historical P6 qualification handoff (superseded for new implementation)
 
 After P6 implementation-only closeout, manual browser `c10-roadmap-qualify/manual/P9`–`P14` run outside the runner. P9 retests Codex/Markdown import/relink overlay, P10 tests manual/saved-Chat greenfield overlay and valid approvals, P12 captures full editor, three overlay states, selection/drafts/focus, dense graph, mouse/touch/keyboard and one existing Chat in four docks across browser AND native Electron, P13 proves UI closure cannot grant authority or silently apply source, P14 reconciles evidence on ONE exact committed source and runs the single full check. Reuse preceding evidence only when not invalidated. Preserve the 3-cycle cap per P9–P13 family, old P16/P19 Not Green, no Phase 10 owner-close or Phase 11/12 activation.
 
-The completed P1–P6 stack is **not** itself Green and should never write the manual `c10-roadmap-qualify/closeout.md`.
+The historically executed original P6 was **not** direct UI Green and is preserved under `history/`. The new P11 final prompt owns a separate evidence-bound visual closeout; it never writes `c10-roadmap-qualify/closeout.md`, which remains solely P14's duty.
 
 ## Post-P6 focused repair direction — live layout/color/camera/connectors
 
