@@ -1,0 +1,156 @@
+struct dope_user_msghdr {
+  void *msg_name;
+  unsigned int msg_namelen;
+};
+
+tracepoint:syscalls:sys_enter_connect
+/uid == 1000/
+{
+  $sa = (struct sockaddr *)args->uservaddr;
+
+  if ($sa->sa_family == 2) {
+    $a = (struct sockaddr_in *)args->uservaddr;
+    printf("%s CONNECT4 PID=%d COMM=%s FD=%d DEST=%s:%d\n",
+      strftime("%H:%M:%S", nsecs), pid, comm, args->fd,
+      ntop($a->sin_addr.s_addr),
+      bswap((uint16)$a->sin_port));
+  } else if ($sa->sa_family == 10) {
+    $a6 = (struct sockaddr_in6 *)args->uservaddr;
+    printf("%s CONNECT6 PID=%d COMM=%s FD=%d DEST=[%s]:%d\n",
+      strftime("%H:%M:%S", nsecs), pid, comm, args->fd,
+      ntop($a6->sin6_addr.in6_u.u6_addr8),
+      bswap((uint16)$a6->sin6_port));
+  }
+}
+
+tracepoint:syscalls:sys_enter_sendto
+/uid == 1000/
+{
+  if (args->addr != 0) {
+    $sa = (struct sockaddr *)args->addr;
+
+    if ($sa->sa_family == 2) {
+      $a = (struct sockaddr_in *)args->addr;
+      printf("%s SENDTO4 PID=%d COMM=%s FD=%d DEST=%s:%d\n",
+        strftime("%H:%M:%S", nsecs), pid, comm, args->fd,
+        ntop($a->sin_addr.s_addr),
+        bswap((uint16)$a->sin_port));
+    } else if ($sa->sa_family == 10) {
+      $a6 = (struct sockaddr_in6 *)args->addr;
+      printf("%s SENDTO6 PID=%d COMM=%s FD=%d DEST=[%s]:%d\n",
+        strftime("%H:%M:%S", nsecs), pid, comm, args->fd,
+        ntop($a6->sin6_addr.in6_u.u6_addr8),
+        bswap((uint16)$a6->sin6_port));
+    }
+  }
+}
+
+tracepoint:syscalls:sys_enter_sendmsg
+/uid == 1000/
+{
+  $m = (struct dope_user_msghdr *)args->msg;
+
+  if ($m->msg_name != 0) {
+    $sa = (struct sockaddr *)$m->msg_name;
+
+    if ($sa->sa_family == 2) {
+      $a = (struct sockaddr_in *)$m->msg_name;
+      printf("%s SENDMSG4 PID=%d COMM=%s FD=%d DEST=%s:%d\n",
+        strftime("%H:%M:%S", nsecs), pid, comm, args->fd,
+        ntop($a->sin_addr.s_addr),
+        bswap((uint16)$a->sin_port));
+    } else if ($sa->sa_family == 10) {
+      $a6 = (struct sockaddr_in6 *)$m->msg_name;
+      printf("%s SENDMSG6 PID=%d COMM=%s FD=%d DEST=[%s]:%d\n",
+        strftime("%H:%M:%S", nsecs), pid, comm, args->fd,
+        ntop($a6->sin6_addr.in6_u.u6_addr8),
+        bswap((uint16)$a6->sin6_port));
+    }
+  } else {
+    printf("%s SENDMSG_NO_ADDR PID=%d COMM=%s FD=%d\n",
+      strftime("%H:%M:%S", nsecs), pid, comm, args->fd);
+  }
+}
+
+tracepoint:syscalls:sys_enter_sendmmsg
+/uid == 1000/
+{
+  printf("%s SENDMMSG_ENTER PID=%d TID=%d COMM=%s FD=%d VLEN=%d\n",
+    strftime("%H:%M:%S", nsecs), pid, tid, comm, args->fd, args->vlen);
+}
+
+tracepoint:syscalls:sys_exit_sendmmsg
+/uid == 1000/
+{
+  printf("%s SENDMMSG_EXIT PID=%d TID=%d COMM=%s RET=%d\n",
+    strftime("%H:%M:%S", nsecs), pid, tid, comm, args->ret);
+}
+
+/* Kernel socket-layer calls run once for each sendmmsg message and also see
+ * connected UDP sends whose syscall supplied no destination. The kernel
+ * msghdr uses BTF, unlike the user_msghdr above. Correlate SENDMMSG_ENTER
+ * with UDP_SEND lines by TID/time; do not assume every requested message
+ * succeeded merely because the entry count was VLEN. */
+kprobe:udp_sendmsg,
+kprobe:udpv6_sendmsg
+/uid == 1000/
+{
+  $sk = (struct sock *)arg0;
+  $msg = (struct msghdr *)arg1;
+
+  if ($msg->msg_name != 0) {
+    $sa = (struct sockaddr *)$msg->msg_name;
+    if ($sa->sa_family == 2) {
+      $v4 = (struct sockaddr_in *)$msg->msg_name;
+      printf("%s UDP_SEND4 PID=%d TID=%d COMM=%s PEER=explicit DEST=%s:%d PROBE=%s\n",
+        strftime("%H:%M:%S", nsecs), pid, tid, comm,
+        ntop($v4->sin_addr.s_addr), bswap((uint16)$v4->sin_port), probe);
+    } else if ($sa->sa_family == 10) {
+      $v6 = (struct sockaddr_in6 *)$msg->msg_name;
+      printf("%s UDP_SEND6 PID=%d TID=%d COMM=%s PEER=explicit DEST=[%s]:%d PROBE=%s\n",
+        strftime("%H:%M:%S", nsecs), pid, tid, comm,
+        ntop($v6->sin6_addr.in6_u.u6_addr8),
+        bswap((uint16)$v6->sin6_port), probe);
+    } else {
+      printf("%s UDP_SEND_UNRESOLVED PID=%d TID=%d COMM=%s FAMILY=%d\n",
+        strftime("%H:%M:%S", nsecs), pid, tid, comm, $sa->sa_family);
+    }
+  } else if ($sk->__sk_common.skc_family == 2) {
+    printf("%s UDP_SEND4 PID=%d TID=%d COMM=%s PEER=connected DEST=%s:%d PROBE=%s\n",
+      strftime("%H:%M:%S", nsecs), pid, tid, comm,
+      ntop($sk->__sk_common.skc_daddr),
+      bswap((uint16)$sk->__sk_common.skc_dport), probe);
+  } else if ($sk->__sk_common.skc_family == 10) {
+    printf("%s UDP_SEND6 PID=%d TID=%d COMM=%s PEER=connected DEST=[%s]:%d PROBE=%s\n",
+      strftime("%H:%M:%S", nsecs), pid, tid, comm,
+      ntop($sk->__sk_common.skc_v6_daddr.in6_u.u6_addr8),
+      bswap((uint16)$sk->__sk_common.skc_dport), probe);
+  } else {
+    printf("%s UDP_SEND_UNRESOLVED PID=%d TID=%d COMM=%s FAMILY=%d\n",
+      strftime("%H:%M:%S", nsecs), pid, tid, comm,
+      $sk->__sk_common.skc_family);
+  }
+}
+
+/* tcp_sendmsg obtains the peer from the socket itself, so a send on a
+ * connection established before tracing began is still attributable. */
+kprobe:tcp_sendmsg
+/uid == 1000/
+{
+  $sk = (struct sock *)arg0;
+  if ($sk->__sk_common.skc_family == 2) {
+    printf("%s TCP_SEND4 PID=%d TID=%d COMM=%s PEER=connected DEST=%s:%d\n",
+      strftime("%H:%M:%S", nsecs), pid, tid, comm,
+      ntop($sk->__sk_common.skc_daddr),
+      bswap((uint16)$sk->__sk_common.skc_dport));
+  } else if ($sk->__sk_common.skc_family == 10) {
+    printf("%s TCP_SEND6 PID=%d TID=%d COMM=%s PEER=connected DEST=[%s]:%d\n",
+      strftime("%H:%M:%S", nsecs), pid, tid, comm,
+      ntop($sk->__sk_common.skc_v6_daddr.in6_u.u6_addr8),
+      bswap((uint16)$sk->__sk_common.skc_dport));
+  } else {
+    printf("%s TCP_SEND_UNRESOLVED PID=%d TID=%d COMM=%s FAMILY=%d\n",
+      strftime("%H:%M:%S", nsecs), pid, tid, comm,
+      $sk->__sk_common.skc_family);
+  }
+}

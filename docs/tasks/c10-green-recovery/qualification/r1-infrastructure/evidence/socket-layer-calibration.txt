@@ -1,0 +1,62 @@
+R1 cycle-1 owner-run socket-layer calibration, 2026-10-15 CDT.
+Private raw host trace: /tmp/dope-r1-v2-gXFuqODh/events.log (not committed).
+Raw SHA-256: 3e3cddf756d147e2b83d4e2ec7b7a90d562131517992cd21b6001c4f5b326fa1
+Monitor: root bpftrace PID 74821, host UID-1000 filter, 11:42:35–11:44:02 CDT.
+Script SHA-256: 8d8228ec49e07bf018c0b588ec4d1d3a9e0e273a41d82632068e3072f7aa8e31
+PID 73946 pre-established TCP IPv4:51321 and IPv6:60967 before monitor attach.
+PID 75002 additionally exercised connected UDP sendto/sendmsg without addresses.
+Both calibration processes ran as UID 1000 and sent only one-byte loopback data.
+Only the two calibration PIDs are excerpted; unrelated host traffic stays private.
+
+11:43:07 TCP_SEND4 PID=73946 TID=73946 COMM=dope-r1-loopbac PEER=connected DEST=127.0.0.1:51321
+11:43:07 SENDTO4 PID=73946 COMM=dope-r1-loopbac FD=11 DEST=127.0.0.1:52541
+11:43:07 UDP_SEND4 PID=73946 TID=73946 COMM=dope-r1-loopbac PEER=explicit DEST=127.0.0.1:52541 PROBE=kprobe:udp_sendmsg
+11:43:07 SENDMSG4 PID=73946 COMM=dope-r1-loopbac FD=11 DEST=127.0.0.1:52541
+11:43:07 UDP_SEND4 PID=73946 TID=73946 COMM=dope-r1-loopbac PEER=explicit DEST=127.0.0.1:52541 PROBE=kprobe:udp_sendmsg
+11:43:07 CONNECT4 PID=73946 COMM=dope-r1-loopbac FD=12 DEST=127.0.0.1:52541
+11:43:07 UDP_SEND4 PID=73946 TID=73946 COMM=dope-r1-loopbac PEER=connected DEST=127.0.0.1:52541 PROBE=kprobe:udp_sendmsg
+11:43:07 SENDMMSG_ENTER PID=73946 TID=73946 COMM=dope-r1-loopbac FD=11 VLEN=2
+11:43:07 UDP_SEND4 PID=73946 TID=73946 COMM=dope-r1-loopbac PEER=explicit DEST=127.0.0.1:52541 PROBE=kprobe:udp_sendmsg
+11:43:07 UDP_SEND4 PID=73946 TID=73946 COMM=dope-r1-loopbac PEER=explicit DEST=127.0.0.1:53786 PROBE=kprobe:udp_sendmsg
+11:43:07 SENDMMSG_EXIT PID=73946 TID=73946 COMM=dope-r1-loopbac RET=2
+11:43:07 TCP_SEND6 PID=73946 TID=73946 COMM=dope-r1-loopbac PEER=connected DEST=[::1]:60967
+11:43:07 SENDTO6 PID=73946 COMM=dope-r1-loopbac FD=5 DEST=[::1]:35846
+11:43:07 UDP_SEND6 PID=73946 TID=73946 COMM=dope-r1-loopbac PEER=explicit DEST=[::1]:35846 PROBE=kprobe:udpv6_sendmsg
+11:43:07 SENDMSG6 PID=73946 COMM=dope-r1-loopbac FD=5 DEST=[::1]:35846
+11:43:07 UDP_SEND6 PID=73946 TID=73946 COMM=dope-r1-loopbac PEER=explicit DEST=[::1]:35846 PROBE=kprobe:udpv6_sendmsg
+11:43:07 CONNECT6 PID=73946 COMM=dope-r1-loopbac FD=9 DEST=[::1]:35846
+11:43:07 UDP_SEND6 PID=73946 TID=73946 COMM=dope-r1-loopbac PEER=connected DEST=[::1]:35846 PROBE=kprobe:udpv6_sendmsg
+11:43:07 SENDMMSG_ENTER PID=73946 TID=73946 COMM=dope-r1-loopbac FD=5 VLEN=2
+11:43:07 UDP_SEND6 PID=73946 TID=73946 COMM=dope-r1-loopbac PEER=explicit DEST=[::1]:35846 PROBE=kprobe:udpv6_sendmsg
+11:43:07 UDP_SEND6 PID=73946 TID=73946 COMM=dope-r1-loopbac PEER=explicit DEST=[::1]:47808 PROBE=kprobe:udpv6_sendmsg
+11:43:07 SENDMMSG_EXIT PID=73946 TID=73946 COMM=dope-r1-loopbac RET=2
+11:43:28 CONNECT4 PID=75002 COMM=dope-r1-loopbac FD=4 DEST=127.0.0.1:60103
+11:43:28 CONNECT6 PID=75002 COMM=dope-r1-loopbac FD=7 DEST=[::1]:36569
+11:43:28 TCP_SEND4 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=connected DEST=127.0.0.1:60103
+11:43:28 SENDTO4 PID=75002 COMM=dope-r1-loopbac FD=11 DEST=127.0.0.1:52336
+11:43:28 UDP_SEND4 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=explicit DEST=127.0.0.1:52336 PROBE=kprobe:udp_sendmsg
+11:43:28 SENDMSG4 PID=75002 COMM=dope-r1-loopbac FD=11 DEST=127.0.0.1:52336
+11:43:28 UDP_SEND4 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=explicit DEST=127.0.0.1:52336 PROBE=kprobe:udp_sendmsg
+11:43:28 CONNECT4 PID=75002 COMM=dope-r1-loopbac FD=12 DEST=127.0.0.1:52336
+11:43:28 UDP_SEND4 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=connected DEST=127.0.0.1:52336 PROBE=kprobe:udp_sendmsg
+11:43:28 UDP_SEND4 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=connected DEST=127.0.0.1:52336 PROBE=kprobe:udp_sendmsg
+11:43:28 SENDMSG_NO_ADDR PID=75002 COMM=dope-r1-loopbac FD=12
+11:43:28 UDP_SEND4 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=connected DEST=127.0.0.1:52336 PROBE=kprobe:udp_sendmsg
+11:43:28 SENDMMSG_ENTER PID=75002 TID=75002 COMM=dope-r1-loopbac FD=11 VLEN=2
+11:43:28 UDP_SEND4 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=explicit DEST=127.0.0.1:52336 PROBE=kprobe:udp_sendmsg
+11:43:28 UDP_SEND4 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=explicit DEST=127.0.0.1:54824 PROBE=kprobe:udp_sendmsg
+11:43:28 SENDMMSG_EXIT PID=75002 TID=75002 COMM=dope-r1-loopbac RET=2
+11:43:28 TCP_SEND6 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=connected DEST=[::1]:36569
+11:43:28 SENDTO6 PID=75002 COMM=dope-r1-loopbac FD=5 DEST=[::1]:58020
+11:43:28 UDP_SEND6 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=explicit DEST=[::1]:58020 PROBE=kprobe:udpv6_sendmsg
+11:43:28 SENDMSG6 PID=75002 COMM=dope-r1-loopbac FD=5 DEST=[::1]:58020
+11:43:28 UDP_SEND6 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=explicit DEST=[::1]:58020 PROBE=kprobe:udpv6_sendmsg
+11:43:28 CONNECT6 PID=75002 COMM=dope-r1-loopbac FD=9 DEST=[::1]:58020
+11:43:28 UDP_SEND6 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=connected DEST=[::1]:58020 PROBE=kprobe:udpv6_sendmsg
+11:43:28 UDP_SEND6 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=connected DEST=[::1]:58020 PROBE=kprobe:udpv6_sendmsg
+11:43:28 SENDMSG_NO_ADDR PID=75002 COMM=dope-r1-loopbac FD=9
+11:43:28 UDP_SEND6 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=connected DEST=[::1]:58020 PROBE=kprobe:udpv6_sendmsg
+11:43:28 SENDMMSG_ENTER PID=75002 TID=75002 COMM=dope-r1-loopbac FD=5 VLEN=2
+11:43:28 UDP_SEND6 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=explicit DEST=[::1]:58020 PROBE=kprobe:udpv6_sendmsg
+11:43:28 UDP_SEND6 PID=75002 TID=75002 COMM=dope-r1-loopbac PEER=explicit DEST=[::1]:51296 PROBE=kprobe:udpv6_sendmsg
+11:43:28 SENDMMSG_EXIT PID=75002 TID=75002 COMM=dope-r1-loopbac RET=2
