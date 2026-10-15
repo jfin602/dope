@@ -1,0 +1,17 @@
+R1 owner-operated bpftrace excerpt, 2026-10-15 CDT.
+Source: owner-pasted terminal output; selected relevant metadata only.
+Tracepoint: syscalls:sys_enter_connect, UID 1000, no syscall-return status.
+
+TIME=10:13:08 PID=56342 COMM=Chrome_ChildIOT IPv4=127.0.0.1:3000
+TIME=10:13:08 PID=56342 COMM=Chrome_ChildIOT IPv4=172.217.68.138:443
+TIME=10:14:06 PID=56342 COMM=Chrome_ChildIOT IPv4=127.0.0.1:3000
+TIME=10:14:42 PID=58587 COMM=Chrome_ChildIOT IPv4=172.217.68.101:443
+TIME=10:14:42 PID=58587 COMM=Chrome_ChildIOT IPv4=50.151.212.27:443
+TIME=10:14:43 PID=58587 COMM=Chrome_ChildIOT IPv4=127.0.0.1:40227
+TIME=10:15:46 PID=59062 COMM=curl IPv4=127.0.0.1:3000
+
+The full owner terminal output also contained IPv6 connect attempts without destination
+and unrelated host traffic. No LM Studio 6573/6633/6657 or browser backend 56253/58298
+connect line was identified in the excerpted pilot. Absence of a line is not a no-egress
+result. IP connect attempts alone do not establish a completed connection, payload,
+request source, or whether the attempt came from browser/Electron background behavior.
