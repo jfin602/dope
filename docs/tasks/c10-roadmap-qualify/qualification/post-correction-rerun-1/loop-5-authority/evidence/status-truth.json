@@ -1,0 +1,177 @@
+{
+  "phaseStatuses": [
+    {
+      "sectionKey": "phase-5",
+      "status": "not-green",
+      "waived": true,
+      "roadmapStatus": "active",
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "status": "active"
+        },
+        {
+          "path": "docs/planning/p5/activation.md",
+          "status": "waived"
+        },
+        {
+          "path": "docs/planning/p5/phase-5-plan.md",
+          "status": "active"
+        },
+        {
+          "path": "docs/planning/p5/phase-5-visual-workflow-worksheet.md",
+          "status": "unknown"
+        },
+        {
+          "path": "docs/tasks/p5/closeout.md",
+          "status": "not-green"
+        }
+      ]
+    },
+    {
+      "sectionKey": "phase-6",
+      "status": "waived",
+      "waived": true,
+      "roadmapStatus": "active",
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "status": "active"
+        },
+        {
+          "path": "docs/planning/p6/activation.md",
+          "status": "active"
+        },
+        {
+          "path": "docs/planning/p6/phase-6-ai-presence-worksheet.md",
+          "status": "unknown"
+        },
+        {
+          "path": "docs/planning/p6/phase-6-plan.md",
+          "status": "waived"
+        },
+        {
+          "path": "docs/tasks/p6/closeout.md",
+          "status": "waived"
+        }
+      ]
+    },
+    {
+      "sectionKey": "phase-7",
+      "status": "green",
+      "waived": false,
+      "roadmapStatus": "unknown",
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "status": "unknown"
+        },
+        {
+          "path": "docs/planning/p7/activation.md",
+          "status": "green"
+        },
+        {
+          "path": "docs/planning/p7/phase-7-plan.md",
+          "status": "green"
+        },
+        {
+          "path": "docs/planning/p7/phase-7b-ai-center-worksheet.md",
+          "status": "unknown"
+        },
+        {
+          "path": "docs/planning/p7/phase-7c-ai-roles-routing-worksheet.md",
+          "status": "unknown"
+        },
+        {
+          "path": "docs/tasks/p7/closeout.md",
+          "status": "not-green"
+        }
+      ]
+    },
+    {
+      "sectionKey": "phase-9",
+      "status": "green",
+      "waived": false,
+      "roadmapStatus": "green",
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "status": "green"
+        },
+        {
+          "path": "docs/planning/p9/activation.md",
+          "status": "not-green"
+        },
+        {
+          "path": "docs/planning/p9/baseline.md",
+          "status": "active"
+        },
+        {
+          "path": "docs/planning/p9/phase-9-closeout.md",
+          "status": "green"
+        },
+        {
+          "path": "docs/planning/p9/phase-9-plan.md",
+          "status": "unknown"
+        },
+        {
+          "path": "docs/planning/p9/phase-9b-activation.md",
+          "status": "not-implemented"
+        },
+        {
+          "path": "docs/planning/p9/phase-9b-plan.md",
+          "status": "unknown"
+        },
+        {
+          "path": "docs/planning/p9/phase-9c-activation.md",
+          "status": "not-implemented"
+        },
+        {
+          "path": "docs/planning/p9/phase-9c-plan.md",
+          "status": "unknown"
+        },
+        {
+          "path": "docs/planning/p9/phase-9d-activation.md",
+          "status": "unknown"
+        },
+        {
+          "path": "docs/tasks/p9d/final-qualification.md",
+          "status": "green"
+        }
+      ]
+    },
+    {
+      "sectionKey": "phase-10",
+      "status": "not-green",
+      "waived": false,
+      "roadmapStatus": "not-green",
+      "evidence": [
+        {
+          "path": "docs/roadmap/mvp-roadmap.md",
+          "status": "not-green"
+        },
+        {
+          "path": "docs/planning/p10/activation.md",
+          "status": "not-implemented"
+        },
+        {
+          "path": "docs/planning/p10/baseline.md",
+          "status": "not-implemented"
+        },
+        {
+          "path": "docs/planning/p10/c10-roadmap-create-sync-activation.md",
+          "status": "not-green"
+        },
+        {
+          "path": "docs/planning/p10/phase-10-plan.md",
+          "status": "unknown"
+        },
+        {
+          "path": "docs/tasks/p10/closeout.md",
+          "status": "not-green"
+        }
+      ]
+    }
+  ],
+  "diagnostics": []
+}

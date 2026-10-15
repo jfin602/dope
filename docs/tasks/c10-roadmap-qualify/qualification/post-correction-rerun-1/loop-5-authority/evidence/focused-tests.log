@@ -1,0 +1,77 @@
+✔ preview is write-free; approval, events and next selected read use the committed revision (41.697957ms)
+✔ stale race, foreign handle, invalid type and gate promotion fail without writes (48.532421ms)
+✔ dependency cycle and invalid foreign link roll back an entire owner batch (28.930144ms)
+✔ typed link, approval for unlink, and revision-safe undo conflict (67.773277ms)
+✔ eligible edit undo restores one owner object and detects a changed source (72.203011ms)
+(node:28750) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/roadmap-canvas-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ one keyboard order follows the checkpoint path and attached branches (1.723329ms)
+✔ one ordinary center tab, safe labels, recovery, semantic dark/light tokens and no Chat docking effects (2.115385ms)
+✔ Details command and selection use one mounted inspector model in the canvas with safe overlay states (0.965405ms)
+✔ all six status marks and semantic colors remain distinct from selection and keyboard focus (0.775116ms)
+✔ the whole Roadmap card keeps its status tint through hover, selection and focus (0.736043ms)
+✔ only actual Green to Green dependencies or branches look completed (0.625525ms)
+✔ relationship motion is brief, selection-only and static under reduced motion (0.498467ms)
+✔ saved local planning outcome tracks review, denial, apply and next turn without extra inference (600.203374ms)
+✔ model claims and suggested questions remain inert, with raw no-action text preserved (215.160113ms)
+✔ a superseded or restarted review is saved as stale without another model call (382.521144ms)
+✔ a completed local planning retry receives a verified outcome (162.282146ms)
+✔ only complete strict proposals preview; malformed, fake ID, Green and tool escape do not write (442.642185ms)
+✔ linked intent binds checked document edit; mismatch, denial and stale source do not write (437.670884ms)
+✔ a linked source changed during inference rejects the in-flight intent (131.079402ms)
+✔ narrative linked section without Objective is visibly ineligible and cannot produce an edit (202.58141ms)
+✔ developer rejects or approves one completed proposal; stale manual race rejects and next turn refreshes (406.308472ms)
+✔ failed stream never yields an actionable proposal (123.8617ms)
+✔ cancelled local planning records cancellation without a proposal or write (114.672211ms)
+✔ ordinary local prose stays visible as an untrusted failed turn (112.636887ms)
+✔ imported Roadmap, original owners, manual inspector, Planning Map and saved Chat share guarded authority (1018.127165ms)
+✔ measured 4096 narrow stress reserves serialized input, system and output (1.190858ms)
+✔ 16K, 32K and 64K use measured capacity and independent model/developer limits (0.317297ms)
+✔ bounded JSON bytes are independent of output token reservation (0.726616ms)
+✔ non-tools JSON fallback repairs once and never accepts a second malformed response (0.289424ms)
+✔ abort stops retries; strict fallback rejects tool and multiple-action envelopes (0.821805ms)
+✔ linked intent contract rejects missing action type, wrong operation, extra keys and unknown intent before completion (0.75001ms)
+✔ strict local completion accepts only known, bounded envelopes (0.90996ms)
+✔ local Roadmap turn fails before transport when loaded capacity is unknown (92.706371ms)
+✔ Follow Roadmap planning denies implicit hosted fallback before transport (71.634964ms)
+✔ an exact hosted Roadmap turn requires explicit project-data consent (68.393092ms)
+✔ Planning Map, transformation and WorkItem links use exact owner revision and current basis without owner writes (122.643858ms)
+✔ basis changes after Roadmap preview reject apply without Roadmap or Planning Map mutation (43.781863ms)
+(node:28770) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/roadmap-canvas-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ only rendered connectors touching selection receive motion emphasis (1.557387ms)
+✔ branch routes use the card gutter and duplicate membership segments are suppressed (0.199545ms)
+✔ hidden implementation never reserves layout space and disclosure preserves strategic coordinates (5.353721ms)
+✔ dense expanded prompts have separate cards without moving phase columns (1.747123ms)
+✔ Roadmap mounts React Flow with selection, pan, zoom and fit but no graph mutation gestures or Chat docking (1.028202ms)
+✔ rendered Tab order follows the same branch traversal as arrow keys (0.659991ms)
+✔ world, phase and checkpoint detail keep implementation closed until explicit disclosure (0.279595ms)
+✔ actual full Dope import plus current c10 correction labels has a route and vertical branches without stored edges (5.376924ms)
+✔ unresolved corrections stay detached and connector classes retain visible endpoints at every detail (0.405792ms)
+✔ current owner dispositions beat historical status without erasing failed gates (151.339713ms)
+✔ source order, reimport, linked Markdown edit and restart retain status provenance (55.183038ms)
+✔ contradictory current owner records fail closed independent of directory order (4.68786ms)
+✔ restart recovers injected failure after owner write 1 (90.334554ms)
+✔ restart recovers injected failure after owner write 2 (78.252168ms)
+✔ restart recovers injected failure after owner write 3 (83.924518ms)
+✔ failure before pending index write leaves both owners unchanged (47.716938ms)
+✔ source edit after document write needs reviewed recovery and preserves both edits until approval (80.8656ms)
+✔ stale source after pending write remains a visible conflict and preserves both owners (60.427273ms)
+✔ reviewed source-wins recovery clears a crash conflict without overwriting Markdown (140.734705ms)
+✔ pending recovery rejects stale preview, missing source and malformed mapped fields (66.359221ms)
+✔ missing and unsafe linked source never relink or overwrite on recovery (46.093888ms)
+✔ moved source during pending write waits for original-path restoration and reviewed recovery (74.879983ms)
+✔ one observer debounces duplicate source events and detaches on project switch (651.000394ms)
+✔ approved local document write does not feed back as an external source event (358.074207ms)
+ℹ tests 61
+ℹ suites 0
+ℹ pass 61
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3499.068221

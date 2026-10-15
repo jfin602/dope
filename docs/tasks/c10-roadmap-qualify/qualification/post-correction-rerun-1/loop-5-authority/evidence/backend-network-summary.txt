@@ -1,0 +1,12 @@
+Trace: strace -ff -ttt -s 256 -e trace=network, browser backend launch; filtered connect calls in backend-connects.txt (raw payload trace removed)
+Trace files: 343
+Trace time: 2026-10-15T13:33:21.863655+00:00 to 2026-10-15T13:37:58.237408+00:00
+Connect calls: 11 AF_INET/AF_INET6: 6
+IPv4/IPv6 connect lines:
+backend-net.29444 1792071218.085259 connect(23, {sa_family=AF_INET, sin_port=htons(1234), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+backend-net.29444 1792071218.121865 connect(52, {sa_family=AF_INET, sin_port=htons(1234), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+backend-net.29444 1792071231.868156 connect(27, {sa_family=AF_INET, sin_port=htons(1234), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+backend-net.29444 1792071287.529127 connect(27, {sa_family=AF_INET, sin_port=htons(1234), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+backend-net.29444 1792071350.474937 connect(23, {sa_family=AF_INET, sin_port=htons(1234), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+backend-net.29444 1792071352.642936 connect(23, {sa_family=AF_INET, sin_port=htons(1234), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+Coverage: traced browser backend and its descendants only; no in-app browser renderer, LM Studio existing process, or Electron window trace.

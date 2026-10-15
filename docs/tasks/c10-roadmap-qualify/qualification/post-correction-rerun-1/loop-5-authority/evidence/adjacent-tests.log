@@ -1,0 +1,70 @@
+✔ WorkItem validated candidate is held with durable diff, fingerprint and bytes (3123.217034ms)
+✔ Planning launch uses the saved task ID through explicit Start, Dope validation and accepted review (3637.990383ms)
+✔ Planning-launched candidate can be rejected after a changed authoritative basis (2011.964932ms)
+✔ failed WorkItem validation cannot create a review hold (1827.863945ms)
+✔ direct task still promotes automatically after validation (1896.819616ms)
+✔ accept promotes the exact validated WorkItem candidate once and persists the decision (3535.946449ms)
+✔ ignored generated output is excluded from the frozen review candidate (3583.843167ms)
+✔ reject persists without applying and repeated rejection is idempotent (2000.752763ms)
+✔ stale revision, fingerprint and authoritative Git basis block accept (2052.755651ms)
+✔ tampered frozen bytes and failed validation never promote (4946.103512ms)
+✔ review hold survives backend restart and accepted candidate is applied once (3530.867584ms)
+✔ human-reserved SHARED path fails review and records a blocked action without promotion (1854.617476ms)
+✔ only blocked effects produce ProposedActions; acknowledgement never expands authority (8.386764ms)
+✔ parser rejects executable approvals, private targets and untrusted decision fields (0.496945ms)
+✔ project-local action survives restart and decision is revision checked (40.289876ms)
+✔ unrelated generation advances only global basis, with no affected branch or transformation (9.934685ms)
+✔ generation-only reanalysis keeps a Planning Map current and leaves target branches alone (0.253857ms)
+✔ creation accepts a semantically identical newer observation and stores its exact generation (9.025936ms)
+✔ a source edit stales only the owning branch when graph identities stay fixed (0.668969ms)
+✔ removed, replaced, parent, identity, contract and relationship changes are localized with evidence (0.670792ms)
+✔ already realized and differently realized remain distinct, while missing old graph is unresolved (0.244199ms)
+✔ cancel retains old basis; acceptance changes basis, revision and history only after every conflict is resolved (1.021361ms)
+✔ removed reference requires an explicit same-kind replacement, preserving target intent (0.295466ms)
+✔ store rebase rejects stale expected revision and invalid decisions without partial write (19.946725ms)
+✔ generic read-only checklist entries do not put a newly linked document in conflict (46.424684ms)
+✔ external mapped edit previews deterministically and applies without writing Markdown or changing status (25.161383ms)
+✔ independent Roadmap owner change and external prose reconcile at checked revision (24.349035ms)
+✔ unmapped document change updates only the source basis and preserves qualification truth (14.874476ms)
+✔ overlap, ambiguity and moved section refuse apply and leave source untouched (12.017823ms)
+✔ overlapping source and index edits produce a conflict preview without damaging either owner (11.562216ms)
+✔ source or Roadmap changes after preview deny stale apply; missing file asks for relink (44.895388ms)
+✔ explicit relink of identical moved bytes changes only owner references after approval (23.351228ms)
+✔ relink rejects unsafe, missing, changed and stale candidates without touching either owner (22.501911ms)
+✔ same bytes with ambiguous mapped section identities require separate review (6.975399ms)
+(node:31961) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/roadmap-inspector-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ selection, edit, preview, approval and undo synchronize without inferred Green (1.690309ms)
+✔ latency preserves draft and stale or foreign previews cannot apply (0.312157ms)
+✔ store events refresh the selected detail and keep an in-progress draft (0.385415ms)
+✔ errors stay visible, keyboard order is stable, and the canvas editor never forces Chat placement (1.452181ms)
+✔ closing the editor can retain a pending preview, while explicit discard releases selection without a write (0.281509ms)
+✔ a draft cannot grant Green without evidence authority (0.120507ms)
+✔ linked source edits use document authority and expose the exact line diff for approval (0.541028ms)
+✔ stable phase path, explicit milestone/correction branches and status evidence (2.150565ms)
+✔ missing references remain diagnostics and detached pools preserve owner truth (0.355679ms)
+✔ selection payload is bounded and project switches do not carry a stale selection (0.253297ms)
+✔ correction identifiers associate phases without changing canonical dependencies or revision (1.707451ms)
+✔ P9 full real-roadmap import fixture keeps 31 identities and nine historical diagnostics separate (6.899196ms)
+(node:31963) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/node/roadmap-prompt-open.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ prompt resolver opens only the exact current in-root source; stale, moved, foreign and symlink paths fail (5.698547ms)
+✔ inspector prompt selection and Open Prompt use validated URI without starting work (0.687774ms)
+✔ canvas has distinct click, double click and keyboard activation; inspector exposes accessible action (3.075714ms)
+(node:31964) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/node/roadmap-prompt-open.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ linked model intent crosses approval, source recovery and greenfield without gaining execution authority (568.847402ms)
+ℹ tests 50
+ℹ suites 0
+ℹ pass 50
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 34270.290282

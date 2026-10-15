@@ -1,0 +1,24 @@
+{
+  "base": "/tmp/dope-p13-authority-Ti35wY",
+  "failures": {
+    "foreign owner": "Error: Foreign or disposed planning handle",
+    "foreign handle": "Error: Foreign or disposed planning handle",
+    "unknown shell action": "Error: Unknown planning action type",
+    "gate promotion": "Error: Roadmap gate promotion requires evidence authority",
+    "unapproved apply": "Error: Planning preview or approval required",
+    "stale revision": "Error: Stale Roadmap revision; current 2",
+    "symlink root": "Error: Invalid planning root",
+    "changed source after preview": "Error: Stale linked Roadmap source fingerprint"
+  },
+  "before": {
+    "a": "5a24648867a49ce682ef2b9403ce7264cc57cb74bbda27f9c7f2b99b89151243",
+    "b": "265669f481c283985d5dfa4d0dff0b61edb884b042984a667d7fd7426c472765"
+  },
+  "after": {
+    "aRevision": 2,
+    "b": "265669f481c283985d5dfa4d0dff0b61edb884b042984a667d7fd7426c472765",
+    "linkedRevision": 1,
+    "linkedSource": "4d9204dae52d6d90c3389c18ab78d6b0554d753651efe7e316ffbd51a244fd59"
+  },
+  "deniedCount": 8
+}
