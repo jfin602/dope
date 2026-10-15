@@ -1,0 +1,34 @@
+{
+  "provenance": "Sanitized record from jq owner extraction and browser projection directly observed during R2; /tmp fixture was later cleared and this record is not a retained raw export.",
+  "ownerRevision": 1,
+  "importedSource": "docs/roadmap/mvp-roadmap.md",
+  "sourceSha256": "ffdade9ce512db38fd3f03ff273d9403b984d975894d6d525de1269f6d9d5210",
+  "ownerFileSha256": "e80cee7ca8f8997bff8b4a4751fcb0bb20a0fa8b4844a97b593cebfa0ee9340f",
+  "statuses": [
+    {
+      "id": "phase-5",
+      "status": "not-green",
+      "readOnly": true
+    },
+    {
+      "id": "phase-6",
+      "status": "waived",
+      "readOnly": true
+    },
+    {
+      "id": "phase-7",
+      "status": "green",
+      "readOnly": true
+    },
+    {
+      "id": "phase-9",
+      "status": "green",
+      "readOnly": false
+    },
+    {
+      "id": "phase-10",
+      "status": "not-green",
+      "readOnly": false
+    }
+  ]
+}

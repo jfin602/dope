@@ -1,0 +1,32 @@
+{
+  "chatId": "c714eafa-5c39-41e4-a3c0-669f06cd2d31",
+  "chatRevision": 32,
+  "assistantContent": "{\"type\":\"no-action\",\"message\":\"Selected milestone objective is 'Build a local search prototype, run focused tests, document recovery, and verify the cache boundary'. Roadmap revision is 6.\"}",
+  "execution": {
+    "status": "complete",
+    "selectedModel": {
+      "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+      "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    "actualModel": {
+      "schemaVersion": 1,
+      "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+      "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "providerId": "local",
+      "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    "resolutionSource": "chat-exact-default",
+    "startedAt": "2026-10-15T17:24:56.497Z",
+    "finishedAt": "2026-10-15T17:26:19.690Z"
+  },
+  "planningActivity": {
+    "kind": "no-action",
+    "status": "no-action",
+    "roadmapRef": {
+      "id": "roadmap:ROADMAP.md#milestone-first-checkpoint",
+      "projectId": "d6ae062b-5383-4e7e-bffb-c423a747c0d7",
+      "ownerRevision": 6,
+      "sourceHash": "9b34c0ffb34fcc8d356746b649ffafc704d1375b250e61fbba178541096bffd5"
+    }
+  }
+}

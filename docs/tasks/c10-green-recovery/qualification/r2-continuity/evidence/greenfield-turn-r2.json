@@ -1,0 +1,27 @@
+{
+  "provenance": "Sanitized record from saved Chat JSON directly inspected during R2; /tmp fixture was later cleared and this record is not a retained raw export.",
+  "chatId": "41194a24-a4b2-4a0c-a3b6-f13e3f268c9c",
+  "chatRevision": 5,
+  "execution": {
+    "status": "failed",
+    "selectedModel": {
+      "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+      "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    "actualModel": {
+      "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+      "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "providerId": "local"
+    },
+    "resolutionSource": "explicit-turn",
+    "startedAt": "2026-10-15T17:37:15.287Z",
+    "finishedAt": "2026-10-15T17:37:40.869Z",
+    "failure": "Local generation failed"
+  },
+  "planningActivity": {
+    "kind": "error",
+    "status": "failed"
+  },
+  "linkedFileCreated": false,
+  "ownerFileCreated": false
+}
