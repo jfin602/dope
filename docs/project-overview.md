@@ -2,6 +2,8 @@
 
 Status: INITIAL PRODUCT CONTRACT
 
+**CURRENT RECOVERY AFTER R1 (2026-10-15):** [c10-green-recovery](tasks/c10-green-recovery/README.md) R1 instrumentation pilot is READY at `194609f97f7a4f451e5fadb10f941eaef977f087` (real native Dope control/screenshots, independent Chrome restart and socket-layer IPv4/IPv6 TCP/UDP calibration). Manual R2–R6 prompts are authored but not executed; actual P12 GUI and whole-app P13 no-egress remain to be qualified. Product source `c8c41f9daf00936a212a4bbed18498c1cf44d57e` / `0.10.16` remains unchanged; original P14 and Phase 10 NOT GREEN, no owner-close or context default.
+
 **CURRENT PHASE 10 RECOVERY (2026-10-15):** Terminal P14 correction NOT GREEN at product c8c41f9, version 0.10.16, despite passing aggregate. New approved [c10-green-recovery](tasks/c10-green-recovery/README.md) has only R1 native/egress instrumentation manual prompt authored; R2–R6 planned. Phase 10 not owner-closed; default local Q4/32K still provisional.
 
 **Current Phase 10 qualification (2026-10-15):** The retained `c10-roadmap-qualify` implementation received a manual P14 **CORRECTION NOT GREEN** closeout on product source `c8c41f9daf00936a212a4bbed18498c1cf44d57e`, version `0.10.16`. See `docs/tasks/c10-roadmap-qualify/closeout.md` for the source-bound family matrix and remaining native Electron/egress gates. The local Q4_K_M/32768 setting is provisional, and the context default remains undecided. Phase 10 is not owner-closed; Phase 11/12 are inactive. Earlier correction routing below is historical.

@@ -2,6 +2,8 @@
 
 Status: ACTIVE ROADMAP
 
+**CURRENT PHASE 10 RECOVERY (2026-10-15):** [c10-green-recovery](../tasks/c10-green-recovery/README.md) R1 has **READY instrumentation/equipment evidence** at `194609f97f7a4f451e5fadb10f941eaef977f087`; R2–R6 manual prompts authored but not run. Owner-run socket-layer tracer is calibrated for TCP/UDP IPv4/IPv6, including connected peers and sendmmsg; no full app-egress or native Roadmap acceptance has yet been qualified. Prior P14/Phase 10 remain NOT GREEN at `c8c41f9daf00936a212a4bbed18498c1cf44d57e`, `0.10.16`, Q4/32K provisional, no owner-close.
+
 **CURRENT 2026-10-15 RECOVERY:** Original Phase 10 P14 correction is NOT GREEN (product c8c41f9; 0.10.16). [c10-green-recovery](../tasks/c10-green-recovery/README.md) is planned with R1 native/whole-app instrumentation **prompt ready but unexecuted**, R2–R6 planned. Historical Green/Not Green evidence stays intact; Q4/32768 provisional; Phase 10 not owner-closed.
 
 **CURRENT PHASE 10 P14 RESULT (2026-10-15):** `c10-roadmap-qualify` is **CORRECTION NOT GREEN** at committed product source `c8c41f9daf00936a212a4bbed18498c1cf44d57e`, version `0.10.16`; see `docs/tasks/c10-roadmap-qualify/closeout.md`. P9's later Green is source-applicable; P10–P13 are Not Green. Q4_K_M/32768 is provisional, the context default deferred. Native Electron GUI and whole-app egress are unproved. Phase 10 is not owner-closed; Phase 11/12 remain inactive. Earlier P14 routes below are historical.

@@ -1,6 +1,6 @@
 # /prompt-plan — c10-green-recovery
 
-**Status:** approved recovery plan; only **R1 manual prompt** executable. R2–R6 not yet authored. Baseline product c8c41f9, version 0.10.16 unchanged; P14 prior aggregate Green but correction Not Green.
+**Current status (2026-10-15):** R1 **READY for R4 instrumentation** under exact [owner-run calibration](qualification/r1-infrastructure/cycle-1.md) committed at `194609f97f7a4f451e5fadb10f941eaef977f087`. Manual prompts **R2–R6 now authored, NONE executed**. Source `c8c41f9daf00936a212a4bbed18498c1cf44d57e`, unchanged `0.10.16`; prior P14 **aggregate passed but correction Not Green**. R1 READY means equipment only, not no unauthorized egress or full native P12 UI acceptance.
 
 ## Ordered acceptance gates
 
@@ -22,4 +22,4 @@ Use [R1 manual T3](manual/R1-native-egress-infrastructure.md) in a local browser
 
 R1 READY if independent native window input/screenshot, observable local browser/restart and credible all-tree process-network capture pilot are demonstrated. Else R1 NOT GREEN/BLOCKED with one smallest owner tool/permission action. Do not run real expensive model/authority tests or aggregate in R1.
 
-**After R1:** /docs-review its actual tool/evidence report; author executable R2–R6 prompts using verified controls. Separate each source repair commit from evidence-only commits. Append cycle/summary under qualification/rN-*/; never rewrite old cycles. No /activate or codex:phase for manual GUI gates.
+**After R1 review (completed):** Execute [R2](manual/R2-planning-continuity.md) → [R3](manual/R3-browser-native-interface.md) → [R4](manual/R4-integrated-authority-egress.md) → [R5](manual/R5-q4-context-reliability.md) → [R6](manual/R6-final-recovery-closeout.md) individually. Coordinate R2's approved Q4 turn with R4's **owner-started** monitor if actual complete egress evidence can be captured simultaneously; otherwise reserve one new authorized turn for R4. Use R1's tested [`network-r1-v2.bt`](qualification/r1-infrastructure/diagnostics/network-r1-v2.bt), not the old IPv4-only monitor. R4 must classify external Chrome/Electron startup attempts and event-loss/transmit-path limitations; no-evidence is not no-egress. Separate source repairs from evidence-only commits. No `/activate` or `codex:phase` for manual gates; preserve old cycles.

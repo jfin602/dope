@@ -1,5 +1,7 @@
 # c10-roadmap-qualify — Phase 10 final Roadmap qualification correction
 
+> **CURRENT POST-P14 HANDOFF (2026-10-15):** This correction's P14 is terminal NOT GREEN and remains historical. In [c10-green-recovery](../c10-green-recovery/README.md), R1 is **READY for R4 instrumentation** at evidence `194609f97f7a4f451e5fadb10f941eaef977f087`; the next individually runnable manual prompt is [R2](../c10-green-recovery/manual/R2-planning-continuity.md), followed by R3/R4/R5/R6 (all authored but unexecuted). Preserve source `c8c41f9daf00936a212a4bbed18498c1cf44d57e`/0.10.16, original P9–P14 statuses and Q4/32768's provisional status.
+
 > **CURRENT HANDOFF (2026-10-15):** This correction's [P14 closeout](closeout.md) is terminal NOT GREEN / NOT QUALIFIED at c8c41f9, unchanged 0.10.16. Follow-on [c10-green-recovery](../c10-green-recovery/README.md) is an independently approved supplemental manual plan with **R1 authored/unexecuted, R2–R6 planned**. Do not rerun old P9–P14 prompts or rewrite historical dispositions.
 
 **Terminal manual P14 (2026-10-15): CORRECTION NOT GREEN / NOT QUALIFIED** at independently committed product source `c8c41f9daf00936a212a4bbed18498c1cf44d57e`, unchanged `0.10.16`. [Closeout](closeout.md) reconciles the carried P9 Green and new P10–P13 Not Green families. Q4_K_M/32768 remains a provisional explicitly selected local test setting; no context default was qualified. Native Electron GUI and whole-app egress are still unproved. P14 is complete; Phase 10 is not owner-closed and Phase 11/12 are inactive. Prior handoffs below are historical.
