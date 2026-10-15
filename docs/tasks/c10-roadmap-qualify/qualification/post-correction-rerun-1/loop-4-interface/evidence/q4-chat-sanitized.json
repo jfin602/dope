@@ -1,0 +1,202 @@
+{
+  "id": "68262f39-c608-4557-af3a-a9d19d26fe82",
+  "title": "New Chat",
+  "revision": 22,
+  "settings": {
+    "schemaVersion": 1,
+    "modelPolicy": {
+      "type": "exact",
+      "model": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      }
+    },
+    "context": {
+      "maxInputTokens": 8192,
+      "reservedOutputTokens": 1024,
+      "history": "recent",
+      "savedChatSearch": false,
+      "allowedSources": [
+        "roadmap-checkpoint"
+      ]
+    }
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Update the selected milestone Objective to: Build a local search prototype, verify filters, and run focused tests. Propose only this supported Objective change.",
+      "createdAt": "2026-10-15T12:18:01.491Z",
+      "contextRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:ROADMAP.md#milestone-first-checkpoint",
+          "projectId": "3158c3ed-194c-4590-834b-0bdddb1c901a",
+          "ownerRevision": 1,
+          "sourceHash": "37083c0775996ed036de5d1bf7445adb009125565afd1a4affe80e40becbd334",
+          "contentHash": "6d6df5716ca9c2f5104275251cea70d179830f6ecdf87091d9618448f1d8e3e2",
+          "includedBytes": 759,
+          "estimatedTokens": 307
+        }
+      ],
+      "execution": null,
+      "planningResult": null
+    },
+    {
+      "role": "assistant",
+      "content": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Build a local search prototype, verify filters, and run focused tests.\"}",
+      "createdAt": "2026-10-15T12:18:01.494Z",
+      "contextRefs": [],
+      "execution": {
+        "status": "complete",
+        "startedAt": "2026-10-15T12:18:01.494Z",
+        "finishedAt": "2026-10-15T12:18:09.576Z",
+        "selectedModel": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "resolutionSource": "explicit-turn",
+        "error": null
+      },
+      "planningResult": null
+    },
+    {
+      "role": "user",
+      "content": "Read the selected milestone again from the current linked source. State its exact current Objective and one sensible next verification step. Do not propose any change.",
+      "createdAt": "2026-10-15T12:18:45.090Z",
+      "contextRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:ROADMAP.md#milestone-first-checkpoint",
+          "projectId": "3158c3ed-194c-4590-834b-0bdddb1c901a",
+          "ownerRevision": 4,
+          "sourceHash": "a2981985685465eff429f1675e622f9f746fb6cbef3b0486f834497e5a18c0fe",
+          "contentHash": "0957290346bbbc288df54acc3edeb5d95089efcfec8fc4bcc6dcc09c84519bd5",
+          "includedBytes": 776,
+          "estimatedTokens": 313
+        }
+      ],
+      "execution": null,
+      "planningResult": null
+    },
+    {
+      "role": "assistant",
+      "content": "Current Objective: Build a local search prototype, verify filters, and run focused tests.\n\nOne sensible next verification step: Test the prototype's ability to filter results based on multiple criteria simultaneously.",
+      "createdAt": "2026-10-15T12:18:45.094Z",
+      "contextRefs": [],
+      "execution": {
+        "status": "failed",
+        "startedAt": "2026-10-15T12:18:45.094Z",
+        "finishedAt": "2026-10-15T12:18:53.435Z",
+        "selectedModel": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "resolutionSource": "chat-exact-default",
+        "error": null
+      },
+      "planningResult": null
+    },
+    {
+      "role": "user",
+      "content": "No change is requested. Read the current selected milestone and reply only with one valid roadmap-intent JSON object using intent no-action. In its reason, include the exact current Objective and a next verification step.",
+      "createdAt": "2026-10-15T12:19:10.265Z",
+      "contextRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:ROADMAP.md#milestone-first-checkpoint",
+          "projectId": "3158c3ed-194c-4590-834b-0bdddb1c901a",
+          "ownerRevision": 4,
+          "sourceHash": "a2981985685465eff429f1675e622f9f746fb6cbef3b0486f834497e5a18c0fe",
+          "contentHash": "0957290346bbbc288df54acc3edeb5d95089efcfec8fc4bcc6dcc09c84519bd5",
+          "includedBytes": 776,
+          "estimatedTokens": 313
+        }
+      ],
+      "execution": null,
+      "planningResult": null
+    },
+    {
+      "role": "assistant",
+      "content": "{\"type\":\"roadmap-intent\",\"intent\":\"no-action\",\"message\":\"Current Objective: Build a local search prototype, verify filters, and run focused tests. Next verification step: Test the prototype's ability to filter results based on user-defined criteria.\"}",
+      "createdAt": "2026-10-15T12:19:10.270Z",
+      "contextRefs": [],
+      "execution": {
+        "status": "failed",
+        "startedAt": "2026-10-15T12:19:10.270Z",
+        "finishedAt": "2026-10-15T12:19:19.413Z",
+        "selectedModel": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "resolutionSource": "chat-exact-default",
+        "error": null
+      },
+      "planningResult": null
+    },
+    {
+      "role": "user",
+      "content": "No update. Reply with exactly one JSON object of the form {\"type\":\"no-action\",\"message\":\"...\"}. The message must quote the current Objective from the linked milestone and name one next test. Do not include any other fields or text.",
+      "createdAt": "2026-10-15T12:19:39.083Z",
+      "contextRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:ROADMAP.md#milestone-first-checkpoint",
+          "projectId": "3158c3ed-194c-4590-834b-0bdddb1c901a",
+          "ownerRevision": 4,
+          "sourceHash": "a2981985685465eff429f1675e622f9f746fb6cbef3b0486f834497e5a18c0fe",
+          "contentHash": "0957290346bbbc288df54acc3edeb5d95089efcfec8fc4bcc6dcc09c84519bd5",
+          "includedBytes": 776,
+          "estimatedTokens": 313
+        }
+      ],
+      "execution": null,
+      "planningResult": null
+    },
+    {
+      "role": "assistant",
+      "content": "{\"type\":\"no-action\",\"message\":\"Current Objective: \\\"Build a local search prototype, verify filters, and run focused tests.\\\" Next verification step: Test the search functionality with sample data to ensure filters are properly applied.\"}",
+      "createdAt": "2026-10-15T12:19:39.086Z",
+      "contextRefs": [],
+      "execution": {
+        "status": "complete",
+        "startedAt": "2026-10-15T12:19:39.086Z",
+        "finishedAt": "2026-10-15T12:19:44.779Z",
+        "selectedModel": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "resolutionSource": "chat-exact-default",
+        "error": null
+      },
+      "planningResult": null
+    }
+  ]
+}

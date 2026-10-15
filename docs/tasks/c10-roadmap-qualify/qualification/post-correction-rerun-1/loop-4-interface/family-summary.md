@@ -1,0 +1,7 @@
+# P12 manual interface family — post-correction rerun 1
+
+**NOT GREEN / NOT QUALIFIED at product source `c8c41f9daf00936a212a4bbed18498c1cf44d57e`, package `0.10.16`.** [Cycle 1](cycle-1.md) directly observed a readable horizontal browser Roadmap, explicit prompt disclosure/opening, scoped dark/light status colors, Q4 local approved linked Objective edit and later no-write turns, the same Chat across four docks, one-owner lease, and Roadmap browser reload/backend restart restoration. Focused tests passed 49/49; no product source repair or P14 aggregate was run.
+
+The family cannot be Green: native Electron had no independently controllable/screenshot-capturable window, and several required visual, keyboard, responsive and overlay gates remain unrun. The browser controller timed out during a saved Chat reload after a real backend restart, then recovered; direct browser inspection subsequently showed the saved Chat transcript and Q4 provenance. Inventory marked a separate Roadmap tab “This page crashed.” The Dope backend remained responsive, and neither the tab crash nor the preceding unexplained host reboot proves a Dope or Linux root cause. No later repair cycle was spent because this pass found a controller/native observation blocker, not a confirmed Dope source defect.
+
+The provisional Q4_K_M/32768 P12 result is scoped to these observed turns; P11's context default remains undecided. Phase 10 remains NOT GREEN, and Phase 11/12 stay inactive. P13 is independent; P14 alone reconciles the final source and campaign result.
