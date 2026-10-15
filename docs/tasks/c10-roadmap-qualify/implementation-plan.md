@@ -1,5 +1,9 @@
 # /prompt-plan — c10-roadmap-qualify
 
+**Owner-selected local-planning reference (2026-10-15):** Use `qwen3-coder-30b-a3b-instruct@q4_k_m` from local LM Studio for Dope's manual P11 benchmarking, with **32,768 total tokens as the provisional starting reference**, not a qualified final context default. Compare genuine 16,384 / 32,768 / 65,536 loaded configurations on this same Q4_K_M model; choose the smallest reliable context or record the default as undecided. George's Q4/32K and 12/12 synthetic context-ladder records are historical feasibility evidence, NOT Dope's P11 qualification or proof of 64K. Q3_K_L P10 evidence and P11 diagnostic cycles 1-2 remain historical and distinct. This is a documentation-level *preferred reference*, not an automatic global runtime setting: never override an explicit selected/saved Chat model, AI Center role, or hosted/Codex provider configuration. Version `0.10.16`, manual approval, local-only controls and Phase 10 NOT GREEN remain unchanged.
+
+**P11 implementation/qualification split:** This changes the benchmark model reference, not installed AI Center defaults or production router source. Q4_K_M is preferred for the local planning study; P11 chooses context empirically. Existing Q3 context-packing source repairs and the original P11 cycle accounting remain in force.
+
 > **2026-10-14 execution supersession:** The P1–P8 implementation is already committed; do NOT replay it. Finish all outstanding `c10-horizontal-color` defects and visual P11; then implement and scope-close `c10-better-planning` P1–P5. Only then run a **fresh COMPLETE** manual P9–P13 five-family campaign and P14 exact-source closeout. Prior P9-only requalification/reuse-first wording below is historical. No `/activate` gate.
 
 **Status:** P1–P8 implementation committed through `bcf2b628f`, plus horizontal/full-canvas correction P1–P6 committed through `ddbac418`; manual P9–P14 pending / NOT GREEN; NO SEPARATE ACTIVATION
