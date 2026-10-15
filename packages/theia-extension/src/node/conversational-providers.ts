@@ -6,6 +6,8 @@ import { count, discoverGeminiModels, localModelIds, normalizeSynthesisEndpoint,
     sanitizedGeminiFailure as sanitized } from './provider-transport';
 
 const TIMEOUT_MS = 120_000;
+// CPU loaded long-context models can spend more than two minutes on prompt prefill.
+const LOCAL_GENERATION_TIMEOUT_MS = 300_000;
 const model = (id: string): ConnectedModel => ({ id, label: id,
     capabilities: { conversationalText: true, streaming: true } });
 const failure = (provider: string, status: number): ModelRuntimeFailure => {
@@ -21,6 +23,7 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
     private readonly endpoint: string;
     private readonly token?: string;
     private readonly timeoutMs: number;
+    private readonly generationTimeoutMs: number;
     private models: string[] = [];
     private generation = 0;
     private readonly compatible: boolean;
@@ -42,6 +45,7 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
             throw new Error('Invalid local timeout');
         this.token = options.token;
         this.timeoutMs = options.timeoutMs ?? TIMEOUT_MS;
+        this.generationTimeoutMs = options.timeoutMs ?? LOCAL_GENERATION_TIMEOUT_MS;
         this.fetch = options.fetch ?? globalThis.fetch;
     }
     private readonly fetch: typeof globalThis.fetch;
@@ -97,7 +101,10 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
             throw new ModelRuntimeFailure('Local model control unsupported', 'unsupported-capability');
         if (request.signal?.aborted) throw cancelled();
         const generation = this.generation;
-        const signal = AbortSignal.any([request.signal ?? new AbortController().signal, AbortSignal.timeout(this.timeoutMs)]);
+        const timeout = AbortSignal.timeout(this.generationTimeoutMs);
+        const signal = AbortSignal.any([request.signal ?? new AbortController().signal, timeout]);
+        const aborted = () => timeout.aborted && !request.signal?.aborted ?
+            new ModelRuntimeFailure('Local generation timed out', 'transient-transport') : cancelled();
         let response: Response;
         try {
             response = await this.fetch(`${this.endpoint}/chat/completions`, {
@@ -106,7 +113,7 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
                     stream_options: { include_usage: true },
                     ...(request.maxOutputTokens ? { max_tokens: request.maxOutputTokens } : {}) }),
             });
-        } catch { throw signal.aborted ? cancelled() :
+        } catch { throw signal.aborted ? aborted() :
             new ModelRuntimeFailure('Local connection failed', 'transient-transport'); }
         if (!response.ok) throw failure(this.compatible ? 'OpenAI-compatible' : 'Local', response.status);
         if (!response.body) throw new ModelRuntimeFailure('Local stream unavailable', 'invalid-json');
@@ -118,7 +125,7 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
         const decoder = new TextDecoder();
         try {
             for await (const chunk of response.body) {
-                if (signal.aborted) throw cancelled();
+                if (signal.aborted) throw aborted();
                 if (generation !== this.generation) throw new ModelRuntimeFailure('Local connection changed', 'connection-unavailable');
                 buffer += decoder.decode(chunk, { stream: true });
                 buffer = buffer.replaceAll('\r\n', '\n');
@@ -153,9 +160,9 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
             }
         } catch (error) {
             if (error instanceof ModelRuntimeFailure) throw error;
-            throw signal.aborted ? cancelled() : new ModelRuntimeFailure('Local stream failed', 'transient-transport');
+            throw signal.aborted ? aborted() : new ModelRuntimeFailure('Local stream failed', 'transient-transport');
         }
-        if (signal.aborted) throw cancelled();
+        if (signal.aborted) throw aborted();
         if (generation !== this.generation) throw new ModelRuntimeFailure('Local connection changed', 'connection-unavailable');
         if (!done) throw new ModelRuntimeFailure('Local stream ended early', 'transient-transport');
         yield { type: 'complete', text: output, usage, ...(finishReason ? { finishReason } : {}) };

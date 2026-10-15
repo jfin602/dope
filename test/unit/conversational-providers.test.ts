@@ -55,6 +55,19 @@ test('Local discovery and streaming preserve exact model, order, usage and synth
     assert.equal(synthesis.isReady, false);
 });
 
+test('Local generation timeout is reported as a timeout, not developer cancellation', async () => {
+    const local = new LocalConversationalProvider({ timeoutMs: 20, fetch: async (url, init) => {
+        if (String(url).endsWith('/api/v1/models')) return native();
+        if (String(url).endsWith('/v1/models')) return json({ data: [{ id: 'chat-model' }] });
+        return new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(new Error('request aborted')), { once: true });
+        });
+    } });
+    await local.discoverModels();
+    await assert.rejects(collect(local), error => isFailure('transient-transport')(error) &&
+        (error as Error).message === 'Local generation timed out');
+});
+
 test('Local native inventory excludes embeddings, unloaded and unknown-capacity instances from Chat', async () => {
     const local = new LocalConversationalProvider({ fetch: async url => String(url).endsWith('/api/v1/models') ?
         json({ models: [
