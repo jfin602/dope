@@ -113,6 +113,7 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     }
     const broad = structuredClone(settings);
     broad.context.maxInputTokens = 25000;
+    broad.context.history = 'recent';
     broad.context.allowedSources = ['roadmap-checkpoint', 'file'];
     await writeFile(join(root, 'docs/brief.md'), ('Review the phase boundary, dependencies, and tests. "Source backed."\n').repeat(800));
     let latestBroad = await repository.read(root);

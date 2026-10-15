@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
-    ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal } from '@dope/chat/lib/service';
-import { suggestedChatTitle, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatUserMessage } from '@dope/chat';
+    ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal,
+    ChatContextSelection } from '@dope/chat/lib/service';
+import { suggestedChatTitle, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatUserMessage } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure, type ConversationMessage, type ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
 import type { AIRoleHardConstraints, RoutingProvenance } from '@dope/ai';
@@ -105,6 +106,28 @@ export class ChatBackend implements ChatService {
         return draft ? [{ role: 'system' as const, content: draft.text }, ...messages] : messages;
     }
 
+    private async composeTurn(root: string, chat: Chat, content: string, context: ChatContextSelection[],
+        model: ConversationModelCapabilities, budget?: ReturnType<typeof roadmapLocalBudget>,
+        draft?: { text: string }, grounding?: GroundingResult) {
+        const capabilities = planningComposerCapabilities(model, budget, draft);
+        let inputTokens = capabilities.maxInputTokens;
+        for (let attempt = 0; attempt < 4; attempt++) {
+            const composed = await this.composer!.compose(root, chat, content, context,
+                inputTokens === undefined ? capabilities : { ...capabilities, maxInputTokens: inputTokens }, grounding);
+            if (!budget) return composed;
+            const bytes = Buffer.byteLength(JSON.stringify(this.withDraft(composed.messages, draft)), 'utf8');
+            if (bytes <= budget.inputBytes) {
+                verifyRoadmapLocalInput(this.withDraft(composed.messages, draft), budget);
+                return composed;
+            }
+            if (attempt === 3) verifyRoadmapLocalInput(this.withDraft(composed.messages, draft), budget);
+            // Repack optional context against the exact serialized excess. No provider call occurs here.
+            inputTokens = Math.max(0, inputTokens! - Math.ceil((bytes - budget.inputBytes) / 3) - 32);
+        }
+        throw new ModelRuntimeFailure('Local planning context exceeds the measured budget; reduce the request',
+            'unsupported-capability');
+    }
+
     private async verifyLoadedCapacity(selection: { connectionId: string; modelId: string },
         expected: ReturnType<typeof roadmapLocalBudget>, requestedOutput: number): Promise<void> {
         const connection = (await this.models!.list()).connections.find(item => item.id === selection.connectionId);
@@ -150,9 +173,8 @@ export class ChatBackend implements ChatService {
             (request.context.some(item => item.kind === 'roadmap-checkpoint') || !!draft);
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
             chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
-        const capabilities = planningComposerCapabilities(model.capabilities, budget, draft);
-        const composed = await this.composer.compose(root, chat, request.content, request.context, capabilities, grounding);
-        if (budget) verifyRoadmapLocalInput(this.withDraft(composed.messages, draft), budget);
+        const composed = await this.composeTurn(root, chat, request.content, request.context,
+            model.capabilities, budget, draft, grounding);
         if (budget) await this.verifyLoadedCapacity(request.selectedModel, budget,
             chat.settings.context.reservedOutputTokens);
         if (request.context.some(item => item.kind === 'roadmap-checkpoint') &&
@@ -397,13 +419,12 @@ export class ChatBackend implements ChatService {
         const localRoadmap = roadmapTurn && connection.providerId === 'local';
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
             chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
-        const capabilities = planningComposerCapabilities(model.capabilities, budget, draft);
         const grounding = await this.grounder?.ground(root, content);
         const priorRefs = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs : undefined;
         if (priorRefs && !sameAutomaticEvidence(grounding, priorRefs))
             throw new Error('Retry project evidence changed or is stale; start a fresh turn');
-        const composed = await this.composer.compose(root, contextChat, content, request.context ?? [], capabilities, grounding);
-        if (budget) verifyRoadmapLocalInput(this.withDraft(composed.messages, draft), budget);
+        const composed = await this.composeTurn(root, contextChat, content, request.context ?? [],
+            model.capabilities, budget, draft, grounding);
         if (roadmapTurn && !draft && !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
             throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
         let localMode: 'linked' | 'unlinked' | 'draft' = draft ? 'draft' : 'unlinked';
@@ -491,9 +512,8 @@ export class ChatBackend implements ChatService {
                         nextBudget.inputBytes !== budget.inputBytes || nextBudget.output !== budget.output))
                         throw new ModelRuntimeFailure('Loaded local context or limits changed; preview this turn again',
                             'unsupported-capability');
-                    const nextCapabilities = planningComposerCapabilities(resolvedModel.capabilities, nextBudget, draft);
-                    const next = await this.composer!.compose(root, contextChat, content, request.context ?? [], nextCapabilities, grounding);
-                    if (nextBudget) verifyRoadmapLocalInput(this.withDraft(next.messages, draft), nextBudget);
+                    const next = await this.composeTurn(root, contextChat, content, request.context ?? [],
+                        resolvedModel.capabilities, nextBudget, draft, grounding);
                     if (!sameRefIdentities(next.refs, preview.refs))
                         throw new Error('Fallback evidence differs; choose a model explicitly');
                     if (JSON.stringify(next.refs) !== JSON.stringify(preview.refs)) {
