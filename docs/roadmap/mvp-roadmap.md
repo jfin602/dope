@@ -1,5 +1,7 @@
 # Dope Roadmap
 
+**CURRENT RECOVERY AFTER R2 (2026-10-15):** [c10-green-recovery R2](../tasks/c10-green-recovery/qualification/r2-continuity/family-summary.md) ended NOT GREEN at `e7f46f1` with saved Chat/linked Roadmap restart, revision-6 Q4/32768 fresh reply and historical status successes. Foreign-owner live app-boundary denial remains BLOCKED → R4; model-generated Q4 greenfield returned a generation failure before proposal → R5. R3 browser/native UI is next independently. R1 READY only as instrumentation. R6 reviews both mandatory carryovers. Phase 10 NOT GREEN at product c8c41f9 / 0.10.16, not owner-closed.
+
 Status: ACTIVE ROADMAP
 
 **CURRENT PHASE 10 RECOVERY (2026-10-15):** [c10-green-recovery](../tasks/c10-green-recovery/README.md) R1 has **READY instrumentation/equipment evidence** at `194609f97f7a4f451e5fadb10f941eaef977f087`; R2–R6 manual prompts authored but not run. Owner-run socket-layer tracer is calibrated for TCP/UDP IPv4/IPv6, including connected peers and sendmmsg; no full app-egress or native Roadmap acceptance has yet been qualified. Prior P14/Phase 10 remain NOT GREEN at `c8c41f9daf00936a212a4bbed18498c1cf44d57e`, `0.10.16`, Q4/32K provisional, no owner-close.

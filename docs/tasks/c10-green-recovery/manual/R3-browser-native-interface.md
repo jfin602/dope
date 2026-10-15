@@ -14,6 +14,8 @@ Read original [P12 cycle-1](../../c10-roadmap-qualify/qualification/post-correct
 
 ## B. Repeat only previously unobserved UI assertions in both environments
 
+**R2 execution handoff (2026-10-15):** R2 has finished **NOT GREEN** on unchanged product; see [R2 summary](../qualification/r2-continuity/family-summary.md). Reuse its real browser restart and source-status passes only when source/fixture/seam-equivalent. R3's visual, keyboard, input, overlay and native gates do **not** require Q4 to be loaded or another foreign-owner RPC probe. Prefer a coherent disposable deterministic Roadmap/status fixture and an existing saved Chat; load Q4 only for a truly unproved live Chat assertion requiring new inference. R2's foreign-owner and failed greenfield checks are respectively owned by R4 and R5, not R3. If using R2's persisted fixture, treat its revision-6 linked file/Chat as read-only input and never assume old PIDs or a loaded model.
+
 With *direct* browser screenshots and independently controlled Dope Electron window:
 - Initial actionable phase focus at readable zoom; explicit Fit and Focus; world/phase/checkpoint zoom with **no automatic unknown prompt/task-stack cards**; explicit Expand/Collapse and open exact prompt source in editor **without execution**. Verify correction/support vertical branching, legible nonoverlapping cards, parent/dependency/progression connectors (no invented edges), diagnostic unresolved references, c10/c100 isolation and no false Green path.
 - Status tint of whole card, text/icon/noncolor cues, keyboard focus/selection, dark/light, hover/focus, low contrast handling and reduced-motion behavior. Record six-state truth and source checkpoint status hashes; no purely CSS/source-test PASS replacing live evidence.

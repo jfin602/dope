@@ -1,5 +1,7 @@
 # Dope Project Overview
 
+**CURRENT RECOVERY AFTER R2 (2026-10-15):** [R2](tasks/c10-green-recovery/qualification/r2-continuity/family-summary.md) is NOT GREEN at `e7f46f1`: saved Roadmap and Chat restart, revision-6 Q4/32K freshness, and canonical statuses PASS; supported live foreign-owner write denial not reached (R4) and real Q4-generated greenfield failed before proposal (R5). R3 UI next, R6 final independent audit. Product c8c41f9 / `0.10.16` unchanged; Phase 10 remains NOT GREEN / NOT OWNER-CLOSED.
+
 Status: INITIAL PRODUCT CONTRACT
 
 **CURRENT RECOVERY AFTER R1 (2026-10-15):** [c10-green-recovery](tasks/c10-green-recovery/README.md) R1 instrumentation pilot is READY at `194609f97f7a4f451e5fadb10f941eaef977f087` (real native Dope control/screenshots, independent Chrome restart and socket-layer IPv4/IPv6 TCP/UDP calibration). Manual R2–R6 prompts are authored but not executed; actual P12 GUI and whole-app P13 no-egress remain to be qualified. Product source `c8c41f9daf00936a212a4bbed18498c1cf44d57e` / `0.10.16` remains unchanged; original P14 and Phase 10 NOT GREEN, no owner-close or context default.
