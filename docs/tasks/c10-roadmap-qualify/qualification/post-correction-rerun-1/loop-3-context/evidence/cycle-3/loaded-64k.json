@@ -1,0 +1,12 @@
+[
+  {
+    "identifier": "qwen3-coder-30b-a3b-instruct@q3_k_l",
+    "quantization": {
+      "name": "Q3_K_L",
+      "bits": 3
+    },
+    "contextLength": 65536,
+    "status": "idle",
+    "parallel": 4
+  }
+]

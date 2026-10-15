@@ -1,0 +1,15 @@
+# P11 loaded-context comparison — post-correction rerun 1
+
+**Product source:** `cf8a07eb53fe764deadd2cbe70319a052714b339`, package `0.10.16`. **Default: UNDECIDED. Family: NOT GREEN after three cycles.** See [cycle 3](cycle-3.md) and its [sanitized turn data](evidence/cycle-3/profile-traces.json). The original P16/P19 Not Green outcomes and P10 Not Green result remain unchanged.
+
+All runs used the same Qwen3 Coder 30B A3B Instruct Q3_K_L model, LM Studio loopback service, CPU-only `--gpu off`, parallel 4, selected linked milestone, one prior narrow no-write exchange, identical 286-character heavy request, and identical 43,270-byte Phase 10 brief. Each loaded capacity was independently reported by `lms ps --json` and LM Studio `/api/v1/models`. The single measured heavy scenario was repeated **across profiles**, not repeated within a profile; this does not establish reliability or outlier bounds.
+
+| Profile | Classification for observed slice | Effective composer budget | Brief delivered | Heavy completion | Approx. model RSS snapshot | Usefulness on this request |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| 16,384 | **TESTED SUCCESS**; full matrix incomplete | 4,864 estimated tokens | 12,488 / 43,270 bytes | 24.723 s | 16,032,924 kB | Valid no-write, sufficient for this narrow judgment; later brief content omitted. |
+| 32,768 | **TESTED SUCCESS**; full matrix incomplete | 10,325 estimated tokens | 28,806 / 43,270 bytes | 61.582 s | 17,599,164 kB | Valid no-write, somewhat more specific; later brief content omitted. |
+| 65,536 | **TESTED SUCCESS**; full matrix incomplete | 21,248 estimated tokens | 43,270 / 43,270 bytes | 94.175 s | 20,747,048 kB | Valid no-write; full document available, but response showed no material gain on this request. |
+
+The source reserves 512 system and 256 safety tokens plus the configured 1,024 output tokens, leaving exact serialized-input byte limits of 14,592 / 30,976 / 63,744. The strict JSON output byte cap is 4,352, separate from the 1,024 token reserve. Observed composed estimates were 4,828 / 10,289 / 15,252 tokens. Source refs and their exact included byte counts are in [cycle 3](cycle-3.md); these are conservative accounting values, since provider-reported usage and a tokenizer-level system/user/history breakdown were not retained. The UI gave immediate waiting status and buffered valid JSON; provider first-token and exact UI first-visible timings remain unmeasured.
+
+**Selection:** No default is adopted or configured. The smallest reliably sufficient profile cannot be chosen from one no-write context-heavy scenario without per-profile actual edits/approval, larger dependency planning, longer Chat freshness, negative/retry runs, repeated latency measurements and first-token instrumentation. In particular, the 64K load/inference success is real, while its lack of material gain here is not proof that 32K wins on requests needing the omitted final 14,464 bytes. No model preference or provider policy was changed.

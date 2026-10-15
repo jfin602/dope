@@ -1,0 +1,240 @@
+{
+  "productSource": "cf8a07eb53fe764deadd2cbe70319a052714b339",
+  "fixture": "/home/jfin/dev/dope-p11-qualification-20261015",
+  "model": "qwen3-coder-30b-a3b-instruct@q3_k_l",
+  "quantization": "Q3_K_L",
+  "gpuOffload": "off",
+  "profiles": [
+    {
+      "loadedContextTokens": 16384,
+      "chatId": "d61ce5af-8203-4810-97d4-5affe89851fa",
+      "chatInputBudgetSetting": 8192,
+      "outputTokenReserve": 1024,
+      "turns": [
+        {
+          "kind": "selected-no-write",
+          "input": "State the current Objective for the selected checkpoint. Do not change anything. Reply with one strict JSON no-action object.",
+          "contextRefs": [
+            {
+              "kind": "roadmap-checkpoint",
+              "id": "roadmap:ROADMAP.md#milestone-first-checkpoint",
+              "estimatedTokens": 307,
+              "includedBytes": 759,
+              "contentHash": "186820acf622497442bce5937e2f35a67e1c000ccae0df3e8cf7fd2730237c01",
+              "ownerRevision": 1,
+              "sourceHash": "37083c0775996ed036de5d1bf7445adb009125565afd1a4affe80e40becbd334"
+            },
+            {
+              "kind": "project-orientation",
+              "id": "project:orientation",
+              "estimatedTokens": 45,
+              "includedBytes": 71,
+              "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+            }
+          ],
+          "response": "{\"type\":\"no-action\",\"message\":\"Objective already stated in project context\"}",
+          "status": "complete",
+          "startedAt": "2026-10-15T11:41:11.809Z",
+          "finishedAt": "2026-10-15T11:41:15.531Z",
+          "elapsedMs": 3722,
+          "provider": "local",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q3_k_l",
+          "resolutionSource": "explicit-turn",
+          "planningActivityStatus": "no-action"
+        },
+        {
+          "kind": "attached-planning-brief-no-write",
+          "input": "Using the attached Phase 10 planning brief and the selected checkpoint, assess whether its current Objective is sufficient to preserve linked Markdown authority, approval, and a fresh next Chat turn. Make no change. Return exactly one strict JSON no-action object with a concise reason.",
+          "contextRefs": [
+            {
+              "kind": "roadmap-checkpoint",
+              "id": "roadmap:ROADMAP.md#milestone-first-checkpoint",
+              "estimatedTokens": 307,
+              "includedBytes": 759,
+              "contentHash": "186820acf622497442bce5937e2f35a67e1c000ccae0df3e8cf7fd2730237c01",
+              "ownerRevision": 1,
+              "sourceHash": "37083c0775996ed036de5d1bf7445adb009125565afd1a4affe80e40becbd334"
+            },
+            {
+              "kind": "file",
+              "id": "planning-brief.md",
+              "estimatedTokens": 4198,
+              "includedBytes": 12488,
+              "contentHash": "2bf83a73b1f648c3fcc10d3e1a6542637320be156103859ade13151fb1ef4e03"
+            },
+            {
+              "kind": "project-orientation",
+              "id": "project:orientation",
+              "estimatedTokens": 0,
+              "includedBytes": 0,
+              "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+            }
+          ],
+          "response": "{\"type\":\"no-action\",\"message\":\"The checkpoint's objective 'Build a local search prototype and run focused tests.' is sufficient to preserve linked Markdown authority and approval, as the planning brief confirms the roadmap remains unchanged and the objective aligns with the phase plan's design intent.\"}",
+          "status": "complete",
+          "startedAt": "2026-10-15T11:42:53.646Z",
+          "finishedAt": "2026-10-15T11:43:18.369Z",
+          "elapsedMs": 24723,
+          "provider": "local",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q3_k_l",
+          "resolutionSource": "explicit-turn",
+          "planningActivityStatus": "no-action"
+        }
+      ]
+    },
+    {
+      "loadedContextTokens": 32768,
+      "chatId": "e336cf52-d12b-42a2-9655-f57dabc6e007",
+      "chatInputBudgetSetting": 30000,
+      "outputTokenReserve": 1024,
+      "turns": [
+        {
+          "kind": "selected-no-write",
+          "input": "State the current Objective for the selected checkpoint. Do not change anything. Reply with one strict JSON no-action object.",
+          "contextRefs": [
+            {
+              "kind": "roadmap-checkpoint",
+              "id": "roadmap:ROADMAP.md#milestone-first-checkpoint",
+              "estimatedTokens": 307,
+              "includedBytes": 759,
+              "contentHash": "186820acf622497442bce5937e2f35a67e1c000ccae0df3e8cf7fd2730237c01",
+              "ownerRevision": 1,
+              "sourceHash": "37083c0775996ed036de5d1bf7445adb009125565afd1a4affe80e40becbd334"
+            },
+            {
+              "kind": "project-orientation",
+              "id": "project:orientation",
+              "estimatedTokens": 45,
+              "includedBytes": 71,
+              "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+            }
+          ],
+          "response": "{\"type\":\"no-action\",\"message\":\"Objective already stated in project facts\"}",
+          "status": "complete",
+          "startedAt": "2026-10-15T11:44:12.909Z",
+          "finishedAt": "2026-10-15T11:44:16.721Z",
+          "elapsedMs": 3812,
+          "provider": "local",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q3_k_l",
+          "resolutionSource": "explicit-turn",
+          "planningActivityStatus": "no-action"
+        },
+        {
+          "kind": "attached-planning-brief-no-write",
+          "input": "Using the attached Phase 10 planning brief and the selected checkpoint, assess whether its current Objective is sufficient to preserve linked Markdown authority, approval, and a fresh next Chat turn. Make no change. Return exactly one strict JSON no-action object with a concise reason.",
+          "contextRefs": [
+            {
+              "kind": "roadmap-checkpoint",
+              "id": "roadmap:ROADMAP.md#milestone-first-checkpoint",
+              "estimatedTokens": 307,
+              "includedBytes": 759,
+              "contentHash": "186820acf622497442bce5937e2f35a67e1c000ccae0df3e8cf7fd2730237c01",
+              "ownerRevision": 1,
+              "sourceHash": "37083c0775996ed036de5d1bf7445adb009125565afd1a4affe80e40becbd334"
+            },
+            {
+              "kind": "file",
+              "id": "planning-brief.md",
+              "estimatedTokens": 9659,
+              "includedBytes": 28806,
+              "contentHash": "c6fbca1c2a4eb487197555121cf45b41de2705245e80f43fe782ea26c44d3093"
+            },
+            {
+              "kind": "project-orientation",
+              "id": "project:orientation",
+              "estimatedTokens": 0,
+              "includedBytes": 0,
+              "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+            }
+          ],
+          "response": "{\"type\":\"no-action\",\"message\":\"The checkpoint's objective 'Build a local search prototype and run focused tests.' is sufficient to preserve linked Markdown authority and approval, and the next Chat turn can be fresh as it aligns with the planning brief's goals of making phase plans explorable and maintaining deterministic project planning authority. No change is needed.\"}",
+          "status": "complete",
+          "startedAt": "2026-10-15T11:45:48.477Z",
+          "finishedAt": "2026-10-15T11:46:50.059Z",
+          "elapsedMs": 61582,
+          "provider": "local",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q3_k_l",
+          "resolutionSource": "explicit-turn",
+          "planningActivityStatus": "no-action"
+        }
+      ]
+    },
+    {
+      "loadedContextTokens": 65536,
+      "chatId": "24cfaac2-825e-4eb5-a315-eeeef67a2a84",
+      "chatInputBudgetSetting": 45000,
+      "outputTokenReserve": 1024,
+      "turns": [
+        {
+          "kind": "selected-no-write",
+          "input": "State the current Objective for the selected checkpoint. Do not change anything. Reply with one strict JSON no-action object.",
+          "contextRefs": [
+            {
+              "kind": "roadmap-checkpoint",
+              "id": "roadmap:ROADMAP.md#milestone-first-checkpoint",
+              "estimatedTokens": 307,
+              "includedBytes": 759,
+              "contentHash": "186820acf622497442bce5937e2f35a67e1c000ccae0df3e8cf7fd2730237c01",
+              "ownerRevision": 1,
+              "sourceHash": "37083c0775996ed036de5d1bf7445adb009125565afd1a4affe80e40becbd334"
+            },
+            {
+              "kind": "project-orientation",
+              "id": "project:orientation",
+              "estimatedTokens": 45,
+              "includedBytes": 71,
+              "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+            }
+          ],
+          "response": "{\"type\":\"no-action\",\"message\":\"Objective already stated in checkpoint data\"}",
+          "status": "complete",
+          "startedAt": "2026-10-15T11:48:25.957Z",
+          "finishedAt": "2026-10-15T11:48:29.805Z",
+          "elapsedMs": 3848,
+          "provider": "local",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q3_k_l",
+          "resolutionSource": "explicit-turn",
+          "planningActivityStatus": "no-action"
+        },
+        {
+          "kind": "attached-planning-brief-no-write",
+          "input": "Using the attached Phase 10 planning brief and the selected checkpoint, assess whether its current Objective is sufficient to preserve linked Markdown authority, approval, and a fresh next Chat turn. Make no change. Return exactly one strict JSON no-action object with a concise reason.",
+          "contextRefs": [
+            {
+              "kind": "roadmap-checkpoint",
+              "id": "roadmap:ROADMAP.md#milestone-first-checkpoint",
+              "estimatedTokens": 307,
+              "includedBytes": 759,
+              "contentHash": "186820acf622497442bce5937e2f35a67e1c000ccae0df3e8cf7fd2730237c01",
+              "ownerRevision": 1,
+              "sourceHash": "37083c0775996ed036de5d1bf7445adb009125565afd1a4affe80e40becbd334"
+            },
+            {
+              "kind": "file",
+              "id": "planning-brief.md",
+              "estimatedTokens": 14497,
+              "includedBytes": 43270,
+              "contentHash": "42424eb85ad45d120f4e2cbe9e64a38eb1b29e66688468804e7b0130d7157d4a"
+            },
+            {
+              "kind": "project-orientation",
+              "id": "project:orientation",
+              "estimatedTokens": 45,
+              "includedBytes": 71,
+              "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+            }
+          ],
+          "response": "{\"type\":\"no-action\",\"message\":\"Objective sufficient for linked Markdown authority and next Chat turn\"}",
+          "status": "complete",
+          "startedAt": "2026-10-15T11:50:08.029Z",
+          "finishedAt": "2026-10-15T11:51:42.204Z",
+          "elapsedMs": 94175,
+          "provider": "local",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q3_k_l",
+          "resolutionSource": "explicit-turn",
+          "planningActivityStatus": "no-action"
+        }
+      ]
+    }
+  ]
+}
