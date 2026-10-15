@@ -385,7 +385,9 @@ export class ChatPanelController {
         if (!selection || !this.planning || !this.workspace) return this.context;
         const current = await this.planning.resolve(this.workspace, selection, this.planningMode === 'pin');
         if (this.context.length >= 20) throw new Error('Too many context selections; remove one before adding the planning selection');
-        return [...this.context, current];
+        // Keep the active planning identity ahead of optional attachments so a large file
+        // cannot consume the budget needed for the selected, authority-bound checkpoint.
+        return [current, ...this.context];
     }
     async runTurn(model?: ChatModelSelection, retryMessageId?: string,
         confirmHosted?: () => boolean): Promise<boolean> {

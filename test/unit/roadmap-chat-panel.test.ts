@@ -67,6 +67,10 @@ test('one saved Chat follows current checkpoint, pins exact owner, restores and 
         assert.equal(progressChecked, true);
         assert.equal(first.planningProgress, undefined);
         assert.equal(calls.at(-1)?.[0].id, 'p1');
+        first.addContext({ kind: 'file', id: 'planning-brief.md' });
+        first.draft = 'Context-heavy turn';
+        assert.equal(await first.runTurn(), true);
+        assert.deepEqual(calls.at(-1)?.map(item => item.kind), ['roadmap-checkpoint', 'file']);
         inspector.select('p2'); index.revision = 2; inspector.setSnapshot(workspace, index);
         first.draft = 'Next turn';
         assert.equal(await first.runTurn(), true);
@@ -93,7 +97,7 @@ test('one saved Chat follows current checkpoint, pins exact owner, restores and 
         assert.equal(await reopened.runTurn(), false);
         assert.match(reopened.error, /stale/i);
         assert.equal(reopened.draft, 'Must stay in draft');
-        assert.equal(calls.length, 3);
+        assert.equal(calls.length, 4);
         reopened.followPlanning();
         inspector.setSnapshot(workspace, index);
         reopened.draft = 'Fresh';
