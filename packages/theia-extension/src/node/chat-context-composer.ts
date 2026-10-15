@@ -204,8 +204,20 @@ export class ChatContextComposer {
         const policy = chat.settings.context;
         const window = capabilities.contextWindowTokens ?? policy.maxInputTokens + policy.reservedOutputTokens;
         const budgetTokens = Math.min(availableChatContextTokens(policy, window), capabilities.maxInputTokens ?? Infinity);
-        // ponytail: no conversational adapter exposes a tokenizer; UTF-8 bytes / 3 is a conservative deterministic estimate.
-        const tokens = (value: string) => Math.ceil(Buffer.byteLength(value, 'utf8') / 3) + 4;
+        // Charge escaped JSON string bytes: the provider receives serialized messages,
+        // where quotes, backslashes and newlines can expand source-heavy attachments.
+        const tokens = (value: string) => Math.ceil(Buffer.byteLength(JSON.stringify(value), 'utf8') / 3) + 4;
+        const fit = (prefix: string, value: string, available: number) => {
+            const bytes = Buffer.from(value, 'utf8');
+            let low = 0, high = bytes.length;
+            while (low < high) {
+                const middle = Math.ceil((low + high) / 2);
+                const candidate = bytes.subarray(0, middle).toString('utf8').replace(/\uFFFD+$/, '');
+                if (tokens(prefix + candidate) <= available) low = middle;
+                else high = middle - 1;
+            }
+            return bytes.subarray(0, low).toString('utf8').replace(/\uFFFD+$/, '');
+        };
         const roadmapAction = selections.some(source => source.kind === 'roadmap-checkpoint');
         let remaining = budgetTokens - tokens(content) - (grounding ? tokens(GROUNDED_CHAT_INSTRUCTION) : 0) -
             (roadmapAction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0);
@@ -230,8 +242,7 @@ export class ChatContextComposer {
             if (tokens(prefix + text) > remaining && source.kind === 'roadmap-checkpoint')
                 throw new Error('Selected Roadmap identity, field capability or source does not fit; shorten the request or select a larger local model');
             if (tokens(prefix + text) > remaining) {
-                const bytes = Math.max(0, (remaining - tokens(prefix) - 4) * 3);
-                text = Buffer.from(text, 'utf8').subarray(0, bytes).toString('utf8').replace(/\uFFFD+$/, '');
+                text = fit(prefix, text, remaining);
                 diagnostics.push({ kind: 'truncated', source: `${source.kind}:${source.id}`, message: 'Context truncated to input budget' });
             }
             if (!text) { diagnostics.push({ kind: 'omitted', source: `${source.kind}:${source.id}`, message: 'No context fits' }); continue; }
@@ -254,8 +265,7 @@ export class ChatContextComposer {
             let evidence = block.text;
             if (tokens(prefix) >= remaining) evidence = '';
             else if (tokens(prefix + evidence) > remaining) {
-                const bytes = Math.max(0, (remaining - tokens(prefix) - 4) * 3);
-                evidence = Buffer.from(evidence, 'utf8').subarray(0, bytes).toString('utf8').replace(/\uFFFD+$/, '');
+                evidence = fit(prefix, evidence, remaining);
                 diagnostics.push({ kind: 'truncated', source, message: 'Auto context truncated to input budget' });
             }
             if (!evidence) diagnostics.push({ kind: 'omitted', source, message: 'Auto context omitted by input budget' });

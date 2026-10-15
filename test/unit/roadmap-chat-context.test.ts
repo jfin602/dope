@@ -111,6 +111,20 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
       assert.match(sent, /Phase A/);
       assert.doesNotMatch(sent, /Other 9/);
     }
+    const broad = structuredClone(settings);
+    broad.context.maxInputTokens = 25000;
+    broad.context.allowedSources = ['roadmap-checkpoint', 'file'];
+    await writeFile(join(root, 'docs/brief.md'), ('Review the phase boundary, dependencies, and tests. "Source backed."\n').repeat(800));
+    let latestBroad = await repository.read(root);
+    await backend.mutate({ projectHandle, expectedRevision: latestBroad.revision,
+      operation: { type: 'set-settings', chatId, settings: broad } });
+    for (const measured of [16384, 32768, 65536]) {
+      capabilities.contextWindowTokens = measured;
+      const packed = await backend.previewContext({ projectHandle, chatId, selectedModel: selection,
+        content: 'Review the selected phase and attached brief.',
+        context: [...context, { kind: 'file', id: 'docs/brief.md' }] });
+      assert.deepEqual(packed.refs.slice(0, 2).map(item => item.kind), ['roadmap-checkpoint', 'file']);
+    }
     capabilities.contextWindowTokens = 32768;
     changeAfterComplete = 16384;
     await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
