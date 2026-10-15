@@ -1,0 +1,25 @@
+R1 cycle-1 expanded-monitor calibration, 2026-10-15 CDT.
+Private host trace: /tmp/dope-r1-codex-monitor-o6kDiaA8/events.log
+Private trace SHA-256: d13a85dec4ec81bb208b7cd68a6edbdb8d74baf3b156830d41bb07ce7e141b45
+Monitor script SHA-256: f67fe8b1683192ac3ce64e48100acfcca75e0f9294c66445a7b36b9a71ef0b73
+Trace window: 11:15:14–11:16:43 CDT; root bpftrace PID 69664; 90-second timeout.
+The full raw host trace stays outside the repository.
+
+Calibration process PID 69738, UID 1000, python3, 11:15:37 CDT.
+The Python process successfully connected to two local TCP listeners and delivered
+two UDP datagrams per address family to local receiving sockets.
+
+11:15:37 CONNECT4 PID=69738 COMM=python3 FD=4 DEST=127.0.0.1:48737
+11:15:37 SENDTO4 PID=69738 COMM=python3 FD=4 DEST=127.0.0.1:52252
+11:15:37 SENDMSG4 PID=69738 COMM=python3 FD=4 DEST=127.0.0.1:52252
+11:15:37 CONNECT6 PID=69738 COMM=python3 FD=4 DEST=[::1]:39775
+11:15:37 SENDTO6 PID=69738 COMM=python3 FD=4 DEST=[::1]:58212
+11:15:37 SENDMSG6 PID=69738 COMM=python3 FD=4 DEST=[::1]:58212
+
+No compilation/runtime error or lost/dropped-event warning appeared in the private
+output. Absence of a warning is not a measured no-loss guarantee. The same trace
+contained 8 SENDMMSG_UNRESOLVED indicators from an unrelated process and many
+SENDMSG_NO_ADDR records; neither supplies a destination. No LM Studio PID event
+was present during this idle, no-model interval. No Dope/Chrome/Electron pilot
+was repeated during this calibration; their earlier PID-matched lines remain in
+monitor-excerpt.txt.
