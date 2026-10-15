@@ -269,6 +269,8 @@ Legacy Session UI/backend/domain/RPC/store must be removed only after tracing co
 
 ## Planned Phase 10 — Roadmap/shared planning actions (ADR 0036)
 
+**2026-10-15 qualification applicability:** The Phase 10 Roadmap corrections are implemented, while manual P14 closed `c10-roadmap-qualify` **Not Green** at `c8c41f9` / `0.10.16`; see `docs/tasks/c10-roadmap-qualify/closeout.md`. Earlier “design only” labels in this section record approval-time state. Native Electron GUI and whole-app egress are unqualified, the context default is deferred, and Phase 10 is not owner-closed. Phase 11/12 remain inactive.
+
 **P1–P15 implemented; P16 remains NOT GREEN at committed `0.10.16`.** Roadmap is a center checkpoint/path map and typed projection of real project phase/issue/idea/Planning Map records. Checkpoint details/editing use the Software Map-style **left inspector**, not a new center page; a real reusable ChatPanel can remain to the right. Stable IDs and semantic edges are domain state; layout, transient selections, viewport and colors are presentation state.
 
 One provider-neutral `ProjectPlanningActions` interface serves manual gestures and future Dope-owned AI planning proposals. It provides bounded selected-object reads, deterministic previews and owner-delegated typed mutations. Project-bound opaque handles, expected owner revisions/PlanningMap basis, stable IDs, lifecycle/graph/permission checks, clear partial multi-owner outcomes and small affected-identity notifications prevent lost manual/AI edits. In-flight model proposals are checked/rejected if stale, with current owner context read before the next step. Do not clone Markdown, PlanningMap targets, Architecture, Project Mind or History into a second source of truth.
