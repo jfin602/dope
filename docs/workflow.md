@@ -1,5 +1,7 @@
 # Repository Workflow
 
+> **CURRENT 2026-10-15 QUALIFICATION ROUTE:** Completed c10-roadmap-qualify P14 is NOT GREEN at product c8c41f9 / unchanged 0.10.16 despite passing full check. Separately approved [c10-green-recovery](tasks/c10-green-recovery/README.md) is a supplemental manual campaign, **R1 instrumentation prompt authored but NOT RUN; R2–R6 planned**. Preserve original cycle evidence, mandatory native/whole-app egress standards, no phase-runner browser gates or implicit Phase 10 owner-close.
+
 > **CURRENT 2026-10-14 Phase 10 sequencing:** Full Phase 10 qualification is ON HOLD until (1) `c10-horizontal-color` completes all visual/zoom-disclosure repairs and P11 scoped live proof, and (2) `c10-better-planning` P1–P5 implements and scope-closes the existing ChatPanel's compact structured activity, verified outcome/questions and low-cost progress. THEN rerun **every** manual `c10-roadmap-qualify/manual/P9`–`P13` family afresh and P14 sole final exact-source aggregate. Preserve historical manual P9 three-cycle NOT GREEN and original P16/P19 NOT GREEN; Phase 10 NOT OWNER-CLOSED, unchanged `0.10.16`. Never use a P9-only shortcut, /activate gate, CLI runner for browser/manual gates, or falsely infer Green. Older dated status notes below are historical.
 
 Status: CURRENT WORKFLOW CONTRACT
