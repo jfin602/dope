@@ -71,6 +71,8 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
         await assert.rejects(readFile(join(root, 'ROADMAP.md')), /ENOENT/);
         await backend.decidePlanningProposal(projectHandle, selected, lease.token, pending.id, false);
         assert.equal(greenfield.read(handle).revision, 0);
+        await assert.rejects(backend.decidePlanningProposal(projectHandle, selected, lease.token,
+            pending.id, true), /Planning proposal unavailable/);
 
         outputs.push(proposal(projectId, 0, { type: 'create-phase', title: 'Build' }));
         const approved = (await turn()).proposal;
