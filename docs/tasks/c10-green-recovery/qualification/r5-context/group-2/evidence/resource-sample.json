@@ -1,0 +1,8 @@
+{
+  "atUtc": "2026-10-16T15:49:32Z",
+  "memAvailableKiB": 4124660,
+  "swapTotalKiB": 0,
+  "memoryPressure": "some avg10=0.00 avg60=0.18 avg300=0.62 total=34675050\nfull avg10=0.00 avg60=0.18 avg300=0.62 total=34387893",
+  "llamaServerPsSample": "114737 12708764 01:05:32 47.7",
+  "interpretation": "Single post-run sample; not peak allocation or TTFT."
+}

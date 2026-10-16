@@ -1,0 +1,8 @@
+{"id":1,"pid":127312,"at":"2026-10-16T14:59:52.115Z","elapsedMs":0,"event":"request"}
+{"id":1,"pid":127312,"at":"2026-10-16T14:59:52.166Z","elapsedMs":51,"event":"response","status":200}
+{"id":2,"pid":127312,"at":"2026-10-16T15:03:28.928Z","elapsedMs":0,"event":"request"}
+{"id":2,"pid":127312,"at":"2026-10-16T15:03:29.017Z","elapsedMs":89,"event":"response","status":200}
+{"id":3,"pid":127312,"at":"2026-10-16T15:04:35.456Z","elapsedMs":1,"event":"request"}
+{"id":3,"pid":127312,"at":"2026-10-16T15:04:35.517Z","elapsedMs":62,"event":"response","status":200}
+{"id":4,"pid":127312,"at":"2026-10-16T15:06:27.585Z","elapsedMs":0,"event":"request"}
+{"id":4,"pid":127312,"at":"2026-10-16T15:06:27.653Z","elapsedMs":68,"event":"response","status":200}

@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-16T15:50:12.865Z",
+  "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+  "contextLength": 32768,
+  "parallel": 4,
+  "status": "idle",
+  "queued": 0,
+  "quantization": "Q4_K_M",
+  "format": "gguf",
+  "endpoint": "http://127.0.0.1:1234/v1",
+  "cpuOnlyVerifiedFromActiveProcess": true,
+  "runtimeProductSha": "968780c23b4e2d9be78f02bb03d7b6b338819baa",
+  "browserBackendBundleSha256": "574c2368057b99fe6d73fbfc100f1a7c1a2dabc243e79aabf7665a0c05834ef6",
+  "browserFrontendBundleSha256": "fbc43e4dfb31c38c6b963fa3390497b2f76e3c06af0db852b472539168299695"
+}

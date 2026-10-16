@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-16T15:27:31.714Z",
+  "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+  "contextLength": 32768,
+  "parallel": 4,
+  "status": "processingPrompt",
+  "queued": 0,
+  "quantization": "Q4_K_M",
+  "format": "gguf",
+  "endpoint": "http://127.0.0.1:1234/v1",
+  "cpuOnlyVerifiedFromActiveProcess": true,
+  "sourceHeadAtSample": "83b7486184aa25e858fedc318ab92bce3094196a",
+  "note": "The browser backend bundle still contained the first repair at this sample; this is not runtime product provenance."
+}

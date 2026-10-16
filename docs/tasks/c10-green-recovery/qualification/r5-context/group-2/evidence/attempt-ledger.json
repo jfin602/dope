@@ -1,0 +1,4010 @@
+[
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "715066e436dc1767463ce45ac6edf95588f960b5",
+    "grade": "incorrect-missing-facts",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "5a8a22cc6b6ea7c35129e210773f3619eb3bbcca5dc8fcf5f9bafe71dfccc713",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "5a8a22cc6b6ea7c35129e210773f3619eb3bbcca5dc8fcf5f9bafe71dfccc713",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": null,
+    "measuredProviderHttpStatus": null,
+    "turn": 1,
+    "userMessageId": "224ea672-a6cb-4644-9140-db8e33c60cb0",
+    "assistantMessageId": "b6eefdef-037b-452f-9247-7faca9a445b0",
+    "prompt": "Read the selected Release Candidate checkpoint and attached planning brief. Give the current owner revision if present, the brief decision revision if present, the dependency chain and each relevant status. Is the canary authorized now? State the source evidence and next safe action. Do not propose any edit; return a no-action answer.",
+    "response": "{\"type\":\"no-action\",\"message\":\"Cannot determine current owner revision, brief decision revision, or dependency chain status without access to the full project state and evidence records beyond the provided checkpoint and planning brief.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "Cannot determine current owner revision, brief decision revision, or dependency chain status without access to the full project state and evidence records beyond the provided checkpoint and planning brief."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "ab2f0f45-3a40-4a48-9fce-619dd7ee11d8",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T14:55:59.068Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1140
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T14:57:08.570Z"
+    },
+    "totalMs": 69502,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "20f6aa0aba35d4d2b25e64d37521a671fb0e5b80897926e37427fc26c7d60bb3",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "label": "docs/planning-brief.md",
+          "estimatedTokens": 6235,
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "20f6aa0aba35d4d2b25e64d37521a671fb0e5b80897926e37427fc26c7d60bb3",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/planning-brief.md",
+        "label": "docs/planning-brief.md",
+        "estimatedTokens": 6235,
+        "includedBytes": 18548,
+        "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "715066e436dc1767463ce45ac6edf95588f960b5",
+    "grade": "incorrect-missing-facts",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "5a8a22cc6b6ea7c35129e210773f3619eb3bbcca5dc8fcf5f9bafe71dfccc713",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "5a8a22cc6b6ea7c35129e210773f3619eb3bbcca5dc8fcf5f9bafe71dfccc713",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": null,
+    "measuredProviderHttpStatus": null,
+    "turn": 2,
+    "userMessageId": "5999928d-a3aa-40e9-9529-0a9adcf6b226",
+    "assistantMessageId": "383a2dd5-1469-41fa-9b10-930cc5c72724",
+    "prompt": "Re-read the attached planning brief, especially its final revision ledger and the decision update at source revision 4. State the brief revision, the owner revision from the selected checkpoint, and the Release Candidate -> Integration Gate -> Key Rotation blocker. Give the current go/no-go decision and next safe action. Do not edit anything; return no-action.",
+    "response": "{\"type\":\"no-action\",\"message\":\"Missing evidence records (R1-R34) and specific verification status details for Key Rotation dependency to determine if canary is authorized.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "Missing evidence records (R1-R34) and specific verification status details for Key Rotation dependency to determine if canary is authorized."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "24d96a1b-9da4-4696-8f38-443a72090768",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T14:57:49.330Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1149
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T14:58:38.254Z"
+    },
+    "totalMs": 48924,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "20f6aa0aba35d4d2b25e64d37521a671fb0e5b80897926e37427fc26c7d60bb3",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "label": "docs/planning-brief.md",
+          "estimatedTokens": 6235,
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "go/no-go",
+          "label": "go/no-go",
+          "estimatedTokens": 22,
+          "origin": "automatic",
+          "includedBytes": 29,
+          "contentHash": "fcd279b9030b03d04607ad77af4132b97d075ea6626966eb1ddda2580a534a55",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "20f6aa0aba35d4d2b25e64d37521a671fb0e5b80897926e37427fc26c7d60bb3",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/planning-brief.md",
+        "label": "docs/planning-brief.md",
+        "estimatedTokens": 6235,
+        "includedBytes": 18548,
+        "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "go/no-go",
+        "label": "go/no-go",
+        "estimatedTokens": 22,
+        "origin": "automatic",
+        "includedBytes": 29,
+        "contentHash": "fcd279b9030b03d04607ad77af4132b97d075ea6626966eb1ddda2580a534a55",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "715066e436dc1767463ce45ac6edf95588f960b5",
+    "grade": "incorrect-refused-edit",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "5a8a22cc6b6ea7c35129e210773f3619eb3bbcca5dc8fcf5f9bafe71dfccc713",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "5a8a22cc6b6ea7c35129e210773f3619eb3bbcca5dc8fcf5f9bafe71dfccc713",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 3,
+    "userMessageId": "4951bd4f-c19b-4a09-ae82-4a38e66862f0",
+    "assistantMessageId": "2831a04b-4059-4105-871b-0a840789f550",
+    "prompt": "For the selected Release Candidate checkpoint, propose changing only its Objective to: Hold the release canary while Key Rotation is Not Green; after credential rollover verification becomes Green, reassess Integration Gate and then decide release readiness. Keep its title, status and dependencies unchanged. Use the attached brief and selected checkpoint as source. This is a proposal for my review, not an approval.",
+    "response": "{\"type\":\"no-action\",\"message\":\"Cannot determine current owner revision, brief decision revision, or dependency chain status without access to the full project state and evidence records beyond the provided checkpoint and planning brief.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "Cannot determine current owner revision, brief decision revision, or dependency chain status without access to the full project state and evidence records beyond the provided checkpoint and planning brief."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "67e02732-4202-4a96-a394-8502822162a2",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T14:59:52.103Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1168
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:02:29.412Z"
+    },
+    "totalMs": 157309,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "20f6aa0aba35d4d2b25e64d37521a671fb0e5b80897926e37427fc26c7d60bb3",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "label": "docs/planning-brief.md",
+          "estimatedTokens": 6235,
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "20f6aa0aba35d4d2b25e64d37521a671fb0e5b80897926e37427fc26c7d60bb3",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/planning-brief.md",
+        "label": "docs/planning-brief.md",
+        "estimatedTokens": 6235,
+        "includedBytes": 18548,
+        "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "715066e436dc1767463ce45ac6edf95588f960b5",
+    "grade": "incorrect-false-unlinked",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "5a8a22cc6b6ea7c35129e210773f3619eb3bbcca5dc8fcf5f9bafe71dfccc713",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "5a8a22cc6b6ea7c35129e210773f3619eb3bbcca5dc8fcf5f9bafe71dfccc713",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 4,
+    "userMessageId": "0f18bdd2-94c1-4efa-81da-0e79585fb68d",
+    "assistantMessageId": "53c35417-9f8c-49d5-9a17-17368da7a5d3",
+    "prompt": "From the selected Release Candidate and the attached current-decision extract, state the latest brief revision, the exact transitive blocker and whether canary starts now. Report the Roadmap owner revision only if it is shown in the checkpoint context. Do not edit; return no-action.",
+    "response": "{\"type\":\"no-action\",\"message\":\"No edit permitted; checkpoint is unlinked and current-decision extract does not contain roadmap owner revision.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "No edit permitted; checkpoint is unlinked and current-decision extract does not contain roadmap owner revision."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "f3a81961-3c57-4213-928f-17f34d79b87f",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:03:28.909Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1123
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:04:04.111Z"
+    },
+    "totalMs": 35202,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "20f6aa0aba35d4d2b25e64d37521a671fb0e5b80897926e37427fc26c7d60bb3",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/current-decision.md",
+          "label": "docs/current-decision.md",
+          "estimatedTokens": 203,
+          "includedBytes": 554,
+          "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "20f6aa0aba35d4d2b25e64d37521a671fb0e5b80897926e37427fc26c7d60bb3",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/current-decision.md",
+        "label": "docs/current-decision.md",
+        "estimatedTokens": 203,
+        "includedBytes": 554,
+        "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "715066e436dc1767463ce45ac6edf95588f960b5",
+    "grade": "correct-approved-edit",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "5a8a22cc6b6ea7c35129e210773f3619eb3bbcca5dc8fcf5f9bafe71dfccc713",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 6,
+      "ownerSha256": "d8b19d06cc3f148d2d449b9c15ada673b5bb622ea630274982e784bd71bc69ee",
+      "markdownSha256": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 5,
+    "userMessageId": "96bb8bbf-e3ed-4abb-9f63-856e2db61dc7",
+    "assistantMessageId": "4d6d05ef-abef-43f9-b31a-a6208f2474c4",
+    "prompt": "The selected linked checkpoint has capabilities.objective.editable=true. Propose a roadmap-intent set-objective for that checkpoint with this exact one-line value: Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate. Do not change status or dependencies. This is a pending proposal for developer review, not an applied edit.",
+    "response": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate.\"}",
+    "structured": {
+      "type": "roadmap-intent",
+      "intent": "set-objective",
+      "value": "Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "explicitly-approved",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "26cc9f46-a37e-439b-a0f9-6ad4f909a16d",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:04:35.440Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1165
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:05:35.288Z"
+    },
+    "totalMs": 59848,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "roadmap-intent",
+      "status": "applied",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "20f6aa0aba35d4d2b25e64d37521a671fb0e5b80897926e37427fc26c7d60bb3",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/current-decision.md",
+          "label": "docs/current-decision.md",
+          "estimatedTokens": 203,
+          "includedBytes": 554,
+          "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ],
+      "proposalId": "d348472d-eaf4-4a76-b9d3-749cc03ed0c9",
+      "appliedRevision": 6
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "20f6aa0aba35d4d2b25e64d37521a671fb0e5b80897926e37427fc26c7d60bb3",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/current-decision.md",
+        "label": "docs/current-decision.md",
+        "estimatedTokens": 203,
+        "includedBytes": 554,
+        "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "715066e436dc1767463ce45ac6edf95588f960b5",
+    "grade": "incorrect-false-read-only",
+    "ownerBefore": {
+      "revision": 6,
+      "ownerSha256": "d8b19d06cc3f148d2d449b9c15ada673b5bb622ea630274982e784bd71bc69ee",
+      "markdownSha256": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+    },
+    "ownerAfter": {
+      "revision": 6,
+      "ownerSha256": "d8b19d06cc3f148d2d449b9c15ada673b5bb622ea630274982e784bd71bc69ee",
+      "markdownSha256": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+    },
+    "sourceDecisionRevisionInContext": null,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 6,
+    "userMessageId": "a5bd73c6-1ab0-437e-b94b-717d794a63bb",
+    "assistantMessageId": "78a3285d-f5c5-4065-aeb3-1e9c374bb63c",
+    "prompt": "Read only the currently selected Release Candidate checkpoint after the approved edit. State its exact current Objective and Roadmap owner revision from the checkpoint context. Do not edit anything; return no-action.",
+    "response": "{\"type\":\"no-action\",\"message\":\"Checkpoint is currently selected and read-only; no edit capability.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "Checkpoint is currently selected and read-only; no edit capability."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "f9209b7c-2471-4865-bfab-16ec6085d93e",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:06:27.568Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1100
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:07:02.311Z"
+    },
+    "totalMs": 34743,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 509,
+          "includedBytes": 1320,
+          "contentHash": "73e55067d328e2ea70e23374b4dcb9aae85e0c46a1a471362c123b8a718f8e9e",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 6,
+          "sourceHash": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 509,
+        "includedBytes": 1320,
+        "contentHash": "73e55067d328e2ea70e23374b4dcb9aae85e0c46a1a471362c123b8a718f8e9e",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 6,
+        "sourceHash": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "1630a366bbc9554893e05e1de6c12b0275e5a53a",
+    "grade": "incorrect-placeholder",
+    "ownerBefore": {
+      "revision": 6,
+      "ownerSha256": "d8b19d06cc3f148d2d449b9c15ada673b5bb622ea630274982e784bd71bc69ee",
+      "markdownSha256": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+    },
+    "ownerAfter": {
+      "revision": 6,
+      "ownerSha256": "d8b19d06cc3f148d2d449b9c15ada673b5bb622ea630274982e784bd71bc69ee",
+      "markdownSha256": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+    },
+    "sourceDecisionRevisionInContext": null,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 7,
+    "userMessageId": "34c5375a-7205-4e0e-87ab-160d047d8a1f",
+    "assistantMessageId": "f76699eb-274f-43fa-b6b2-f7ba56d7630f",
+    "prompt": "Read the selected linked Release Candidate checkpoint after the approved edit. In a no-action JSON answer, state its exact Objective and Roadmap owner revision from the supplied checkpoint context. Do not propose any edit.",
+    "response": "{\"type\":\"no-action\",\"message\":\"source-backed answer\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "source-backed answer"
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "abd45fb7-fcbb-42ad-af51-118cdbbaabb7",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:09:41.335Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1102
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:10:37.114Z"
+    },
+    "totalMs": 55779,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 509,
+          "includedBytes": 1320,
+          "contentHash": "73e55067d328e2ea70e23374b4dcb9aae85e0c46a1a471362c123b8a718f8e9e",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 6,
+          "sourceHash": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 509,
+        "includedBytes": 1320,
+        "contentHash": "73e55067d328e2ea70e23374b4dcb9aae85e0c46a1a471362c123b8a718f8e9e",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 6,
+        "sourceHash": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "1630a366bbc9554893e05e1de6c12b0275e5a53a",
+    "grade": "incorrect-placeholder-stale-bundle",
+    "ownerBefore": {
+      "revision": 6,
+      "ownerSha256": "d8b19d06cc3f148d2d449b9c15ada673b5bb622ea630274982e784bd71bc69ee",
+      "markdownSha256": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+    },
+    "ownerAfter": {
+      "revision": 6,
+      "ownerSha256": "d8b19d06cc3f148d2d449b9c15ada673b5bb622ea630274982e784bd71bc69ee",
+      "markdownSha256": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+    },
+    "sourceDecisionRevisionInContext": null,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 8,
+    "userMessageId": "5c3830ee-dbbd-4b25-b65b-ecfc55309c47",
+    "assistantMessageId": "8e85d1bf-9067-403d-8473-5d4409cde1cf",
+    "prompt": "Read the selected linked Release Candidate checkpoint after the approved edit. In a no-action JSON answer, state its exact Objective and Roadmap owner revision from the supplied checkpoint context. Do not propose any edit.",
+    "response": "{\"type\":\"no-action\",\"message\":\"source-backed answer\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "source-backed answer"
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "86bf506f-565e-435b-bfdb-9eadacfa569d",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:11:24.754Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1102
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:11:27.622Z"
+    },
+    "totalMs": 2868,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 509,
+          "includedBytes": 1320,
+          "contentHash": "73e55067d328e2ea70e23374b4dcb9aae85e0c46a1a471362c123b8a718f8e9e",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 6,
+          "sourceHash": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 509,
+        "includedBytes": 1320,
+        "contentHash": "73e55067d328e2ea70e23374b4dcb9aae85e0c46a1a471362c123b8a718f8e9e",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 6,
+        "sourceHash": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "1630a366bbc9554893e05e1de6c12b0275e5a53a",
+    "grade": "correct-approved-edit",
+    "ownerBefore": {
+      "revision": 6,
+      "ownerSha256": "d8b19d06cc3f148d2d449b9c15ada673b5bb622ea630274982e784bd71bc69ee",
+      "markdownSha256": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+    },
+    "ownerAfter": {
+      "revision": 9,
+      "ownerSha256": "fe255ea831dbfc8e1328564cd864db479102d402744e52ec0937fe8bacc36caa",
+      "markdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 9,
+    "userMessageId": "d88d25e9-6a19-4009-aaa9-0cd98549b8fc",
+    "assistantMessageId": "0264bb6a-2593-46ad-9279-3275344c5163",
+    "prompt": "The selected linked Integration Gate has capabilities.objective.editable=true. Using its dependency on Key Rotation and the attached decision revision 4, propose a roadmap-intent set-objective for Integration Gate with this exact one-line value: Verify Key Rotation credential rollover is Green before integrating release components; keep Integration Gate blocked until that evidence is reviewed. Do not change its title, status or dependencies. This is a pending proposal for developer review, not an applied edit.",
+    "response": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Verify Key Rotation credential rollover is Green before integrating release components; keep Integration Gate blocked until that evidence is reviewed.\"}",
+    "structured": {
+      "type": "roadmap-intent",
+      "intent": "set-objective",
+      "value": "Verify Key Rotation credential rollover is Green before integrating release components; keep Integration Gate blocked until that evidence is reviewed."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "explicitly-approved",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "82d7e26c-e8d1-4421-938c-f0367487a32a",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:12:02.904Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1200
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:12:52.718Z"
+    },
+    "totalMs": 49814,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "roadmap-intent",
+      "status": "applied",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-integration-gate",
+          "label": "Roadmap checkpoint: Milestone Integration Gate",
+          "estimatedTokens": 650,
+          "includedBytes": 1707,
+          "contentHash": "23fa60d253fd0d6d4453e70cbec5067e4e9dcb9f6eed8a9ec1a9a959fdbb2bb6",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 6,
+          "sourceHash": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/current-decision.md",
+          "label": "docs/current-decision.md",
+          "estimatedTokens": 203,
+          "includedBytes": 554,
+          "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ],
+      "proposalId": "a151ba7f-a417-48d8-84f4-9797177deeb2",
+      "appliedRevision": 9
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-integration-gate",
+        "label": "Roadmap checkpoint: Milestone Integration Gate",
+        "estimatedTokens": 650,
+        "includedBytes": 1707,
+        "contentHash": "23fa60d253fd0d6d4453e70cbec5067e4e9dcb9f6eed8a9ec1a9a959fdbb2bb6",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 6,
+        "sourceHash": "c3b5c23f0198b1e29add485a28f2867598c2e179d53d785193d13276ec2aeed0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/current-decision.md",
+        "label": "docs/current-decision.md",
+        "estimatedTokens": 203,
+        "includedBytes": 554,
+        "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "1630a366bbc9554893e05e1de6c12b0275e5a53a",
+    "grade": "correct-fresh-answer",
+    "ownerBefore": {
+      "revision": 9,
+      "ownerSha256": "fe255ea831dbfc8e1328564cd864db479102d402744e52ec0937fe8bacc36caa",
+      "markdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+    },
+    "ownerAfter": {
+      "revision": 9,
+      "ownerSha256": "fe255ea831dbfc8e1328564cd864db479102d402744e52ec0937fe8bacc36caa",
+      "markdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 10,
+    "userMessageId": "8f2695a3-f341-488f-82c8-da23495d2ef5",
+    "assistantMessageId": "07dc712d-1d26-44fb-97e9-cd3acae6524a",
+    "prompt": "After the approved Integration Gate change, use the selected checkpoint and current-decision extract to report its current Objective, Roadmap owner revision, brief decision revision, Key Rotation status, and whether release canary is authorized now. Give the values in a no-action message; make no edit.",
+    "response": "{\"type\":\"no-action\",\"message\":\"The current Objective for the Milestone Integration Gate is: 'Verify Key Rotation credential rollover is Green before integrating release components; keep Integration Gate blocked until that evidence is reviewed.' The Roadmap owner revision is 9. The brief decision revision is 4. The Key Rotation status is NOT GREEN. Release canary is not authorized now.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "The current Objective for the Milestone Integration Gate is: 'Verify Key Rotation credential rollover is Green before integrating release components; keep Integration Gate blocked until that evidence is reviewed.' The Roadmap owner revision is 9. The brief decision revision is 4. The Key Rotation status is NOT GREEN. Release canary is not authorized now."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "806266f3-bd45-443e-8ce2-2176c583384c",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:13:45.257Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1129
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:14:47.290Z"
+    },
+    "totalMs": 62033,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-integration-gate",
+          "label": "Roadmap checkpoint: Milestone Integration Gate",
+          "estimatedTokens": 685,
+          "includedBytes": 1812,
+          "contentHash": "a3632dd2e59b85ace9f1a53c7addebe52880f0636f87f08bd1a3c261ab96369d",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 9,
+          "sourceHash": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/current-decision.md",
+          "label": "docs/current-decision.md",
+          "estimatedTokens": 203,
+          "includedBytes": 554,
+          "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-integration-gate",
+        "label": "Roadmap checkpoint: Milestone Integration Gate",
+        "estimatedTokens": 685,
+        "includedBytes": 1812,
+        "contentHash": "a3632dd2e59b85ace9f1a53c7addebe52880f0636f87f08bd1a3c261ab96369d",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 9,
+        "sourceHash": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/current-decision.md",
+        "label": "docs/current-decision.md",
+        "estimatedTokens": 203,
+        "includedBytes": 554,
+        "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "1630a366bbc9554893e05e1de6c12b0275e5a53a",
+    "grade": "incorrect-placeholder-stale-bundle",
+    "ownerBefore": {
+      "revision": 9,
+      "ownerSha256": "fe255ea831dbfc8e1328564cd864db479102d402744e52ec0937fe8bacc36caa",
+      "markdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+    },
+    "ownerAfter": {
+      "revision": 9,
+      "ownerSha256": "fe255ea831dbfc8e1328564cd864db479102d402744e52ec0937fe8bacc36caa",
+      "markdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 11,
+    "userMessageId": "de6d38ba-8039-4f84-b800-a1ef117f87b2",
+    "assistantMessageId": "73dadf43-5b23-4a10-ad7e-67ac6642c314",
+    "prompt": "Read the selected Release Candidate checkpoint and attached planning brief. Give the current owner revision if present, the brief decision revision if present, the dependency chain and each relevant status. Is the canary authorized now? State the source evidence and next safe action. Do not propose any edit; return a no-action answer.",
+    "response": "{\"type\":\"no-action\",\"message\":\"source-backed answer\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "source-backed answer"
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "9af5042a-c564-41ee-899d-4aeb360de909",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:24:51.420Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1140
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:28:23.551Z"
+    },
+    "totalMs": 212131,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 544,
+          "includedBytes": 1425,
+          "contentHash": "5471d49ccb3237b3b92d0d3c04754a09a74920b29a456402253f26b9f5d86f38",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 9,
+          "sourceHash": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "label": "docs/planning-brief.md",
+          "estimatedTokens": 6235,
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 544,
+        "includedBytes": 1425,
+        "contentHash": "5471d49ccb3237b3b92d0d3c04754a09a74920b29a456402253f26b9f5d86f38",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 9,
+        "sourceHash": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/planning-brief.md",
+        "label": "docs/planning-brief.md",
+        "estimatedTokens": 6235,
+        "includedBytes": 18548,
+        "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "1630a366bbc9554893e05e1de6c12b0275e5a53a",
+    "grade": "incorrect-placeholder-stale-bundle",
+    "ownerBefore": {
+      "revision": 9,
+      "ownerSha256": "fe255ea831dbfc8e1328564cd864db479102d402744e52ec0937fe8bacc36caa",
+      "markdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+    },
+    "ownerAfter": {
+      "revision": 9,
+      "ownerSha256": "fe255ea831dbfc8e1328564cd864db479102d402744e52ec0937fe8bacc36caa",
+      "markdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 12,
+    "userMessageId": "544c5c91-fb29-4b3a-85a5-5d090b498bca",
+    "assistantMessageId": "a3bea599-bcbe-4bfe-8b27-643f26f5ffb4",
+    "prompt": "Read the selected Release Candidate checkpoint and attached planning brief. Give the current owner revision if present, the brief decision revision if present, the dependency chain and each relevant status. Is the canary authorized now? State the source evidence and next safe action. Do not propose any edit; return a no-action answer.",
+    "response": "{\"type\":\"no-action\",\"message\":\"source-backed answer\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "source-backed answer"
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "95a9cb7e-7047-4ff9-b336-14ddd1ea7716",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:30:23.352Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1140
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:30:27.331Z"
+    },
+    "totalMs": 3979,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 544,
+          "includedBytes": 1425,
+          "contentHash": "5471d49ccb3237b3b92d0d3c04754a09a74920b29a456402253f26b9f5d86f38",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 9,
+          "sourceHash": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "label": "docs/planning-brief.md",
+          "estimatedTokens": 6235,
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 544,
+        "includedBytes": 1425,
+        "contentHash": "5471d49ccb3237b3b92d0d3c04754a09a74920b29a456402253f26b9f5d86f38",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 9,
+        "sourceHash": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/planning-brief.md",
+        "label": "docs/planning-brief.md",
+        "estimatedTokens": 6235,
+        "includedBytes": 18548,
+        "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "968780c23b4e2d9be78f02bb03d7b6b338819baa",
+    "grade": "cancelled-browser-tab-crash",
+    "ownerBefore": {
+      "revision": 9,
+      "ownerSha256": "fe255ea831dbfc8e1328564cd864db479102d402744e52ec0937fe8bacc36caa",
+      "markdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+    },
+    "ownerAfter": {
+      "revision": 9,
+      "ownerSha256": "fe255ea831dbfc8e1328564cd864db479102d402744e52ec0937fe8bacc36caa",
+      "markdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 13,
+    "userMessageId": "fe081561-e86e-473d-8134-1993cbeb2dab",
+    "assistantMessageId": "de709b3d-3b12-4f16-a3cf-29fe97fd13a4",
+    "prompt": "Read the selected Release Candidate checkpoint and attached planning brief. Give the current owner revision if present, the brief decision revision if present, the dependency chain and each relevant status. Is the canary authorized now? State the source evidence and next safe action. Do not propose any edit; return a no-action answer.",
+    "response": "",
+    "structured": null,
+    "structuredJsonParse": false,
+    "strictEnvelopeAccepted": false,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "ae42c296-d4af-4646-b9af-ca6a2d7f491c",
+      "status": "cancelled",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:31:13.807Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "finishedAt": "2026-10-16T15:31:37.171Z"
+    },
+    "totalMs": 23364,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "cancelled",
+      "status": "cancelled",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 544,
+          "includedBytes": 1425,
+          "contentHash": "5471d49ccb3237b3b92d0d3c04754a09a74920b29a456402253f26b9f5d86f38",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 9,
+          "sourceHash": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "label": "docs/planning-brief.md",
+          "estimatedTokens": 6235,
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 544,
+        "includedBytes": 1425,
+        "contentHash": "5471d49ccb3237b3b92d0d3c04754a09a74920b29a456402253f26b9f5d86f38",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 9,
+        "sourceHash": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/planning-brief.md",
+        "label": "docs/planning-brief.md",
+        "estimatedTokens": 6235,
+        "includedBytes": 18548,
+        "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "saved-chat",
+    "root": "/tmp/dope-r5-group2-q4",
+    "chatId": "e44a0a50-c9d2-4b1f-818c-99178605ff31",
+    "chatRevision": 75,
+    "runtimeProductSha": "968780c23b4e2d9be78f02bb03d7b6b338819baa",
+    "grade": "incomplete-owner-revision",
+    "ownerBefore": {
+      "revision": 9,
+      "ownerSha256": "fe255ea831dbfc8e1328564cd864db479102d402744e52ec0937fe8bacc36caa",
+      "markdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+    },
+    "ownerAfter": {
+      "revision": 9,
+      "ownerSha256": "fe255ea831dbfc8e1328564cd864db479102d402744e52ec0937fe8bacc36caa",
+      "markdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 14,
+    "userMessageId": "d5d21593-cf4b-4621-b8e3-8c8c326e5319",
+    "assistantMessageId": "b520493f-6551-4e80-a350-4d9191eda3ba",
+    "prompt": "Read the selected Release Candidate checkpoint and attached planning brief. Give the current owner revision if present, the brief decision revision if present, the dependency chain and each relevant status. Is the canary authorized now? State the source evidence and next safe action. Do not propose any edit; return a no-action answer.",
+    "response": "{\"type\":\"no-action\",\"message\":\"The canary is not authorized now. Source evidence shows that at source revision 4, the Integration Gate depends transitively on Key Rotation, which is NOT GREEN because credential rollover verification failed. The Release Candidate must remain blocked and the canary cannot start. Next safe action: repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "The canary is not authorized now. Source evidence shows that at source revision 4, the Integration Gate depends transitively on Key Rotation, which is NOT GREEN because credential rollover verification failed. The Release Candidate must remain blocked and the canary cannot start. Next safe action: repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "fccd673e-707e-444f-9b55-689d8e605ec4",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:45:24.022Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1140
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:48:00.393Z"
+    },
+    "totalMs": 156371,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 544,
+          "includedBytes": 1425,
+          "contentHash": "5471d49ccb3237b3b92d0d3c04754a09a74920b29a456402253f26b9f5d86f38",
+          "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+          "ownerRevision": 9,
+          "sourceHash": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "label": "docs/planning-brief.md",
+          "estimatedTokens": 6235,
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 544,
+        "includedBytes": 1425,
+        "contentHash": "5471d49ccb3237b3b92d0d3c04754a09a74920b29a456402253f26b9f5d86f38",
+        "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+        "ownerRevision": 9,
+        "sourceHash": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/planning-brief.md",
+        "label": "docs/planning-brief.md",
+        "estimatedTokens": 6235,
+        "includedBytes": 18548,
+        "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "0f6016c378646389b591b8c15b380ba676e2aa95e0ddc9d4faf7b7bf85d04b4d"
+      }
+    ]
+  },
+  {
+    "fixture": "repeat-a",
+    "root": "/tmp/dope-r5-group2-repeat-a",
+    "chatId": "fa4231d6-ff6f-4520-b7dc-e4a3c2b1fff3",
+    "chatRevision": 33,
+    "runtimeProductSha": "1630a366bbc9554893e05e1de6c12b0275e5a53a",
+    "grade": "correct",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "452368540b5a5faed314b8cc7a3a3441321e0cb02dc98eadcf967a6d378cddba",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "452368540b5a5faed314b8cc7a3a3441321e0cb02dc98eadcf967a6d378cddba",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": null,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 1,
+    "userMessageId": "a119cfcc-9a83-4d30-aed7-d8e29713b821",
+    "assistantMessageId": "d359f695-cb83-413a-b867-5b4f48f9233f",
+    "prompt": "Read only the selected Release Candidate checkpoint. In a no-action message, state its Roadmap owner revision, current status, exact Objective, and directly listed dependency. Do not propose an edit or infer any unlisted status.",
+    "response": "{\"type\":\"no-action\",\"message\":\"The Roadmap owner revision is 3, the current status is 'active', the exact Objective is 'Decide whether to start the release canary after all dependencies are green.', and the directly listed dependency is 'roadmap:docs/roadmap.md#milestone-integration-gate'.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "The Roadmap owner revision is 3, the current status is 'active', the exact Objective is 'Decide whether to start the release canary after all dependencies are green.', and the directly listed dependency is 'roadmap:docs/roadmap.md#milestone-integration-gate'."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "0362bd89-848e-4988-85b2-844948477e75",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:16:34.661Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1104
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:17:23.448Z"
+    },
+    "totalMs": 48787,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "d4752d5a1673e2adc2da2220fe674f652970e9c46c6a5190acdf934007e25d7e",
+          "projectId": "818e89b6-efd7-409a-be48-459098d3c6cb",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "4dc57c4ea7ad2fc761dd52fdb18cae35118fbee9fef6f56b1cf849d69d5af067"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "d4752d5a1673e2adc2da2220fe674f652970e9c46c6a5190acdf934007e25d7e",
+        "projectId": "818e89b6-efd7-409a-be48-459098d3c6cb",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "4dc57c4ea7ad2fc761dd52fdb18cae35118fbee9fef6f56b1cf849d69d5af067"
+      }
+    ]
+  },
+  {
+    "fixture": "repeat-a",
+    "root": "/tmp/dope-r5-group2-repeat-a",
+    "chatId": "fa4231d6-ff6f-4520-b7dc-e4a3c2b1fff3",
+    "chatRevision": 33,
+    "runtimeProductSha": "1630a366bbc9554893e05e1de6c12b0275e5a53a",
+    "grade": "correct",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "452368540b5a5faed314b8cc7a3a3441321e0cb02dc98eadcf967a6d378cddba",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "452368540b5a5faed314b8cc7a3a3441321e0cb02dc98eadcf967a6d378cddba",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 2,
+    "userMessageId": "699ead95-f1ef-48e7-8da8-9bd86ef6dd4b",
+    "assistantMessageId": "81c25dc9-34e2-4b63-b134-4ea5a0995cd6",
+    "prompt": "The selected linked Release Candidate has capabilities.objective.editable=true. Based on decision revision 4 in the attached source, propose a roadmap-intent set-objective with this exact one-line value: Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate. Keep title, status and dependencies unchanged. This is a proposal for developer review, not an approval.",
+    "response": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate.\"}",
+    "structured": {
+      "type": "roadmap-intent",
+      "intent": "set-objective",
+      "value": "Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "explicitly-rejected",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "966dfbcc-26fe-4f82-ae8c-e8eea1ebac82",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:17:38.011Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1178
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:18:32.016Z"
+    },
+    "totalMs": 54005,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "roadmap-intent",
+      "status": "denied",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "d4752d5a1673e2adc2da2220fe674f652970e9c46c6a5190acdf934007e25d7e",
+          "projectId": "818e89b6-efd7-409a-be48-459098d3c6cb",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/current-decision.md",
+          "label": "docs/current-decision.md",
+          "estimatedTokens": 203,
+          "includedBytes": 554,
+          "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "4dc57c4ea7ad2fc761dd52fdb18cae35118fbee9fef6f56b1cf849d69d5af067"
+        }
+      ],
+      "proposalId": "8c4b7a57-9aea-471b-a941-e67c56a20fed"
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "d4752d5a1673e2adc2da2220fe674f652970e9c46c6a5190acdf934007e25d7e",
+        "projectId": "818e89b6-efd7-409a-be48-459098d3c6cb",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/current-decision.md",
+        "label": "docs/current-decision.md",
+        "estimatedTokens": 203,
+        "includedBytes": 554,
+        "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "4dc57c4ea7ad2fc761dd52fdb18cae35118fbee9fef6f56b1cf849d69d5af067"
+      }
+    ]
+  },
+  {
+    "fixture": "repeat-a",
+    "root": "/tmp/dope-r5-group2-repeat-a",
+    "chatId": "fa4231d6-ff6f-4520-b7dc-e4a3c2b1fff3",
+    "chatRevision": 33,
+    "runtimeProductSha": "1630a366bbc9554893e05e1de6c12b0275e5a53a",
+    "grade": "correct",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "452368540b5a5faed314b8cc7a3a3441321e0cb02dc98eadcf967a6d378cddba",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "452368540b5a5faed314b8cc7a3a3441321e0cb02dc98eadcf967a6d378cddba",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 3,
+    "userMessageId": "e8c91151-c087-48c4-bd8e-d423a4b82731",
+    "assistantMessageId": "7abea401-5cdd-4025-bef8-7e5a30335585",
+    "prompt": "Fresh decision check after proposal review: using the selected Release Candidate and attached current-decision extract, state the Roadmap owner revision, the brief decision revision, the Release Candidate -> Integration Gate -> Key Rotation dependency chain, the Key Rotation status, whether canary may start now, and the next safe action. Return no-action with these facts; make no edit.",
+    "response": "{\"type\":\"no-action\",\"message\":\"Roadmap owner revision: 3. Brief decision revision: 4. Dependency chain: Release Candidate -> Integration Gate -> Key Rotation. Key Rotation status: NOT GREEN (credential rollover verification failed). Canary may not start now. Next safe action: Repair Key Rotation, obtain Green verification record, then reassess Integration Gate and Release Candidate.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "Roadmap owner revision: 3. Brief decision revision: 4. Dependency chain: Release Candidate -> Integration Gate -> Key Rotation. Key Rotation status: NOT GREEN (credential rollover verification failed). Canary may not start now. Next safe action: Repair Key Rotation, obtain Green verification record, then reassess Integration Gate and Release Candidate."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "3c89bdbc-69b5-4e9f-ba90-655f13b2bbfc",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:18:54.050Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1158
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:19:40.706Z"
+    },
+    "totalMs": 46656,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "d4752d5a1673e2adc2da2220fe674f652970e9c46c6a5190acdf934007e25d7e",
+          "projectId": "818e89b6-efd7-409a-be48-459098d3c6cb",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/current-decision.md",
+          "label": "docs/current-decision.md",
+          "estimatedTokens": 203,
+          "includedBytes": 554,
+          "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "4dc57c4ea7ad2fc761dd52fdb18cae35118fbee9fef6f56b1cf849d69d5af067"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "d4752d5a1673e2adc2da2220fe674f652970e9c46c6a5190acdf934007e25d7e",
+        "projectId": "818e89b6-efd7-409a-be48-459098d3c6cb",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/current-decision.md",
+        "label": "docs/current-decision.md",
+        "estimatedTokens": 203,
+        "includedBytes": 554,
+        "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "4dc57c4ea7ad2fc761dd52fdb18cae35118fbee9fef6f56b1cf849d69d5af067"
+      }
+    ]
+  },
+  {
+    "fixture": "repeat-a",
+    "root": "/tmp/dope-r5-group2-repeat-a",
+    "chatId": "fa4231d6-ff6f-4520-b7dc-e4a3c2b1fff3",
+    "chatRevision": 33,
+    "runtimeProductSha": "968780c23b4e2d9be78f02bb03d7b6b338819baa",
+    "grade": "correct",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "452368540b5a5faed314b8cc7a3a3441321e0cb02dc98eadcf967a6d378cddba",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "452368540b5a5faed314b8cc7a3a3441321e0cb02dc98eadcf967a6d378cddba",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": null,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 4,
+    "userMessageId": "2d27c5d4-fb40-419f-b811-77ba177bf110",
+    "assistantMessageId": "3ae1db67-5f21-4791-a849-42fe4d0726f3",
+    "prompt": "Read only the selected Release Candidate checkpoint. In a no-action message, state its Roadmap owner revision, current status, exact Objective, and directly listed dependency. Do not propose an edit or infer any unlisted status.",
+    "response": "{\"type\":\"no-action\",\"message\":\"Roadmap owner revision: 3. Current status: active. Exact Objective: Decide whether to start the release canary after all dependencies are green. Directly listed dependency: roadmap:docs/roadmap.md#milestone-integration-gate.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "Roadmap owner revision: 3. Current status: active. Exact Objective: Decide whether to start the release canary after all dependencies are green. Directly listed dependency: roadmap:docs/roadmap.md#milestone-integration-gate."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "635c6863-85ff-4c7d-93a9-ba7a02242dbd",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:37:16.303Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1104
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:38:13.368Z"
+    },
+    "totalMs": 57065,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "d4752d5a1673e2adc2da2220fe674f652970e9c46c6a5190acdf934007e25d7e",
+          "projectId": "818e89b6-efd7-409a-be48-459098d3c6cb",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "4dc57c4ea7ad2fc761dd52fdb18cae35118fbee9fef6f56b1cf849d69d5af067"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "d4752d5a1673e2adc2da2220fe674f652970e9c46c6a5190acdf934007e25d7e",
+        "projectId": "818e89b6-efd7-409a-be48-459098d3c6cb",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "4dc57c4ea7ad2fc761dd52fdb18cae35118fbee9fef6f56b1cf849d69d5af067"
+      }
+    ]
+  },
+  {
+    "fixture": "repeat-a",
+    "root": "/tmp/dope-r5-group2-repeat-a",
+    "chatId": "fa4231d6-ff6f-4520-b7dc-e4a3c2b1fff3",
+    "chatRevision": 33,
+    "runtimeProductSha": "968780c23b4e2d9be78f02bb03d7b6b338819baa",
+    "grade": "correct",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "452368540b5a5faed314b8cc7a3a3441321e0cb02dc98eadcf967a6d378cddba",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "452368540b5a5faed314b8cc7a3a3441321e0cb02dc98eadcf967a6d378cddba",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 5,
+    "userMessageId": "4ff6e076-e767-4d8c-813a-2168a24a0611",
+    "assistantMessageId": "431287f0-9dee-4fa7-81df-b5f7950ec811",
+    "prompt": "The selected linked Release Candidate has capabilities.objective.editable=true. Based on decision revision 4 in the attached source, propose a roadmap-intent set-objective with this exact one-line value: Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate. Keep title, status and dependencies unchanged. This is a proposal for developer review, not an approval.",
+    "response": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate.\"}",
+    "structured": {
+      "type": "roadmap-intent",
+      "intent": "set-objective",
+      "value": "Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "explicitly-rejected",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "5fc9bea4-6a98-42bb-bb74-f0eb3f566073",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:38:20.921Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1178
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:39:23.022Z"
+    },
+    "totalMs": 62101,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "roadmap-intent",
+      "status": "denied",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "d4752d5a1673e2adc2da2220fe674f652970e9c46c6a5190acdf934007e25d7e",
+          "projectId": "818e89b6-efd7-409a-be48-459098d3c6cb",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/current-decision.md",
+          "label": "docs/current-decision.md",
+          "estimatedTokens": 203,
+          "includedBytes": 554,
+          "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "4dc57c4ea7ad2fc761dd52fdb18cae35118fbee9fef6f56b1cf849d69d5af067"
+        }
+      ],
+      "proposalId": "2ef6b43a-2f43-44bf-9e68-07da7f588d74"
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "d4752d5a1673e2adc2da2220fe674f652970e9c46c6a5190acdf934007e25d7e",
+        "projectId": "818e89b6-efd7-409a-be48-459098d3c6cb",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/current-decision.md",
+        "label": "docs/current-decision.md",
+        "estimatedTokens": 203,
+        "includedBytes": 554,
+        "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "4dc57c4ea7ad2fc761dd52fdb18cae35118fbee9fef6f56b1cf849d69d5af067"
+      }
+    ]
+  },
+  {
+    "fixture": "repeat-a",
+    "root": "/tmp/dope-r5-group2-repeat-a",
+    "chatId": "fa4231d6-ff6f-4520-b7dc-e4a3c2b1fff3",
+    "chatRevision": 33,
+    "runtimeProductSha": "968780c23b4e2d9be78f02bb03d7b6b338819baa",
+    "grade": "correct",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "452368540b5a5faed314b8cc7a3a3441321e0cb02dc98eadcf967a6d378cddba",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "452368540b5a5faed314b8cc7a3a3441321e0cb02dc98eadcf967a6d378cddba",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 6,
+    "userMessageId": "12410e76-7041-4afc-9d8c-227022e65b8d",
+    "assistantMessageId": "f6dd1ffd-fedc-4668-92ce-88f81f9afe3b",
+    "prompt": "Fresh decision check after proposal review: using the selected Release Candidate and attached current-decision extract, state the Roadmap owner revision, the brief decision revision, the Release Candidate -> Integration Gate -> Key Rotation dependency chain, the Key Rotation status, whether canary may start now, and the next safe action. Return no-action with these facts; make no edit.",
+    "response": "{\"type\":\"no-action\",\"message\":\"Roadmap owner revision: 3. Brief decision revision: 4. Release Candidate -> Integration Gate -> Key Rotation dependency chain: Release Candidate depends on Integration Gate; Integration Gate depends on Key Rotation. Key Rotation status: NOT GREEN (credential rollover verification failed). Canary may not start now. Next safe action: Repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "Roadmap owner revision: 3. Brief decision revision: 4. Release Candidate -> Integration Gate -> Key Rotation dependency chain: Release Candidate depends on Integration Gate; Integration Gate depends on Key Rotation. Key Rotation status: NOT GREEN (credential rollover verification failed). Canary may not start now. Next safe action: Repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "a2a8f65f-5f47-49ab-ae8a-763f480c632c",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:39:46.546Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1158
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:41:04.276Z"
+    },
+    "totalMs": 77730,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "d4752d5a1673e2adc2da2220fe674f652970e9c46c6a5190acdf934007e25d7e",
+          "projectId": "818e89b6-efd7-409a-be48-459098d3c6cb",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/current-decision.md",
+          "label": "docs/current-decision.md",
+          "estimatedTokens": 203,
+          "includedBytes": 554,
+          "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "4dc57c4ea7ad2fc761dd52fdb18cae35118fbee9fef6f56b1cf849d69d5af067"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "d4752d5a1673e2adc2da2220fe674f652970e9c46c6a5190acdf934007e25d7e",
+        "projectId": "818e89b6-efd7-409a-be48-459098d3c6cb",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/current-decision.md",
+        "label": "docs/current-decision.md",
+        "estimatedTokens": 203,
+        "includedBytes": 554,
+        "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "4dc57c4ea7ad2fc761dd52fdb18cae35118fbee9fef6f56b1cf849d69d5af067"
+      }
+    ]
+  },
+  {
+    "fixture": "repeat-b",
+    "root": "/tmp/dope-r5-group2-repeat-b",
+    "chatId": "57b271c9-85a6-4c6f-95f0-63d20acbdbee",
+    "chatRevision": 33,
+    "runtimeProductSha": "1630a366bbc9554893e05e1de6c12b0275e5a53a",
+    "grade": "correct",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "d29a73ae9fb7f5e5a1c0dd4c55545975d0aa4ae957080e86e07a17f31087c479",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "d29a73ae9fb7f5e5a1c0dd4c55545975d0aa4ae957080e86e07a17f31087c479",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": null,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 1,
+    "userMessageId": "a2025c95-4973-4f30-85de-8b2929b4f4c7",
+    "assistantMessageId": "cf71ab57-d8cb-43a6-8e84-d40a41b455da",
+    "prompt": "Read only the selected Release Candidate checkpoint. In a no-action message, state its Roadmap owner revision, current status, exact Objective, and directly listed dependency. Do not propose an edit or infer any unlisted status.",
+    "response": "{\"type\":\"no-action\",\"message\":\"The Roadmap owner revision is 3. The current status of the Milestone Release Candidate checkpoint is 'active'. Its exact Objective is 'Decide whether to start the release canary after all dependencies are green.'. The directly listed dependency is 'roadmap:docs/roadmap.md#milestone-integration-gate'.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "The Roadmap owner revision is 3. The current status of the Milestone Release Candidate checkpoint is 'active'. Its exact Objective is 'Decide whether to start the release canary after all dependencies are green.'. The directly listed dependency is 'roadmap:docs/roadmap.md#milestone-integration-gate'."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "aaec7777-bd7a-4879-b3ad-a98c5837af3d",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:20:26.768Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "explicit-turn",
+      "routingProvenance": {
+        "version": 1,
+        "source": "explicit-turn",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1104
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:21:19.538Z"
+    },
+    "totalMs": 52770,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "29b5cf1f65cbcfbbde33b3466b85b157a39b7319d6a40b2f00e12cf04c5152eb",
+          "projectId": "d7d37e31-9412-4d69-a70f-fd85bd65bb36",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "958dd858becc041b577d8ee96b210dc92fbcef390711999eea71f07eeefa90d2"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "29b5cf1f65cbcfbbde33b3466b85b157a39b7319d6a40b2f00e12cf04c5152eb",
+        "projectId": "d7d37e31-9412-4d69-a70f-fd85bd65bb36",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "958dd858becc041b577d8ee96b210dc92fbcef390711999eea71f07eeefa90d2"
+      }
+    ]
+  },
+  {
+    "fixture": "repeat-b",
+    "root": "/tmp/dope-r5-group2-repeat-b",
+    "chatId": "57b271c9-85a6-4c6f-95f0-63d20acbdbee",
+    "chatRevision": 33,
+    "runtimeProductSha": "1630a366bbc9554893e05e1de6c12b0275e5a53a",
+    "grade": "correct",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "d29a73ae9fb7f5e5a1c0dd4c55545975d0aa4ae957080e86e07a17f31087c479",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "d29a73ae9fb7f5e5a1c0dd4c55545975d0aa4ae957080e86e07a17f31087c479",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 2,
+    "userMessageId": "ca0f5162-14f4-4d5c-8b54-a28a112ff4c8",
+    "assistantMessageId": "f652376b-9341-46a8-814e-904cd770cda5",
+    "prompt": "The selected linked Release Candidate has capabilities.objective.editable=true. Based on decision revision 4 in the attached source, propose a roadmap-intent set-objective with this exact one-line value: Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate. Keep title, status and dependencies unchanged. This is a proposal for developer review, not an approval.",
+    "response": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate.\"}",
+    "structured": {
+      "type": "roadmap-intent",
+      "intent": "set-objective",
+      "value": "Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "explicitly-rejected",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "183c2e11-6b09-4ff6-a6c0-9136bd783cc6",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:21:31.189Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1178
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:22:21.539Z"
+    },
+    "totalMs": 50350,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "roadmap-intent",
+      "status": "denied",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "29b5cf1f65cbcfbbde33b3466b85b157a39b7319d6a40b2f00e12cf04c5152eb",
+          "projectId": "d7d37e31-9412-4d69-a70f-fd85bd65bb36",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/current-decision.md",
+          "label": "docs/current-decision.md",
+          "estimatedTokens": 203,
+          "includedBytes": 554,
+          "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "958dd858becc041b577d8ee96b210dc92fbcef390711999eea71f07eeefa90d2"
+        }
+      ],
+      "proposalId": "7bda1eba-2d7e-4b7c-948a-0a443ac5336b"
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "29b5cf1f65cbcfbbde33b3466b85b157a39b7319d6a40b2f00e12cf04c5152eb",
+        "projectId": "d7d37e31-9412-4d69-a70f-fd85bd65bb36",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/current-decision.md",
+        "label": "docs/current-decision.md",
+        "estimatedTokens": 203,
+        "includedBytes": 554,
+        "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "958dd858becc041b577d8ee96b210dc92fbcef390711999eea71f07eeefa90d2"
+      }
+    ]
+  },
+  {
+    "fixture": "repeat-b",
+    "root": "/tmp/dope-r5-group2-repeat-b",
+    "chatId": "57b271c9-85a6-4c6f-95f0-63d20acbdbee",
+    "chatRevision": 33,
+    "runtimeProductSha": "1630a366bbc9554893e05e1de6c12b0275e5a53a",
+    "grade": "correct",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "d29a73ae9fb7f5e5a1c0dd4c55545975d0aa4ae957080e86e07a17f31087c479",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "d29a73ae9fb7f5e5a1c0dd4c55545975d0aa4ae957080e86e07a17f31087c479",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 3,
+    "userMessageId": "300b3918-4e5e-4907-895a-b7c18b41ed43",
+    "assistantMessageId": "7e356c7b-71b9-4365-a486-eb9c5a496213",
+    "prompt": "Fresh decision check after proposal review: using the selected Release Candidate and attached current-decision extract, state the Roadmap owner revision, the brief decision revision, the Release Candidate -> Integration Gate -> Key Rotation dependency chain, the Key Rotation status, whether canary may start now, and the next safe action. Return no-action with these facts; make no edit.",
+    "response": "{\"type\":\"no-action\",\"message\":\"The Roadmap owner revision is 3. The brief decision revision is 4. The dependency chain is: Release Candidate -> Integration Gate -> Key Rotation. The Key Rotation status is NOT GREEN due to failed credential rollover verification. Canary may not start now. The next safe action is to repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "The Roadmap owner revision is 3. The brief decision revision is 4. The dependency chain is: Release Candidate -> Integration Gate -> Key Rotation. The Key Rotation status is NOT GREEN due to failed credential rollover verification. Canary may not start now. The next safe action is to repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "110fc1c3-f4b3-44a4-86b5-b3fae2ecf300",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:22:47.727Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1158
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:24:00.940Z"
+    },
+    "totalMs": 73213,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "29b5cf1f65cbcfbbde33b3466b85b157a39b7319d6a40b2f00e12cf04c5152eb",
+          "projectId": "d7d37e31-9412-4d69-a70f-fd85bd65bb36",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/current-decision.md",
+          "label": "docs/current-decision.md",
+          "estimatedTokens": 203,
+          "includedBytes": 554,
+          "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "958dd858becc041b577d8ee96b210dc92fbcef390711999eea71f07eeefa90d2"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "29b5cf1f65cbcfbbde33b3466b85b157a39b7319d6a40b2f00e12cf04c5152eb",
+        "projectId": "d7d37e31-9412-4d69-a70f-fd85bd65bb36",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/current-decision.md",
+        "label": "docs/current-decision.md",
+        "estimatedTokens": 203,
+        "includedBytes": 554,
+        "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "958dd858becc041b577d8ee96b210dc92fbcef390711999eea71f07eeefa90d2"
+      }
+    ]
+  },
+  {
+    "fixture": "repeat-b",
+    "root": "/tmp/dope-r5-group2-repeat-b",
+    "chatId": "57b271c9-85a6-4c6f-95f0-63d20acbdbee",
+    "chatRevision": 33,
+    "runtimeProductSha": "968780c23b4e2d9be78f02bb03d7b6b338819baa",
+    "grade": "correct",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "d29a73ae9fb7f5e5a1c0dd4c55545975d0aa4ae957080e86e07a17f31087c479",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "d29a73ae9fb7f5e5a1c0dd4c55545975d0aa4ae957080e86e07a17f31087c479",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": null,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 4,
+    "userMessageId": "754f8da7-54a0-45fb-95e1-4f92cbee166d",
+    "assistantMessageId": "395a1133-41cd-4320-8093-27fb69dbc8b7",
+    "prompt": "Read only the selected Release Candidate checkpoint. In a no-action message, state its Roadmap owner revision, current status, exact Objective, and directly listed dependency. Do not propose an edit or infer any unlisted status.",
+    "response": "{\"type\":\"no-action\",\"message\":\"Roadmap owner revision: 3. Current status: active. Exact Objective: Decide whether to start the release canary after all dependencies are green. Directly listed dependency: roadmap:docs/roadmap.md#milestone-integration-gate.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "Roadmap owner revision: 3. Current status: active. Exact Objective: Decide whether to start the release canary after all dependencies are green. Directly listed dependency: roadmap:docs/roadmap.md#milestone-integration-gate."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "88884a2b-14ac-475f-9ad1-823b2fda8abf",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:41:17.762Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1104
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:42:21.592Z"
+    },
+    "totalMs": 63830,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "29b5cf1f65cbcfbbde33b3466b85b157a39b7319d6a40b2f00e12cf04c5152eb",
+          "projectId": "d7d37e31-9412-4d69-a70f-fd85bd65bb36",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "958dd858becc041b577d8ee96b210dc92fbcef390711999eea71f07eeefa90d2"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "29b5cf1f65cbcfbbde33b3466b85b157a39b7319d6a40b2f00e12cf04c5152eb",
+        "projectId": "d7d37e31-9412-4d69-a70f-fd85bd65bb36",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "958dd858becc041b577d8ee96b210dc92fbcef390711999eea71f07eeefa90d2"
+      }
+    ]
+  },
+  {
+    "fixture": "repeat-b",
+    "root": "/tmp/dope-r5-group2-repeat-b",
+    "chatId": "57b271c9-85a6-4c6f-95f0-63d20acbdbee",
+    "chatRevision": 33,
+    "runtimeProductSha": "968780c23b4e2d9be78f02bb03d7b6b338819baa",
+    "grade": "correct",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "d29a73ae9fb7f5e5a1c0dd4c55545975d0aa4ae957080e86e07a17f31087c479",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "d29a73ae9fb7f5e5a1c0dd4c55545975d0aa4ae957080e86e07a17f31087c479",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 5,
+    "userMessageId": "c79dd803-5cc7-434a-905e-e00088aae8c1",
+    "assistantMessageId": "5ea7cc1a-912e-4f4d-b162-13fb6e2b21f3",
+    "prompt": "The selected linked Release Candidate has capabilities.objective.editable=true. Based on decision revision 4 in the attached source, propose a roadmap-intent set-objective with this exact one-line value: Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate. Keep title, status and dependencies unchanged. This is a proposal for developer review, not an approval.",
+    "response": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate.\"}",
+    "structured": {
+      "type": "roadmap-intent",
+      "intent": "set-objective",
+      "value": "Hold the release canary until Key Rotation credential rollover verification is Green; then reassess Integration Gate and Release Candidate."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "explicitly-rejected",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "5b07df05-5043-4575-90b1-1b1a94d64c3f",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:42:37.656Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1178
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:43:35.973Z"
+    },
+    "totalMs": 58317,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "roadmap-intent",
+      "status": "denied",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "29b5cf1f65cbcfbbde33b3466b85b157a39b7319d6a40b2f00e12cf04c5152eb",
+          "projectId": "d7d37e31-9412-4d69-a70f-fd85bd65bb36",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/current-decision.md",
+          "label": "docs/current-decision.md",
+          "estimatedTokens": 203,
+          "includedBytes": 554,
+          "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "958dd858becc041b577d8ee96b210dc92fbcef390711999eea71f07eeefa90d2"
+        }
+      ],
+      "proposalId": "56e87564-45b7-4b96-960b-ee28936fd5c6"
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "29b5cf1f65cbcfbbde33b3466b85b157a39b7319d6a40b2f00e12cf04c5152eb",
+        "projectId": "d7d37e31-9412-4d69-a70f-fd85bd65bb36",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/current-decision.md",
+        "label": "docs/current-decision.md",
+        "estimatedTokens": 203,
+        "includedBytes": 554,
+        "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "958dd858becc041b577d8ee96b210dc92fbcef390711999eea71f07eeefa90d2"
+      }
+    ]
+  },
+  {
+    "fixture": "repeat-b",
+    "root": "/tmp/dope-r5-group2-repeat-b",
+    "chatId": "57b271c9-85a6-4c6f-95f0-63d20acbdbee",
+    "chatRevision": 33,
+    "runtimeProductSha": "968780c23b4e2d9be78f02bb03d7b6b338819baa",
+    "grade": "correct",
+    "ownerBefore": {
+      "revision": 3,
+      "ownerSha256": "d29a73ae9fb7f5e5a1c0dd4c55545975d0aa4ae957080e86e07a17f31087c479",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "ownerAfter": {
+      "revision": 3,
+      "ownerSha256": "d29a73ae9fb7f5e5a1c0dd4c55545975d0aa4ae957080e86e07a17f31087c479",
+      "markdownSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+    },
+    "sourceDecisionRevisionInContext": 4,
+    "measuredProviderRequestCount": 1,
+    "measuredProviderHttpStatus": 200,
+    "turn": 6,
+    "userMessageId": "07e350b7-5a97-43f9-bb31-e901345c86af",
+    "assistantMessageId": "9b3c465c-534d-415d-a501-bfa43a240902",
+    "prompt": "Fresh decision check after proposal review: using the selected Release Candidate and attached current-decision extract, state the Roadmap owner revision, the brief decision revision, the Release Candidate -> Integration Gate -> Key Rotation dependency chain, the Key Rotation status, whether canary may start now, and the next safe action. Return no-action with these facts; make no edit.",
+    "response": "{\"type\":\"no-action\",\"message\":\"Roadmap owner revision: 3. Brief decision revision: 4. Dependency chain: Release Candidate → Integration Gate → Key Rotation. Key Rotation status: NOT GREEN (credential rollover verification failed). Canary may not start now. Next safe action: Repair Key Rotation, obtain Green verification record, then reassess Integration Gate and Release Candidate.\"}",
+    "structured": {
+      "type": "no-action",
+      "message": "Roadmap owner revision: 3. Brief decision revision: 4. Dependency chain: Release Candidate → Integration Gate → Key Rotation. Key Rotation status: NOT GREEN (credential rollover verification failed). Canary may not start now. Next safe action: Repair Key Rotation, obtain Green verification record, then reassess Integration Gate and Release Candidate."
+    },
+    "structuredJsonParse": true,
+    "strictEnvelopeAccepted": true,
+    "approvalState": "not-applicable",
+    "execution": {
+      "schemaVersion": 1,
+      "id": "b6cf1429-2f9a-4610-a569-f024ca8194b1",
+      "status": "complete",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "startedAt": "2026-10-16T15:43:48.299Z",
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "resolutionSource": "chat-exact-default",
+      "routingProvenance": {
+        "version": 1,
+        "source": "chat-exact-default",
+        "effectiveHard": {
+          "requiredCapabilities": [
+            "conversationalText",
+            "streaming"
+          ],
+          "locality": "any",
+          "enabledOnly": true,
+          "usableOnly": true,
+          "hostedProjectData": "requires-feature-authorization",
+          "minimumKnownContextTokens": 1158
+        },
+        "actualTarget": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "executionLabels": {
+          "connection": "local",
+          "provider": "local",
+          "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "attempts": [
+          {
+            "target": {
+              "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "outcome": "selected"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-16T15:44:50.376Z"
+    },
+    "totalMs": 62077,
+    "planningActivity": {
+      "schemaVersion": 1,
+      "kind": "no-action",
+      "status": "no-action",
+      "refs": [
+        {
+          "schemaVersion": 1,
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "label": "Roadmap checkpoint: Milestone Release Candidate",
+          "estimatedTokens": 488,
+          "includedBytes": 1257,
+          "contentHash": "29b5cf1f65cbcfbbde33b3466b85b157a39b7319d6a40b2f00e12cf04c5152eb",
+          "projectId": "d7d37e31-9412-4d69-a70f-fd85bd65bb36",
+          "ownerRevision": 3,
+          "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "file",
+          "id": "docs/current-decision.md",
+          "label": "docs/current-decision.md",
+          "estimatedTokens": 203,
+          "includedBytes": 554,
+          "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+        },
+        {
+          "schemaVersion": 1,
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "label": "Project orientation",
+          "estimatedTokens": 45,
+          "origin": "automatic",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+          "projectId": "958dd858becc041b577d8ee96b210dc92fbcef390711999eea71f07eeefa90d2"
+        }
+      ]
+    },
+    "refs": [
+      {
+        "schemaVersion": 1,
+        "kind": "roadmap-checkpoint",
+        "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+        "label": "Roadmap checkpoint: Milestone Release Candidate",
+        "estimatedTokens": 488,
+        "includedBytes": 1257,
+        "contentHash": "29b5cf1f65cbcfbbde33b3466b85b157a39b7319d6a40b2f00e12cf04c5152eb",
+        "projectId": "d7d37e31-9412-4d69-a70f-fd85bd65bb36",
+        "ownerRevision": 3,
+        "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "file",
+        "id": "docs/current-decision.md",
+        "label": "docs/current-decision.md",
+        "estimatedTokens": 203,
+        "includedBytes": 554,
+        "contentHash": "72ca59e7d87c7cdb53a26174999407997ba931995f697556f4206f8d8fb242d0"
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "project-orientation",
+        "id": "project:orientation",
+        "label": "Project orientation",
+        "estimatedTokens": 45,
+        "origin": "automatic",
+        "includedBytes": 71,
+        "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+        "projectId": "958dd858becc041b577d8ee96b210dc92fbcef390711999eea71f07eeefa90d2"
+      }
+    ]
+  }
+]
