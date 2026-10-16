@@ -50,6 +50,28 @@ test('branch routes use the card gutter and duplicate membership segments are su
         'M 204 800 L 204 826 L 444 826 L 444 980 L 372 980');
 });
 
+test('stored correction dependency uses one routed edge while unresolved parents remain visible', () => {
+    const graph: RoadmapProjection = { projectId: 'project', revision: 2,
+        nodes: [node('phase', 'phase', 1),
+            { ...node('correction', 'correction', 2), phaseAssociation: { phaseId: 'phase', source: 'explicit' } },
+            { ...node('missing', 'correction', 3), phaseAssociation: { unresolvedReason: 'Phase 99 is absent.' } }],
+        edges: [{ id: 'dependency:phase:correction', from: 'phase', to: 'correction',
+            kind: 'branch', label: 'correction branch' }],
+        pools: { ideas: [], issues: [] }, diagnostics: ['Unresolved correction phase: missing: Phase 99 is absent.'] };
+    const before = JSON.stringify(graph);
+    const connectors = roadmapCanvasConnectors(graph);
+    assert.equal(connectors.filter(item => item.from === 'phase' && item.to === 'correction').length, 1);
+    assert.equal(connectors.find(item => item.to === 'correction')?.kind, 'dependency');
+    assert.match(connectors.find(item => item.to === 'correction')?.label ?? '', /dependency and correction membership/);
+    const positions = roadmapSpatialLayout(graph);
+    assert.deepEqual(roadmapEdgeHandles(connectors.find(item => item.to === 'correction')!, positions),
+        { sourceHandle: 'top', targetHandle: 'right-target' });
+    assert.ok(positions.has('missing'));
+    assert.equal(JSON.stringify(graph), before);
+    const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
+    assert.match(widget, /Parent unresolved: \$\{item\.phaseAssociation\.unresolvedReason\}/);
+});
+
 test('hidden implementation never reserves layout space and disclosure preserves strategic coordinates', () => {
     const graph: RoadmapProjection = { projectId: 'project', revision: 3,
         nodes: [node('phase-1', 'phase', 1), node('phase-2', 'phase', 2),

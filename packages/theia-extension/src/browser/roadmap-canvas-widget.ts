@@ -36,7 +36,8 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement(Handle, { id: 'right-target', type: 'target', position: Position.Right, isConnectable: false }),
         React.createElement('button', { type: 'button', className: `dope-roadmap-node dope-roadmap-status-${item.status}`,
             'data-checkpoint-id': item.id, 'aria-current': data.selected ? 'true' : undefined,
-            'aria-label': `${item.kind}: ${item.title}; ${item.statusLabel}${data.relation ? `; ${data.relation}` : ''}${data.omitted ? `; ${data.omitted} prompts hidden` : ''}`,
+            'aria-label': `${item.kind}: ${item.title}; ${item.statusLabel}${item.phaseAssociation?.unresolvedReason ?
+                `; Parent unresolved: ${item.phaseAssociation.unresolvedReason}` : ''}${data.relation ? `; ${data.relation}` : ''}${data.omitted ? `; ${data.omitted} prompts hidden` : ''}`,
             onFocus: event => data.reveal(item.id, event.currentTarget as HTMLButtonElement),
             onClick: event => { event.stopPropagation(); data.select(item.id); },
             onDoubleClick: event => { event.stopPropagation(); data.activate(item.id); } },
@@ -45,6 +46,8 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement('span', { className: 'dope-roadmap-status' },
             React.createElement('span', { className: 'dope-roadmap-status-mark', 'aria-hidden': true }, roadmapStatusMark[item.status]),
             item.statusLabel),
+        item.phaseAssociation?.unresolvedReason ? React.createElement('small', {
+            className: 'dope-roadmap-association-warning' }, `Parent unresolved: ${item.phaseAssociation.unresolvedReason}`) : null,
         data.detail === 'checkpoint' && item.evidence.length ? React.createElement('small', null,
             `${item.evidence.length} source citation${item.evidence.length === 1 ? '' : 's'}`) : null,
         data.omitted > 0 ? React.createElement('span', { className: 'dope-roadmap-omitted' },

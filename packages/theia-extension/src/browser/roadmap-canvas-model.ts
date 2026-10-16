@@ -55,6 +55,8 @@ export function roadmapCanvasConnectors(projection: Pick<RoadmapProjection, 'nod
     const phases = projection.nodes.filter(node => node.kind === 'phase')
         .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
     const connectors: RoadmapCanvasConnector[] = [];
+    const storedDependencies = new Set(projection.edges.filter(edge => edge.id.startsWith('dependency:'))
+        .map(edge => `${edge.from}\0${edge.to}`));
     for (let i = 1; i < phases.length; i++) connectors.push({
         id: `view:progression:${phases[i - 1].id}:${phases[i].id}`,
         from: phases[i - 1].id, to: phases[i].id, kind: 'progression',
@@ -62,7 +64,8 @@ export function roadmapCanvasConnectors(projection: Pick<RoadmapProjection, 'nod
     });
     for (const node of projection.nodes) if ((node.kind === 'correction' ||
         node.kind === 'task-stack' && roadmapUpperBranch(node)) &&
-        node.phaseAssociation?.phaseId && visible(node.phaseAssociation.phaseId)) connectors.push({
+        node.phaseAssociation?.phaseId && visible(node.phaseAssociation.phaseId) &&
+        !storedDependencies.has(`${node.phaseAssociation.phaseId}\0${node.id}`)) connectors.push({
         id: `view:membership:${node.phaseAssociation.phaseId}:${node.id}`,
         from: node.phaseAssociation.phaseId, to: node.id, kind: 'membership',
         label: `Correction belongs to ${byId.get(node.phaseAssociation.phaseId)!.title}`,
@@ -74,7 +77,9 @@ export function roadmapCanvasConnectors(projection: Pick<RoadmapProjection, 'nod
         if (kind === 'containment' && connectors.some(item => item.kind === 'membership' &&
             item.from === edge.from && item.to === edge.to)) continue;
         connectors.push({ id: `view:${edge.id}`, from: edge.from, to: edge.to, kind,
-            label: kind === 'dependency' ? `Stored Roadmap dependency: ${edge.label}` :
+            label: kind === 'dependency' ? `${byId.get(edge.to)?.kind === 'correction' &&
+                byId.get(edge.to)?.phaseAssociation?.phaseId === edge.from ?
+                'Stored Roadmap dependency and correction membership' : 'Stored Roadmap dependency'}: ${edge.label}` :
                 `Supporting task or prompt: ${edge.label}` });
     }
     return connectors;
@@ -199,7 +204,7 @@ export function roadmapEdgeHandles(edge: { from: string; to: string; kind: Roadm
     // A stored gate between consecutive phases must not paint over the chronological line.
     if (edge.kind === 'dependency' && from && to && Math.abs(to.y - from.y) <= 20)
         return { sourceHandle: 'bottom', targetHandle: 'bottom' };
-    if (edge.kind !== 'progression' && edge.kind !== 'dependency' && from && to && Math.abs(to.y - from.y) > 20)
+    if (edge.kind !== 'progression' && from && to && Math.abs(to.y - from.y) > 20)
         return to.y < from.y ? { sourceHandle: 'top', targetHandle: 'right-target' } :
             { sourceHandle: 'bottom', targetHandle: 'right-target' };
     return { sourceHandle: 'right', targetHandle: 'left' };
@@ -243,7 +248,8 @@ export function roadmapSpatialLayout(projection: RoadmapProjection): Map<string,
     const baseline = 640;
     const column = 28;
     const cardHeight = (node: CheckpointNode): number =>
-        Math.max(160, 100 + Math.ceil(node.title.length / 20) * 22);
+        Math.max(160, 100 + Math.ceil(node.title.length / 20) * 22 +
+            (node.phaseAssociation?.unresolvedReason ? 44 : 0));
     let nextBandX = 64;
     const visitBand = (root: CheckpointNode): void => {
         const x = nextBandX;
