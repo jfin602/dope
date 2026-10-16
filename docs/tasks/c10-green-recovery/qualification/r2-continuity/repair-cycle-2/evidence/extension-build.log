@@ -1,0 +1,54 @@
+
+> dope@0.10.16 build:extension
+> corepack yarn workspace @dope/ai build && corepack yarn workspace @dope/agent-core build && corepack yarn workspace @dope/contracts build && corepack yarn workspace @dope/chat build && corepack yarn workspace @dope/project-intelligence build && corepack yarn workspace @dope/software-map build && corepack yarn workspace @dope/visual-planning build && corepack yarn workspace @dope/code-analysis build && corepack yarn workspace @dope/code-analysis-typescript build && corepack yarn workspace @dope/theia-extension build
+
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.36s.
+Done in 2.57s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.83s.
+Done in 3.01s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.30s.
+Done in 2.47s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.50s.
+Done in 2.68s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.59s.
+Done in 2.76s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.65s.
+Done in 2.81s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.68s.
+Done in 2.83s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 2.30s.
+Done in 2.46s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p .
+Done in 1.73s.
+Done in 1.89s.
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ tsc -p . && cp src/browser/dope.css lib/browser/dope.css
+Done in 3.74s.
+Done in 3.90s.

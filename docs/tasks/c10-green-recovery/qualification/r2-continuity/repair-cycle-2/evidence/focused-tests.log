@@ -1,0 +1,31 @@
+✔ dedicated Chat connections share project changes without crossing projects (45.178004ms)
+✔ ownership gates turn writes and transient deltas; search reads saved Chat (77.197073ms)
+✔ only persisted trusted planning activity receives a compact label and honest status (3.226013ms)
+✔ trusted greenfield creation is described as creation even when it has an objective (1.060525ms)
+✔ untrusted Markdown links permit web/mail destinations only (0.440045ms)
+✔ Theia Markdown path formats documents while escaping model-authored HTML (20.192738ms)
+✔ conversation surface keeps shell, roles, color and safe Markdown boundaries (3.740154ms)
+✔ trusted machine activity uses native disclosure, literal raw text and neutral narrow styling (3.517353ms)
+✔ Select Chat keeps nested disclosure and contextual actions separate from selection (4.420759ms)
+✔ selected saved Chat previews one noncanonical draft edit; approval, stale, foreign and fallback gates (631.741667ms)
+✔ one saved Chat follows current checkpoint, pins exact owner, restores and keeps its lease (86.707858ms)
+✔ selection resolver rejects missing and foreign owner state; map views never launch Chat (3.184968ms)
+✔ Planning Map Follow refreshes the same map and Pin rejects a changed map revision (0.709721ms)
+✔ measured 4096 narrow stress reserves serialized input, system and output (2.406199ms)
+✔ 16K, 32K and 64K use measured capacity and independent model/developer limits (0.499839ms)
+✔ bounded JSON bytes are independent of output token reservation (1.085243ms)
+✔ non-tools JSON fallback repairs once and never accepts a second malformed response (0.509184ms)
+✔ abort stops retries; strict fallback rejects tool and multiple-action envelopes (1.030687ms)
+✔ linked intent contract rejects missing action type, wrong operation, extra keys and unknown intent before completion (1.105946ms)
+✔ strict local completion accepts only known, bounded envelopes (2.070368ms)
+✔ local Roadmap turn fails before transport when loaded capacity is unknown (51.75653ms)
+✔ Follow Roadmap planning denies implicit hosted fallback before transport (29.419576ms)
+✔ an exact hosted Roadmap turn requires explicit project-data consent (28.896199ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 768.266289
