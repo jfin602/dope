@@ -1,9 +1,9 @@
 # Phase 11 Plan — Human-Centered UI
 
-**Status:** DESIGN APPROVED / PREDECESSOR PHASE 10 OWNER-CLOSED / NOT ACTIVATED / NOT QUALIFIED
-**Date:** 2026-10-12; entry reconciled 2026-10-16
+**Status:** DESIGN APPROVED / COHERENT `0.11.0` BASELINE ESTABLISHED / NOT ACTIVATED / NOT QUALIFIED
+**Date:** 2026-10-12; predecessor and version entry reconciled 2026-10-16
 **Authority:** ADR 0037; ADRs 0016, 0030, 0036; docs/ARCHITECTURE.md; docs/workflow.md.
-**Entry:** [Phase 10 owner closeout](../p10/phase-10-closeout.md) is **SATISFIED** at `0.10.16` / `af2b0f0` for the approved R6 recovery scope (737/737 final-source pass). Phase 9 was owner-closed at `0.9.35`. **A separate Phase 11 activation and implementation planning are still required**; this design plan is not activation, a `0.11.0` baseline, or qualification. Preserve R6 network exclusions and all historical Not Green records.
+**Entry:** [Phase 10 owner closeout](../p10/phase-10-closeout.md) is **SATISFIED** at `0.10.16` / `af2b0f0` for the approved R6 recovery scope (737/737 final-source pass). Phase 9 was owner-closed at `0.9.35`. **The separate version-only `0.11.0` baseline is now established** in [baseline.md](baseline.md) at `70c41e6`; this satisfies version readiness, not implementation. No `p11` executable stack has yet been authored or run. Planning and an explicit owner/developer Run instruction for that future stack are still required; no separate `/activate` gate is needed under current workflow. Preserve R6 network exclusions and all historical Not Green records.
 
 ## Objective
 
@@ -23,6 +23,6 @@ Record the human goal, starting point, observed clicks/actions, task outcome, co
 
 Domain state, permissions, Chat/Work single owners, safe Markdown, candidate validation/review, Project Mind/Architecture truth, provider egress and Theia upgradeability must remain untouched by cosmetic decisions. Plan separate T1/T2 focused corrections and meaningful T3 human-GUI gates; do not run full suites on every CSS edit.
 
-Phase 10 is **OWNER-CLOSED / GREEN for its approved R6 recovery scope** as of 2026-10-16; see [its owner-close record](../p10/phase-10-closeout.md). This establishes Phase 11's entry predecessor, **not** Phase 11 activation, a `0.11.0` version-only baseline or Phase 11 qualification. Phase 12 Living Software Knowledge Model remains independently inactive with all ADR 0023 safety boundaries. No phase/version/runner stack is activated by this document.
+Phase 10 is **OWNER-CLOSED / GREEN for its approved R6 recovery scope** as of 2026-10-16; see [its owner-close record](../p10/phase-10-closeout.md). This establishes Phase 11's predecessor. The separate [version-only `0.11.0` baseline](baseline.md) is established, **but Phase 11 remains unactivated, unimplemented and unqualified**. Phase 12 Living Software Knowledge Model remains independently inactive with all ADR 0023 safety boundaries. No phase/version/runner stack is activated by this document.
 
-**Future workflow:** explicit owner phase activation, then `/prompt-ass -> /prompt-plan -> /prompt-write p11` after live inspection.
+**Next steps (not yet performed):** inspect current panel/widget registration and live Dope tasks; reconcile [preliminary panel matrix](panel-usability-matrix.md); then `/prompt-ass -> /prompt-plan -> /prompt-write p11` for small, independent implementation tasks. **The owner's explicit later Run action on the authored stack** is execution authorization under [repository workflow](../../workflow.md); do not require preliminary `/activate` or auto-run from this baseline. Begin from `0.11.0`, advance patch versions only for actual implemented checkpoints, and reserve broad GUI/human-task evidence for dedicated T3 gates.

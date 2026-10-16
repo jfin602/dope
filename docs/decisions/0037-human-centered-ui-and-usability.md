@@ -1,5 +1,7 @@
 # ADR 0037 — Human-Centered UI / Usability Qualification
 
+**Phase 11 baseline amendment (2026-10-16):** [Phase 11 version-only baseline](../planning/p11/baseline.md) was established by `70c41e617980b3d5a7f512c5a351e0b2a3e92ead`, moving exactly 13 package versions and 20 internal `@dope/*` pins to `0.11.0` without implementation source. [Phase 10 owner closeout](../planning/p10/phase-10-closeout.md) remains GREEN for the approved R6 recovery scope at qualified product `af2b0f0` / `0.10.16`. This **does not qualify `0.11.0`** or start Phase 11. The design is accepted, the live Phase 11 inventory/UX audit and executable prompt stack are not yet complete; a deliberate later Run action authorizes an authored stack under current repository workflow without a preliminary `/activate`. Preserve the R6 network/model exclusions and Phase 12 inactivity. Older dated entry notes below are historical.
+
 **Entry applicability (2026-10-16):** [Product Phase 10](../planning/p10/phase-10-closeout.md) is now **OWNER-CLOSED / GREEN for its approved R6 recovery scope** at `0.10.16` / `af2b0f0`. This satisfies Phase 11's predecessor condition; **Phase 11 itself remains DESIGN APPROVED / NOT ACTIVATED / NOT QUALIFIED** until a separate activation or explicit execution decision, and `0.11.0` has not been established. Earlier dated references below to Phase 9 pending owner closure or Phase 10 not activated are historical design-stage statements. Phase 12 remains inactive.
 
 

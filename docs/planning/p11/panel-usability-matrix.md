@@ -1,8 +1,8 @@
 # Phase 11 — Preliminary panel usability matrix
 
-**Status:** PLANNING CHECKLIST / NOT AUDITED / NO HUMAN TEST EVIDENCE
-**Date:** 2026-10-12
-**Authority:** ADR 0037. Verify actual runtime registration and Phase 10 implementation before treating any row as active.
+**Status:** PRELIMINARY INVENTORY / NOT AUDITED / NO PHASE 11 HUMAN TEST EVIDENCE
+**Date:** 2026-10-12; Phase 10 predecessor updated 2026-10-16
+**Authority:** ADR 0037 and [Phase 11 `0.11.0` baseline](baseline.md). Phase 10 is owner-closed at `0.10.16` / `af2b0f0`; this matrix describes candidate **Phase 11 usability audit targets**, not directly verified current widget registrations or pass/fail outcomes. First Phase 11 step must inspect live source/GUI and retire or add rows accordingly.
 
 | Preliminary surface | Representative human task | Current audit |
 | --- | --- | --- |
@@ -19,10 +19,10 @@
 | Physical Map / Flow | Trace implementation and behavior without clutter | Not audited |
 | Edit Architecture | Change structure safely and understand acceptance | Not audited |
 | Planning Map / WorkItems | Create/revise a plan and hand off work | Not audited |
-| Phase 10 Roadmap / inspector / Ideas & Issues | Understand progress, priority and next checkpoint | Pending Phase 10; not audited |
+| Phase 10 Roadmap / inspector / Ideas & Issues | Understand progress, priority and next checkpoint | Phase 10 implementation retained/qualified for R6 scope; **Phase 11 human usability not audited** |
 | Dialogs, overlays, empty/loading/error states | Know what occurred and how to recover | Enumerate later; not audited |
 | Editor / SCM / terminal / Problems seams | Move naturally between Dope-owned and ordinary IDE views | Integration seam; not audited |
-| Project Mind surviving Phase 10 entry points | Locate knowledge without redundant management UI | Recheck after Phase 10; not audited |
+| Project Mind surviving Phase 10 entry points | Locate Notes, Ideas and Decisions without a redundant launcher | **Verify actual surviving routes and retired surfaces** in first Phase 11 registration/GUI audit; not audited |
 
 For **every confirmed active surface**, capture:
 
