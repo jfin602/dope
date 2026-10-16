@@ -34,3 +34,7 @@ Do not implement the speculative loading/overlay/toolbar findings without live r
 ## Execution and efficiency
 
 One coherent goal per ordinary prompt, minimum affected builds/tests, at most one full final aggregate in P8. Runtime estimates are **predictions, not measured timings**. Because source ownership/linked-data mutation is involved, P1/P2/P6/P7 carry focused invariant tests despite 8m target. No browser for P1–P7; manual P8 runs with real browser/Electron tools separately and may exceed ordinary prompt budget. After P8, use existing [manual Hunter](usability-hunt-manual.md), the living issue ledger and future `c11-<slug>` correction stacks; do not pre-author an artificial fixed number of discovery cycles.
+
+## Runner version failure correction — 2026-10-16
+
+The initial P1 agent produced its source and focused test but left the root package at 0.11.0. The runner, which only checks and commits, stopped before committing P1 because expected 0.11.1. Original prompts incorrectly delegated manifest bumps to the runner/operator. Corrected P1–P7 now require **each Codex implementation agent** to edit all 13 project package versions and 20 internal @dope/* pins before returning, with the baseline test checking coherence; P8 manual operator owns the final manual version transition. The P1 dirty source/test files are preserved for an expressly approved dirty-tree continuation. This documentation correction does not create a product commit or qualify P1.
