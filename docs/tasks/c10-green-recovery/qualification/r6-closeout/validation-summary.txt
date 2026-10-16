@@ -1,0 +1,38 @@
+> dope@0.10.16 check
+> dope@0.10.16 typecheck
+> dope@0.10.16 test
+> dope@0.10.16 test:runner
+ℹ tests 103
+ℹ pass 103
+ℹ fail 0
+> dope@0.10.16 test:baseline
+ℹ tests 12
+ℹ pass 12
+ℹ fail 0
+> dope@0.10.16 test:local-install
+ℹ tests 1
+ℹ pass 1
+ℹ fail 0
+> dope@0.10.16 test:product
+> dope@0.10.16 build:extension
+ℹ tests 592
+ℹ pass 592
+ℹ fail 0
+ℹ tests 28
+ℹ pass 28
+ℹ fail 0
+> dope@0.10.16 test:ide
+ℹ tests 1
+ℹ pass 1
+ℹ fail 0
+> dope@0.10.16 build:browser
+[build/browser] Finished with 0 errors in 854ms.
+[build/node] Finished with 0 errors in 765ms.
+> dope@0.10.16 build:electron
+Module not found: find-git-repositories
+[build/browser] Finished with 0 errors in 647ms.
+[build/node] Finished with 0 errors in 801ms.
+[build/electron] Finished with 0 errors in 6ms.
+npm run check exit: 0
+phase validator exit: 0
+git diff --check exit: 0
