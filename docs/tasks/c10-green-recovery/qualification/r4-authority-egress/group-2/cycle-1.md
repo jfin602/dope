@@ -82,3 +82,20 @@ Group 2 is **NOT GREEN**. Required remaining work: classify or explicitly resolv
 | R2/R3/Group 1 source applicability | Final product source unchanged since Group 1 | **PASS, scoped**; no runtime change or new product repair in this cycle. Original historical Not Green records are untouched. |
 
 No confirmed Dope source defect emerged from this run. The one failed no-action response was model output outside the strict schema and was reported as failure without mutation; the immediate bounded retry succeeded. The first backend relaunch `EADDRINUSE` occurred before the old listener fully released and the retry bound normally. Focused regression tests were not rerun because product bytes were unchanged; the pre-monitor extension, browser and Electron builds completed with zero errors. An exact-source full aggregate remains assigned to R6, only after R4/R5 qualification.
+
+## Concrete owner handoff for a second bounded observation
+
+The present monitor has ended. Before another qualification request, the owner must approve and independently start a new private, bounded tracer. Reuse the same R1 script and hash; in an owner terminal:
+
+```bash
+umask 077
+trace_dir=$(mktemp -d /home/jfin/dope-r4-g2-next-XXXXXXXX)
+printf 'Private trace directory: %s\n' "$trace_dir"
+sudo timeout --signal=INT --kill-after=10s 900s bpftrace -q /home/jfin/dev/dope/docs/tasks/c10-green-recovery/qualification/r1-infrastructure/diagnostics/network-r1-v2.bt > "$trace_dir/events.log" 2>&1
+```
+
+To classify Chrome's external startup sends, a proposed **additional private diagnostic requiring owner approval** is Chrome's default, private-information-stripping NetLog from two new disposable profiles: one `about:blank`, one loading only the disposable Dope project. Chromium's [NetLog instructions](https://www.chromium.org/for-testers/providing-network-details/) document startup `--log-net-log`, default stripping, `--net-log-duration` and `--net-log-max-size-mb`. The proposed agent-run command shape is `google-chrome --user-data-dir=/tmp/dope-r4-g2-<profile> --no-first-run --log-net-log="$trace_dir/<profile>.json" --net-log-duration=45 --net-log-max-size-mb=20 --new-window <about:blank-or-loopback-Dope-URL>`. The raw NetLogs would remain owner-private beside the bpftrace file; only bounded service/host/process/time classifications and hashes would enter Git. **Default NetLog can still contain URLs and host metadata**, so it must not be started under the existing authorization without the owner's explicit approval. No sensitive capture mode, raw socket bytes, cookie/credential mode or real user project is proposed.
+
+The available UI controller exposed the Codex in-app browser but no native Electron control. A native-specific Q4 turn therefore needs owner UI participation or a separately enabled native UI control surface. A safe native fixture is `/tmp/dope-r4-g1-jRxDWB/project-a`, whose two-checkpoint linked Markdown and owner are synced at revision 1. Under a new owner trace, open it in the independent Electron window, refresh the existing local connection, explicitly select Q4_K_M/32768 for a saved Chat, send one strict no-action current-Objective/revision request, and report Send/completion timestamps. Codex can verify the saved Chat execution, model provenance, source hashes and native process trace without receiving prompt or credential contents. No global model/role default or source approval is needed for that control.
+
+The next capture must also bound missing-event and destinationless-send interpretations. A matched concurrent loopback calibration and final tracer error/loss review can detect gross loss, while a supplemental all-socket-family/count observer may still be needed if `SENDMSG_NO_ADDR`, short-lived children, DNS forwarding or alternative transmit paths remain relevant. Any changed privileged script or system tracing setting requires a separate owner review before execution. Do not convert the current lack of warning into a zero-loss claim.
