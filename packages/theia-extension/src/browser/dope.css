@@ -99,6 +99,8 @@ body.theia-light:not(.dope-dark) {
 .dope-roadmap-edge-not-implemented .react-flow__edge-path { stroke: var(--dope-roadmap-not-implemented, var(--theia-descriptionForeground)); stroke-dasharray: 7 6; }
 .dope-roadmap-edge-unknown .react-flow__edge-path { stroke: var(--dope-roadmap-unknown, var(--theia-descriptionForeground)); stroke-dasharray: 2 6; }
 .dope-roadmap-edge-related .react-flow__edge-path { stroke-width: 3; animation: dope-roadmap-relationship-focus 420ms ease-out 1; }
+.dope-roadmap-edge.selected .react-flow__edge-path { stroke-width: 4; }
+.dope-roadmap-relationship-summary { margin: 6px 0; padding: 6px 8px; border-left: 2px solid var(--theia-focusBorder); background: var(--theia-editorWidget-background, var(--theia-editor-background)); overflow-wrap: anywhere; }
 @keyframes dope-roadmap-relationship-focus { from { stroke-opacity: .55; } to { stroke-opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .dope-roadmap-stage .react-flow__node, .dope-roadmap-node { transition: none; }

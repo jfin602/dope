@@ -90,6 +90,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly inspection = document.createElement('section');
     private readonly inspectionEditor: RoadmapInspectorWidget;
     private readonly inspectionSummary = document.createElement('strong');
+    private readonly relationshipSummary = document.createElement('p');
     private readonly implementation = document.createElement('section');
     private readonly implementationText = document.createElement('p');
     private readonly implementationToggle = document.createElement('button');
@@ -160,6 +161,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private projectUri?: string;
     private projection?: TaskRoadmapProjection;
     private selectedId?: string;
+    private selectedEdgeId?: string;
     private sourceOpen = false;
     private poolOpen = false;
     private readonly focusRecheck = (): void => { if (!this.isDisposed && this.projectUri) void this.refresh(); };
@@ -290,7 +292,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.implementationNext.textContent = 'Next prompts';
         this.implementationNext.onclick = () => this.nextPrompts();
         this.implementation.append(this.implementationText, this.implementationToggle, this.implementationNext);
-        this.inspection.append(inspectionHeader, this.implementation, this.inspectionEditor.node);
+        this.relationshipSummary.className = 'dope-roadmap-relationship-summary';
+        this.relationshipSummary.setAttribute('aria-live', 'polite');
+        this.relationshipSummary.hidden = true;
+        this.inspection.append(inspectionHeader, this.relationshipSummary, this.implementation, this.inspectionEditor.node);
         this.setInspectionView('compact');
         this.sourceHeader.className = 'dope-roadmap-source-header';
         this.sourceSummary.textContent = 'Linked Markdown';
@@ -378,6 +383,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (this.isDisposed || request !== this.request) return;
             const switched = this.projectUri !== projectUri || this.projectId !== index.projectId;
             if (switched) {
+                this.selectedEdgeId = undefined;
+                this.relationshipSummary.hidden = true;
                 this.setSourceOpen(false);
                 this.setPoolOpen(false);
                 this.flushPresentation();
@@ -651,7 +658,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             return { id: item.id, source: item.from, target: item.to,
                 ...handles,
                 type: handles.targetHandle === 'right-target' ? 'branchRoute' : 'smoothstep',
-                selectable: false, zIndex: 1,
+                selectable: true, selected: item.id === this.selectedEdgeId, zIndex: 1,
                 ...(item.kind === 'dependency' ? { markerEnd: { type: MarkerType.ArrowClosed } } : {}),
                 ariaLabel: `${item.label}; ${titles.get(item.from) ?? item.from} to ${titles.get(item.to) ?? item.to}; endpoint status ${status}`,
                 className: `dope-roadmap-edge dope-roadmap-edge-${item.kind}${item.kind === 'dependency' ? ` dope-roadmap-edge-${status}` : ''}${roadmapConnectorTouchesSelection(item, this.selectedId) ? ' dope-roadmap-edge-related' : ''}` };
@@ -664,6 +671,15 @@ export class RoadmapCanvasWidget extends BaseWidget {
             zoomOnDoubleClick: false, nodeDragThreshold: 5,
             onNodeClick: (_event: React.MouseEvent, node: Node) => this.select(node.id),
             onNodeDoubleClick: (_event: React.MouseEvent, node: Node) => this.activateCheckpoint(node.id),
+            onEdgeClick: (event: React.MouseEvent, edge: Edge) => {
+                event.stopPropagation();
+                this.select(edge.target);
+                if (this.selectedId !== edge.target) return;
+                this.selectedEdgeId = edge.id;
+                this.relationshipSummary.textContent = edge.ariaLabel ?? 'Roadmap relationship';
+                this.relationshipSummary.hidden = false;
+                this.renderFlow();
+            },
             onNodesChange: (changes: NodeChange[]) => {
                 if (!this.arranging || !this.projection) return;
                 let changed = false;
@@ -1450,6 +1466,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.setInspectionOpen(true);
             return;
         }
+        this.selectedEdgeId = undefined;
+        this.relationshipSummary.hidden = true;
         if (this.promptWindow && this.promptWindow.stackId !== id) this.promptWindow = undefined;
         this.selectedId = id;
         this.schedulePresentation();
