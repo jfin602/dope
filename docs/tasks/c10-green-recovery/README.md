@@ -1,5 +1,8 @@
 # c10-green-recovery - Phase 10 supplemental qualification
 
+**Subsequent owner disposition (2026-10-16):** [Phase 10 owner-close record](../../planning/p10/phase-10-closeout.md) accepts this independently completed R6 **GREEN / QUALIFIED FOR THE OWNER-APPROVED RECOVERY SCOPE** and formally marks **Phase 10 OWNER-CLOSED** at `0.10.16` / `af2b0f0`. No R6 evidence, failed historical cycle, selected-model default or excluded native/whole-host network assertion is changed. **Phase 11 is design approved but not activated; Phase 12 inactive.** Older statements below that owner-close remains pending are historical R6-time observations.
+
+
 **Current R6 outcome (2026-10-16): [GREEN / QUALIFIED FOR THE OWNER-APPROVED RECOVERY SCOPE](closeout.md)** on the independently committed `0.10.16` product tree `af2b0f0` (byte-equivalent replay `4c15298`). The R5 evidence tree at reported `f0374f8` and local replay is identical. The exact-source full check and R6 assertion audit passed. R3 qualifies native **UI**, while R4 network qualification covers only the Codex-browser Dope tab, backend and local model; native/independent-browser/whole-host network negatives remain unqualified. Explicit Q4_K_M/32768 CPU-only/parallel-4 is the scoped Phase 10 planning operating profile, not a global default; Q4/64K was not required or qualified. Original P14 and earlier failed cycles remain historical Not Green. **Phase 10 owner-close is a separate decision; Phases 11/12 remain inactive.** Older routing below is dated history.
 
 

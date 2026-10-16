@@ -1,5 +1,8 @@
 # ADR 0037 — Human-Centered UI / Usability Qualification
 
+**Entry applicability (2026-10-16):** [Product Phase 10](../planning/p10/phase-10-closeout.md) is now **OWNER-CLOSED / GREEN for its approved R6 recovery scope** at `0.10.16` / `af2b0f0`. This satisfies Phase 11's predecessor condition; **Phase 11 itself remains DESIGN APPROVED / NOT ACTIVATED / NOT QUALIFIED** until a separate activation or explicit execution decision, and `0.11.0` has not been established. Earlier dated references below to Phase 9 pending owner closure or Phase 10 not activated are historical design-stage statements. Phase 12 remains inactive.
+
+
 **Status:** ACCEPTED PRODUCT DESIGN / DOCUMENTATION ONLY / NOT IMPLEMENTED, ACTIVATED OR QUALIFIED
 **Date:** 2026-10-12 (America/Chicago)
 **Related:** ADR 0008, 0016 (restrained-orange current), 0024–0025, 0030, 0034, 0036; docs/ARCHITECTURE.md and docs/PRINCIPLES.md.
