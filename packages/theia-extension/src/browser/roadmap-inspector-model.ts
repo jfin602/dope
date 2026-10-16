@@ -69,7 +69,10 @@ export class RoadmapInspectorModel {
         if (index && uri) {
             if (this.index && !foreign && index.revision < this.index.revision) return;
             this.index = index;
-            if (this.undo && this.undo.revision !== index.revision) this.undo = undefined;
+            if (this.undo && this.undo.revision !== index.revision) {
+                this.undo = undefined;
+                this.error = 'Undo is no longer available because the Roadmap changed. Review the current revision before editing again.';
+            }
             if (this.pending && this.pending.request.expectedRevision !== index.revision && !this.busy) {
                 this.pending = undefined;
                 this.error = 'Roadmap changed before approval. Review the current revision and preview again.';

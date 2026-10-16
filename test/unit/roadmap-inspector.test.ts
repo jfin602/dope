@@ -53,6 +53,19 @@ test('selection, edit, preview, approval and undo synchronize without inferred G
     assert.equal(model.index?.revision, 3);
 });
 
+test('an unrelated revision invalidates the visible undo with a recovery explanation', async () => {
+    const state = { index: snapshot(), applied: 0, approved: false };
+    const model = new RoadmapInspectorModel(fake(state));
+    model.setSnapshot(root, state.index);
+    model.select('p1');
+    model.change('objective', 'Edited');
+    await model.save();
+    assert.ok(model.undo);
+    model.setSnapshot(root, snapshot(3, 'Edited'));
+    assert.equal(model.undo, undefined);
+    assert.match(model.error ?? '', /Undo is no longer available because the Roadmap changed/);
+});
+
 test('latency preserves draft and stale or foreign previews cannot apply', async () => {
     const pending = deferred<any>();
     const state = { index: snapshot(), pending, applied: 0, approved: false };
