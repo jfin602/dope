@@ -1,0 +1,70 @@
+{
+  "contract": "browser-scope-contract.md",
+  "productSource": "9186110998f3ae1a24229b76f36ffe000c6b0486",
+  "version": "0.10.16",
+  "codexBrowser": {
+    "approvedRoadmapTabId": "3",
+    "origin": "http://127.0.0.1:3000",
+    "tabObservedResourcesDuringControl": {
+      "bundleCss": 1,
+      "bundleJs": 1,
+      "socketIoPolling": 3,
+      "external": 0,
+      "note": "Tab-specific page asset inventory lists observed resources, not every browser network event; shared network-service events are excluded."
+    },
+    "sourceGroundedNoAction": {
+      "executionId": "c15050b0-8e68-4dd4-a433-553e4357794b",
+      "startedAtUtc": "2026-10-16T13:32:35.093Z",
+      "finishedAtUtc": "2026-10-16T13:33:21.395Z",
+      "selectedAndActualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "actualProvider": "local",
+      "resolutionSource": "explicit-turn",
+      "planningStatus": "no-action",
+      "sourceRevision": 4,
+      "chatFileSha256": "2aff16733c61b3e3c21f7039389f286057ca74fe9b2bea54b89f4b9db667b314",
+      "ownerSha256BeforeAndAfter": "d660742d33113b8dafd9c2b8120724a79930d81c2476c5e090e48f17cde3204a",
+      "linkedMarkdownSha256BeforeAndAfter": "f9065fd49bf4e8818fdd2c3fd7d4b5314d78c570ca088cbd8e3873a0bdd60cb0"
+    },
+    "contemporaneousSocketSnapshot": {
+      "timeLocal": "2026-10-16T08:32:44-05:00",
+      "browserNetworkServicePid": 2258,
+      "browserToBackend": "127.0.0.1:3000",
+      "backendPid": 31379,
+      "backendToModel": "127.0.0.1:1234",
+      "lmStudioPid": 22774,
+      "note": "The network service is shared; the socket snapshot corroborates loopback service communication but is not used to assign its external traffic to this tab."
+    }
+  },
+  "ownerMonitoredCycleOne": {
+    "privateTraceSha256": "8ffbcc2b04ffdbbd54c60b0c32accd82130b09b884557e712b5a694dee24e3e6",
+    "approvedAndControlsWindowLocal": "07:27:44-07:29:45",
+    "browserBackendObservedDestinations": ["127.0.0.1:1234", "127.0.0.1:<browser-client-ports>"],
+    "backendExternalSocketSendAttempts": 0,
+    "backendDestinationlessSendmsgInApprovedAndControlsWindow": 0,
+    "sharedBrowserExternalSocketSendAttempts": 162,
+    "sharedBrowserAttribution": "unassigned; includes unrelated Codex traffic",
+    "limitation": "Tracer has no independent zero-loss counter and does not establish whole-host or all-transmit-path absence."
+  },
+  "imageEgressRepair": {
+    "productCommit": "9186110998f3ae1a24229b76f36ffe000c6b0486",
+    "rendererTabId": "4",
+    "disposableProject": "/tmp/dope-r4-browser-renderer-project",
+    "backendPid": 74341,
+    "controlledImageUrl": "http://127.0.0.2:8765/pixel",
+    "origin": "http://127.0.0.1:3000",
+    "tabResourceInventoryListedAttemptedImage": true,
+    "localListenerHttpRequests": 0,
+    "visibleOutput": "[Image omitted: sample]",
+    "renderedImageElements": 0,
+    "activeCsp": "img-src 'self' data: blob:",
+    "selectedAndActualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+    "actualProvider": "local",
+    "savedChatFileSha256": "9afb265df53fe2548de9664f7f7fb737cb0e5a28e7f36410823893d08e09f47c",
+    "frontendBundleSha256": "4d2db992e40f492c8f2f09c6c4215debb1c43ed562aeb36f277c6aaf5836c664"
+  },
+  "existingEvidence": {
+    "cycleOneOperationSummarySha256": "21e1efceadb2005d338c9777a0b30593bc9d00e03008f78318255197ecfaccf5",
+    "supplementalBlankNetlogSha256": "e98d615e427d3339fd7d1427a1fbeede31268024b97a58a1d7efc233d523fc13",
+    "supplementalDopeNetlogSha256": "290284f1f3d9525126348ebb3fbc41c0f36c6fb695d10fb05c3e27674aefaf19"
+  }
+}
