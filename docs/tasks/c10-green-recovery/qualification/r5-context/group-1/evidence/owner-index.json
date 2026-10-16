@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+  "projectRoot": "/tmp/dope-r5-group1-q4",
+  "revision": 3,
+  "checkpoints": [
+    {
+      "id": "roadmap:docs/roadmap.md#phase-1",
+      "kind": "phase",
+      "title": "Product Phase 1 — Foundation",
+      "objective": "Establish the source and review boundaries.",
+      "order": 0,
+      "dependencies": [],
+      "links": [],
+      "status": "green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap.md",
+        "sha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+        "line": 3,
+        "text": "## Product Phase 1 — Foundation"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap.md",
+          "sha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+          "line": 3,
+          "text": "Status: **GREEN**",
+          "status": "green",
+          "statusText": "Status: **GREEN**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap.md#milestone-integration-gate",
+      "kind": "milestone",
+      "title": "Milestone Integration Gate",
+      "objective": "Integrate verified components before release.",
+      "order": 1,
+      "dependencies": [
+        "roadmap:docs/roadmap.md#milestone-key-rotation"
+      ],
+      "links": [],
+      "status": "active",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap.md",
+        "sha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+        "line": 7,
+        "text": "## Milestone Integration Gate"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap.md",
+          "sha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+          "line": 7,
+          "text": "Status: **ACTIVE**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap.md#milestone-key-rotation",
+      "kind": "milestone",
+      "title": "Milestone Key Rotation",
+      "objective": "Repair credential rollover and complete verification before cutover.",
+      "order": 2,
+      "dependencies": [],
+      "links": [],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap.md",
+        "sha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+        "line": 11,
+        "text": "## Milestone Key Rotation"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap.md",
+          "sha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+          "line": 11,
+          "text": "Status: **NOT GREEN**",
+          "status": "not-green",
+          "statusText": "Status: **NOT GREEN**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+      "kind": "milestone",
+      "title": "Milestone Release Candidate",
+      "objective": "Decide whether to start the release canary after all dependencies are green.",
+      "order": 3,
+      "dependencies": [
+        "roadmap:docs/roadmap.md#milestone-integration-gate"
+      ],
+      "links": [],
+      "status": "active",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap.md",
+        "sha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+        "line": 15,
+        "text": "## Milestone Release Candidate"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap.md",
+          "sha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+          "line": 15,
+          "text": "Status: **ACTIVE**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE**"
+        }
+      ]
+    }
+  ],
+  "linkedDocument": {
+    "projectRoot": "/tmp/dope-r5-group1-q4",
+    "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+    "path": "docs/roadmap.md",
+    "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+    "sections": [
+      {
+        "sectionKey": "phase-1",
+        "checkpointId": "roadmap:docs/roadmap.md#phase-1"
+      },
+      {
+        "sectionKey": "milestone-integration-gate",
+        "checkpointId": "roadmap:docs/roadmap.md#milestone-integration-gate"
+      },
+      {
+        "sectionKey": "milestone-key-rotation",
+        "checkpointId": "roadmap:docs/roadmap.md#milestone-key-rotation"
+      },
+      {
+        "sectionKey": "milestone-release-candidate",
+        "checkpointId": "roadmap:docs/roadmap.md#milestone-release-candidate"
+      }
+    ],
+    "lastSynced": {
+      "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+      "roadmapRevision": 1,
+      "fields": [
+        {
+          "checkpointId": "roadmap:docs/roadmap.md#phase-1",
+          "title": "Product Phase 1 — Foundation",
+          "objective": "Establish the source and review boundaries."
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap.md#milestone-integration-gate",
+          "title": "Milestone Integration Gate",
+          "objective": "Integrate verified components before release."
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap.md#milestone-key-rotation",
+          "title": "Milestone Key Rotation",
+          "objective": "Repair credential rollover and complete verification before cutover."
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "title": "Milestone Release Candidate",
+          "objective": "Decide whether to start the release canary after all dependencies are green."
+        }
+      ]
+    },
+    "syncState": "synced"
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "info": {
+    "context": 16384,
+    "parallel": 4,
+    "status": "idle",
+    "key": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+    "format": "gguf",
+    "quantization": "Q4_K_M",
+    "artifact": "lmstudio-community/Qwen3-Coder-30B-A3B-Instruct-GGUF/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf",
+    "artifactBytes": 18632186176,
+    "offload": "CPU-only (verified in active llama-server process by operator)",
+    "endpoint": "http://127.0.0.1:1234/v1"
+  },
+  "fixture": {
+    "briefHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b",
+    "roadmapHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+    "ownerRevision": 3,
+    "checkpointId": "roadmap:docs/roadmap.md#milestone-release-candidate",
+    "lateFactByteOffset": 15244,
+    "expected": "Do not start release canary; Key Rotation is NOT GREEN at source revision 4, blocking Integration Gate and Release Candidate."
+  },
+  "chatId": "3083ddc5-b093-4469-b7da-3465878d4330",
+  "results": [
+    {
+      "scenario": "narrow-fact",
+      "profile": 16384,
+      "startedAt": "2026-10-16T14:43:45.557Z",
+      "completedAt": "2026-10-16T14:43:53.708Z",
+      "elapsedMs": 8151,
+      "preview": {
+        "refs": [
+          {
+            "schemaVersion": 1,
+            "kind": "roadmap-checkpoint",
+            "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+            "label": "Roadmap checkpoint: Milestone Release Candidate",
+            "estimatedTokens": 488,
+            "includedBytes": 1257,
+            "contentHash": "d8a29bd0ff01a71909290185fa5f0bf414d768cabd5a8b661cc8eb79bdb26a45",
+            "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+            "ownerRevision": 3,
+            "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+          }
+        ],
+        "diagnostics": [
+          {
+            "kind": "truncated",
+            "source": "roadmap-checkpoint:roadmap:docs/roadmap.md#milestone-release-candidate",
+            "message": "Roadmap objective, neighbors, links or evidence omitted by compact query bound"
+          }
+        ],
+        "usedTokens": 700,
+        "budgetTokens": 4864
+      },
+      "composed": {
+        "usedTokens": 700,
+        "budgetTokens": 4864,
+        "inputBytes": 2101,
+        "lateFactIncluded": false,
+        "refs": [
+          {
+            "schemaVersion": 1,
+            "kind": "roadmap-checkpoint",
+            "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+            "label": "Roadmap checkpoint: Milestone Release Candidate",
+            "estimatedTokens": 488,
+            "includedBytes": 1257,
+            "contentHash": "d8a29bd0ff01a71909290185fa5f0bf414d768cabd5a8b661cc8eb79bdb26a45",
+            "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+            "ownerRevision": 3,
+            "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+          }
+        ],
+        "diagnostics": [
+          {
+            "kind": "truncated",
+            "source": "roadmap-checkpoint:roadmap:docs/roadmap.md#milestone-release-candidate",
+            "message": "Roadmap objective, neighbors, links or evidence omitted by compact query bound"
+          }
+        ]
+      },
+      "calls": [
+        {
+          "start": 1792161825601,
+          "firstDelta": 1792161830835,
+          "complete": 1792161833685,
+          "usage": {
+            "inputTokens": 558,
+            "outputTokens": 45,
+            "totalTokens": 603,
+            "tokenMeasurement": "provider-reported"
+          },
+          "inputBytes": 2101,
+          "includesLateFact": false,
+          "maxOutputTokens": 1024,
+          "finishReason": "stop"
+        }
+      ],
+      "resources": {
+        "initial": {
+          "at": 1792161825556,
+          "rssKiB": 19924644,
+          "availableKiB": 17814632,
+          "cpuSomeAvg10": 0,
+          "cpuFullAvg10": 0
+        },
+        "final": {
+          "at": 1792161833750,
+          "rssKiB": 19930632,
+          "availableKiB": 17653868,
+          "cpuSomeAvg10": 0,
+          "cpuFullAvg10": 0
+        },
+        "peakRssKiB": 19930632,
+        "minAvailableKiB": 17649652,
+        "maxCpuSomeAvg10": 0,
+        "samples": 18
+      },
+      "saved": {
+        "status": "complete",
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "r5-local-qualification",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "content": "{\"type\":\"no-action\",\"message\":\"The Release Candidate checkpoint is active with objective 'Decide whether to start the release canary after all dependencies are green.' and directly depends on 'Milestone Integration Gate'.\"}",
+        "planningActivity": {
+          "schemaVersion": 1,
+          "kind": "no-action",
+          "status": "no-action",
+          "refs": [
+            {
+              "schemaVersion": 1,
+              "kind": "roadmap-checkpoint",
+              "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+              "label": "Roadmap checkpoint: Milestone Release Candidate",
+              "estimatedTokens": 488,
+              "includedBytes": 1257,
+              "contentHash": "d8a29bd0ff01a71909290185fa5f0bf414d768cabd5a8b661cc8eb79bdb26a45",
+              "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+              "ownerRevision": 3,
+              "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "root": "/tmp/dope-r5-group1-q4",
+  "ownerProjectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+  "ownerRevision": 3,
+  "checkpointId": "roadmap:docs/roadmap.md#milestone-release-candidate",
+  "integrationId": "roadmap:docs/roadmap.md#milestone-integration-gate",
+  "rotationId": "roadmap:docs/roadmap.md#milestone-key-rotation",
+  "rotationStatus": "not-green",
+  "roadmapHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+  "ownerHash": "2b3f9625452114fdeb2bc70ede39fdc5752d0bfaec4328531c0fb1e8764ac923",
+  "briefHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b",
+  "briefBytes": 18548,
+  "lateFact": "### Decision update at source revision 4 — mandatory release dependency\nIntegration Gate depends transitively on Key Rotation. Key Rotation is NOT GREEN at source revision 4 because credential rollover verification failed. Release Candidate must remain blocked: do not start the canary. The earlier provisional go note in revision 2 is superseded. Correct next action: repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate.\n\n",
+  "lateFactByteOffset": 15244,
+  "expected": "Do not start release canary; Key Rotation is NOT GREEN at source revision 4, blocking Integration Gate and Release Candidate."
+}

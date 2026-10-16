@@ -1,0 +1,457 @@
+{
+  "info": {
+    "context": 32768,
+    "parallel": 4,
+    "status": "idle",
+    "key": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+    "format": "gguf",
+    "quantization": "Q4_K_M",
+    "artifact": "lmstudio-community/Qwen3-Coder-30B-A3B-Instruct-GGUF/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf",
+    "artifactBytes": 18632186176,
+    "offload": "CPU-only (verified in active llama-server process by operator)",
+    "endpoint": "http://127.0.0.1:1234/v1"
+  },
+  "fixture": {
+    "briefHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b",
+    "roadmapHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+    "ownerRevision": 3,
+    "checkpointId": "roadmap:docs/roadmap.md#milestone-release-candidate",
+    "lateFactByteOffset": 15244,
+    "expected": "Do not start release canary; Key Rotation is NOT GREEN at source revision 4, blocking Integration Gate and Release Candidate."
+  },
+  "chatId": "775aa2c4-d96b-4f8f-adf7-7908cc66d037",
+  "results": [
+    {
+      "scenario": "narrow",
+      "profile": 32768,
+      "startedAt": "2026-10-16T14:39:29.458Z",
+      "completedAt": "2026-10-16T14:39:31.888Z",
+      "elapsedMs": 2430,
+      "preview": {
+        "refs": [
+          {
+            "schemaVersion": 1,
+            "kind": "roadmap-checkpoint",
+            "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+            "label": "Roadmap checkpoint: Milestone Release Candidate",
+            "estimatedTokens": 488,
+            "includedBytes": 1257,
+            "contentHash": "d8a29bd0ff01a71909290185fa5f0bf414d768cabd5a8b661cc8eb79bdb26a45",
+            "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+            "ownerRevision": 3,
+            "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+          }
+        ],
+        "diagnostics": [
+          {
+            "kind": "truncated",
+            "source": "roadmap-checkpoint:roadmap:docs/roadmap.md#milestone-release-candidate",
+            "message": "Roadmap objective, neighbors, links or evidence omitted by compact query bound"
+          }
+        ],
+        "usedTokens": 693,
+        "budgetTokens": 10325
+      },
+      "composed": {
+        "usedTokens": 693,
+        "budgetTokens": 10325,
+        "inputBytes": 2081,
+        "lateFactIncluded": false,
+        "refs": [
+          {
+            "schemaVersion": 1,
+            "kind": "roadmap-checkpoint",
+            "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+            "label": "Roadmap checkpoint: Milestone Release Candidate",
+            "estimatedTokens": 488,
+            "includedBytes": 1257,
+            "contentHash": "d8a29bd0ff01a71909290185fa5f0bf414d768cabd5a8b661cc8eb79bdb26a45",
+            "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+            "ownerRevision": 3,
+            "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+          }
+        ],
+        "diagnostics": [
+          {
+            "kind": "truncated",
+            "source": "roadmap-checkpoint:roadmap:docs/roadmap.md#milestone-release-candidate",
+            "message": "Roadmap objective, neighbors, links or evidence omitted by compact query bound"
+          }
+        ]
+      },
+      "calls": [
+        {
+          "start": 1792161569481,
+          "firstDelta": 1792161569938,
+          "complete": 1792161571863,
+          "usage": {
+            "inputTokens": 552,
+            "outputTokens": 26,
+            "totalTokens": 578,
+            "tokenMeasurement": "provider-reported"
+          },
+          "inputBytes": 2081,
+          "includesLateFact": false,
+          "maxOutputTokens": 1024,
+          "finishReason": "stop"
+        }
+      ],
+      "resources": {
+        "initial": {
+          "at": 1792161569458,
+          "rssKiB": 21223396,
+          "availableKiB": 15209084,
+          "cpuSomeAvg10": 0,
+          "cpuFullAvg10": 0
+        },
+        "final": {
+          "at": 1792161571928,
+          "rssKiB": 21541500,
+          "availableKiB": 14917368,
+          "cpuSomeAvg10": 0,
+          "cpuFullAvg10": 0
+        },
+        "peakRssKiB": 21541500,
+        "minAvailableKiB": 14917368,
+        "maxCpuSomeAvg10": 0,
+        "samples": 6
+      },
+      "saved": {
+        "status": "complete",
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "r5-local-qualification",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "content": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Authorize canary deployment after dependencies are green\"}",
+        "planningActivity": {
+          "schemaVersion": 1,
+          "kind": "roadmap-intent",
+          "status": "pending",
+          "refs": [
+            {
+              "schemaVersion": 1,
+              "kind": "roadmap-checkpoint",
+              "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+              "label": "Roadmap checkpoint: Milestone Release Candidate",
+              "estimatedTokens": 488,
+              "includedBytes": 1257,
+              "contentHash": "d8a29bd0ff01a71909290185fa5f0bf414d768cabd5a8b661cc8eb79bdb26a45",
+              "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+              "ownerRevision": 3,
+              "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+            }
+          ],
+          "proposalId": "8541b06e-ab4a-4838-b628-29fac9580711"
+        }
+      },
+      "proposal": {}
+    },
+    {
+      "scenario": "heavy-1",
+      "profile": 32768,
+      "startedAt": "2026-10-16T14:39:31.975Z",
+      "completedAt": "2026-10-16T14:39:35.745Z",
+      "elapsedMs": 3770,
+      "preview": {
+        "refs": [
+          {
+            "schemaVersion": 1,
+            "kind": "roadmap-checkpoint",
+            "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+            "label": "Roadmap checkpoint: Milestone Release Candidate",
+            "estimatedTokens": 488,
+            "includedBytes": 1257,
+            "contentHash": "d8a29bd0ff01a71909290185fa5f0bf414d768cabd5a8b661cc8eb79bdb26a45",
+            "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+            "ownerRevision": 3,
+            "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+          },
+          {
+            "schemaVersion": 1,
+            "kind": "file",
+            "id": "docs/planning-brief.md",
+            "label": "docs/planning-brief.md",
+            "estimatedTokens": 6235,
+            "includedBytes": 18548,
+            "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+          }
+        ],
+        "diagnostics": [
+          {
+            "kind": "truncated",
+            "source": "roadmap-checkpoint:roadmap:docs/roadmap.md#milestone-release-candidate",
+            "message": "Roadmap objective, neighbors, links or evidence omitted by compact query bound"
+          }
+        ],
+        "usedTokens": 6949,
+        "budgetTokens": 10325
+      },
+      "composed": {
+        "usedTokens": 6949,
+        "budgetTokens": 10325,
+        "inputBytes": 20838,
+        "lateFactIncluded": true,
+        "refs": [
+          {
+            "schemaVersion": 1,
+            "kind": "roadmap-checkpoint",
+            "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+            "label": "Roadmap checkpoint: Milestone Release Candidate",
+            "estimatedTokens": 488,
+            "includedBytes": 1257,
+            "contentHash": "d8a29bd0ff01a71909290185fa5f0bf414d768cabd5a8b661cc8eb79bdb26a45",
+            "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+            "ownerRevision": 3,
+            "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+          },
+          {
+            "schemaVersion": 1,
+            "kind": "file",
+            "id": "docs/planning-brief.md",
+            "label": "docs/planning-brief.md",
+            "estimatedTokens": 6235,
+            "includedBytes": 18548,
+            "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+          }
+        ],
+        "diagnostics": [
+          {
+            "kind": "truncated",
+            "source": "roadmap-checkpoint:roadmap:docs/roadmap.md#milestone-release-candidate",
+            "message": "Roadmap objective, neighbors, links or evidence omitted by compact query bound"
+          }
+        ]
+      },
+      "calls": [
+        {
+          "start": 1792161572013,
+          "firstDelta": 1792161572218,
+          "complete": 1792161575724,
+          "usage": {
+            "inputTokens": 4136,
+            "outputTokens": 32,
+            "totalTokens": 4168,
+            "tokenMeasurement": "provider-reported"
+          },
+          "inputBytes": 20838,
+          "includesLateFact": true,
+          "maxOutputTokens": 1024,
+          "finishReason": "stop"
+        }
+      ],
+      "resources": {
+        "initial": {
+          "at": 1792161571975,
+          "rssKiB": 21541500,
+          "availableKiB": 14917368,
+          "cpuSomeAvg10": 0,
+          "cpuFullAvg10": 0
+        },
+        "final": {
+          "at": 1792161575790,
+          "rssKiB": 21204264,
+          "availableKiB": 15276816,
+          "cpuSomeAvg10": 0,
+          "cpuFullAvg10": 0
+        },
+        "peakRssKiB": 21541500,
+        "minAvailableKiB": 14917368,
+        "maxCpuSomeAvg10": 0,
+        "samples": 9
+      },
+      "saved": {
+        "status": "complete",
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "r5-local-qualification",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "content": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Do not start the release canary; repair Key Rotation dependency first.\"}",
+        "planningActivity": {
+          "schemaVersion": 1,
+          "kind": "roadmap-intent",
+          "status": "pending",
+          "refs": [
+            {
+              "schemaVersion": 1,
+              "kind": "roadmap-checkpoint",
+              "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+              "label": "Roadmap checkpoint: Milestone Release Candidate",
+              "estimatedTokens": 488,
+              "includedBytes": 1257,
+              "contentHash": "d8a29bd0ff01a71909290185fa5f0bf414d768cabd5a8b661cc8eb79bdb26a45",
+              "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+              "ownerRevision": 3,
+              "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+            },
+            {
+              "schemaVersion": 1,
+              "kind": "file",
+              "id": "docs/planning-brief.md",
+              "label": "docs/planning-brief.md",
+              "estimatedTokens": 6235,
+              "includedBytes": 18548,
+              "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+            }
+          ],
+          "proposalId": "82e0a206-6864-4eb6-b7db-82f34f6d659f"
+        }
+      },
+      "proposal": {}
+    },
+    {
+      "scenario": "heavy-2",
+      "profile": 32768,
+      "startedAt": "2026-10-16T14:39:35.840Z",
+      "completedAt": "2026-10-16T14:39:35.906Z",
+      "elapsedMs": 66,
+      "preview": {
+        "refs": [
+          {
+            "schemaVersion": 1,
+            "kind": "roadmap-checkpoint",
+            "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+            "label": "Roadmap checkpoint: Milestone Release Candidate",
+            "estimatedTokens": 488,
+            "includedBytes": 1257,
+            "contentHash": "d8a29bd0ff01a71909290185fa5f0bf414d768cabd5a8b661cc8eb79bdb26a45",
+            "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+            "ownerRevision": 3,
+            "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+          },
+          {
+            "schemaVersion": 1,
+            "kind": "file",
+            "id": "docs/planning-brief.md",
+            "label": "docs/planning-brief.md",
+            "estimatedTokens": 6235,
+            "includedBytes": 18548,
+            "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+          }
+        ],
+        "diagnostics": [
+          {
+            "kind": "truncated",
+            "source": "roadmap-checkpoint:roadmap:docs/roadmap.md#milestone-release-candidate",
+            "message": "Roadmap objective, neighbors, links or evidence omitted by compact query bound"
+          }
+        ],
+        "usedTokens": 6943,
+        "budgetTokens": 10325
+      },
+      "composed": {
+        "usedTokens": 6943,
+        "budgetTokens": 10325,
+        "inputBytes": 20818,
+        "lateFactIncluded": true,
+        "refs": [
+          {
+            "schemaVersion": 1,
+            "kind": "roadmap-checkpoint",
+            "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+            "label": "Roadmap checkpoint: Milestone Release Candidate",
+            "estimatedTokens": 488,
+            "includedBytes": 1257,
+            "contentHash": "d8a29bd0ff01a71909290185fa5f0bf414d768cabd5a8b661cc8eb79bdb26a45",
+            "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+            "ownerRevision": 3,
+            "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+          },
+          {
+            "schemaVersion": 1,
+            "kind": "file",
+            "id": "docs/planning-brief.md",
+            "label": "docs/planning-brief.md",
+            "estimatedTokens": 6235,
+            "includedBytes": 18548,
+            "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+          }
+        ],
+        "diagnostics": [
+          {
+            "kind": "truncated",
+            "source": "roadmap-checkpoint:roadmap:docs/roadmap.md#milestone-release-candidate",
+            "message": "Roadmap objective, neighbors, links or evidence omitted by compact query bound"
+          }
+        ]
+      },
+      "calls": [
+        {
+          "start": 1792161575877,
+          "firstDelta": null,
+          "complete": null,
+          "usage": null,
+          "inputBytes": 20818,
+          "includesLateFact": true,
+          "maxOutputTokens": 1024
+        }
+      ],
+      "resources": {
+        "initial": {
+          "at": 1792161575839,
+          "rssKiB": 21204264,
+          "availableKiB": 15275768,
+          "cpuSomeAvg10": 0,
+          "cpuFullAvg10": 0
+        },
+        "final": {
+          "at": 1792161575946,
+          "rssKiB": 21204264,
+          "availableKiB": 15275100,
+          "cpuSomeAvg10": 0,
+          "cpuFullAvg10": 0
+        },
+        "peakRssKiB": 21204264,
+        "minAvailableKiB": 15275100,
+        "maxCpuSomeAvg10": 0,
+        "samples": 2
+      },
+      "error": "Error: Local generation failed",
+      "saved": {
+        "status": "failed",
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "r5-local-qualification",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "failure": "Local generation failed",
+        "content": "",
+        "planningActivity": {
+          "schemaVersion": 1,
+          "kind": "error",
+          "status": "failed",
+          "refs": [
+            {
+              "schemaVersion": 1,
+              "kind": "roadmap-checkpoint",
+              "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+              "label": "Roadmap checkpoint: Milestone Release Candidate",
+              "estimatedTokens": 488,
+              "includedBytes": 1257,
+              "contentHash": "d8a29bd0ff01a71909290185fa5f0bf414d768cabd5a8b661cc8eb79bdb26a45",
+              "projectId": "15942bda-2998-4534-aca1-5f942482ff6b",
+              "ownerRevision": 3,
+              "sourceHash": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4"
+            },
+            {
+              "schemaVersion": 1,
+              "kind": "file",
+              "id": "docs/planning-brief.md",
+              "label": "docs/planning-brief.md",
+              "estimatedTokens": 6235,
+              "includedBytes": 18548,
+              "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
