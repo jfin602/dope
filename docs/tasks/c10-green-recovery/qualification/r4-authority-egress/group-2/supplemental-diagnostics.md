@@ -1,5 +1,7 @@
 # R4 Group 2 supplemental diagnostics — in progress
 
+**Later scope amendment:** The owner subsequently approved the [browser-scope acceptance contract](browser-scope-contract.md). This document retains the diagnostic status and unresolved observations as recorded under the earlier whole-process/native boundary; it is not the later browser-scope verdict.
+
 **Status: NOT GREEN / mandatory network evidence incomplete.** Product files remain byte-identical to `00121646f6b5f3d66e06e3cd320935a76dc73353` (`0.10.16`). This supplement does not change Group 1's scoped Green result or start R5/R6. The owner subsequently removed the separate native and Chrome Q4 UI replay requirement for this supplement, accepting the already recorded Codex in-app-browser Q4 behavior as the product UI evidence. This scope decision does not waive process attribution, trace coverage, or unexplained external traffic.
 
 ## Scope and custody
