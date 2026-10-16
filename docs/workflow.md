@@ -73,6 +73,10 @@ A deliberate owner/developer action to execute an authored prompt stack (for exa
 
 Before mutations, still validate the stack and reconcile local Git HEAD/ancestry, coherent version/manifest state, dependencies, the dirty worktree and applicable permission boundaries. Keep substantive T1/T2/T3, native/GUI, local-model, security and exact-source qualification gates; move late-stage qualification instrumentation to its proper qualification step rather than blocking ordinary implementation solely because of missing T3 tooling. Execution of one stack does not waive failed evidence, close a product phase, authorize a different phase/stack, or imply an unrelated version transition.
 
+## Phase 11 — manual usability hunting
+
+Phase 11 first repairs known reported Roadmap/Chat/help usability blockers, then runs iterative **manual GUI Hunt → Triage → bounded Repair → Verify** loops. The [plan](planning/p11/phase-11-plan.md), [Usability Hunter](tasks/p11/usability-hunt-manual.md), [issue ledger](planning/p11/usability-issue-ledger.md) and [coverage matrix](planning/p11/panel-usability-matrix.md) carry the method and persistent evidence. Browser/Electron discovery is **manual T3, not codex:phase**, and cannot itself edit application source or authorize an implementation. Triage deduplicates issues; repairs must be separately planned with small T1/T2 focused prompts and an explicit owner Run. Verify final-source real GUI/user-task regressions, not speculative code inspections. Broad coverage, no unresolved material blockers, two materially different clean hunts and owner acceptance govern exit; preserve all historical safety and provider limitations.
+
 ## Implementation planning workflow
 
 /prompt-ass -> /prompt-plan -> /prompt-write <folder>

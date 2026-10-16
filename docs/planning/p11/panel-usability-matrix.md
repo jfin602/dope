@@ -38,6 +38,20 @@
 
 **U1–U9 direct qualification gates:** U1 relink success; U2 cancel/failure/unsynced/stale protection; U3 restart, new linked source synchronization and project isolation; U4 correct no-action user prose; U5 collapsed yet inspectable activity; U6 grounded recovery without invented UI actions; U7 real local Q4 and Codex selection/consent and response parity; U8 real loading/empty/error/overlay/accessibility states; U9 existing Phase 10 ownership/permission/Markdown/Chat regressions. For each, record exact source, tested action, expected vs observed result, and Qualified/Not Green/Evidence Gap. See [recovery contract](usability-recovery-contract.md).
 
+## Living workflow/task-state coverage
+
+The table above is **only a preliminary UI inventory**, not a single-pass completion checklist. Each manually executed [Hunter](../../tasks/p11/usability-hunt-manual.md) selects under-tested workflow/state pairs and updates this matrix and the [issue ledger](usability-issue-ledger.md) after evidence review.
+
+| Coverage data | Required record |
+| --- | --- |
+| Stable entry/coverage ID | Actual registered widget/route, meaningful human task and first click |
+| State and placement | Normal, empty, loading, denied, error, stale, recovery, restart; panel placement, narrow/focus/keyboard/theme when relevant |
+| Real observation | Outcome, reproduction steps, screenshot/log, actor (human/AI GUI), exact source/version |
+| Classification | Not Audited / Evidence Gap / Not Green / Qualified, with corresponding issue ID |
+| Next hunt target | Uncovered **different** task/state, not another pass over already-tested screens |
+
+Preserve all earlier observations and source-bound failures, distinguish owner's screenshots from live reproduction, and require two different broad clean hunts only **in addition to** comprehensive coverage and owner acceptance.
+
 For **every confirmed active surface**, capture:
 
 - Surface, location and owning widget/entry point
