@@ -1,0 +1,52 @@
+(node:68232) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/roadmap-canvas-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ one keyboard order follows the checkpoint path and attached branches (1.398994ms)
+✔ one ordinary center tab, safe labels, recovery, semantic dark/light tokens and no Chat docking effects (1.161848ms)
+✔ Details command and selection use one mounted inspector model in the canvas with safe overlay states (0.868182ms)
+✔ all six status marks and semantic colors remain distinct from selection and keyboard focus (0.700809ms)
+✔ the whole Roadmap card keeps its status tint through hover, selection and focus (0.948214ms)
+✔ only actual Green to Green dependencies or branches look completed (1.418699ms)
+✔ relationship motion is brief, selection-only and static under reduced motion (0.682297ms)
+✔ Roadmap status ink uses theme-scoped contrast corrections (0.436496ms)
+✔ closing details restores focus captured before the panel becomes hidden (1.770786ms)
+✔ stable phase path, explicit milestone/correction branches and status evidence (4.297527ms)
+✔ missing references remain diagnostics and detached pools preserve owner truth (1.159835ms)
+✔ selection payload is bounded and project switches do not carry a stale selection (1.146972ms)
+✔ correction identifiers associate phases without changing canonical dependencies or revision (4.927964ms)
+✔ P9 full real-roadmap import fixture keeps 31 identities and nine historical diagnostics separate (7.250798ms)
+(node:68234) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/roadmap-canvas-model.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ only rendered connectors touching selection receive motion emphasis (2.048403ms)
+✔ branch routes use the card gutter and duplicate membership segments are suppressed (0.225305ms)
+✔ stored correction dependency uses one routed edge while unresolved parents remain visible (0.801325ms)
+✔ hidden implementation never reserves layout space and disclosure preserves strategic coordinates (6.166126ms)
+✔ dense expanded prompts have separate cards without moving phase columns (2.017709ms)
+✔ Roadmap mounts React Flow with selection, pan, zoom and fit but no graph mutation gestures or Chat docking (1.074154ms)
+✔ rendered Tab order follows the same branch traversal as arrow keys (0.781921ms)
+✔ world, phase and checkpoint detail keep implementation closed until explicit disclosure (0.353721ms)
+✔ actual full Dope import plus current c10 correction labels has a route and vertical branches without stored edges (3.518462ms)
+✔ unresolved corrections stay detached and connector classes retain visible endpoints at every detail (0.736692ms)
+(node:68240) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/jfin/dev/dope/packages/theia-extension/src/browser/roadmap-viewport.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/jfin/dev/dope/packages/theia-extension/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ gesture policy keeps navigation separate from arrangement and semantic edges (2.148589ms)
+✔ viewport state restores only within matching project and rejects corrupt coordinates (1.577337ms)
+✔ current work uses authoritative phase statuses and a readable centered camera (1.93837ms)
+✔ keyboard navigation reveals an offscreen checkpoint at the current zoom (0.433821ms)
+✔ keyboard and Focus Selection camera changes honor reduced motion (0.164158ms)
+✔ widget initializes after project projection and saves only intentional camera changes (0.511487ms)
+✔ automatic graph measurement cannot become saved user camera intent (0.389914ms)
+✔ keyboard navigation has pan and arrangement equivalents without overriding ordinary selection (0.195242ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.250012

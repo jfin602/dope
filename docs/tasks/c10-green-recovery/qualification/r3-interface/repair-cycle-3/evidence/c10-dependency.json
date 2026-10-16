@@ -1,0 +1,70 @@
+{
+  "browser": {
+    "viewport": [
+      1920,
+      1113
+    ],
+    "stage": {
+      "x": 49,
+      "y": 106,
+      "width": 1718,
+      "height": 985,
+      "top": 106,
+      "right": 1767,
+      "bottom": 1091,
+      "left": 49
+    },
+    "selected": "roadmap:fixture#c10-recovery-a",
+    "card": {
+      "x": 712,
+      "y": 542.5,
+      "width": 392,
+      "height": 128.79998779296875,
+      "top": 542.5,
+      "right": 1104,
+      "bottom": 671.2999877929688,
+      "left": 712
+    },
+    "edge": [
+      {
+        "id": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+        "label": "Stored Roadmap dependency and correction membership: correction branch; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-a — relationship qualification; endpoint status not-green",
+        "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-dependency dope-roadmap-edge-not-green dope-roadmap-edge-related nopan selectable"
+      }
+    ]
+  },
+  "native": {
+    "viewport": [
+      1920,
+      1146
+    ],
+    "stage": {
+      "x": 49,
+      "y": 74,
+      "width": 1718,
+      "height": 1050,
+      "top": 74,
+      "right": 1767,
+      "bottom": 1124,
+      "left": 49
+    },
+    "selected": "roadmap:fixture#c10-recovery-a",
+    "card": {
+      "x": 712,
+      "y": 543.0000610351562,
+      "width": 392,
+      "height": 128.79998779296875,
+      "top": 543.0000610351562,
+      "right": 1104,
+      "bottom": 671.800048828125,
+      "left": 712
+    },
+    "edge": [
+      {
+        "id": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+        "label": "Stored Roadmap dependency and correction membership: correction branch; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-a — relationship qualification; endpoint status not-green",
+        "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-dependency dope-roadmap-edge-not-green dope-roadmap-edge-related nopan selectable"
+      }
+    ]
+  }
+}

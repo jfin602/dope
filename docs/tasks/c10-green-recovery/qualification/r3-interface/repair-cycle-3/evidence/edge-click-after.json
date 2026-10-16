@@ -1,0 +1,54 @@
+{
+  "browser": {
+    "edge": {
+      "id": "view:progression:roadmap:docs/roadmap/mvp-roadmap.md#phase-9:roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "label": "Chronological phase progression; no release gate implied; Product Phase 9 — Developer Continuity / History to Product Phase 10 — Unified Roadmap & Local-First AI Planning; endpoint status not-green",
+      "x": 1287.6151123046875,
+      "y": 655.619384765625,
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "hit": "view:progression:roadmap:docs/roadmap/mvp-roadmap.md#phase-9:roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+    },
+    "after": {
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "relationship": "Chronological phase progression; no release gate implied; Product Phase 9 — Developer Continuity / History to Product Phase 10 — Unified Roadmap & Local-First AI Planning; endpoint status not-green",
+      "relationshipHidden": false,
+      "edgeSelected": true,
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseChronological phase progression; no release gate implied; Product Phase 9 — Developer Continuity / History to Product Phase 10 — Unified Roadmap & Local-First AI Planning; endpoint status not-green4 implementation stacks · 36 discovered prompts · docs/tasks/p9a, docs/tasks/p9b, docs/tasks/p9c, +1 more. Source only; prompt discovery does not determine qualificati"
+    }
+  },
+  "native": {
+    "edge": {
+      "id": "view:progression:roadmap:docs/roadmap/mvp-roadmap.md#phase-9:roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "label": "Chronological phase progression; no release gate implied; Product Phase 9 — Developer Continuity / History to Product Phase 10 — Unified Roadmap & Local-First AI Planning; endpoint status not-green",
+      "x": 1256.83837890625,
+      "y": 639.1751098632812,
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "hit": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-9:roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+    },
+    "after": {
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "relationship": "Stored Roadmap dependency: Depends on; Product Phase 9 — Developer Continuity / History to Product Phase 10 — Unified Roadmap & Local-First AI Planning; endpoint status not-green",
+      "relationshipHidden": false,
+      "edgeSelected": false,
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseStored Roadmap dependency: Depends on; Product Phase 9 — Developer Continuity / History to Product Phase 10 — Unified Roadmap & Local-First AI Planning; endpoint status not-green1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.Hide PromptsNext promptsProduct Phase 10 — Unified "
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "size": [
+    1920,
+    1113
+  ],
+  "stage": {
+    "x": 49,
+    "y": 106,
+    "width": 1718,
+    "height": 985,
+    "top": 106,
+    "right": 1767,
+    "bottom": 1091,
+    "left": 49
+  },
+  "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+  "transform": "translate(-5306.6px, -459.5px) scale(1.4)",
+  "tabs": []
+}

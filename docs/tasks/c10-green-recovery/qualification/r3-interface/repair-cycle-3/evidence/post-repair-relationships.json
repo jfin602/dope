@@ -1,0 +1,110 @@
+{
+  "browser": {
+    "relationship": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "selection": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "edges": [
+        {
+          "id": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+          "label": "Stored Roadmap dependency and correction membership: correction branch; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-a — relationship qualification; endpoint status not-green",
+          "path": "M 4403.999699991633 635.5000075093299 L 4403.999699991633 609.5000075093299 L 4643.999699991633 609.5000075093299 L 4643.999699991633 -366.00002702750686 L 4576.499677494046 -366.00002702750686"
+        }
+      ],
+      "dependencyCount": 4,
+      "progressionCount": 15,
+      "membershipCount": 30
+    },
+    "unresolved": {
+      "label": "correction: Correction c99-orphan — missing Phase 99; Unknown; Parent unresolved: Phase 99 is absent.",
+      "visibleText": "correctionCorrection c99-orphan — missing Phase 99?UnknownParent unresolved: Phase 99 is absent.",
+      "rect": {
+        "x": 712,
+        "y": 542.5,
+        "width": 392,
+        "height": 152.5999755859375,
+        "top": 542.5,
+        "right": 1104,
+        "bottom": 695.0999755859375,
+        "left": 712
+      },
+      "selected": "roadmap:fixture#c99-orphan",
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      }
+    }
+  },
+  "native": {
+    "relationship": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "selection": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "edges": [
+        {
+          "id": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+          "label": "Stored Roadmap dependency and correction membership: correction branch; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-a — relationship qualification; endpoint status not-green",
+          "path": "M 4403.999790736607 635.5000087193081 L 4403.999790736607 609.5000087193081 L 4643.999790736607 609.5000087193081 L 4643.999790736607 -366.00001743861606 L 4576.500139508928 -366.00001743861606"
+        }
+      ],
+      "dependencyCount": 4,
+      "progressionCount": 15,
+      "membershipCount": 30
+    },
+    "unresolved": {
+      "label": "correction: Correction c99-orphan — missing Phase 99; Unknown; Parent unresolved: Phase 99 is absent.",
+      "visibleText": "correctionCorrection c99-orphan — missing Phase 99?UnknownParent unresolved: Phase 99 is absent.",
+      "rect": {
+        "x": 712,
+        "y": 543,
+        "width": 392,
+        "height": 152.5999755859375,
+        "top": 543,
+        "right": 1104,
+        "bottom": 695.5999755859375,
+        "left": 712
+      },
+      "selected": "roadmap:fixture#c99-orphan",
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      }
+    }
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "browser": {
+    "snapshot": {
+      "projectId": "a53e0c28-eef7-4c0b-8419-e6339f22c58d",
+      "revision": 5,
+      "status": {
+        "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-1": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-2": "waived",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-3": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c3-remove-planning-instruments": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-4": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-architecture-discovery": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-hierarchical-synthesis": "not-implemented",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-gemini-provider": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-synth-improvements": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-synth-coverage-review": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-provider-comparison": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-storage": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-color-theme": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-5": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c5-smap-acceptance-debug-loop": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c5-synth-observe": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c5-physical-map-load": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c5-planning-basis-isolation": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c5-smap-readability": "active",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-6": "waived",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c6-branch-seam": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-7": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-8": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-9": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-10": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-11": "not-implemented",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-12": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-map-canvas-priority-correction": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c9-codex-chat": "not-implemented",
+        "roadmap:fixture#phase-100": "unknown",
+        "roadmap:fixture#phase-88-a": "unknown",
+        "roadmap:fixture#phase-88-b": "unknown",
+        "roadmap:fixture#c100-other": "unknown",
+        "roadmap:fixture#c99-orphan": "unknown",
+        "roadmap:fixture#c88-ambiguous": "unknown",
+        "roadmap:fixture#c10-recovery-a": "unknown",
+        "roadmap:fixture#c10-recovery-b": "unknown",
+        "roadmap:fixture#c10-recovery-c": "unknown"
+      },
+      "dependencies": {
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-10": [
+          "roadmap:docs/roadmap/mvp-roadmap.md#phase-9"
+        ],
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-11": [
+          "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+        ],
+        "roadmap:fixture#c100-other": [
+          "roadmap:fixture#phase-100"
+        ],
+        "roadmap:fixture#c10-recovery-a": [
+          "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+        ]
+      },
+      "files": {
+        ".dope/roadmap.json": "edb1cf6a9b2b6536bd035bfd305ae3f069a75a47bb3e72a278c8fdb6f40ac201",
+        "docs/roadmap/mvp-roadmap.md": "d436aec16228afc65b9dea47d1a3547a6754c30c3f929584fb1f5b0153bce7c1",
+        ".dope/planning-map.json": null,
+        ".dope/work.json": null
+      }
+    },
+    "matchesBefore": true
+  },
+  "native": {
+    "snapshot": {
+      "projectId": "a0f1243b-f230-4318-a207-ed7629c6561f",
+      "revision": 4,
+      "status": {
+        "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-1": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-2": "waived",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-3": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c3-remove-planning-instruments": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-4": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-architecture-discovery": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-hierarchical-synthesis": "not-implemented",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-gemini-provider": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-synth-improvements": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-synth-coverage-review": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-provider-comparison": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-smap-storage": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c4-color-theme": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-5": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c5-smap-acceptance-debug-loop": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c5-synth-observe": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c5-physical-map-load": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c5-planning-basis-isolation": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c5-smap-readability": "active",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-6": "waived",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c6-branch-seam": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-7": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-8": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-9": "green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-10": "not-green",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-11": "not-implemented",
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-12": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-map-canvas-priority-correction": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction": "unknown",
+        "roadmap:docs/roadmap/mvp-roadmap.md#c9-codex-chat": "not-implemented",
+        "roadmap:fixture#phase-100": "unknown",
+        "roadmap:fixture#phase-88-a": "unknown",
+        "roadmap:fixture#phase-88-b": "unknown",
+        "roadmap:fixture#c100-other": "unknown",
+        "roadmap:fixture#c99-orphan": "unknown",
+        "roadmap:fixture#c88-ambiguous": "unknown",
+        "roadmap:fixture#c10-recovery-a": "unknown",
+        "roadmap:fixture#c10-recovery-b": "unknown",
+        "roadmap:fixture#c10-recovery-c": "unknown"
+      },
+      "dependencies": {
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-10": [
+          "roadmap:docs/roadmap/mvp-roadmap.md#phase-9"
+        ],
+        "roadmap:docs/roadmap/mvp-roadmap.md#phase-11": [
+          "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+        ],
+        "roadmap:fixture#c100-other": [
+          "roadmap:fixture#phase-100"
+        ],
+        "roadmap:fixture#c10-recovery-a": [
+          "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+        ]
+      },
+      "files": {
+        ".dope/roadmap.json": "4d341e7ec8b287d5b1aa2ca5edd8089dedc83b2fa07394ecbec3edb5c7183264",
+        "docs/roadmap/mvp-roadmap.md": "bf5486fb22a890064e99a8eba7ebc369bf4f41942caacf47f1516335cd2a2d02",
+        ".dope/planning-map.json": null,
+        ".dope/work.json": null
+      }
+    },
+    "matchesBefore": true
+  }
+}

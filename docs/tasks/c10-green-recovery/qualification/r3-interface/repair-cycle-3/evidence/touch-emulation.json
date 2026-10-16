@@ -1,0 +1,2580 @@
+{
+  "browser": {
+    "method": "CDP Input.dispatchTouchEvent with Chromium touch emulation; DOM capture records trusted touch/pointer events",
+    "blank": {
+      "x": 189,
+      "y": 216
+    },
+    "initial": {
+      "camera": "translate(-3052.6px, -155.5px) scale(0.9)",
+      "arrange": "false",
+      "log": []
+    },
+    "pan": {
+      "camera": "translate(-2940.6px, -99.5px) scale(0.9)",
+      "arrange": "false",
+      "phase10": {
+        "x": 945.999755859375,
+        "y": 582.5,
+        "width": 252,
+        "height": 82.79998779296875,
+        "top": 582.5,
+        "right": 1197.999755859375,
+        "bottom": 665.2999877929688,
+        "left": 945.999755859375
+      },
+      "log": [
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        }
+      ]
+    },
+    "pinch": {
+      "camera": "translate(-7048px, -526.667px) scale(2)",
+      "arrange": "false",
+      "phase10": {
+        "x": 1529,
+        "y": 859.3333129882812,
+        "width": 560,
+        "height": 217.99993896484375,
+        "top": 859.3333129882812,
+        "right": 2089,
+        "bottom": 1077.333251953125,
+        "left": 1529
+      },
+      "log": [
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 2,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        }
+      ]
+    },
+    "tap": {
+      "camera": "translate(-7894.38px, -867.096px) scale(1.99941)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "arrange": "false",
+      "phase10": {
+        "x": 680.08349609375,
+        "y": 518.5237426757812,
+        "width": 559.8330078125,
+        "height": 217.9351806640625,
+        "top": 518.5237426757812,
+        "right": 1239.91650390625,
+        "bottom": 736.4589233398438,
+        "left": 680.08349609375
+      },
+      "log": [
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 2,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        }
+      ]
+    },
+    "cancel": {
+      "camera": "translate(-7864.38px, -847.095px) scale(1.99941)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "arrange": "false",
+      "phase10": {
+        "x": 710.083984375,
+        "y": 538.5238037109375,
+        "width": 559.8330078125,
+        "height": 217.9351806640625,
+        "top": 538.5238037109375,
+        "right": 1269.9169921875,
+        "bottom": 756.458984375,
+        "left": 710.083984375
+      },
+      "log": [
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 2,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointercancel",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchcancel",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        }
+      ]
+    },
+    "arrangeBefore": {
+      "camera": "translate(-7864.38px, -847.095px) scale(1.99941)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "arrange": "true",
+      "phase10": {
+        "x": 710.083984375,
+        "y": 538.5238037109375,
+        "width": 559.8330078125,
+        "height": 217.9351806640625,
+        "top": 538.5238037109375,
+        "right": 1269.9169921875,
+        "bottom": 756.458984375,
+        "left": 710.083984375
+      },
+      "log": [
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 2,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointercancel",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchcancel",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        }
+      ]
+    },
+    "arrangeAfter": {
+      "camera": "translate(-7864.38px, -847.095px) scale(1.99941)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "arrange": "true",
+      "phase10": {
+        "x": 770.0830078125,
+        "y": 574.52392578125,
+        "width": 559.833984375,
+        "height": 217.93505859375,
+        "top": 574.52392578125,
+        "right": 1329.9169921875,
+        "bottom": 792.458984375,
+        "left": 770.0830078125
+      },
+      "log": [
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "mouse",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointercancel",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchcancel",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        }
+      ]
+    }
+  },
+  "native": {
+    "method": "CDP Input.dispatchTouchEvent with Chromium touch emulation; DOM capture records trusted touch/pointer events",
+    "blank": {
+      "x": 189,
+      "y": 184
+    },
+    "initial": {
+      "camera": "translate(-5345.8px, 1045.8px) scale(1.4)",
+      "arrange": "false",
+      "log": []
+    },
+    "pan": {
+      "camera": "translate(-5233.8px, 1101.8px) scale(1.4)",
+      "selected": "roadmap:fixture#c10-recovery-a",
+      "arrange": "false",
+      "phase10": {
+        "x": 894.4765625,
+        "y": 2135.35107421875,
+        "width": 392,
+        "height": 152.599853515625,
+        "top": 2135.35107421875,
+        "right": 1286.4765625,
+        "bottom": 2287.950927734375,
+        "left": 894.4765625
+      },
+      "log": [
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        }
+      ]
+    },
+    "pinch": {
+      "camera": "translate(-7656.86px, 1466.86px) scale(2)",
+      "selected": "roadmap:fixture#c10-recovery-a",
+      "arrange": "false",
+      "phase10": {
+        "x": 1076.82373046875,
+        "y": 2911.64404296875,
+        "width": 560,
+        "height": 218,
+        "top": 2911.64404296875,
+        "right": 1636.82373046875,
+        "bottom": 3129.64404296875,
+        "left": 1076.82373046875
+      },
+      "log": [
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 2,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 2,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        }
+      ]
+    },
+    "tap": {
+      "camera": "translate(-8096.67px, -924.328px) scale(1.99799)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "arrange": "false",
+      "phase10": {
+        "x": 628.28125,
+        "y": 519.0803833007812,
+        "width": 559.4365234375,
+        "height": 217.78076171875,
+        "top": 519.0803833007812,
+        "right": 1187.7177734375,
+        "bottom": 736.8611450195312,
+        "left": 628.28125
+      },
+      "log": [
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 2,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 2,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        }
+      ]
+    },
+    "cancel": {
+      "camera": "translate(-8066.66px, -904.328px) scale(1.99799)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "arrange": "false",
+      "phase10": {
+        "x": 658.28125,
+        "y": 539.0804443359375,
+        "width": 559.4365234375,
+        "height": 217.78076171875,
+        "top": 539.0804443359375,
+        "right": 1217.7177734375,
+        "bottom": 756.8612060546875,
+        "left": 658.28125
+      },
+      "log": [
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 2,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointercancel",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchcancel",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        }
+      ]
+    },
+    "arrangeBefore": {
+      "camera": "translate(-8066.66px, -904.328px) scale(1.99799)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "arrange": "true",
+      "phase10": {
+        "x": 658.28125,
+        "y": 539.0804443359375,
+        "width": 559.4365234375,
+        "height": 217.78076171875,
+        "top": 539.0804443359375,
+        "right": 1217.7177734375,
+        "bottom": 756.8612060546875,
+        "left": 658.28125
+      },
+      "log": [
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 2,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointercancel",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchcancel",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        }
+      ]
+    },
+    "arrangeAfter": {
+      "camera": "translate(-8066.66px, -904.328px) scale(1.99799)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "arrange": "true",
+      "phase10": {
+        "x": 718.28125,
+        "y": 575.0804443359375,
+        "width": 559.4365234375,
+        "height": 217.78076171875,
+        "top": 575.0804443359375,
+        "right": 1277.7177734375,
+        "bottom": 792.8612060546875,
+        "left": 718.28125
+      },
+      "log": [
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 2,
+          "target": "react-flow__pane draggable",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointercancel",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchcancel",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerdown",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchstart",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointermove",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchmove",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "pointerup",
+          "isTrusted": true,
+          "pointerType": "touch",
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        },
+        {
+          "type": "touchend",
+          "isTrusted": true,
+          "identifier": 1,
+          "target": "dope-roadmap-node dope-roadmap-status-not-green",
+          "defaultPrevented": false
+        }
+      ]
+    }
+  }
+}

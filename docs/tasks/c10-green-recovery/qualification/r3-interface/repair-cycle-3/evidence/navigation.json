@@ -1,0 +1,1388 @@
+{
+  "browser": {
+    "initial": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(-7663.52px, -859.679px) scale(1.91497)",
+      "detail": "Checkpoint detail",
+      "nodeCount": 0,
+      "edgeCount": 0,
+      "promptCount": 0,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 5ObjectiveNo objective recorded.Evidence and gatesdocs/roadmap/mvp-roadmap.md:1081 · **Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREE"
+    },
+    "fit": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(-7663.52px, -859.679px) scale(1.91497)",
+      "detail": "Checkpoint detail",
+      "nodeCount": 0,
+      "edgeCount": 0,
+      "promptCount": 0,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 5ObjectiveNo objective recorded.Evidence and gatesdocs/roadmap/mvp-roadmap.md:1081 · **Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREE"
+    },
+    "focusPhase": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(-5218.34px, -471.425px) scale(1.36568)",
+      "detail": "Phase detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 717.392578125,
+        "y": 544.2686767578125,
+        "width": 382.390625,
+        "height": 125.642578125,
+        "top": 544.2686767578125,
+        "right": 1099.783203125,
+        "bottom": 669.9112548828125,
+        "left": 717.392578125
+      },
+      "phase10Rect": {
+        "x": 717.392578125,
+        "y": 544.2686767578125,
+        "width": 382.390625,
+        "height": 125.642578125,
+        "top": 544.2686767578125,
+        "right": 1099.783203125,
+        "bottom": 669.9112548828125,
+        "left": 717.392578125
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 5ObjectiveNo objective recorded.Evidence and gatesdocs/roadmap/mvp-roadmap.md:1081 · **Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREE"
+    },
+    "zoomIn": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(-8041.95px, -919.72px) scale(2)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 628,
+        "y": 518.5000610351562,
+        "width": 560,
+        "height": 218,
+        "top": 518.5000610351562,
+        "right": 1188,
+        "bottom": 736.5000610351562,
+        "left": 628
+      },
+      "phase10Rect": {
+        "x": 628,
+        "y": 518.5000610351562,
+        "width": 560,
+        "height": 218,
+        "top": 518.5000610351562,
+        "right": 1188,
+        "bottom": 736.5000610351562,
+        "left": 628
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 5ObjectiveNo objective recorded.Evidence and gatesdocs/roadmap/mvp-roadmap.md:1081 · **Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREE"
+    },
+    "zoomOut": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(-5322.22px, -488.208px) scale(1.38889)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 713.55517578125,
+        "y": 542.9444580078125,
+        "width": 388.88916015625,
+        "height": 151.3887939453125,
+        "top": 542.9444580078125,
+        "right": 1102.4443359375,
+        "bottom": 694.333251953125,
+        "left": 713.55517578125
+      },
+      "phase10Rect": {
+        "x": 713.55517578125,
+        "y": 542.9444580078125,
+        "width": 388.88916015625,
+        "height": 151.3887939453125,
+        "top": 542.9444580078125,
+        "right": 1102.4443359375,
+        "bottom": 694.333251953125,
+        "left": 713.55517578125
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 5ObjectiveNo objective recorded.Evidence and gatesdocs/roadmap/mvp-roadmap.md:1081 · **Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREE"
+    },
+    "pan": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(-5152.22px, -403.208px) scale(1.38889)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 883.55517578125,
+        "y": 627.9444580078125,
+        "width": 388.88916015625,
+        "height": 151.3887939453125,
+        "top": 627.9444580078125,
+        "right": 1272.4443359375,
+        "bottom": 779.333251953125,
+        "left": 883.55517578125
+      },
+      "phase10Rect": {
+        "x": 883.55517578125,
+        "y": 627.9444580078125,
+        "width": 388.88916015625,
+        "height": 151.3887939453125,
+        "top": 627.9444580078125,
+        "right": 1272.4443359375,
+        "bottom": 779.333251953125,
+        "left": 883.55517578125
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 5ObjectiveNo objective recorded.Evidence and gatesdocs/roadmap/mvp-roadmap.md:1081 · **Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREE"
+    },
+    "wheel": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(-7542.39px, -706.02px) scale(2)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 1127.56005859375,
+        "y": 732.2000732421875,
+        "width": 560,
+        "height": 218,
+        "top": 732.2000732421875,
+        "right": 1687.56005859375,
+        "bottom": 950.2000732421875,
+        "left": 1127.56005859375
+      },
+      "phase10Rect": {
+        "x": 1127.56005859375,
+        "y": 732.2000732421875,
+        "width": 560,
+        "height": 218,
+        "top": 732.2000732421875,
+        "right": 1687.56005859375,
+        "bottom": 950.2000732421875,
+        "left": 1127.56005859375
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 5ObjectiveNo objective recorded.Evidence and gatesdocs/roadmap/mvp-roadmap.md:1081 · **Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREE"
+    },
+    "selectAfterPan": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(-7994.65px, -912.195px) scale(1.98939)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 629.5625,
+        "y": 518.95751953125,
+        "width": 557.029296875,
+        "height": 216.8433837890625,
+        "top": 518.95751953125,
+        "right": 1186.591796875,
+        "bottom": 735.8009033203125,
+        "left": 629.5625
+      },
+      "phase10Rect": {
+        "x": 629.5625,
+        "y": 518.95751953125,
+        "width": 557.029296875,
+        "height": 216.8433837890625,
+        "top": 518.95751953125,
+        "right": 1186.591796875,
+        "bottom": 735.8009033203125,
+        "left": 629.5625
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 5ObjectiveNo objective recorded.Evidence and gatesdocs/roadmap/mvp-roadmap.md:1081 · **Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREE"
+    },
+    "dragOff": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(-7894.44px, -852.176px) scale(1.98933)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 729.5146484375,
+        "y": 578.935791015625,
+        "width": 557.0126953125,
+        "height": 216.8367919921875,
+        "top": 578.935791015625,
+        "right": 1286.52734375,
+        "bottom": 795.7725830078125,
+        "left": 729.5146484375
+      },
+      "phase10Rect": {
+        "x": 729.5146484375,
+        "y": 578.935791015625,
+        "width": 557.0126953125,
+        "height": 216.8367919921875,
+        "top": 578.935791015625,
+        "right": 1286.52734375,
+        "bottom": 795.7725830078125,
+        "left": 729.5146484375
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 5ObjectiveNo objective recorded.Evidence and gatesdocs/roadmap/mvp-roadmap.md:1081 · **Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREE"
+    },
+    "arrangeOn": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(-7894.44px, -852.176px) scale(1.98933)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 729.5146484375,
+        "y": 578.935791015625,
+        "width": 557.0126953125,
+        "height": 216.8367919921875,
+        "top": 578.935791015625,
+        "right": 1286.52734375,
+        "bottom": 795.7725830078125,
+        "left": 729.5146484375
+      },
+      "phase10Rect": {
+        "x": 729.5146484375,
+        "y": 578.935791015625,
+        "width": 557.0126953125,
+        "height": 216.8367919921875,
+        "top": 578.935791015625,
+        "right": 1286.52734375,
+        "bottom": 795.7725830078125,
+        "left": 729.5146484375
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "true",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 5ObjectiveNo objective recorded.Evidence and gatesdocs/roadmap/mvp-roadmap.md:1081 · **Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREE"
+    },
+    "dragOn": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(-7894.44px, -852.176px) scale(1.98933)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 819.5146484375,
+        "y": 628.9356689453125,
+        "width": 557.01171875,
+        "height": 216.8369140625,
+        "top": 628.9356689453125,
+        "right": 1376.5263671875,
+        "bottom": 845.7725830078125,
+        "left": 819.5146484375
+      },
+      "phase10Rect": {
+        "x": 819.5146484375,
+        "y": 628.9356689453125,
+        "width": 557.01171875,
+        "height": 216.8369140625,
+        "top": 628.9356689453125,
+        "right": 1376.5263671875,
+        "bottom": 845.7725830078125,
+        "left": 819.5146484375
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "true",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 5ObjectiveNo objective recorded.Evidence and gatesdocs/roadmap/mvp-roadmap.md:1081 · **Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREE"
+    },
+    "arrangeOff": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(-7894.44px, -852.176px) scale(1.98933)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 819.5146484375,
+        "y": 628.9356689453125,
+        "width": 557.01171875,
+        "height": 216.8369140625,
+        "top": 628.9356689453125,
+        "right": 1376.5263671875,
+        "bottom": 845.7725830078125,
+        "left": 819.5146484375
+      },
+      "phase10Rect": {
+        "x": 819.5146484375,
+        "y": 628.9356689453125,
+        "width": 557.01171875,
+        "height": 216.8369140625,
+        "top": 628.9356689453125,
+        "right": 1376.5263671875,
+        "bottom": 845.7725830078125,
+        "left": 819.5146484375
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeCloseNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 5ObjectiveNo objective recorded.Evidence and gatesdocs/roadmap/mvp-roadmap.md:1081 · **Status: ADR 0036 DESIGN APPROVED / P1–P15 IMPLEMENTED / P16 NOT GREE"
+    },
+    "closed": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(453.177px, -860.243px) scale(1.98933)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+      "selectedLabel": "phase: Foundation Spike 0 — Theia substrate qualification; Green",
+      "selectedRect": {
+        "x": 629.4940185546875,
+        "y": 518.9268188476562,
+        "width": 557.011962890625,
+        "height": 216.8367919921875,
+        "top": 518.9268188476562,
+        "right": 1186.5059814453125,
+        "bottom": 735.7636108398438,
+        "left": 629.4940185546875
+      },
+      "phase10Rect": {
+        "x": 9167.1298828125,
+        "y": 620.8683471679688,
+        "width": 557.01171875,
+        "height": 216.8369140625,
+        "top": 620.8683471679688,
+        "right": 9724.1416015625,
+        "bottom": 837.7052612304688,
+        "left": 9167.1298828125
+      },
+      "nodeCount": 51,
+      "edgeCount": 49,
+      "promptCount": 11,
+      "arrange": "false",
+      "details": "Foundation Spike 0 — Theia substrate qualificationExpandCompactMinimizeClose1 implementation stack · 6 discovered prompts · docs/tasks/p0. Source only; prompt discovery does not determine qualification status.View PromptsNext promptsFoundation Spike 0 — Theia substrate qualificationphase · green · Roadmap revision 5ObjectiveNo objective recorded.Ev"
+    },
+    "open": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(453.177px, -860.243px) scale(1.98933)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+      "selectedLabel": "phase: Foundation Spike 0 — Theia substrate qualification; Green",
+      "selectedRect": {
+        "x": 629.4940185546875,
+        "y": 518.9268188476562,
+        "width": 557.011962890625,
+        "height": 216.8367919921875,
+        "top": 518.9268188476562,
+        "right": 1186.5059814453125,
+        "bottom": 735.7636108398438,
+        "left": 629.4940185546875
+      },
+      "phase10Rect": {
+        "x": 9167.1298828125,
+        "y": 620.8683471679688,
+        "width": 557.01171875,
+        "height": 216.8369140625,
+        "top": 620.8683471679688,
+        "right": 9724.1416015625,
+        "bottom": 837.7052612304688,
+        "left": 9167.1298828125
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Foundation Spike 0 — Theia substrate qualificationExpandCompactMinimizeClose1 implementation stack · 6 discovered prompts · docs/tasks/p0. Source only; prompt discovery does not determine qualification status.Hide PromptsNext promptsFoundation Spike 0 — Theia substrate qualificationphase · green · Roadmap revision 5ObjectiveNo objective recorded.Ev"
+    },
+    "collapse": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1718,
+        "height": 985,
+        "top": 106,
+        "right": 1767,
+        "bottom": 1091,
+        "left": 49
+      },
+      "camera": "translate(453.177px, -860.243px) scale(1.98933)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+      "selectedLabel": "phase: Foundation Spike 0 — Theia substrate qualification; Green",
+      "selectedRect": {
+        "x": 629.4940185546875,
+        "y": 518.9268188476562,
+        "width": 557.011962890625,
+        "height": 216.8367919921875,
+        "top": 518.9268188476562,
+        "right": 1186.5059814453125,
+        "bottom": 735.7636108398438,
+        "left": 629.4940185546875
+      },
+      "phase10Rect": {
+        "x": 9167.1298828125,
+        "y": 620.8683471679688,
+        "width": 557.01171875,
+        "height": 216.8369140625,
+        "top": 620.8683471679688,
+        "right": 9724.1416015625,
+        "bottom": 837.7052612304688,
+        "left": 9167.1298828125
+      },
+      "nodeCount": 51,
+      "edgeCount": 49,
+      "promptCount": 11,
+      "arrange": "false",
+      "details": "Foundation Spike 0 — Theia substrate qualificationExpandCompactMinimizeClose1 implementation stack · 6 discovered prompts · docs/tasks/p0. Source only; prompt discovery does not determine qualification status.View PromptsNext promptsFoundation Spike 0 — Theia substrate qualificationphase · green · Roadmap revision 5ObjectiveNo objective recorded.Ev"
+    }
+  },
+  "native": {
+    "initial": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(-9590.6px, -427px) scale(1.4)",
+      "detail": "Checkpoint detail",
+      "nodeCount": 0,
+      "edgeCount": 0,
+      "promptCount": 0,
+      "arrange": "false",
+      "details": "Correction c99-orphan — missing Phase 99ExpandCompactMinimizeClose1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.View PromptsNext promptsCorrection c99-orphan — missing Phase 99correction · unknown · Roadmap revision 4ObjectiveDisposable R3 Group 3 presentation "
+    },
+    "fit": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(-9590.6px, -427px) scale(1.4)",
+      "detail": "Checkpoint detail",
+      "nodeCount": 0,
+      "edgeCount": 0,
+      "promptCount": 0,
+      "arrange": "false",
+      "details": "Correction c99-orphan — missing Phase 99ExpandCompactMinimizeClose1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.View PromptsNext promptsCorrection c99-orphan — missing Phase 99correction · unknown · Roadmap revision 4ObjectiveDisposable R3 Group 3 presentation "
+    },
+    "focusPhase": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(-9374.38px, -407.346px) scale(1.37137)",
+      "detail": "Phase detail",
+      "selected": "roadmap:fixture#c99-orphan",
+      "selectedLabel": "correction: Correction c99-orphan — missing Phase 99; Unknown; Parent unresolved: Phase 99 is absent.",
+      "selectedRect": {
+        "x": 718.5068359375,
+        "y": 544.328369140625,
+        "width": 383.9833984375,
+        "height": 149.47900390625,
+        "top": 544.328369140625,
+        "right": 1102.490234375,
+        "bottom": 693.807373046875,
+        "left": 718.5068359375
+      },
+      "phase10Rect": {
+        "x": -3477.875,
+        "y": 544.328369140625,
+        "width": 383.982421875,
+        "height": 126.165771484375,
+        "top": 544.328369140625,
+        "right": -3093.892578125,
+        "bottom": 670.494140625,
+        "left": -3477.875
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Correction c99-orphan — missing Phase 99ExpandCompactMinimizeClose1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.View PromptsNext promptsCorrection c99-orphan — missing Phase 99correction · unknown · Roadmap revision 4ObjectiveDisposable R3 Group 3 presentation "
+    },
+    "zoomIn": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(-14069px, -835px) scale(2)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:fixture#c99-orphan",
+      "selectedLabel": "correction: Correction c99-orphan — missing Phase 99; Unknown; Parent unresolved: Phase 99 is absent.",
+      "selectedRect": {
+        "x": 628,
+        "y": 519,
+        "width": 560,
+        "height": 218,
+        "top": 519,
+        "right": 1188,
+        "bottom": 737,
+        "left": 628
+      },
+      "phase10Rect": {
+        "x": -5492,
+        "y": 519,
+        "width": 560,
+        "height": 218,
+        "top": 519,
+        "right": -4932,
+        "bottom": 737,
+        "left": -5492
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Correction c99-orphan — missing Phase 99ExpandCompactMinimizeClose1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.View PromptsNext promptsCorrection c99-orphan — missing Phase 99correction · unknown · Roadmap revision 4ObjectiveDisposable R3 Group 3 presentation "
+    },
+    "zoomOut": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(-9507.67px, -419.444px) scale(1.38889)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:fixture#c99-orphan",
+      "selectedLabel": "correction: Correction c99-orphan — missing Phase 99; Unknown; Parent unresolved: Phase 99 is absent.",
+      "selectedRect": {
+        "x": 713.5546875,
+        "y": 543.4443969726562,
+        "width": 388.888671875,
+        "height": 151.38885498046875,
+        "top": 543.4443969726562,
+        "right": 1102.443359375,
+        "bottom": 694.833251953125,
+        "left": 713.5546875
+      },
+      "phase10Rect": {
+        "x": -3536.44482421875,
+        "y": 543.4443969726562,
+        "width": 388.888671875,
+        "height": 151.38885498046875,
+        "top": 543.4443969726562,
+        "right": -3147.55615234375,
+        "bottom": 694.833251953125,
+        "left": -3536.44482421875
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Correction c99-orphan — missing Phase 99ExpandCompactMinimizeClose1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.View PromptsNext promptsCorrection c99-orphan — missing Phase 99correction · unknown · Roadmap revision 4ObjectiveDisposable R3 Group 3 presentation "
+    },
+    "pan": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(-9337.67px, -334.444px) scale(1.38889)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:fixture#c99-orphan",
+      "selectedLabel": "correction: Correction c99-orphan — missing Phase 99; Unknown; Parent unresolved: Phase 99 is absent.",
+      "selectedRect": {
+        "x": 883.5546875,
+        "y": 628.4443969726562,
+        "width": 388.888671875,
+        "height": 151.38885498046875,
+        "top": 628.4443969726562,
+        "right": 1272.443359375,
+        "bottom": 779.833251953125,
+        "left": 883.5546875
+      },
+      "phase10Rect": {
+        "x": -3366.44482421875,
+        "y": 628.4443969726562,
+        "width": 388.888671875,
+        "height": 151.38885498046875,
+        "top": 628.4443969726562,
+        "right": -2977.55615234375,
+        "bottom": 779.833251953125,
+        "left": -3366.44482421875
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Correction c99-orphan — missing Phase 99ExpandCompactMinimizeClose1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.View PromptsNext promptsCorrection c99-orphan — missing Phase 99correction · unknown · Roadmap revision 4ObjectiveDisposable R3 Group 3 presentation "
+    },
+    "wheel": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(-13363.1px, -674.889px) scale(1.93714)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:fixture#c99-orphan",
+      "selectedLabel": "correction: Correction c99-orphan — missing Phase 99; Unknown; Parent unresolved: Phase 99 is absent.",
+      "selectedRect": {
+        "x": 873.5107421875,
+        "y": 638.8831787109375,
+        "width": 542.400390625,
+        "height": 211.148681640625,
+        "top": 638.8831787109375,
+        "right": 1415.9111328125,
+        "bottom": 850.0318603515625,
+        "left": 873.5107421875
+      },
+      "phase10Rect": {
+        "x": -5054.1494140625,
+        "y": 638.8831787109375,
+        "width": 542.400390625,
+        "height": 211.148681640625,
+        "top": 638.8831787109375,
+        "right": -4511.7490234375,
+        "bottom": 850.0318603515625,
+        "left": -5054.1494140625
+      },
+      "nodeCount": 57,
+      "edgeCount": 55,
+      "promptCount": 17,
+      "arrange": "false",
+      "details": "Correction c99-orphan — missing Phase 99ExpandCompactMinimizeClose1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.View PromptsNext promptsCorrection c99-orphan — missing Phase 99correction · unknown · Roadmap revision 4ObjectiveDisposable R3 Group 3 presentation "
+    },
+    "selectAfterPan": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(-7346.42px, -741.951px) scale(1.86316)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 647.11865234375,
+        "y": 524.4741821289062,
+        "width": 521.6865234375,
+        "height": 203.0849609375,
+        "top": 524.4741821289062,
+        "right": 1168.80517578125,
+        "bottom": 727.5591430664062,
+        "left": 647.11865234375
+      },
+      "phase10Rect": {
+        "x": 647.11865234375,
+        "y": 524.4741821289062,
+        "width": 521.6865234375,
+        "height": 203.0849609375,
+        "top": 524.4741821289062,
+        "right": 1168.80517578125,
+        "bottom": 727.5591430664062,
+        "left": 647.11865234375
+      },
+      "nodeCount": 73,
+      "edgeCount": 71,
+      "promptCount": 33,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeClose1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.Hide PromptsNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 4Objecti"
+    },
+    "dragOff": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(-7242.99px, -681.429px) scale(1.8624)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 747.2646484375,
+        "y": 584.5042114257812,
+        "width": 521.470703125,
+        "height": 203.0010986328125,
+        "top": 584.5042114257812,
+        "right": 1268.7353515625,
+        "bottom": 787.5053100585938,
+        "left": 747.2646484375
+      },
+      "phase10Rect": {
+        "x": 747.2646484375,
+        "y": 584.5042114257812,
+        "width": 521.470703125,
+        "height": 203.0010986328125,
+        "top": 584.5042114257812,
+        "right": 1268.7353515625,
+        "bottom": 787.5053100585938,
+        "left": 747.2646484375
+      },
+      "nodeCount": 73,
+      "edgeCount": 71,
+      "promptCount": 33,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeClose1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.Hide PromptsNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 4Objecti"
+    },
+    "arrangeOn": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(-7242.99px, -681.429px) scale(1.8624)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 747.2646484375,
+        "y": 584.5042114257812,
+        "width": 521.470703125,
+        "height": 203.0010986328125,
+        "top": 584.5042114257812,
+        "right": 1268.7353515625,
+        "bottom": 787.5053100585938,
+        "left": 747.2646484375
+      },
+      "phase10Rect": {
+        "x": 747.2646484375,
+        "y": 584.5042114257812,
+        "width": 521.470703125,
+        "height": 203.0010986328125,
+        "top": 584.5042114257812,
+        "right": 1268.7353515625,
+        "bottom": 787.5053100585938,
+        "left": 747.2646484375
+      },
+      "nodeCount": 73,
+      "edgeCount": 71,
+      "promptCount": 33,
+      "arrange": "true",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeClose1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.Hide PromptsNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 4Objecti"
+    },
+    "dragOn": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(-7242.99px, -681.429px) scale(1.8624)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 837.2646484375,
+        "y": 635.5042114257812,
+        "width": 521.470703125,
+        "height": 203.0010986328125,
+        "top": 635.5042114257812,
+        "right": 1358.7353515625,
+        "bottom": 838.5053100585938,
+        "left": 837.2646484375
+      },
+      "phase10Rect": {
+        "x": 837.2646484375,
+        "y": 635.5042114257812,
+        "width": 521.470703125,
+        "height": 203.0010986328125,
+        "top": 635.5042114257812,
+        "right": 1358.7353515625,
+        "bottom": 838.5053100585938,
+        "left": 837.2646484375
+      },
+      "nodeCount": 73,
+      "edgeCount": 71,
+      "promptCount": 33,
+      "arrange": "true",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeClose1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.Hide PromptsNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 4Objecti"
+    },
+    "arrangeOff": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(-7242.99px, -681.429px) scale(1.8624)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedLabel": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+      "selectedRect": {
+        "x": 837.2646484375,
+        "y": 635.5042114257812,
+        "width": 521.470703125,
+        "height": 203.0010986328125,
+        "top": 635.5042114257812,
+        "right": 1358.7353515625,
+        "bottom": 838.5053100585938,
+        "left": 837.2646484375
+      },
+      "phase10Rect": {
+        "x": 837.2646484375,
+        "y": 635.5042114257812,
+        "width": 521.470703125,
+        "height": 203.0010986328125,
+        "top": 635.5042114257812,
+        "right": 1358.7353515625,
+        "bottom": 838.5053100585938,
+        "left": 837.2646484375
+      },
+      "nodeCount": 73,
+      "edgeCount": 71,
+      "promptCount": 33,
+      "arrange": "false",
+      "details": "Product Phase 10 — Unified Roadmap & Local-First AI PlanningExpandCompactMinimizeClose1 implementation stack · 16 discovered prompts · docs/tasks/p10. Source only; prompt discovery does not determine qualification status.Hide PromptsNext promptsProduct Phase 10 — Unified Roadmap & Local-First AI Planningphase · not green · Roadmap revision 4Objecti"
+    },
+    "closed": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(479.071px, -741.429px) scale(1.8624)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+      "selectedLabel": "phase: Foundation Spike 0 — Theia substrate qualification; Green",
+      "selectedRect": {
+        "x": 647.2647094726562,
+        "y": 524.5042114257812,
+        "width": 521.4706420898438,
+        "height": 203.0010986328125,
+        "top": 524.5042114257812,
+        "right": 1168.7353515625,
+        "bottom": 727.5053100585938,
+        "left": 647.2647094726562
+      },
+      "phase10Rect": {
+        "x": 8559.32421875,
+        "y": 575.5042114257812,
+        "width": 521.470703125,
+        "height": 203.0010986328125,
+        "top": 575.5042114257812,
+        "right": 9080.794921875,
+        "bottom": 778.5053100585938,
+        "left": 8559.32421875
+      },
+      "nodeCount": 67,
+      "edgeCount": 65,
+      "promptCount": 27,
+      "arrange": "false",
+      "details": "Foundation Spike 0 — Theia substrate qualificationExpandCompactMinimizeClose1 implementation stack · 6 discovered prompts · docs/tasks/p0. Source only; prompt discovery does not determine qualification status.View PromptsNext promptsFoundation Spike 0 — Theia substrate qualificationphase · green · Roadmap revision 4ObjectiveNo objective recorded.Ev"
+    },
+    "open": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(479.071px, -741.429px) scale(1.8624)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+      "selectedLabel": "phase: Foundation Spike 0 — Theia substrate qualification; Green",
+      "selectedRect": {
+        "x": 647.2647094726562,
+        "y": 524.5042114257812,
+        "width": 521.4706420898438,
+        "height": 203.0010986328125,
+        "top": 524.5042114257812,
+        "right": 1168.7353515625,
+        "bottom": 727.5053100585938,
+        "left": 647.2647094726562
+      },
+      "phase10Rect": {
+        "x": 8559.32421875,
+        "y": 575.5042114257812,
+        "width": 521.470703125,
+        "height": 203.0010986328125,
+        "top": 575.5042114257812,
+        "right": 9080.794921875,
+        "bottom": 778.5053100585938,
+        "left": 8559.32421875
+      },
+      "nodeCount": 73,
+      "edgeCount": 71,
+      "promptCount": 33,
+      "arrange": "false",
+      "details": "Foundation Spike 0 — Theia substrate qualificationExpandCompactMinimizeClose1 implementation stack · 6 discovered prompts · docs/tasks/p0. Source only; prompt discovery does not determine qualification status.Hide PromptsNext promptsFoundation Spike 0 — Theia substrate qualificationphase · green · Roadmap revision 4ObjectiveNo objective recorded.Ev"
+    },
+    "collapse": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      },
+      "camera": "translate(479.071px, -741.429px) scale(1.8624)",
+      "detail": "Checkpoint detail",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+      "selectedLabel": "phase: Foundation Spike 0 — Theia substrate qualification; Green",
+      "selectedRect": {
+        "x": 647.2647094726562,
+        "y": 524.5042114257812,
+        "width": 521.4706420898438,
+        "height": 203.0010986328125,
+        "top": 524.5042114257812,
+        "right": 1168.7353515625,
+        "bottom": 727.5053100585938,
+        "left": 647.2647094726562
+      },
+      "phase10Rect": {
+        "x": 8559.32421875,
+        "y": 575.5042114257812,
+        "width": 521.470703125,
+        "height": 203.0010986328125,
+        "top": 575.5042114257812,
+        "right": 9080.794921875,
+        "bottom": 778.5053100585938,
+        "left": 8559.32421875
+      },
+      "nodeCount": 67,
+      "edgeCount": 65,
+      "promptCount": 27,
+      "arrange": "false",
+      "details": "Foundation Spike 0 — Theia substrate qualificationExpandCompactMinimizeClose1 implementation stack · 6 discovered prompts · docs/tasks/p0. Source only; prompt discovery does not determine qualification status.View PromptsNext promptsFoundation Spike 0 — Theia substrate qualificationphase · green · Roadmap revision 4ObjectiveNo objective recorded.Ev"
+    }
+  }
+}

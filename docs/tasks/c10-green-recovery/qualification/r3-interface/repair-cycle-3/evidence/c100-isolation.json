@@ -1,0 +1,88 @@
+{
+  "browser": {
+    "viewport": [
+      1920,
+      1113
+    ],
+    "camera": "translate(-8246.6px, -459.5px) scale(1.4)",
+    "stage": {
+      "x": 49,
+      "y": 106,
+      "width": 1718,
+      "height": 985,
+      "top": 106,
+      "right": 1767,
+      "bottom": 1091,
+      "left": 49
+    },
+    "phase100": {
+      "x": 712,
+      "y": 542.5,
+      "width": 392,
+      "height": 128.7999267578125,
+      "top": 542.5,
+      "right": 1104,
+      "bottom": 671.2999267578125,
+      "left": 712
+    },
+    "c100": {
+      "x": 751.2001953125,
+      "y": 212.0999755859375,
+      "width": 392,
+      "height": 128.79998779296875,
+      "top": 212.0999755859375,
+      "right": 1143.2001953125,
+      "bottom": 340.89996337890625,
+      "left": 751.2001953125
+    },
+    "edges": [
+      {
+        "id": "view:dependency:roadmap:fixture#phase-100:roadmap:fixture#c100-other",
+        "label": "Stored Roadmap dependency and correction membership: correction branch; Product Phase 100 — Distant future isolation check to Correction c100-other — isolated from c10; endpoint status unknown"
+      }
+    ]
+  },
+  "native": {
+    "viewport": [
+      1920,
+      1146
+    ],
+    "camera": "translate(-8246.6px, -427px) scale(1.4)",
+    "stage": {
+      "x": 49,
+      "y": 74,
+      "width": 1718,
+      "height": 1050,
+      "top": 74,
+      "right": 1767,
+      "bottom": 1124,
+      "left": 49
+    },
+    "phase100": {
+      "x": 712,
+      "y": 543,
+      "width": 392,
+      "height": 128.7999267578125,
+      "top": 543,
+      "right": 1104,
+      "bottom": 671.7999267578125,
+      "left": 712
+    },
+    "c100": {
+      "x": 751.2001953125,
+      "y": 212.5999755859375,
+      "width": 392,
+      "height": 128.79998779296875,
+      "top": 212.5999755859375,
+      "right": 1143.2001953125,
+      "bottom": 341.39996337890625,
+      "left": 751.2001953125
+    },
+    "edges": [
+      {
+        "id": "view:dependency:roadmap:fixture#phase-100:roadmap:fixture#c100-other",
+        "label": "Stored Roadmap dependency and correction membership: correction branch; Product Phase 100 — Distant future isolation check to Correction c100-other — isolated from c10; endpoint status unknown"
+      }
+    ]
+  }
+}

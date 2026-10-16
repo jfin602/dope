@@ -1,0 +1,366 @@
+[
+  {
+    "root": "/tmp/dope-r3-g2-browser",
+    "projectId": "a53e0c28-eef7-4c0b-8419-e6339f22c58d",
+    "revision": 5,
+    "linkedSourceHash": "d436aec16228afc65b9dea47d1a3547a6754c30c3f929584fb1f5b0153bce7c1",
+    "checkpoints": [
+      {
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "dependencies": [
+          "roadmap:docs/roadmap/mvp-roadmap.md#phase-9"
+        ],
+        "status": "not-green"
+      },
+      {
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+        "dependencies": [
+          "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+        ],
+        "status": "not-implemented"
+      },
+      {
+        "id": "roadmap:fixture#c100-other",
+        "dependencies": [
+          "roadmap:fixture#phase-100"
+        ],
+        "status": "unknown"
+      },
+      {
+        "id": "roadmap:fixture#c10-recovery-a",
+        "dependencies": [
+          "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+        ],
+        "status": "unknown"
+      }
+    ],
+    "diagnostics": [
+      "Unresolved correction phase: roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction: No reliable correction phase identifier.",
+      "Unresolved correction phase: roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-map-canvas-priority-correction: No reliable correction phase identifier.",
+      "Unresolved correction phase: roadmap:fixture#c88-ambiguous: Ambiguous Phase 88 association.",
+      "Unresolved correction phase: roadmap:fixture#c99-orphan: Phase 99 is absent."
+    ],
+    "associations": [
+      {
+        "id": "roadmap:fixture#c100-other",
+        "phaseAssociation": {
+          "phaseId": "roadmap:fixture#phase-100",
+          "source": "explicit"
+        }
+      },
+      {
+        "id": "roadmap:fixture#c99-orphan",
+        "phaseAssociation": {
+          "unresolvedReason": "Phase 99 is absent."
+        }
+      },
+      {
+        "id": "roadmap:fixture#c88-ambiguous",
+        "phaseAssociation": {
+          "unresolvedReason": "Ambiguous Phase 88 association."
+        }
+      },
+      {
+        "id": "roadmap:fixture#c10-recovery-a",
+        "phaseAssociation": {
+          "phaseId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "source": "explicit"
+        }
+      },
+      {
+        "id": "roadmap:fixture#c10-recovery-b",
+        "phaseAssociation": {
+          "phaseId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "source": "identifier"
+        }
+      },
+      {
+        "id": "roadmap:fixture#c10-recovery-c",
+        "phaseAssociation": {
+          "phaseId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "source": "identifier"
+        }
+      }
+    ],
+    "projectionEdges": [
+      {
+        "id": "dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "to": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+        "kind": "dependency"
+      },
+      {
+        "id": "dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "to": "roadmap:fixture#c10-recovery-a",
+        "kind": "branch"
+      },
+      {
+        "id": "dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-9:roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+        "to": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "kind": "dependency"
+      },
+      {
+        "id": "dependency:roadmap:fixture#phase-100:roadmap:fixture#c100-other",
+        "from": "roadmap:fixture#phase-100",
+        "to": "roadmap:fixture#c100-other",
+        "kind": "branch"
+      }
+    ],
+    "canvasEdges": [
+      {
+        "id": "view:progression:roadmap:docs/roadmap/mvp-roadmap.md#phase-9:roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+        "to": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "kind": "progression",
+        "label": "Chronological phase progression; no release gate implied"
+      },
+      {
+        "id": "view:progression:roadmap:fixture#phase-88-b:roadmap:fixture#phase-100",
+        "from": "roadmap:fixture#phase-88-b",
+        "to": "roadmap:fixture#phase-100",
+        "kind": "progression",
+        "label": "Chronological phase progression; no release gate implied"
+      },
+      {
+        "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-9:roadmap:docs/roadmap/mvp-roadmap.md#c9-codex-chat",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+        "to": "roadmap:docs/roadmap/mvp-roadmap.md#c9-codex-chat",
+        "kind": "membership",
+        "label": "Correction belongs to Product Phase 9 — Developer Continuity / History"
+      },
+      {
+        "id": "view:membership:roadmap:fixture#phase-100:roadmap:fixture#c100-other",
+        "from": "roadmap:fixture#phase-100",
+        "to": "roadmap:fixture#c100-other",
+        "kind": "membership",
+        "label": "Correction belongs to Product Phase 100 — Distant future isolation check"
+      },
+      {
+        "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "to": "roadmap:fixture#c10-recovery-a",
+        "kind": "membership",
+        "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+      },
+      {
+        "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-b",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "to": "roadmap:fixture#c10-recovery-b",
+        "kind": "membership",
+        "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+      },
+      {
+        "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-c",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "to": "roadmap:fixture#c10-recovery-c",
+        "kind": "membership",
+        "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+      },
+      {
+        "id": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "to": "roadmap:fixture#c10-recovery-a",
+        "kind": "dependency",
+        "label": "Stored Roadmap dependency: correction branch"
+      },
+      {
+        "id": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-9:roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+        "to": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "kind": "dependency",
+        "label": "Stored Roadmap dependency: Depends on"
+      },
+      {
+        "id": "view:dependency:roadmap:fixture#phase-100:roadmap:fixture#c100-other",
+        "from": "roadmap:fixture#phase-100",
+        "to": "roadmap:fixture#c100-other",
+        "kind": "dependency",
+        "label": "Stored Roadmap dependency: correction branch"
+      }
+    ]
+  },
+  {
+    "root": "/tmp/dope-r3-g2-native",
+    "projectId": "a0f1243b-f230-4318-a207-ed7629c6561f",
+    "revision": 4,
+    "linkedSourceHash": "bf5486fb22a890064e99a8eba7ebc369bf4f41942caacf47f1516335cd2a2d02",
+    "checkpoints": [
+      {
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "dependencies": [
+          "roadmap:docs/roadmap/mvp-roadmap.md#phase-9"
+        ],
+        "status": "not-green"
+      },
+      {
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+        "dependencies": [
+          "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+        ],
+        "status": "not-implemented"
+      },
+      {
+        "id": "roadmap:fixture#c100-other",
+        "dependencies": [
+          "roadmap:fixture#phase-100"
+        ],
+        "status": "unknown"
+      },
+      {
+        "id": "roadmap:fixture#c10-recovery-a",
+        "dependencies": [
+          "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+        ],
+        "status": "unknown"
+      }
+    ],
+    "diagnostics": [
+      "Unresolved correction phase: roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction: No reliable correction phase identifier.",
+      "Unresolved correction phase: roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-map-canvas-priority-correction: No reliable correction phase identifier.",
+      "Unresolved correction phase: roadmap:fixture#c88-ambiguous: Ambiguous Phase 88 association.",
+      "Unresolved correction phase: roadmap:fixture#c99-orphan: Phase 99 is absent."
+    ],
+    "associations": [
+      {
+        "id": "roadmap:fixture#c100-other",
+        "phaseAssociation": {
+          "phaseId": "roadmap:fixture#phase-100",
+          "source": "explicit"
+        }
+      },
+      {
+        "id": "roadmap:fixture#c99-orphan",
+        "phaseAssociation": {
+          "unresolvedReason": "Phase 99 is absent."
+        }
+      },
+      {
+        "id": "roadmap:fixture#c88-ambiguous",
+        "phaseAssociation": {
+          "unresolvedReason": "Ambiguous Phase 88 association."
+        }
+      },
+      {
+        "id": "roadmap:fixture#c10-recovery-a",
+        "phaseAssociation": {
+          "phaseId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "source": "explicit"
+        }
+      },
+      {
+        "id": "roadmap:fixture#c10-recovery-b",
+        "phaseAssociation": {
+          "phaseId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "source": "identifier"
+        }
+      },
+      {
+        "id": "roadmap:fixture#c10-recovery-c",
+        "phaseAssociation": {
+          "phaseId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "source": "identifier"
+        }
+      }
+    ],
+    "projectionEdges": [
+      {
+        "id": "dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "to": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+        "kind": "dependency"
+      },
+      {
+        "id": "dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "to": "roadmap:fixture#c10-recovery-a",
+        "kind": "branch"
+      },
+      {
+        "id": "dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-9:roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+        "to": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "kind": "dependency"
+      },
+      {
+        "id": "dependency:roadmap:fixture#phase-100:roadmap:fixture#c100-other",
+        "from": "roadmap:fixture#phase-100",
+        "to": "roadmap:fixture#c100-other",
+        "kind": "branch"
+      }
+    ],
+    "canvasEdges": [
+      {
+        "id": "view:progression:roadmap:docs/roadmap/mvp-roadmap.md#phase-9:roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+        "to": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "kind": "progression",
+        "label": "Chronological phase progression; no release gate implied"
+      },
+      {
+        "id": "view:progression:roadmap:fixture#phase-88-b:roadmap:fixture#phase-100",
+        "from": "roadmap:fixture#phase-88-b",
+        "to": "roadmap:fixture#phase-100",
+        "kind": "progression",
+        "label": "Chronological phase progression; no release gate implied"
+      },
+      {
+        "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-9:roadmap:docs/roadmap/mvp-roadmap.md#c9-codex-chat",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+        "to": "roadmap:docs/roadmap/mvp-roadmap.md#c9-codex-chat",
+        "kind": "membership",
+        "label": "Correction belongs to Product Phase 9 — Developer Continuity / History"
+      },
+      {
+        "id": "view:membership:roadmap:fixture#phase-100:roadmap:fixture#c100-other",
+        "from": "roadmap:fixture#phase-100",
+        "to": "roadmap:fixture#c100-other",
+        "kind": "membership",
+        "label": "Correction belongs to Product Phase 100 — Distant future isolation check"
+      },
+      {
+        "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "to": "roadmap:fixture#c10-recovery-a",
+        "kind": "membership",
+        "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+      },
+      {
+        "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-b",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "to": "roadmap:fixture#c10-recovery-b",
+        "kind": "membership",
+        "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+      },
+      {
+        "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-c",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "to": "roadmap:fixture#c10-recovery-c",
+        "kind": "membership",
+        "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+      },
+      {
+        "id": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "to": "roadmap:fixture#c10-recovery-a",
+        "kind": "dependency",
+        "label": "Stored Roadmap dependency: correction branch"
+      },
+      {
+        "id": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-9:roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "from": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+        "to": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "kind": "dependency",
+        "label": "Stored Roadmap dependency: Depends on"
+      },
+      {
+        "id": "view:dependency:roadmap:fixture#phase-100:roadmap:fixture#c100-other",
+        "from": "roadmap:fixture#phase-100",
+        "to": "roadmap:fixture#c100-other",
+        "kind": "dependency",
+        "label": "Stored Roadmap dependency: correction branch"
+      }
+    ]
+  }
+]

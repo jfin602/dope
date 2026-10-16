@@ -1,0 +1,1137 @@
+{
+  "browser": {
+    "initial": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 859,
+        "height": 985
+      },
+      "transform": "translate(-5704.21px, -127.514px) scale(1.38396)",
+      "detail": "Checkpoint detail",
+      "status": "✓Green",
+      "selected": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fp0:P1",
+      "nodes": [
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+          "label": "phase: Product Phase 9 — Developer Continuity / History; Green; Chronological phase progression; no release gate implied Product Phase 8 — Coding Agent / Scoped Delegation",
+          "rect": {
+            "x": -335.26806640625,
+            "y": 864.22021484375,
+            "width": 387.5087890625,
+            "height": 150.8515625
+          }
+        },
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+          "rect": {
+            "x": 245.9951171875,
+            "y": 864.22021484375,
+            "width": 387.50830078125,
+            "height": 150.8515625
+          }
+        },
+        {
+          "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+          "label": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 284.74560546875,
+            "y": 545.9095458984375,
+            "width": 387.5087890625,
+            "height": 105.180908203125
+          }
+        },
+        {
+          "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-horizontal-color:stack:correction",
+          "label": "correction: c10-horizontal-color; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 284.74560546875,
+            "y": 263.5818786621094,
+            "width": 387.5087890625,
+            "height": 105.180908203125
+          }
+        },
+        {
+          "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-roadmap-create-sync:stack:correction",
+          "label": "correction: c10-roadmap-create-sync; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 284.74560546875,
+            "y": -18.74578094482422,
+            "width": 387.5087890625,
+            "height": 105.18089294433594
+          }
+        },
+        {
+          "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-roadmap-qualify:stack:correction",
+          "label": "correction: c10-roadmap-qualify; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 284.74560546875,
+            "y": -301.0734558105469,
+            "width": 387.5087890625,
+            "height": 105.18087768554688
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-a",
+          "label": "correction: Correction c10-recovery-a — relationship qualification; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning, Stored Roadmap dependency: correction branch Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 284.74560546875,
+            "y": -591.704833984375,
+            "width": 387.5087890625,
+            "height": 127.32421875
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-b",
+          "label": "correction: Correction c10-recovery-b — dense branch from Phase 10 with a deliberately long readable label covering planning review, local authority, and source reconciliation; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 284.74560546875,
+            "y": -1065.0189208984375,
+            "width": 387.5087890625,
+            "height": 193.7542724609375
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-c",
+          "label": "correction: Correction c10-recovery-c — parallel support branch; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 284.74560546875,
+            "y": -1355.6502685546875,
+            "width": 387.5087890625,
+            "height": 127.32421875
+          }
+        },
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+          "label": "phase: Product Phase 11 — Human-Centered UI / Usability Qualification; Not implemented; Chronological phase progression; no release gate implied Product Phase 10 — Unified Roadmap & Local-First AI Planning, Stored Roadmap dependency: Depends on Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 827.2578125,
+            "y": 864.22021484375,
+            "width": 387.50830078125,
+            "height": 150.8515625
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-88-a",
+          "label": "phase: Product Phase 88 — First ambiguous candidate; Unknown; Chronological phase progression; no release gate implied Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11)",
+          "rect": {
+            "x": 1989.783203125,
+            "y": 864.22021484375,
+            "width": 387.5087890625,
+            "height": 127.32421875
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-88-b",
+          "label": "phase: Product Phase 88 — Second ambiguous candidate; Unknown; Chronological phase progression; no release gate implied Product Phase 88 — First ambiguous candidate",
+          "rect": {
+            "x": 2571.0458984375,
+            "y": 864.22021484375,
+            "width": 387.5087890625,
+            "height": 127.32421875
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-100",
+          "label": "phase: Product Phase 100 — Distant future isolation check; Unknown; Chronological phase progression; no release gate implied Product Phase 88 — Second ambiguous candidate",
+          "rect": {
+            "x": 3152.3095703125,
+            "y": 864.22021484375,
+            "width": 387.5078125,
+            "height": 127.32421875
+          }
+        },
+        {
+          "id": "roadmap:fixture#c100-other",
+          "label": "correction: Correction c100-other — isolated from c10; Unknown; Correction belongs to Product Phase 100 — Distant future isolation check Product Phase 100 — Distant future isolation check, Stored Roadmap dependency: correction branch Product Phase 100 — Distant future isolation check",
+          "rect": {
+            "x": 3191.0595703125,
+            "y": 537.6058349609375,
+            "width": 387.5087890625,
+            "height": 127.32421875
+          }
+        },
+        {
+          "id": "roadmap:fixture#c99-orphan",
+          "label": "correction: Correction c99-orphan — missing Phase 99; Unknown",
+          "rect": {
+            "x": 4480.91015625,
+            "y": 864.22021484375,
+            "width": 387.5087890625,
+            "height": 127.32421875
+          }
+        },
+        {
+          "id": "roadmap:fixture#c88-ambiguous",
+          "label": "correction: Correction c88-ambiguous — two Phase 88 candidates; Unknown",
+          "rect": {
+            "x": 5062.1728515625,
+            "y": 864.22021484375,
+            "width": 387.5087890625,
+            "height": 127.32421875
+          }
+        }
+      ],
+      "edges": []
+    },
+    "focus": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 859,
+        "height": 985
+      },
+      "transform": "translate(-5736.1px, -459.5px) scale(1.4)",
+      "detail": "Checkpoint detail",
+      "status": "✓Green",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "nodes": [
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+          "label": "phase: Product Phase 9 — Developer Continuity / History; Green; Chronological phase progression; no release gate implied Product Phase 8 — Coding Agent / Scoped Delegation",
+          "rect": {
+            "x": -305.5,
+            "y": 542.5,
+            "width": 392,
+            "height": 152.5999755859375
+          }
+        },
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+          "rect": {
+            "x": 282.5,
+            "y": 542.5,
+            "width": 392,
+            "height": 152.5999755859375
+          }
+        },
+        {
+          "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+          "label": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 321.69970703125,
+            "y": 220.5,
+            "width": 392,
+            "height": 106.39996337890625
+          }
+        },
+        {
+          "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-horizontal-color:stack:correction",
+          "label": "correction: c10-horizontal-color; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 321.69970703125,
+            "y": -65.10000610351562,
+            "width": 392,
+            "height": 106.39999389648438
+          }
+        },
+        {
+          "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-roadmap-create-sync:stack:correction",
+          "label": "correction: c10-roadmap-create-sync; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 321.69970703125,
+            "y": -350.70001220703125,
+            "width": 392,
+            "height": 106.4000244140625
+          }
+        },
+        {
+          "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-roadmap-qualify:stack:correction",
+          "label": "correction: c10-roadmap-qualify; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 321.69970703125,
+            "y": -636.2999877929688,
+            "width": 392,
+            "height": 106.39996337890625
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-a",
+          "label": "correction: Correction c10-recovery-a — relationship qualification; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning, Stored Roadmap dependency: correction branch Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 321.69970703125,
+            "y": -930.300048828125,
+            "width": 392,
+            "height": 128.800048828125
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-b",
+          "label": "correction: Correction c10-recovery-b — dense branch from Phase 10 with a deliberately long readable label covering planning review, local authority, and source reconciliation; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 321.69970703125,
+            "y": -1409.0999755859375,
+            "width": 392,
+            "height": 196
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-c",
+          "label": "correction: Correction c10-recovery-c — parallel support branch; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 321.69970703125,
+            "y": -1703.0999755859375,
+            "width": 392,
+            "height": 128.800048828125
+          }
+        },
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+          "label": "phase: Product Phase 11 — Human-Centered UI / Usability Qualification; Not implemented; Chronological phase progression; no release gate implied Product Phase 10 — Unified Roadmap & Local-First AI Planning, Stored Roadmap dependency: Depends on Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 870.5,
+            "y": 542.5,
+            "width": 392,
+            "height": 152.5999755859375
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-88-a",
+          "label": "phase: Product Phase 88 — First ambiguous candidate; Unknown; Chronological phase progression; no release gate implied Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11)",
+          "rect": {
+            "x": 2046.5,
+            "y": 542.5,
+            "width": 392,
+            "height": 128.7999267578125
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-88-b",
+          "label": "phase: Product Phase 88 — Second ambiguous candidate; Unknown; Chronological phase progression; no release gate implied Product Phase 88 — First ambiguous candidate",
+          "rect": {
+            "x": 2634.49951171875,
+            "y": 542.5,
+            "width": 392,
+            "height": 128.7999267578125
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-100",
+          "label": "phase: Product Phase 100 — Distant future isolation check; Unknown; Chronological phase progression; no release gate implied Product Phase 88 — Second ambiguous candidate",
+          "rect": {
+            "x": 3222.49951171875,
+            "y": 542.5,
+            "width": 392,
+            "height": 128.7999267578125
+          }
+        },
+        {
+          "id": "roadmap:fixture#c100-other",
+          "label": "correction: Correction c100-other — isolated from c10; Unknown; Correction belongs to Product Phase 100 — Distant future isolation check Product Phase 100 — Distant future isolation check, Stored Roadmap dependency: correction branch Product Phase 100 — Distant future isolation check",
+          "rect": {
+            "x": 3261.69970703125,
+            "y": 212.0999755859375,
+            "width": 392,
+            "height": 128.79998779296875
+          }
+        },
+        {
+          "id": "roadmap:fixture#c99-orphan",
+          "label": "correction: Correction c99-orphan — missing Phase 99; Unknown",
+          "rect": {
+            "x": 4566.49951171875,
+            "y": 542.5,
+            "width": 392,
+            "height": 128.7999267578125
+          }
+        },
+        {
+          "id": "roadmap:fixture#c88-ambiguous",
+          "label": "correction: Correction c88-ambiguous — two Phase 88 candidates; Unknown",
+          "rect": {
+            "x": 5154.49951171875,
+            "y": 542.5,
+            "width": 392,
+            "height": 128.7999267578125
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-a — relationship qualification; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000463829434 635.4999660426723 L 4404.000463829434 609.4999660426723 L 4644.000463829434 609.4999660426723 L 4644.000463829434 -365.9998779596789 L 4576.500696986148 -365.9998779596789"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-b",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-b — dense branch from Phase 10 with a deliberately long readable label covering planning review, local authority, and source reconciliation; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000463829434 635.4999660426723 L 4404.000463829434 609.4999660426723 L 4644.000463829434 609.4999660426723 L 4644.000463829434 -683.999829168955 L 4576.500696986148 -683.999829168955"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-c",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-c — parallel support branch; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000463829434 635.4999660426723 L 4404.000463829434 609.4999660426723 L 4644.000463829434 609.4999660426723 L 4644.000463829434 -917.9999220646869 L 4576.500696986148 -917.9999220646869"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-better-planning; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000463829434 635.4999660426723 L 4404.000463829434 609.4999660426723 L 4644.000463829434 609.4999660426723 L 4644.000463829434 448.00009107507714 L 4576.500696986148 448.00009107507714"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-horizontal-color:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-horizontal-color; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000463829434 635.4999660426723 L 4404.000463829434 609.4999660426723 L 4644.000463829434 609.4999660426723 L 4644.000463829434 244.00013518008507 L 4576.500696986148 244.00013518008507"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-roadmap-create-sync:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-roadmap-create-sync; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000463829434 635.4999660426723 L 4404.000463829434 609.4999660426723 L 4644.000463829434 609.4999660426723 L 4644.000463829434 40.00009107507714 L 4576.500696986148 40.00009107507714"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-roadmap-qualify:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-roadmap-qualify; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000463829434 635.4999660426723 L 4404.000463829434 609.4999660426723 L 4644.000463829434 609.4999660426723 L 4644.000463829434 -163.99990892492286 L 4576.500696986148 -163.99990892492286"
+        },
+        {
+          "id": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+          "label": "Stored Roadmap dependency: correction branch; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-a — relationship qualification; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-smoothstep dope-roadmap-edge dope-roadmap-edge-dependency dope-roadmap-edge-not-green dope-roadmap-edge-related nopan inactive",
+          "path": "M4548.500696986148 694.5001273752629L 4563.500696986148,694.5001273752629Q 4568.500696986148,694.5001273752629 4568.500696986148,689.5001273752629L 4568.500696986148,169.250124707792Q 4568.500696986148,164.250124707792 4563.500696986148,164.250124707792L 4272.499877832656,164.250124707792Q 4267.499877832656,164.250124707792 4267.499877832656,159.250124707792L 4267.499877832656,-360.9998779596789Q 4267.499877832656,-365.9998779596789 4272.499877832656,-365.9998779596789L4287.499877832656 -365.9998779596789"
+        }
+      ]
+    },
+    "fit": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "outer": [
+        1920,
+        1200
+      ],
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 859,
+        "height": 985
+      },
+      "transform": "translate(-379.3px, 406.7px) scale(0.2)",
+      "detail": "Phase detail",
+      "status": "✓Green",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "nodes": [
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+          "label": "phase: Product Phase 9 — Developer Continuity / History; Green; Chronological phase progression; no release gate implied Product Phase 8 — Coding Agent / Scoped Delegation",
+          "rect": {
+            "x": 438.5,
+            "y": 640.7000122070312,
+            "width": 56,
+            "height": 18.4000244140625
+          }
+        },
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+          "rect": {
+            "x": 522.5,
+            "y": 640.7000122070312,
+            "width": 56,
+            "height": 18.4000244140625
+          }
+        },
+        {
+          "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+          "label": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 594.7000122070312,
+            "width": 56,
+            "height": 15.20001220703125
+          }
+        },
+        {
+          "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-horizontal-color:stack:correction",
+          "label": "correction: c10-horizontal-color; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 553.9000244140625,
+            "width": 56,
+            "height": 15.199951171875
+          }
+        },
+        {
+          "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-roadmap-create-sync:stack:correction",
+          "label": "correction: c10-roadmap-create-sync; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 513.0999755859375,
+            "width": 56,
+            "height": 15.2000732421875
+          }
+        },
+        {
+          "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-roadmap-qualify:stack:correction",
+          "label": "correction: c10-roadmap-qualify; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 472.3000183105469,
+            "width": 56,
+            "height": 15.199981689453125
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-a",
+          "label": "correction: Correction c10-recovery-a — relationship qualification; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning, Stored Roadmap dependency: correction branch Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 430.3000183105469,
+            "width": 56,
+            "height": 18.399993896484375
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-b",
+          "label": "correction: Correction c10-recovery-b — dense branch from Phase 10 with a deliberately long readable label covering planning review, local authority, and source reconciliation; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 361.9000244140625,
+            "width": 56,
+            "height": 28
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-c",
+          "label": "correction: Correction c10-recovery-c — parallel support branch; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 319.9000244140625,
+            "width": 56,
+            "height": 18.39996337890625
+          }
+        },
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+          "label": "phase: Product Phase 11 — Human-Centered UI / Usability Qualification; Not implemented; Chronological phase progression; no release gate implied Product Phase 10 — Unified Roadmap & Local-First AI Planning, Stored Roadmap dependency: Depends on Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 606.5,
+            "y": 640.7000122070312,
+            "width": 56,
+            "height": 18.4000244140625
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-88-a",
+          "label": "phase: Product Phase 88 — First ambiguous candidate; Unknown; Chronological phase progression; no release gate implied Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11)",
+          "rect": {
+            "x": 774.5000610351562,
+            "y": 640.7000122070312,
+            "width": 56,
+            "height": 18.4000244140625
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-88-b",
+          "label": "phase: Product Phase 88 — Second ambiguous candidate; Unknown; Chronological phase progression; no release gate implied Product Phase 88 — First ambiguous candidate",
+          "rect": {
+            "x": 858.5000610351562,
+            "y": 640.7000122070312,
+            "width": 56,
+            "height": 18.4000244140625
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-100",
+          "label": "phase: Product Phase 100 — Distant future isolation check; Unknown; Chronological phase progression; no release gate implied Product Phase 88 — Second ambiguous candidate",
+          "rect": {
+            "x": 942.5000610351562,
+            "y": 640.7000122070312,
+            "width": 56,
+            "height": 18.4000244140625
+          }
+        },
+        {
+          "id": "roadmap:fixture#c100-other",
+          "label": "correction: Correction c100-other — isolated from c10; Unknown; Correction belongs to Product Phase 100 — Distant future isolation check Product Phase 100 — Distant future isolation check, Stored Roadmap dependency: correction branch Product Phase 100 — Distant future isolation check",
+          "rect": {
+            "x": 948.1000366210938,
+            "y": 593.5,
+            "width": 56,
+            "height": 18.4000244140625
+          }
+        },
+        {
+          "id": "roadmap:fixture#c99-orphan",
+          "label": "correction: Correction c99-orphan — missing Phase 99; Unknown",
+          "rect": {
+            "x": 1134.5,
+            "y": 640.7000122070312,
+            "width": 56,
+            "height": 18.4000244140625
+          }
+        },
+        {
+          "id": "roadmap:fixture#c88-ambiguous",
+          "label": "correction: Correction c88-ambiguous — two Phase 88 candidates; Unknown",
+          "rect": {
+            "x": 1218.5,
+            "y": 640.7000122070312,
+            "width": 56,
+            "height": 18.4000244140625
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-a — relationship qualification; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000183105469 635.4998779296875 L 4404.000183105469 609.4998779296875 L 4644.000183105469 609.4998779296875 L 4644.000183105469 -366.00006103515625 L 4576.4998779296875 -366.00006103515625"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-b",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-b — dense branch from Phase 10 with a deliberately long readable label covering planning review, local authority, and source reconciliation; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000183105469 635.4998779296875 L 4404.000183105469 609.4998779296875 L 4644.000183105469 609.4998779296875 L 4644.000183105469 -684.0001220703125 L 4576.4998779296875 -684.0001220703125"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-c",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-c — parallel support branch; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000183105469 635.4998779296875 L 4404.000183105469 609.4998779296875 L 4644.000183105469 609.4998779296875 L 4644.000183105469 -918.0000610351562 L 4576.4998779296875 -918.0000610351562"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-better-planning; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000183105469 635.4998779296875 L 4404.000183105469 609.4998779296875 L 4644.000183105469 609.4998779296875 L 4644.000183105469 448.00006103515625 L 4576.4998779296875 448.00006103515625"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-horizontal-color:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-horizontal-color; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000183105469 635.4998779296875 L 4404.000183105469 609.4998779296875 L 4644.000183105469 609.4998779296875 L 4644.000183105469 243.999755859375 L 4576.4998779296875 243.999755859375"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-roadmap-create-sync:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-roadmap-create-sync; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000183105469 635.4998779296875 L 4404.000183105469 609.4998779296875 L 4644.000183105469 609.4998779296875 L 4644.000183105469 40.0003662109375 L 4576.4998779296875 40.0003662109375"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-roadmap-qualify:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-roadmap-qualify; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership dope-roadmap-edge-related nopan inactive",
+          "path": "M 4404.000183105469 635.4998779296875 L 4404.000183105469 609.4998779296875 L 4644.000183105469 609.4998779296875 L 4644.000183105469 -164.00009155273438 L 4576.4998779296875 -164.00009155273438"
+        },
+        {
+          "id": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+          "label": "Stored Roadmap dependency: correction branch; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-a — relationship qualification; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-smoothstep dope-roadmap-edge dope-roadmap-edge-dependency dope-roadmap-edge-not-green dope-roadmap-edge-related nopan inactive",
+          "path": "M4548.500183105469 685.9999389648438L 4563.500183105469,685.9999389648438Q 4568.500183105469,685.9999389648438 4568.500183105469,680.9999389648438L 4568.500183105469,164.99993896484375Q 4568.500183105469,159.99993896484375 4563.500183105469,159.99993896484375L 4272.4998779296875,159.99993896484375Q 4267.4998779296875,159.99993896484375 4267.4998779296875,154.99993896484375L 4267.4998779296875,-361.00006103515625Q 4267.4998779296875,-366.00006103515625 4272.4998779296875,-366.00006103515625L4287.4998779296875 -366.00006103515625"
+        }
+      ]
+    }
+  },
+  "native": {
+    "initial": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 859,
+        "height": 1050
+      },
+      "transform": "translate(-5755.63px, -100.211px) scale(1.39556)",
+      "detail": "Checkpoint detail",
+      "nodes": [],
+      "edges": []
+    },
+    "focus": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 859,
+        "height": 1050
+      },
+      "transform": "translate(143.9px, -771.4px) scale(1.4)",
+      "detail": "Checkpoint detail",
+      "status": "✓Green",
+      "selected": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+      "nodes": [
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+          "label": "phase: Product Phase 9 — Developer Continuity / History; Green; Chronological phase progression; no release gate implied Product Phase 8 — Coding Agent / Scoped Delegation",
+          "rect": {
+            "x": 5574.5,
+            "y": 198.5999755859375,
+            "width": 392,
+            "height": 152.5999755859375
+          }
+        },
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+          "rect": {
+            "x": 6162.5,
+            "y": 198.5999755859375,
+            "width": 392,
+            "height": 152.5999755859375
+          }
+        },
+        {
+          "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+          "label": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 6201.69970703125,
+            "y": -123.4000244140625,
+            "width": 392,
+            "height": 106.39996337890625
+          }
+        },
+        {
+          "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-horizontal-color:stack:correction",
+          "label": "correction: c10-horizontal-color; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 6201.69970703125,
+            "y": -409.0000305175781,
+            "width": 392,
+            "height": 106.39999389648438
+          }
+        },
+        {
+          "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-roadmap-create-sync:stack:correction",
+          "label": "correction: c10-roadmap-create-sync; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 6201.69970703125,
+            "y": -694.6000366210938,
+            "width": 392,
+            "height": 106.4000244140625
+          }
+        },
+        {
+          "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-roadmap-qualify:stack:correction",
+          "label": "correction: c10-roadmap-qualify; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 6201.69970703125,
+            "y": -980.199951171875,
+            "width": 392,
+            "height": 106.39990234375
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-a",
+          "label": "correction: Correction c10-recovery-a — relationship qualification; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning, Stored Roadmap dependency: correction branch Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 6201.69970703125,
+            "y": -1274.199951171875,
+            "width": 392,
+            "height": 128.7999267578125
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-b",
+          "label": "correction: Correction c10-recovery-b — dense branch from Phase 10 with a deliberately long readable label covering planning review, local authority, and source reconciliation; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 6201.69970703125,
+            "y": -1753,
+            "width": 392,
+            "height": 196
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-c",
+          "label": "correction: Correction c10-recovery-c — parallel support branch; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 6201.69970703125,
+            "y": -2047,
+            "width": 392,
+            "height": 128.800048828125
+          }
+        },
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+          "label": "phase: Product Phase 11 — Human-Centered UI / Usability Qualification; Not implemented; Chronological phase progression; no release gate implied Product Phase 10 — Unified Roadmap & Local-First AI Planning, Stored Roadmap dependency: Depends on Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 6750.5,
+            "y": 198.5999755859375,
+            "width": 392,
+            "height": 152.5999755859375
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-88-a",
+          "label": "phase: Product Phase 88 — First ambiguous candidate; Unknown; Chronological phase progression; no release gate implied Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11)",
+          "rect": {
+            "x": 7926.5,
+            "y": 198.5999755859375,
+            "width": 392,
+            "height": 128.7999267578125
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-88-b",
+          "label": "phase: Product Phase 88 — Second ambiguous candidate; Unknown; Chronological phase progression; no release gate implied Product Phase 88 — First ambiguous candidate",
+          "rect": {
+            "x": 8514.5,
+            "y": 198.5999755859375,
+            "width": 392,
+            "height": 128.7999267578125
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-100",
+          "label": "phase: Product Phase 100 — Distant future isolation check; Unknown; Chronological phase progression; no release gate implied Product Phase 88 — Second ambiguous candidate",
+          "rect": {
+            "x": 9102.5,
+            "y": 198.5999755859375,
+            "width": 392,
+            "height": 128.7999267578125
+          }
+        },
+        {
+          "id": "roadmap:fixture#c100-other",
+          "label": "correction: Correction c100-other — isolated from c10; Unknown; Correction belongs to Product Phase 100 — Distant future isolation check Product Phase 100 — Distant future isolation check, Stored Roadmap dependency: correction branch Product Phase 100 — Distant future isolation check",
+          "rect": {
+            "x": 9141.7001953125,
+            "y": -131.800048828125,
+            "width": 392,
+            "height": 128.79998779296875
+          }
+        },
+        {
+          "id": "roadmap:fixture#c99-orphan",
+          "label": "correction: Correction c99-orphan — missing Phase 99; Unknown",
+          "rect": {
+            "x": 10446.5,
+            "y": 198.5999755859375,
+            "width": 392,
+            "height": 128.7999267578125
+          }
+        },
+        {
+          "id": "roadmap:fixture#c88-ambiguous",
+          "label": "correction: Correction c88-ambiguous — two Phase 88 candidates; Unknown",
+          "rect": {
+            "x": 11034.5,
+            "y": 198.5999755859375,
+            "width": 392,
+            "height": 128.7999267578125
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-a — relationship qualification; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000181154877 635.4999933382477 L 4404.000181154877 609.4999933382477 L 4644.000181154877 609.4999933382477 L 4644.000181154877 -365.9999337043687 L 4576.500194030533 -365.9999337043687"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-b",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-b — dense branch from Phase 10 with a deliberately long readable label covering planning review, local authority, and source reconciliation; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000181154877 635.4999933382477 L 4404.000181154877 609.4999933382477 L 4644.000181154877 609.4999933382477 L 4644.000181154877 -683.9999127534377 L 4576.500194030533 -683.9999127534377"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-c",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-c — parallel support branch; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000181154877 635.4999933382477 L 4404.000181154877 609.4999933382477 L 4644.000181154877 609.4999933382477 L 4644.000181154877 -917.999977439612 L 4576.500194030533 -917.999977439612"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-better-planning; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000181154877 635.4999933382477 L 4404.000181154877 609.4999933382477 L 4644.000181154877 609.4999933382477 L 4644.000181154877 448.00001557674426 L 4576.500194030533 448.00001557674426"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-horizontal-color:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-horizontal-color; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000181154877 635.4999933382477 L 4404.000181154877 609.4999933382477 L 4644.000181154877 609.4999933382477 L 4644.000181154877 244.0000155767443 L 4576.500194030533 244.0000155767443"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-roadmap-create-sync:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-roadmap-create-sync; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000181154877 635.4999933382477 L 4404.000181154877 609.4999933382477 L 4644.000181154877 609.4999933382477 L 4644.000181154877 40.00002651055513 L 4576.500194030533 40.00002651055513"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-roadmap-qualify:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-roadmap-qualify; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000181154877 635.4999933382477 L 4404.000181154877 609.4999933382477 L 4644.000181154877 609.4999933382477 L 4644.000181154877 -163.99996255563403 L 4576.500194030533 -163.99996255563403"
+        },
+        {
+          "id": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+          "label": "Stored Roadmap dependency: correction branch; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-a — relationship qualification; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-smoothstep dope-roadmap-edge dope-roadmap-edge-dependency dope-roadmap-edge-not-green nopan inactive",
+          "path": "M4548.500194030533 694.5000108463404L 4563.500194030533,694.5000108463404Q 4568.500194030533,694.5000108463404 4568.500194030533,689.5000108463404L 4568.500194030533,169.25003857098585Q 4568.500194030533,164.25003857098585 4563.500194030533,164.25003857098585L 4272.500168279221,164.25003857098585Q 4267.500168279221,164.25003857098585 4267.500168279221,159.25003857098585L 4267.500168279221,-360.9999337043687Q 4267.500168279221,-365.9999337043687 4272.500168279221,-365.9999337043687L4287.500168279221 -365.9999337043687"
+        }
+      ]
+    },
+    "fit": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "outer": [
+        1920,
+        1172
+      ],
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 859,
+        "height": 1050
+      },
+      "transform": "translate(-379.3px, 224.4px) scale(0.2)",
+      "detail": "Phase detail",
+      "status": "✓Green",
+      "selected": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+      "nodes": [
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+          "label": "phase: Product Phase 9 — Developer Continuity / History; Green; Chronological phase progression; no release gate implied Product Phase 8 — Coding Agent / Scoped Delegation",
+          "rect": {
+            "x": 438.5,
+            "y": 426.3999938964844,
+            "width": 56,
+            "height": 18.399993896484375
+          }
+        },
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+          "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History, Stored Roadmap dependency: Depends on Product Phase 9 — Developer Continuity / History",
+          "rect": {
+            "x": 522.5,
+            "y": 426.3999938964844,
+            "width": 56,
+            "height": 18.399993896484375
+          }
+        },
+        {
+          "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+          "label": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 380.3999938964844,
+            "width": 56,
+            "height": 15.20001220703125
+          }
+        },
+        {
+          "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-horizontal-color:stack:correction",
+          "label": "correction: c10-horizontal-color; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 339.6000061035156,
+            "width": 56,
+            "height": 15.199981689453125
+          }
+        },
+        {
+          "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-roadmap-create-sync:stack:correction",
+          "label": "correction: c10-roadmap-create-sync; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 298.79998779296875,
+            "width": 56,
+            "height": 15.20001220703125
+          }
+        },
+        {
+          "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-roadmap-qualify:stack:correction",
+          "label": "correction: c10-roadmap-qualify; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 258,
+            "width": 56,
+            "height": 15.20001220703125
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-a",
+          "label": "correction: Correction c10-recovery-a — relationship qualification; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning, Stored Roadmap dependency: correction branch Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 216,
+            "width": 56,
+            "height": 18.399993896484375
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-b",
+          "label": "correction: Correction c10-recovery-b — dense branch from Phase 10 with a deliberately long readable label covering planning review, local authority, and source reconciliation; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 147.59999084472656,
+            "width": 56,
+            "height": 28
+          }
+        },
+        {
+          "id": "roadmap:fixture#c10-recovery-c",
+          "label": "correction: Correction c10-recovery-c — parallel support branch; Unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 528.1000366210938,
+            "y": 105.59999084472656,
+            "width": 56,
+            "height": 18.399993896484375
+          }
+        },
+        {
+          "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+          "label": "phase: Product Phase 11 — Human-Centered UI / Usability Qualification; Not implemented; Chronological phase progression; no release gate implied Product Phase 10 — Unified Roadmap & Local-First AI Planning, Stored Roadmap dependency: Depends on Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+          "rect": {
+            "x": 606.5,
+            "y": 426.3999938964844,
+            "width": 56,
+            "height": 18.399993896484375
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-88-a",
+          "label": "phase: Product Phase 88 — First ambiguous candidate; Unknown; Chronological phase progression; no release gate implied Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11)",
+          "rect": {
+            "x": 774.5000610351562,
+            "y": 426.3999938964844,
+            "width": 56,
+            "height": 18.399993896484375
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-88-b",
+          "label": "phase: Product Phase 88 — Second ambiguous candidate; Unknown; Chronological phase progression; no release gate implied Product Phase 88 — First ambiguous candidate",
+          "rect": {
+            "x": 858.5000610351562,
+            "y": 426.3999938964844,
+            "width": 56,
+            "height": 18.399993896484375
+          }
+        },
+        {
+          "id": "roadmap:fixture#phase-100",
+          "label": "phase: Product Phase 100 — Distant future isolation check; Unknown; Chronological phase progression; no release gate implied Product Phase 88 — Second ambiguous candidate",
+          "rect": {
+            "x": 942.5000610351562,
+            "y": 426.3999938964844,
+            "width": 56,
+            "height": 18.399993896484375
+          }
+        },
+        {
+          "id": "roadmap:fixture#c100-other",
+          "label": "correction: Correction c100-other — isolated from c10; Unknown; Correction belongs to Product Phase 100 — Distant future isolation check Product Phase 100 — Distant future isolation check, Stored Roadmap dependency: correction branch Product Phase 100 — Distant future isolation check",
+          "rect": {
+            "x": 948.1000366210938,
+            "y": 379.20001220703125,
+            "width": 56,
+            "height": 18.399993896484375
+          }
+        },
+        {
+          "id": "roadmap:fixture#c99-orphan",
+          "label": "correction: Correction c99-orphan — missing Phase 99; Unknown",
+          "rect": {
+            "x": 1134.5,
+            "y": 426.3999938964844,
+            "width": 56,
+            "height": 18.399993896484375
+          }
+        },
+        {
+          "id": "roadmap:fixture#c88-ambiguous",
+          "label": "correction: Correction c88-ambiguous — two Phase 88 candidates; Unknown",
+          "rect": {
+            "x": 1218.5,
+            "y": 426.3999938964844,
+            "width": 56,
+            "height": 18.399993896484375
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-a — relationship qualification; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000183105469 635.5000305175781 L 4404.000183105469 609.5000305175781 L 4644.000183105469 609.5000305175781 L 4644.000183105469 -366.00006103515625 L 4576.4998779296875 -366.00006103515625"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-b",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-b — dense branch from Phase 10 with a deliberately long readable label covering planning review, local authority, and source reconciliation; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000183105469 635.5000305175781 L 4404.000183105469 609.5000305175781 L 4644.000183105469 609.5000305175781 L 4644.000183105469 -683.9999694824219 L 4576.4998779296875 -683.9999694824219"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-c",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-c — parallel support branch; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000183105469 635.5000305175781 L 4404.000183105469 609.5000305175781 L 4644.000183105469 609.5000305175781 L 4644.000183105469 -917.9999847412109 L 4576.4998779296875 -917.9999847412109"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-better-planning; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000183105469 635.5000305175781 L 4404.000183105469 609.5000305175781 L 4644.000183105469 609.5000305175781 L 4644.000183105469 448.00006103515625 L 4576.4998779296875 448.00006103515625"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-horizontal-color:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-horizontal-color; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000183105469 635.5000305175781 L 4404.000183105469 609.5000305175781 L 4644.000183105469 609.5000305175781 L 4644.000183105469 243.99990844726562 L 4576.4998779296875 243.99990844726562"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-roadmap-create-sync:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-roadmap-create-sync; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000183105469 635.5000305175781 L 4404.000183105469 609.5000305175781 L 4644.000183105469 609.5000305175781 L 4644.000183105469 40.00006103515625 L 4576.4998779296875 40.00006103515625"
+        },
+        {
+          "id": "view:membership:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-roadmap-qualify:stack:correction",
+          "label": "Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning; Product Phase 10 — Unified Roadmap & Local-First AI Planning to c10-roadmap-qualify; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-branchRoute dope-roadmap-edge dope-roadmap-edge-membership nopan inactive",
+          "path": "M 4404.000183105469 635.5000305175781 L 4404.000183105469 609.5000305175781 L 4644.000183105469 609.5000305175781 L 4644.000183105469 -163.99993896484375 L 4576.4998779296875 -163.99993896484375"
+        },
+        {
+          "id": "view:dependency:roadmap:docs/roadmap/mvp-roadmap.md#phase-10:roadmap:fixture#c10-recovery-a",
+          "label": "Stored Roadmap dependency: correction branch; Product Phase 10 — Unified Roadmap & Local-First AI Planning to Correction c10-recovery-a — relationship qualification; endpoint status not-green",
+          "cls": "react-flow__edge react-flow__edge-smoothstep dope-roadmap-edge dope-roadmap-edge-dependency dope-roadmap-edge-not-green nopan inactive",
+          "path": "M4548.500183105469 686.0000915527344L 4563.500183105469,686.0000915527344Q 4568.500183105469,686.0000915527344 4568.500183105469,681.0000915527344L 4568.500183105469,165.00001525878906Q 4568.500183105469,160.00001525878906 4563.500183105469,160.00001525878906L 4272.4998779296875,160.00001525878906Q 4267.4998779296875,160.00001525878906 4267.4998779296875,155.00001525878906L 4267.4998779296875,-361.00006103515625Q 4267.4998779296875,-366.00006103515625 4272.4998779296875,-366.00006103515625L4287.4998779296875 -366.00006103515625"
+        }
+      ]
+    }
+  }
+}

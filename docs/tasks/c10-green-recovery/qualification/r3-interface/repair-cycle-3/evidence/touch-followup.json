@@ -1,0 +1,96 @@
+{
+  "browser": {
+    "fit": {
+      "camera": "translate(83.9106px, 532.075px) scale(0.204523)",
+      "detail": "Phase detail",
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1822,
+        "height": 985,
+        "top": 106,
+        "right": 1871,
+        "bottom": 1091,
+        "left": 49
+      }
+    },
+    "pinch": {
+      "camera": "translate(-2342.22px, 648.16px) scale(0.804456)",
+      "detail": "Phase detail"
+    },
+    "before": {
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+      "target": {
+        "x": 176,
+        "y": 542.5,
+        "width": 392,
+        "height": 152.5999755859375,
+        "top": 542.5,
+        "right": 568,
+        "bottom": 695.0999755859375,
+        "left": 176
+      },
+      "stage": {
+        "x": 49,
+        "y": 106,
+        "width": 1822,
+        "height": 985,
+        "top": 106,
+        "right": 1871,
+        "bottom": 1091,
+        "left": 49
+      }
+    },
+    "after": {
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-8",
+      "details": "Product Phase 8 — Coding Agent / Scoped DelegationExpandCompactMinimizeClose4 implementation stacks · 41 discovered prompts · docs/tasks/p8b, docs/tasks/p8c, do"
+    }
+  },
+  "native": {
+    "fit": {
+      "camera": "translate(51.2px, -240.8px) scale(0.2)",
+      "detail": "Phase detail",
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      }
+    },
+    "pinch": {
+      "camera": "translate(-2318.35px, -2487.15px) scale(0.786667)",
+      "detail": "Phase detail"
+    },
+    "before": {
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-9",
+      "target": {
+        "x": 124,
+        "y": 543,
+        "width": 392,
+        "height": 152.5999755859375,
+        "top": 543,
+        "right": 516,
+        "bottom": 695.5999755859375,
+        "left": 124
+      },
+      "stage": {
+        "x": 49,
+        "y": 74,
+        "width": 1718,
+        "height": 1050,
+        "top": 74,
+        "right": 1767,
+        "bottom": 1124,
+        "left": 49
+      }
+    },
+    "after": {
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-8",
+      "details": "Product Phase 8 — Coding Agent / Scoped DelegationExpandCompactMinimizeCloseStored Roadmap dependency: Depends on; Product Phase 9 — Developer Continuity / Hist"
+    }
+  }
+}
